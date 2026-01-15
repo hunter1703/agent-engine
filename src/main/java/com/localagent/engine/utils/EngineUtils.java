@@ -1,15 +1,15 @@
 package com.localagent.engine.utils;
 
 import com.alibaba.fastjson2.TypeReference;
-import com.alibaba.fastjson2.schema.JSONSchema;
-import com.alibaba.fastjson2.schema.ValidateResult;
-import com.localagent.engine.DefaultAgentEngine;
 import com.localagent.engine.message.Message;
 import com.localagent.engine.message.Role;
 import com.localagent.engine.message.ToolCall;
 import com.localagent.engine.state.SessionStore;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public final class EngineUtils {
@@ -32,56 +32,31 @@ public final class EngineUtils {
     }
 
     public static Message sanitizeMessage(final Message message, final String format, final String thoughtsStartTag, final String thoughtsEndTag) {
-
+        if (message == null) {
+            return null;
+        }
         if (Objects.equals("json", format)) {
-            Message payload = parseJsonPayload(message.getContent());
-        } else {
-            final String content = contentForValidation(message.getContent(), thoughtsStartTag, thoughtsEndTag);
+            Message parsed = parseJsonPayload(message.getContent());
+            if (parsed == null) {
+                return new Message(message.getRole(), "", "", List.of(), List.of());
+            }
+            return new Message(
+                message.getRole(),
+                parsed.getContent(),
+                parsed.getThoughts(),
+                CollectionUtils.nullSafeList(parsed.getToolRequests()),
+                CollectionUtils.nullSafeList(parsed.getToolCalls())
+            );
         }
-            if (payload.payload == null) {
-                return DefaultAgentEngine.ReasonerParse.invalid(response, "Invalid JSON response");
-            }
-            String finalAnswer = payload.finalAnswer;
-            List<ToolCall> toolRequests = payload.toolRequests;
-            boolean hasFinal = finalAnswer != null && !finalAnswer.isBlank();
-            boolean hasToolRequest = !toolRequests.isEmpty();
-            if (state.toolCompleted && state.toolFailureCount == 0 && hasToolRequest) {
-                toolRequests = List.of();
-                hasToolRequest = false;
-                finalAnswer = null;
-                hasFinal = false;
-            }
-            if ((hasToolRequest && hasFinal) || (!hasToolRequest && !hasFinal)) {
-                return DefaultAgentEngine.ReasonerParse.invalid(response, hasToolRequest ? "Both TOOL_REQUEST and FINAL present" : "Missing TOOL_REQUEST or FINAL");
-            }
-            String toolRequestText = toolRequestTextFromJson(toolRequests);
-            Message message = response;
-            if (toolRequestText != null) {
-                message = Message.assistant("TOOL_REQUEST:\n" + toolRequestText);
-            } else if (finalAnswer != null) {
-                message = Message.assistant("FINAL: " + finalAnswer);
-            }
-            return new DefaultAgentEngine.ReasonerParse(message, toolRequestText, finalAnswer, false, null, toolRequests);
-        }
-
-//        String toolRequest = extractToolRequest(content);
-//        boolean hasFinal = !needsFinalization(content);
-//        if (state.toolCompleted && state.toolFailureCount == 0 && toolRequest != null) {
-//            toolRequest = null;
-//            hasFinal = false;
-//        }
-//        if ((toolRequest != null && hasFinal) || (toolRequest == null && !hasFinal)) {
-//            return DefaultAgentEngine.ReasonerParse.invalid(response, toolRequest != null ? "Both TOOL_REQUEST and FINAL present" : "Missing TOOL_REQUEST or FINAL");
-//        }
-//        List<ToolCall> toolPlan = null;
-//        if (toolRequest != null) {
-//            ToolCall plan = parseToolPlan(toolRequest);
-//            if (plan.name() != null && !plan.name().isBlank()) {
-//                toolPlan = List.of(plan);
-//            }
-//        }
-//        return new DefaultAgentEngine.ReasonerParse(response, toolRequest, hasFinal ? extractFinal(response.getContent()) : null, false, null, toolPlan);
-//    }
+        final String content = contentForValidation(message.getContent(), thoughtsStartTag, thoughtsEndTag);
+        return new Message(
+            message.getRole(),
+            content,
+            message.getThoughts(),
+            CollectionUtils.nullSafeList(message.getToolRequests()),
+            CollectionUtils.nullSafeList(message.getToolCalls())
+        );
+    }
 
     public static String getRepairMessageIfInvalid(Message message) {
         final String content = message.getContent();
@@ -90,7 +65,7 @@ public final class EngineUtils {
 
         final boolean finalAnswerAndToolCallsPresent = StringUtils.isNotBlank(content) && CollectionUtils.isNotEmpty(toolRequests);
         final boolean emptyResponse = StringUtils.isBlank(content) && StringUtils.isBlank(thoughts) && CollectionUtils.isEmpty(toolRequests);
-        return TemplateUtils.renderForName("repair/invalid_message.txt", Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse))
+        return TemplateUtils.renderForName("repair/invalid_message.txt", Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse));
     }
 
     private static String contentForValidation(String text, String thoughtsStartTag, String thoughtsEndTag) {
@@ -134,41 +109,74 @@ public final class EngineUtils {
         if (payload == null) {
             return null;
         }
-        final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, "finalAnswer");
-        final String thoughts = CollectionUtils.getStringValueFromMap(payload, "thoughts");
-        List<ToolCall> toolRequests = parseToolCallsFromJsonMap(payload);
-        return new Message(null, finalAnswer, thoughts);
+        final String finalAnswer = getStringValue(payload, "finalAnswer");
+        final String thoughts = getStringValue(payload, "thoughts");
+        List<ToolCall> toolCalls = parseToolCallsFromJsonMap(payload);
+        List<String> toolRequests = parseToolRequestStrings(payload.get("toolRequests"));
+        if (toolRequests.isEmpty() && payload.containsKey("tool_name")) {
+            toolRequests = List.of(JsonUtils.toJson(Map.of(
+                "name", payload.get("tool_name"),
+                "args", payload.getOrDefault("tool_args", Map.of())
+            )));
+        }
+        String content = finalAnswer == null ? "" : finalAnswer;
+        return new Message(null, content, thoughts, toolRequests, toolCalls);
     }
 
-    private List<ToolCall> parseToolCallsFromJsonMap(Map<String, Object> payload, final Map<String, JSONSchema> toolSchemas) {
-        List<Map<String, Object>> toolRequests = CollectionUtils.getListOfMapsFromMap(payload, "toolRequests");
+    private static List<ToolCall> parseToolCallsFromJsonMap(Map<String, Object> payload) {
+        Object toolRequests = payload.get("toolRequests");
+        if (!(toolRequests instanceof List<?> list)) {
+            if (payload.containsKey("tool_name")) {
+                Object nameValue = payload.get("tool_name");
+                Object argsValue = payload.get("tool_args");
+                Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
+                return List.of(new ToolCall(null, nameValue == null ? "" : nameValue.toString(), args));
+            }
+            return List.of();
+        }
         List<ToolCall> calls = new ArrayList<>();
-        for (Map<String, Object> item : toolRequests) {
-            final String toolName = CollectionUtils.getStringValueFromMap(item, "name");
-            if (StringUtils.isBlank(toolName)) {
-                calls.add(new ToolCall(null, toolName, null, STR."Invalid tool name : \{toolName}"));
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) {
                 continue;
             }
-            final Map<String, Object> args = CollectionUtils.getMapFromMap(payload, "args");
-            final JSONSchema jsonSchema = toolSchemas.get(toolName);
-            final ValidateResult result = jsonSchema.validate(args);
-            if (!result.isSuccess()) {
-                calls.add(new ToolCall(null, toolName, args, STR."Provided arguments to tool : \{toolName} does not conform to json schema : \{JsonUtils.toJson(jsonSchema.toJSONObject())}"));
+            Object nameValue = map.get("name");
+            if (nameValue == null) {
                 continue;
             }
-            calls.add(new ToolCall(null, toolName, args, null));
+            Object argsValue = map.get("args");
+            Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
+            Object idValue = map.get("id");
+            calls.add(new ToolCall(idValue == null ? null : idValue.toString(), nameValue.toString(), args));
         }
         return calls;
     }
 
-    private Optional<Map<String, Object>> parseJsonMap(String text) {
-        if (text == null || text.isBlank()) {
-            return Optional.empty();
+    private static List<String> parseToolRequestStrings(Object toolRequests) {
+        if (!(toolRequests instanceof List<?> list)) {
+            return List.of();
         }
-        try {
-            return Optional.of(JsonUtils.parseMap(text));
-        } catch (Exception ex) {
-            return Optional.empty();
+        List<String> requests = new ArrayList<>();
+        for (Object item : list) {
+            if (item == null) {
+                continue;
+            }
+            if (item instanceof String value) {
+                if (!value.isBlank()) {
+                    requests.add(value);
+                }
+                continue;
+            }
+            if (item instanceof Map<?, ?> map) {
+                requests.add(JsonUtils.toJson(map));
+                continue;
+            }
+            requests.add(item.toString());
         }
+        return requests;
+    }
+
+    private static String getStringValue(Map<String, Object> payload, String key) {
+        Object value = payload.get(key);
+        return value == null ? null : value.toString();
     }
 }

@@ -1,2 +1,6 @@
-Tool execution failed.
+Tool execution failed for the following calls:
+{% for call, error in failures.items() %}
+- {{ call }}: {{ error }}
+{% endfor %}
+
 Try a workaround (different arguments, smaller scope, alternative tool).

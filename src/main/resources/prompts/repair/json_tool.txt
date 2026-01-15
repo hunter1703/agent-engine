@@ -1,11 +1,18 @@
 Your previous response was invalid.
 Return JSON only, matching this schema:
 {
-  "tool_name": string,
-  "tool_args": object
+  "toolRequests": [
+    {
+      "id": string,
+      "name": string,
+      "args": object
+    }
+  ]
 }
 
 Rules:
 - Return JSON only. No prose, no extra keys.
-- "tool_name" must match one of the tools listed inside <AVAILABLE_TOOLS>.
-- "tool_args" must contain the exact structured payload for that tool.
+- Provide exactly one tool call per request, preserving order.
+- "id" must be unique per tool call (any string is fine).
+- "name" must match one of the tools listed inside <AVAILABLE_TOOLS>.
+- "args" must contain the exact structured payload for that tool.

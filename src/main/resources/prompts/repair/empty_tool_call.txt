@@ -1,1 +1,7 @@
-Missing tool calls. Expected to call following tools : <>
+Missing or mismatched tool calls.
+Return exactly one tool call per request, in the same order.
+
+Expected tool requests:
+{% for request in toolRequests %}
+- {{ request }}
+{% endfor %}
