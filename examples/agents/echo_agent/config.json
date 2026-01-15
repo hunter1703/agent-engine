@@ -1,0 +1,13 @@
+{
+  "engine": {
+    "prompt": "You are EchoAgent. Keep responses short.",
+    "reasoning": "qwen3_coder_30b"
+  },
+  "context": {
+    "type": "last_n",
+    "keep_last": 10
+  },
+  "state_store": {
+    "type": "memory"
+  }
+}

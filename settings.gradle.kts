@@ -1,0 +1,1 @@
+rootProject.name = "quarkus-langchain4j"

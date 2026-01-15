@@ -1,0 +1,65 @@
+package com.localagent.engine.config;
+
+import com.alibaba.fastjson2.annotation.JSONField;
+
+public final class AgentConfig implements Config {
+    private DebugConfig debug = new DebugConfig();
+    private ToolsConfig tools = new ToolsConfig();
+    private EngineConfig engine = new EngineConfig();
+    private ContextConfig context = new SummarizingContextConfig();
+    @JSONField(name = "state_store")
+    private StateStoreConfig stateStore = new MemoryStateStoreConfig();
+
+    @Override
+    public void validate() {
+        debug.validate();
+        tools.validate();
+        engine.validate();
+        context.validate();
+        stateStore.validate();
+    }
+
+    public DebugConfig getDebug() {
+        return debug;
+    }
+
+    public void setDebug(DebugConfig debug) {
+        this.debug = debug;
+    }
+
+    public ToolsConfig getTools() {
+        return tools;
+    }
+
+    public void setTools(ToolsConfig tools) {
+        this.tools = tools;
+    }
+
+    public EngineConfig getEngine() {
+        return engine;
+    }
+
+    public void setEngine(EngineConfig engine) {
+        this.engine = engine;
+    }
+
+    public ContextConfig getContext() {
+        return context;
+    }
+
+    public void setContext(ContextConfig context) {
+        this.context = context;
+    }
+
+    public StateStoreConfig getStateStore() {
+        return stateStore;
+    }
+
+    public void setStateStore(StateStoreConfig stateStore) {
+        this.stateStore = stateStore;
+    }
+
+    public static AgentConfig empty() {
+        return new AgentConfig();
+    }
+}

@@ -1,0 +1,17 @@
+.DS_Store
+.gradle/
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+/.classpath
+/.project
+/.settings/
+**/build/
+**/out/
+**/target/
+*.log
+gradlew
+gradlew.bat
+gradle/wrapper/
