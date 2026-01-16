@@ -20,6 +20,7 @@ public final class InMemorySessionStore implements SessionStore {
 
     @Override
     public String appendMessage(String sessionId, Message message) {
+        message.setId(UUID.randomUUID().toString().replaceAll("-", ""));
         SessionState session = session(sessionId);
         session.messages.add(message);
         return message.getId();
@@ -28,6 +29,9 @@ public final class InMemorySessionStore implements SessionStore {
     @Override
     public void addToolExecutions(final String sessionId, final String messageId, final List<ToolExecution> toolExecutions) {
         final SessionState session = session(sessionId);
+        toolExecutions.forEach(toolExecution -> {
+            toolExecution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+        });
         session.toolExecutions.computeIfAbsent(messageId, _ -> new ArrayList<>()).addAll(toolExecutions);
     }
 

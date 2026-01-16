@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class Message {
-    private final String id;
+    private String id;
     private final Role role;
     private final String content;
     private final String thoughts;
@@ -15,12 +15,15 @@ public class Message {
     private final List<ToolCall> toolCalls;
 
     public Message(Role role, String content, String thoughts, List<String> toolRequests, List<ToolCall> toolCalls) {
-        this.id = UUID.randomUUID().toString().replaceAll("-", "");
         this.role = role;
         this.content = content;
         this.thoughts = thoughts;
         this.toolRequests = toolRequests;
         this.toolCalls = toolCalls;
+    }
+
+    public void setId(final String id) {
+        this.id = id;
     }
 
     public String getId() {
