@@ -15,6 +15,7 @@ import com.localagent.engine.tools.AgentTool;
 import com.localagent.engine.utils.CollectionUtils;
 import com.localagent.engine.utils.JsonUtils;
 import com.localagent.engine.utils.ResourceUtils;
+import com.localagent.engine.utils.StringUtils;
 import com.localagent.engine.utils.TemplateUtils;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -23,9 +24,10 @@ import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 public abstract class AbstractAgentBuilder implements AgentBuilder {
@@ -91,22 +93,213 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
 
     protected static JsonSchemaElement buildJsonSchemaElement(final Map<String, Object> jsonSchema) {
-        final String type = Objects.requireNonNull(CollectionUtils.getStringValueFromMap(jsonSchema, "type"));
-        return switch (type) {
-            case "object" -> {
-                final JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
-                final Map<String, Map<String, Object>> properties = CollectionUtils.getMapFromMap(jsonSchema, "properties");
-                for (final Map.Entry<String, Map<String, Object>> fieldProp : properties.entrySet()) {
-                    builder.addProperty(fieldProp.getKey(), buildJsonSchemaElement(fieldProp.getValue()));
+        if (jsonSchema == null) {
+            return JsonRawSchema.from("{}");
+        }
+        final Object refValue = jsonSchema.get("$ref");
+        if (refValue instanceof final String reference) {
+            return JsonReferenceSchema.builder().reference(reference).build();
+        }
+        final List<JsonSchemaElement> anyOfElements = buildAnyOfElements(jsonSchema.get("anyOf"));
+        final List<JsonSchemaElement> oneOfElements = buildAnyOfElements(jsonSchema.get("oneOf"));
+        final List<JsonSchemaElement> allOfElements = buildAnyOfElements(jsonSchema.get("allOf"));
+        if (!anyOfElements.isEmpty()) {
+            return JsonAnyOfSchema.builder().anyOf(anyOfElements).build();
+        }
+        if (!oneOfElements.isEmpty()) {
+            return JsonAnyOfSchema.builder().anyOf(oneOfElements).build();
+        }
+        if (!allOfElements.isEmpty()) {
+            return JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
+        }
+        final JsonSchemaElement enumSchema = buildEnumSchema(jsonSchema);
+        if (enumSchema != null) {
+            return enumSchema;
+        }
+        final Object typeValue = jsonSchema.get("type");
+        if (typeValue instanceof final List<?> listTypes) {
+            final List<JsonSchemaElement> typeElements = new ArrayList<>();
+            for (final Object item : listTypes) {
+                if (item instanceof final String typeItem) {
+                    final Map<String, Object> nested = new HashMap<>(jsonSchema);
+                    nested.put("type", typeItem);
+                    nested.remove("anyOf");
+                    nested.remove("oneOf");
+                    nested.remove("allOf");
+                    typeElements.add(buildJsonSchemaElement(nested));
                 }
-                yield builder.build();
             }
-            case "string" -> JsonStringSchema.builder().build();
-            case "integer" -> JsonIntegerSchema.builder().build();
-            case "number" -> JsonNumberSchema.builder().build();
-            case "boolean" -> JsonBooleanSchema.builder().build();
-            default -> throw new IllegalStateException(STR."Unexpected value: \{type}");
+            if (!typeElements.isEmpty()) {
+                return JsonAnyOfSchema.builder().anyOf(typeElements).build();
+            }
+        }
+        final String type = typeValue instanceof final String typeString ? typeString : null;
+        final JsonSchemaElement element = switch (type == null ? "" : type) {
+            case "object" -> buildObjectSchema(jsonSchema);
+            case "array" -> buildArraySchema(jsonSchema);
+            case "string" -> buildStringSchema(jsonSchema);
+            case "integer" -> buildIntegerSchema(jsonSchema);
+            case "number" -> buildNumberSchema(jsonSchema);
+            case "boolean" -> buildBooleanSchema(jsonSchema);
+            case "null" -> new JsonNullSchema();
+            case "" -> {
+                if (jsonSchema.containsKey("properties")) {
+                    yield buildObjectSchema(jsonSchema);
+                }
+                if (jsonSchema.containsKey("items")) {
+                    yield buildArraySchema(jsonSchema);
+                }
+                yield JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
+            }
+            default -> JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
         };
+        final boolean nullable = Boolean.TRUE.equals(jsonSchema.get("nullable"));
+        if (nullable) {
+            return JsonAnyOfSchema.builder().anyOf(element, new JsonNullSchema()).build();
+        }
+        return element;
+    }
+
+    private static JsonSchemaElement buildObjectSchema(final Map<String, Object> jsonSchema) {
+        final JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            builder.description(description);
+        }
+        final Map<String, Map<String, Object>> properties = CollectionUtils.getMapFromMap(jsonSchema, "properties");
+        if (!CollectionUtils.isEmpty(properties)) {
+            for (final Map.Entry<String, Map<String, Object>> fieldProp : properties.entrySet()) {
+                builder.addProperty(fieldProp.getKey(), buildJsonSchemaElement(fieldProp.getValue()));
+            }
+        }
+        final List<String> required = getStringList(jsonSchema.get("required"));
+        if (!required.isEmpty()) {
+            builder.required(required);
+        }
+        final Object additionalProperties = jsonSchema.get("additionalProperties");
+        if (additionalProperties instanceof final Boolean allowed) {
+            builder.additionalProperties(allowed);
+        }
+        final Map<String, Map<String, Object>> definitions = CollectionUtils.getMapFromMap(jsonSchema, "definitions");
+        if (!CollectionUtils.isEmpty(definitions)) {
+            final Map<String, JsonSchemaElement> definitionSchemas = new HashMap<>();
+            for (final Map.Entry<String, Map<String, Object>> entry : definitions.entrySet()) {
+                definitionSchemas.put(entry.getKey(), buildJsonSchemaElement(entry.getValue()));
+            }
+            builder.definitions(definitionSchemas);
+        }
+        return builder.build();
+    }
+
+    private static JsonSchemaElement buildArraySchema(final Map<String, Object> jsonSchema) {
+        final JsonArraySchema.Builder builder = JsonArraySchema.builder();
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            builder.description(description);
+        }
+        final Object items = jsonSchema.get("items");
+        if (items instanceof final Map<?, ?> itemsMap) {
+            //noinspection unchecked
+            builder.items(buildJsonSchemaElement((Map<String, Object>) itemsMap));
+        } else if (items instanceof final List<?> list) {
+            final List<JsonSchemaElement> itemElements = new ArrayList<>();
+            for (final Object item : list) {
+                if (item instanceof final Map<?, ?> entryMap) {
+                    //noinspection unchecked
+                    itemElements.add(buildJsonSchemaElement((Map<String, Object>) entryMap));
+                }
+            }
+            if (!itemElements.isEmpty()) {
+                builder.items(JsonAnyOfSchema.builder().anyOf(itemElements).build());
+            }
+        }
+        return builder.build();
+    }
+
+    private static JsonSchemaElement buildStringSchema(final Map<String, Object> jsonSchema) {
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            return JsonStringSchema.builder().description(description).build();
+        }
+        return JsonStringSchema.builder().build();
+    }
+
+    private static JsonSchemaElement buildIntegerSchema(final Map<String, Object> jsonSchema) {
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            return JsonIntegerSchema.builder().description(description).build();
+        }
+        return JsonIntegerSchema.builder().build();
+    }
+
+    private static JsonSchemaElement buildNumberSchema(final Map<String, Object> jsonSchema) {
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            return JsonNumberSchema.builder().description(description).build();
+        }
+        return JsonNumberSchema.builder().build();
+    }
+
+    private static JsonSchemaElement buildBooleanSchema(final Map<String, Object> jsonSchema) {
+        final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+        if (StringUtils.isNotBlank(description)) {
+            return JsonBooleanSchema.builder().description(description).build();
+        }
+        return JsonBooleanSchema.builder().build();
+    }
+
+    private static JsonSchemaElement buildEnumSchema(final Map<String, Object> jsonSchema) {
+        final Object enumValue = jsonSchema.get("enum");
+        if (enumValue instanceof final List<?> list) {
+            final List<String> values = new ArrayList<>();
+            for (final Object entry : list) {
+                if (entry != null) {
+                    values.add(entry.toString());
+                }
+            }
+            if (!values.isEmpty()) {
+                final JsonEnumSchema.Builder builder = JsonEnumSchema.builder().enumValues(values);
+                final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
+                if (StringUtils.isNotBlank(description)) {
+                    builder.description(description);
+                }
+                return builder.build();
+            }
+        }
+        if (jsonSchema.containsKey("const")) {
+            final Object constValue = jsonSchema.get("const");
+            if (constValue != null) {
+                return JsonEnumSchema.builder().enumValues(constValue.toString()).build();
+            }
+        }
+        return null;
+    }
+
+    private static List<JsonSchemaElement> buildAnyOfElements(final Object value) {
+        if (!(value instanceof final List<?> list)) {
+            return List.of();
+        }
+        final List<JsonSchemaElement> elements = new ArrayList<>();
+        for (final Object entry : list) {
+            if (entry instanceof final Map<?, ?> map) {
+                //noinspection unchecked
+                elements.add(buildJsonSchemaElement((Map<String, Object>) map));
+            }
+        }
+        return elements;
+    }
+
+    private static List<String> getStringList(final Object value) {
+        if (!(value instanceof final List<?> list)) {
+            return List.of();
+        }
+        final List<String> strings = new ArrayList<>();
+        for (final Object entry : list) {
+            if (entry != null) {
+                strings.add(entry.toString());
+            }
+        }
+        return strings;
     }
 
     private static String loadReasonerSchema(final ModelConfig config) {
