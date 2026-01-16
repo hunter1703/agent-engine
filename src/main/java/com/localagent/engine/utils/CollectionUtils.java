@@ -7,11 +7,18 @@ public final class CollectionUtils {
 
     private CollectionUtils(){}
 
+    public static <K, V> Map<K, V> nullSafeMap(final Map<K, V> map) {
+        if (map == null) {
+            return Collections.emptyMap();
+        }
+        return map;
+    }
+
     public static <T> List<T> nullSafeList(final Collection<T> collection) {
         if (CollectionUtils.isEmpty(collection)) {
             return List.of();
         }
-        return Collections.unmodifiableList(new ArrayList<>(collection));
+        return List.copyOf(collection);
     }
 
     public static <T> List<T> nullSafeMutableList(final Collection<T> collection) {
@@ -28,6 +35,25 @@ public final class CollectionUtils {
         return (String) map.get(key);
     }
 
+    public static Long getLongValueFromMap(final Map<String, Object> map, final String key) {
+        if (CollectionUtils.isEmpty(map)) {
+            return null;
+        }
+        final Object value = map.get(key);
+        return switch (value) {
+            case Number number -> number.longValue();
+            default -> Long.parseLong(value.toString());
+        };
+    }
+
+    public static <K, V> Map<K, V> getMapFromMap(final Map<String, Object> map, final String key) {
+        if (CollectionUtils.isEmpty(map)) {
+            return null;
+        }
+        //noinspection unchecked
+        return (Map<K, V>) map.get(key);
+    }
+
     public static boolean isEmpty(Map<?, ?> map) {
         return map == null || map.isEmpty();
     }
@@ -40,7 +66,7 @@ public final class CollectionUtils {
         return !isEmpty(collection);
     }
 
-    public static <T, K, V> Map<K, V> transformToMap(Collection<T> collection, Function<T, ? extends Collection<K>> keysFunction, Function<T, V> valueFunction) {
+    public static <T, K, V> Map<K, V> transformToMultiKeyMap(Collection<T> collection, Function<T, ? extends Collection<K>> keysFunction, Function<T, V> valueFunction) {
         final Map<K, V> map = new HashMap<>();
         for (final T item : collection) {
             final Collection<K> keys = keysFunction.apply(item);
@@ -65,7 +91,7 @@ public final class CollectionUtils {
                 continue;
             }
             final V value = valueFunction.apply(item);
-            map.put(key, value)
+            map.put(key, value);
         }
 
         return map;

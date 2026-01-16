@@ -2,9 +2,8 @@ You must format every response with two clear, distinct sections:
 
 {% if thoughts_enabled %}
 If you include thoughts, wrap them in <{{ thought_tag }}>...</{{ thought_tag }}>.
-Do NOT use a THOUGHTS section.
 {% else %}
-Do NOT include thoughts or a THOUGHTS section.
+Do NOT include thoughts.
 {% endif %}
 - Do not include secrets or sensitive data. Keep it generic.
 - This section may be updated as you think; it's transient UI-only.
@@ -15,7 +14,7 @@ FINAL:
 
 Rules:
 - The full conversation history is provided above; do not claim you lack access to it.
-- If you need tools, you may think in THOUGHTS while tools execute, but provide the user-facing result in FINAL after tools complete.
+- If you need tools, you may execute them, but provide the user-facing result in FINAL after tools complete.
 - Always include a FINAL section, even if it’s a short confirmation.
 - Do not invent tools; only use tools listed inside <AVAILABLE_TOOLS>.
 - Never use tools for greetings, chit-chat, or meta questions about the conversation.

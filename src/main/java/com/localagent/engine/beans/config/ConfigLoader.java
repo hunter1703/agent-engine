@@ -1,4 +1,4 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 import com.localagent.engine.utils.JsonUtils;
 import com.localagent.engine.utils.YamlUtils;
@@ -7,9 +7,6 @@ import jakarta.inject.Singleton;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Singleton
 public class ConfigLoader {

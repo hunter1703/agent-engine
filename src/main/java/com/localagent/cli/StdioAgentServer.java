@@ -2,12 +2,14 @@ package com.localagent.cli;
 
 import com.localagent.cli.beans.BuildPromptRequest;
 import com.localagent.cli.beans.InvokeAgentRequest;
-import com.localagent.engine.builders.DefaultAgentBuilder;
+import com.localagent.cli.beans.Request;
+import com.localagent.engine.AgentEngine;
+import com.localagent.engine.builders.AgentBuilderFactory;
 import com.localagent.engine.AgentListener;
-import com.localagent.engine.DefaultAgentEngine;
+import com.localagent.engine.beans.config.ConfigLoader;
 import com.localagent.engine.message.Message;
 import com.localagent.engine.message.ToolCall;
-import com.localagent.engine.state.ToolExecution;
+import com.localagent.engine.beans.ToolExecution;
 import com.localagent.engine.utils.JsonUtils;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
@@ -21,14 +23,16 @@ import java.util.*;
 
 @QuarkusMain
 public final class StdioAgentServer implements QuarkusApplication {
-    private DefaultAgentEngine agent;
+    private AgentEngine agent;
     private String sessionId;
 
-    private final DefaultAgentBuilder defaultAgentBuilder;
+    private final AgentBuilderFactory agentBuilderFactory;
+    private final ConfigLoader configLoader;
 
     @Inject
-    public StdioAgentServer(DefaultAgentBuilder defaultAgentBuilder) {
-        this.defaultAgentBuilder = defaultAgentBuilder;
+    public StdioAgentServer(AgentBuilderFactory agentBuilderFactory, ConfigLoader configLoader) {
+        this.agentBuilderFactory = agentBuilderFactory;
+        this.configLoader = configLoader;
     }
 
     public static void main(String[] args) {
@@ -50,7 +54,7 @@ public final class StdioAgentServer implements QuarkusApplication {
             switch (request) {
                 case InvokeAgentRequest invokeAgentRequest -> invoke(invokeAgentRequest);
                 case BuildPromptRequest buildPromptRequest -> buildPrompt(buildPromptRequest);
-                default -> throw new IllegalArgumentException("Unsupported request type: " + request.getType());
+                default -> throw new IllegalArgumentException(STR."Unsupported request type: \{request.getType()}");
             }
         }
 
@@ -58,9 +62,9 @@ public final class StdioAgentServer implements QuarkusApplication {
     }
 
     private void init(final String agentName, final String agentConfig) {
-        this.agent = defaultAgentBuilder.build(agentName, Paths.get(agentConfig));
-        this.sessionId = UUID.randomUUID().toString();
-        agent.setListener(new AgentListener() {
+        agent = agentBuilderFactory.getBuilder(agentName).build(agentName, configLoader.loadConfig(Paths.get(agentConfig)));
+        sessionId = UUID.randomUUID().toString();
+        agent.registerListener(new AgentListener() {
             @Override
             public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
                 for (ToolCall call : toolCalls) {
@@ -69,10 +73,9 @@ public final class StdioAgentServer implements QuarkusApplication {
             }
 
             @Override
-            public void onToolExec(final String sessionId, final ToolExecution toolExecution) {
+            public void onToolExecution(final String sessionId, final ToolExecution toolExecution) {
                 sendEvent(sessionId, "tool_result", Map.of(
-                        "tool_name", toolExecution.tool(),
-                        "tool_args", toolExecution.args(),
+                        "tool_name", toolExecution.name(),
                         "tool_output", toolExecution.output(),
                         "tool_status", toolExecution.status(),
                         "tool_duration_ms", toolExecution.durationMs()
@@ -80,21 +83,26 @@ public final class StdioAgentServer implements QuarkusApplication {
             }
 
             @Override
-            public void onReasoningStart(final String sessionId, final String updatedStatus) {
-                sendEvent(sessionId, "status", updatedStatus + "...");
+            public void onReasoningStart(final String sessionId) {
+                sendEvent(sessionId, "status", "reasoning...");
+            }
+
+            @Override
+            public void onToolRepair(String sessionId) {
+                sendEvent(sessionId, "status", "repairing tool...");
             }
         });
     }
 
     public void invoke(InvokeAgentRequest request) {
         String userText = request.getUserMessage();
-        AgentResponse response = agent.invoke(sessionId, Message.user(userText));
-        sendEvent(request.getId(), "thoughts", response.thoughts());
-        sendEvent(request.getId(), "finalAnswer", response.finalText());
+        Message response = agent.invoke(sessionId, Message.user(userText));
+        sendEvent(request.getId(), "thoughts", response.getThoughts());
+        sendEvent(request.getId(), "finalAnswer", response.getContent());
     }
 
     public void buildPrompt(BuildPromptRequest request) {
-        List<Message> messages = agent.contextManager().buildPrompt(sessionId);
+        List<Message> messages = agent.buildPrompt(sessionId);
         List<Map<String, String>> out = new ArrayList<>();
         for (Message message : messages) {
             Map<String, String> entry = new HashMap<>();

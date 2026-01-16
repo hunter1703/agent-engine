@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "finalAnswer": {
+      "type": "string"
+    },
+    "thoughts": {
+      "type": "string"
+    },
+    "toolRequests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "intent"
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "finalAnswer"
+          ]
+        },
+        {
+          "required": [
+            "thoughts"
+          ]
+        },
+        {
+          "required": [
+            "toolRequests"
+          ]
+        }
+      ]
+    },
+    {
+      "not": {
+        "required": [
+          "finalAnswer",
+          "toolRequests"
+        ]
+      }
+    },
+    {
+      "not": {
+        "allOf": [
+          {
+            "required": [
+              "thoughts"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "finalAnswer"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "toolRequests"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 public class MemoryStateStoreConfig extends StateStoreConfig {
     public MemoryStateStoreConfig() {

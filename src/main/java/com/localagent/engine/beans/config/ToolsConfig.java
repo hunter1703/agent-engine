@@ -1,4 +1,4 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,7 +7,7 @@ import java.util.Map;
 
 public final class ToolsConfig implements Config {
     private List<String> enabled;
-    private Map<String, Object> configs = new HashMap<>();
+    private Map<String, Map<String, Object>> configs = new HashMap<>();
 
     public List<String> getEnabled() {
         return enabled == null ? null : new ArrayList<>(enabled);
@@ -17,11 +17,11 @@ public final class ToolsConfig implements Config {
         this.enabled = enabled;
     }
 
-    public Map<String, Object> getConfigs() {
+    public Map<String, Map<String, Object>> getConfigs() {
         return configs;
     }
 
-    public void setConfigs(Map<String, Object> configs) {
+    public void setConfigs(Map<String, Map<String, Object>> configs) {
         this.configs = configs == null ? new HashMap<>() : new HashMap<>(configs);
     }
 }

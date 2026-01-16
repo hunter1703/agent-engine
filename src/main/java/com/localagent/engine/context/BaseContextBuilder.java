@@ -3,6 +3,8 @@ package com.localagent.engine.context;
 import com.localagent.engine.message.Message;
 import com.localagent.engine.message.Role;
 import com.localagent.engine.state.SessionStore;
+import com.localagent.engine.tools.AgentTool;
+import com.localagent.engine.utils.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,14 +16,12 @@ public class BaseContextBuilder implements ContextBuilder {
     private final Message systemMessage;
     private final Message protocolMessage;
     private final Message toolMessage;
-    private final String thoughtTag;
 
-    public BaseContextBuilder(SessionStore sessionStore, Message systemMessage, Message protocolMessage, Message toolMessage, String thoughtTag) {
+    public BaseContextBuilder(SessionStore sessionStore, String systemMessage, String protocolMessage, List<AgentTool> tools) {
         this.sessionStore = sessionStore;
-        this.systemMessage = systemMessage;
-        this.protocolMessage = protocolMessage;
-        this.toolMessage = toolMessage;
-        this.thoughtTag = thoughtTag;
+        this.systemMessage = Message.system(systemMessage);
+        this.protocolMessage = Message.system(protocolMessage);
+        this.toolMessage = buildToolMessage(tools);
     }
 
     @Override
@@ -30,90 +30,32 @@ public class BaseContextBuilder implements ContextBuilder {
     }
 
     protected List<Message> buildPrompt(List<Message> messages) {
-        List<Message> base = new ArrayList<>();
+        List<Message> prompt = new ArrayList<>();
         if (protocolMessage != null) {
-            base.add(protocolMessage);
+            prompt.add(protocolMessage);
         }
         if (toolMessage != null) {
-            base.add(toolMessage);
+            prompt.add(toolMessage);
         }
-        base.add(systemMessage);
+        prompt.add(systemMessage);
+        prompt.addAll(CollectionUtils.nullSafeList(messages));
 
-        List<Message> history = pruneHistory(state.messages());
-        if (history.isEmpty()) {
-            return base;
-        }
-        List<Message> assembled = new ArrayList<>();
-        List<Message> historyMessages = history.subList(0, Math.max(0, history.size() - 1));
-        List<Message> currentMessages = history.subList(Math.max(0, history.size() - 1), history.size());
-        if (!historyMessages.isEmpty()) {
-            assembled.add(Message.system("Following is the conversation history:"));
-            assembled.addAll(historyMessages);
-        }
-        if (!currentMessages.isEmpty()) {
-            assembled.add(Message.system(
-                "==========================================\n" +
-                "Following is the current message (latest turn):"
-            ));
-            assembled.addAll(currentMessages);
-        }
-        List<Message> result = new ArrayList<>(base);
-        result.addAll(assembled);
-        return result;
+        return prompt;
     }
 
-    protected List<Message> pruneHistory(List<Message> messages) {
-        List<Message> pruned = new ArrayList<>();
-        for (Message message : messages) {
-            if (message.getRole() == Role.ASSISTANT) {
-                pruned.add(Message.assistant(extractFinalOnly(message.getContent(), thoughtTag)));
-            } else {
-                pruned.add(message);
+    private Message buildToolMessage(List<AgentTool> tools) {
+        if (tools == null || tools.isEmpty()) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
+        for (AgentTool tool : tools) {
+            String line = STR."- \{tool.name()}";
+            if (tool.description() != null && !tool.description().isBlank()) {
+                line += STR." - \{tool.description()}";
             }
+            builder.append(line).append("\n");
         }
-        return pruned;
-    }
-
-    static String extractFinalOnly(String text, String thoughtTag) {
-        if (text == null || text.isBlank()) {
-            return "";
-        }
-        String cleaned = stripThoughtTag(text, thoughtTag);
-        if (cleaned.isBlank()) {
-            return cleaned;
-        }
-        if (cleaned.toUpperCase().startsWith("FINAL:")) {
-            return cleaned.substring("FINAL:".length()).trim();
-        }
-        Matcher finalMatch = Pattern.compile("^FINAL:\\s*(.*)$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.DOTALL)
-            .matcher(cleaned);
-        if (finalMatch.find()) {
-            return finalMatch.group(1).trim();
-        }
-        Matcher thoughtsMatch = Pattern.compile("^THOUGHTS:\\s*$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE).matcher(cleaned);
-        if (thoughtsMatch.find()) {
-            String thoughtsBody = cleaned.substring(thoughtsMatch.end());
-            Matcher stop = Pattern.compile("\\n\\s*\\n(?=[A-Z][A-Z\\s]*:)|\\n\\s*FINAL:\\s*", Pattern.CASE_INSENSITIVE)
-                .matcher(thoughtsBody);
-            if (stop.find()) {
-                return (cleaned.substring(0, thoughtsMatch.start()) + cleaned.substring(thoughtsMatch.end() + stop.start())).trim();
-            }
-            return cleaned.substring(0, thoughtsMatch.start()).trim();
-        }
-        return cleaned.trim();
-    }
-
-    private static String stripThoughtTag(String text, String tag) {
-        if (text == null) {
-            return "";
-        }
-        if (tag != null && !tag.isBlank()) {
-            return text.replaceAll("(?is)<" + Pattern.quote(tag) + ">.*?</" + Pattern.quote(tag) + ">", "").trim();
-        }
-        return text.replaceAll("</?(think|thought)>", "").trim();
-    }
-
-    protected String thoughtTag() {
-        return thoughtTag;
+        builder.append("</AVAILABLE_TOOLS>");
+        return Message.system(builder.toString());
     }
 }

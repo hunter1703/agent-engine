@@ -1,8 +1,7 @@
 package com.localagent.engine;
 
-import com.localagent.engine.message.Message;
 import com.localagent.engine.message.ToolCall;
-import com.localagent.engine.state.ToolExecution;
+import com.localagent.engine.beans.ToolExecution;
 import java.util.List;
 
 public interface AgentListener {

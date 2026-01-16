@@ -49,6 +49,14 @@ public final class JsonUtils {
         }
     }
 
+    public static <T> T fromFile(Path path, TypeReference<T> typeReference) {
+        try {
+            return JSON.parseObject(Files.newInputStream(path), typeReference.getType());
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     public static String toJson(Object value) {
         return JSON.toJSONString(value);
     }

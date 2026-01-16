@@ -1,4 +1,4 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 

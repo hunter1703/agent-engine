@@ -1,0 +1,9 @@
+You must return a single JSON object:
+Rules:
+- The full conversation history is provided above; do not claim you lack access to it.
+- Return JSON only. No prose, no extra keys.
+
+For tool calls,
+- "name" must match one of the tools listed inside <AVAILABLE_TOOLS>.
+- "args" should include any needed structured inputs or paths.
+- Never invent tool names.

@@ -5,14 +5,19 @@ import com.localagent.engine.message.Message;
 import com.localagent.engine.message.Role;
 import com.localagent.engine.message.ToolCall;
 import com.localagent.engine.state.SessionStore;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class EngineUtils {
+
+    private static final Pattern FINAL_BLOCK = Pattern.compile("FINAL:\\s*(.*)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private EngineUtils(){}
 
@@ -31,12 +36,13 @@ public final class EngineUtils {
         return count;
     }
 
-    public static Message sanitizeMessage(final Message message, final String format, final String thoughtsStartTag, final String thoughtsEndTag) {
+    public static Message sanitizeMessage(final Message message, final ResponseFormat format, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
         if (message == null) {
             return null;
         }
-        if (Objects.equals("json", format)) {
-            Message parsed = parseJsonPayload(message.getContent());
+        final String content = message.getContent();
+        if (format.type() == ResponseFormatType.JSON) {
+            Message parsed = parseJsonPayload(content);
             if (parsed == null) {
                 return new Message(message.getRole(), "", "", List.of(), List.of());
             }
@@ -48,11 +54,13 @@ public final class EngineUtils {
                 CollectionUtils.nullSafeList(parsed.getToolCalls())
             );
         }
-        final String content = contentForValidation(message.getContent(), thoughtsStartTag, thoughtsEndTag);
+        final String finalAnswer = getFinalAnswer(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
+        //TODO: implement
+        final String thoughts = getThoughts(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
         return new Message(
             message.getRole(),
-            content,
-            message.getThoughts(),
+            finalAnswer,
+            thoughts,
             CollectionUtils.nullSafeList(message.getToolRequests()),
             CollectionUtils.nullSafeList(message.getToolCalls())
         );
@@ -68,13 +76,18 @@ public final class EngineUtils {
         return TemplateUtils.renderForName("repair/invalid_message.txt", Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse));
     }
 
-    private static String contentForValidation(String text, String thoughtsStartTag, String thoughtsEndTag) {
-        return stripThoughtBlock(text, thoughtsStartTag, thoughtsEndTag);
+    private static String getFinalAnswer(final String content, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
+        final String cleaned = stripThoughtBlock(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
+        if (StringUtils.isBlank(cleaned)) {
+            return cleaned;
+        }
+        Matcher finalMatch = FINAL_BLOCK.matcher(cleaned);
+        return (finalMatch.find() ? finalMatch.group(1) : cleaned).trim();
     }
 
-    private static String stripThoughtBlock(String text, String thoughtsStartTag, String thoughtsEndTag) {
-        if (StringUtils.isBlank(text)) {
-            return "";
+    private static String stripThoughtBlock(String text, boolean thoughtsEnabled, String thoughtsStartTag, String thoughtsEndTag) {
+        if (StringUtils.isBlank(text) || !thoughtsEnabled) {
+            return text;
         }
         return text.replaceAll(STR."\{Pattern.quote(thoughtsStartTag)}.*?\{Pattern.quote(thoughtsEndTag)}", "").trim();
     }
@@ -109,8 +122,8 @@ public final class EngineUtils {
         if (payload == null) {
             return null;
         }
-        final String finalAnswer = getStringValue(payload, "finalAnswer");
-        final String thoughts = getStringValue(payload, "thoughts");
+        final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, "finalAnswer");
+        final String thoughts = CollectionUtils.getStringValueFromMap(payload, "thoughts");
         List<ToolCall> toolCalls = parseToolCallsFromJsonMap(payload);
         List<String> toolRequests = parseToolRequestStrings(payload.get("toolRequests"));
         if (toolRequests.isEmpty() && payload.containsKey("tool_name")) {
@@ -129,6 +142,7 @@ public final class EngineUtils {
             if (payload.containsKey("tool_name")) {
                 Object nameValue = payload.get("tool_name");
                 Object argsValue = payload.get("tool_args");
+                //noinspection unchecked
                 Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
                 return List.of(new ToolCall(null, nameValue == null ? "" : nameValue.toString(), args));
             }
@@ -144,6 +158,7 @@ public final class EngineUtils {
                 continue;
             }
             Object argsValue = map.get("args");
+            //noinspection unchecked
             Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
             Object idValue = map.get("id");
             calls.add(new ToolCall(idValue == null ? null : idValue.toString(), nameValue.toString(), args));
@@ -173,10 +188,5 @@ public final class EngineUtils {
             requests.add(item.toString());
         }
         return requests;
-    }
-
-    private static String getStringValue(Map<String, Object> payload, String key) {
-        Object value = payload.get(key);
-        return value == null ? null : value.toString();
     }
 }

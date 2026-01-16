@@ -1,10 +1,8 @@
 package com.localagent.engine.builders;
 
 import com.localagent.engine.AgentEngine;
-import com.localagent.engine.DefaultAgentEngine;
-import com.localagent.engine.config.AgentConfig;
+import com.localagent.engine.beans.config.AgentConfig;
 
-import java.nio.file.Path;
 import java.util.List;
 
 public interface AgentBuilder {

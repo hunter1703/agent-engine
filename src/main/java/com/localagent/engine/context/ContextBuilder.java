@@ -6,5 +6,5 @@ import com.localagent.engine.state.SessionStore;
 import java.util.List;
 
 public interface ContextBuilder {
-    List<Message> buildPrompt(SessionStore sessionStore, String sessionId);
+    List<Message> buildPrompt(String sessionId);
 }

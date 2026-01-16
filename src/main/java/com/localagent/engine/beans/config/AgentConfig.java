@@ -1,9 +1,8 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 
 public final class AgentConfig implements Config {
-    private DebugConfig debug = new DebugConfig();
     private ToolsConfig tools = new ToolsConfig();
     private EngineConfig engine = new EngineConfig();
     private ContextConfig context = new SummarizingContextConfig();
@@ -12,19 +11,10 @@ public final class AgentConfig implements Config {
 
     @Override
     public void validate() {
-        debug.validate();
         tools.validate();
         engine.validate();
         context.validate();
         stateStore.validate();
-    }
-
-    public DebugConfig getDebug() {
-        return debug;
-    }
-
-    public void setDebug(DebugConfig debug) {
-        this.debug = debug;
     }
 
     public ToolsConfig getTools() {

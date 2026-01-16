@@ -5,7 +5,7 @@ import com.localagent.engine.message.Message;
 import com.localagent.engine.message.ToolCall;
 import com.localagent.engine.model.LLMModel;
 import com.localagent.engine.state.SessionStore;
-import com.localagent.engine.state.ToolExecution;
+import com.localagent.engine.beans.ToolExecution;
 import com.localagent.engine.tools.AgentTool;
 import com.localagent.engine.utils.*;
 
@@ -17,18 +17,18 @@ import static java.lang.StringTemplate.STR;
 
 public class HybridEngine extends AbstractAgentEngine {
     private final LLMModel reasoningModel;
-    private final LLMModel toolModel;
+    private final LLMModel toolAssistantModel;
     private final Map<String, AgentTool> toolByName;
     private final ContextBuilder reasoningContextBuilder;
-    private final ContextBuilder toolContextBuilder;
+    private final ContextBuilder toolAssistantContextBuilder;
     private final SessionStore sessionStore;
     private final int invocationLimit;
 
-    public HybridEngine(LLMModel reasoningModel, LLMModel toolModel, List<AgentTool> tools, ContextBuilder reasoningContextBuilder, ContextBuilder toolContextBuilder, SessionStore sessionStore, int invocationLimit) {
+    public HybridEngine(LLMModel reasoningModel, LLMModel toolAssistantModel, List<AgentTool> tools, ContextBuilder reasoningContextBuilder, ContextBuilder toolAssistantContextBuilder, SessionStore sessionStore, int invocationLimit) {
         this.reasoningModel = reasoningModel;
-        this.toolModel = toolModel;
+        this.toolAssistantModel = toolAssistantModel;
         this.reasoningContextBuilder = reasoningContextBuilder;
-        this.toolContextBuilder = toolContextBuilder;
+        this.toolAssistantContextBuilder = toolAssistantContextBuilder;
         this.sessionStore = sessionStore;
         this.invocationLimit = Math.max(1, invocationLimit);
         Map<String, AgentTool> toolMap = new HashMap<>();
@@ -54,6 +54,11 @@ public class HybridEngine extends AbstractAgentEngine {
         return null;
     }
 
+    @Override
+    public List<Message> buildPrompt(final String sessionId) {
+        return null;
+    }
+
     private Message runReasoner(final String sessionId) {
         invokeListeners(listener -> listener.onReasoningStart(sessionId));
         try {
@@ -64,9 +69,9 @@ public class HybridEngine extends AbstractAgentEngine {
     }
 
     private Message _runReasoner(final String sessionId, final int maxRetries) {
-        List<Message> prompt = CollectionUtils.nullSafeMutableList(reasoningContextBuilder.buildPrompt(sessionStore, getReasoningSessionId(sessionId)));
+        List<Message> prompt = CollectionUtils.nullSafeMutableList(reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId)));
         Message response = reasoningModel.generate(prompt);
-        response = EngineUtils.sanitizeMessage(response, reasoningModel.format(), reasoningModel.thoughtsStartTag(), reasoningModel.thoughtsEndTag());
+        response = EngineUtils.sanitizeMessage(response, reasoningModel.responseFormat(), reasoningModel.thoughtsEnabled(), reasoningModel.thoughtsStartTag(), reasoningModel.thoughtsEndTag());
         sessionStore.appendMessage(getReasoningSessionId(sessionId), response);
 
         final String repairMessage = EngineUtils.getRepairMessageIfInvalid(response);
@@ -91,15 +96,15 @@ public class HybridEngine extends AbstractAgentEngine {
     }
 
     private List<ToolCall> runToolAssistant(final String sessionId, final List<String> toolRequests) {
-        final String message = TemplateUtils.renderForName("json_tool.txt", Map.of("toolRequests", toolRequests));
+        final String message = TemplateUtils.renderForName("tool_json.txt", Map.of("toolRequests", toolRequests));
         sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
 
         int repairAttempts = 0;
         List<ToolCall> toolCalls;
         do {
-            List<Message> prompt = toolContextBuilder.buildPrompt(sessionStore, getToolSessionId(sessionId));
-            Message response = toolModel.generate(prompt);
-            response = EngineUtils.sanitizeMessage(response, toolModel.format(), toolModel.thoughtsStartTag(), toolModel.thoughtsEndTag());
+            List<Message> prompt = toolAssistantContextBuilder.buildPrompt(getToolSessionId(sessionId));
+            Message response = toolAssistantModel.generate(prompt);
+            response = EngineUtils.sanitizeMessage(response, toolAssistantModel.responseFormat(), toolAssistantModel.thoughtsEnabled(), toolAssistantModel.thoughtsStartTag(), toolAssistantModel.thoughtsEndTag());
             //TODO: include tool calls in store?
             sessionStore.appendMessage(getToolSessionId(sessionId), response);
             toolCalls = parseToolCalls(response.getContent());

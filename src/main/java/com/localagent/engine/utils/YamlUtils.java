@@ -1,12 +1,10 @@
 package com.localagent.engine.utils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import com.localagent.engine.config.AgentConfig;
 import org.yaml.snakeyaml.Yaml;
 
 public final class YamlUtils {

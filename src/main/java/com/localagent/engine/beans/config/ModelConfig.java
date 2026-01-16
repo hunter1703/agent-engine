@@ -1,13 +1,14 @@
-package com.localagent.engine.config;
+package com.localagent.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 
 import java.util.List;
+import java.util.Map;
 
 public class ModelConfig implements Config {
 
     public enum Provider {
-        OLLAMA, LLAMA_CPP
+        OLLAMA, LLAMA_CPP, OPEN_AI
     }
 
     @JSONField(name =  "base_url")
@@ -15,12 +16,18 @@ public class ModelConfig implements Config {
     private String provider;
     private String model;
     private Double temperature;
-    private Double topK;
+    private Integer topK;
     private Double topP;
     private Double repeatPenalty;
-    private Double numPredict;
+    private Integer numPredict;
     private int maxContextLength;
     private List<String> stopTokens;
+    private String responseFormat;
+    private Map<String, Object> responseJsonSchema;
+    private String thoughtsStartTag;
+    private String thoughtsEndTag;
+    private boolean thoughtsEnabled;
+    private ContextConfig contextConfig;
 
     public String getBaseUrl() {
         return baseUrl;
@@ -54,11 +61,11 @@ public class ModelConfig implements Config {
         this.temperature = temperature;
     }
 
-    public Double getTopK() {
+    public Integer getTopK() {
         return topK;
     }
 
-    public void setTopK(final Double topK) {
+    public void setTopK(final Integer topK) {
         this.topK = topK;
     }
 
@@ -78,11 +85,11 @@ public class ModelConfig implements Config {
         this.repeatPenalty = repeatPenalty;
     }
 
-    public Double getNumPredict() {
+    public Integer getNumPredict() {
         return numPredict;
     }
 
-    public void setNumPredict(final Double numPredict) {
+    public void setNumPredict(final Integer numPredict) {
         this.numPredict = numPredict;
     }
 
@@ -100,5 +107,53 @@ public class ModelConfig implements Config {
 
     public void setStopTokens(final List<String> stopTokens) {
         this.stopTokens = stopTokens;
+    }
+
+    public String getThoughtsStartTag() {
+        return thoughtsStartTag;
+    }
+
+    public void setThoughtsStartTag(final String thoughtsStartTag) {
+        this.thoughtsStartTag = thoughtsStartTag;
+    }
+
+    public String getThoughtsEndTag() {
+        return thoughtsEndTag;
+    }
+
+    public void setThoughtsEndTag(final String thoughtsEndTag) {
+        this.thoughtsEndTag = thoughtsEndTag;
+    }
+
+    public String getResponseFormat() {
+        return responseFormat;
+    }
+
+    public void setResponseFormat(final String responseFormat) {
+        this.responseFormat = responseFormat;
+    }
+
+    public Map<String, Object> getResponseJsonSchema() {
+        return responseJsonSchema;
+    }
+
+    public void setResponseJsonSchema(final Map<String, Object> responseJsonSchema) {
+        this.responseJsonSchema = responseJsonSchema;
+    }
+
+    public boolean isThoughtsEnabled() {
+        return thoughtsEnabled;
+    }
+
+    public void setThoughtsEnabled(final boolean thoughtsEnabled) {
+        this.thoughtsEnabled = thoughtsEnabled;
+    }
+
+    public ContextConfig getContextConfig() {
+        return contextConfig;
+    }
+
+    public void setContextConfig(final ContextConfig contextConfig) {
+        this.contextConfig = contextConfig;
     }
 }

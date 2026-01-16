@@ -1,7 +1,10 @@
 package com.localagent.engine.state;
 
+import com.localagent.engine.beans.Summary;
+import com.localagent.engine.beans.ToolExecution;
 import com.localagent.engine.message.Message;
 import java.util.List;
+import java.util.Map;
 
 public interface SessionStore {
 
@@ -9,9 +12,11 @@ public interface SessionStore {
 
     String appendMessage(String sessionId, Message message);
 
-    List<ToolExecution> getToolExecutions(String sessionId, String messageId);
+    void addToolExecutions(String sessionId, String messageId, List<ToolExecution> toolExecutions);
 
-    List<Summary> getSummaries(String sessionId, String agent);
+    Map<String, List<ToolExecution>> getToolExecutions(String sessionId, List<String> messageIds);
+
+    List<Summary> getSummaries(String sessionId);
 
     void addSummary(String sessionId, String summarizedFromMessageId, String summarizedUptoMessageId, String summary, long createdAt);
 }

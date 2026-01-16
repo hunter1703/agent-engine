@@ -1,6 +1,6 @@
 package com.localagent.engine;
 
-import com.localagent.engine.config.ConfigLoader;
+import com.localagent.engine.beans.config.ConfigLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;

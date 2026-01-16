@@ -1,34 +1,17 @@
 package com.localagent.engine.state;
 
+import com.localagent.engine.beans.Summary;
+import com.localagent.engine.beans.ToolExecution;
 import com.localagent.engine.message.Message;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.localagent.engine.utils.CollectionUtils;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class InMemorySessionStore implements SessionStore {
     private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
-
-    @Override
-    public String newSession() {
-        String sessionId = UUID.randomUUID().toString();
-        sessions.put(sessionId, new SessionState());
-        return sessionId;
-    }
-
-    @Override
-    public void resetSession(String sessionId) {
-        sessions.put(sessionId, new SessionState());
-    }
-
-    @Override
-    public void deleteSession(String sessionId) {
-        sessions.remove(sessionId);
-    }
 
     @Override
     public List<Message> getMessages(String sessionId) {
@@ -36,100 +19,47 @@ public final class InMemorySessionStore implements SessionStore {
     }
 
     @Override
-    public int appendMessage(String sessionId, Message message) {
+    public String appendMessage(String sessionId, Message message) {
         SessionState session = session(sessionId);
         session.messages.add(message);
-        return session.messages.size() - 1;
+        return message.getId();
     }
 
     @Override
-    public List<ToolExecution> getToolExecutions(String sessionId, int parentIndex) {
-        SessionState session = session(sessionId);
-        return new ArrayList<>(session.toolExecutions.getOrDefault(parentIndex, List.of()));
+    public void addToolExecutions(final String sessionId, final String messageId, final List<ToolExecution> toolExecutions) {
+        final SessionState session = session(sessionId);
+        session.toolExecutions.computeIfAbsent(messageId, _ -> new ArrayList<>()).addAll(toolExecutions);
     }
 
     @Override
-    public void recordToolExecution(String sessionId, int parentIndex, ToolExecution record) {
-        SessionState session = session(sessionId);
-        session.toolExecutions
-            .computeIfAbsent(parentIndex, key -> Collections.synchronizedList(new ArrayList<>()))
-            .add(record);
+    public Map<String, List<ToolExecution>> getToolExecutions(final String sessionId, final List<String> messageIds) {
+        final SessionState session = session(sessionId);
+        final Map<String, List<ToolExecution>> toolExecutions = new HashMap<>();
+        for (final String messageId : messageIds) {
+            toolExecutions.put(messageId, CollectionUtils.nullSafeList(session.toolExecutions.get(messageId)));
+        }
+        return toolExecutions;
     }
 
     @Override
-    public void recordEvent(String sessionId, Map<String, Object> event) {
-        SessionState session = session(sessionId);
-        Map<String, Object> payload = new HashMap<>(event);
-        payload.putIfAbsent("created_at", Instant.now().toString());
-        session.events.add(payload);
-    }
-
-    @Override
-    public List<Map<String, Object>> getEvents(String sessionId) {
-        SessionState session = session(sessionId);
-        return new ArrayList<>(session.events);
-    }
-
-    @Override
-    public List<Map<String, Object>> getSummaries(String sessionId) {
+    public List<Summary> getSummaries(String sessionId) {
         SessionState session = session(sessionId);
         return new ArrayList<>(session.summaries);
     }
 
     @Override
-    public void addSummary(String sessionId, int uptoIndex, String summary, int tokens, String createdAt) {
+    public void addSummary(final String sessionId, final String summarizedFromMessageId, final String summarizedUptoMessageId, final String summary, final long createdAt) {
         SessionState session = session(sessionId);
-        Map<String, Object> record = new HashMap<>();
-        record.put("upto_idx", uptoIndex);
-        record.put("summary", summary);
-        record.put("tokens", tokens);
-        record.put("created_at", createdAt);
-        session.summaries.add(record);
-    }
-
-    @Override
-    public void dropOldestSummary(String sessionId) {
-        SessionState session = session(sessionId);
-        if (!session.summaries.isEmpty()) {
-            session.summaries.remove(0);
-        }
-    }
-
-    @Override
-    public void dropMessagesUntil(String sessionId, int untilIndex) {
-        SessionState session = session(sessionId);
-        if (untilIndex <= 0) {
-            return;
-        }
-        if (untilIndex >= session.messages.size()) {
-            session.messages.clear();
-            session.toolExecutions.clear();
-            return;
-        }
-        session.messages.subList(0, untilIndex).clear();
-        session.toolExecutions.entrySet().removeIf(entry -> entry.getKey() < untilIndex);
-    }
-
-    @Override
-    public void incrementSteps(String sessionId, int amount) {
-        SessionState session = session(sessionId);
-        session.steps += amount;
-    }
-
-    @Override
-    public int getSteps(String sessionId) {
-        return session(sessionId).steps;
+        session.summaries.add(new Summary(UUID.randomUUID().toString().replaceAll("-", ""), summary, summarizedFromMessageId, summarizedUptoMessageId, createdAt));
     }
 
     private SessionState session(String sessionId) {
-        return sessions.computeIfAbsent(sessionId, key -> new SessionState());
+        return sessions.computeIfAbsent(sessionId, _ -> new SessionState());
     }
 
     private static final class SessionState {
-        private final List<Message> messages = Collections.synchronizedList(new ArrayList<>());
-        private final Map<Integer, List<ToolExecution>> toolExecutions = new ConcurrentHashMap<>();
-        private final List<Map<String, Object>> events = Collections.synchronizedList(new ArrayList<>());
-        private final List<Map<String, Object>> summaries = Collections.synchronizedList(new ArrayList<>());
-        private int steps = 0;
+        private final List<Message> messages = new CopyOnWriteArrayList<>();
+        private final ConcurrentMap<String, List<ToolExecution>> toolExecutions = new ConcurrentHashMap<>();
+        private final List<Summary> summaries = new CopyOnWriteArrayList<>();
     }
 }
