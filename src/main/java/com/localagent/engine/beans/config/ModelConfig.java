@@ -3,7 +3,6 @@ package com.localagent.engine.beans.config;
 import com.alibaba.fastjson2.annotation.JSONField;
 
 import java.util.List;
-import java.util.Map;
 
 public class ModelConfig implements Config {
 
@@ -23,7 +22,6 @@ public class ModelConfig implements Config {
     private int maxContextLength;
     private List<String> stopTokens;
     private String responseFormat;
-    private Map<String, Object> responseJsonSchema;
     private String thoughtsStartTag;
     private String thoughtsEndTag;
     private boolean thoughtsEnabled;
@@ -131,14 +129,6 @@ public class ModelConfig implements Config {
 
     public void setResponseFormat(final String responseFormat) {
         this.responseFormat = responseFormat;
-    }
-
-    public Map<String, Object> getResponseJsonSchema() {
-        return responseJsonSchema;
-    }
-
-    public void setResponseJsonSchema(final Map<String, Object> responseJsonSchema) {
-        this.responseJsonSchema = responseJsonSchema;
     }
 
     public boolean isThoughtsEnabled() {

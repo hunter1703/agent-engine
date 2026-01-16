@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "properties": {
+    "finalAnswer": {
+      "type": "string"
+    },
+    "thoughts": {
+      "type": "string"
+    },
+    "toolRequests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "intent"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

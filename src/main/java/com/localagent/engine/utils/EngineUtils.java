@@ -9,9 +9,11 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,7 +77,28 @@ public final class EngineUtils {
 
         final boolean finalAnswerAndToolCallsPresent = StringUtils.isNotBlank(content) && CollectionUtils.isNotEmpty(toolRequests);
         final boolean emptyResponse = StringUtils.isBlank(content) && StringUtils.isBlank(thoughts) && CollectionUtils.isEmpty(toolRequests);
-        return TemplateUtils.renderForName("repair/invalid_message.txt", Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse));
+        final List<ToolRequest> toolRequestInfos = parseToolRequestInfo(toolRequests);
+        boolean missingToolRequestId = false;
+        boolean missingToolRequestName = false;
+        boolean duplicateToolRequestId = false;
+        final Set<String> seenIds = new HashSet<>();
+        for (ToolRequest info : toolRequestInfos) {
+            if (StringUtils.isBlank(info.id())) {
+                missingToolRequestId = true;
+            } else if (!seenIds.add(info.id())) {
+                duplicateToolRequestId = true;
+            }
+            if (StringUtils.isBlank(info.name())) {
+                missingToolRequestName = true;
+            }
+        }
+        return TemplateUtils.renderForName("hybrid/repair/invalid_message.txt", Map.of(
+            "finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent,
+            "emptyResponse", emptyResponse,
+            "missingToolRequestId", missingToolRequestId,
+            "missingToolRequestName", missingToolRequestName,
+            "duplicateToolRequestId", duplicateToolRequestId
+        ));
     }
 
     private static String getFinalAnswer(final String cleaned) {
@@ -119,6 +142,68 @@ public final class EngineUtils {
             }
         }
         return toolRequests;
+    }
+
+    public static List<ToolRequest> parseToolRequestInfo(final List<String> toolRequests) {
+        if (CollectionUtils.isEmpty(toolRequests)) {
+            return List.of();
+        }
+        final List<ToolRequest> infos = new ArrayList<>();
+        for (String request : toolRequests) {
+            String id = null;
+            String name = null;
+            if (StringUtils.isNotBlank(request)) {
+                Map<String, Object> jsonMap = parseToolRequestJson(request.trim());
+                if (jsonMap != null) {
+                    id = CollectionUtils.getStringValueFromMap(jsonMap, "id");
+                    name = CollectionUtils.getStringValueFromMap(jsonMap, "name");
+                    if (name == null) {
+                        name = CollectionUtils.getStringValueFromMap(jsonMap, "tool");
+                    }
+                }
+                if (StringUtils.isBlank(id) || StringUtils.isBlank(name)) {
+                    String[] lines = request.split("\\R");
+                    for (String line : lines) {
+                        String trimmed = line.trim();
+                        if (trimmed.startsWith("-")) {
+                            trimmed = trimmed.substring(1).trim();
+                        }
+                        int colonIndex = trimmed.indexOf(':');
+                        if (colonIndex <= 0) {
+                            continue;
+                        }
+                        String key = trimmed.substring(0, colonIndex).trim().toLowerCase();
+                        String value = trimmed.substring(colonIndex + 1).trim();
+                        if ("id".equals(key) && StringUtils.isBlank(id)) {
+                            id = value;
+                        } else if (("tool".equals(key) || "name".equals(key)) && StringUtils.isBlank(name)) {
+                            name = value;
+                        }
+                    }
+                }
+            }
+            infos.add(new ToolRequest(id, name, request));
+        }
+        return infos;
+    }
+
+    private static Map<String, Object> parseToolRequestJson(String request) {
+        if (StringUtils.isBlank(request)) {
+            return null;
+        }
+        try {
+            return JsonUtils.fromJson(request, new TypeReference<>() {});
+        } catch (Exception ex) {
+            int start = request.indexOf('{');
+            int end = request.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                try {
+                    return JsonUtils.fromJson(request.substring(start, end + 1), new TypeReference<>() {});
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     public static Message parseJsonPayload(String text) {

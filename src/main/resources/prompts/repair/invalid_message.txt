@@ -1,6 +1,0 @@
-{% if finalAnswerAndToolCallsPresent %}
-You cannot give both final answer and tool requests. Provide either of them as defined in protocol.
-{% endif %}
-{% if emptyResponse %}
-You must provide atleast one of final answer, thoughts or tool requests as defined in protocol.
-{% endif %}

@@ -10,8 +10,9 @@ Do NOT include thoughts or a THOUGHTS section.
 TOOL_REQUEST:
 - Only include this section when a tool is required.
 - Describe the tool action needed using this schema:
+  - id: <unique id within the response> (required)
   - tool: <tool name> (required)
-  - intent: <what you need> (required)
+  - intent: <what you need, with detail> (required)
   - constraints: <safety/limits; optional>
   - inputs: <structured inputs or paths; optional>
 - Tool selection and intent are authoritative and must be followed.

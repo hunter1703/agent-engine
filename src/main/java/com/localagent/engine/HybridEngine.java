@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 
+import static com.localagent.engine.utils.ResourceUtils.loadResourceAsString;
 import static java.lang.StringTemplate.STR;
 
 public class HybridEngine extends AbstractAgentEngine {
@@ -96,9 +97,16 @@ public class HybridEngine extends AbstractAgentEngine {
     }
 
     private List<ToolCall> runToolAssistant(final String sessionId, final List<String> toolRequests) {
-        final String message = TemplateUtils.renderForName("tool_json.txt", Map.of("toolRequests", toolRequests));
+        final String message = TemplateUtils.renderForName("hybrid/tool_assistant_json.txt", Map.of(
+            "toolRequests", toolRequests,
+            "tool_schema", loadResourceAsString("/schemas/hybrid/tool_call_schema.json")
+        ));
         sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
 
+        final List<ToolRequest> requestInfos = EngineUtils.parseToolRequestInfo(toolRequests);
+        final int expectedCount = requestInfos.size();
+        final Map<String, ToolCall> matchedCallsById = new HashMap<>();
+        List<ToolRequest> remainingRequests = new ArrayList<>(requestInfos);
         int repairAttempts = 0;
         List<ToolCall> toolCalls;
         do {
@@ -110,18 +118,25 @@ public class HybridEngine extends AbstractAgentEngine {
             if (toolCalls.isEmpty()) {
                 toolCalls = parseToolCalls(response.getContent());
             }
-            if (CollectionUtils.nullSafeList(toolCalls).size() != toolRequests.size()) {
+            Map<String, ToolCall> newlyMatched = selectMatchingToolCalls(toolCalls, remainingRequests);
+            newlyMatched.forEach(matchedCallsById::putIfAbsent);
+            remainingRequests = unresolvedRequests(requestInfos, matchedCallsById);
+            if (!remainingRequests.isEmpty()) {
                 invokeListeners(listener -> listener.onToolRepair(sessionId));
-                sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(TemplateUtils.renderForName("repair/empty_tool_call.txt", Map.of("toolRequests", toolRequests))));
+                List<String> missingRequests = remainingRequests.stream().map(ToolRequest::raw).toList();
+                sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(TemplateUtils.renderForName("hybrid/repair/empty_tool_call.txt", Map.of("toolRequests", missingRequests))));
                 repairAttempts++;
                 if (repairAttempts > 3) {
                     sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system("You were unable to produce correct tool calls"));
                     break;
                 }
             }
-        } while (CollectionUtils.nullSafeList(toolCalls).size() != toolRequests.size());
+        } while (!remainingRequests.isEmpty());
 
-        return ensureToolCallIds(toolCalls);
+        if (!remainingRequests.isEmpty()) {
+            return List.of();
+        }
+        return buildOrderedToolCalls(requestInfos, matchedCallsById);
     }
 
     private void executeToolRequests(final String sessionId, final String reasoningMessageId, final List<String> toolRequests) {
@@ -159,7 +174,7 @@ public class HybridEngine extends AbstractAgentEngine {
         }
 
         if (CollectionUtils.isNotEmpty(failed) && numRetries > 0) {
-            String failureMessage = TemplateUtils.renderForName("tool_failure.txt", Map.of("failures", failedToolsVsErrors));
+            String failureMessage = TemplateUtils.renderForName("shared/tool_failure.txt", Map.of("failures", failedToolsVsErrors));
             sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(failureMessage));
             sessionStore.appendMessage(getToolSessionId(sessionId), Message.system(failureMessage));
             executeToolPlan(sessionId, reasoningMessageId, failedToolRequests.isEmpty() ? toolRequests : failedToolRequests, numRetries - 1);
@@ -203,21 +218,63 @@ public class HybridEngine extends AbstractAgentEngine {
         return CollectionUtils.nullSafeList(parsed.getToolCalls());
     }
 
-    private List<ToolCall> ensureToolCallIds(List<ToolCall> toolCalls) {
-        if (CollectionUtils.isEmpty(toolCalls)) {
+    private Map<String, ToolCall> selectMatchingToolCalls(List<ToolCall> toolCalls, List<ToolRequest> toolRequests) {
+        if (CollectionUtils.isEmpty(toolCalls) || CollectionUtils.isEmpty(toolRequests)) {
+            return Map.of();
+        }
+        final Map<String, ToolCall> toolCallsById = new HashMap<>();
+        for (ToolCall call : toolCalls) {
+            if (StringUtils.isBlank(call.id()) || StringUtils.isBlank(call.name())) {
+                continue;
+            }
+            toolCallsById.putIfAbsent(call.id(), call);
+        }
+        final Map<String, ToolCall> matched = new HashMap<>();
+        for (ToolRequest requestInfo : toolRequests) {
+            if (StringUtils.isBlank(requestInfo.id()) || StringUtils.isBlank(requestInfo.name())) {
+                continue;
+            }
+            ToolCall call = toolCallsById.get(requestInfo.id());
+            if (call != null && requestInfo.name().equals(call.name())) {
+                matched.putIfAbsent(requestInfo.id(), call);
+            }
+        }
+        return matched;
+    }
+
+    private List<ToolRequest> unresolvedRequests(List<ToolRequest> toolRequests, Map<String, ToolCall> matchedCalls) {
+        if (CollectionUtils.isEmpty(toolRequests)) {
             return List.of();
         }
-        List<ToolCall> normalized = new ArrayList<>();
-        int index = 1;
-        for (ToolCall call : toolCalls) {
-            String id = call.id();
-            if (StringUtils.isBlank(id)) {
-                id = "tool_call_" + index;
+        final List<ToolRequest> remaining = new ArrayList<>();
+        for (ToolRequest requestInfo : toolRequests) {
+            if (StringUtils.isBlank(requestInfo.id()) || StringUtils.isBlank(requestInfo.name())) {
+                remaining.add(requestInfo);
+                continue;
             }
-            normalized.add(new ToolCall(id, call.name(), call.args()));
-            index++;
+            ToolCall call = matchedCalls.get(requestInfo.id());
+            if (call == null || !requestInfo.name().equals(call.name())) {
+                remaining.add(requestInfo);
+            }
         }
-        return normalized;
+        return remaining;
+    }
+
+    private List<ToolCall> buildOrderedToolCalls(List<ToolRequest> toolRequests, Map<String, ToolCall> matchedCalls) {
+        if (CollectionUtils.isEmpty(toolRequests) || CollectionUtils.isEmpty(matchedCalls)) {
+            return List.of();
+        }
+        final List<ToolCall> ordered = new ArrayList<>();
+        for (ToolRequest requestInfo : toolRequests) {
+            if (StringUtils.isBlank(requestInfo.id()) || StringUtils.isBlank(requestInfo.name())) {
+                continue;
+            }
+            ToolCall call = matchedCalls.get(requestInfo.id());
+            if (call != null && requestInfo.name().equals(call.name())) {
+                ordered.add(call);
+            }
+        }
+        return ordered;
     }
 
 }

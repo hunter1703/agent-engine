@@ -1,25 +1,15 @@
 Return JSON only, matching this schema:
-{
-  "finalAnswer": string,
-{% if thoughts_enabled %}
-  "thoughts": string,
-{% endif %}
-  "toolRequests": [
-    {
-      "name": string,
-      "intent": string
-    }
-  ]
-}
+{{ response_schema }}
 
 Rules:
 - Return JSON only. No prose, no extra keys.
 - If a tool is required, set "toolRequests" to a non-empty array and set "finalAnswer" to "".
-- If no tool is required, set "toolRequests" to an empty array and fill "finalAnswer".
+- If no tool is required, omit "toolRequests" and fill "finalAnswer".
 - If the user asks for system state (files, OS data, time, processes, network, env), you MUST use a tool.
 - Do NOT include both non-empty "toolRequests" and a non-empty "finalAnswer".
 {% if thoughts_enabled %}
-- Always include "thoughts"; use an empty string if not needed.
+- Include the "thoughts" field; use an empty string when you have nothing to add.
 {% endif %}
 - "name" must match one of the tools listed inside <AVAILABLE_TOOLS>.
+- "id" must be unique within the response.
 - Never invent tool names.

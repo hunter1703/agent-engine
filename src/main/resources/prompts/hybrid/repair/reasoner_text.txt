@@ -15,7 +15,8 @@ Do NOT include thoughts or a THOUGHTS section.
 {% endif %}
 If a tool is required, respond exactly like:
 TOOL_REQUEST:
+- id: <unique id>
 - tool: <tool name>
-- intent: <what you need>
+- intent: <what you need, with detail>
 - inputs: <inputs or paths>
 Do not include any other sections.

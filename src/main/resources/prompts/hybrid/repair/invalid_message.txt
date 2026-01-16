@@ -1,0 +1,15 @@
+{% if finalAnswerAndToolCallsPresent %}
+You cannot give both final answer and tool requests. Provide either of them as defined in protocol.
+{% endif %}
+{% if emptyResponse %}
+You must provide a final answer or tool requests as defined in protocol.
+{% endif %}
+{% if missingToolRequestId %}
+Each tool request must include an "id".
+{% endif %}
+{% if missingToolRequestName %}
+Each tool request must include a tool name.
+{% endif %}
+{% if duplicateToolRequestId %}
+Tool request ids must be unique within the response.
+{% endif %}
