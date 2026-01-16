@@ -40,7 +40,7 @@ public final class LangChain4JLLMModel implements LLMModel {
     }
     final ChatResponse response = model.chat(prompt);
     final AiMessage aiMessage = response.aiMessage();
-    return Message.assistant(aiMessage.text(), aiMessage.thinking());
+    return Message.assistant(aiMessage.text(), null);
   }
 
   @Override
