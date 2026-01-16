@@ -22,7 +22,7 @@ import java.util.Objects;
 @Singleton
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
-    public HybridEngine build(String agentName, AgentConfig agentConfig) {
+    public HybridEngine build(final String agentName, final AgentConfig agentConfig) {
         final EngineConfig engineConfig = agentConfig.getEngine();
         final String promptFromConfig = engineConfig.getPrompt();
         final String systemPrompt = StringUtils.isBlank(promptFromConfig) ? DEFAULT_SYSTEM_PROMPT : promptFromConfig;
@@ -37,10 +37,10 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
         final LLMModel toolAssistantModel = buildChatModel(toolAssistantConfig);
 
         final SessionStore sessionStore = buildStateStore(agentConfig.getStateStore());
-        ToolsConfig toolsConfig = agentConfig.getTools();
-        List<String> enabledTools = CollectionUtils.nullSafeList(toolsConfig == null ? List.of("ALL") : toolsConfig.getEnabled());
-        Map<String, Map<String, Object>> toolConfigs = CollectionUtils.nullSafeMap(toolsConfig == null ? Map.of() : toolsConfig.getConfigs());
-        List<AgentTool> tools = ToolRegistry.loadTools(agentName, enabledTools, toolConfigs, agentConfig);
+        final ToolsConfig toolsConfig = agentConfig.getTools();
+        final List<String> enabledTools = CollectionUtils.nullSafeList(toolsConfig == null ? List.of("ALL") : toolsConfig.getEnabled());
+        final Map<String, Map<String, Object>> toolConfigs = CollectionUtils.nullSafeMap(toolsConfig == null ? Map.of() : toolsConfig.getConfigs());
+        final List<AgentTool> tools = ToolRegistry.loadTools(agentName, enabledTools, toolConfigs, agentConfig);
 
         final ContextBuilder reasoningContextBuilder = buildReasoningContextBuilder(reasoningConfig, sessionStore, true, systemPrompt, tools);
         final ContextBuilder toolAssistantContextBuilder = buildToolAssistantContextBuilder(toolAssistantConfig, sessionStore, systemPrompt, tools);

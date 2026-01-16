@@ -14,14 +14,14 @@ public final class InMemorySessionStore implements SessionStore {
     private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
 
     @Override
-    public List<Message> getMessages(String sessionId) {
+    public List<Message> getMessages(final String sessionId) {
         return new ArrayList<>(session(sessionId).messages);
     }
 
     @Override
-    public String appendMessage(String sessionId, Message message) {
+    public String appendMessage(final String sessionId, final Message message) {
         message.setId(UUID.randomUUID().toString().replaceAll("-", ""));
-        SessionState session = session(sessionId);
+        final SessionState session = session(sessionId);
         session.messages.add(message);
         return message.getId();
     }
@@ -46,18 +46,18 @@ public final class InMemorySessionStore implements SessionStore {
     }
 
     @Override
-    public List<Summary> getSummaries(String sessionId) {
-        SessionState session = session(sessionId);
+    public List<Summary> getSummaries(final String sessionId) {
+        final SessionState session = session(sessionId);
         return new ArrayList<>(session.summaries);
     }
 
     @Override
     public void addSummary(final String sessionId, final String summarizedFromMessageId, final String summarizedUptoMessageId, final String summary, final long createdAt) {
-        SessionState session = session(sessionId);
+        final SessionState session = session(sessionId);
         session.summaries.add(new Summary(UUID.randomUUID().toString().replaceAll("-", ""), summary, summarizedFromMessageId, summarizedUptoMessageId, createdAt));
     }
 
-    private SessionState session(String sessionId) {
+    private SessionState session(final String sessionId) {
         return sessions.computeIfAbsent(sessionId, _ -> new SessionState());
     }
 

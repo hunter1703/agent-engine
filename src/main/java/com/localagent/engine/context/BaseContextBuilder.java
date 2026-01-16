@@ -17,7 +17,7 @@ public class BaseContextBuilder implements ContextBuilder {
     private final Message protocolMessage;
     private final Message toolMessage;
 
-    public BaseContextBuilder(SessionStore sessionStore, String systemMessage, String protocolMessage, List<AgentTool> tools) {
+    public BaseContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage, final List<AgentTool> tools) {
         this.sessionStore = sessionStore;
         this.systemMessage = Message.system(systemMessage);
         this.protocolMessage = Message.system(protocolMessage);
@@ -25,12 +25,12 @@ public class BaseContextBuilder implements ContextBuilder {
     }
 
     @Override
-    public List<Message> buildPrompt(String sessionId) {
+    public List<Message> buildPrompt(final String sessionId) {
         return buildPrompt(sessionStore.getMessages(sessionId));
     }
 
-    protected List<Message> buildPrompt(List<Message> messages) {
-        List<Message> prompt = new ArrayList<>();
+    protected List<Message> buildPrompt(final List<Message> messages) {
+        final List<Message> prompt = new ArrayList<>();
         if (protocolMessage != null) {
             prompt.add(protocolMessage);
         }
@@ -43,11 +43,11 @@ public class BaseContextBuilder implements ContextBuilder {
         return prompt;
     }
 
-    private Message buildToolMessage(List<AgentTool> tools) {
+    private Message buildToolMessage(final List<AgentTool> tools) {
         if (tools == null || tools.isEmpty()) {
             return null;
         }
-        StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
+        final StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
         for (AgentTool tool : tools) {
             String line = STR."- \{tool.name()}";
             if (tool.description() != null && !tool.description().isBlank()) {

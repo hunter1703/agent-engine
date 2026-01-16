@@ -33,7 +33,7 @@ public class SummarizingContextConfig extends ContextConfig {
         return summarizerModel;
     }
 
-    public void setSummarizerModel(String summarizerModel) {
+    public void setSummarizerModel(final String summarizerModel) {
         this.summarizerModel = summarizerModel;
     }
 }

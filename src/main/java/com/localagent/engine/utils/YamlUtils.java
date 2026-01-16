@@ -12,14 +12,14 @@ public final class YamlUtils {
 
     private YamlUtils() {}
 
-    public static Map<String, Object> toMap(String yaml) {
+    public static Map<String, Object> toMap(final String yaml) {
         if (yaml == null || yaml.isBlank()) {
             return null;
         }
         return YAML.load(yaml);
     }
 
-    public static <T> T fromFile(Path path, Class<T> clazz) {
+    public static <T> T fromFile(final Path path, final Class<T> clazz) {
         try {
             return YAML.loadAs(Files.newInputStream(path), clazz);
         } catch (IOException ex) {

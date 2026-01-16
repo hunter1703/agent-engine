@@ -12,28 +12,28 @@ import java.util.Map;
 public final class JsonUtils {
     private JsonUtils(){}
 
-    public static <T> T fromMap(Map<String, Object> map, Class<T> clazz) {
+    public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
         if (map == null) {
             return null;
         }
         return JSON.parseObject(JSON.toJSONString(map), clazz);
     }
 
-    public static <T> T fromJson(String json, Class<T> clazz) {
+    public static <T> T fromJson(final String json, final Class<T> clazz) {
         if (json == null || json.isBlank()) {
             return null;
         }
         return JSON.parseObject(json, clazz);
     }
 
-    public static <T> T fromJson(String json, TypeReference<T> typeReference) {
+    public static <T> T fromJson(final String json, final TypeReference<T> typeReference) {
         if (json == null || json.isBlank()) {
             return null;
         }
         return JSON.parseObject(json, typeReference.getType());
     }
 
-    public static Map<String, Object> toMap(InputStream is) {
+    public static Map<String, Object> toMap(final InputStream is) {
         if (is == null) {
             return null;
         }
@@ -41,7 +41,7 @@ public final class JsonUtils {
         }.getType());
     }
 
-    public static <T> T fromFile(Path path, Class<T> clazz) {
+    public static <T> T fromFile(final Path path, final Class<T> clazz) {
         try {
             return JSON.parseObject(Files.newInputStream(path), clazz);
         } catch (IOException ex) {
@@ -49,7 +49,7 @@ public final class JsonUtils {
         }
     }
 
-    public static <T> T fromFile(Path path, TypeReference<T> typeReference) {
+    public static <T> T fromFile(final Path path, final TypeReference<T> typeReference) {
         try {
             return JSON.parseObject(Files.newInputStream(path), typeReference.getType());
         } catch (IOException ex) {
@@ -57,7 +57,7 @@ public final class JsonUtils {
         }
     }
 
-    public static String toJson(Object value) {
+    public static String toJson(final Object value) {
         return JSON.toJSONString(value);
     }
 }

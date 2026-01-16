@@ -9,11 +9,11 @@ public abstract class AbstractAgentEngine implements AgentEngine {
 
     protected List<AgentListener> listeners = new CopyOnWriteArrayList<>();
 
-    public void registerListener(AgentListener listener) {
+    public void registerListener(final AgentListener listener) {
         listeners.add(listener);
     }
 
-    protected void invokeListeners(Consumer<AgentListener> callback) {
+    protected void invokeListeners(final Consumer<AgentListener> callback) {
         for (final AgentListener listener : listeners) {
             callback.accept(listener);
         }

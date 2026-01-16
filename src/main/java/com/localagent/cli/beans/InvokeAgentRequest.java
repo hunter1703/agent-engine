@@ -14,7 +14,7 @@ public class InvokeAgentRequest extends Request {
         return userMessage;
     }
 
-    public void setUserMessage(String userMessage) {
+    public void setUserMessage(final String userMessage) {
         this.userMessage = userMessage;
     }
 }

@@ -20,7 +20,7 @@ public final class ShellCommandToolProvider implements ToolProvider {
     }
 
     @Override
-    public AgentTool create(Map<String, Object> toolConfig, AgentConfig agentConfig) {
+    public AgentTool create(final Map<String, Object> toolConfig, final AgentConfig agentConfig) {
         final Long timeoutSeconds = CollectionUtils.getLongValueFromMap(toolConfig, "timeout_seconds");
         final Duration timeout = Duration.ofSeconds(timeoutSeconds == null ? 30 : timeoutSeconds);
         return new ShellCommandTool(timeout);

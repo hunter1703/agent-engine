@@ -53,3 +53,15 @@ spotless {
 tasks.withType<Test>().configureEach {
     systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
 }
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("--enable-preview")
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs("--enable-preview")
+}
+
+tasks.named<JavaExec>("run") {
+    jvmArgs("--enable-preview")
+}

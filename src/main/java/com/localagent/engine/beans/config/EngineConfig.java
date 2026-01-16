@@ -17,7 +17,7 @@ public final class EngineConfig implements Config {
         return invocationLimit;
     }
 
-    public void setInvocationLimit(Integer invocationLimit) {
+    public void setInvocationLimit(final Integer invocationLimit) {
         this.invocationLimit = invocationLimit;
     }
 
@@ -25,7 +25,7 @@ public final class EngineConfig implements Config {
         return toolRetryLimit;
     }
 
-    public void setToolRetryLimit(Integer toolRetryLimit) {
+    public void setToolRetryLimit(final Integer toolRetryLimit) {
         this.toolRetryLimit = toolRetryLimit;
     }
 
@@ -57,7 +57,7 @@ public final class EngineConfig implements Config {
         return reasoning;
     }
 
-    public void setReasoning(String reasoning) {
+    public void setReasoning(final String reasoning) {
         this.reasoning = reasoning;
     }
 
@@ -65,7 +65,7 @@ public final class EngineConfig implements Config {
         return tool;
     }
 
-    public void setTool(String tool) {
+    public void setTool(final String tool) {
         this.tool = tool;
     }
 
@@ -73,7 +73,7 @@ public final class EngineConfig implements Config {
         return router;
     }
 
-    public void setRouter(String router) {
+    public void setRouter(final String router) {
         this.router = router;
     }
 
@@ -81,7 +81,7 @@ public final class EngineConfig implements Config {
         return heavy;
     }
 
-    public void setHeavy(String heavy) {
+    public void setHeavy(final String heavy) {
         this.heavy = heavy;
     }
 }

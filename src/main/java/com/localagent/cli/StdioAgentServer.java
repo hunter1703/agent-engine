@@ -30,12 +30,12 @@ public final class StdioAgentServer implements QuarkusApplication {
     private final ConfigLoader configLoader;
 
     @Inject
-    public StdioAgentServer(AgentBuilderFactory agentBuilderFactory, ConfigLoader configLoader) {
+    public StdioAgentServer(final AgentBuilderFactory agentBuilderFactory, final ConfigLoader configLoader) {
         this.agentBuilderFactory = agentBuilderFactory;
         this.configLoader = configLoader;
     }
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         Quarkus.run(StdioAgentServer.class, args);
     }
 
@@ -75,10 +75,10 @@ public final class StdioAgentServer implements QuarkusApplication {
             @Override
             public void onToolExecution(final String sessionId, final ToolExecution toolExecution) {
                 sendEvent(sessionId, "tool_result", Map.of(
-                        "tool_name", toolExecution.name(),
-                        "tool_output", toolExecution.output(),
-                        "tool_status", toolExecution.status(),
-                        "tool_duration_ms", toolExecution.durationMs()
+                        "tool_name", toolExecution.getToolCall().name(),
+                        "tool_output", toolExecution.getOutput(),
+                        "tool_status", toolExecution.getStatus(),
+                        "tool_duration_ms", toolExecution.getDurationMs()
                 ));
             }
 
@@ -94,18 +94,18 @@ public final class StdioAgentServer implements QuarkusApplication {
         });
     }
 
-    public void invoke(InvokeAgentRequest request) {
-        String userText = request.getUserMessage();
-        Message response = agent.invoke(sessionId, Message.user(userText));
+    public void invoke(final InvokeAgentRequest request) {
+        final String userText = request.getUserMessage();
+        final Message response = agent.invoke(sessionId, Message.user(userText));
         sendEvent(request.getId(), "thoughts", response.getThoughts());
         sendEvent(request.getId(), "finalAnswer", response.getContent());
     }
 
-    public void buildPrompt(BuildPromptRequest request) {
-        List<Message> messages = agent.buildPrompt(sessionId);
-        List<Map<String, String>> out = new ArrayList<>();
+    public void buildPrompt(final BuildPromptRequest request) {
+        final List<Message> messages = agent.buildPrompt(sessionId);
+        final List<Map<String, String>> out = new ArrayList<>();
         for (Message message : messages) {
-            Map<String, String> entry = new HashMap<>();
+            final Map<String, String> entry = new HashMap<>();
             entry.put("role", message.getRole().name().toLowerCase());
             entry.put("content", message.getContent());
             out.add(entry);
@@ -113,16 +113,16 @@ public final class StdioAgentServer implements QuarkusApplication {
         sendResult(request.getId(), Map.of("messages", out));
     }
 
-    private void sendResult(String id, Map<String, Object> result) {
+    private void sendResult(final String id, final Map<String, Object> result) {
         send(Map.of("id", id, "result", result));
     }
 
     @SuppressWarnings("unchecked")
-    private void sendEvent(String sessionId, String event, Object payload) {
+    private void sendEvent(final String sessionId, final String event, final Object payload) {
         if (payload == null || (payload instanceof String text && text.isBlank())) {
             return;
         }
-        Map<String, Object> body = new HashMap<>();
+        final Map<String, Object> body = new HashMap<>();
         body.put("sessionId", sessionId);
         body.put("event", event);
         if (payload instanceof Map<?, ?> map) {
@@ -133,7 +133,7 @@ public final class StdioAgentServer implements QuarkusApplication {
         send(body);
     }
 
-    private void send(Map<String, Object> payload) {
+    private void send(final Map<String, Object> payload) {
         try {
             System.out.println(JsonUtils.toJson(payload));
         } catch (Exception ex) {

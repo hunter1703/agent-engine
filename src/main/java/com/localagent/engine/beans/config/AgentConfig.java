@@ -21,7 +21,7 @@ public final class AgentConfig implements Config {
         return tools;
     }
 
-    public void setTools(ToolsConfig tools) {
+    public void setTools(final ToolsConfig tools) {
         this.tools = tools;
     }
 
@@ -29,7 +29,7 @@ public final class AgentConfig implements Config {
         return engine;
     }
 
-    public void setEngine(EngineConfig engine) {
+    public void setEngine(final EngineConfig engine) {
         this.engine = engine;
     }
 
@@ -37,7 +37,7 @@ public final class AgentConfig implements Config {
         return context;
     }
 
-    public void setContext(ContextConfig context) {
+    public void setContext(final ContextConfig context) {
         this.context = context;
     }
 
@@ -45,7 +45,7 @@ public final class AgentConfig implements Config {
         return stateStore;
     }
 
-    public void setStateStore(StateStoreConfig stateStore) {
+    public void setStateStore(final StateStoreConfig stateStore) {
         this.stateStore = stateStore;
     }
 

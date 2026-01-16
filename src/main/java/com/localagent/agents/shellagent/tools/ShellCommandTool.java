@@ -15,7 +15,7 @@ public final class ShellCommandTool implements AgentTool {
     private static final int MAX_OUTPUT_CHARS = 12_000;
     private final Duration timeout;
 
-    public ShellCommandTool(Duration timeout) {
+    public ShellCommandTool(final Duration timeout) {
         this.timeout = timeout == null ? Duration.ofMinutes(30) : timeout;
     }
 
@@ -30,20 +30,20 @@ public final class ShellCommandTool implements AgentTool {
     }
 
     @Override
-    public String execute(Map<String, Object> args) {
-        String command = args == null ? null : String.valueOf(args.get("command"));
+    public String execute(final Map<String, Object> args) {
+        final String command = args == null ? null : String.valueOf(args.get("command"));
         if (command == null || command.isBlank()) {
             throw new IllegalArgumentException("Empty command");
         }
         if (BLOCKED.matcher(command).find()) {
             throw new IllegalArgumentException("Blocked: rm is not allowed");
         }
-        ProcessBuilder builder = new ProcessBuilder("bash", "-lc", command);
+        final ProcessBuilder builder = new ProcessBuilder("bash", "-lc", command);
         builder.directory(Path.of(System.getProperty("user.home")).toFile());
         builder.redirectErrorStream(true);
         try {
-            Process process = builder.start();
-            boolean finished = process.waitFor(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+            final Process process = builder.start();
+            final boolean finished = process.waitFor(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
             String output = readAll(process);
             output = truncate(output.trim());
             if (!finished) {
@@ -72,7 +72,7 @@ public final class ShellCommandTool implements AgentTool {
         }
     }
 
-    private String truncate(String text) {
+    private String truncate(final String text) {
         if (text.length() <= MAX_OUTPUT_CHARS) {
             return text;
         }

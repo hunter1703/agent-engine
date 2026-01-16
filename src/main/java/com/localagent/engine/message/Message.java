@@ -14,7 +14,7 @@ public class Message {
     private final List<String> toolRequests;
     private final List<ToolCall> toolCalls;
 
-    public Message(Role role, String content, String thoughts, List<String> toolRequests, List<ToolCall> toolCalls) {
+    public Message(final Role role, final String content, final String thoughts, final List<String> toolRequests, final List<ToolCall> toolCalls) {
         this.role = role;
         this.content = content;
         this.thoughts = thoughts;
@@ -50,19 +50,19 @@ public class Message {
         return toolCalls;
     }
 
-    public static Message system(String content) {
+    public static Message system(final String content) {
         return new Message(Role.SYSTEM, content, null, null, null);
     }
 
-    public static Message user(String content) {
+    public static Message user(final String content) {
         return new Message(Role.USER, content, null, null, null);
     }
 
-    public static Message tool(String content) {
+    public static Message tool(final String content) {
         return new Message(Role.TOOL, content, null, null, null);
     }
 
-    public static Message assistant(String content, String thoughts) {
+    public static Message assistant(final String content, final String thoughts) {
         return new Message(Role.ASSISTANT, content, thoughts, null, null);
     }
 }

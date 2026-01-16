@@ -49,13 +49,13 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
 
     protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config, final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
-        String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
-        Map<String, Object> context = new java.util.HashMap<>();
+        final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
+        final Map<String, Object> context = new java.util.HashMap<>();
         context.put("thoughts_enabled", config.isThoughtsEnabled());
         if ("json".equalsIgnoreCase(config.getResponseFormat())) {
             context.put("response_schema", loadReasonerSchema(config));
         }
-        String protocolMessage = TemplateUtils.renderForName(templateName, context);
+        final String protocolMessage = TemplateUtils.renderForName(templateName, context);
         return switch (config.getContextConfig()) {
             case LastNContextConfig lastNContextConfig -> new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
             default -> throw new IllegalArgumentException("Unknown context config");
@@ -63,12 +63,12 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
 
     protected static ContextBuilder buildToolAssistantContextBuilder(final ModelConfig config, final SessionStore sessionStore, final String systemMessage, final List<AgentTool> tools) {
-        String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
-        Map<String, Object> context = new java.util.HashMap<>();
+        final String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
+        final Map<String, Object> context = new java.util.HashMap<>();
         if ("json".equalsIgnoreCase(config.getResponseFormat())) {
             context.put("tool_schema", loadToolCallSchema());
         }
-        String protocolMessage = TemplateUtils.renderForName(templateName, context);
+        final String protocolMessage = TemplateUtils.renderForName(templateName, context);
         return switch (config.getContextConfig()) {
             case LastNContextConfig lastNContextConfig -> new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
             default -> throw new IllegalArgumentException("Unknown context config");
@@ -123,7 +123,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
         return ResourceUtils.loadResourceAsString("/schemas/hybrid/tool_call_schema.json");
     }
 
-    protected static LLMModel buildChatModel(ModelConfig modelConfig) {
+    protected static LLMModel buildChatModel(final ModelConfig modelConfig) {
         final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
         final ResponseFormat responseFormat = getResponseFormat(modelConfig);
         final ChatModel chatModel = switch (provider) {
@@ -146,7 +146,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
                 .stop(config.getStopTokens()).responseFormat(responseFormat).build();
     }
 
-    protected SessionStore buildStateStore(StateStoreConfig config) {
+    protected SessionStore buildStateStore(final StateStoreConfig config) {
         if (config instanceof MongoStateStoreConfig) {
             LOGGER.warning("Mongo state store not implemented yet; falling back to memory store.");
             return new InMemorySessionStore();
@@ -154,7 +154,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
         return new InMemorySessionStore();
     }
 
-    private static String resolveReasoningProtocolTemplate(boolean hybrid, String responseFormat) {
+    private static String resolveReasoningProtocolTemplate(final boolean hybrid, final String responseFormat) {
         if ("json".equalsIgnoreCase(responseFormat)) {
             if (hybrid) {
                 return "hybrid/reasoner_json.txt";
@@ -170,7 +170,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
         }
     }
 
-    private static String resolveToolAssistantProtocolTemplate(String responseFormat) {
+    private static String resolveToolAssistantProtocolTemplate(final String responseFormat) {
         if ("json".equalsIgnoreCase(responseFormat)) {
            return "hybrid/tool_assistant_json.txt";
         } else {

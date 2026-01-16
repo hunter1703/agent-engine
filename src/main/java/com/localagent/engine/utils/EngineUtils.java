@@ -24,11 +24,11 @@ public final class EngineUtils {
 
     private EngineUtils(){}
 
-    public static int invocationsThisTurn(SessionStore sessionStore, String sessionId) {
-        List<Message> messages = sessionStore.getMessages(sessionId);
+    public static int invocationsThisTurn(final SessionStore sessionStore, final String sessionId) {
+        final List<Message> messages = sessionStore.getMessages(sessionId);
         int count = 0;
         for (int i = messages.size() - 1; i >= 0; i--) {
-            Message message = messages.get(i);
+            final Message message = messages.get(i);
             if (message.getRole() == Role.USER) {
                 break;
             }
@@ -45,7 +45,7 @@ public final class EngineUtils {
         }
         final String content = message.getContent();
         if (format.type() == ResponseFormatType.JSON) {
-            Message parsed = parseJsonPayload(content);
+            final Message parsed = parseJsonPayload(content);
             if (parsed == null) {
                 return new Message(message.getRole(), "", "", List.of(), List.of());
             }
@@ -70,7 +70,7 @@ public final class EngineUtils {
         );
     }
 
-    public static String getRepairMessageIfInvalid(Message message) {
+    public static String getRepairMessageIfInvalid(final Message message) {
         final String content = message.getContent();
         final List<String> toolRequests = message.getToolRequests();
         final String thoughts = message.getThoughts();
@@ -105,11 +105,11 @@ public final class EngineUtils {
         if (StringUtils.isBlank(cleaned)) {
             return cleaned;
         }
-        Matcher finalMatch = FINAL_BLOCK.matcher(cleaned);
+        final Matcher finalMatch = FINAL_BLOCK.matcher(cleaned);
         return (finalMatch.find() ? finalMatch.group(1) : cleaned).trim();
     }
 
-    private static String stripThoughtBlock(String text, boolean thoughtsEnabled, String thoughtsStartTag, String thoughtsEndTag) {
+    private static String stripThoughtBlock(final String text, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
         if (StringUtils.isBlank(text) || !thoughtsEnabled) {
             return text;
         }
@@ -120,12 +120,12 @@ public final class EngineUtils {
         if (StringUtils.isBlank(content) || !thoughtsEnabled || StringUtils.isBlank(thoughtsStartTag) || StringUtils.isBlank(thoughtsEndTag)) {
             return null;
         }
-        Pattern thoughtPattern = Pattern.compile(STR."\{Pattern.quote(thoughtsStartTag)}(.*?)\{Pattern.quote(thoughtsEndTag)}", Pattern.DOTALL);
-        Matcher matcher = thoughtPattern.matcher(content);
+        final Pattern thoughtPattern = Pattern.compile(STR."\{Pattern.quote(thoughtsStartTag)}(.*?)\{Pattern.quote(thoughtsEndTag)}", Pattern.DOTALL);
+        final Matcher matcher = thoughtPattern.matcher(content);
         if (!matcher.find()) {
             return null;
         }
-        String thoughts = matcher.group(1);
+        final String thoughts = matcher.group(1);
         return thoughts == null ? null : thoughts.trim();
     }
 
@@ -153,7 +153,7 @@ public final class EngineUtils {
             String id = null;
             String name = null;
             if (StringUtils.isNotBlank(request)) {
-                Map<String, Object> jsonMap = parseToolRequestJson(request.trim());
+                final Map<String, Object> jsonMap = parseToolRequestJson(request.trim());
                 if (jsonMap != null) {
                     id = CollectionUtils.getStringValueFromMap(jsonMap, "id");
                     name = CollectionUtils.getStringValueFromMap(jsonMap, "name");
@@ -162,18 +162,18 @@ public final class EngineUtils {
                     }
                 }
                 if (StringUtils.isBlank(id) || StringUtils.isBlank(name)) {
-                    String[] lines = request.split("\\R");
+                    final String[] lines = request.split("\\R");
                     for (String line : lines) {
                         String trimmed = line.trim();
                         if (trimmed.startsWith("-")) {
                             trimmed = trimmed.substring(1).trim();
                         }
-                        int colonIndex = trimmed.indexOf(':');
+                        final int colonIndex = trimmed.indexOf(':');
                         if (colonIndex <= 0) {
                             continue;
                         }
-                        String key = trimmed.substring(0, colonIndex).trim().toLowerCase();
-                        String value = trimmed.substring(colonIndex + 1).trim();
+                        final String key = trimmed.substring(0, colonIndex).trim().toLowerCase();
+                        final String value = trimmed.substring(colonIndex + 1).trim();
                         if ("id".equals(key) && StringUtils.isBlank(id)) {
                             id = value;
                         } else if (("tool".equals(key) || "name".equals(key)) && StringUtils.isBlank(name)) {
@@ -187,15 +187,15 @@ public final class EngineUtils {
         return infos;
     }
 
-    private static Map<String, Object> parseToolRequestJson(String request) {
+    private static Map<String, Object> parseToolRequestJson(final String request) {
         if (StringUtils.isBlank(request)) {
             return null;
         }
         try {
             return JsonUtils.fromJson(request, new TypeReference<>() {});
         } catch (Exception ex) {
-            int start = request.indexOf('{');
-            int end = request.lastIndexOf('}');
+            final int start = request.indexOf('{');
+            final int end = request.lastIndexOf('}');
             if (start >= 0 && end > start) {
                 try {
                     return JsonUtils.fromJson(request.substring(start, end + 1), new TypeReference<>() {});
@@ -206,7 +206,7 @@ public final class EngineUtils {
         return null;
     }
 
-    public static Message parseJsonPayload(String text) {
+    public static Message parseJsonPayload(final String text) {
         if (StringUtils.isBlank(text)) {
             return null;
         }
@@ -224,8 +224,8 @@ public final class EngineUtils {
         try {
             payload = JsonUtils.fromJson(cleaned, new TypeReference<>() {});
         } catch (Exception ex) {
-            int start = cleaned.indexOf('{');
-            int end = cleaned.lastIndexOf('}');
+            final int start = cleaned.indexOf('{');
+            final int end = cleaned.lastIndexOf('}');
             if (start >= 0 && end > start) {
                 try {
                     payload = JsonUtils.fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
@@ -238,7 +238,7 @@ public final class EngineUtils {
         }
         final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, "finalAnswer");
         final String thoughts = CollectionUtils.getStringValueFromMap(payload, "thoughts");
-        List<ToolCall> toolCalls = parseToolCallsFromJsonMap(payload);
+        final List<ToolCall> toolCalls = parseToolCallsFromJsonMap(payload);
         List<String> toolRequests = parseToolRequestStrings(payload.get("toolRequests"));
         if (toolRequests.isEmpty() && payload.containsKey("tool_name")) {
             toolRequests = List.of(JsonUtils.toJson(Map.of(
@@ -246,12 +246,12 @@ public final class EngineUtils {
                 "args", payload.getOrDefault("tool_args", Map.of())
             )));
         }
-        String content = finalAnswer == null ? "" : finalAnswer;
+        final String content = finalAnswer == null ? "" : finalAnswer;
         return new Message(null, content, thoughts, toolRequests, toolCalls);
     }
 
-    private static List<ToolCall> parseToolCallsFromJsonMap(Map<String, Object> payload) {
-        Object toolRequests = payload.get("toolRequests");
+    private static List<ToolCall> parseToolCallsFromJsonMap(final Map<String, Object> payload) {
+        final Object toolRequests = payload.get("toolRequests");
         if (!(toolRequests instanceof List<?> list)) {
             if (payload.containsKey("tool_name")) {
                 Object nameValue = payload.get("tool_name");
@@ -262,29 +262,29 @@ public final class EngineUtils {
             }
             return List.of();
         }
-        List<ToolCall> calls = new ArrayList<>();
+        final List<ToolCall> calls = new ArrayList<>();
         for (Object item : list) {
             if (!(item instanceof Map<?, ?> map)) {
                 continue;
             }
-            Object nameValue = map.get("name");
+            final Object nameValue = map.get("name");
             if (nameValue == null) {
                 continue;
             }
-            Object argsValue = map.get("args");
+            final Object argsValue = map.get("args");
             //noinspection unchecked
-            Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
-            Object idValue = map.get("id");
+            final Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
+            final Object idValue = map.get("id");
             calls.add(new ToolCall(idValue == null ? null : idValue.toString(), nameValue.toString(), args));
         }
         return calls;
     }
 
-    private static List<String> parseToolRequestStrings(Object toolRequests) {
+    private static List<String> parseToolRequestStrings(final Object toolRequests) {
         if (!(toolRequests instanceof List<?> list)) {
             return List.of();
         }
-        List<String> requests = new ArrayList<>();
+        final List<String> requests = new ArrayList<>();
         for (Object item : list) {
             if (item == null) {
                 continue;

@@ -36,7 +36,7 @@
 //    }
 //
 //    @Override
-//    public List<Message> buildPrompt(String sessionId) {
+//    public List<Message> buildPrompt(final String sessionId) {
 //        List<Message> messages = sessionStore.getMessages(sessionId);
 //        SummaryContext context = ensureSummaries(sessionId, messages);
 //        List<Message> assembled = new ArrayList<>();
@@ -53,7 +53,7 @@
 //        return super.buildPrompt(new SessionState(state.sessionId(), assembled));
 //    }
 //
-//    private SummaryContext ensureSummaries(String sessionId, List<Message> messages) {
+//    private SummaryContext ensureSummaries(final String sessionId, final List<Message> messages) {
 //        List<Summary> summaries = sortedSummaries(sessionId);
 //        int lastSummarizedMessageId = summaries.isEmpty() ? "" : summaries.getLast().uptoSummarizedMessageId();
 //
@@ -82,7 +82,7 @@
 //        return new SummaryContext(summaries, lastSummaryIndex, keepFromIndex);
 //    }
 //
-//    private void trimToBudget(String sessionId, List<Message> messages) {
+//    private void trimToBudget(final String sessionId, final List<Message> messages) {
 //        List<Map<String, Object>> summaries = sortedSummaries(sessionId);
 //        while (totalTokens(messages, summaries) > modelMaxTokens) {
 //            if (!summaries.isEmpty()) {
@@ -97,7 +97,7 @@
 //        }
 //    }
 //
-//    private List<Message> buildSummaryPrompt(List<Message> messages) {
+//    private List<Message> buildSummaryPrompt(final List<Message> messages) {
 //        String header = "You are a concise meeting recorder. Summarize the following conversation "
 //            + "into a compact, factual brief. Preserve key facts, IDs, file paths, commands, decisions, "
 //            + "and requirements. Avoid speculation. Keep it readable and short.";
@@ -112,13 +112,13 @@
 //        return List.of(Message.system(header), Message.system(transcript.toString()));
 //    }
 //
-//    private List<Summary> sortedSummaries(String sessionId) {
+//    private List<Summary> sortedSummaries(final String sessionId) {
 //        List<Summary> summaries = new ArrayList<>(sessionStore.getSummaries(sessionId));
 //        summaries.sort(Comparator.comparingInt(summary -> summary.createdTime()));
 //        return summaries;
 //    }
 //
-//    private int countTokensSummaries(List<Summary> summaries) {
+//    private int countTokensSummaries(final List<Summary> summaries) {
 //        int total = 0;
 //        for (Summary summary : summaries) {
 //            total += estimateTokens(summary.content());
@@ -126,7 +126,7 @@
 //        return total;
 //    }
 //
-//    private int countTokensMessages(List<Message> messages) {
+//    private int countTokensMessages(final List<Message> messages) {
 //        int total = 0;
 //        for (Message message : messages) {
 //            total += estimateTokens(message.getContent());
@@ -134,11 +134,11 @@
 //        return total;
 //    }
 //
-//    private int totalTokens(List<Message> messages, List<Map<String, Object>> summaries) {
+//    private int totalTokens(final List<Message> messages, final List<Map<String, Object>> summaries) {
 //        return countTokensMessages(messages) + countTokensSummaries(summaries);
 //    }
 //
-//    private int recencyStartIndex(List<Message> messages, int limit) {
+//    private int recencyStartIndex(final List<Message> messages, final int limit) {
 //        int tokens = 0;
 //        int keepFrom = messages.size();
 //        for (int index = messages.size() - 1; index >= 0; index--) {
@@ -151,13 +151,13 @@
 //        return keepFrom;
 //    }
 //
-//    private int estimateTokens(String text) {
+//    private int estimateTokens(final String text) {
 //        if (text == null || text.isBlank()) {
 //            return 1;
 //        }
 //        return Math.max(1, (text.length() + 2) / 3);
 //    }
 //
-//    private record SummaryContext(List<Map<String, Object>> summaries, int lastSummaryIndex, int keepFromIndex) {
+//    private record SummaryContext(final List<Map<String, Object>> summaries, final int lastSummaryIndex, final int keepFromIndex) {
 //    }
 //}

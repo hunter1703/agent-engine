@@ -24,7 +24,7 @@ public final class LangChain4JLLMModel implements LLMModel {
     private final String thoughtsEndTag;
 
 
-    public LangChain4JLLMModel(ChatModel model, ResponseFormat responseFormat, boolean thoughtsEnabled, String thoughtsStartTag, String thoughtsEndTag) {
+    public LangChain4JLLMModel(final ChatModel model, final ResponseFormat responseFormat, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
         this.model = model;
         this.responseFormat = responseFormat;
         this.thoughtsEnabled = thoughtsEnabled;
@@ -33,12 +33,12 @@ public final class LangChain4JLLMModel implements LLMModel {
     }
 
     @Override
-    public Message generate(List<Message> messages) {
-        List<ChatMessage> prompt = new ArrayList<>();
+    public Message generate(final List<Message> messages) {
+        final List<ChatMessage> prompt = new ArrayList<>();
         for (Message message : messages) {
             prompt.add(toChatMessage(message));
         }
-        ChatResponse response = model.chat(prompt);
+        final ChatResponse response = model.chat(prompt);
         final AiMessage aiMessage = response.aiMessage();
         return Message.assistant(aiMessage.text(), aiMessage.thinking());
     }
@@ -63,7 +63,7 @@ public final class LangChain4JLLMModel implements LLMModel {
         return thoughtsEndTag;
     }
 
-    private ChatMessage toChatMessage(Message message) {
+    private ChatMessage toChatMessage(final Message message) {
         if (message.getRole() == Role.SYSTEM) {
             return SystemMessage.from(message.getContent());
         }

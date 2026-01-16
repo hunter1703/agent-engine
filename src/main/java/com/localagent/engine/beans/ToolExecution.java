@@ -16,7 +16,7 @@ public final class ToolExecution {
     private final Instant startedAt;
     private final long durationMs;
 
-    public ToolExecution(ToolCall toolCall, String status, String output, Instant startedAt, long durationMs) {
+    public ToolExecution(final ToolCall toolCall, final String status, final String output, final Instant startedAt, final long durationMs) {
         this.toolCall = toolCall;
         this.status = status;
         this.output = output;

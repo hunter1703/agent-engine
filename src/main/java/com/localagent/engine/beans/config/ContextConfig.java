@@ -3,7 +3,7 @@ package com.localagent.engine.beans.config;
 public abstract class ContextConfig implements Config {
     private String type;
 
-    protected ContextConfig(ContextType contextType) {
+    protected ContextConfig(final ContextType contextType) {
         this.type = contextType.name().toLowerCase();
     }
 
@@ -11,7 +11,7 @@ public abstract class ContextConfig implements Config {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(final String type) {
         this.type = type;
     }
 

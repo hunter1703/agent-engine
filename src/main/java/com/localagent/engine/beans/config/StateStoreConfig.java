@@ -3,7 +3,7 @@ package com.localagent.engine.beans.config;
 public abstract class StateStoreConfig implements Config {
     private String type;
 
-    protected StateStoreConfig(StateStoreType stateStoreType) {
+    protected StateStoreConfig(final StateStoreType stateStoreType) {
         this.type = stateStoreType.name().toLowerCase();
     }
 
@@ -11,7 +11,7 @@ public abstract class StateStoreConfig implements Config {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(final String type) {
         this.type = type;
     }
 

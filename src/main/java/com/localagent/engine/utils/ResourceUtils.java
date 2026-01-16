@@ -14,7 +14,7 @@ public final class ResourceUtils {
     private ResourceUtils() {
     }
 
-    public static String loadResourceAsString(String path) {
+    public static String loadResourceAsString(final String path) {
         try (InputStream stream = TemplateUtils.class.getResourceAsStream(path)) {
             if (stream == null) {
                 return "";
@@ -25,7 +25,7 @@ public final class ResourceUtils {
         }
     }
 
-    public static ModelConfig loadModelConfig(String configPath) {
+    public static ModelConfig loadModelConfig(final String configPath) {
         if (StringUtils.isBlank(configPath)) {
             return null;
         }

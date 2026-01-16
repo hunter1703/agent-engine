@@ -13,7 +13,7 @@ public final class ToolsConfig implements Config {
         return enabled == null ? null : new ArrayList<>(enabled);
     }
 
-    public void setEnabled(List<String> enabled) {
+    public void setEnabled(final List<String> enabled) {
         this.enabled = enabled;
     }
 
@@ -21,7 +21,7 @@ public final class ToolsConfig implements Config {
         return configs;
     }
 
-    public void setConfigs(Map<String, Map<String, Object>> configs) {
+    public void setConfigs(final Map<String, Map<String, Object>> configs) {
         this.configs = configs == null ? new HashMap<>() : new HashMap<>(configs);
     }
 }

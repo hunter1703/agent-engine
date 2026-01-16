@@ -10,26 +10,26 @@ public final class TemplateUtils {
 
     private TemplateUtils() {}
 
-    public static String render(String template, Map<String, Object> context) {
+    public static String render(final String template, final Map<String, Object> context) {
         if (template == null) {
             return "";
         }
         return JINJAVA.render(template, context).trim();
     }
 
-    public static String renderForName(String name, Map<String, Object> context) {
+    public static String renderForName(final String name, final Map<String, Object> context) {
         return render(ResourceUtils.loadResourceAsString("/prompts/" + name), context);
     }
 
-    public static String renderProtocol(String template, String thoughtTag, boolean thoughtsEnabled) {
-        Map<String, Object> context = new HashMap<>();
+    public static String renderProtocol(final String template, final String thoughtTag, final boolean thoughtsEnabled) {
+        final Map<String, Object> context = new HashMap<>();
         context.put("thought_tag", thoughtTag == null ? "think" : thoughtTag);
         context.put("thoughts_enabled", thoughtsEnabled);
         return TemplateUtils.render(template, context);
     }
 
-    public static String renderRouter(String template, Map<String, String> values) {
-        Map<String, Object> context = new HashMap<>(values);
+    public static String renderRouter(final String template, final Map<String, String> values) {
+        final Map<String, Object> context = new HashMap<>(values);
         return TemplateUtils.render(template, context);
     }
 }
