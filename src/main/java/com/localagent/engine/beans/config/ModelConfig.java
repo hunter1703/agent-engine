@@ -15,16 +15,27 @@ public class ModelConfig implements Config {
     private String provider;
     private String model;
     private Double temperature;
+    @JSONField(name = "top_k")
     private Integer topK;
+    @JSONField(name = "top_p")
     private Double topP;
+    @JSONField(name = "repeat_penalty")
     private Double repeatPenalty;
+    @JSONField(name = "num_predict")
     private Integer numPredict;
+    @JSONField(name = "max_context_length")
     private int maxContextLength;
+    @JSONField(name = "stop_tokens")
     private List<String> stopTokens;
+    @JSONField(name = "response_format")
     private String responseFormat;
+    @JSONField(name = "thoughts_start_tag")
     private String thoughtsStartTag;
+    @JSONField(name = "thoughts_end_tag")
     private String thoughtsEndTag;
+    @JSONField(name = "thoughts_enabled")
     private boolean thoughtsEnabled;
+    @JSONField(name = "context_config")
     private ContextConfig contextConfig;
 
     public String getBaseUrl() {
