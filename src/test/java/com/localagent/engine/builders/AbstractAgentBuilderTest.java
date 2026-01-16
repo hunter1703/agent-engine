@@ -86,6 +86,27 @@ class AbstractAgentBuilderTest {
   }
 
   @Test
+  void buildJsonSchemaElementSupportsRefAndTypeList() {
+    Map<String, Object> refSchema = Map.of("$ref", "#/definitions/Thing");
+    Map<String, Object> typeListSchema = Map.of("type", List.of("string", "integer"));
+
+    JsonSchemaElement refElement = builder.callBuildJsonSchemaElement(refSchema);
+    JsonSchemaElement typeListElement = builder.callBuildJsonSchemaElement(typeListSchema);
+
+    assertThat(refElement.getClass().getSimpleName()).contains("Reference");
+    assertThat(typeListElement).isInstanceOf(JsonAnyOfSchema.class);
+  }
+
+  @Test
+  void buildJsonSchemaElementHandlesAllOfFallback() {
+    Map<String, Object> allOfSchema = Map.of("allOf", List.of(Map.of("type", "string")));
+
+    JsonSchemaElement element = builder.callBuildJsonSchemaElement(allOfSchema);
+
+    assertThat(element).isInstanceOf(JsonObjectSchema.class);
+  }
+
+  @Test
   void buildJsonSchemaElementHandlesAdditionalPropertiesAndDefinitions() {
     Map<String, Object> schema =
         Map.of(
@@ -164,7 +185,32 @@ class AbstractAgentBuilderTest {
     assertThat(toolAssistant).isInstanceOf(com.localagent.engine.context.LastNContextBuilder.class);
   }
 
+  @Test
+  void buildChatModelBuildsLangChainModelForProviders() {
+    ModelConfig openAi = new ModelConfig();
+    openAi.setProvider("OPEN_AI");
+    openAi.setModel("gpt");
+    openAi.setBaseUrl("http://localhost");
+    openAi.setResponseFormat("text");
+
+    ModelConfig ollama = new ModelConfig();
+    ollama.setProvider("OLLAMA");
+    ollama.setModel("llama");
+    ollama.setBaseUrl("http://localhost");
+    ollama.setResponseFormat("json");
+
+    com.localagent.engine.model.LLMModel openAiModel = builder.callBuildChatModel(openAi);
+    com.localagent.engine.model.LLMModel ollamaModel = builder.callBuildChatModel(ollama);
+
+    assertThat(openAiModel).isInstanceOf(com.localagent.engine.model.LangChain4JLLMModel.class);
+    assertThat(ollamaModel.responseFormat().type()).isEqualTo(ResponseFormatType.JSON);
+  }
+
   private static final class TestAgentBuilder extends AbstractAgentBuilder {
+    private com.localagent.engine.model.LLMModel callBuildChatModel(final ModelConfig config) {
+      return buildChatModel(config);
+    }
+
     private ResponseFormat callGetResponseFormat(final ModelConfig config) {
       return getResponseFormat(config);
     }

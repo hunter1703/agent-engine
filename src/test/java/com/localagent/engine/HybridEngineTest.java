@@ -210,6 +210,44 @@ class HybridEngineTest {
     assertThat(sessionStore.getToolExecutions(sessionId + "_reasoning", List.of())).isEmpty();
   }
 
+  @Test
+  void invokeParsesToolCallsFromTextPayload() {
+    SessionStore sessionStore = new InMemorySessionStore();
+    String sessionId = "session";
+
+    String toolRequest = "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\"}";
+    Message first = new Message(Role.ASSISTANT, toolRequest, null, null, null);
+    Message second = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
+
+    String toolPayload = "{\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\",\"args\":{}}]}";
+    LLMModel toolAssistantModel =
+        new QueueModel(
+            ResponseFormatType.TEXT,
+            List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
+
+    List<AgentTool> tools = List.of(new EchoTool());
+    BaseContextBuilder reasoningContext =
+        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    BaseContextBuilder toolContext =
+        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    HybridEngine engine =
+        new HybridEngine(
+            reasoningModel,
+            toolAssistantModel,
+            tools,
+            reasoningContext,
+            toolContext,
+            sessionStore,
+            2);
+
+    Message result = engine.invoke(sessionId, Message.user("hello"));
+
+    assertThat(result.getContent()).isEqualTo("done");
+    List<Message> toolMessages = sessionStore.getMessages(sessionId + "_tool");
+    assertThat(toolMessages).anyMatch(message -> message.getRole() == Role.ASSISTANT);
+  }
+
   private static final class QueueModel implements LLMModel {
     private final Deque<Message> responses;
     private final ResponseFormat responseFormat;

@@ -31,15 +31,18 @@ import org.junit.jupiter.api.Test;
 
 class StdioAgentServerTest {
   private PrintStream originalOut;
+  private java.io.InputStream originalIn;
 
   @BeforeEach
   void setup() {
     originalOut = System.out;
+    originalIn = System.in;
   }
 
   @AfterEach
   void tearDown() {
     System.setOut(originalOut);
+    System.setIn(originalIn);
   }
 
   @Test
@@ -80,6 +83,43 @@ class StdioAgentServerTest {
     String printed = output.toString(StandardCharsets.UTF_8);
     assertThat(printed).contains("\"role\":\"system\"");
     assertThat(printed).contains("\"content\":\"sys\"");
+  }
+
+  @Test
+  void runProcessesInvokeAndBuildPromptRequests() throws Exception {
+    com.alibaba.fastjson2.JSONFactory.getDefaultObjectReaderProvider()
+        .addAutoTypeAccept("com.localagent.cli.beans.");
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
+
+    AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
+    AgentBuilder builder = mock(AgentBuilder.class);
+    FakeAgent engine = new FakeAgent();
+    when(builder.build(anyString(), any())).thenReturn(engine);
+    when(builderFactory.getBuilder(anyString())).thenReturn(builder);
+
+    com.localagent.engine.beans.config.ConfigLoader configLoader =
+        mock(com.localagent.engine.beans.config.ConfigLoader.class);
+    when(configLoader.loadConfig(any())).thenReturn(AgentConfig.empty());
+
+    StdioAgentServer server = new StdioAgentServer(builderFactory, configLoader);
+
+    String invokeJson =
+        "{"
+            + "\"@type\":\"com.localagent.cli.beans.InvokeAgentRequest\","
+            + "\"id\":\"req-1\","
+            + "\"user_message\":\"hello\"}";
+    String promptJson =
+        "{" + "\"@type\":\"com.localagent.cli.beans.BuildPromptRequest\"," + "\"id\":\"req-2\"}";
+    String input = invokeJson + "\n" + promptJson + "\n";
+    System.setIn(new java.io.ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+
+    int result = server.run("app", "agent", "config.json");
+
+    assertThat(result).isEqualTo(0);
+    String printed = output.toString(StandardCharsets.UTF_8);
+    assertThat(printed).contains("\"event\":\"finalAnswer\"");
+    assertThat(printed).contains("\"messages\"");
   }
 
   @Test

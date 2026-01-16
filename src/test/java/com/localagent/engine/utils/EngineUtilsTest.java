@@ -40,6 +40,15 @@ class EngineUtilsTest {
   }
 
   @Test
+  void sanitizeMessageReturnsNullForNullInput() {
+    ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+
+    Message sanitized = EngineUtils.sanitizeMessage(null, format, false, "<think>", "</think>");
+
+    assertThat(sanitized).isNull();
+  }
+
+  @Test
   void sanitizeMessageParsesJsonPayload() {
     String payload = "{\"finalAnswer\":\"ok\",\"toolRequests\":[{\"id\":\"1\",\"name\":\"echo\"}]}";
     Message response = new Message(Role.ASSISTANT, payload, null, null, null);
@@ -62,6 +71,28 @@ class EngineUtilsTest {
     assertThat(sanitized.getThoughts()).isEqualTo("plan");
     assertThat(sanitized.getToolRequests()).containsExactly("{\"id\":\"1\",\"name\":\"echo\"}");
     assertThat(sanitized.getContent()).isNull();
+  }
+
+  @Test
+  void sanitizeMessageExtractsFinalAnswerFromText() {
+    Message response = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
+    ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+
+    Message sanitized = EngineUtils.sanitizeMessage(response, format, false, "<think>", "</think>");
+
+    assertThat(sanitized.getContent()).isEqualTo("done");
+    assertThat(sanitized.getToolRequests()).isEmpty();
+  }
+
+  @Test
+  void sanitizeMessageKeepsContentWhenThoughtTagsMissing() {
+    Message response = new Message(Role.ASSISTANT, "plain", null, null, null);
+    ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+
+    Message sanitized = EngineUtils.sanitizeMessage(response, format, true, "", "");
+
+    assertThat(sanitized.getContent()).isEqualTo("plain");
+    assertThat(sanitized.getThoughts()).isNull();
   }
 
   @Test
@@ -102,6 +133,27 @@ class EngineUtilsTest {
   }
 
   @Test
+  void parseJsonPayloadExtractsEmbeddedJson() {
+    Message parsed = EngineUtils.parseJsonPayload("prefix {\"finalAnswer\":\"ok\"} suffix");
+
+    assertThat(parsed.getContent()).isEqualTo("ok");
+  }
+
+  @Test
+  void parseJsonPayloadHandlesMixedToolRequestFormats() {
+    String payload =
+        """
+        {"toolRequests":["raw",{"id":"2","name":"tool2"},3]}
+        """;
+
+    Message parsed = EngineUtils.parseJsonPayload(payload);
+
+    assertThat(parsed).isNotNull();
+    assertThat(parsed.getToolRequests()).hasSize(3);
+    assertThat(parsed.getToolRequests().getFirst()).isEqualTo("raw");
+  }
+
+  @Test
   void parseToolRequestInfoParsesBulletListKeys() {
     List<ToolRequest> parsed = EngineUtils.parseToolRequestInfo(List.of("- id: 9\n- tool: ping"));
 
@@ -121,6 +173,27 @@ class EngineUtilsTest {
   }
 
   @Test
+  void parseToolRequestInfoExtractsEmbeddedJson() {
+    List<ToolRequest> parsed =
+        EngineUtils.parseToolRequestInfo(List.of("prefix {\"id\":\"t1\",\"tool\":\"sum\"} suffix"));
+
+    assertThat(parsed.getFirst().id()).isEqualTo("t1");
+    assertThat(parsed.getFirst().name()).isEqualTo("sum");
+  }
+
+  @Test
+  void sanitizeMessageExtractsMultipleToolRequests() {
+    String content =
+        "TOOL_REQUEST: {\"id\":\"1\",\"name\":\"a\"}\nTOOL_REQUEST: {\"id\":\"2\",\"name\":\"b\"}";
+    Message response = new Message(Role.ASSISTANT, content, null, null, null);
+    ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+
+    Message sanitized = EngineUtils.sanitizeMessage(response, format, false, "<think>", "</think>");
+
+    assertThat(sanitized.getToolRequests()).hasSize(2);
+  }
+
+  @Test
   void getRepairMessageIfInvalidFlagsMixedFinalAndToolRequests() {
     Message message =
         new Message(Role.ASSISTANT, "answer", null, List.of("{\"name\":\"tool\"}"), List.of());
@@ -129,6 +202,22 @@ class EngineUtilsTest {
 
     assertThat(repairMessage).contains("You cannot give both final answer and tool requests");
     assertThat(repairMessage).contains("Each tool request must include an \"id\"");
+  }
+
+  @Test
+  void getRepairMessageIfInvalidFlagsDuplicateIdsAndMissingName() {
+    Message message =
+        new Message(
+            Role.ASSISTANT,
+            null,
+            null,
+            List.of("{\"id\":\"1\"}", "{\"id\":\"1\",\"name\":\"tool\"}"),
+            List.of());
+
+    String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
+
+    assertThat(repairMessage).contains("Each tool request must include a tool name");
+    assertThat(repairMessage).contains("Tool request ids must be unique");
   }
 
   @Test

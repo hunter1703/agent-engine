@@ -38,6 +38,24 @@ class ShellCommandToolTest {
   }
 
   @Test
+  void executeReturnsExitCodeForFailures() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(2));
+
+    String output = tool.execute(Map.of("command", "exit 2"));
+
+    assertThat(output).startsWith("(exit=2)");
+  }
+
+  @Test
+  void executeReportsTimeout() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofMillis(50));
+
+    String output = tool.execute(Map.of("command", "sleep 2"));
+
+    assertThat(output).startsWith("(timeout)");
+  }
+
+  @Test
   void exposesToolMetadata() {
     ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
 
