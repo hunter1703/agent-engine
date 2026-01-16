@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 public final class EngineUtils {
 
     private static final Pattern FINAL_BLOCK = Pattern.compile("FINAL:\\s*(.*)$", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern TOOL_REQUEST_BLOCK = Pattern.compile("TOOL_REQUEST:\\s*(.*?)(?=\\n\\s*TOOL_REQUEST:|\\n\\s*FINAL:|$)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private EngineUtils(){}
 
@@ -54,14 +55,15 @@ public final class EngineUtils {
                 CollectionUtils.nullSafeList(parsed.getToolCalls())
             );
         }
-        final String finalAnswer = getFinalAnswer(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
-        //TODO: implement
+        final String cleaned = stripThoughtBlock(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
+        final List<String> toolRequests = getToolRequests(cleaned);
+        final String finalAnswer = toolRequests.isEmpty() ? getFinalAnswer(cleaned) : null;
         final String thoughts = getThoughts(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
         return new Message(
             message.getRole(),
             finalAnswer,
             thoughts,
-            CollectionUtils.nullSafeList(message.getToolRequests()),
+            toolRequests,
             CollectionUtils.nullSafeList(message.getToolCalls())
         );
     }
@@ -76,8 +78,7 @@ public final class EngineUtils {
         return TemplateUtils.renderForName("repair/invalid_message.txt", Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse));
     }
 
-    private static String getFinalAnswer(final String content, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
-        final String cleaned = stripThoughtBlock(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
+    private static String getFinalAnswer(final String cleaned) {
         if (StringUtils.isBlank(cleaned)) {
             return cleaned;
         }
@@ -90,6 +91,34 @@ public final class EngineUtils {
             return text;
         }
         return text.replaceAll(STR."\{Pattern.quote(thoughtsStartTag)}.*?\{Pattern.quote(thoughtsEndTag)}", "").trim();
+    }
+
+    private static String getThoughts(final String content, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
+        if (StringUtils.isBlank(content) || !thoughtsEnabled || StringUtils.isBlank(thoughtsStartTag) || StringUtils.isBlank(thoughtsEndTag)) {
+            return null;
+        }
+        Pattern thoughtPattern = Pattern.compile(STR."\{Pattern.quote(thoughtsStartTag)}(.*?)\{Pattern.quote(thoughtsEndTag)}", Pattern.DOTALL);
+        Matcher matcher = thoughtPattern.matcher(content);
+        if (!matcher.find()) {
+            return null;
+        }
+        String thoughts = matcher.group(1);
+        return thoughts == null ? null : thoughts.trim();
+    }
+
+    private static List<String> getToolRequests(final String cleaned) {
+        if (StringUtils.isBlank(cleaned)) {
+            return List.of();
+        }
+        final Matcher matcher = TOOL_REQUEST_BLOCK.matcher(cleaned);
+        final List<String> toolRequests = new ArrayList<>();
+        while (matcher.find()) {
+            final String toolRequest = matcher.group(1) == null ? null : matcher.group(1).trim();
+            if (StringUtils.isNotBlank(toolRequest)) {
+                toolRequests.add(toolRequest);
+            }
+        }
+        return toolRequests;
     }
 
     public static Message parseJsonPayload(String text) {

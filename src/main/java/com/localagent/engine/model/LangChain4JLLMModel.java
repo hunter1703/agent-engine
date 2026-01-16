@@ -19,13 +19,15 @@ import java.util.regex.Pattern;
 public final class LangChain4JLLMModel implements LLMModel {
     private final ChatModel model;
     private final ResponseFormat responseFormat;
+    private final boolean thoughtsEnabled;
     private final String thoughtsStartTag;
     private final String thoughtsEndTag;
 
 
-    public LangChain4JLLMModel(ChatModel model, ResponseFormat responseFormat, String thoughtsStartTag, String thoughtsEndTag) {
+    public LangChain4JLLMModel(ChatModel model, ResponseFormat responseFormat, boolean thoughtsEnabled, String thoughtsStartTag, String thoughtsEndTag) {
         this.model = model;
         this.responseFormat = responseFormat;
+        this.thoughtsEnabled = thoughtsEnabled;
         this.thoughtsStartTag = thoughtsStartTag;
         this.thoughtsEndTag = thoughtsEndTag;
     }
@@ -44,6 +46,11 @@ public final class LangChain4JLLMModel implements LLMModel {
     @Override
     public ResponseFormat responseFormat() {
         return responseFormat;
+    }
+
+    @Override
+    public boolean thoughtsEnabled() {
+        return thoughtsEnabled;
     }
 
     @Override

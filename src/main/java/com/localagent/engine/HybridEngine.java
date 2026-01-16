@@ -56,7 +56,7 @@ public class HybridEngine extends AbstractAgentEngine {
 
     @Override
     public List<Message> buildPrompt(final String sessionId) {
-        return null;
+        return reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId));
     }
 
     private Message runReasoner(final String sessionId) {
@@ -105,9 +105,11 @@ public class HybridEngine extends AbstractAgentEngine {
             List<Message> prompt = toolAssistantContextBuilder.buildPrompt(getToolSessionId(sessionId));
             Message response = toolAssistantModel.generate(prompt);
             response = EngineUtils.sanitizeMessage(response, toolAssistantModel.responseFormat(), toolAssistantModel.thoughtsEnabled(), toolAssistantModel.thoughtsStartTag(), toolAssistantModel.thoughtsEndTag());
-            //TODO: include tool calls in store?
             sessionStore.appendMessage(getToolSessionId(sessionId), response);
-            toolCalls = parseToolCalls(response.getContent());
+            toolCalls = CollectionUtils.nullSafeList(response.getToolCalls());
+            if (toolCalls.isEmpty()) {
+                toolCalls = parseToolCalls(response.getContent());
+            }
             if (CollectionUtils.nullSafeList(toolCalls).size() != toolRequests.size()) {
                 invokeListeners(listener -> listener.onToolRepair(sessionId));
                 sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(TemplateUtils.renderForName("repair/empty_tool_call.txt", Map.of("toolRequests", toolRequests))));
@@ -136,7 +138,7 @@ public class HybridEngine extends AbstractAgentEngine {
             return;
         }
         final List<ToolExecution> executions = _executeTools(toolCalls);
-        sessionStore.addToolExecutions(sessionId, reasoningMessageId, executions);
+        sessionStore.addToolExecutions(getReasoningSessionId(sessionId), reasoningMessageId, executions);
         executions.forEach(toolExecution -> {
             if ("ok".equals(toolExecution.getStatus())) {
                 invokeListeners(listener -> listener.onToolExecution(sessionId, toolExecution));

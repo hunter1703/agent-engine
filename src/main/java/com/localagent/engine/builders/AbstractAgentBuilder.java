@@ -108,7 +108,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
             case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
             case ModelConfig.Provider.OPEN_AI, ModelConfig.Provider.LLAMA_CPP -> buildOpenAI(modelConfig, responseFormat);
         };
-        return new LangChain4JLLMModel(chatModel, responseFormat, modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
+        return new LangChain4JLLMModel(chatModel, responseFormat, modelConfig.isThoughtsEnabled(), modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
     }
 
     protected static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
@@ -135,7 +135,6 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     private static String resolveReasoningProtocolTemplate(boolean hybrid, String responseFormat) {
         if ("json".equalsIgnoreCase(responseFormat)) {
             if (hybrid) {
-                //TODO: add
                 return "protocol/reasoner_json.txt";
             } else {
                 return "protocol/simple_json.txt";
