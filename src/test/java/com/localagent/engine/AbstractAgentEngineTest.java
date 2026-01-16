@@ -8,59 +8,60 @@ import org.junit.jupiter.api.Test;
 
 class AbstractAgentEngineTest {
 
-    @Test
-    void invokeListenersNotifiesAllRegisteredListeners() {
-        TestEngine engine = new TestEngine();
-        List<String> called = new ArrayList<>();
-        engine.registerListener(new StartListener(called));
-        engine.registerListener(new EndListener(called));
+  @Test
+  void invokeListenersNotifiesAllRegisteredListeners() {
+    TestEngine engine = new TestEngine();
+    List<String> called = new ArrayList<>();
+    engine.registerListener(new StartListener(called));
+    engine.registerListener(new EndListener(called));
 
-        engine.trigger("s1");
+    engine.trigger("s1");
 
-        assertThat(called).containsExactly("start-s1", "end-s1");
+    assertThat(called).containsExactly("start-s1", "end-s1");
+  }
+
+  private static final class TestEngine extends AbstractAgentEngine {
+    private void trigger(final String sessionId) {
+      invokeListeners(listener -> listener.onReasoningStart(sessionId));
+      invokeListeners(listener -> listener.onReasoningEnd(sessionId));
     }
 
-    private static final class TestEngine extends AbstractAgentEngine {
-        private void trigger(final String sessionId) {
-            invokeListeners(listener -> listener.onReasoningStart(sessionId));
-            invokeListeners(listener -> listener.onReasoningEnd(sessionId));
-        }
-
-        @Override
-        public com.localagent.engine.message.Message invoke(
-                final String sessionId, final com.localagent.engine.message.Message message) {
-            return null;
-        }
-
-        @Override
-        public java.util.List<com.localagent.engine.message.Message> buildPrompt(final String sessionId) {
-            return java.util.List.of();
-        }
+    @Override
+    public com.localagent.engine.message.Message invoke(
+        final String sessionId, final com.localagent.engine.message.Message message) {
+      return null;
     }
 
-    private static final class StartListener implements AgentListener {
-        private final List<String> called;
+    @Override
+    public java.util.List<com.localagent.engine.message.Message> buildPrompt(
+        final String sessionId) {
+      return java.util.List.of();
+    }
+  }
 
-        private StartListener(final List<String> called) {
-            this.called = called;
-        }
+  private static final class StartListener implements AgentListener {
+    private final List<String> called;
 
-        @Override
-        public void onReasoningStart(final String sessionId) {
-            called.add("start-" + sessionId);
-        }
+    private StartListener(final List<String> called) {
+      this.called = called;
     }
 
-    private static final class EndListener implements AgentListener {
-        private final List<String> called;
-
-        private EndListener(final List<String> called) {
-            this.called = called;
-        }
-
-        @Override
-        public void onReasoningEnd(final String sessionId) {
-            called.add("end-" + sessionId);
-        }
+    @Override
+    public void onReasoningStart(final String sessionId) {
+      called.add("start-" + sessionId);
     }
+  }
+
+  private static final class EndListener implements AgentListener {
+    private final List<String> called;
+
+    private EndListener(final List<String> called) {
+      this.called = called;
+    }
+
+    @Override
+    public void onReasoningEnd(final String sessionId) {
+      called.add("end-" + sessionId);
+    }
+  }
 }

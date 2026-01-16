@@ -1,8 +1,8 @@
 package com.localagent.engine.message;
 
 public enum Role {
-    SYSTEM,
-    USER,
-    ASSISTANT,
-    TOOL
+  SYSTEM,
+  USER,
+  ASSISTANT,
+  TOOL
 }

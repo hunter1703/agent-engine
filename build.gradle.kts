@@ -19,7 +19,8 @@ java {
 dependencies {
     implementation(
         enforcedPlatform(
-            "${property("quarkusPlatformGroupId")}:${property("quarkusPlatformArtifactId")}:${property("quarkusPlatformVersion")}")
+            "${property("quarkusPlatformGroupId")}:${property("quarkusPlatformArtifactId")}:${property("quarkusPlatformVersion")}",
+        ),
     )
     implementation(platform("dev.langchain4j:langchain4j-bom:1.0.0-beta2"))
     implementation(platform("io.quarkiverse.langchain4j:quarkus-langchain4j-bom:0.26.1"))

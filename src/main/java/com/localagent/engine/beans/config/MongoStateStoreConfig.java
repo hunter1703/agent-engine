@@ -3,68 +3,73 @@ package com.localagent.engine.beans.config;
 import com.alibaba.fastjson2.annotation.JSONField;
 
 public class MongoStateStoreConfig extends StateStoreConfig {
-    @JSONField(name = "uri")
-    private String uri;
-    @JSONField(name = "database")
-    private String database;
-    @JSONField(name = "sessions_collection")
-    private String sessionsCollection;
-    @JSONField(name = "messages_collection")
-    private String messagesCollection;
-    @JSONField(name = "tool_execs_collection")
-    private String toolExecsCollection;
-    @JSONField(name = "summaries_collection")
-    private String summariesCollection;
+  @JSONField(name = "uri")
+  private String uri;
 
-    public MongoStateStoreConfig() {
-        super(StateStoreType.MONGO);
-    }
+  @JSONField(name = "database")
+  private String database;
 
-    public String getUri() {
-        return uri;
-    }
+  @JSONField(name = "sessions_collection")
+  private String sessionsCollection;
 
-    public void setUri(final String uri) {
-        this.uri = uri;
-    }
+  @JSONField(name = "messages_collection")
+  private String messagesCollection;
 
-    public String getDatabase() {
-        return database;
-    }
+  @JSONField(name = "tool_execs_collection")
+  private String toolExecsCollection;
 
-    public void setDatabase(final String database) {
-        this.database = database;
-    }
+  @JSONField(name = "summaries_collection")
+  private String summariesCollection;
 
-    public String getSessionsCollection() {
-        return sessionsCollection;
-    }
+  public MongoStateStoreConfig() {
+    super(StateStoreType.MONGO);
+  }
 
-    public void setSessionsCollection(final String sessionsCollection) {
-        this.sessionsCollection = sessionsCollection;
-    }
+  public String getUri() {
+    return uri;
+  }
 
-    public String getMessagesCollection() {
-        return messagesCollection;
-    }
+  public void setUri(final String uri) {
+    this.uri = uri;
+  }
 
-    public void setMessagesCollection(final String messagesCollection) {
-        this.messagesCollection = messagesCollection;
-    }
+  public String getDatabase() {
+    return database;
+  }
 
-    public String getToolExecsCollection() {
-        return toolExecsCollection;
-    }
+  public void setDatabase(final String database) {
+    this.database = database;
+  }
 
-    public void setToolExecsCollection(final String toolExecsCollection) {
-        this.toolExecsCollection = toolExecsCollection;
-    }
+  public String getSessionsCollection() {
+    return sessionsCollection;
+  }
 
-    public String getSummariesCollection() {
-        return summariesCollection;
-    }
+  public void setSessionsCollection(final String sessionsCollection) {
+    this.sessionsCollection = sessionsCollection;
+  }
 
-    public void setSummariesCollection(final String summariesCollection) {
-        this.summariesCollection = summariesCollection;
-    }
+  public String getMessagesCollection() {
+    return messagesCollection;
+  }
+
+  public void setMessagesCollection(final String messagesCollection) {
+    this.messagesCollection = messagesCollection;
+  }
+
+  public String getToolExecsCollection() {
+    return toolExecsCollection;
+  }
+
+  public void setToolExecsCollection(final String toolExecsCollection) {
+    this.toolExecsCollection = toolExecsCollection;
+  }
+
+  public String getSummariesCollection() {
+    return summariesCollection;
+  }
+
+  public void setSummariesCollection(final String summariesCollection) {
+    this.summariesCollection = summariesCollection;
+  }
 }

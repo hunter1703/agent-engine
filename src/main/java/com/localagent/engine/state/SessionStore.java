@@ -8,15 +8,20 @@ import java.util.Map;
 
 public interface SessionStore {
 
-    List<Message> getMessages(String sessionId);
+  List<Message> getMessages(String sessionId);
 
-    String appendMessage(String sessionId, Message message);
+  String appendMessage(String sessionId, Message message);
 
-    void addToolExecutions(String sessionId, String messageId, List<ToolExecution> toolExecutions);
+  void addToolExecutions(String sessionId, String messageId, List<ToolExecution> toolExecutions);
 
-    Map<String, List<ToolExecution>> getToolExecutions(String sessionId, List<String> messageIds);
+  Map<String, List<ToolExecution>> getToolExecutions(String sessionId, List<String> messageIds);
 
-    List<Summary> getSummaries(String sessionId);
+  List<Summary> getSummaries(String sessionId);
 
-    void addSummary(String sessionId, String summarizedFromMessageId, String summarizedUptoMessageId, String summary, long createdAt);
+  void addSummary(
+      String sessionId,
+      String summarizedFromMessageId,
+      String summarizedUptoMessageId,
+      String summary,
+      long createdAt);
 }

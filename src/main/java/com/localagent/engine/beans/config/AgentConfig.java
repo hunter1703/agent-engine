@@ -3,53 +3,54 @@ package com.localagent.engine.beans.config;
 import com.alibaba.fastjson2.annotation.JSONField;
 
 public final class AgentConfig implements Config {
-    private ToolsConfig tools = new ToolsConfig();
-    private EngineConfig engine = new EngineConfig();
-    private ContextConfig context = new SummarizingContextConfig();
-    @JSONField(name = "state_store")
-    private StateStoreConfig stateStore = new MemoryStateStoreConfig();
+  private ToolsConfig tools = new ToolsConfig();
+  private EngineConfig engine = new EngineConfig();
+  private ContextConfig context = new SummarizingContextConfig();
 
-    @Override
-    public void validate() {
-        tools.validate();
-        engine.validate();
-        context.validate();
-        stateStore.validate();
-    }
+  @JSONField(name = "state_store")
+  private StateStoreConfig stateStore = new MemoryStateStoreConfig();
 
-    public ToolsConfig getTools() {
-        return tools;
-    }
+  @Override
+  public void validate() {
+    tools.validate();
+    engine.validate();
+    context.validate();
+    stateStore.validate();
+  }
 
-    public void setTools(final ToolsConfig tools) {
-        this.tools = tools;
-    }
+  public ToolsConfig getTools() {
+    return tools;
+  }
 
-    public EngineConfig getEngine() {
-        return engine;
-    }
+  public void setTools(final ToolsConfig tools) {
+    this.tools = tools;
+  }
 
-    public void setEngine(final EngineConfig engine) {
-        this.engine = engine;
-    }
+  public EngineConfig getEngine() {
+    return engine;
+  }
 
-    public ContextConfig getContext() {
-        return context;
-    }
+  public void setEngine(final EngineConfig engine) {
+    this.engine = engine;
+  }
 
-    public void setContext(final ContextConfig context) {
-        this.context = context;
-    }
+  public ContextConfig getContext() {
+    return context;
+  }
 
-    public StateStoreConfig getStateStore() {
-        return stateStore;
-    }
+  public void setContext(final ContextConfig context) {
+    this.context = context;
+  }
 
-    public void setStateStore(final StateStoreConfig stateStore) {
-        this.stateStore = stateStore;
-    }
+  public StateStoreConfig getStateStore() {
+    return stateStore;
+  }
 
-    public static AgentConfig empty() {
-        return new AgentConfig();
-    }
+  public void setStateStore(final StateStoreConfig stateStore) {
+    this.stateStore = stateStore;
+  }
+
+  public static AgentConfig empty() {
+    return new AgentConfig();
+  }
 }

@@ -10,28 +10,27 @@ import org.junit.jupiter.api.io.TempDir;
 
 class YamlUtilsTest {
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void toMapReturnsNullOnBlank() {
-        assertThat(YamlUtils.toMap(" ")).isNull();
-    }
+  @Test
+  void toMapReturnsNullOnBlank() {
+    assertThat(YamlUtils.toMap(" ")).isNull();
+  }
 
-    @Test
-    void toMapParsesYaml() {
-        Map<String, Object> parsed = YamlUtils.toMap("name: test\ncount: 2\n");
+  @Test
+  void toMapParsesYaml() {
+    Map<String, Object> parsed = YamlUtils.toMap("name: test\ncount: 2\n");
 
-        assertThat(parsed).containsEntry("name", "test").containsEntry("count", 2);
-    }
+    assertThat(parsed).containsEntry("name", "test").containsEntry("count", 2);
+  }
 
-    @Test
-    void fromFileReadsYaml() throws Exception {
-        Path path = tempDir.resolve("data.yaml");
-        Files.writeString(path, "name: example\n");
+  @Test
+  void fromFileReadsYaml() throws Exception {
+    Path path = tempDir.resolve("data.yaml");
+    Files.writeString(path, "name: example\n");
 
-        Map<String, Object> parsed = YamlUtils.fromFile(path, Map.class);
+    Map<String, Object> parsed = YamlUtils.fromFile(path, Map.class);
 
-        assertThat(parsed).containsEntry("name", "example");
-    }
+    assertThat(parsed).containsEntry("name", "example");
+  }
 }

@@ -1,7 +1,6 @@
 package com.localagent.engine.utils;
 
 import com.localagent.engine.beans.config.ModelConfig;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -11,32 +10,31 @@ import java.nio.file.Paths;
 
 public final class ResourceUtils {
 
-    private ResourceUtils() {
+  private ResourceUtils() {}
+
+  public static String loadResourceAsString(final String path) {
+    try (InputStream stream = TemplateUtils.class.getResourceAsStream(path)) {
+      if (stream == null) {
+        return "";
+      }
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      return "";
+    }
+  }
+
+  public static ModelConfig loadModelConfig(final String configPath) {
+    if (StringUtils.isBlank(configPath)) {
+      return null;
     }
 
-    public static String loadResourceAsString(final String path) {
-        try (InputStream stream = TemplateUtils.class.getResourceAsStream(path)) {
-            if (stream == null) {
-                return "";
-            }
-            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return "";
-        }
+    final Path path = Paths.get(configPath);
+    if (!Files.exists(path)) {
+      return null;
     }
-
-    public static ModelConfig loadModelConfig(final String configPath) {
-        if (StringUtils.isBlank(configPath)) {
-            return null;
-        }
-
-        final Path path = Paths.get(configPath);
-        if (!Files.exists(path)) {
-            return null;
-        }
-        if (configPath.endsWith(".json")) {
-            return JsonUtils.fromFile(path, ModelConfig.class);
-        }
-        return YamlUtils.fromFile(path, ModelConfig.class);
+    if (configPath.endsWith(".json")) {
+      return JsonUtils.fromFile(path, ModelConfig.class);
     }
+    return YamlUtils.fromFile(path, ModelConfig.class);
+  }
 }

@@ -10,47 +10,47 @@ import org.junit.jupiter.api.Test;
 
 class ShellCommandToolTest {
 
-    @Test
-    void executeRejectsBlankCommands() {
-        ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
+  @Test
+  void executeRejectsBlankCommands() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
 
-        assertThatThrownBy(() -> tool.execute(null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Empty command");
-    }
+    assertThatThrownBy(() -> tool.execute(null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Empty command");
+  }
 
-    @Test
-    void executeBlocksRmCommands() {
-        ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
+  @Test
+  void executeBlocksRmCommands() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
 
-        assertThatThrownBy(() -> tool.execute(Map.of("command", "rm -rf /")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Blocked");
-    }
+    assertThatThrownBy(() -> tool.execute(Map.of("command", "rm -rf /")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Blocked");
+  }
 
-    @Test
-    void executeReturnsOutputForSafeCommand() {
-        ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(2));
+  @Test
+  void executeReturnsOutputForSafeCommand() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(2));
 
-        String output = tool.execute(Map.of("command", "printf 'ok'"));
+    String output = tool.execute(Map.of("command", "printf 'ok'"));
 
-        assertThat(output).isEqualTo("ok");
-    }
+    assertThat(output).isEqualTo("ok");
+  }
 
-    @Test
-    void exposesToolMetadata() {
-        ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
+  @Test
+  void exposesToolMetadata() {
+    ShellCommandTool tool = new ShellCommandTool(Duration.ofSeconds(1));
 
-        assertThat(tool.name()).isEqualTo("run_cmd");
-        assertThat(tool.description()).contains("Execute ONE shell command");
-    }
+    assertThat(tool.name()).isEqualTo("run_cmd");
+    assertThat(tool.description()).contains("Execute ONE shell command");
+  }
 
-    @Test
-    void providerCreatesToolFromConfig() {
-        ShellCommandToolProvider provider = new ShellCommandToolProvider();
+  @Test
+  void providerCreatesToolFromConfig() {
+    ShellCommandToolProvider provider = new ShellCommandToolProvider();
 
-        assertThat(provider.agentName()).isEqualTo("shell_agent");
-        assertThat(provider.toolName()).isEqualTo("run_cmd");
-        assertThat(provider.create(Map.of("timeout_seconds", 5), AgentConfig.empty())).isNotNull();
-    }
+    assertThat(provider.agentName()).isEqualTo("shell_agent");
+    assertThat(provider.toolName()).isEqualTo("run_cmd");
+    assertThat(provider.create(Map.of("timeout_seconds", 5), AgentConfig.empty())).isNotNull();
+  }
 }

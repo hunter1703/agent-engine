@@ -1,22 +1,22 @@
 package com.localagent.engine.beans.config;
 
 public abstract class StateStoreConfig implements Config {
-    private String type;
+  private String type;
 
-    protected StateStoreConfig(final StateStoreType stateStoreType) {
-        this.type = stateStoreType.name().toLowerCase();
-    }
+  protected StateStoreConfig(final StateStoreType stateStoreType) {
+    this.type = stateStoreType.name().toLowerCase();
+  }
 
-    public String getType() {
-        return type;
-    }
+  public String getType() {
+    return type;
+  }
 
-    public void setType(final String type) {
-        this.type = type;
-    }
+  public void setType(final String type) {
+    this.type = type;
+  }
 
-    protected enum StateStoreType {
-        MEMORY,
-        MONGO
-    }
+  protected enum StateStoreType {
+    MEMORY,
+    MONGO
+  }
 }

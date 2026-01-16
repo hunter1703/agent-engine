@@ -2,13 +2,13 @@ package com.localagent.engine.utils;
 
 public final class StringUtils {
 
-    private StringUtils(){}
+  private StringUtils() {}
 
-    public static boolean isBlank(final String str) {
-        return str == null || str.isBlank();
-    }
+  public static boolean isBlank(final String str) {
+    return str == null || str.isBlank();
+  }
 
-    public static boolean isNotBlank(final String str) {
-        return !isBlank(str);
-    }
+  public static boolean isNotBlank(final String str) {
+    return !isBlank(str);
+  }
 }

@@ -11,45 +11,46 @@ import org.junit.jupiter.api.Test;
 
 class BaseContextBuilderTest {
 
-    @Test
-    void buildPromptIncludesProtocolToolsSystemAndMessages() {
-        InMemorySessionStore sessionStore = new InMemorySessionStore();
-        sessionStore.appendMessage("session", Message.user("hi"));
+  @Test
+  void buildPromptIncludesProtocolToolsSystemAndMessages() {
+    InMemorySessionStore sessionStore = new InMemorySessionStore();
+    sessionStore.appendMessage("session", Message.user("hi"));
 
-        List<AgentTool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
-        BaseContextBuilder builder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    List<AgentTool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
+    BaseContextBuilder builder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
 
-        List<Message> prompt = builder.buildPrompt("session");
+    List<Message> prompt = builder.buildPrompt("session");
 
-        assertThat(prompt).hasSize(4);
-        assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
-        assertThat(prompt.get(0).getRole()).isEqualTo(Role.SYSTEM);
-        assertThat(prompt.get(1).getContent()).contains("<AVAILABLE_TOOLS>");
-        assertThat(prompt.get(1).getContent()).contains("calc");
-        assertThat(prompt.get(2).getContent()).isEqualTo("system");
-        assertThat(prompt.get(3).getRole()).isEqualTo(Role.USER);
+    assertThat(prompt).hasSize(4);
+    assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
+    assertThat(prompt.get(0).getRole()).isEqualTo(Role.SYSTEM);
+    assertThat(prompt.get(1).getContent()).contains("<AVAILABLE_TOOLS>");
+    assertThat(prompt.get(1).getContent()).contains("calc");
+    assertThat(prompt.get(2).getContent()).isEqualTo("system");
+    assertThat(prompt.get(3).getRole()).isEqualTo(Role.USER);
+  }
+
+  @Test
+  void buildPromptSkipsToolBlockWhenNoToolsProvided() {
+    InMemorySessionStore sessionStore = new InMemorySessionStore();
+    sessionStore.appendMessage("session", Message.user("hi"));
+
+    BaseContextBuilder builder =
+        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+
+    List<Message> prompt = builder.buildPrompt("session");
+
+    assertThat(prompt).hasSize(3);
+    assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
+    assertThat(prompt.get(1).getContent()).isEqualTo("system");
+    assertThat(prompt.get(2).getRole()).isEqualTo(Role.USER);
+  }
+
+  private record StubTool(String name, String description) implements AgentTool {
+
+    @Override
+    public String execute(java.util.Map<String, Object> args) {
+      return "ok";
     }
-
-    @Test
-    void buildPromptSkipsToolBlockWhenNoToolsProvided() {
-        InMemorySessionStore sessionStore = new InMemorySessionStore();
-        sessionStore.appendMessage("session", Message.user("hi"));
-
-        BaseContextBuilder builder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-
-        List<Message> prompt = builder.buildPrompt("session");
-
-        assertThat(prompt).hasSize(3);
-        assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
-        assertThat(prompt.get(1).getContent()).isEqualTo("system");
-        assertThat(prompt.get(2).getRole()).isEqualTo(Role.USER);
-    }
-
-    private record StubTool(String name, String description) implements AgentTool {
-
-        @Override
-        public String execute(java.util.Map<String, Object> args) {
-            return "ok";
-        }
-    }
+  }
 }

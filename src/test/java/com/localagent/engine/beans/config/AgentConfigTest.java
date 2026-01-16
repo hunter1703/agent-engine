@@ -7,26 +7,26 @@ import org.junit.jupiter.api.Test;
 
 class AgentConfigTest {
 
-    @Test
-    void defaultsProvideNonNullSections() {
-        AgentConfig config = AgentConfig.empty();
+  @Test
+  void defaultsProvideNonNullSections() {
+    AgentConfig config = AgentConfig.empty();
 
-        assertThat(config.getTools()).isNotNull();
-        assertThat(config.getEngine()).isNotNull();
-        assertThat(config.getContext()).isNotNull();
-        assertThat(config.getStateStore()).isNotNull();
-    }
+    assertThat(config.getTools()).isNotNull();
+    assertThat(config.getEngine()).isNotNull();
+    assertThat(config.getContext()).isNotNull();
+    assertThat(config.getStateStore()).isNotNull();
+  }
 
-    @Test
-    void validateDelegatesToEngineConfig() {
-        AgentConfig config = AgentConfig.empty();
+  @Test
+  void validateDelegatesToEngineConfig() {
+    AgentConfig config = AgentConfig.empty();
 
-        assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
-        EngineConfig engine = config.getEngine();
-        engine.setReasoning("reasoner.json");
-        engine.setPrompt("prompt");
+    EngineConfig engine = config.getEngine();
+    engine.setReasoning("reasoner.json");
+    engine.setPrompt("prompt");
 
-        config.validate();
-    }
+    config.validate();
+  }
 }

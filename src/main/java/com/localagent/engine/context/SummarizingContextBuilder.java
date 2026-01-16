@@ -1,18 +1,18 @@
-//package com.localagent.engine.context;
+// package com.localagent.engine.context;
 //
-//import com.localagent.engine.message.Message;
-//import com.localagent.engine.message.Role;
-//import com.localagent.engine.model.LLMModel;
-//import com.localagent.engine.state.SessionStore;
-//import com.localagent.engine.tools.AgentTool;
+// import com.localagent.engine.message.Message;
+// import com.localagent.engine.message.Role;
+// import com.localagent.engine.model.LLMModel;
+// import com.localagent.engine.state.SessionStore;
+// import com.localagent.engine.tools.AgentTool;
 //
-//import java.time.Instant;
-//import java.util.ArrayList;
-//import java.util.Comparator;
-//import java.util.List;
-//import java.util.Map;
+// import java.time.Instant;
+// import java.util.ArrayList;
+// import java.util.Comparator;
+// import java.util.List;
+// import java.util.Map;
 //
-//public final class SummarizingContextBuilder extends BaseContextBuilder {
+// public final class SummarizingContextBuilder extends BaseContextBuilder {
 //    private final LLMModel summarizerModel;
 //    private final long triggerThreshold;
 //    private final long recencyThreshold;
@@ -55,7 +55,8 @@
 //
 //    private SummaryContext ensureSummaries(final String sessionId, final List<Message> messages) {
 //        List<Summary> summaries = sortedSummaries(sessionId);
-//        int lastSummarizedMessageId = summaries.isEmpty() ? "" : summaries.getLast().uptoSummarizedMessageId();
+//        int lastSummarizedMessageId = summaries.isEmpty() ? "" :
+// summaries.getLast().uptoSummarizedMessageId();
 //
 //        int tokensSummaries = countTokensSummaries(summaries);
 //
@@ -74,9 +75,11 @@
 //                Message summary = summarizerModel.generate(buildSummaryPrompt(toSummarize));
 //                String summaryText = summary.getContent();
 //                int tokens = estimateTokens(summaryText);
-//                stateStore.addSummary(sessionId, summarizeUntil, summaryText, tokens, Instant.now().toString());
+//                stateStore.addSummary(sessionId, summarizeUntil, summaryText, tokens,
+// Instant.now().toString());
 //                summaries = sortedSummaries(sessionId);
-//                lastSummaryIndex = summaries.isEmpty() ? -1 : asInt(summaries.get(summaries.size() - 1).get("upto_idx"), -1);
+//                lastSummaryIndex = summaries.isEmpty() ? -1 : asInt(summaries.get(summaries.size()
+// - 1).get("upto_idx"), -1);
 //            }
 //        }
 //        return new SummaryContext(summaries, lastSummaryIndex, keepFromIndex);
@@ -98,8 +101,10 @@
 //    }
 //
 //    private List<Message> buildSummaryPrompt(final List<Message> messages) {
-//        String header = "You are a concise meeting recorder. Summarize the following conversation "
-//            + "into a compact, factual brief. Preserve key facts, IDs, file paths, commands, decisions, "
+//        String header = "You are a concise meeting recorder. Summarize the following conversation
+// "
+//            + "into a compact, factual brief. Preserve key facts, IDs, file paths, commands,
+// decisions, "
 //            + "and requirements. Avoid speculation. Keep it readable and short.";
 //        StringBuilder transcript = new StringBuilder();
 //        for (Message message : messages) {
@@ -134,7 +139,8 @@
 //        return total;
 //    }
 //
-//    private int totalTokens(final List<Message> messages, final List<Map<String, Object>> summaries) {
+//    private int totalTokens(final List<Message> messages, final List<Map<String, Object>>
+// summaries) {
 //        return countTokensMessages(messages) + countTokensSummaries(summaries);
 //    }
 //
@@ -158,6 +164,7 @@
 //        return Math.max(1, (text.length() + 2) / 3);
 //    }
 //
-//    private record SummaryContext(final List<Map<String, Object>> summaries, final int lastSummaryIndex, final int keepFromIndex) {
+//    private record SummaryContext(final List<Map<String, Object>> summaries, final int
+// lastSummaryIndex, final int keepFromIndex) {
 //    }
-//}
+// }
