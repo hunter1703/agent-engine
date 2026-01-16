@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -17,14 +17,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class LangChain4JLLMModel implements LLMModel {
-    private final ChatModel model;
+    private final ChatLanguageModel model;
     private final ResponseFormat responseFormat;
     private final boolean thoughtsEnabled;
     private final String thoughtsStartTag;
     private final String thoughtsEndTag;
 
 
-    public LangChain4JLLMModel(final ChatModel model, final ResponseFormat responseFormat, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
+    public LangChain4JLLMModel(final ChatLanguageModel model, final ResponseFormat responseFormat, final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
         this.model = model;
         this.responseFormat = responseFormat;
         this.thoughtsEnabled = thoughtsEnabled;

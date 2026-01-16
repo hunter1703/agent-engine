@@ -1,0 +1,153 @@
+package com.localagent.engine.utils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.localagent.engine.message.Message;
+import com.localagent.engine.message.Role;
+import com.localagent.engine.state.InMemorySessionStore;
+import com.localagent.engine.state.SessionStore;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class EngineUtilsTest {
+
+    @Test
+    void invocationsThisTurnCountsAssistantMessagesSinceLastUser() {
+        SessionStore sessionStore = new InMemorySessionStore();
+        String sessionId = "session";
+
+        sessionStore.appendMessage(sessionId, Message.user("hello"));
+        sessionStore.appendMessage(sessionId, Message.assistant("first", null));
+        sessionStore.appendMessage(sessionId, Message.assistant("second", null));
+        sessionStore.appendMessage(sessionId, Message.user("reset"));
+        sessionStore.appendMessage(sessionId, Message.assistant("third", null));
+
+        assertThat(EngineUtils.invocationsThisTurn(sessionStore, sessionId)).isEqualTo(1);
+    }
+
+    @Test
+    void sanitizeMessageReturnsEmptyPayloadForInvalidJsonResponse() {
+        Message response = new Message(Role.ASSISTANT, "not-json", null, null, null);
+        ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.JSON).build();
+
+        Message sanitized = EngineUtils.sanitizeMessage(response, format, false, "<think>", "</think>");
+
+        assertThat(sanitized.getContent()).isEmpty();
+        assertThat(sanitized.getToolRequests()).isEmpty();
+        assertThat(sanitized.getToolCalls()).isEmpty();
+    }
+
+    @Test
+    void sanitizeMessageParsesJsonPayload() {
+        String payload = "{\"finalAnswer\":\"ok\",\"toolRequests\":[{\"id\":\"1\",\"name\":\"echo\"}]}";
+        Message response = new Message(Role.ASSISTANT, payload, null, null, null);
+        ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.JSON).build();
+
+        Message sanitized = EngineUtils.sanitizeMessage(response, format, false, "<think>", "</think>");
+
+        assertThat(sanitized.getContent()).isEqualTo("ok");
+        assertThat(sanitized.getToolRequests()).hasSize(1);
+    }
+
+    @Test
+    void sanitizeMessageExtractsThoughtsAndToolRequestsFromText() {
+        String content = "<think>plan</think>\nTOOL_REQUEST: {\"id\":\"1\",\"name\":\"echo\"}";
+        Message response = new Message(Role.ASSISTANT, content, null, null, null);
+        ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+
+        Message sanitized = EngineUtils.sanitizeMessage(response, format, true, "<think>", "</think>");
+
+        assertThat(sanitized.getThoughts()).isEqualTo("plan");
+        assertThat(sanitized.getToolRequests()).containsExactly("{\"id\":\"1\",\"name\":\"echo\"}");
+        assertThat(sanitized.getContent()).isNull();
+    }
+
+    @Test
+    void parseJsonPayloadHandlesCodeFencesAndToolCalls() {
+        String payload = """
+            ```json
+            {"finalAnswer":"ok","thoughts":"t","toolRequests":[{"id":"t1","name":"echo","args":{"text":"hi"}}]}
+            ```
+            """;
+
+        Message parsed = EngineUtils.parseJsonPayload(payload);
+
+        assertThat(parsed.getContent()).isEqualTo("ok");
+        assertThat(parsed.getThoughts()).isEqualTo("t");
+        assertThat(parsed.getToolCalls()).hasSize(1);
+        assertThat(parsed.getToolCalls().getFirst().name()).isEqualTo("echo");
+        assertThat(parsed.getToolRequests()).hasSize(1);
+    }
+
+    @Test
+    void parseJsonPayloadFallsBackToToolNameAndArgs() {
+        String payload = "{\"tool_name\":\"echo\",\"tool_args\":{\"text\":\"hi\"}}";
+
+        Message parsed = EngineUtils.parseJsonPayload(payload);
+
+        assertThat(parsed.getToolCalls()).hasSize(1);
+        assertThat(parsed.getToolCalls().getFirst().name()).isEqualTo("echo");
+        assertThat(parsed.getToolRequests()).hasSize(1);
+        assertThat(parsed.getToolRequests().getFirst()).contains("echo");
+    }
+
+    @Test
+    void parseJsonPayloadReturnsNullForInvalidJson() {
+        Message parsed = EngineUtils.parseJsonPayload("not-json");
+
+        assertThat(parsed).isNull();
+    }
+
+    @Test
+    void parseToolRequestInfoParsesBulletListKeys() {
+        List<ToolRequest> parsed = EngineUtils.parseToolRequestInfo(List.of("- id: 9\n- tool: ping"));
+
+        assertThat(parsed.getFirst().id()).isEqualTo("9");
+        assertThat(parsed.getFirst().name()).isEqualTo("ping");
+    }
+
+    @Test
+    void parseToolRequestInfoExtractsIdAndNameFromJsonOrLines() {
+        List<ToolRequest> parsed = EngineUtils.parseToolRequestInfo(
+                List.of("{\"id\":\"abc\",\"name\":\"tool\"}", "id: 2\nname: calc"));
+
+        assertThat(parsed).hasSize(2);
+        assertThat(parsed.getFirst().id()).isEqualTo("abc");
+        assertThat(parsed.get(1).name()).isEqualTo("calc");
+    }
+
+    @Test
+    void getRepairMessageIfInvalidFlagsMixedFinalAndToolRequests() {
+        Message message = new Message(
+                Role.ASSISTANT,
+                "answer",
+                null,
+                List.of("{\"name\":\"tool\"}"),
+                List.of());
+
+        String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
+
+        assertThat(repairMessage).contains("You cannot give both final answer and tool requests");
+        assertThat(repairMessage).contains("Each tool request must include an \"id\"");
+    }
+
+    @Test
+    void getRepairMessageIfInvalidFlagsEmptyResponse() {
+        Message message = new Message(Role.ASSISTANT, null, null, List.of(), List.of());
+
+        String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
+
+        assertThat(repairMessage).contains("You must provide a final answer or tool requests");
+    }
+
+    @Test
+    void getRepairMessageIfInvalidReturnsEmptyForValidResponse() {
+        Message message = new Message(Role.ASSISTANT, "ok", null, List.of(), List.of());
+
+        String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
+
+        assertThat(repairMessage).isEmpty();
+    }
+}

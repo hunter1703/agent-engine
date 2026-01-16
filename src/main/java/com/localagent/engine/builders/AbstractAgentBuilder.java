@@ -17,7 +17,7 @@ import com.localagent.engine.utils.JsonUtils;
 import com.localagent.engine.utils.ResourceUtils;
 import com.localagent.engine.utils.StringUtils;
 import com.localagent.engine.utils.TemplateUtils;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.*;
@@ -94,7 +94,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
 
     protected static JsonSchemaElement buildJsonSchemaElement(final Map<String, Object> jsonSchema) {
         if (jsonSchema == null) {
-            return JsonRawSchema.from("{}");
+            return JsonObjectSchema.builder().build();
         }
         final Object refValue = jsonSchema.get("$ref");
         if (refValue instanceof final String reference) {
@@ -110,7 +110,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
             return JsonAnyOfSchema.builder().anyOf(oneOfElements).build();
         }
         if (!allOfElements.isEmpty()) {
-            return JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
+            return JsonObjectSchema.builder().build();
         }
         final JsonSchemaElement enumSchema = buildEnumSchema(jsonSchema);
         if (enumSchema != null) {
@@ -141,7 +141,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
             case "integer" -> buildIntegerSchema(jsonSchema);
             case "number" -> buildNumberSchema(jsonSchema);
             case "boolean" -> buildBooleanSchema(jsonSchema);
-            case "null" -> new JsonNullSchema();
+            case "null" -> JsonEnumSchema.builder().enumValues("null").build();
             case "" -> {
                 if (jsonSchema.containsKey("properties")) {
                     yield buildObjectSchema(jsonSchema);
@@ -149,13 +149,13 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
                 if (jsonSchema.containsKey("items")) {
                     yield buildArraySchema(jsonSchema);
                 }
-                yield JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
+                yield JsonObjectSchema.builder().build();
             }
-            default -> JsonRawSchema.from(JsonUtils.toJson(jsonSchema));
+            default -> JsonStringSchema.builder().build();
         };
         final boolean nullable = Boolean.TRUE.equals(jsonSchema.get("nullable"));
         if (nullable) {
-            return JsonAnyOfSchema.builder().anyOf(element, new JsonNullSchema()).build();
+            return JsonAnyOfSchema.builder().anyOf(element, JsonEnumSchema.builder().enumValues("null").build()).build();
         }
         return element;
     }
@@ -319,24 +319,27 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     protected static LLMModel buildChatModel(final ModelConfig modelConfig) {
         final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
         final ResponseFormat responseFormat = getResponseFormat(modelConfig);
-        final ChatModel chatModel = switch (provider) {
+        final ChatLanguageModel chatModel = switch (provider) {
             case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
             case ModelConfig.Provider.OPEN_AI, ModelConfig.Provider.LLAMA_CPP -> buildOpenAI(modelConfig, responseFormat);
         };
         return new LangChain4JLLMModel(chatModel, responseFormat, modelConfig.isThoughtsEnabled(), modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
     }
 
-    protected static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+    protected static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+        final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
         return OllamaChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
                 .temperature(config.getTemperature()).topK(config.getTopK()).topP(config.getTopP())
                 .repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
-                .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
+                .numCtx(config.getMaxContextLength()).stop(config.getStopTokens())
+                .format(format).build();
     }
 
-    protected static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
+    protected static ChatLanguageModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
+        final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
         return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
                 .temperature(config.getTemperature()).topP(config.getTopP())
-                .stop(config.getStopTokens()).responseFormat(responseFormat).build();
+                .stop(config.getStopTokens()).responseFormat(format).build();
     }
 
     protected SessionStore buildStateStore(final StateStoreConfig config) {

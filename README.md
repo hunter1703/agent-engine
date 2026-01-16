@@ -18,6 +18,14 @@ implementation remains untouched in `~/Projects/local-agent`.
 ./gradlew test
 ```
 
+## Testing
+```bash
+./gradlew test
+```
+
+- Coverage report: `build/reports/jacoco/test/html/index.html`
+- Add new tests under `src/test/java` using JUnit5 + AssertJ
+
 To run the stdio server:
 ```bash
 ./gradlew run --args="server"

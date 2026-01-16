@@ -159,16 +159,19 @@ public class HybridEngine extends AbstractAgentEngine {
                 invokeListeners(listener -> listener.onToolExecution(sessionId, toolExecution));
             }
         });
-        final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions, ToolExecution::getId, Function.identity());
+        final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(
+            executions,
+            execution -> execution.getToolCall() == null ? null : execution.getToolCall().id(),
+            Function.identity());
         final List<ToolCall> failed = new ArrayList<>();
         final List<String> failedToolRequests = new ArrayList<>();
         final Map<String, String> failedToolsVsErrors = new HashMap<>();
         for (int i = 0; i < toolCalls.size(); i++) {
             final ToolCall toolCall = toolCalls.get(i);
             final ToolExecution toolResult = toolCallIdVsResult.get(toolCall.id());
-            if (!"ok".equals(toolResult.getStatus())) {
+            if (toolResult == null || !"ok".equals(toolResult.getStatus())) {
                 failed.add(toolCall);
-                failedToolsVsErrors.put(JsonUtils.toJson(toolCall), toolResult.getOutput());
+                failedToolsVsErrors.put(JsonUtils.toJson(toolCall), toolResult == null ? "Missing tool execution" : toolResult.getOutput());
                 failedToolRequests.add(toolRequests.get(i));
             }
         }
