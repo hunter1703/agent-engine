@@ -5,15 +5,15 @@ subprojects {
 }
 
 tasks.register('build') {
-    dependsOn ':engine:build', ':cli:build', ':rest:build'
+    dependsOn ':engine:build', ':interfaces:cli:build', ':interfaces:rest:build'
 }
 
 tasks.register('test') {
-    dependsOn ':engine:test', ':cli:test', ':rest:test'
+    dependsOn ':engine:test', ':interfaces:cli:test', ':interfaces:rest:test'
 }
 
 tasks.register('restDev') {
-    dependsOn ':rest:quarkusDev'
+    dependsOn ':interfaces:rest:quarkusDev'
 }
 
 tasks.register('syncPlugins', Copy) {

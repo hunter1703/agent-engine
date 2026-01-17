@@ -17,4 +17,4 @@ jobs:
           java-version: 21
           cache: gradle
       - name: Run tests
-        run: ./gradlew :engine:build :cli:test :rest:test
+        run: ./gradlew :engine:build :interfaces:cli:test :interfaces:rest:test

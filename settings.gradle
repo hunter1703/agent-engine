@@ -1,5 +1,6 @@
 rootProject.name = 'agent-engine'
 
 include 'engine'
-include 'cli'
-include 'rest'
+include 'interfaces'
+include 'interfaces:cli'
+include 'interfaces:rest'

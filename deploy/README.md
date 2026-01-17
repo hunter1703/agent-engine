@@ -2,10 +2,10 @@
 
 ## Build REST Service
 ```bash
-./gradlew :rest:build
+./gradlew :interfaces:rest:build
 ```
 
-This produces the Quarkus runnable distribution in `rest/build/quarkus-app/`.
+This produces the Quarkus runnable distribution in `interfaces/rest/build/quarkus-app/`.
 
 ## Build Container
 ```bash
@@ -18,7 +18,7 @@ The container expects plugin JARs under `/app/plugins`.
 1. Copy the Quarkus build output and plugins to `/opt/agent-engine`:
    ```bash
    sudo mkdir -p /opt/agent-engine
-   sudo cp -R rest/build/quarkus-app/* /opt/agent-engine/
+   sudo cp -R interfaces/rest/build/quarkus-app/* /opt/agent-engine/
    sudo cp -R plugins /opt/agent-engine/
    ```
 2. Install the unit file:

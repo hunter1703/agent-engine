@@ -6,8 +6,8 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 
 ## Project Layout
 - `engine/src/main/java/com/agentengine/engine`: core engine, config, context, state, tooling
-- `cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
-- `rest/src/main/java/com/agentengine/api`: REST service layer
+- `interfaces/cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
+- `interfaces/rest/src/main/java/com/agentengine/api`: REST service layer
 - `plugins/`: optional tool/plugin projects (build into JARs)
 - `models/`: model registry configs (JSON/YAML)
 - `plugins/<plugin>/config`: agent configs (JSON/YAML) shipped with plugins
@@ -15,8 +15,9 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 
 ## Modules
 - `engine`: core engine library
-- `cli`: stdio interface (depends on `engine`)
-- `rest`: REST service (depends on `engine`)
+- `interfaces`: umbrella module for transports
+  - `interfaces:cli`: stdio interface (depends on `engine`)
+  - `interfaces:rest`: REST service (depends on `engine`)
 
 ## Quick Start
 ```bash
@@ -26,7 +27,7 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 ## Service
 Run the REST service locally:
 ```bash
-./gradlew :rest:quarkusDev
+./gradlew :interfaces:rest:quarkusDev
 ```
 
 Or use the root shortcut:
@@ -55,7 +56,7 @@ Environment defaults:
 ## CLI
 To run the stdio server:
 ```bash
-./gradlew :cli:run --args="server"
+./gradlew :interfaces:cli:run --args="server"
 ```
 
 ## Plugins
@@ -87,7 +88,7 @@ so the runtime `PLUGIN_DIR` can load them.
 ## Deployment
 Build the REST app and container image:
 ```bash
-./gradlew :rest:build
+./gradlew :interfaces:rest:build
 docker build -f deploy/Dockerfile -t agent-engine:latest .
 ```
 
