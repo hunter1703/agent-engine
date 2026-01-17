@@ -72,6 +72,12 @@ cd plugins/shell-agent
 ./gradlew build
 ```
 
+Build the echo plugin:
+```bash
+cd plugins/echo-agent
+./gradlew build
+```
+
 Build the engine JAR first so the plugin compiles:
 ```bash
 ./gradlew :engine:jar
@@ -95,6 +101,11 @@ docker build -f deploy/Dockerfile -t agent-engine:latest .
 Systemd service template:
 - `deploy/agent-engine.service`
 - Deployment guide: `deploy/README.md`
+
+## Model Config Validation
+```bash
+./gradlew :engine:validateModelConfig --args="models/qwq_32b.json"
+```
 
 Then place the resulting JAR into your deployment plugin directory and add it to the classpath
 on startup.

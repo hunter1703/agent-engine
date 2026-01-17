@@ -1,9 +1,10 @@
 {
   "model": "qwen3-coder:30b",
-  "provider": "ollama",
+  "provider": "OLLAMA",
   "thoughts_enabled": false,
   "temperature": 0.2,
   "top_k": 40,
   "top_p": 0.95,
-  "repeat_penalty": 1
+  "repeat_penalty": 1,
+  "response_format": "text"
 }

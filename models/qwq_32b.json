@@ -1,11 +1,13 @@
 {
   "model": "qwq-32b",
-  "provider": "llamacpp",
+  "provider": "LLAMA_CPP",
   "base_url": "http://127.0.0.1:17004/v1",
   "thoughts_enabled": false,
-  "thought_tag": "think",
+  "thoughts_start_tag": "<think>",
+  "thoughts_end_tag": "</think>",
   "temperature": 0.6,
   "top_k": 40,
   "top_p": 0.95,
-  "repeat_penalty": 1
+  "repeat_penalty": 1,
+  "response_format": "text"
 }

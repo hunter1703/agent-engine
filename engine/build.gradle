@@ -78,3 +78,10 @@ tasks.test {
 tasks.check {
     dependsOn tasks.jacocoTestCoverageVerification
 }
+
+tasks.register('validateModelConfig', JavaExec) {
+    group = 'verification'
+    description = 'Validate a model config JSON/YAML file.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.agentengine.engine.model.ModelConfigValidator'
+}
