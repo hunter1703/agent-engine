@@ -8,12 +8,6 @@ repositories {
     mavenCentral()
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
 dependencies {
     implementation(enforcedPlatform(
         "${property('quarkusPlatformGroupId')}:${property('quarkusPlatformArtifactId')}:${property('quarkusPlatformVersion')}"
@@ -42,14 +36,6 @@ spotless {
         trimTrailingWhitespace()
         endWithNewline()
     }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs.add('--enable-preview')
-}
-
-tasks.withType(Test).configureEach {
-    jvmArgs '--enable-preview'
 }
 
 tasks.jacocoTestReport {

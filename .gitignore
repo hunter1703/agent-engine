@@ -9,6 +9,7 @@
 /.project
 /.settings/
 **/build/
+!buildSrc/src/main/java/com/agentengine/build/**
 **/out/
 **/target/
 *.log

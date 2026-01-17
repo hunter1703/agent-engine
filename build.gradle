@@ -4,6 +4,7 @@ subprojects {
     repositories {
         mavenCentral()
     }
+    apply plugin: 'com.agentengine.java-base-conventions'
 }
 
 tasks.register('build') {

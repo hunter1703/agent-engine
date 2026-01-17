@@ -9,12 +9,6 @@ repositories {
     mavenCentral()
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
 dependencies {
     implementation(enforcedPlatform(
         "${property('quarkusPlatformGroupId')}:${property('quarkusPlatformArtifactId')}:${property('quarkusPlatformVersion')}"
@@ -42,11 +36,6 @@ spotless {
 
 tasks.withType(Test).configureEach {
     systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
-    jvmArgs '--enable-preview'
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs.add('--enable-preview')
 }
 
 tasks.named('run', JavaExec) {

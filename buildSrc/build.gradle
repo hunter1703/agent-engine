@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'java-gradle-plugin'
 }
 
 repositories {
@@ -16,6 +17,15 @@ dependencies {
     testImplementation gradleTestKit()
     testImplementation 'org.assertj:assertj-core:3.25.3'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+}
+
+gradlePlugin {
+    plugins {
+        javaConventions {
+            id = 'com.agentengine.java-base-conventions'
+            implementationClass = 'com.agentengine.conventions.JavaBaseConventionsPlugin'
+        }
+    }
 }
 
 tasks.test {
