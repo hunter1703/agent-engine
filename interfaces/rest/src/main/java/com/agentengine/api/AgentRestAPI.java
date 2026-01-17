@@ -1,5 +1,6 @@
 package com.agentengine.api;
 
+import com.agentengine.client.AgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
@@ -29,7 +30,7 @@ public class AgentRestAPI {
 
   @POST
   @Path("/invoke")
-  public InvokeResponse invoke(final InvokeRequest request) {
+  public InvokeResponse invoke(final AgentRequest request) {
     AgentEngine engine =
         agentService.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
     String sessionId = getOrCreateSession(request.getSessionId());

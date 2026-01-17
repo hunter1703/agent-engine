@@ -12,6 +12,7 @@
 **/out/
 **/target/
 *.log
+*.jar
 gradlew
 gradlew.bat
 gradle/wrapper/

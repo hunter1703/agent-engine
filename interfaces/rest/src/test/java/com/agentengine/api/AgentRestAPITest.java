@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.client.AgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
@@ -23,7 +24,7 @@ class AgentRestAPITest {
         .thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
 
     AgentRestAPI resource = new AgentRestAPI(service);
-    InvokeRequest request = new InvokeRequest();
+    AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
@@ -44,7 +45,7 @@ class AgentRestAPITest {
     when(engine.invoke(eq("session"), any())).thenReturn(null);
 
     AgentRestAPI resource = new AgentRestAPI(service);
-    InvokeRequest request = new InvokeRequest();
+    AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");

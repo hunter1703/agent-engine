@@ -1,7 +1,7 @@
 package com.agentengine.cli;
 
-import com.agentengine.cli.beans.Request;
-import com.agentengine.cli.beans.Request.RequestType;
+import com.agentengine.client.AgentRequest;
+import com.agentengine.client.AgentRequest.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
@@ -49,7 +49,7 @@ public final class StdioAgentServer implements QuarkusApplication {
       if (line.isBlank()) {
         continue;
       }
-      final Request request = JsonUtils.fromJson(line, Request.class);
+      final AgentRequest request = JsonUtils.fromJson(line, AgentRequest.class);
       final RequestType requestType = request.getType();
       if (requestType == null) {
         throw new IllegalArgumentException("Missing request type");
@@ -75,17 +75,17 @@ public final class StdioAgentServer implements QuarkusApplication {
     agent.registerListener(new AgentEventAdapter(new StdoutEventPublisher()));
   }
 
-  public void invoke(final Request request) {
-    final String userText = request.getUserMessage();
+  public void invoke(final AgentRequest request) {
+    final String userText = request.getMessage();
     if (userText == null || userText.isBlank()) {
-      throw new IllegalArgumentException("Missing user_message");
+      throw new IllegalArgumentException("Missing message");
     }
     final Message response = agent.invoke(sessionId, Message.user(userText));
     sendEvent(request.getId(), "thoughts", response.getThoughts());
     sendEvent(request.getId(), "finalAnswer", response.getContent());
   }
 
-  public void buildPrompt(final Request request) {
+  public void buildPrompt(final AgentRequest request) {
     final List<Message> messages = agent.buildPrompt(sessionId);
     final List<Map<String, String>> out = new ArrayList<>();
     for (Message message : messages) {

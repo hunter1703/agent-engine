@@ -18,7 +18,9 @@ class ConfigLoaderTest {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(
         configPath,
-        "{" + "\"engine\":{\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\"}" + "}");
+        "{" +
+            "\"engine\":{\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}" +
+            "}");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);
@@ -30,7 +32,8 @@ class ConfigLoaderTest {
   @Test
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
-    Files.writeString(configPath, "engine:\n  reasoning: reasoning.json\n  prompt: hello\n");
+    Files.writeString(
+        configPath, "engine:\n  reasoning: reasoning.json\n  prompt: hello\n  tool: tool.json\n");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);

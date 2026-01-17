@@ -6,6 +6,7 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 
 ## Project Layout
 - `engine/src/main/java/com/agentengine/engine`: core engine, config, context, state, tooling
+- `engine/client/src/main/java/com/agentengine/client`: shared client request models
 - `interfaces/cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
 - `interfaces/rest/src/main/java/com/agentengine/api`: REST service layer
 - `plugins/`: optional tool/plugin projects (build into JARs)
@@ -15,9 +16,10 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 
 ## Modules
 - `engine`: core engine library
+- `engine:client`: shared request/response models
 - `interfaces`: umbrella module for transports
-  - `interfaces:cli`: stdio interface (depends on `engine`)
-  - `interfaces:rest`: REST service (depends on `engine`)
+  - `interfaces:cli`: stdio interface (depends on `engine`, `engine:client`)
+  - `interfaces:rest`: REST service (depends on `engine`, `engine:client`)
 
 ## Quick Start
 ```bash

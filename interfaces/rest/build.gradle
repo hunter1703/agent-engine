@@ -21,6 +21,7 @@ dependencies {
     ))
     implementation platform('io.quarkiverse.langchain4j:quarkus-langchain4j-bom:0.26.1')
     implementation project(':engine')
+    implementation project(':engine:client')
     implementation 'io.quarkus:quarkus-rest-jackson'
 
     testImplementation 'io.quarkus:quarkus-junit5'

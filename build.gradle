@@ -7,11 +7,11 @@ subprojects {
 }
 
 tasks.register('build') {
-    dependsOn ':engine:build', ':interfaces:cli:build', ':interfaces:rest:build'
+    dependsOn ':engine:build', ':engine:client:build', ':interfaces:cli:build', ':interfaces:rest:build'
 }
 
 tasks.register('test') {
-    dependsOn ':engine:test', ':interfaces:cli:test', ':interfaces:rest:test'
+    dependsOn ':engine:test', ':engine:client:test', ':interfaces:cli:test', ':interfaces:rest:test'
 }
 
 tasks.register('restDev') {

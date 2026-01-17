@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.cli.beans.Request;
-import com.agentengine.cli.beans.Request.RequestType;
+import com.agentengine.client.AgentRequest;
+import com.agentengine.client.AgentRequest.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.config.ConfigLoader;
@@ -61,10 +61,10 @@ class StdioAgentServerTest {
     setField(server, "agent", new FakeAgent());
     setField(server, "sessionId", "session");
 
-    Request request = new Request();
+    AgentRequest request = new AgentRequest();
     request.setType(RequestType.INVOKE_AGENT);
     request.setId("req-1");
-    request.setUserMessage("hello");
+    request.setMessage("hello");
 
     server.invoke(request);
 
@@ -83,7 +83,7 @@ class StdioAgentServerTest {
     setField(server, "agent", new FakeAgent());
     setField(server, "sessionId", "session");
 
-    Request request = new Request();
+    AgentRequest request = new AgentRequest();
     request.setType(RequestType.BUILD_PROMPT);
     request.setId("req-2");
 
@@ -114,7 +114,7 @@ class StdioAgentServerTest {
         "{"
             + "\"type\":\"INVOKE_AGENT\","
             + "\"id\":\"req-1\","
-            + "\"user_message\":\"hello\"}";
+            + "\"message\":\"hello\"}";
     String promptJson =
         "{" + "\"type\":\"BUILD_PROMPT\"," + "\"id\":\"req-2\"}";
     String input = invokeJson + "\n" + promptJson + "\n";
