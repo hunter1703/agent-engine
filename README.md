@@ -47,7 +47,7 @@ Environment defaults:
 - `AGENT_NAME` sets the default agent name
 - `AGENT_CONFIG_PATH` sets the default config path
 - `CONFIG_DIR` points to the config root (default `configs`)
-- `CONFIG_DB_NAME` sets the MongoDB database name (default `AGENT_SERVICE`)
+- `CONFIG_DB_NAME` sets the MongoDB database name (default `AGENT_ENGINE`)
 - `PLUGIN_DIR` points to a directory of plugin JARs (default `plugins`)
 
 ## Testing
@@ -118,8 +118,8 @@ Systemd service template:
 ```bash
 ./deploy/docker/setup-mongo.sh ./configs
 ./deploy/docker/setup-mongo.sh --force ./configs
-MONGODB_CONNECTION_STRING=mongodb://localhost:27017 \
-CONFIG_DB_NAME=AGENT_SERVICE \
+MONGODB_CONNECTION_STRING=mongodb://localhost:27000 \
+CONFIG_DB_NAME=AGENT_ENGINE \
 PLUGIN_DIR=./plugins \
 ./gradlew :interfaces:rest:quarkusDev
 ```
@@ -135,7 +135,7 @@ curl -N -X POST http://localhost:8080/agent/events \
 - The setup script builds a Mongo image from `deploy/docker/Dockerfile.mongodb` only if missing
   (use `--force` to rebuild) and starts a container named `agent-engine-mongodb`.
 - Configs are imported from `<configs>/agents` and `<configs>/models` into `Agent` and `Model`
-  collections under the `AGENT_SERVICE` database (override with `CONFIG_DB_NAME`).
+  collections under the `AGENT_ENGINE` database (override with `CONFIG_DB_NAME`).
 - `_id` is the config filename without extension; this is the ID used everywhere.
 - When MongoDB is configured (`MONGODB_CONNECTION_STRING`), the agent service loads
   configs by `agentName` from MongoDB.
@@ -152,7 +152,7 @@ Then place the resulting JAR into your deployment plugin directory and add it to
 on startup.
 
 ## Notes
-- Agent configs use the Java schema (`engine` holds prompt + model keys; `context` holds `summarizerModel`).
+- Agent configs use the Java schema (`engine` holds `systemPrompt` + model keys; `context` holds `summarizerModel`).
 - Model configs are loaded from `configs/models/<model_key>.*`.
 - LLAMA_CPP configs can auto-start `llama-server` when `serverCommand` is provided.
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.

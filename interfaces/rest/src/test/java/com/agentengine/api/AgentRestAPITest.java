@@ -6,15 +6,20 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.api.handlers.AgentRequestHandler;
 import com.agentengine.api.handlers.BuildPromptRequestHandler;
 import com.agentengine.api.handlers.InvokeAgentRequestHandler;
+import com.agentengine.api.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.client.AgentRequest;
+import com.agentengine.client.AgentRequest.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.interfaces.AgentService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
+import jakarta.enterprise.inject.Instance;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AgentRestAPITest {
@@ -27,14 +32,13 @@ class AgentRestAPITest {
     when(engine.invoke(eq("session"), any()))
         .thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
 
-    AgentRestAPI resource =
-        new AgentRestAPI(
-            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
+    request.setType(RequestType.INVOKE_AGENT.name());
 
     AgentResponse response = resource.invoke(request);
 
@@ -52,14 +56,13 @@ class AgentRestAPITest {
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(eq("session"), any())).thenReturn(null);
 
-    AgentRestAPI resource =
-        new AgentRestAPI(
-            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
+    request.setType(RequestType.INVOKE_AGENT.name());
 
     AgentResponse response = resource.invoke(request);
 
@@ -78,14 +81,12 @@ class AgentRestAPITest {
     when(engine.buildPrompt("session"))
         .thenReturn(List.of(Message.system("sys"), Message.user("hi")));
 
-    AgentRestAPI resource =
-        new AgentRestAPI(
-            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
-    request.setType("BUILD_PROMPT");
+    request.setType(RequestType.BUILD_PROMPT.name());
 
     AgentResponse response = resource.invoke(request);
 
@@ -99,5 +100,17 @@ class AgentRestAPITest {
   @Test
   void resourceRunsOnVirtualThread() {
     assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
+  }
+
+  private static Instance<AgentRequestHandler> buildHandlers(
+      final AgentService service) {
+    InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
+    BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
+    StreamingInvokeAgentRequestHandler streamingHandler =
+        new StreamingInvokeAgentRequestHandler(service);
+    Instance<AgentRequestHandler> instance = mock(Instance.class);
+    when(instance.stream())
+        .thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
+    return instance;
   }
 }

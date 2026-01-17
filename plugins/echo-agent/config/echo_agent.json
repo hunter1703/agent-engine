@@ -1,7 +1,7 @@
 {
   "engine": {
     "type": "hybrid",
-    "prompt": "You are a helpful assistant.",
+    "systemPrompt": "You are a helpful assistant.",
     "reasoning": "qwq_32b.json",
     "tool": "qwq_32b.json"
   },

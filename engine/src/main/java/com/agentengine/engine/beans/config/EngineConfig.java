@@ -64,7 +64,7 @@ public abstract class EngineConfig implements Config {
       throw new IllegalArgumentException("engine.reasoning is required");
     }
     if (systemPrompt == null || systemPrompt.isBlank()) {
-      throw new IllegalArgumentException("engine.prompt is required");
+      throw new IllegalArgumentException("engine.systemPrompt is required");
     }
   }
 

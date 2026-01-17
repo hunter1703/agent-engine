@@ -48,7 +48,8 @@ public final class MongoConfigRepository implements ConfigRepository {
 
   private <T> T findDocument(final String collectionName, final String id, final Class<T> clazz) {
     try {
-      MongoCollection<Document> collection = mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName);
+      MongoCollection<Document> collection =
+          mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName);
       return collection.find(Filters.eq("_id", id), clazz).limit(1).first();
     } catch (Exception ex) {
       LOGGER.log(Level.WARNING, "Failed to read config from MongoDB", ex);
@@ -57,8 +58,13 @@ public final class MongoConfigRepository implements ConfigRepository {
   }
 
   private static MongoClient createClient() {
-    final ConnectionString connectionString = new ConnectionString(System.getProperty("MONGODB_CONNECTION_STRING", "localhost:27017"));
-    MongoClientSettings mongoClientSettings = MongoClientSettings.builder().applicationName("agent-engine").applyConnectionString(connectionString).build();
+    final ConnectionString connectionString =
+        new ConnectionString(System.getProperty("MONGODB_CONNECTION_STRING", "localhost:27017"));
+    MongoClientSettings mongoClientSettings =
+        MongoClientSettings.builder()
+            .applicationName("agent-engine")
+            .applyConnectionString(connectionString)
+            .build();
     return MongoClients.create(mongoClientSettings);
   }
 }

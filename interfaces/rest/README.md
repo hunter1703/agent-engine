@@ -58,7 +58,8 @@ Events:
 When MongoDB is configured, omit `agentConfigPath` and the service loads configs from MongoDB
 by `agentName`.
 
-MongoDB is configured via `MONGODB_CONNECTION_STRING` and optional `CONFIG_DB_NAME`.
+MongoDB is configured via `MONGODB_CONNECTION_STRING` and optional `CONFIG_DB_NAME` (default
+`AGENT_ENGINE`).
 
 ### Event Payloads (SSE)
 Each event is an `AgentEvent` object with `event`, `sessionId`, and a JSON `payload`.

@@ -13,8 +13,8 @@ CONFIG_DIR=$(cd "$CONFIG_DIR" && pwd)
 
 MONGO_IMAGE=${MONGO_IMAGE:-agent-engine-mongo:latest}
 CONTAINER_NAME=${CONTAINER_NAME:-agent-engine-mongodb}
-MONGO_PORT=${MONGO_PORT:-27017}
-DB_NAME=${CONFIG_DB_NAME:-AGENT_SERVICE}
+MONGO_PORT=${MONGO_PORT:-27000}
+DB_NAME=${CONFIG_DB_NAME:-AGENT_ENGINE}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
@@ -31,10 +31,14 @@ fi
 upsert_configs() {
   local dir=$1
   local collection=$2
+  local tmp_file
 
   if [ ! -d "$dir" ]; then
     return
   fi
+
+  tmp_file=$(mktemp)
+  trap 'rm -f "$tmp_file"' RETURN
 
   for file in "$dir"/*.json; do
     [ -e "$file" ] || continue
@@ -42,14 +46,17 @@ upsert_configs() {
     base=$(basename "$file")
     local id=${base%.*}
 
-    jq --arg id "$id" '. + {"_id": $id}' "$file" | \
-      docker exec -i "$CONTAINER_NAME" mongoimport \
-        --db "$DB_NAME" \
-        --collection "$collection" \
-        --mode=upsert \
-        --upsertFields=_id \
-        --file /dev/stdin
+    jq --arg id "$id" '. + {"_id": $id}' "$file" >> "$tmp_file"
   done
+
+  if [ -s "$tmp_file" ]; then
+    docker exec -i "$CONTAINER_NAME" mongoimport \
+      --db "$DB_NAME" \
+      --collection "$collection" \
+      --mode=upsert \
+      --upsertFields=_id \
+      --file /dev/stdin < "$tmp_file"
+  fi
 }
 
 upsert_configs "$CONFIG_DIR/models" "Model"

@@ -25,7 +25,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
 
   @Override
   public RequestType requestType() {
-    return RequestType.INVOKE_AGENT;
+    return RequestType.STREAMING_INVOKE_AGENT;
   }
 
   @Override
