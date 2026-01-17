@@ -366,7 +366,6 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
 
   protected static ChatLanguageModel buildOllama(
       final ModelConfig config, final ResponseFormat responseFormat) {
-    final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OllamaChatModel.builder()
         .modelName(config.getModel())
         .baseUrl(config.getBaseUrl())
@@ -377,7 +376,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
         .numPredict(config.getNumPredict())
         .numCtx(config.getMaxContextLength())
         .stop(config.getStopTokens())
-        .format(format)
+        .responseFormat(responseFormat)
         .build();
   }
 

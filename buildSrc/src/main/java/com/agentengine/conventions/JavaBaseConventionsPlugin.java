@@ -47,7 +47,11 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
     project
         .getTasks()
         .withType(JavaCompile.class)
-        .configureEach(task -> task.getOptions().getCompilerArgs().add("--enable-preview"));
+        .configureEach(
+            task -> {
+              task.getOptions().getCompilerArgs().add("--enable-preview");
+              task.getOptions().getCompilerArgs().add("-Xlint:unchecked");
+            });
 
     project
         .getTasks()
