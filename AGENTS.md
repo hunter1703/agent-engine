@@ -29,3 +29,4 @@ and REST) for interacting with agents.
 13. Make an explicit choice to treat classes as singleton services or utility classes.
 14. Reuse existing utility methods instead of reimplementing similar logic in private methods.
 15. Create new utility classes or extend existing ones when it improves reuse.
+16. When fixing a bug, first write a unit test that reproduces the bug and fails, then implement the fix, then rerun the test to verify it passes.

@@ -8,6 +8,11 @@
 - **Unit tests**: pure functions, parsing/validation, session store, template rendering, and `HybridEngine` behavior using in-memory fakes.
 - **Integration tests**: excluded for now (Quarkus runtime, CLI loop, model providers) to keep tests fast and deterministic.
 
+## Bug Fix Workflow
+- Write a unit test that reproduces the bug and fails.
+- Implement the fix.
+- Rerun the test suite to confirm the test passes.
+
 ## Mocking & Fixtures
 - Use in-memory fakes for `LLMModel`, `SessionStore`, and `AgentTool`.
 - Use JUnit `@TempDir` for filesystem-backed config loading.
