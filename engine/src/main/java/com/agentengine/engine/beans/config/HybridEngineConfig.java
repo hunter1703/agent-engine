@@ -3,7 +3,7 @@ package com.agentengine.engine.beans.config;
 import com.alibaba.fastjson2.annotation.JSONType;
 
 @JSONType(typeName = "hybrid")
-public final class HybridEngineConfig extends AbstractEngineConfig {
+public final class HybridEngineConfig extends EngineConfig {
   private String tool;
 
   public HybridEngineConfig() {

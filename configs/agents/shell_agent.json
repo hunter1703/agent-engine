@@ -1,0 +1,23 @@
+{
+  "engine": {
+    "type": "hybrid",
+    "prompt": "You are a helpful assistant.",
+    "reasoning": "qwq_32b.json",
+    "tool": "qwq_32b.json"
+  },
+  "context": {
+    "type": "last_n",
+    "keepLast": 10
+  },
+  "tools": {
+    "enabled": ["run_cmd"],
+    "configs": {
+      "run_cmd": {
+        "timeout_seconds": 30
+      }
+    }
+  },
+  "stateStore": {
+    "type": "memory"
+  }
+}

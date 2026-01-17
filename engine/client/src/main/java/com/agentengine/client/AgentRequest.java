@@ -1,19 +1,13 @@
 package com.agentengine.client;
 
-import com.alibaba.fastjson2.annotation.JSONField;
-
 public class AgentRequest {
   private String type;
-
-  @JSONField(alternateNames = {"agent_name"})
   private String agentName;
 
-  @JSONField(alternateNames = {"agent_config_path"})
   private String agentConfigPath;
 
   private String sessionId;
 
-  @JSONField(alternateNames = {"user_message"})
   private String message;
 
   public String getType() {
@@ -58,6 +52,7 @@ public class AgentRequest {
 
   public enum RequestType {
     INVOKE_AGENT,
+    STREAMING_INVOKE_AGENT,
     BUILD_PROMPT,
     BUILD_EVENT,
     STOP_AGENT

@@ -1,7 +1,7 @@
 You are the reasoning model in a hybrid setup. Use this format:
 
-{% if thoughts_enabled %}
-If you include thoughts, wrap them in <{{ thought_tag }}>...</{{ thought_tag }}>.
+{% if thoughtsEnabled %}
+If you include thoughts, wrap them in <{{ thoughtTag }}>...</{{ thoughtTag }}>.
 Do NOT use a THOUGHTS section.
 {% else %}
 Do NOT include thoughts or a THOUGHTS section.

@@ -5,12 +5,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.beans.config.ModelConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ResourceUtilsTest {
 
   @TempDir Path tempDir;
+
+  @AfterEach
+  void clearConfigDir() {
+    System.clearProperty("CONFIG_DIR");
+  }
 
   @Test
   void loadResourceAsStringReturnsEmptyForMissingResource() {
@@ -37,5 +43,18 @@ class ResourceUtilsTest {
 
     assertThat(jsonConfig.getProvider()).isEqualTo("OPEN_AI");
     assertThat(yamlConfig.getProvider()).isEqualTo("OLLAMA");
+  }
+
+  @Test
+  void loadModelConfigResolvesFromConfigDirectory() throws Exception {
+    Path modelsDir = tempDir.resolve("models");
+    Files.createDirectories(modelsDir);
+    Path jsonPath = modelsDir.resolve("model.json");
+    Files.writeString(jsonPath, "{\"provider\":\"OPEN_AI\",\"model\":\"gpt\"}");
+    System.setProperty("CONFIG_DIR", tempDir.toString());
+
+    ModelConfig config = ResourceUtils.loadModelConfig("model.json");
+
+    assertThat(config.getProvider()).isEqualTo("OPEN_AI");
   }
 }

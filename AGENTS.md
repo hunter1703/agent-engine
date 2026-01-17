@@ -33,3 +33,5 @@ and REST) for interacting with agents.
 17. Leverage Java 21 features (virtual threads, string templates, records) where they improve clarity or performance.
 18. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin rather than repeating snippets in module build files.
 19. Avoid redundant or low-value tests that do not exercise functional behavior.
+20. Document REST endpoints with MicroProfile OpenAPI annotations.
+21. Avoid qualified class names; add explicit imports instead.

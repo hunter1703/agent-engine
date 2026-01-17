@@ -1,0 +1,11 @@
+{
+  "model": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M",
+  "provider": "LLAMA_CPP",
+  "baseUrl": "http://127.0.0.1:17002/v1",
+  "responseFormat": "json",
+  "thoughtsEnabled": false,
+  "temperature": 0.6,
+  "topK": 40,
+  "topP": 0.95,
+  "repeatPenalty": 1
+}

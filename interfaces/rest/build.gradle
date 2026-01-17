@@ -12,6 +12,8 @@ dependencies {
     implementation project(':engine:client')
     implementation project(':interfaces:common')
     implementation 'io.quarkus:quarkus-rest-jackson'
+    implementation 'io.quarkus:quarkus-mongodb-client'
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
 
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'org.assertj:assertj-core'

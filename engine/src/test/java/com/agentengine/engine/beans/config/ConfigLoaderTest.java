@@ -26,7 +26,7 @@ class ConfigLoaderTest {
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getReasoning()).isEqualTo("reasoner.json");
-    assertThat(config.getEngine().getPrompt()).isEqualTo("You are helpful");
+    assertThat(config.getEngine().getSystemPrompt()).isEqualTo("You are helpful");
   }
 
   @Test
@@ -40,7 +40,7 @@ class ConfigLoaderTest {
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getReasoning()).isEqualTo("reasoning.json");
-    assertThat(config.getEngine().getPrompt()).isEqualTo("hello");
+    assertThat(config.getEngine().getSystemPrompt()).isEqualTo("hello");
   }
 
   @Test
@@ -55,7 +55,7 @@ class ConfigLoaderTest {
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);
 
-    assertThat(config.getEngine().getPrompt()).isEqualTo("Hello");
+    assertThat(config.getEngine().getSystemPrompt()).isEqualTo("Hello");
   }
 
   @Test

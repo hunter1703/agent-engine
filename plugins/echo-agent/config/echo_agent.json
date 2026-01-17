@@ -2,12 +2,12 @@
   "engine": {
     "type": "hybrid",
     "prompt": "You are a helpful assistant.",
-    "reasoning": "models/qwq_32b.json",
-    "tool": "models/qwq_32b.json"
+    "reasoning": "qwq_32b.json",
+    "tool": "qwq_32b.json"
   },
   "context": {
     "type": "last_n",
-    "keep_last": 6
+    "keepLast": 6
   },
   "tools": {
     "enabled": ["echo"],
@@ -17,7 +17,7 @@
       }
     }
   },
-  "state_store": {
+  "stateStore": {
     "type": "memory"
   }
 }

@@ -1,24 +1,21 @@
 package com.agentengine.engine.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONField;
 import com.alibaba.fastjson2.annotation.JSONType;
 
 @JSONType(
     typeKey = "type",
     seeAlso = {HybridEngineConfig.class, RouterEngineConfig.class})
-public abstract class AbstractEngineConfig implements Config {
+public abstract class EngineConfig implements Config {
   private String type;
 
-  @JSONField(name = "invocation_limit")
   private Integer invocationLimit;
 
-  @JSONField(name = "tool_retry_limit")
   private Integer toolRetryLimit = 2;
 
-  private String prompt;
+  private String systemPrompt;
   private String reasoning;
 
-  protected AbstractEngineConfig(final EngineType engineType) {
+  protected EngineConfig(final EngineType engineType) {
     this.type = engineType.name().toLowerCase();
   }
 
@@ -46,12 +43,12 @@ public abstract class AbstractEngineConfig implements Config {
     this.toolRetryLimit = toolRetryLimit;
   }
 
-  public String getPrompt() {
-    return prompt;
+  public String getSystemPrompt() {
+    return systemPrompt;
   }
 
-  public void setPrompt(final String prompt) {
-    this.prompt = prompt;
+  public void setSystemPrompt(final String systemPrompt) {
+    this.systemPrompt = systemPrompt;
   }
 
   public String getReasoning() {
@@ -66,7 +63,7 @@ public abstract class AbstractEngineConfig implements Config {
     if (reasoning == null || reasoning.isBlank()) {
       throw new IllegalArgumentException("engine.reasoning is required");
     }
-    if (prompt == null || prompt.isBlank()) {
+    if (systemPrompt == null || systemPrompt.isBlank()) {
       throw new IllegalArgumentException("engine.prompt is required");
     }
   }

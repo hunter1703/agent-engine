@@ -1,7 +1,7 @@
 You must format every response with two clear, distinct sections:
 
-{% if thoughts_enabled %}
-If you include thoughts, wrap them in <{{ thought_tag }}>...</{{ thought_tag }}>.
+{% if thoughtsEnabled %}
+If you include thoughts, wrap them in <{{ thoughtTag }}>...</{{ thoughtTag }}>.
 {% else %}
 Do NOT include thoughts.
 {% endif %}

@@ -1,6 +1,5 @@
 package com.agentengine.engine.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONField;
 import java.util.List;
 
 public class ModelConfig implements Config {
@@ -11,45 +10,39 @@ public class ModelConfig implements Config {
     OPEN_AI
   }
 
-  @JSONField(name = "base_url")
   private String baseUrl;
 
   private String provider;
   private String model;
   private Double temperature;
 
-  @JSONField(name = "top_k")
   private Integer topK;
 
-  @JSONField(name = "top_p")
   private Double topP;
 
-  @JSONField(name = "repeat_penalty")
   private Double repeatPenalty;
 
-  @JSONField(name = "num_predict")
   private Integer numPredict;
 
-  @JSONField(name = "max_context_length")
   private int maxContextLength;
 
-  @JSONField(name = "stop_tokens")
   private List<String> stopTokens;
 
-  @JSONField(name = "response_format")
   private String responseFormat;
 
-  @JSONField(name = "thoughts_start_tag")
   private String thoughtsStartTag;
 
-  @JSONField(name = "thoughts_end_tag")
   private String thoughtsEndTag;
 
-  @JSONField(name = "thoughts_enabled")
   private boolean thoughtsEnabled;
 
-  @JSONField(name = "context_config")
   private ContextConfig contextConfig;
+
+  private String serverCommand;
+
+  private List<String> serverArgs;
+
+  private String serverWorkdir;
 
   public String getBaseUrl() {
     return baseUrl;
@@ -169,5 +162,29 @@ public class ModelConfig implements Config {
 
   public void setContextConfig(final ContextConfig contextConfig) {
     this.contextConfig = contextConfig;
+  }
+
+  public String getServerCommand() {
+    return serverCommand;
+  }
+
+  public void setServerCommand(final String serverCommand) {
+    this.serverCommand = serverCommand;
+  }
+
+  public List<String> getServerArgs() {
+    return serverArgs;
+  }
+
+  public void setServerArgs(final List<String> serverArgs) {
+    this.serverArgs = serverArgs;
+  }
+
+  public String getServerWorkdir() {
+    return serverWorkdir;
+  }
+
+  public void setServerWorkdir(final String serverWorkdir) {
+    this.serverWorkdir = serverWorkdir;
   }
 }

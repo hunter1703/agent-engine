@@ -15,7 +15,7 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public AgentTool create(final Map<String, Object> toolConfig, final AgentConfig agentConfig) {
+  public AgentTool create(final Map<String, Object> toolConfig) {
     return new AgentTool() {
       @Override
       public String name() {

@@ -7,8 +7,8 @@ Otherwise provide FINAL.
 Do NOT output raw tool-call JSON.
 The TOOL_REQUEST tool name must match one of the available tools listed.
 Thoughts handling:
-{% if thoughts_enabled %}
-If you include thoughts, wrap them in <{{ thought_tag }}>...</{{ thought_tag }}>.
+{% if thoughtsEnabled %}
+If you include thoughts, wrap them in <{{ thoughtTag }}>...</{{ thoughtTag }}>.
 Do NOT use a THOUGHTS section.
 {% else %}
 Do NOT include thoughts or a THOUGHTS section.

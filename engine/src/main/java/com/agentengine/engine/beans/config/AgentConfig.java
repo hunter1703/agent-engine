@@ -1,13 +1,10 @@
 package com.agentengine.engine.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONField;
-
 public final class AgentConfig implements Config {
   private ToolsConfig tools = new ToolsConfig();
-  private AbstractEngineConfig engine = new HybridEngineConfig();
+  private EngineConfig engine = new HybridEngineConfig();
   private ContextConfig context = new SummarizingContextConfig();
 
-  @JSONField(name = "state_store")
   private StateStoreConfig stateStore = new MemoryStateStoreConfig();
 
   @Override
@@ -26,11 +23,11 @@ public final class AgentConfig implements Config {
     this.tools = tools;
   }
 
-  public AbstractEngineConfig getEngine() {
+  public EngineConfig getEngine() {
     return engine;
   }
 
-  public void setEngine(final AbstractEngineConfig engine) {
+  public void setEngine(final EngineConfig engine) {
     this.engine = engine;
   }
 

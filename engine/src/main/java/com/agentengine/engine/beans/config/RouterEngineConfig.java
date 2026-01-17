@@ -3,7 +3,7 @@ package com.agentengine.engine.beans.config;
 import com.alibaba.fastjson2.annotation.JSONType;
 
 @JSONType(typeName = "router")
-public final class RouterEngineConfig extends AbstractEngineConfig {
+public final class RouterEngineConfig extends EngineConfig {
   private String router;
   private String tool;
   private String heavy;

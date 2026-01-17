@@ -8,5 +8,5 @@ public interface ToolProvider {
 
   String toolName();
 
-  AgentTool create(Map<String, Object> toolConfig, AgentConfig agentConfig);
+  AgentTool create(Map<String, Object> toolConfig);
 }

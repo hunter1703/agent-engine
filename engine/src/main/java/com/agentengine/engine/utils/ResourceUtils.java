@@ -27,12 +27,11 @@ public final class ResourceUtils {
     if (StringUtils.isBlank(configPath)) {
       return null;
     }
-
-    final Path path = Paths.get(configPath);
+    Path path = Paths.get(configPath);
     if (!Files.exists(path)) {
       return null;
     }
-    if (configPath.endsWith(".json")) {
+    if (path.toString().endsWith(".json")) {
       return JsonUtils.fromFile(path, ModelConfig.class);
     }
     return YamlUtils.fromFile(path, ModelConfig.class);

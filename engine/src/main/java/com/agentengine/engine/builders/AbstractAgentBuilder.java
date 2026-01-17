@@ -8,6 +8,7 @@ import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.context.LastNContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.model.LangChain4JLLMModel;
+import com.agentengine.engine.model.LlamaCppServerUtils;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
 import com.agentengine.engine.tools.AgentTool;
@@ -58,11 +59,11 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final String templateName =
         resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
-    context.put("thoughts_enabled", config.isThoughtsEnabled());
+    context.put("thoughtsEnabled", config.isThoughtsEnabled());
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
       context.put("response_schema", loadReasonerSchema(config));
     }
-    final String protocolMessage = TemplateUtils.renderForName(templateName, context);
+    final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
           new LastNContextBuilder(
@@ -85,7 +86,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
       context.put("tool_schema", loadToolCallSchema());
     }
-    final String protocolMessage = TemplateUtils.renderForName(templateName, context);
+    final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
           new LastNContextBuilder(
@@ -353,7 +354,11 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final ChatLanguageModel chatModel =
         switch (provider) {
           case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
-          case ModelConfig.Provider.OPEN_AI, ModelConfig.Provider.LLAMA_CPP ->
+          case ModelConfig.Provider.LLAMA_CPP -> {
+            LlamaCppServerUtils.ensureRunning(modelConfig);
+            yield buildOpenAI(modelConfig, responseFormat);
+          }
+          case ModelConfig.Provider.OPEN_AI ->
               buildOpenAI(modelConfig, responseFormat);
         };
     return new LangChain4JLLMModel(

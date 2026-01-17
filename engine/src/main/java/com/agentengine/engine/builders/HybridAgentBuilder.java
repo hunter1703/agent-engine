@@ -1,7 +1,7 @@
 package com.agentengine.engine.builders;
 
 import com.agentengine.engine.HybridEngine;
-import com.agentengine.engine.beans.config.AbstractEngineConfig;
+import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
@@ -11,23 +11,21 @@ import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.SessionStore;
 import com.agentengine.engine.tools.AgentTool;
 import com.agentengine.engine.tools.ToolRegistry;
-import com.agentengine.engine.utils.CollectionUtils;
 import com.agentengine.engine.utils.ResourceUtils;
 import com.agentengine.engine.utils.StringUtils;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 @Singleton
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
   public HybridEngine build(final String agentName, final AgentConfig agentConfig) {
-    final AbstractEngineConfig engineConfig = agentConfig.getEngine();
+    final EngineConfig engineConfig = agentConfig.getEngine();
     if (!(engineConfig instanceof HybridEngineConfig hybridConfig)) {
       throw new IllegalArgumentException("Hybrid engine requires hybrid engine config");
     }
-    final String promptFromConfig = hybridConfig.getPrompt();
+    final String promptFromConfig = hybridConfig.getSystemPrompt();
     final String systemPrompt =
         StringUtils.isBlank(promptFromConfig) ? DEFAULT_SYSTEM_PROMPT : promptFromConfig;
 
@@ -44,13 +42,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
     final SessionStore sessionStore = buildStateStore(agentConfig.getStateStore());
     final ToolsConfig toolsConfig = agentConfig.getTools();
-    final List<String> enabledTools =
-        CollectionUtils.nullSafeList(
-            toolsConfig == null ? List.of("ALL") : toolsConfig.getEnabled());
-    final Map<String, Map<String, Object>> toolConfigs =
-        CollectionUtils.nullSafeMap(toolsConfig == null ? Map.of() : toolsConfig.getConfigs());
-    final List<AgentTool> tools =
-        ToolRegistry.loadTools(agentName, enabledTools, toolConfigs, agentConfig);
+    final List<AgentTool> tools = ToolRegistry.loadTools(agentName, toolsConfig);
 
     final ContextBuilder reasoningContextBuilder =
         buildReasoningContextBuilder(reasoningConfig, sessionStore, true, systemPrompt, tools);
@@ -67,7 +59,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
   }
 
   @Override
-  public List<String> agentNames() {
+  public String type() {
     return null;
   }
 }

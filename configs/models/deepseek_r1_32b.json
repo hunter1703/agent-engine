@@ -1,0 +1,11 @@
+{
+  "model": "deepseek-r1-32b",
+  "provider": "LLAMA_CPP",
+  "baseUrl": "http://127.0.0.1:17003/v1",
+  "thoughtsEnabled": false,
+  "temperature": 0.6,
+  "topK": 40,
+  "topP": 0.95,
+  "repeatPenalty": 1,
+  "responseFormat": "text"
+}

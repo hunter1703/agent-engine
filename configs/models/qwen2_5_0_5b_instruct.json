@@ -1,0 +1,11 @@
+{
+  "model": "qwen2.5-0.5b-instruct-q5_k_m",
+  "provider": "LLAMA_CPP",
+  "baseUrl": "http://127.0.0.1:17000/v1",
+  "thoughtsEnabled": false,
+  "temperature": 0.0,
+  "topK": 40,
+  "topP": 0.9,
+  "repeatPenalty": 1,
+  "responseFormat": "text"
+}

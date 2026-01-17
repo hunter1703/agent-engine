@@ -123,7 +123,7 @@ public class HybridEngine extends AbstractAgentEngine {
 
   private List<ToolCall> runToolAssistant(final String sessionId, final List<String> toolRequests) {
     final String message =
-        TemplateUtils.renderForName(
+        TemplateUtils.renderTemplateForName(
             "hybrid/tool_assistant_json.txt",
             Map.of(
                 "toolRequests",
@@ -165,7 +165,7 @@ public class HybridEngine extends AbstractAgentEngine {
         sessionStore.appendMessage(
             getToolSessionId(sessionId),
             Message.user(
-                TemplateUtils.renderForName(
+                TemplateUtils.renderTemplateForName(
                     "hybrid/repair/empty_tool_call.txt", Map.of("toolRequests", missingRequests))));
         repairAttempts++;
         if (repairAttempts > 3) {
@@ -232,7 +232,7 @@ public class HybridEngine extends AbstractAgentEngine {
 
     if (CollectionUtils.isNotEmpty(failed) && numRetries > 0) {
       final String failureMessage =
-          TemplateUtils.renderForName(
+          TemplateUtils.renderTemplateForName(
               "shared/tool_failure.txt", Map.of("failures", failedToolsVsErrors));
       sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(failureMessage));
       sessionStore.appendMessage(getToolSessionId(sessionId), Message.system(failureMessage));

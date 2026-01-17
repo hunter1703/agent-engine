@@ -86,7 +86,7 @@ class ConfigBeansTest {
   void routerEngineConfigValidatesRequiredFields() {
     RouterEngineConfig config = new RouterEngineConfig();
     config.setReasoning("reasoner.json");
-    config.setPrompt("prompt");
+    config.setSystemPrompt("prompt");
     config.setRouter("router.json");
     config.setTool("tool.json");
 
@@ -94,7 +94,7 @@ class ConfigBeansTest {
 
     RouterEngineConfig missingRouter = new RouterEngineConfig();
     missingRouter.setReasoning("reasoner.json");
-    missingRouter.setPrompt("prompt");
+    missingRouter.setSystemPrompt("prompt");
 
     assertThatThrownBy(missingRouter::validate)
         .isInstanceOf(IllegalArgumentException.class)
@@ -102,7 +102,7 @@ class ConfigBeansTest {
 
     RouterEngineConfig missingTool = new RouterEngineConfig();
     missingTool.setReasoning("reasoner.json");
-    missingTool.setPrompt("prompt");
+    missingTool.setSystemPrompt("prompt");
     missingTool.setRouter("router.json");
 
     assertThatThrownBy(missingTool::validate)

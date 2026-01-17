@@ -31,7 +31,14 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
         .configure(
             SpotlessExtension.class,
             spotless -> {
-              spotless.java(java -> java.googleJavaFormat("1.22.0"));
+              spotless.java(
+                  java ->
+                      java
+                          .eclipse()
+                          .configFile(
+                              project
+                                  .getRootProject()
+                                  .file("config/spotless/eclipse.xml")));
               spotless.format(
                   "misc",
                   misc ->

@@ -8,7 +8,7 @@ Rules:
 - If no tool is required, omit "toolRequests" and fill "finalAnswer".
 - If the user asks for system state (files, OS data, time, processes, network, env), you MUST use a tool.
 - Do NOT include role labels like "[AI]", "[Human]", or "[Tool]" in the JSON.
-{% if thoughts_enabled %}
+{% if thoughtsEnabled %}
 - Include the "thoughts" field; use an empty string when you have nothing to add.
 {% endif %}
 - "name" must match one of the tools listed inside <AVAILABLE_TOOLS>.

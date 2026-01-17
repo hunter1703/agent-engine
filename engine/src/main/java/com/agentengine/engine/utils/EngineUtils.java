@@ -102,7 +102,7 @@ public final class EngineUtils {
         missingToolRequestName = true;
       }
     }
-    return TemplateUtils.renderForName(
+    return TemplateUtils.renderTemplateForName(
         "hybrid/repair/invalid_message.txt",
         Map.of(
             "finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent,

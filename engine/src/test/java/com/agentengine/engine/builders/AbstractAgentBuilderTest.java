@@ -378,8 +378,8 @@ class AbstractAgentBuilderTest {
     }
 
     @Override
-    public List<String> agentNames() {
-      return List.of();
+    public String type() {
+      return null;
     }
   }
 

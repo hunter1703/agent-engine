@@ -10,16 +10,16 @@ class EngineConfigTest {
   @Test
   void hybridRequiresReasoningPromptAndTool() {
     HybridEngineConfig config = new HybridEngineConfig();
-    config.setPrompt("prompt");
+    config.setSystemPrompt("prompt");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
     config.setReasoning("model.json");
-    config.setPrompt(null);
+    config.setSystemPrompt(null);
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
-    config.setPrompt("prompt");
+    config.setSystemPrompt("prompt");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
@@ -32,7 +32,7 @@ class EngineConfigTest {
   void routerRequiresRouterAndTargets() {
     RouterEngineConfig config = new RouterEngineConfig();
     config.setReasoning("reasoner");
-    config.setPrompt("prompt");
+    config.setSystemPrompt("prompt");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 

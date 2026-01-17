@@ -6,12 +6,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.api.handlers.BuildPromptRequestHandler;
+import com.agentengine.api.handlers.InvokeAgentRequestHandler;
 import com.agentengine.client.AgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.interfaces.AgentService;
-import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,18 +27,22 @@ class AgentRestAPITest {
     when(engine.invoke(eq("session"), any()))
         .thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
 
-    AgentRestAPI resource = new AgentRestAPI(service);
+    AgentRestAPI resource =
+        new AgentRestAPI(
+            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
 
-    InvokeResponse response = resource.invoke(request);
+    AgentResponse response = resource.invoke(request);
 
-    assertThat(response.sessionId()).isEqualTo("session");
-    assertThat(response.finalAnswer()).isEqualTo("ok");
-    assertThat(response.thoughts()).isEqualTo("t");
+    assertThat(response).isInstanceOf(InvokeResponse.class);
+    InvokeResponse invokeResponse = (InvokeResponse) response;
+    assertThat(invokeResponse.sessionId()).isEqualTo("session");
+    assertThat(invokeResponse.finalAnswer()).isEqualTo("ok");
+    assertThat(invokeResponse.thoughts()).isEqualTo("t");
   }
 
   @Test
@@ -47,58 +52,52 @@ class AgentRestAPITest {
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(eq("session"), any())).thenReturn(null);
 
-    AgentRestAPI resource = new AgentRestAPI(service);
+    AgentRestAPI resource =
+        new AgentRestAPI(
+            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
 
-    InvokeResponse response = resource.invoke(request);
+    AgentResponse response = resource.invoke(request);
 
-    assertThat(response.sessionId()).isEqualTo("session");
-    assertThat(response.finalAnswer()).isNull();
-    assertThat(response.thoughts()).isNull();
+    assertThat(response).isInstanceOf(InvokeResponse.class);
+    InvokeResponse invokeResponse = (InvokeResponse) response;
+    assertThat(invokeResponse.sessionId()).isEqualTo("session");
+    assertThat(invokeResponse.finalAnswer()).isNull();
+    assertThat(invokeResponse.thoughts()).isNull();
   }
 
   @Test
-  void buildPromptReturnsMessages() {
+  void invokeBuildPromptReturnsMessages() {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.buildPrompt("session"))
         .thenReturn(List.of(Message.system("sys"), Message.user("hi")));
 
-    AgentRestAPI resource = new AgentRestAPI(service);
+    AgentRestAPI resource =
+        new AgentRestAPI(
+            service, List.of(new InvokeAgentRequestHandler(), new BuildPromptRequestHandler()));
     AgentRequest request = new AgentRequest();
     request.setAgentName("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
+    request.setType("BUILD_PROMPT");
 
-    PromptResponse response = resource.buildPrompt(request);
+    AgentResponse response = resource.invoke(request);
 
-    assertThat(response.sessionId()).isEqualTo("session");
-    assertThat(response.messages()).hasSize(2);
-    assertThat(response.messages().getFirst().role()).isEqualTo("system");
+    assertThat(response).isInstanceOf(PromptResponse.class);
+    PromptResponse promptResponse = (PromptResponse) response;
+    assertThat(promptResponse.sessionId()).isEqualTo("session");
+    assertThat(promptResponse.messages()).hasSize(2);
+    assertThat(promptResponse.messages().getFirst().role()).isEqualTo("system");
   }
 
   @Test
   void resourceRunsOnVirtualThread() {
-    assertThat(hasAnnotation("invoke", RunOnVirtualThread.class)).isTrue();
-    assertThat(hasAnnotation("invoke", Blocking.class)).isTrue();
-    assertThat(hasAnnotation("buildPrompt", RunOnVirtualThread.class)).isTrue();
-    assertThat(hasAnnotation("buildPrompt", Blocking.class)).isTrue();
-    assertThat(hasAnnotation("events", RunOnVirtualThread.class)).isTrue();
-    assertThat(hasAnnotation("events", Blocking.class)).isTrue();
-  }
-
-  private static boolean hasAnnotation(final String methodName, final Class<?> annotationClass) {
-    try {
-      return AgentRestAPI.class
-          .getMethod(methodName, AgentRequest.class)
-          .isAnnotationPresent(annotationClass.asSubclass(java.lang.annotation.Annotation.class));
-    } catch (NoSuchMethodException ex) {
-      throw new IllegalStateException(ex);
-    }
+    assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
   }
 }

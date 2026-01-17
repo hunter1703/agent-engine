@@ -7,13 +7,6 @@
 
 This produces the Quarkus runnable distribution in `interfaces/rest/build/quarkus-app/`.
 
-## Build Container
-```bash
-docker build -f deploy/Dockerfile -t agent-engine:latest .
-```
-
-The container expects plugin JARs under `/app/plugins`.
-
 ## Systemd
 1. Copy the Quarkus build output and plugins to `/opt/agent-engine`:
    ```bash

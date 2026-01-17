@@ -10,8 +10,9 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 - `interfaces/cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
 - `interfaces/rest/src/main/java/com/agentengine/api`: REST service layer
 - `plugins/`: optional tool/plugin projects (build into JARs)
-- `models/`: model registry configs (JSON/YAML)
-- `plugins/<plugin>/config`: agent configs (JSON/YAML) shipped with plugins
+- `configs/agents`: agent configs (JSON/YAML)
+- `configs/models`: model registry configs (JSON/YAML)
+- `deploy/docker`: docker resources
 - `examples/`: sample configs and CLI command payloads
 
 ## Modules
@@ -39,12 +40,14 @@ Or use the root shortcut:
 
 Endpoints:
 - `POST /agent/invoke` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
-- `POST /agent/prompt` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "..." }`
-- `GET /agent/events?agentName=...&agentConfigPath=...&sessionId=...` for SSE event stream
+  - Use `type: "BUILD_PROMPT"` to return the assembled prompt.
+- `POST /agent/events` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for SSE event stream
 
 Environment defaults:
 - `AGENT_NAME` sets the default agent name
 - `AGENT_CONFIG_PATH` sets the default config path
+- `CONFIG_DIR` points to the config root (default `configs`)
+- `CONFIG_DB_NAME` sets the MongoDB database name (default `AGENT_SERVICE`)
 - `PLUGIN_DIR` points to a directory of plugin JARs (default `plugins`)
 
 ## Testing
@@ -66,7 +69,7 @@ Plugins are external JARs that implement `com.agentengine.engine.tools.ToolProvi
 `META-INF/services` and are added to the runtime classpath.
 
 At runtime, the engine loads plugin JARs from `PLUGIN_DIR` (or `./plugins` by default).
-Agent configs live under `PLUGIN_DIR/config/<agent>.json|yaml` by default.
+Agent configs live under `CONFIG_DIR/agents/<agent>.json|yaml` by default.
 
 Build the shell tool plugin:
 ```bash
@@ -104,26 +107,53 @@ Run the build tooling tests:
 ```
 
 ## Deployment
-Build the REST app and container image:
-```bash
-./gradlew :interfaces:rest:build
-docker build -f deploy/Dockerfile -t agent-engine:latest .
-```
 
 Systemd service template:
 - `deploy/agent-engine.service`
 - Deployment guide: `deploy/README.md`
 
+## MongoDB Config Store
+
+### Quickstart
+```bash
+./deploy/docker/setup-mongo.sh ./configs
+./deploy/docker/setup-mongo.sh --force ./configs
+MONGODB_CONNECTION_STRING=mongodb://localhost:27017 \
+CONFIG_DB_NAME=AGENT_SERVICE \
+PLUGIN_DIR=./plugins \
+./gradlew :interfaces:rest:quarkusDev
+```
+
+Invoke by agent id (Mongo `_id`):
+```bash
+curl -N -X POST http://localhost:8080/agent/events \
+  -H 'Content-Type: application/json' \
+  -d '{"agentName":"shell_agent","sessionId":"demo","message":"Run pwd and return output."}'
+```
+
+### Details
+- The setup script builds a Mongo image from `deploy/docker/Dockerfile.mongodb` only if missing
+  (use `--force` to rebuild) and starts a container named `agent-engine-mongodb`.
+- Configs are imported from `<configs>/agents` and `<configs>/models` into `Agent` and `Model`
+  collections under the `AGENT_SERVICE` database (override with `CONFIG_DB_NAME`).
+- `_id` is the config filename without extension; this is the ID used everywhere.
+- When MongoDB is configured (`MONGODB_CONNECTION_STRING`), the agent service loads
+  configs by `agentName` from MongoDB.
+- If `agentConfigPath` is provided in the request, it overrides Mongo lookup.
+- The setup script accepts an optional config path argument and defaults to `./configs`.
+- The setup script imports JSON configs and requires `jq`.
+
 ## Model Config Validation
 ```bash
-./gradlew :engine:validateModelConfig --args="models/qwq_32b.json"
+./gradlew :engine:validateModelConfig --args="configs/models/qwq_32b.json"
 ```
 
 Then place the resulting JAR into your deployment plugin directory and add it to the classpath
 on startup.
 
 ## Notes
-- Agent configs use the Java schema (`engine` holds prompt + model keys; `context` holds `summarizer_model`).
-- Model configs are loaded from `models/<model_key>.*`.
+- Agent configs use the Java schema (`engine` holds prompt + model keys; `context` holds `summarizerModel`).
+- Model configs are loaded from `configs/models/<model_key>.*`.
+- LLAMA_CPP configs can auto-start `llama-server` when `serverCommand` is provided.
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.
 - Prompt templates live in `src/main/resources/prompts` and render via Jinjava.

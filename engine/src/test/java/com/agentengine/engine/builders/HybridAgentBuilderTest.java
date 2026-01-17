@@ -29,11 +29,11 @@ class HybridAgentBuilderTest {
         {
           "provider": "OPEN_AI",
           "model": "gpt",
-          "base_url": "http://localhost",
-          "response_format": "text",
-          "context_config": {
+          "baseUrl": "http://localhost",
+          "responseFormat": "text",
+          "contextConfig": {
             "type": "last_n",
-            "keep_last": 1
+            "keepLast": 1
           }
         }
         """);
@@ -43,11 +43,11 @@ class HybridAgentBuilderTest {
         {
           "provider": "OLLAMA",
           "model": "llama",
-          "base_url": "http://localhost",
-          "response_format": "text",
-          "context_config": {
+          "baseUrl": "http://localhost",
+          "responseFormat": "text",
+          "contextConfig": {
             "type": "last_n",
-            "keep_last": 1
+            "keepLast": 1
           }
         }
         """);
@@ -56,7 +56,7 @@ class HybridAgentBuilderTest {
     HybridEngineConfig engine = (HybridEngineConfig) agentConfig.getEngine();
     engine.setReasoning(reasoningModel.toString());
     engine.setTool(toolModel.toString());
-    engine.setPrompt("");
+    engine.setSystemPrompt("");
 
     ToolsConfig tools = new ToolsConfig();
     tools.setEnabled(List.of("fake"));
@@ -76,6 +76,6 @@ class HybridAgentBuilderTest {
   void agentNamesDefaultsToNull() {
     HybridAgentBuilder builder = new HybridAgentBuilder();
 
-    assertThat(builder.agentNames()).isNull();
+    assertThat(builder.type()).isNull();
   }
 }

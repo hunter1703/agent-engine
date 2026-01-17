@@ -2,22 +2,22 @@
   "engine": {
     "type": "hybrid",
     "prompt": "You are a helpful assistant.",
-    "reasoning": "models/qwq_32b.json",
-    "tool": "models/qwq_32b.json"
+    "reasoning": "qwq_32b.json",
+    "tool": "qwq_32b.json"
   },
   "context": {
     "type": "last_n",
-    "keep_last": 10
+    "keepLast": 6
   },
   "tools": {
-    "enabled": ["run_cmd"],
+    "enabled": ["echo"],
     "configs": {
-      "run_cmd": {
-        "timeout_seconds": 30
+      "echo": {
+        "prefix": "hello-"
       }
     }
   },
-  "state_store": {
+  "stateStore": {
     "type": "memory"
   }
 }

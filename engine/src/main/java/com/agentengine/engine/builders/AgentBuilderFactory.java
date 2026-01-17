@@ -17,12 +17,11 @@ public class AgentBuilderFactory {
   public AgentBuilderFactory(
       final Instance<AgentBuilder> allBuilders, final HybridAgentBuilder hybridAgentBuilder) {
     agentNameVsBuilder =
-        CollectionUtils.transformToMultiKeyMap(
-            allBuilders.stream().toList(), AgentBuilder::agentNames, Function.identity());
+        CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type, Function.identity());
     this.hybridAgentBuilder = hybridAgentBuilder;
   }
 
-  public AgentBuilder getBuilder(final String agentName) {
-    return agentNameVsBuilder.getOrDefault(agentName, hybridAgentBuilder);
+  public AgentBuilder getBuilder(final String type) {
+    return agentNameVsBuilder.getOrDefault(type, hybridAgentBuilder);
   }
 }

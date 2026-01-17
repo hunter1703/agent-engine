@@ -40,8 +40,8 @@ class AgentBuilderFactoryTest {
     }
 
     @Override
-    public List<String> agentNames() {
-      return List.of(name);
+    public String type() {
+      return name;
     }
   }
 }

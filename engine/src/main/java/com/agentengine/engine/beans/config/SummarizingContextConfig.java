@@ -1,17 +1,13 @@
 package com.agentengine.engine.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONField;
 import com.alibaba.fastjson2.annotation.JSONType;
 
 @JSONType(typeName = "summarize")
 public class SummarizingContextConfig extends ContextConfig {
-  @JSONField(name = "trigger_threshold")
   private Double triggerThreshold;
 
-  @JSONField(name = "recency_threshold")
   private Double recencyThreshold;
 
-  @JSONField(name = "summarizer_model")
   private String summarizerModel;
 
   public SummarizingContextConfig() {
