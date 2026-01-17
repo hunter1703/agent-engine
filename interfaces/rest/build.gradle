@@ -1,11 +1,6 @@
 plugins {
-    id 'java'
     id 'application'
     id 'io.quarkus' version '3.22.2'
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {
@@ -19,8 +14,8 @@ dependencies {
     implementation 'io.quarkus:quarkus-rest-jackson'
 
     testImplementation 'io.quarkus:quarkus-junit5'
-    testImplementation 'org.assertj:assertj-core:3.25.3'
-    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
 }
 
 tasks.withType(Test).configureEach {

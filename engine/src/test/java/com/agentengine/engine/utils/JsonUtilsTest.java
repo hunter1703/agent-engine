@@ -1,6 +1,7 @@
 package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.alibaba.fastjson2.TypeReference;
@@ -49,6 +50,22 @@ class JsonUtilsTest {
     Map<String, Object> parsed = JsonUtils.fromFile(path, new TypeReference<>() {});
 
     assertThat(parsed).containsEntry("count", 3);
+  }
+
+  @Test
+  void fromFileThrowsWhenMissing() {
+    Path path = tempDir.resolve("missing.json");
+
+    assertThatThrownBy(() -> JsonUtils.fromFile(path, Map.class))
+        .isInstanceOf(RuntimeException.class);
+  }
+
+  @Test
+  void fromFileTypeReferenceThrowsWhenMissing() {
+    Path path = tempDir.resolve("missing-map.json");
+
+    assertThatThrownBy(() -> JsonUtils.fromFile(path, new TypeReference<>() {}))
+        .isInstanceOf(RuntimeException.class);
   }
 
   @Test

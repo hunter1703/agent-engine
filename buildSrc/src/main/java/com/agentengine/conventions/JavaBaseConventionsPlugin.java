@@ -4,6 +4,7 @@ import com.diffplug.gradle.spotless.SpotlessExtension;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
@@ -41,6 +42,8 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
                       });
             });
 
+    configureTestDependencyConstraints(project.getDependencies());
+
     project
         .getTasks()
         .withType(JavaCompile.class)
@@ -59,5 +62,20 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
         .getTasks()
         .withType(JavaExec.class)
         .configureEach(task -> task.jvmArgs("--enable-preview"));
+  }
+
+  private static void configureTestDependencyConstraints(final DependencyHandler dependencies) {
+    dependencies
+        .getConstraints()
+        .add("testImplementation", "org.assertj:assertj-core:3.25.3");
+    dependencies
+        .getConstraints()
+        .add("testImplementation", "org.mockito:mockito-core:5.11.0");
+    dependencies
+        .getConstraints()
+        .add("testImplementation", "org.junit.jupiter:junit-jupiter:5.9.2");
+    dependencies
+        .getConstraints()
+        .add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher:1.9.2");
   }
 }

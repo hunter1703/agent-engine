@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.client.AgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.events.AgentEvent;
@@ -29,14 +31,19 @@ class AgentSseTest {
     AtomicReference<AgentListener> listenerRef = new AtomicReference<>();
     doAnswer(
             invocation -> {
-              listenerRef.set(invocation.getArgument(0));
+              listenerRef.set(invocation.getArgument(1));
               return null;
             })
         .when(engine)
-        .registerListener(any());
+        .registerListener(any(), any());
 
     AgentRestAPI resource = new AgentRestAPI(service);
-    Multi<AgentEvent> stream = resource.events("agent", "config.json", "session");
+    AgentRequest request = new AgentRequest();
+    request.setAgentName("agent");
+    request.setAgentConfigPath("config.json");
+    request.setSessionId("session");
+    request.setMessage("hello");
+    Multi<AgentEvent> stream = resource.events(request);
 
     LinkedBlockingQueue<AgentEvent> queue = new LinkedBlockingQueue<>();
     Cancellable cancellable = stream.subscribe().with(queue::add);
@@ -49,6 +56,8 @@ class AgentSseTest {
     AgentEvent event = queue.poll(1, TimeUnit.SECONDS);
     assertThat(event).isNotNull();
     assertThat(event.event()).isEqualTo("reasoning_start");
+
+    verify(engine).invoke(eq("session"), any());
 
     cancellable.cancel();
   }

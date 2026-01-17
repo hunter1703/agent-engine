@@ -28,7 +28,7 @@ public final class PluginLoader {
 
   static ClassLoader buildClassLoader() {
     Path pluginsDir = resolvePluginsDir();
-    if (pluginsDir == null || !Files.isDirectory(pluginsDir)) {
+    if (!Files.isDirectory(pluginsDir)) {
       return PluginLoader.class.getClassLoader();
     }
     List<URL> urls = new ArrayList<>();

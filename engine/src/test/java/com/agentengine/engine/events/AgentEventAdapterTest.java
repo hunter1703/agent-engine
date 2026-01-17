@@ -3,6 +3,8 @@ package com.agentengine.engine.events;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.beans.ToolExecution;
+import com.agentengine.engine.message.Message;
+import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,5 +53,22 @@ class AgentEventAdapterTest {
     assertThat(published.get(0).event()).isEqualTo("reasoning_start");
     assertThat(published.get(1).event()).isEqualTo("reasoning_end");
     assertThat(published.get(2).event()).isEqualTo("tool_repair");
+  }
+
+  @Test
+  void adapterPublishesFinalAnswer() {
+    List<AgentEvent> published = new ArrayList<>();
+    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
+
+    Message message = new Message(Role.ASSISTANT, "done", "thoughts", List.of(), List.of());
+    adapter.onFinalAnswer("session-3", message);
+
+    assertThat(published).hasSize(1);
+    AgentEvent event = published.getFirst();
+    assertThat(event.event()).isEqualTo("final_answer");
+    assertThat(event.sessionId()).isEqualTo("session-3");
+    Map<?, ?> payload = (Map<?, ?>) event.payload();
+    assertThat(payload.get("final_answer")).isEqualTo("done");
+    assertThat(payload.get("thoughts")).isEqualTo("thoughts");
   }
 }

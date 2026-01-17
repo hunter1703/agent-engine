@@ -44,4 +44,15 @@ class PluginLoaderTest {
     URLClassLoader urlLoader = (URLClassLoader) loader;
     assertThat(urlLoader.getURLs()).anyMatch(url -> url.toString().endsWith("plugin.jar"));
   }
+
+  @Test
+  void buildClassLoaderFallsBackWhenDirectoryEmpty() throws Exception {
+    Path pluginsDir = tempDir.resolve("plugins-empty");
+    Files.createDirectories(pluginsDir);
+    System.setProperty("PLUGIN_DIR", pluginsDir.toString());
+
+    ClassLoader loader = PluginLoader.buildClassLoader();
+
+    assertThat(loader).isSameAs(PluginLoader.class.getClassLoader());
+  }
 }

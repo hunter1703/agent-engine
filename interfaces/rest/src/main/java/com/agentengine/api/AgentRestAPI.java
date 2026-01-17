@@ -8,6 +8,7 @@ import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.utils.StringUtils;
 import com.agentengine.interfaces.AgentService;
+import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
@@ -22,7 +23,6 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 @Path("/agent")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@RunOnVirtualThread
 public class AgentRestAPI {
   private final AgentService agentService;
 
@@ -33,6 +33,8 @@ public class AgentRestAPI {
 
   @POST
   @Path("/invoke")
+  @Blocking
+  @RunOnVirtualThread
   public InvokeResponse invoke(final AgentRequest request) {
     AgentEngine engine =
         agentService.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
@@ -46,6 +48,8 @@ public class AgentRestAPI {
 
   @POST
   @Path("/prompt")
+  @Blocking
+  @RunOnVirtualThread
   public PromptResponse buildPrompt(final AgentRequest request) {
     AgentEngine engine =
         agentService.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
@@ -63,6 +67,8 @@ public class AgentRestAPI {
   @Path("/events")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
+  @Blocking
+  @RunOnVirtualThread
   public Multi<AgentEvent> events(final AgentRequest agentRequest) {
     AgentEngine engine =
         agentService.getOrStartEngine(

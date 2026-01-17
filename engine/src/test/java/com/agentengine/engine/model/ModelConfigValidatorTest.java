@@ -58,6 +58,24 @@ class ModelConfigValidatorTest {
   }
 
   @Test
+  void validateAcceptsThoughtTagsWhenEnabled() throws Exception {
+    Path path = tempDir.resolve("thoughts-ok.json");
+    Files.writeString(
+        path,
+        "{"
+            + "\"provider\":\"OPEN_AI\","
+            + "\"model\":\"gpt\","
+            + "\"thoughts_enabled\":true,"
+            + "\"thoughts_start_tag\":\"<t>\","
+            + "\"thoughts_end_tag\":\"</t>\""
+            + "}\n");
+
+    List<String> errors = ModelConfigValidator.validate(path);
+
+    assertThat(errors).isEmpty();
+  }
+
+  @Test
   void validateReturnsErrorWhenConfigMissing() {
     Path path = tempDir.resolve("missing.json");
 

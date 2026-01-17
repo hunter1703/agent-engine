@@ -11,6 +11,7 @@ import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.interfaces.AgentService;
+import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,21 @@ class AgentRestAPITest {
 
   @Test
   void resourceRunsOnVirtualThread() {
-    assertThat(AgentRestAPI.class.getAnnotation(RunOnVirtualThread.class)).isNotNull();
+    assertThat(hasAnnotation("invoke", RunOnVirtualThread.class)).isTrue();
+    assertThat(hasAnnotation("invoke", Blocking.class)).isTrue();
+    assertThat(hasAnnotation("buildPrompt", RunOnVirtualThread.class)).isTrue();
+    assertThat(hasAnnotation("buildPrompt", Blocking.class)).isTrue();
+    assertThat(hasAnnotation("events", RunOnVirtualThread.class)).isTrue();
+    assertThat(hasAnnotation("events", Blocking.class)).isTrue();
+  }
+
+  private static boolean hasAnnotation(final String methodName, final Class<?> annotationClass) {
+    try {
+      return AgentRestAPI.class
+          .getMethod(methodName, AgentRequest.class)
+          .isAnnotationPresent(annotationClass.asSubclass(java.lang.annotation.Annotation.class));
+    } catch (NoSuchMethodException ex) {
+      throw new IllegalStateException(ex);
+    }
   }
 }

@@ -1,5 +1,9 @@
 import org.gradle.api.file.RelativePath
 
+allprojects {
+    group = 'com.agentengine'
+}
+
 subprojects {
     repositories {
         mavenCentral()
@@ -7,12 +11,19 @@ subprojects {
     apply plugin: 'com.agentengine.java-base-conventions'
 }
 
+final def coreModules = [
+    ':engine',
+    ':engine:client',
+    ':interfaces:common',
+    ':interfaces:rest'
+]
+
 tasks.register('build') {
-    dependsOn ':engine:build', ':engine:client:build', ':interfaces:common:build', ':interfaces:rest:build'
+    dependsOn coreModules.collect { module -> "${module}:build" }
 }
 
 tasks.register('test') {
-    dependsOn ':engine:test', ':engine:client:test', ':interfaces:common:test', ':interfaces:rest:test'
+    dependsOn coreModules.collect { module -> "${module}:test" }
 }
 
 tasks.register('restDev') {
