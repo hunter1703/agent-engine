@@ -1,10 +1,7 @@
 package com.agentengine.engine;
 
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public abstract class AbstractAgentEngine implements AgentEngine {
@@ -20,7 +17,6 @@ public abstract class AbstractAgentEngine implements AgentEngine {
   public void unRegisterListener(final String sessionId) {
     listeners.remove(sessionId);
   }
-
 
   protected void invokeListeners(final Consumer<AgentListener> callback) {
     for (final AgentListener listener : listeners.values()) {

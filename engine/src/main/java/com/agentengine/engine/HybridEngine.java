@@ -66,7 +66,8 @@ public class HybridEngine extends AbstractAgentEngine {
     if (finalResponse != null) {
       return finalResponse;
     }
-    final Message invocationsExceededMessage = Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
+    final Message invocationsExceededMessage =
+        Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
     invokeListeners(listener -> listener.onFinalAnswer(sessionId, invocationsExceededMessage));
     return invocationsExceededMessage;
   }

@@ -33,7 +33,7 @@ public class AgentService {
         key,
         ignored -> {
           AgentConfig config = configLoader.loadConfig(Paths.get(resolvedConfigPath));
-            return builderFactory.getBuilder(resolvedName).build(resolvedName, config);
+          return builderFactory.getBuilder(resolvedName).build(resolvedName, config);
         });
   }
 

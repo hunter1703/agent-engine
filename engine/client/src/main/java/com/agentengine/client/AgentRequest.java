@@ -1,14 +1,16 @@
 package com.agentengine.client;
 
 import com.alibaba.fastjson2.annotation.JSONField;
-import com.fasterxml.jackson.annotation.JsonAlias;
 
 public class AgentRequest {
   private String type;
+
   @JSONField(alternateNames = {"agent_name"})
   private String agentName;
+
   @JSONField(alternateNames = {"agent_config_path"})
   private String agentConfigPath;
+
   private String sessionId;
 
   @JSONField(alternateNames = {"user_message"})

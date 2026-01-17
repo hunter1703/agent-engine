@@ -64,7 +64,9 @@ public class AgentRestAPI {
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   public Multi<AgentEvent> events(final AgentRequest agentRequest) {
-    AgentEngine engine = agentService.getOrStartEngine(agentRequest.getAgentName(), agentRequest.getAgentConfigPath());
+    AgentEngine engine =
+        agentService.getOrStartEngine(
+            agentRequest.getAgentName(), agentRequest.getAgentConfigPath());
     final String sessionId = getOrCreateSession(agentRequest.getSessionId());
     return Multi.createFrom()
         .emitter(
@@ -79,10 +81,11 @@ public class AgentRestAPI {
                   };
               engine.registerListener(sessionId, new AgentEventAdapter(publisher));
               engine.invoke(sessionId, Message.user(agentRequest.getMessage()));
-              emitter.onTermination(() -> {
-                active.set(false);
-                engine.unRegisterListener(sessionId);
-              });
+              emitter.onTermination(
+                  () -> {
+                    active.set(false);
+                    engine.unRegisterListener(sessionId);
+                  });
             });
   }
 
