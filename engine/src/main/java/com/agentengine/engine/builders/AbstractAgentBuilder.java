@@ -52,11 +52,11 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
 
   protected final ConfigRepository configRepository;
 
-    protected AbstractAgentBuilder(ConfigRepository configRepository) {
-        this.configRepository = configRepository;
-    }
+  protected AbstractAgentBuilder(ConfigRepository configRepository) {
+    this.configRepository = configRepository;
+  }
 
-    protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
+  protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
       final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
     final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();

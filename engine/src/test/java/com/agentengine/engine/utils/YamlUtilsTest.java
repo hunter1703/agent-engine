@@ -40,7 +40,6 @@ class YamlUtilsTest {
   void fromFileThrowsOnMissingPath() {
     Path missing = tempDir.resolve("missing.yaml");
 
-    assertThatThrownBy(() -> YamlUtils.fromFile(missing, Map.class))
-        .isInstanceOf(RuntimeException.class);
+    assertThatThrownBy(() -> YamlUtils.fromFile(missing, Map.class)).isInstanceOf(RuntimeException.class);
   }
 }

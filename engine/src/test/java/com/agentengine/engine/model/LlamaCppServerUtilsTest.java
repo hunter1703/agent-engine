@@ -18,8 +18,7 @@ class LlamaCppServerUtilsTest {
 
   @Test
   void resolveAddressReadsHostAndPort() {
-    LlamaCppServerUtils.ServerAddress address =
-        LlamaCppServerUtils.resolveAddress("http://127.0.0.1:17004/v1");
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://127.0.0.1:17004/v1");
 
     assertThat(address.host()).isEqualTo("127.0.0.1");
     assertThat(address.port()).isEqualTo(17004);
@@ -27,16 +26,14 @@ class LlamaCppServerUtilsTest {
 
   @Test
   void resolveAddressDefaultsPortForHttp() {
-    LlamaCppServerUtils.ServerAddress address =
-        LlamaCppServerUtils.resolveAddress("http://localhost/v1");
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://localhost/v1");
 
     assertThat(address.port()).isEqualTo(80);
   }
 
   @Test
   void resolveAddressDefaultsPortForHttps() {
-    LlamaCppServerUtils.ServerAddress address =
-        LlamaCppServerUtils.resolveAddress("https://localhost/v1");
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("https://localhost/v1");
 
     assertThat(address.port()).isEqualTo(443);
   }
@@ -73,12 +70,11 @@ class LlamaCppServerUtilsTest {
   void startServerSupportsCustomCommand() throws Exception {
     ModelConfig config = new ModelConfig();
     config.setServerCommand("true");
-    LlamaCppServerUtils.ServerAddress address =
-        new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost", 1);
+    LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost",
+        1);
 
-    Method startServer =
-        LlamaCppServerUtils.class.getDeclaredMethod(
-            "startServer", ModelConfig.class, LlamaCppServerUtils.ServerAddress.class);
+    Method startServer = LlamaCppServerUtils.class.getDeclaredMethod("startServer", ModelConfig.class,
+        LlamaCppServerUtils.ServerAddress.class);
     startServer.setAccessible(true);
 
     Object server = startServer.invoke(null, config, address);
@@ -92,12 +88,11 @@ class LlamaCppServerUtilsTest {
     ModelConfig config = new ModelConfig();
     config.setServerCommand("true");
     config.setServerWorkdir(workdir.toString());
-    LlamaCppServerUtils.ServerAddress address =
-        new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost", 1);
+    LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost",
+        1);
 
-    Method startServer =
-        LlamaCppServerUtils.class.getDeclaredMethod(
-            "startServer", ModelConfig.class, LlamaCppServerUtils.ServerAddress.class);
+    Method startServer = LlamaCppServerUtils.class.getDeclaredMethod("startServer", ModelConfig.class,
+        LlamaCppServerUtils.ServerAddress.class);
     startServer.setAccessible(true);
 
     Object server = startServer.invoke(null, config, address);
@@ -107,43 +102,35 @@ class LlamaCppServerUtilsTest {
 
   @Test
   void waitForStartupHandlesTimeout() throws Exception {
-    LlamaCppServerUtils.ServerAddress address =
-        new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost", 1);
-    Method waitForStartup =
-        LlamaCppServerUtils.class.getDeclaredMethod(
-            "waitForStartup", LlamaCppServerUtils.ServerAddress.class, Duration.class);
+    LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost",
+        1);
+    Method waitForStartup = LlamaCppServerUtils.class.getDeclaredMethod("waitForStartup",
+        LlamaCppServerUtils.ServerAddress.class, Duration.class);
     waitForStartup.setAccessible(true);
 
-    assertThatNoException()
-        .isThrownBy(() -> waitForStartup.invoke(null, address, Duration.ofMillis(1)));
+    assertThatNoException().isThrownBy(() -> waitForStartup.invoke(null, address, Duration.ofMillis(1)));
   }
 
   @Test
   void internalLambdasExecuteSafely() throws Exception {
     ModelConfig config = new ModelConfig();
     config.setServerCommand("true");
-    LlamaCppServerUtils.ServerAddress address =
-        new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost", 1);
+    LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress("http://localhost:1", "localhost",
+        1);
 
-    Method ensureRunningLambda =
-        LlamaCppServerUtils.class.getDeclaredMethod(
-            "lambda$ensureRunning$0",
-            ModelConfig.class,
-            LlamaCppServerUtils.ServerAddress.class,
-            String.class,
-            LlamaCppServerUtils.ManagedServer.class);
+    Method ensureRunningLambda = LlamaCppServerUtils.class.getDeclaredMethod("lambda$ensureRunning$0",
+        ModelConfig.class, LlamaCppServerUtils.ServerAddress.class, String.class,
+        LlamaCppServerUtils.ManagedServer.class);
     ensureRunningLambda.setAccessible(true);
     Object managed = ensureRunningLambda.invoke(null, config, address, address.baseUrl(), null);
     assertThat(managed).isNotNull();
 
-    Method registerLambda =
-        LlamaCppServerUtils.class.getDeclaredMethod("lambda$registerShutdownHook$1");
+    Method registerLambda = LlamaCppServerUtils.class.getDeclaredMethod("lambda$registerShutdownHook$1");
     registerLambda.setAccessible(true);
     assertThatNoException().isThrownBy(() -> registerLambda.invoke(null));
 
-    Method isReachable =
-        LlamaCppServerUtils.class.getDeclaredMethod(
-            "isReachable", LlamaCppServerUtils.ServerAddress.class);
+    Method isReachable = LlamaCppServerUtils.class.getDeclaredMethod("isReachable",
+        LlamaCppServerUtils.ServerAddress.class);
     isReachable.setAccessible(true);
     assertThatNoException().isThrownBy(() -> isReachable.invoke(null, address));
   }
@@ -151,35 +138,29 @@ class LlamaCppServerUtilsTest {
   @Test
   void waitForStartupReturnsWhenReachable() throws Exception {
     try (ServerSocket socket = new ServerSocket(0)) {
-      LlamaCppServerUtils.ServerAddress address =
-          new LlamaCppServerUtils.ServerAddress(
-              "http://localhost:" + socket.getLocalPort(),
-              "localhost",
-              socket.getLocalPort());
-      Method waitForStartup =
-          LlamaCppServerUtils.class.getDeclaredMethod(
-              "waitForStartup", LlamaCppServerUtils.ServerAddress.class, Duration.class);
+      LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress(
+          "http://localhost:" + socket.getLocalPort(), "localhost", socket.getLocalPort());
+      Method waitForStartup = LlamaCppServerUtils.class.getDeclaredMethod("waitForStartup",
+          LlamaCppServerUtils.ServerAddress.class, Duration.class);
       waitForStartup.setAccessible(true);
 
-      assertThatNoException()
-          .isThrownBy(() -> waitForStartup.invoke(null, address, Duration.ofMillis(200)));
+      assertThatNoException().isThrownBy(() -> waitForStartup.invoke(null, address, Duration.ofMillis(200)));
     }
   }
 
   @Test
   void registerShutdownHookDestroysActiveProcess() throws Exception {
     Process process = new ProcessBuilder("sleep", "1").start();
-    LlamaCppServerUtils.ManagedServer server =
-        new LlamaCppServerUtils.ManagedServer("test", process, List.of("sleep", "1"));
+    LlamaCppServerUtils.ManagedServer server = new LlamaCppServerUtils.ManagedServer("test", process,
+        List.of("sleep", "1"));
     var serversField = LlamaCppServerUtils.class.getDeclaredField("SERVERS");
     serversField.setAccessible(true);
     @SuppressWarnings("unchecked")
-    Map<String, LlamaCppServerUtils.ManagedServer> servers =
-        (Map<String, LlamaCppServerUtils.ManagedServer>) serversField.get(null);
+    Map<String, LlamaCppServerUtils.ManagedServer> servers = (Map<String, LlamaCppServerUtils.ManagedServer>) serversField
+        .get(null);
     servers.put("test", server);
 
-    Method registerLambda =
-        LlamaCppServerUtils.class.getDeclaredMethod("lambda$registerShutdownHook$1");
+    Method registerLambda = LlamaCppServerUtils.class.getDeclaredMethod("lambda$registerShutdownHook$1");
     registerLambda.setAccessible(true);
     registerLambda.invoke(null);
 
@@ -190,12 +171,10 @@ class LlamaCppServerUtilsTest {
   @Test
   void isReachableReturnsTrueWhenSocketOpen() throws Exception {
     try (ServerSocket socket = new ServerSocket(0)) {
-      LlamaCppServerUtils.ServerAddress address =
-          new LlamaCppServerUtils.ServerAddress(
-              "http://localhost:" + socket.getLocalPort(), "localhost", socket.getLocalPort());
-      Method isReachable =
-          LlamaCppServerUtils.class.getDeclaredMethod(
-              "isReachable", LlamaCppServerUtils.ServerAddress.class);
+      LlamaCppServerUtils.ServerAddress address = new LlamaCppServerUtils.ServerAddress(
+          "http://localhost:" + socket.getLocalPort(), "localhost", socket.getLocalPort());
+      Method isReachable = LlamaCppServerUtils.class.getDeclaredMethod("isReachable",
+          LlamaCppServerUtils.ServerAddress.class);
       isReachable.setAccessible(true);
 
       Object result = isReachable.invoke(null, address);

@@ -53,8 +53,7 @@ class HybridAgentBuilderTest {
     assertThat(builder.type()).isNull();
   }
 
-  private static ModelConfig buildModelConfig(
-      final String provider, final String model, final String baseUrl) {
+  private static ModelConfig buildModelConfig(final String provider, final String model, final String baseUrl) {
     ModelConfig config = new ModelConfig();
     config.setProvider(provider);
     config.setModel(model);
