@@ -72,6 +72,11 @@ cd plugins/shell-agent
 ./gradlew build
 ```
 
+Or use the helper script:
+```bash
+./scripts/build-plugin.sh shell-agent
+```
+
 Build the echo plugin:
 ```bash
 cd plugins/echo-agent
