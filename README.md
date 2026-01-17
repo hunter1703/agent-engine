@@ -7,19 +7,19 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 ## Project Layout
 - `engine/src/main/java/com/agentengine/engine`: core engine, config, context, state, tooling
 - `engine/client/src/main/java/com/agentengine/client`: shared client request models
-- `interfaces/cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
+- `interfaces/common/src/main/java/com/agentengine/interfaces`: shared interface services/utilities
 - `interfaces/rest/src/main/java/com/agentengine/api`: REST service layer
 - `plugins/`: optional tool/plugin projects (build into JARs)
 - `configs/agents`: agent configs (JSON/YAML)
-- `configs/models`: model registry configs (JSON/YAML)
+- `configs/models`: model registry configs (JSON)
 - `deploy/docker`: docker resources
-- `examples/`: sample configs and CLI command payloads
+- `examples/`: sample configs and request payloads
 
 ## Modules
 - `engine`: core engine library
 - `engine:client`: shared request/response models
 - `interfaces`: umbrella module for transports
-  - `interfaces:cli`: stdio interface (depends on `engine`, `engine:client`)
+  - `interfaces:common`: shared interface services/utilities
   - `interfaces:rest`: REST service (depends on `engine`, `engine:client`)
 
 ## Quick Start
@@ -39,37 +39,28 @@ Or use the root shortcut:
 ```
 
 Endpoints:
-- `POST /agent/invoke` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
+- `POST /agent/invoke` with `{ "type": "INVOKE_AGENT", "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
   - Use `type: "BUILD_PROMPT"` to return the assembled prompt.
 - `POST /agent/events` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for SSE event stream
 
-Environment defaults:
-- `AGENT_NAME` sets the default agent name
-- `AGENT_CONFIG_PATH` sets the default config path
-- `CONFIG_DIR` points to the config root (default `configs`)
-- `CONFIG_DB_NAME` sets the MongoDB database name (default `AGENT_ENGINE`)
-- `PLUGIN_DIR` points to a directory of plugin JARs (default `plugins`)
+Runtime settings:
+- `PLUGIN_DIR` (env or system property) points to a directory of plugin JARs (default `plugins`)
+- `MONGODB_CONNECTION_STRING` is read from a JVM system property (default `mongodb://localhost:27017`)
 
 ## Testing
 ```bash
 ./gradlew :engine:test
 ```
 
-- Coverage report: `build/reports/jacoco/test/html/index.html`
-- Add new tests under `src/test/java` using JUnit5 + AssertJ
-
-## CLI
-To run the stdio server:
-```bash
-./gradlew :interfaces:cli:run --args="server"
-```
+- Coverage report: `engine/build/reports/jacoco/test/html/index.html`
+- Add new tests under `<module>/src/test/java` using JUnit5 + AssertJ
 
 ## Plugins
 Plugins are external JARs that implement `com.agentengine.engine.tools.ToolProvider` via
 `META-INF/services` and are added to the runtime classpath.
 
 At runtime, the engine loads plugin JARs from `PLUGIN_DIR` (or `./plugins` by default).
-Agent configs live under `CONFIG_DIR/agents/<agent>.json|yaml` by default.
+Agent configs are loaded from MongoDB (if configured) or passed in via `agentConfigPath`.
 
 Build the shell tool plugin:
 ```bash
@@ -118,10 +109,7 @@ Systemd service template:
 ```bash
 ./deploy/docker/setup-mongo.sh ./configs
 ./deploy/docker/setup-mongo.sh --force ./configs
-MONGODB_CONNECTION_STRING=mongodb://localhost:27000 \
-CONFIG_DB_NAME=AGENT_ENGINE \
-PLUGIN_DIR=./plugins \
-./gradlew restStack
+./gradlew deployEngine -DMONGODB_CONNECTION_STRING=mongodb://localhost:27000
 ```
 
 ### Convenience script
@@ -130,9 +118,12 @@ PLUGIN_DIR=./plugins \
 ./scripts/run-rest-dev.sh --force ./configs
 ```
 
+If you need a non-default MongoDB connection string, set:
+`JAVA_TOOL_OPTIONS=-DMONGODB_CONNECTION_STRING=mongodb://localhost:27000` before running.
+
 ### Master Gradle task
 ```bash
-./gradlew restStack
+./gradlew deployEngine
 ./gradlew deployEngine -PmongoArgs="--force ./configs"
 ```
 
@@ -150,25 +141,17 @@ curl -N -X POST http://localhost:8080/agent/events \
 - The setup script builds a Mongo image from `deploy/docker/Dockerfile.mongodb` only if missing
   (use `--force` to rebuild) and starts a container named `agent-engine-mongodb`.
 - Configs are imported from `<configs>/agents` and `<configs>/models` into `Agent` and `Model`
-  collections under the `AGENT_ENGINE` database (override with `CONFIG_DB_NAME`).
+  collections under the `AGENT_ENGINE` database (setup script uses `CONFIG_DB_NAME`).
 - `_id` is the config filename without extension; this is the ID used everywhere.
 - When MongoDB is configured (`MONGODB_CONNECTION_STRING`), the agent service loads
-  configs by `agentName` from MongoDB.
+  configs by `agentName` from MongoDB (database name is currently fixed to `AGENT_ENGINE`).
 - If `agentConfigPath` is provided in the request, it overrides Mongo lookup.
 - The setup script accepts an optional config path argument and defaults to `./configs`.
 - The setup script imports JSON configs and requires `jq`.
 
-## Model Config Validation
-```bash
-./gradlew :engine:validateModelConfig --args="configs/models/qwq_32b.json"
-```
-
-Then place the resulting JAR into your deployment plugin directory and add it to the classpath
-on startup.
-
 ## Notes
 - Agent configs use the Java schema (`engine` holds `systemPrompt` + model keys; `context` holds `summarizerModel`).
-- Model configs are loaded from `configs/models/<model_key>.*`.
+- Model configs are loaded by ID from MongoDB (imported from `configs/models`).
 - LLAMA_CPP configs can auto-start `llama-server` when `serverCommand` is provided.
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.
-- Prompt templates live in `src/main/resources/prompts` and render via Jinjava.
+- Prompt templates live in `engine/src/main/resources/prompts` and render via Jinjava.

@@ -1,7 +1,8 @@
 # Model Config Schema
 
-This directory contains model configuration files consumed by the engine. Each JSON/YAML file
-maps to `ModelConfig` and is referenced from agent configs.
+This directory contains model configuration JSON files imported into MongoDB. Each file maps to
+`ModelConfig` and is referenced from agent configs by ID. The setup script imports JSON files
+only.
 
 ## Required Fields
 - `provider`: one of `OLLAMA`, `LLAMA_CPP`, `OPEN_AI`
@@ -40,12 +41,6 @@ maps to `ModelConfig` and is referenced from agent configs.
   "serverCommand": "/path/to/llama-server",
   "serverArgs": ["-m", "/path/to/qwq-32b.gguf", "--host", "127.0.0.1", "--port", "17004"]
 }
-```
-
-## Validation
-Run the model config validator:
-```bash
-./gradlew :engine:validateModelConfig --args="configs/models/qwq_32b.json"
 ```
 
 ## MongoDB IDs

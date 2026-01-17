@@ -21,6 +21,6 @@ This produces the Quarkus runnable distribution in `interfaces/rest/build/quarku
    sudo systemctl enable --now agent-engine
    ```
 
-## Environment
-- `PLUGIN_DIR` (default: `./plugins`) to locate plugin JARs and config files.
-- `AGENT_NAME` and `AGENT_CONFIG_PATH` to override defaults.
+## Runtime Settings
+- `PLUGIN_DIR` (default: `./plugins`) to locate plugin JARs.
+- `MONGODB_CONNECTION_STRING` is read from a JVM system property (set in `ExecStart`).
