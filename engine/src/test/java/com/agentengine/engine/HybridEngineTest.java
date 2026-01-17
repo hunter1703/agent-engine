@@ -60,7 +60,7 @@ class HybridEngineTest {
             2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener(listener);
+    engine.registerListener("session", listener);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
@@ -126,7 +126,7 @@ class HybridEngineTest {
             2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener(listener);
+    engine.registerListener("session", listener);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
@@ -202,7 +202,7 @@ class HybridEngineTest {
             2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener(listener);
+    engine.registerListener("session", listener);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
@@ -365,6 +365,7 @@ class HybridEngineTest {
     private final List<List<ToolCall>> toolPlans = new ArrayList<>();
     private final List<ToolExecution> toolExecutions = new ArrayList<>();
     private int toolRepairs = 0;
+    private final List<String> finalAnswers = new ArrayList<>();
 
     @Override
     public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
@@ -379,6 +380,11 @@ class HybridEngineTest {
     @Override
     public void onToolRepair(final String sessionId) {
       toolRepairs++;
+    }
+
+    @Override
+    public void onFinalAnswer(final String sessionId, final Message message) {
+      finalAnswers.add(message.getContent());
     }
   }
 }

@@ -16,6 +16,12 @@ public abstract class AbstractAgentEngine implements AgentEngine {
     listeners.putIfAbsent(sessionId, listener);
   }
 
+  @Override
+  public void unRegisterListener(final String sessionId) {
+    listeners.remove(sessionId);
+  }
+
+
   protected void invokeListeners(final Consumer<AgentListener> callback) {
     for (final AgentListener listener : listeners.values()) {
       callback.accept(listener);

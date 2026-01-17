@@ -13,8 +13,8 @@ class AbstractAgentEngineTest {
   void invokeListenersNotifiesAllRegisteredListeners() {
     TestEngine engine = new TestEngine();
     List<String> called = new ArrayList<>();
-    engine.registerListener(new StartListener(called));
-    engine.registerListener(new EndListener(called));
+    engine.registerListener("s1", new StartListener(called));
+    engine.registerListener("s2", new EndListener(called));
 
     engine.trigger("s1");
 
@@ -47,8 +47,11 @@ class AbstractAgentEngineTest {
 
     @Override
     public void onReasoningStart(final String sessionId) {
-      called.add("start-" + sessionId);
+      called.add(STR."start-\{sessionId}");
     }
+
+    @Override
+    public void onFinalAnswer(final String sessionId, final Message message) {}
   }
 
   private static final class EndListener implements AgentListener {
@@ -62,5 +65,8 @@ class AbstractAgentEngineTest {
     public void onReasoningEnd(final String sessionId) {
       called.add("end-" + sessionId);
     }
+
+    @Override
+    public void onFinalAnswer(final String sessionId, final Message message) {}
   }
 }

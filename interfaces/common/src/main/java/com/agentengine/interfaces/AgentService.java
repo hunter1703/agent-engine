@@ -1,7 +1,6 @@
 package com.agentengine.interfaces;
 
 import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.builders.AgentBuilderFactory;
