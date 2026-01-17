@@ -26,16 +26,13 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
       throw new IllegalArgumentException("Hybrid engine requires hybrid engine config");
     }
     final String promptFromConfig = hybridConfig.getSystemPrompt();
-    final String systemPrompt =
-        StringUtils.isBlank(promptFromConfig) ? DEFAULT_SYSTEM_PROMPT : promptFromConfig;
+    final String systemPrompt = StringUtils.isBlank(promptFromConfig) ? DEFAULT_SYSTEM_PROMPT : promptFromConfig;
 
     final String reasoningLLM = hybridConfig.getReasoning();
     final String toolLLM = hybridConfig.getTool();
 
-    final ModelConfig reasoningConfig =
-        Objects.requireNonNull(ResourceUtils.loadModelConfig(reasoningLLM));
-    final ModelConfig toolAssistantConfig =
-        Objects.requireNonNull(ResourceUtils.loadModelConfig(toolLLM));
+    final ModelConfig reasoningConfig = Objects.requireNonNull(ResourceUtils.loadModelConfig(reasoningLLM));
+    final ModelConfig toolAssistantConfig = Objects.requireNonNull(ResourceUtils.loadModelConfig(toolLLM));
 
     final LLMModel reasoningModel = buildChatModel(reasoningConfig);
     final LLMModel toolAssistantModel = buildChatModel(toolAssistantConfig);
@@ -44,18 +41,12 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
     final ToolsConfig toolsConfig = agentConfig.getTools();
     final List<AgentTool> tools = ToolRegistry.loadTools(agentName, toolsConfig);
 
-    final ContextBuilder reasoningContextBuilder =
-        buildReasoningContextBuilder(reasoningConfig, sessionStore, true, systemPrompt, tools);
-    final ContextBuilder toolAssistantContextBuilder =
-        buildToolAssistantContextBuilder(toolAssistantConfig, sessionStore, systemPrompt, tools);
-    return new HybridEngine(
-        reasoningModel,
-        toolAssistantModel,
-        tools,
-        reasoningContextBuilder,
-        toolAssistantContextBuilder,
-        sessionStore,
-        25);
+    final ContextBuilder reasoningContextBuilder = buildReasoningContextBuilder(reasoningConfig, sessionStore, true,
+        systemPrompt, tools);
+    final ContextBuilder toolAssistantContextBuilder = buildToolAssistantContextBuilder(toolAssistantConfig,
+        sessionStore, systemPrompt, tools);
+    return new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContextBuilder,
+        toolAssistantContextBuilder, sessionStore, 25);
   }
 
   @Override

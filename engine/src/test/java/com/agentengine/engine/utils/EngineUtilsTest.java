@@ -98,12 +98,11 @@ class EngineUtilsTest {
 
   @Test
   void parseJsonPayloadHandlesCodeFencesAndToolCalls() {
-    String payload =
-        """
-            ```json
-            {"finalAnswer":"ok","thoughts":"t","toolRequests":[{"id":"t1","name":"echo","args":{"text":"hi"}}]}
-            ```
-            """;
+    String payload = """
+        ```json
+        {"finalAnswer":"ok","thoughts":"t","toolRequests":[{"id":"t1","name":"echo","args":{"text":"hi"}}]}
+        ```
+        """;
 
     Message parsed = EngineUtils.parseJsonPayload(payload);
 
@@ -142,9 +141,7 @@ class EngineUtilsTest {
 
   @Test
   void parseJsonPayloadHandlesMixedToolRequestFormats() {
-    String payload =
-        JsonUtils.toJson(
-            Map.of("toolRequests", List.of("raw", Map.of("id", "2", "name", "tool2"), 3)));
+    String payload = JsonUtils.toJson(Map.of("toolRequests", List.of("raw", Map.of("id", "2", "name", "tool2"), 3)));
 
     Message parsed = EngineUtils.parseJsonPayload(payload);
 
@@ -163,9 +160,8 @@ class EngineUtilsTest {
 
   @Test
   void parseToolRequestInfoExtractsIdAndNameFromJsonOrLines() {
-    List<ToolRequest> parsed =
-        EngineUtils.parseToolRequestInfo(
-            List.of("{\"id\":\"abc\",\"name\":\"tool\"}", "id: 2\nname: calc"));
+    List<ToolRequest> parsed = EngineUtils
+        .parseToolRequestInfo(List.of("{\"id\":\"abc\",\"name\":\"tool\"}", "id: 2\nname: calc"));
 
     assertThat(parsed).hasSize(2);
     assertThat(parsed.getFirst().id()).isEqualTo("abc");
@@ -174,8 +170,8 @@ class EngineUtilsTest {
 
   @Test
   void parseToolRequestInfoExtractsEmbeddedJson() {
-    List<ToolRequest> parsed =
-        EngineUtils.parseToolRequestInfo(List.of("prefix {\"id\":\"t1\",\"tool\":\"sum\"} suffix"));
+    List<ToolRequest> parsed = EngineUtils
+        .parseToolRequestInfo(List.of("prefix {\"id\":\"t1\",\"tool\":\"sum\"} suffix"));
 
     assertThat(parsed.getFirst().id()).isEqualTo("t1");
     assertThat(parsed.getFirst().name()).isEqualTo("sum");
@@ -183,8 +179,7 @@ class EngineUtilsTest {
 
   @Test
   void sanitizeMessageExtractsMultipleToolRequests() {
-    String content =
-        "TOOL_REQUEST: {\"id\":\"1\",\"name\":\"a\"}\nTOOL_REQUEST: {\"id\":\"2\",\"name\":\"b\"}";
+    String content = "TOOL_REQUEST: {\"id\":\"1\",\"name\":\"a\"}\nTOOL_REQUEST: {\"id\":\"2\",\"name\":\"b\"}";
     Message response = new Message(Role.ASSISTANT, content, null, null, null);
     ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
 
@@ -203,8 +198,7 @@ class EngineUtilsTest {
 
   @Test
   void getRepairMessageIfInvalidFlagsMixedFinalAndToolRequests() {
-    Message message =
-        new Message(Role.ASSISTANT, "answer", null, List.of("{\"name\":\"tool\"}"), List.of());
+    Message message = new Message(Role.ASSISTANT, "answer", null, List.of("{\"name\":\"tool\"}"), List.of());
 
     String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
 
@@ -214,13 +208,8 @@ class EngineUtilsTest {
 
   @Test
   void getRepairMessageIfInvalidFlagsDuplicateIdsAndMissingName() {
-    Message message =
-        new Message(
-            Role.ASSISTANT,
-            null,
-            null,
-            List.of("{\"id\":\"1\"}", "{\"id\":\"1\",\"name\":\"tool\"}"),
-            List.of());
+    Message message = new Message(Role.ASSISTANT, null, null,
+        List.of("{\"id\":\"1\"}", "{\"id\":\"1\",\"name\":\"tool\"}"), List.of());
 
     String repairMessage = EngineUtils.getRepairMessageIfInvalid(message);
 

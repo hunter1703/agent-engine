@@ -26,27 +26,21 @@ public final class InMemorySessionStore implements SessionStore {
   }
 
   @Override
-  public void addToolExecutions(
-      final String sessionId, final String messageId, final List<ToolExecution> toolExecutions) {
+  public void addToolExecutions(final String sessionId, final String messageId,
+      final List<ToolExecution> toolExecutions) {
     final SessionState session = session(sessionId);
-    toolExecutions.forEach(
-        toolExecution -> {
-          toolExecution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
-        });
-    session
-        .toolExecutions
-        .computeIfAbsent(messageId, _ -> new ArrayList<>())
-        .addAll(toolExecutions);
+    toolExecutions.forEach(toolExecution -> {
+      toolExecution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+    });
+    session.toolExecutions.computeIfAbsent(messageId, _ -> new ArrayList<>()).addAll(toolExecutions);
   }
 
   @Override
-  public Map<String, List<ToolExecution>> getToolExecutions(
-      final String sessionId, final List<String> messageIds) {
+  public Map<String, List<ToolExecution>> getToolExecutions(final String sessionId, final List<String> messageIds) {
     final SessionState session = session(sessionId);
     final Map<String, List<ToolExecution>> toolExecutions = new HashMap<>();
     for (final String messageId : messageIds) {
-      toolExecutions.put(
-          messageId, CollectionUtils.nullSafeList(session.toolExecutions.get(messageId)));
+      toolExecutions.put(messageId, CollectionUtils.nullSafeList(session.toolExecutions.get(messageId)));
     }
     return toolExecutions;
   }
@@ -58,20 +52,11 @@ public final class InMemorySessionStore implements SessionStore {
   }
 
   @Override
-  public void addSummary(
-      final String sessionId,
-      final String summarizedFromMessageId,
-      final String summarizedUptoMessageId,
-      final String summary,
-      final long createdAt) {
+  public void addSummary(final String sessionId, final String summarizedFromMessageId,
+      final String summarizedUptoMessageId, final String summary, final long createdAt) {
     final SessionState session = session(sessionId);
-    session.summaries.add(
-        new Summary(
-            UUID.randomUUID().toString().replaceAll("-", ""),
-            summary,
-            summarizedFromMessageId,
-            summarizedUptoMessageId,
-            createdAt));
+    session.summaries.add(new Summary(UUID.randomUUID().toString().replaceAll("-", ""), summary,
+        summarizedFromMessageId, summarizedUptoMessageId, createdAt));
   }
 
   private SessionState session(final String sessionId) {
@@ -80,8 +65,7 @@ public final class InMemorySessionStore implements SessionStore {
 
   private static final class SessionState {
     private final List<Message> messages = new CopyOnWriteArrayList<>();
-    private final ConcurrentMap<String, List<ToolExecution>> toolExecutions =
-        new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, List<ToolExecution>> toolExecutions = new ConcurrentHashMap<>();
     private final List<Summary> summaries = new CopyOnWriteArrayList<>();
   }
 }

@@ -29,8 +29,7 @@ class AgentRestAPITest {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
-    when(engine.invoke(eq("session"), any()))
-        .thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
+    when(engine.invoke(eq("session"), any())).thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -78,8 +77,7 @@ class AgentRestAPITest {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
-    when(engine.buildPrompt("session"))
-        .thenReturn(List.of(Message.system("sys"), Message.user("hi")));
+    when(engine.buildPrompt("session")).thenReturn(List.of(Message.system("sys"), Message.user("hi")));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -102,15 +100,12 @@ class AgentRestAPITest {
     assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
   }
 
-  private static Instance<AgentRequestHandler> buildHandlers(
-      final AgentService service) {
+  private static Instance<AgentRequestHandler> buildHandlers(final AgentService service) {
     InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    StreamingInvokeAgentRequestHandler streamingHandler =
-        new StreamingInvokeAgentRequestHandler(service);
+    StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
     Instance<AgentRequestHandler> instance = mock(Instance.class);
-    when(instance.stream())
-        .thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
+    when(instance.stream()).thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
     return instance;
   }
 }

@@ -96,8 +96,7 @@ class ConfigBeansTest {
     missingRouter.setReasoning("reasoner.json");
     missingRouter.setSystemPrompt("prompt");
 
-    assertThatThrownBy(missingRouter::validate)
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(missingRouter::validate).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("engine.router");
 
     RouterEngineConfig missingTool = new RouterEngineConfig();
@@ -105,8 +104,7 @@ class ConfigBeansTest {
     missingTool.setSystemPrompt("prompt");
     missingTool.setRouter("router.json");
 
-    assertThatThrownBy(missingTool::validate)
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(missingTool::validate).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("engine.router requires");
   }
 }

@@ -68,15 +68,14 @@ class CollectionUtilsTest {
 
   @Test
   void transformHelpersSkipNullKeysAndMapMultipleKeys() {
-    record Item(String value, List<String> keys) {}
+    record Item(String value, List<String> keys) {
+    }
 
     List<Item> items = List.of(new Item("first", List.of("a", "b")), new Item("skip", List.of()));
 
-    Map<String, String> multiKey =
-        CollectionUtils.transformToMultiKeyMap(items, Item::keys, Item::value);
-    Map<String, String> singleKey =
-        CollectionUtils.transformToMap(
-            items, item -> item.keys().isEmpty() ? null : item.keys().getFirst(), Item::value);
+    Map<String, String> multiKey = CollectionUtils.transformToMultiKeyMap(items, Item::keys, Item::value);
+    Map<String, String> singleKey = CollectionUtils.transformToMap(items,
+        item -> item.keys().isEmpty() ? null : item.keys().getFirst(), Item::value);
 
     assertThat(multiKey).containsEntry("a", "first").containsEntry("b", "first");
     assertThat(singleKey).containsEntry("a", "first");

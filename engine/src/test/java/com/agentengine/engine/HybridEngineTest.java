@@ -27,37 +27,23 @@ class HybridEngineTest {
     SessionStore sessionStore = new InMemorySessionStore();
     String sessionId = "session";
 
-    String toolRequest =
-        "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\",\"args\":{\"text\":\"hi\"}}";
-    Message first =
-        new Message(Role.ASSISTANT, "<think>plan</think>\n" + toolRequest, null, null, null);
+    String toolRequest = "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\",\"args\":{\"text\":\"hi\"}}";
+    Message first = new Message(Role.ASSISTANT, "<think>plan</think>\n" + toolRequest, null, null, null);
     Message second = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
 
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
 
-    String toolAssistantPayload =
-        """
-            {"toolRequests":[{"id":"call-1","name":"echo","args":{"text":"hi"}}]}
-            """;
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.JSON,
-            List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
+    String toolAssistantPayload = """
+        {"toolRequests":[{"id":"call-1","name":"echo","args":{"text":"hi"}}]}
+        """;
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
 
     List<AgentTool> tools = List.of(new EchoTool());
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            tools,
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            2);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+        sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
     engine.registerListener("session", listener);
@@ -71,17 +57,12 @@ class HybridEngineTest {
     assertThat(listener.toolExecutions.getFirst().getOutput()).isEqualTo("hi");
 
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
-    Message toolRequestMessage =
-        reasoningMessages.stream()
-            .filter(
-                message ->
-                    message.getToolRequests() != null && !message.getToolRequests().isEmpty())
-            .findFirst()
-            .orElseThrow();
-    List<ToolExecution> executions =
-        sessionStore
-            .getToolExecutions(sessionId + "_reasoning", List.of(toolRequestMessage.getId()))
-            .get(toolRequestMessage.getId());
+    Message toolRequestMessage = reasoningMessages.stream()
+        .filter(message -> message.getToolRequests() != null && !message.getToolRequests().isEmpty()).findFirst()
+        .orElseThrow();
+    List<ToolExecution> executions = sessionStore
+        .getToolExecutions(sessionId + "_reasoning", List.of(toolRequestMessage.getId()))
+        .get(toolRequestMessage.getId());
 
     assertThat(executions).hasSize(1);
     assertThat(executions.getFirst().getStatus()).isEqualTo("ok");
@@ -92,8 +73,7 @@ class HybridEngineTest {
     SessionStore sessionStore = new InMemorySessionStore();
     String sessionId = "session";
 
-    String toolRequest =
-        "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\",\"args\":{\"text\":\"hi\"}}";
+    String toolRequest = "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\",\"args\":{\"text\":\"hi\"}}";
     Message first = new Message(Role.ASSISTANT, toolRequest, null, null, null);
     Message second = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
 
@@ -101,29 +81,17 @@ class HybridEngineTest {
 
     String badToolPayload = "{" + "\"toolRequests\":[{\"id\":\"wrong\",\"name\":\"echo\"}]" + "}";
     String goodToolPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\"}]" + "}";
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.JSON,
-            List.of(
-                new Message(Role.ASSISTANT, badToolPayload, null, null, null),
-                new Message(Role.ASSISTANT, goodToolPayload, null, null, null),
-                new Message(Role.ASSISTANT, goodToolPayload, null, null, null)));
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
+        List.of(new Message(Role.ASSISTANT, badToolPayload, null, null, null),
+            new Message(Role.ASSISTANT, goodToolPayload, null, null, null),
+            new Message(Role.ASSISTANT, goodToolPayload, null, null, null)));
 
     FlakyTool tool = new FlakyTool();
     List<AgentTool> tools = List.of(tool);
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            tools,
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            2);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+        sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
     engine.registerListener("session", listener);
@@ -146,29 +114,18 @@ class HybridEngineTest {
 
     Message empty = new Message(Role.ASSISTANT, "", null, null, null);
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(empty, empty, empty));
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.TEXT, List.of(new Message(Role.ASSISTANT, "", null, null, null)));
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.TEXT,
+        List.of(new Message(Role.ASSISTANT, "", null, null, null)));
 
     List<AgentTool> tools = List.of();
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            tools,
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            1);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+        sessionStore, 1);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
-    assertThat(result.getContent())
-        .isEqualTo("Number of assistant invocations exceeded maximum : 1");
+    assertThat(result.getContent()).isEqualTo("Number of assistant invocations exceeded maximum : 1");
   }
 
   @Test
@@ -181,26 +138,14 @@ class HybridEngineTest {
     Message second = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
 
-    String toolAssistantPayload =
-        "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"unknown\"}]" + "}";
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.JSON,
-            List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
+    String toolAssistantPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"unknown\"}]" + "}";
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
 
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            List.of(),
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            2);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, List.of(), reasoningContext, toolContext,
+        sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
     engine.registerListener("session", listener);
@@ -223,25 +168,14 @@ class HybridEngineTest {
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
 
     String toolPayload = "{\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\",\"args\":{}}]}";
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.TEXT,
-            List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.TEXT,
+        List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
 
     List<AgentTool> tools = List.of(new EchoTool());
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            tools,
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            2);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+        sessionStore, 2);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
@@ -260,23 +194,13 @@ class HybridEngineTest {
     Message second = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
 
-    LLMModel toolAssistantModel =
-        new QueueModel(
-            ResponseFormatType.TEXT, List.of(new Message(Role.ASSISTANT, "", null, null, null)));
+    LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.TEXT,
+        List.of(new Message(Role.ASSISTANT, "", null, null, null)));
 
-    BaseContextBuilder reasoningContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    BaseContextBuilder toolContext =
-        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    HybridEngine engine =
-        new HybridEngine(
-            reasoningModel,
-            toolAssistantModel,
-            List.of(),
-            reasoningContext,
-            toolContext,
-            sessionStore,
-            2);
+    BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, List.of(), reasoningContext, toolContext,
+        sessionStore, 2);
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 

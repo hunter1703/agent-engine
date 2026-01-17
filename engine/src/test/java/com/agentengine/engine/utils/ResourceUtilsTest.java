@@ -11,7 +11,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class ResourceUtilsTest {
 
-  @TempDir Path tempDir;
+  @TempDir
+  Path tempDir;
 
   @AfterEach
   void clearConfigDir() {

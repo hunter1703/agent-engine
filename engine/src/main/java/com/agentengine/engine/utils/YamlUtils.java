@@ -9,7 +9,8 @@ import org.yaml.snakeyaml.Yaml;
 public final class YamlUtils {
   private static final Yaml YAML = new Yaml();
 
-  private YamlUtils() {}
+  private YamlUtils() {
+  }
 
   public static Map<String, Object> toMap(final String yaml) {
     if (yaml == null || yaml.isBlank()) {

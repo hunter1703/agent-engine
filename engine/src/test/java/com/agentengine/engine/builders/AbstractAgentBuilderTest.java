@@ -57,14 +57,8 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementHandlesObjectsArraysEnumsAndNullable() {
-    Map<String, Object> objectSchema =
-        Map.of(
-            "type",
-            "object",
-            "properties",
-            Map.of("name", Map.of("type", "string")),
-            "required",
-            List.of("name"));
+    Map<String, Object> objectSchema = Map.of("type", "object", "properties", Map.of("name", Map.of("type", "string")),
+        "required", List.of("name"));
     JsonSchemaElement objectElement = builder.callBuildJsonSchemaElement(objectSchema);
 
     Map<String, Object> arraySchema = Map.of("type", "array", "items", Map.of("type", "boolean"));
@@ -84,8 +78,7 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementSupportsAnyOfAndConst() {
-    Map<String, Object> anyOfSchema =
-        Map.of("anyOf", List.of(Map.of("type", "string"), Map.of("type", "integer")));
+    Map<String, Object> anyOfSchema = Map.of("anyOf", List.of(Map.of("type", "string"), Map.of("type", "integer")));
     JsonSchemaElement anyOfElement = builder.callBuildJsonSchemaElement(anyOfSchema);
 
     Map<String, Object> constSchema = Map.of("const", "fixed");
@@ -118,14 +111,8 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementHandlesAdditionalPropertiesAndDefinitions() {
-    Map<String, Object> schema =
-        Map.of(
-            "type",
-            "object",
-            "additionalProperties",
-            false,
-            "definitions",
-            Map.of("Thing", Map.of("type", "boolean")));
+    Map<String, Object> schema = Map.of("type", "object", "additionalProperties", false, "definitions",
+        Map.of("Thing", Map.of("type", "boolean")));
 
     JsonSchemaElement element = builder.callBuildJsonSchemaElement(schema);
 
@@ -134,9 +121,8 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementHandlesArrayItemsList() {
-    Map<String, Object> schema =
-        Map.of(
-            "type", "array", "items", List.of(Map.of("type", "string"), Map.of("type", "boolean")));
+    Map<String, Object> schema = Map.of("type", "array", "items",
+        List.of(Map.of("type", "string"), Map.of("type", "boolean")));
 
     JsonSchemaElement element = builder.callBuildJsonSchemaElement(schema);
 
@@ -145,8 +131,7 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementHandlesImplicitObjectAndNullType() {
-    Map<String, Object> implicitObject =
-        Map.of("properties", Map.of("flag", Map.of("type", "boolean")));
+    Map<String, Object> implicitObject = Map.of("properties", Map.of("flag", Map.of("type", "boolean")));
     Map<String, Object> nullSchema = Map.of("type", "null");
     Map<String, Object> itemsSchema = Map.of("items", Map.of("type", "string"));
 
@@ -162,9 +147,8 @@ class AbstractAgentBuilderTest {
   @Test
   void buildJsonSchemaElementSupportsNullSchemaAndOneOf() {
     JsonSchemaElement nullSchema = builder.callBuildJsonSchemaElement(null);
-    JsonSchemaElement oneOfSchema =
-        builder.callBuildJsonSchemaElement(
-            Map.of("oneOf", List.of(Map.of("type", "string"), Map.of("type", "integer"))));
+    JsonSchemaElement oneOfSchema = builder
+        .callBuildJsonSchemaElement(Map.of("oneOf", List.of(Map.of("type", "string"), Map.of("type", "integer"))));
 
     assertThat(nullSchema).isInstanceOf(JsonObjectSchema.class);
     assertThat(oneOfSchema).isInstanceOf(JsonAnyOfSchema.class);
@@ -172,19 +156,17 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildJsonSchemaElementHonorsDescriptions() {
-    JsonSchemaElement stringElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "string", "description", "desc"));
-    JsonSchemaElement intElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "integer", "description", "desc"));
-    JsonSchemaElement numberElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "number", "description", "desc"));
-    JsonSchemaElement booleanElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "boolean", "description", "desc"));
-    JsonSchemaElement arrayElement =
-        builder.callBuildJsonSchemaElement(
-            Map.of("type", "array", "description", "desc", "items", Map.of("type", "string")));
-    JsonSchemaElement enumElement =
-        builder.callBuildJsonSchemaElement(Map.of("enum", List.of("A"), "description", "desc"));
+    JsonSchemaElement stringElement = builder
+        .callBuildJsonSchemaElement(Map.of("type", "string", "description", "desc"));
+    JsonSchemaElement intElement = builder.callBuildJsonSchemaElement(Map.of("type", "integer", "description", "desc"));
+    JsonSchemaElement numberElement = builder
+        .callBuildJsonSchemaElement(Map.of("type", "number", "description", "desc"));
+    JsonSchemaElement booleanElement = builder
+        .callBuildJsonSchemaElement(Map.of("type", "boolean", "description", "desc"));
+    JsonSchemaElement arrayElement = builder
+        .callBuildJsonSchemaElement(Map.of("type", "array", "description", "desc", "items", Map.of("type", "string")));
+    JsonSchemaElement enumElement = builder
+        .callBuildJsonSchemaElement(Map.of("enum", List.of("A"), "description", "desc"));
 
     assertThat(readDescription(stringElement)).isEqualTo("desc");
     assertThat(readDescription(intElement)).isEqualTo("desc");
@@ -197,11 +179,9 @@ class AbstractAgentBuilderTest {
   @Test
   void buildJsonSchemaElementHandlesPrimitiveTypes() {
     JsonSchemaElement stringElement = builder.callBuildJsonSchemaElement(Map.of("type", "string"));
-    JsonSchemaElement integerElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "integer"));
+    JsonSchemaElement integerElement = builder.callBuildJsonSchemaElement(Map.of("type", "integer"));
     JsonSchemaElement numberElement = builder.callBuildJsonSchemaElement(Map.of("type", "number"));
-    JsonSchemaElement booleanElement =
-        builder.callBuildJsonSchemaElement(Map.of("type", "boolean"));
+    JsonSchemaElement booleanElement = builder.callBuildJsonSchemaElement(Map.of("type", "boolean"));
 
     assertThat(stringElement.getClass().getSimpleName()).contains("String");
     assertThat(integerElement.getClass().getSimpleName()).contains("Integer");
@@ -224,10 +204,10 @@ class AbstractAgentBuilderTest {
     config.setContextConfig(new LastNContextConfig());
 
     SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder reasoning =
-        builder.callBuildReasoningContextBuilder(config, sessionStore, true, "system", List.of());
-    ContextBuilder toolAssistant =
-        builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of());
+    ContextBuilder reasoning = builder.callBuildReasoningContextBuilder(config, sessionStore, true, "system",
+        List.of());
+    ContextBuilder toolAssistant = builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system",
+        List.of());
 
     assertThat(reasoning).isInstanceOf(LastNContextBuilder.class);
     assertThat(toolAssistant).isInstanceOf(LastNContextBuilder.class);
@@ -242,19 +222,11 @@ class AbstractAgentBuilderTest {
 
     SessionStore sessionStore = new InMemorySessionStore();
 
-    assertThatThrownBy(
-            () ->
-                builder.callBuildReasoningContextBuilder(
-                    config, sessionStore, false, "system", List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("context config");
+    assertThatThrownBy(() -> builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system", List.of()))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("context config");
 
-    assertThatThrownBy(
-            () ->
-                builder.callBuildToolAssistantContextBuilder(
-                    config, sessionStore, "system", List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("context config");
+    assertThatThrownBy(() -> builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of()))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("context config");
   }
 
   @Test
@@ -265,14 +237,12 @@ class AbstractAgentBuilderTest {
     config.setContextConfig(new LastNContextConfig());
 
     SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder reasoning =
-        builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system", List.of());
+    ContextBuilder reasoning = builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system",
+        List.of());
     List<Message> prompt = reasoning.buildPrompt("session");
 
     String protocolMessage = prompt.getFirst().getContent();
-    assertThat(protocolMessage)
-        .contains("You must return a single JSON object")
-        .contains("Return JSON only");
+    assertThat(protocolMessage).contains("You must return a single JSON object").contains("Return JSON only");
   }
 
   @Test
@@ -282,12 +252,11 @@ class AbstractAgentBuilderTest {
     config.setContextConfig(new LastNContextConfig());
 
     SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder toolAssistant =
-        builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of());
+    ContextBuilder toolAssistant = builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system",
+        List.of());
     List<Message> prompt = toolAssistant.buildPrompt("session");
 
-    assertThat(prompt.getFirst().getContent())
-        .contains("tool-calling model")
+    assertThat(prompt.getFirst().getContent()).contains("tool-calling model")
         .contains("Use only tools listed inside <AVAILABLE_TOOLS>");
   }
 
@@ -355,20 +324,13 @@ class AbstractAgentBuilderTest {
       return buildStateStore(config);
     }
 
-    private ContextBuilder callBuildReasoningContextBuilder(
-        final ModelConfig config,
-        final SessionStore sessionStore,
-        final boolean hybrid,
-        final String systemMessage,
-        final List<AgentTool> tools) {
+    private ContextBuilder callBuildReasoningContextBuilder(final ModelConfig config, final SessionStore sessionStore,
+        final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
       return buildReasoningContextBuilder(config, sessionStore, hybrid, systemMessage, tools);
     }
 
-    private ContextBuilder callBuildToolAssistantContextBuilder(
-        final ModelConfig config,
-        final SessionStore sessionStore,
-        final String systemMessage,
-        final List<AgentTool> tools) {
+    private ContextBuilder callBuildToolAssistantContextBuilder(final ModelConfig config,
+        final SessionStore sessionStore, final String systemMessage, final List<AgentTool> tools) {
       return buildToolAssistantContextBuilder(config, sessionStore, systemMessage, tools);
     }
 

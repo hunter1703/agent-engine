@@ -16,16 +16,15 @@ import org.junit.jupiter.api.io.TempDir;
 
 class HybridAgentBuilderTest {
 
-  @TempDir Path tempDir;
+  @TempDir
+  Path tempDir;
 
   @Test
   void buildCreatesHybridEngineWithDefaultPrompt() throws Exception {
     Path reasoningModel = tempDir.resolve("reasoning.json");
     Path toolModel = tempDir.resolve("tool.json");
 
-    Files.writeString(
-        reasoningModel,
-        """
+    Files.writeString(reasoningModel, """
         {
           "provider": "OPEN_AI",
           "model": "gpt",
@@ -37,9 +36,7 @@ class HybridAgentBuilderTest {
           }
         }
         """);
-    Files.writeString(
-        toolModel,
-        """
+    Files.writeString(toolModel, """
         {
           "provider": "OLLAMA",
           "model": "llama",
@@ -68,8 +65,7 @@ class HybridAgentBuilderTest {
 
     List<Message> prompt = engineInstance.buildPrompt("session");
 
-    assertThat(prompt)
-        .anyMatch(message -> "You are a helpful assistant.".equals(message.getContent()));
+    assertThat(prompt).anyMatch(message -> "You are a helpful assistant.".equals(message.getContent()));
   }
 
   @Test

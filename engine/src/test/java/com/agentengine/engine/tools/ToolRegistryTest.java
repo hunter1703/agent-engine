@@ -14,14 +14,12 @@ class ToolRegistryTest {
     AgentConfig config = AgentConfig.empty();
     Map<String, Map<String, Object>> toolConfigs = Map.of("fake", Map.of("prefix", "pre-"));
 
-    List<AgentTool> tools =
-        ToolRegistry.loadTools("test-agent", List.of("ALL"), toolConfigs, config);
+    List<AgentTool> tools = ToolRegistry.loadTools("test-agent", List.of("ALL"), toolConfigs, config);
 
     assertThat(tools).hasSize(1);
     assertThat(tools.getFirst().execute(Map.of("value", "fix"))).isEqualTo("pre-fix");
 
-    List<AgentTool> filtered =
-        ToolRegistry.loadTools("test-agent", List.of("other"), toolConfigs, config);
+    List<AgentTool> filtered = ToolRegistry.loadTools("test-agent", List.of("other"), toolConfigs, config);
 
     assertThat(filtered).isEmpty();
   }

@@ -37,13 +37,10 @@ class AgentSseTest {
     when(service.getOrStartEngine(eq("agent"), eq("config.json"))).thenReturn(engine);
 
     AtomicReference<AgentListener> listenerRef = new AtomicReference<>();
-    doAnswer(
-            invocation -> {
-              listenerRef.set(invocation.getArgument(1));
-              return null;
-            })
-        .when(engine)
-        .registerListener(any(), any());
+    doAnswer(invocation -> {
+      listenerRef.set(invocation.getArgument(1));
+      return null;
+    }).when(engine).registerListener(any(), any());
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -71,15 +68,12 @@ class AgentSseTest {
     cancellable.cancel();
   }
 
-  private static Instance<AgentRequestHandler> buildHandlers(
-      final AgentService service) {
+  private static Instance<AgentRequestHandler> buildHandlers(final AgentService service) {
     InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    StreamingInvokeAgentRequestHandler streamingHandler =
-        new StreamingInvokeAgentRequestHandler(service);
+    StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
     Instance<AgentRequestHandler> instance = mock(Instance.class);
-    when(instance.stream())
-        .thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
+    when(instance.stream()).thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
     return instance;
   }
 }

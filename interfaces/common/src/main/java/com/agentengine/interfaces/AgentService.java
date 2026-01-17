@@ -24,9 +24,7 @@ public class AgentService {
   private final ConfigRepository configRepository;
   private final Map<String, AgentEngine> engines = new ConcurrentHashMap<>();
 
-  public AgentService(
-      final AgentBuilderFactory builderFactory,
-      final ConfigLoader configLoader,
+  public AgentService(final AgentBuilderFactory builderFactory, final ConfigLoader configLoader,
       final ConfigRepository configRepository) {
     this.builderFactory = builderFactory;
     this.configLoader = configLoader;

@@ -37,14 +37,13 @@ class InMemorySessionStoreTest {
     Message message = Message.user("hello");
     sessionStore.appendMessage(sessionId, message);
 
-    ToolExecution execution =
-        new ToolExecution(new ToolCall("call", "echo", Map.of()), "ok", "done", Instant.now(), 10L);
+    ToolExecution execution = new ToolExecution(new ToolCall("call", "echo", Map.of()), "ok", "done", Instant.now(),
+        10L);
     sessionStore.addToolExecutions(sessionId, message.getId(), List.of(execution));
 
     assertThat(execution.getId()).isNotBlank();
 
-    Map<String, List<ToolExecution>> executions =
-        sessionStore.getToolExecutions(sessionId, List.of(message.getId()));
+    Map<String, List<ToolExecution>> executions = sessionStore.getToolExecutions(sessionId, List.of(message.getId()));
 
     assertThat(executions.get(message.getId())).hasSize(1);
     assertThat(executions.get(message.getId()).getFirst().getOutput()).isEqualTo("done");

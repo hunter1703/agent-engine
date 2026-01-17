@@ -22,8 +22,7 @@ class AgentEventAdapterTest {
     ToolCall toolCall = new ToolCall("id-1", "echo", Map.of("text", "hi"));
     adapter.onToolPlan("session-1", List.of(toolCall));
 
-    ToolExecution execution =
-        new ToolExecution(toolCall, "ok", "done", Instant.parse("2024-01-01T00:00:00Z"), 12);
+    ToolExecution execution = new ToolExecution(toolCall, "ok", "done", Instant.parse("2024-01-01T00:00:00Z"), 12);
     adapter.onToolExecution("session-1", execution);
 
     assertThat(published).hasSize(2);

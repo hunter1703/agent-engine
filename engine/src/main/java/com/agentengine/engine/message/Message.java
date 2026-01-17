@@ -10,11 +10,7 @@ public class Message {
   private final List<String> toolRequests;
   private final List<ToolCall> toolCalls;
 
-  public Message(
-      final Role role,
-      final String content,
-      final String thoughts,
-      final List<String> toolRequests,
+  public Message(final Role role, final String content, final String thoughts, final List<String> toolRequests,
       final List<ToolCall> toolCalls) {
     this.role = role;
     this.content = content;

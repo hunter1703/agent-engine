@@ -39,25 +39,18 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
 
   static {
-    DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS =
-        JsonUtils.fromJson(
-            ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_with_thoughts.json"),
-            new TypeReference<>() {});
+    DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS = JsonUtils.fromJson(
+        ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_with_thoughts.json"), new TypeReference<>() {
+        });
 
-    DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS =
-        JsonUtils.fromJson(
-            ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_without_thoughts.json"),
-            new TypeReference<>() {});
+    DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS = JsonUtils.fromJson(
+        ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_without_thoughts.json"), new TypeReference<>() {
+        });
   }
 
-  protected static ContextBuilder buildReasoningContextBuilder(
-      final ModelConfig config,
-      final SessionStore sessionStore,
-      final boolean hybrid,
-      final String systemMessage,
-      final List<AgentTool> tools) {
-    final String templateName =
-        resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
+  protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
+      final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
+    final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
     context.put("thoughtsEnabled", config.isThoughtsEnabled());
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
@@ -66,21 +59,13 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
-          new LastNContextBuilder(
-              sessionStore,
-              systemMessage,
-              protocolMessage,
-              tools,
-              lastNContextConfig.getKeepLast());
+        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
       default -> throw new IllegalArgumentException("Unknown context config");
     };
   }
 
-  protected static ContextBuilder buildToolAssistantContextBuilder(
-      final ModelConfig config,
-      final SessionStore sessionStore,
-      final String systemMessage,
-      final List<AgentTool> tools) {
+  protected static ContextBuilder buildToolAssistantContextBuilder(final ModelConfig config,
+      final SessionStore sessionStore, final String systemMessage, final List<AgentTool> tools) {
     final String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
@@ -89,25 +74,17 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
-          new LastNContextBuilder(
-              sessionStore,
-              systemMessage,
-              protocolMessage,
-              tools,
-              lastNContextConfig.getKeepLast());
+        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
       default -> throw new IllegalArgumentException("Unknown context config");
     };
   }
 
   protected static ResponseFormat getResponseFormat(final ModelConfig config) {
     if ("json".equals(config.getResponseFormat())) {
-      Map<String, Object> responseJsonSchema =
-          config.isThoughtsEnabled()
-              ? DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS
-              : DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
-      return new ResponseFormat.Builder()
-          .type(ResponseFormatType.JSON)
-          .jsonSchema(toJsonSchema(responseJsonSchema))
+      Map<String, Object> responseJsonSchema = config.isThoughtsEnabled()
+          ? DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS
+          : DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
+      return new ResponseFormat.Builder().type(ResponseFormatType.JSON).jsonSchema(toJsonSchema(responseJsonSchema))
           .build();
     } else {
       return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
@@ -160,31 +137,28 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
       }
     }
     final String type = typeValue instanceof final String typeString ? typeString : null;
-    final JsonSchemaElement element =
-        switch (type == null ? "" : type) {
-          case "object" -> buildObjectSchema(jsonSchema);
-          case "array" -> buildArraySchema(jsonSchema);
-          case "string" -> buildStringSchema(jsonSchema);
-          case "integer" -> buildIntegerSchema(jsonSchema);
-          case "number" -> buildNumberSchema(jsonSchema);
-          case "boolean" -> buildBooleanSchema(jsonSchema);
-          case "null" -> JsonEnumSchema.builder().enumValues("null").build();
-          case "" -> {
-            if (jsonSchema.containsKey("properties")) {
-              yield buildObjectSchema(jsonSchema);
-            }
-            if (jsonSchema.containsKey("items")) {
-              yield buildArraySchema(jsonSchema);
-            }
-            yield JsonObjectSchema.builder().build();
-          }
-          default -> JsonStringSchema.builder().build();
-        };
+    final JsonSchemaElement element = switch (type == null ? "" : type) {
+      case "object" -> buildObjectSchema(jsonSchema);
+      case "array" -> buildArraySchema(jsonSchema);
+      case "string" -> buildStringSchema(jsonSchema);
+      case "integer" -> buildIntegerSchema(jsonSchema);
+      case "number" -> buildNumberSchema(jsonSchema);
+      case "boolean" -> buildBooleanSchema(jsonSchema);
+      case "null" -> JsonEnumSchema.builder().enumValues("null").build();
+      case "" -> {
+        if (jsonSchema.containsKey("properties")) {
+          yield buildObjectSchema(jsonSchema);
+        }
+        if (jsonSchema.containsKey("items")) {
+          yield buildArraySchema(jsonSchema);
+        }
+        yield JsonObjectSchema.builder().build();
+      }
+      default -> JsonStringSchema.builder().build();
+    };
     final boolean nullable = Boolean.TRUE.equals(jsonSchema.get("nullable"));
     if (nullable) {
-      return JsonAnyOfSchema.builder()
-          .anyOf(element, JsonEnumSchema.builder().enumValues("null").build())
-          .build();
+      return JsonAnyOfSchema.builder().anyOf(element, JsonEnumSchema.builder().enumValues("null").build()).build();
     }
     return element;
   }
@@ -195,8 +169,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     if (StringUtils.isNotBlank(description)) {
       builder.description(description);
     }
-    final Map<String, Map<String, Object>> properties =
-        CollectionUtils.getMapFromMap(jsonSchema, "properties");
+    final Map<String, Map<String, Object>> properties = CollectionUtils.getMapFromMap(jsonSchema, "properties");
     if (!CollectionUtils.isEmpty(properties)) {
       for (final Map.Entry<String, Map<String, Object>> fieldProp : properties.entrySet()) {
         builder.addProperty(fieldProp.getKey(), buildJsonSchemaElement(fieldProp.getValue()));
@@ -210,8 +183,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     if (additionalProperties instanceof final Boolean allowed) {
       builder.additionalProperties(allowed);
     }
-    final Map<String, Map<String, Object>> definitions =
-        CollectionUtils.getMapFromMap(jsonSchema, "definitions");
+    final Map<String, Map<String, Object>> definitions = CollectionUtils.getMapFromMap(jsonSchema, "definitions");
     if (!CollectionUtils.isEmpty(definitions)) {
       final Map<String, JsonSchemaElement> definitionSchemas = new HashMap<>();
       for (final Map.Entry<String, Map<String, Object>> entry : definitions.entrySet()) {
@@ -230,13 +202,13 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
     final Object items = jsonSchema.get("items");
     if (items instanceof final Map<?, ?> itemsMap) {
-      //noinspection unchecked
+      // noinspection unchecked
       builder.items(buildJsonSchemaElement((Map<String, Object>) itemsMap));
     } else if (items instanceof final List<?> list) {
       final List<JsonSchemaElement> itemElements = new ArrayList<>();
       for (final Object item : list) {
         if (item instanceof final Map<?, ?> entryMap) {
-          //noinspection unchecked
+          // noinspection unchecked
           itemElements.add(buildJsonSchemaElement((Map<String, Object>) entryMap));
         }
       }
@@ -313,7 +285,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final List<JsonSchemaElement> elements = new ArrayList<>();
     for (final Object entry : list) {
       if (entry instanceof final Map<?, ?> map) {
-        //noinspection unchecked
+        // noinspection unchecked
         elements.add(buildJsonSchemaElement((Map<String, Object>) map));
       }
     }
@@ -337,10 +309,9 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     if (!"json".equalsIgnoreCase(config.getResponseFormat())) {
       return "";
     }
-    String path =
-        config.isThoughtsEnabled()
-            ? "/schemas/hybrid/reasoner_with_thoughts.json"
-            : "/schemas/hybrid/reasoner_without_thoughts.json";
+    String path = config.isThoughtsEnabled()
+        ? "/schemas/hybrid/reasoner_with_thoughts.json"
+        : "/schemas/hybrid/reasoner_without_thoughts.json";
     return ResourceUtils.loadResourceAsString(path);
   }
 
@@ -351,50 +322,29 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
   protected static LLMModel buildChatModel(final ModelConfig modelConfig) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
-    final ChatLanguageModel chatModel =
-        switch (provider) {
-          case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
-          case ModelConfig.Provider.LLAMA_CPP -> {
-            LlamaCppServerUtils.ensureRunning(modelConfig);
-            yield buildOpenAI(modelConfig, responseFormat);
-          }
-          case ModelConfig.Provider.OPEN_AI ->
-              buildOpenAI(modelConfig, responseFormat);
-        };
-    return new LangChain4JLLMModel(
-        chatModel,
-        responseFormat,
-        modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(),
-        modelConfig.getThoughtsEndTag());
+    final ChatLanguageModel chatModel = switch (provider) {
+      case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
+      case ModelConfig.Provider.LLAMA_CPP -> {
+        LlamaCppServerUtils.ensureRunning(modelConfig);
+        yield buildOpenAI(modelConfig, responseFormat);
+      }
+      case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
+    };
+    return new LangChain4JLLMModel(chatModel, responseFormat, modelConfig.isThoughtsEnabled(),
+        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
   }
 
-  protected static ChatLanguageModel buildOllama(
-      final ModelConfig config, final ResponseFormat responseFormat) {
-    return OllamaChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topK(config.getTopK())
-        .topP(config.getTopP())
-        .repeatPenalty(config.getRepeatPenalty())
-        .numPredict(config.getNumPredict())
-        .numCtx(config.getMaxContextLength())
-        .stop(config.getStopTokens())
-        .responseFormat(responseFormat)
-        .build();
+  protected static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+    return OllamaChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
+        .temperature(config.getTemperature()).topK(config.getTopK()).topP(config.getTopP())
+        .repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
+        .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
   }
 
-  protected static ChatLanguageModel buildOpenAI(
-      final ModelConfig config, final ResponseFormat responseFormat) {
+  protected static ChatLanguageModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
-    return OpenAiChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topP(config.getTopP())
-        .stop(config.getStopTokens())
-        .responseFormat(format)
+    return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
+        .temperature(config.getTemperature()).topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format)
         .build();
   }
 
@@ -406,8 +356,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     return new InMemorySessionStore();
   }
 
-  private static String resolveReasoningProtocolTemplate(
-      final boolean hybrid, final String responseFormat) {
+  private static String resolveReasoningProtocolTemplate(final boolean hybrid, final String responseFormat) {
     if ("json".equalsIgnoreCase(responseFormat)) {
       if (hybrid) {
         return "hybrid/reasoner_json.txt";

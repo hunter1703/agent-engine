@@ -2,9 +2,7 @@ package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
 
-@JSONType(
-    typeKey = "type",
-    seeAlso = {LastNContextConfig.class, SummarizingContextConfig.class})
+@JSONType(typeKey = "type", seeAlso = {LastNContextConfig.class, SummarizingContextConfig.class})
 public abstract class ContextConfig implements Config {
   private String type;
 
@@ -21,7 +19,6 @@ public abstract class ContextConfig implements Config {
   }
 
   protected enum ContextType {
-    SUMMARIZE,
-    LAST_N
+    SUMMARIZE, LAST_N
   }
 }

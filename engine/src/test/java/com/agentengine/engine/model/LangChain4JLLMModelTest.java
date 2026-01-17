@@ -31,16 +31,10 @@ class LangChain4JLLMModelTest {
     when(response.aiMessage()).thenReturn(aiMessage);
     when(chatModel.chat(anyList())).thenReturn(response);
 
-    LangChain4JLLMModel model =
-        new LangChain4JLLMModel(
-            chatModel,
-            new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build(),
-            true,
-            "<think>",
-            "</think>");
+    LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel,
+        new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build(), true, "<think>", "</think>");
 
-    List<Message> prompt =
-        List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior", null));
+    List<Message> prompt = List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior", null));
 
     Message result = model.generate(prompt);
 

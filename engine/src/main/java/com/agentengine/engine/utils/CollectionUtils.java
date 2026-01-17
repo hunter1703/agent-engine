@@ -5,7 +5,8 @@ import java.util.function.Function;
 
 public final class CollectionUtils {
 
-  private CollectionUtils() {}
+  private CollectionUtils() {
+  }
 
   public static <K, V> Map<K, V> nullSafeMap(final Map<K, V> map) {
     if (map == null) {
@@ -50,7 +51,7 @@ public final class CollectionUtils {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
-    //noinspection unchecked
+    // noinspection unchecked
     return (Map<K, V>) map.get(key);
   }
 
@@ -66,10 +67,8 @@ public final class CollectionUtils {
     return !isEmpty(collection);
   }
 
-  public static <T, K, V> Map<K, V> transformToMultiKeyMap(
-      final Collection<T> collection,
-      final Function<T, ? extends Collection<K>> keysFunction,
-      final Function<T, V> valueFunction) {
+  public static <T, K, V> Map<K, V> transformToMultiKeyMap(final Collection<T> collection,
+      final Function<T, ? extends Collection<K>> keysFunction, final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     for (final T item : collection) {
       final Collection<K> keys = keysFunction.apply(item);
@@ -86,9 +85,7 @@ public final class CollectionUtils {
     return map;
   }
 
-  public static <T, K, V> Map<K, V> transformToMap(
-      final Collection<T> collection,
-      final Function<T, K> keyFunction,
+  public static <T, K, V> Map<K, V> transformToMap(final Collection<T> collection, final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     for (final T item : collection) {

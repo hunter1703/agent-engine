@@ -24,13 +24,11 @@ class LastNContextBuilderTest {
     sessionStore.appendMessage(sessionId, first);
     sessionStore.appendMessage(sessionId, second);
 
-    ToolExecution execution =
-        new ToolExecution(
-            new ToolCall("t1", "echo", Map.of("text", "hi")), "ok", "hi", Instant.now(), 5L);
+    ToolExecution execution = new ToolExecution(new ToolCall("t1", "echo", Map.of("text", "hi")), "ok", "hi",
+        Instant.now(), 5L);
     sessionStore.addToolExecutions(sessionId, second.getId(), List.of(execution));
 
-    LastNContextBuilder builder =
-        new LastNContextBuilder(sessionStore, "system", "protocol", List.of(), 1);
+    LastNContextBuilder builder = new LastNContextBuilder(sessionStore, "system", "protocol", List.of(), 1);
 
     List<Message> prompt = builder.buildPrompt(sessionId);
 

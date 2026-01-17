@@ -51,10 +51,6 @@ public class AgentRequest {
   }
 
   public enum RequestType {
-    INVOKE_AGENT,
-    STREAMING_INVOKE_AGENT,
-    BUILD_PROMPT,
-    BUILD_EVENT,
-    STOP_AGENT
+    INVOKE_AGENT, STREAMING_INVOKE_AGENT, BUILD_PROMPT, BUILD_EVENT, STOP_AGENT
   }
 }

@@ -2,9 +2,7 @@ package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
 
-@JSONType(
-    typeKey = "type",
-    seeAlso = {HybridEngineConfig.class, RouterEngineConfig.class})
+@JSONType(typeKey = "type", seeAlso = {HybridEngineConfig.class, RouterEngineConfig.class})
 public abstract class EngineConfig implements Config {
   private String type;
 
@@ -69,7 +67,6 @@ public abstract class EngineConfig implements Config {
   }
 
   protected enum EngineType {
-    HYBRID,
-    ROUTER
+    HYBRID, ROUTER
   }
 }

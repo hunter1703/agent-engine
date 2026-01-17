@@ -17,10 +17,8 @@ public final class AgentEventAdapter implements AgentListener {
 
   @Override
   public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
-    List<Map<String, Object>> payload =
-        toolCalls.stream()
-            .map(call -> Map.of("id", call.id(), "name", call.name(), "args", call.args()))
-            .toList();
+    List<Map<String, Object>> payload = toolCalls.stream()
+        .map(call -> Map.of("id", call.id(), "name", call.name(), "args", call.args())).toList();
     publisher.publish(new AgentEvent("tool_plan", sessionId, payload));
   }
 
@@ -52,10 +50,7 @@ public final class AgentEventAdapter implements AgentListener {
 
   @Override
   public void onFinalAnswer(final String sessionId, final Message message) {
-    publisher.publish(
-        new AgentEvent(
-            "final_answer",
-            sessionId,
-            Map.of("final_answer", message.getContent(), "thoughts", message.getThoughts())));
+    publisher.publish(new AgentEvent("final_answer", sessionId,
+        Map.of("final_answer", message.getContent(), "thoughts", message.getThoughts())));
   }
 }

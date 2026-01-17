@@ -112,14 +112,10 @@ class AgentServiceTest {
 
   @Test
   void resolveEngineRejectsMissingAgentName() {
-    AgentService service =
-        new AgentService(
-            mock(AgentBuilderFactory.class),
-            mock(ConfigLoader.class),
-            mock(ConfigRepository.class));
+    AgentService service = new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class),
+        mock(ConfigRepository.class));
 
-    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json"))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentName");
   }
 

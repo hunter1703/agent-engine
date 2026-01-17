@@ -19,12 +19,8 @@ public final class LangChain4JLLMModel implements LLMModel {
   private final String thoughtsStartTag;
   private final String thoughtsEndTag;
 
-  public LangChain4JLLMModel(
-      final ChatLanguageModel model,
-      final ResponseFormat responseFormat,
-      final boolean thoughtsEnabled,
-      final String thoughtsStartTag,
-      final String thoughtsEndTag) {
+  public LangChain4JLLMModel(final ChatLanguageModel model, final ResponseFormat responseFormat,
+      final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
     this.model = model;
     this.responseFormat = responseFormat;
     this.thoughtsEnabled = thoughtsEnabled;

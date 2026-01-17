@@ -14,7 +14,8 @@ public final class PluginLoader {
   private static final String DEFAULT_PLUGIN_DIR = "plugins";
   private static final AtomicReference<ClassLoader> LOADER = new AtomicReference<>();
 
-  private PluginLoader() {}
+  private PluginLoader() {
+  }
 
   public static ClassLoader getClassLoader() {
     ClassLoader existing = LOADER.get();
@@ -33,15 +34,12 @@ public final class PluginLoader {
     }
     List<URL> urls = new ArrayList<>();
     try (var paths = Files.list(pluginsDir)) {
-      paths
-          .filter(path -> path.toString().endsWith(".jar"))
-          .forEach(
-              path -> {
-                try {
-                  urls.add(path.toUri().toURL());
-                } catch (Exception ignored) {
-                }
-              });
+      paths.filter(path -> path.toString().endsWith(".jar")).forEach(path -> {
+        try {
+          urls.add(path.toUri().toURL());
+        } catch (Exception ignored) {
+        }
+      });
     } catch (Exception ignored) {
       return PluginLoader.class.getClassLoader();
     }

@@ -13,10 +13,7 @@ public class BaseContextBuilder implements ContextBuilder {
   private final Message protocolMessage;
   private final Message toolMessage;
 
-  public BaseContextBuilder(
-      final SessionStore sessionStore,
-      final String systemMessage,
-      final String protocolMessage,
+  public BaseContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage,
       final List<AgentTool> tools) {
     this.sessionStore = sessionStore;
     this.systemMessage = Message.system(systemMessage);

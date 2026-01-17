@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PluginLoaderTest {
-  @TempDir Path tempDir;
+  @TempDir
+  Path tempDir;
 
   @AfterEach
   void clearProperty() {

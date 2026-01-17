@@ -1,3 +1,4 @@
 package com.agentengine.api;
 
-public record MessageDto(String role, String content) {}
+public record MessageDto(String role, String content) {
+}

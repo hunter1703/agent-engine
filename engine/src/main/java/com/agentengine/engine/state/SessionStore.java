@@ -18,10 +18,6 @@ public interface SessionStore {
 
   List<Summary> getSummaries(String sessionId);
 
-  void addSummary(
-      String sessionId,
-      String summarizedFromMessageId,
-      String summarizedUptoMessageId,
-      String summary,
+  void addSummary(String sessionId, String summarizedFromMessageId, String summarizedUptoMessageId, String summary,
       long createdAt);
 }

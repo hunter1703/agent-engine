@@ -22,7 +22,8 @@ public final class LlamaCppServerUtils {
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
 
-  private LlamaCppServerUtils() {}
+  private LlamaCppServerUtils() {
+  }
 
   public static void ensureRunning(final ModelConfig config) {
     if (config == null) {
@@ -39,20 +40,15 @@ public final class LlamaCppServerUtils {
       return;
     }
     if (StringUtils.isBlank(config.getServerCommand())) {
-      LOGGER.warning(
-          "LLAMA_CPP server unavailable and no serverCommand configured for model: "
-              + config.getModel());
+      LOGGER.warning("LLAMA_CPP server unavailable and no serverCommand configured for model: " + config.getModel());
       return;
     }
-    ManagedServer server =
-        SERVERS.compute(
-            address.baseUrl(),
-            (key, existing) -> {
-              if (existing != null && existing.process().isAlive()) {
-                return existing;
-              }
-              return startServer(config, address);
-            });
+    ManagedServer server = SERVERS.compute(address.baseUrl(), (key, existing) -> {
+      if (existing != null && existing.process().isAlive()) {
+        return existing;
+      }
+      return startServer(config, address);
+    });
     if (server != null) {
       waitForStartup(address, STARTUP_TIMEOUT);
     }
@@ -103,16 +99,13 @@ public final class LlamaCppServerUtils {
     if (!SHUTDOWN_HOOK_REGISTERED.compareAndSet(false, true)) {
       return;
     }
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  for (ManagedServer server : SERVERS.values()) {
-                    if (server.process().isAlive()) {
-                      server.process().destroy();
-                    }
-                  }
-                }));
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      for (ManagedServer server : SERVERS.values()) {
+        if (server.process().isAlive()) {
+          server.process().destroy();
+        }
+      }
+    }));
   }
 
   private static boolean isReachable(final ServerAddress address) {
@@ -139,7 +132,9 @@ public final class LlamaCppServerUtils {
     }
   }
 
-  record ServerAddress(String baseUrl, String host, int port) {}
+  record ServerAddress(String baseUrl, String host, int port) {
+  }
 
-  record ManagedServer(String baseUrl, Process process, List<String> command) {}
+  record ManagedServer(String baseUrl, Process process, List<String> command) {
+  }
 }

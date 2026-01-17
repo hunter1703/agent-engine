@@ -13,7 +13,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class JsonUtilsTest {
 
-  @TempDir Path tempDir;
+  @TempDir
+  Path tempDir;
 
   @Test
   void fromJsonReturnsNullOnBlank() {
@@ -47,7 +48,8 @@ class JsonUtilsTest {
     Path path = tempDir.resolve("data-map.json");
     Files.writeString(path, "{\"count\":3}");
 
-    Map<String, Object> parsed = JsonUtils.fromFile(path, new TypeReference<>() {});
+    Map<String, Object> parsed = JsonUtils.fromFile(path, new TypeReference<>() {
+    });
 
     assertThat(parsed).containsEntry("count", 3);
   }
@@ -56,16 +58,15 @@ class JsonUtilsTest {
   void fromFileThrowsWhenMissing() {
     Path path = tempDir.resolve("missing.json");
 
-    assertThatThrownBy(() -> JsonUtils.fromFile(path, Map.class))
-        .isInstanceOf(RuntimeException.class);
+    assertThatThrownBy(() -> JsonUtils.fromFile(path, Map.class)).isInstanceOf(RuntimeException.class);
   }
 
   @Test
   void fromFileTypeReferenceThrowsWhenMissing() {
     Path path = tempDir.resolve("missing-map.json");
 
-    assertThatThrownBy(() -> JsonUtils.fromFile(path, new TypeReference<>() {}))
-        .isInstanceOf(RuntimeException.class);
+    assertThatThrownBy(() -> JsonUtils.fromFile(path, new TypeReference<>() {
+    })).isInstanceOf(RuntimeException.class);
   }
 
   @Test
@@ -80,7 +81,8 @@ class JsonUtilsTest {
 
   @Test
   void fromJsonTypeReferenceParsesMap() {
-    Map<String, Object> parsed = JsonUtils.fromJson("{\"value\":42}", new TypeReference<>() {});
+    Map<String, Object> parsed = JsonUtils.fromJson("{\"value\":42}", new TypeReference<>() {
+    });
 
     assertThat(parsed).containsEntry("value", 42);
   }

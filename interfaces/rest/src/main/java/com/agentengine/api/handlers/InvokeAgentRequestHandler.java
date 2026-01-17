@@ -27,9 +27,7 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler {
     final AgentEngine engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     Message response = engine.invoke(sessionId, Message.user(request.getMessage()));
-    return new InvokeResponse(
-        sessionId,
-        response == null ? null : response.getContent(),
+    return new InvokeResponse(sessionId, response == null ? null : response.getContent(),
         response == null ? null : response.getThoughts());
   }
 }

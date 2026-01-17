@@ -13,9 +13,8 @@ class ToolExecutionTest {
 
   @Test
   void toMessageFormatsToolDetails() {
-    ToolExecution execution =
-        new ToolExecution(
-            new ToolCall("id", "echo", Map.of("text", "hi")), "ok", "hi", Instant.now(), 3L);
+    ToolExecution execution = new ToolExecution(new ToolCall("id", "echo", Map.of("text", "hi")), "ok", "hi",
+        Instant.now(), 3L);
     execution.setId("exec-1");
 
     Message message = execution.toMessage();

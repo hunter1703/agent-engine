@@ -14,10 +14,9 @@ public class AgentBuilderFactory {
   private final HybridAgentBuilder hybridAgentBuilder;
 
   @Inject
-  public AgentBuilderFactory(
-      final Instance<AgentBuilder> allBuilders, final HybridAgentBuilder hybridAgentBuilder) {
-    agentNameVsBuilder =
-        CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type, Function.identity());
+  public AgentBuilderFactory(final Instance<AgentBuilder> allBuilders, final HybridAgentBuilder hybridAgentBuilder) {
+    agentNameVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type,
+        Function.identity());
     this.hybridAgentBuilder = hybridAgentBuilder;
   }
 

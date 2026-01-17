@@ -51,7 +51,8 @@ class AbstractAgentEngineTest {
     }
 
     @Override
-    public void onFinalAnswer(final String sessionId, final Message message) {}
+    public void onFinalAnswer(final String sessionId, final Message message) {
+    }
   }
 
   private static final class EndListener implements AgentListener {
@@ -67,6 +68,7 @@ class AbstractAgentEngineTest {
     }
 
     @Override
-    public void onFinalAnswer(final String sessionId, final Message message) {}
+    public void onFinalAnswer(final String sessionId, final Message message) {
+    }
   }
 }

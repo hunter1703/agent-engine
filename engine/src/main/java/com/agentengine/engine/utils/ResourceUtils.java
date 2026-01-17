@@ -10,7 +10,8 @@ import java.nio.file.Paths;
 
 public final class ResourceUtils {
 
-  private ResourceUtils() {}
+  private ResourceUtils() {
+  }
 
   public static String loadResourceAsString(final String path) {
     try (InputStream stream = TemplateUtils.class.getResourceAsStream(path)) {

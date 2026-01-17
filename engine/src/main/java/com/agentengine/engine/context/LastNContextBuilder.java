@@ -13,12 +13,8 @@ import java.util.stream.Collectors;
 public final class LastNContextBuilder extends BaseContextBuilder {
   private final int keepLast;
 
-  public LastNContextBuilder(
-      final SessionStore sessionStore,
-      final String systemMessage,
-      final String protocolMessage,
-      final List<AgentTool> tools,
-      final int keepLast) {
+  public LastNContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage,
+      final List<AgentTool> tools, final int keepLast) {
     super(sessionStore, systemMessage, protocolMessage, tools);
     this.keepLast = Math.max(1, keepLast);
   }
@@ -27,13 +23,11 @@ public final class LastNContextBuilder extends BaseContextBuilder {
   public List<Message> buildPrompt(final String sessionId) {
     final List<Message> messages = sessionStore.getMessages(sessionId);
 
-    final List<Message> recent =
-        messages.size() <= keepLast
-            ? messages
-            : messages.subList(messages.size() - keepLast, messages.size());
-    final Map<String, List<ToolExecution>> messageIdVsToolExecutions =
-        sessionStore.getToolExecutions(
-            sessionId, recent.stream().map(Message::getId).collect(Collectors.toList()));
+    final List<Message> recent = messages.size() <= keepLast
+        ? messages
+        : messages.subList(messages.size() - keepLast, messages.size());
+    final Map<String, List<ToolExecution>> messageIdVsToolExecutions = sessionStore.getToolExecutions(sessionId,
+        recent.stream().map(Message::getId).collect(Collectors.toList()));
 
     final List<Message> toBuildWith = new ArrayList<>();
     for (final Message message : recent) {

@@ -36,8 +36,7 @@ class BaseContextBuilderTest {
     InMemorySessionStore sessionStore = new InMemorySessionStore();
     sessionStore.appendMessage("session", Message.user("hi"));
 
-    BaseContextBuilder builder =
-        new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    BaseContextBuilder builder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
 
     List<Message> prompt = builder.buildPrompt("session");
 

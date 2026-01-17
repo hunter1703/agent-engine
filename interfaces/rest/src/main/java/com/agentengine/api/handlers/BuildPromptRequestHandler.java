@@ -27,12 +27,8 @@ public class BuildPromptRequestHandler extends AbstractAgentRequestHandler {
   public AgentResponse handle(final AgentRequest request) {
     final AgentEngine engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
-    List<MessageDto> messages =
-        engine.buildPrompt(sessionId).stream()
-            .map(
-                message ->
-                    new MessageDto(message.getRole().name().toLowerCase(), message.getContent()))
-            .toList();
+    List<MessageDto> messages = engine.buildPrompt(sessionId).stream()
+        .map(message -> new MessageDto(message.getRole().name().toLowerCase(), message.getContent())).toList();
     return new PromptResponse(sessionId, messages);
   }
 }

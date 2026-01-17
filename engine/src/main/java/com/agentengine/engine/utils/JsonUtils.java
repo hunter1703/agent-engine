@@ -9,7 +9,8 @@ import java.nio.file.Path;
 import java.util.Map;
 
 public final class JsonUtils {
-  private JsonUtils() {}
+  private JsonUtils() {
+  }
 
   public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
     if (map == null) {
@@ -36,7 +37,8 @@ public final class JsonUtils {
     if (is == null) {
       return null;
     }
-    return JSON.parseObject(is, new TypeReference<>() {}.getType());
+    return JSON.parseObject(is, new TypeReference<>() {
+    }.getType());
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {

@@ -7,7 +7,8 @@ import java.util.Map;
 public final class TemplateUtils {
   private static final Jinjava JINJAVA = new Jinjava();
 
-  private TemplateUtils() {}
+  private TemplateUtils() {
+  }
 
   public static String renderTextTemplate(final String template, final Map<String, Object> context) {
     if (template == null) {

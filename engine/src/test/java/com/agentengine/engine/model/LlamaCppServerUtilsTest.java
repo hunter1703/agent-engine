@@ -8,8 +8,7 @@ class LlamaCppServerUtilsTest {
 
   @Test
   void resolveAddressReadsHostAndPort() {
-    LlamaCppServerUtils.ServerAddress address =
-        LlamaCppServerUtils.resolveAddress("http://127.0.0.1:17004/v1");
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://127.0.0.1:17004/v1");
 
     assertThat(address.host()).isEqualTo("127.0.0.1");
     assertThat(address.port()).isEqualTo(17004);
@@ -17,8 +16,7 @@ class LlamaCppServerUtilsTest {
 
   @Test
   void resolveAddressDefaultsPortForHttp() {
-    LlamaCppServerUtils.ServerAddress address =
-        LlamaCppServerUtils.resolveAddress("http://localhost/v1");
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://localhost/v1");
 
     assertThat(address.port()).isEqualTo(80);
   }
