@@ -2,17 +2,11 @@
 
 This module groups interface implementations that expose the engine over different transports.
 
-## Submodules
-- `cli`: stdio CLI interface
-- `rest`: REST + SSE interface
+## Protocol
+Interface implementations share the same logical protocol:
+- Requests are expressed with the `AgentRequest` JSON shape (agent identity, optional session,
+  and optional message content).
+- Responses may be single payloads or streamed JSON events depending on transport.
+- Engine lifecycle/tool events are exposed verbatim over both transports.
 
-## Commands
-Run CLI:
-```bash
-./gradlew :interfaces:cli:run --args="server"
-```
-
-Run REST in dev mode:
-```bash
-./gradlew :interfaces:rest:quarkusDev
-```
+See each transport submodule README for details and examples.
