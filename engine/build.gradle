@@ -15,6 +15,7 @@ dependencies {
     implementation 'dev.langchain4j:langchain4j'
     implementation 'dev.langchain4j:langchain4j-open-ai'
     implementation 'dev.langchain4j:langchain4j-ollama'
+    implementation 'io.quarkus:quarkus-mongodb-client'
 
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'org.assertj:assertj-core'

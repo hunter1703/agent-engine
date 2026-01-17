@@ -46,16 +46,4 @@ class ResourceUtilsTest {
     assertThat(yamlConfig.getProvider()).isEqualTo("OLLAMA");
   }
 
-  @Test
-  void loadModelConfigResolvesFromConfigDirectory() throws Exception {
-    Path modelsDir = tempDir.resolve("models");
-    Files.createDirectories(modelsDir);
-    Path jsonPath = modelsDir.resolve("model.json");
-    Files.writeString(jsonPath, "{\"provider\":\"OPEN_AI\",\"model\":\"gpt\"}");
-    System.setProperty("CONFIG_DIR", tempDir.toString());
-
-    ModelConfig config = ResourceUtils.loadModelConfig("model.json");
-
-    assertThat(config.getProvider()).isEqualTo("OPEN_AI");
-  }
 }

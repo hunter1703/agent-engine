@@ -62,4 +62,4 @@ upsert_configs() {
 upsert_configs "$CONFIG_DIR/models" "Model"
 upsert_configs "$CONFIG_DIR/agents" "Agent"
 
-echo "MongoDB ready on localhost:$MONGO_PORT. Imported JSON configs from $CONFIG_DIR."
+echo "MongoDB ready on localhost:$MONGO_PORT. Imported configs from $CONFIG_DIR."

@@ -17,9 +17,11 @@ class ConfigLoaderTest {
   @Test
   void loadConfigReadsJsonAndValidatesEngineFields() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
-    Files.writeString(configPath, "{"
-        + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
-        + "}");
+    Files.writeString(
+        configPath,
+        "{"
+            + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
+            + "}");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);
@@ -31,8 +33,9 @@ class ConfigLoaderTest {
   @Test
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
-    Files.writeString(configPath,
-        "engine:\n  type: hybrid\n  reasoning: reasoning.json\n  prompt: hello\n  tool: tool.json\n");
+    Files.writeString(
+        configPath,
+        "engine:\n  type: hybrid\n  reasoning: reasoning.json\n  systemPrompt: hello\n  tool: tool.json\n");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);
@@ -44,9 +47,11 @@ class ConfigLoaderTest {
   @Test
   void loadConfigDefaultsToJsonWhenExtensionMissing() throws Exception {
     Path configPath = tempDir.resolve("agent");
-    Files.writeString(configPath, "{"
-        + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"prompt\":\"Hello\",\"tool\":\"tool.json\"}"
-        + "}");
+    Files.writeString(
+        configPath,
+        "{"
+            + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"Hello\",\"tool\":\"tool.json\"}"
+            + "}");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);

@@ -1,6 +1,5 @@
 package com.agentengine.plugins.echoagent.tools;
 
-import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.tools.AgentTool;
 import com.agentengine.engine.tools.ToolProvider;
 import java.util.Map;
@@ -17,7 +16,7 @@ public final class EchoToolProvider implements ToolProvider {
   }
 
   @Override
-  public AgentTool create(final Map<String, Object> toolConfig, final AgentConfig agentConfig) {
+  public AgentTool create(final Map<String, Object> toolConfig) {
     return new EchoTool();
   }
 }

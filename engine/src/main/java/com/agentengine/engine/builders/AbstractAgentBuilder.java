@@ -1,5 +1,7 @@
 package com.agentengine.engine.builders;
 
+import com.agentengine.engine.ConfigRepository;
+import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.MongoStateStoreConfig;
@@ -48,7 +50,13 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
         });
   }
 
-  protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
+  protected final ConfigRepository configRepository;
+
+    protected AbstractAgentBuilder(ConfigRepository configRepository) {
+        this.configRepository = configRepository;
+    }
+
+    protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
       final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
     final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();

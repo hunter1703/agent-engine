@@ -1,19 +1,16 @@
-package com.agentengine.interfaces;
+package com.agentengine.engine;
 
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
-import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.StringUtils;
-import com.mongodb.*;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
-import io.smallrye.config.ConfigMapping;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.bson.Document;

@@ -1,6 +1,5 @@
 package com.agentengine.plugins.shellagent.tools;
 
-import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.tools.AgentTool;
 import com.agentengine.engine.tools.ToolProvider;
 import com.agentengine.engine.utils.CollectionUtils;
@@ -19,7 +18,7 @@ public final class ShellCommandToolProvider implements ToolProvider {
   }
 
   @Override
-  public AgentTool create(final Map<String, Object> toolConfig, final AgentConfig agentConfig) {
+  public AgentTool create(final Map<String, Object> toolConfig) {
     final Long timeoutSeconds = CollectionUtils.getLongValueFromMap(toolConfig, "timeout_seconds");
     final Duration timeout = Duration.ofSeconds(timeoutSeconds == null ? 30 : timeoutSeconds);
     return new ShellCommandTool(timeout);

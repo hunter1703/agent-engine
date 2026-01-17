@@ -1,6 +1,7 @@
 package com.agentengine.engine.builders;
 
 import com.agentengine.engine.HybridEngine;
+import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.HybridEngineConfig;
@@ -20,6 +21,10 @@ import java.util.Objects;
 @Singleton
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
+  public HybridAgentBuilder(final MongoConfigRepository configRepository) {
+    super(configRepository);
+  }
+
   public HybridEngine build(final String agentName, final AgentConfig agentConfig) {
     final EngineConfig engineConfig = agentConfig.getEngine();
     if (!(engineConfig instanceof HybridEngineConfig hybridConfig)) {
@@ -31,8 +36,8 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
     final String reasoningLLM = hybridConfig.getReasoning();
     final String toolLLM = hybridConfig.getTool();
 
-    final ModelConfig reasoningConfig = Objects.requireNonNull(ResourceUtils.loadModelConfig(reasoningLLM));
-    final ModelConfig toolAssistantConfig = Objects.requireNonNull(ResourceUtils.loadModelConfig(toolLLM));
+    final ModelConfig reasoningConfig = configRepository.loadModelConfig(reasoningLLM);
+    final ModelConfig toolAssistantConfig = configRepository.loadModelConfig(toolLLM);
 
     final LLMModel reasoningModel = buildChatModel(reasoningConfig);
     final LLMModel toolAssistantModel = buildChatModel(toolAssistantConfig);

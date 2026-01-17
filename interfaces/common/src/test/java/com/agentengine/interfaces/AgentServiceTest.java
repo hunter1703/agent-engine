@@ -10,8 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.ConfigRepository;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
+import com.agentengine.engine.beans.config.HybridEngineConfig;
+import com.agentengine.engine.utils.ResourceUtils;
 import com.agentengine.engine.builders.AgentBuilder;
 import com.agentengine.engine.builders.AgentBuilderFactory;
 import java.nio.file.Files;
@@ -27,20 +30,24 @@ class AgentServiceTest {
   void clearConfigOverrides() {
     System.clearProperty("CONFIG_DIR");
     System.clearProperty("PLUGIN_DIR");
+    ResourceUtils.setModelConfigResolver(null);
   }
 
   @Test
   void resolveEngineUsesProvidedNameAndConfigPath() {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
+    ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
+    AgentConfig agentConfig = buildValidAgentConfig();
 
-    when(builderFactory.getBuilder("agent")).thenReturn(builder);
+    when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
     when(builder.build(eq("agent"), any())).thenReturn(engine);
-    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(AgentConfig.empty());
+    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
+    when(configRepository.loadModelConfig(any())).thenReturn(null);
 
-    AgentService service = new AgentService(builderFactory, configLoader, mock(ConfigRepository.class));
+    AgentService service = new AgentService(builderFactory, configLoader, configRepository);
 
     AgentEngine resolved = service.getOrStartEngine("agent", "config.json");
 
@@ -52,8 +59,10 @@ class AgentServiceTest {
   void resolveEngineUsesConfigDirectoryByDefault(@TempDir Path tempDir) throws Exception {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
+    ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
+    AgentConfig agentConfig = buildValidAgentConfig();
 
     Path configDir = tempDir.resolve("agents");
     Files.createDirectories(configDir);
@@ -61,11 +70,12 @@ class AgentServiceTest {
     Files.writeString(configPath, "{}\n");
     System.setProperty("CONFIG_DIR", tempDir.toString());
 
-    when(builderFactory.getBuilder("agent")).thenReturn(builder);
+    when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
     when(builder.build(eq("agent"), any())).thenReturn(engine);
-    when(configLoader.loadConfig(configPath)).thenReturn(AgentConfig.empty());
+    when(configLoader.loadConfig(configPath)).thenReturn(agentConfig);
+    when(configRepository.loadModelConfig(any())).thenReturn(null);
 
-    AgentService service = new AgentService(builderFactory, configLoader, mock(ConfigRepository.class));
+    AgentService service = new AgentService(builderFactory, configLoader, configRepository);
 
     AgentEngine resolved = service.getOrStartEngine("agent", null);
 
@@ -76,14 +86,17 @@ class AgentServiceTest {
   void resolveEngineNormalizesAgentName() {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
+    ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
+    AgentConfig agentConfig = buildValidAgentConfig();
 
-    when(builderFactory.getBuilder("shell_agent")).thenReturn(builder);
+    when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
     when(builder.build(eq("shell_agent"), any())).thenReturn(engine);
-    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(AgentConfig.empty());
+    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
+    when(configRepository.loadModelConfig(any())).thenReturn(null);
 
-    AgentService service = new AgentService(builderFactory, configLoader, mock(ConfigRepository.class));
+    AgentService service = new AgentService(builderFactory, configLoader, configRepository);
 
     AgentEngine resolved = service.getOrStartEngine("Shell-Agent", "config.json");
 
@@ -95,14 +108,17 @@ class AgentServiceTest {
   void resolveEngineCachesByNameAndConfigPath() {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
+    ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
+    AgentConfig agentConfig = buildValidAgentConfig();
 
-    when(builderFactory.getBuilder("agent")).thenReturn(builder);
+    when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
     when(builder.build(eq("agent"), any())).thenReturn(engine);
-    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(AgentConfig.empty());
+    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
+    when(configRepository.loadModelConfig(any())).thenReturn(null);
 
-    AgentService service = new AgentService(builderFactory, configLoader, mock(ConfigRepository.class));
+    AgentService service = new AgentService(builderFactory, configLoader, configRepository);
 
     AgentEngine first = service.getOrStartEngine("agent", "config.json");
     AgentEngine second = service.getOrStartEngine("agent", "config.json");
@@ -112,10 +128,14 @@ class AgentServiceTest {
 
   @Test
   void resolveEngineRejectsMissingAgentName() {
-    AgentService service = new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class),
-        mock(ConfigRepository.class));
+    AgentService service =
+        new AgentService(
+            mock(AgentBuilderFactory.class),
+            mock(ConfigLoader.class),
+            mock(ConfigRepository.class));
 
-    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json"))
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentName");
   }
 
@@ -126,11 +146,12 @@ class AgentServiceTest {
     ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
-    AgentConfig config = AgentConfig.empty();
+    AgentConfig config = buildValidAgentConfig();
 
     when(configRepository.loadAgentConfig("agent")).thenReturn(config);
-    when(builderFactory.getBuilder("agent")).thenReturn(builder);
+    when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
     when(builder.build(eq("agent"), any())).thenReturn(engine);
+    when(configRepository.loadModelConfig(any())).thenReturn(null);
 
     AgentService service = new AgentService(builderFactory, configLoader, configRepository);
 
@@ -138,5 +159,14 @@ class AgentServiceTest {
 
     assertThat(resolved).isSameAs(engine);
     verify(configLoader, never()).loadConfig(any());
+  }
+
+  private static AgentConfig buildValidAgentConfig() {
+    AgentConfig config = AgentConfig.empty();
+    HybridEngineConfig engine = (HybridEngineConfig) config.getEngine();
+    engine.setReasoning("reasoner.json");
+    engine.setTool("tool.json");
+    engine.setSystemPrompt("You are helpful.");
+    return config;
   }
 }

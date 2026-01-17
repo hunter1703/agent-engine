@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.MongoConfigRepository;
+import com.agentengine.engine.NoopConfigRepository;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
@@ -32,7 +34,7 @@ import org.junit.jupiter.api.Test;
 
 class AbstractAgentBuilderTest {
 
-  private final TestAgentBuilder builder = new TestAgentBuilder();
+  private final TestAgentBuilder builder = new TestAgentBuilder(new NoopConfigRepository());
 
   @Test
   void getResponseFormatUsesJsonWhenConfigured() {
@@ -308,6 +310,10 @@ class AbstractAgentBuilderTest {
   }
 
   private static final class TestAgentBuilder extends AbstractAgentBuilder {
+    private TestAgentBuilder(final NoopConfigRepository configRepository) {
+      super(configRepository);
+    }
+
     private LLMModel callBuildChatModel(final ModelConfig config) {
       return buildChatModel(config);
     }

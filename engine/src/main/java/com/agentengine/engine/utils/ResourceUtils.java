@@ -23,18 +23,4 @@ public final class ResourceUtils {
       return "";
     }
   }
-
-  public static ModelConfig loadModelConfig(final String configPath) {
-    if (StringUtils.isBlank(configPath)) {
-      return null;
-    }
-    Path path = Paths.get(configPath);
-    if (!Files.exists(path)) {
-      return null;
-    }
-    if (path.toString().endsWith(".json")) {
-      return JsonUtils.fromFile(path, ModelConfig.class);
-    }
-    return YamlUtils.fromFile(path, ModelConfig.class);
-  }
 }
