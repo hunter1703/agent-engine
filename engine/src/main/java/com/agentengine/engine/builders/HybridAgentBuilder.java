@@ -1,8 +1,8 @@
 package com.agentengine.engine.builders;
 
 import com.agentengine.engine.HybridEngine;
-import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.AbstractEngineConfig;
+import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.ToolsConfig;

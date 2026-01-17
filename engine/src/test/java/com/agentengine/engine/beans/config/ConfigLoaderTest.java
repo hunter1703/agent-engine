@@ -18,9 +18,9 @@ class ConfigLoaderTest {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(
         configPath,
-        "{" +
-            "\"engine\":{\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}" +
-            "}");
+        "{"
+            + "\"engine\":{\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
+            + "}");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);

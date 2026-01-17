@@ -26,8 +26,7 @@ class ModelConfigValidatorTest {
   void validateAcceptsValidConfig() throws Exception {
     Path path = tempDir.resolve("ok.json");
     Files.writeString(
-        path,
-        "{\"provider\":\"OLLAMA\",\"model\":\"qwen\",\"response_format\":\"text\"}\n");
+        path, "{\"provider\":\"OLLAMA\",\"model\":\"qwen\",\"response_format\":\"text\"}\n");
 
     List<String> errors = ModelConfigValidator.validate(path);
 

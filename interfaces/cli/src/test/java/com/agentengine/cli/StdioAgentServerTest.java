@@ -10,15 +10,15 @@ import com.agentengine.client.AgentRequest;
 import com.agentengine.client.AgentRequest.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
-import com.agentengine.engine.beans.config.ConfigLoader;
-import com.agentengine.engine.events.AgentEventAdapter;
-import com.agentengine.engine.events.AgentEvent;
-import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.beans.config.AgentConfig;
+import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.builders.AgentBuilder;
 import com.agentengine.engine.builders.AgentBuilderFactory;
+import com.agentengine.engine.events.AgentEvent;
+import com.agentengine.engine.events.AgentEventAdapter;
+import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
@@ -111,12 +111,8 @@ class StdioAgentServerTest {
     StdioAgentServer server = new StdioAgentServer(builderFactory, configLoader);
 
     String invokeJson =
-        "{"
-            + "\"type\":\"INVOKE_AGENT\","
-            + "\"id\":\"req-1\","
-            + "\"message\":\"hello\"}";
-    String promptJson =
-        "{" + "\"type\":\"BUILD_PROMPT\"," + "\"id\":\"req-2\"}";
+        "{" + "\"type\":\"INVOKE_AGENT\"," + "\"id\":\"req-1\"," + "\"message\":\"hello\"}";
+    String promptJson = "{" + "\"type\":\"BUILD_PROMPT\"," + "\"id\":\"req-2\"}";
     String input = invokeJson + "\n" + promptJson + "\n";
     System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
 
@@ -155,8 +151,7 @@ class StdioAgentServerTest {
     adapter.onToolPlan("session", List.of(new ToolCall("id", "echo", Map.of("text", "hi"))));
     adapter.onToolExecution(
         "session",
-        new ToolExecution(
-            new ToolCall("id", "echo", Map.of()), "ok", "done", Instant.now(), 1));
+        new ToolExecution(new ToolCall("id", "echo", Map.of()), "ok", "done", Instant.now(), 1));
     adapter.onReasoningStart("session");
     adapter.onToolRepair("session");
 
@@ -211,9 +206,14 @@ class StdioAgentServerTest {
   }
 
   private static void invokeSendEvent(
-      final StdioAgentServer server, final String sessionId, final String event, final Object payload) {
+      final StdioAgentServer server,
+      final String sessionId,
+      final String event,
+      final Object payload) {
     try {
-      var method = StdioAgentServer.class.getDeclaredMethod("sendEvent", String.class, String.class, Object.class);
+      var method =
+          StdioAgentServer.class.getDeclaredMethod(
+              "sendEvent", String.class, String.class, Object.class);
       method.setAccessible(true);
       method.invoke(server, sessionId, event, payload);
     } catch (Exception ex) {

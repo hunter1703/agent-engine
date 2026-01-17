@@ -47,8 +47,7 @@ class AgentServiceTest {
   }
 
   @Test
-  void resolveEngineUsesPluginConfigDirectoryByDefault(
-      @TempDir Path tempDir) throws Exception {
+  void resolveEngineUsesPluginConfigDirectoryByDefault(@TempDir Path tempDir) throws Exception {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
     AgentBuilder builder = mock(AgentBuilder.class);

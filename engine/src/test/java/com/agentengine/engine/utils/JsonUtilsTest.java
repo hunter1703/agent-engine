@@ -46,8 +46,7 @@ class JsonUtilsTest {
     Path path = tempDir.resolve("data-map.json");
     Files.writeString(path, "{\"count\":3}");
 
-    Map<String, Object> parsed =
-        JsonUtils.fromFile(path, new TypeReference<>() {});
+    Map<String, Object> parsed = JsonUtils.fromFile(path, new TypeReference<>() {});
 
     assertThat(parsed).containsEntry("count", 3);
   }
@@ -64,8 +63,7 @@ class JsonUtilsTest {
 
   @Test
   void fromJsonTypeReferenceParsesMap() {
-    Map<String, Object> parsed =
-        JsonUtils.fromJson("{\"value\":42}", new TypeReference<>() {});
+    Map<String, Object> parsed = JsonUtils.fromJson("{\"value\":42}", new TypeReference<>() {});
 
     assertThat(parsed).containsEntry("value", 42);
   }
