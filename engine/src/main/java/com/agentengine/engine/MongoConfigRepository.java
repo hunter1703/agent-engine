@@ -55,7 +55,7 @@ public final class MongoConfigRepository implements ConfigRepository {
 
   private static MongoClient createClient() {
     final ConnectionString connectionString = new ConnectionString(
-        System.getProperty("MONGODB_CONNECTION_STRING", "localhost:27017"));
+        System.getProperty("MONGODB_CONNECTION_STRING", "mongodb://localhost:27017"));
     MongoClientSettings mongoClientSettings = MongoClientSettings.builder().applicationName("agent-engine")
         .applyConnectionString(connectionString).build();
     return MongoClients.create(mongoClientSettings);

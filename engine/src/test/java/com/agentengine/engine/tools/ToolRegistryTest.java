@@ -26,4 +26,10 @@ class ToolRegistryTest {
 
     assertThat(filtered).isEmpty();
   }
+
+  @Test
+  void loadToolsSkipsMismatchedAgentAndNullConfig() {
+    assertThat(ToolRegistry.loadTools("other-agent", new ToolsConfig())).isEmpty();
+    assertThat(ToolRegistry.loadTools("test-agent", null)).isEmpty();
+  }
 }

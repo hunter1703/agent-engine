@@ -1,6 +1,7 @@
 package com.agentengine.interfaces;
 
 import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.ConfigRepository;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;

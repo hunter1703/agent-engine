@@ -1,5 +1,6 @@
 package com.agentengine.engine.builders;
 
+import com.agentengine.engine.ConfigRepository;
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.beans.config.EngineConfig;
@@ -21,7 +22,7 @@ import java.util.Objects;
 @Singleton
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
-  public HybridAgentBuilder(final MongoConfigRepository configRepository) {
+  public HybridAgentBuilder(final ConfigRepository configRepository) {
     super(configRepository);
   }
 

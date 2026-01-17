@@ -1,6 +1,7 @@
 package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,5 +34,13 @@ class YamlUtilsTest {
     Map<String, Object> parsed = YamlUtils.fromFile(path, Map.class);
 
     assertThat(parsed).containsEntry("name", "example");
+  }
+
+  @Test
+  void fromFileThrowsOnMissingPath() {
+    Path missing = tempDir.resolve("missing.yaml");
+
+    assertThatThrownBy(() -> YamlUtils.fromFile(missing, Map.class))
+        .isInstanceOf(RuntimeException.class);
   }
 }
