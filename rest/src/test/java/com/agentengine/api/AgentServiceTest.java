@@ -13,7 +13,6 @@ import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.builders.AgentBuilder;
 import com.agentengine.engine.builders.AgentBuilderFactory;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.junit.jupiter.api.Test;
@@ -38,15 +37,15 @@ class AgentServiceTest {
 
     AgentService service = new AgentService(builderFactory, configLoader);
 
-    AgentEngine resolved = service.resolveEngine("agent", "config.json");
+    AgentEngine resolved = service.getOrStartEngine("agent", "config.json");
 
     assertThat(resolved).isSameAs(engine);
     verify(builder).build(eq("agent"), any());
   }
 
   @Test
-  void resolveEngineUsesPluginConfigDirectoryByDefault(@org.junit.jupiter.api.io.TempDir Path tempDir)
-      throws Exception {
+  void resolveEngineUsesPluginConfigDirectoryByDefault(
+      @org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
     AgentBuilder builder = mock(AgentBuilder.class);
@@ -64,7 +63,7 @@ class AgentServiceTest {
 
     AgentService service = new AgentService(builderFactory, configLoader);
 
-    AgentEngine resolved = service.resolveEngine("agent", null);
+    AgentEngine resolved = service.getOrStartEngine("agent", null);
 
     assertThat(resolved).isSameAs(engine);
   }
@@ -82,35 +81,18 @@ class AgentServiceTest {
 
     AgentService service = new AgentService(builderFactory, configLoader);
 
-    AgentEngine first = service.resolveEngine("agent", "config.json");
-    AgentEngine second = service.resolveEngine("agent", "config.json");
+    AgentEngine first = service.getOrStartEngine("agent", "config.json");
+    AgentEngine second = service.getOrStartEngine("agent", "config.json");
 
     assertThat(first).isSameAs(second);
   }
 
   @Test
-  void resolveSessionIdGeneratesWhenMissing() {
-    AgentService service = new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class));
-
-    String sessionId = service.getOrCreateSession(null);
-
-    assertThat(sessionId).isNotBlank();
-  }
-
-  @Test
-  void resolveSessionIdUsesProvidedValue() {
-    AgentService service = new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class));
-
-    String sessionId = service.getOrCreateSession("session");
-
-    assertThat(sessionId).isEqualTo("session");
-  }
-
-  @Test
   void resolveEngineRejectsMissingAgentName() {
-    AgentService service = new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class));
+    AgentService service =
+        new AgentService(mock(AgentBuilderFactory.class), mock(ConfigLoader.class));
 
-    assertThatThrownBy(() -> service.resolveEngine(" ", "config.json"))
+    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentName");
   }

@@ -30,4 +30,3 @@ class AgentListenerTest {
     assertThatCode(() -> listener.onToolRepair("session")).doesNotThrowAnyException();
   }
 }
-

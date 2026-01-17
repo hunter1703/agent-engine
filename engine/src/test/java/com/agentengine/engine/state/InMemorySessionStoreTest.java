@@ -61,4 +61,3 @@ class InMemorySessionStoreTest {
     assertThat(summaries.getFirst().content()).isEqualTo("summary");
   }
 }
-

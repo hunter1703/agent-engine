@@ -11,3 +11,15 @@ tasks.register('build') {
 tasks.register('test') {
     dependsOn ':engine:test', ':cli:test', ':rest:test'
 }
+
+tasks.register('restDev') {
+    dependsOn ':rest:quarkusDev'
+}
+
+tasks.register('syncPlugins', Copy) {
+    dependsOn ':engine:jar'
+    from('plugins') {
+        include '**/build/libs/*.jar'
+    }
+    into('plugins')
+}

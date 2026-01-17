@@ -47,4 +47,3 @@ public final class LastNContextBuilder extends BaseContextBuilder {
     return super.buildPrompt(toBuildWith);
   }
 }
-

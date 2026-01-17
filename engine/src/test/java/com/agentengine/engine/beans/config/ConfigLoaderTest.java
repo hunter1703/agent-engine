@@ -49,4 +49,3 @@ class ConfigLoaderTest {
         .hasCauseInstanceOf(java.io.FileNotFoundException.class);
   }
 }
-

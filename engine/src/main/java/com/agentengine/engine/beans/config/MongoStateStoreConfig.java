@@ -73,4 +73,3 @@ public class MongoStateStoreConfig extends StateStoreConfig {
     this.summariesCollection = summariesCollection;
   }
 }
-

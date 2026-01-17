@@ -1,6 +1,5 @@
 package com.agentengine.engine.builders;
 
-import com.alibaba.fastjson2.TypeReference;
 import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.MongoStateStoreConfig;
@@ -17,6 +16,7 @@ import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.ResourceUtils;
 import com.agentengine.engine.utils.StringUtils;
 import com.agentengine.engine.utils.TemplateUtils;
+import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -427,4 +427,3 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
   }
 }
-

@@ -18,4 +18,3 @@ public class LastNContextConfig extends ContextConfig {
     this.keepLast = keepLast;
   }
 }
-

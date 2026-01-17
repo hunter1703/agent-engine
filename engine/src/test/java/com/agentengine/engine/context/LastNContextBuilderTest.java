@@ -41,4 +41,3 @@ class LastNContextBuilderTest {
     assertThat(prompt.get(3).getRole()).isEqualTo(Role.TOOL);
   }
 }
-

@@ -46,4 +46,3 @@ class ModelConfigTest {
     assertThat(ModelConfig.Provider.valueOf("OPEN_AI")).isEqualTo(ModelConfig.Provider.OPEN_AI);
   }
 }
-

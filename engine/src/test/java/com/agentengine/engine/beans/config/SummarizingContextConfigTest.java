@@ -18,4 +18,3 @@ class SummarizingContextConfigTest {
     assertThat(config.getSummarizerModel()).isEqualTo("summarizer");
   }
 }
-

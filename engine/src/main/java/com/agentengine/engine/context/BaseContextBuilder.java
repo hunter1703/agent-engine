@@ -59,4 +59,3 @@ public class BaseContextBuilder implements ContextBuilder {
     return Message.system(builder.toString());
   }
 }
-

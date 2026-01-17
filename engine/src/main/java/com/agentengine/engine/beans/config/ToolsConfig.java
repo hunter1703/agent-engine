@@ -25,4 +25,3 @@ public final class ToolsConfig implements Config {
     this.configs = configs == null ? new HashMap<>() : new HashMap<>(configs);
   }
 }
-

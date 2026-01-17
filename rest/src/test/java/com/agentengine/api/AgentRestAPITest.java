@@ -18,9 +18,9 @@ class AgentRestAPITest {
   void invokeReturnsSessionAndResponse() {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
-    when(service.resolveEngine("agent", "config.json")).thenReturn(engine);
-    when(service.getOrCreateSession("session")).thenReturn("session");
-    when(engine.invoke(eq("session"), any())).thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
+    when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
+    when(engine.invoke(eq("session"), any()))
+        .thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
 
     AgentRestAPI resource = new AgentRestAPI(service);
     InvokeRequest request = new InvokeRequest();
@@ -40,8 +40,7 @@ class AgentRestAPITest {
   void invokeHandlesNullEngineResponse() {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
-    when(service.resolveEngine("agent", "config.json")).thenReturn(engine);
-    when(service.getOrCreateSession("session")).thenReturn("session");
+    when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(eq("session"), any())).thenReturn(null);
 
     AgentRestAPI resource = new AgentRestAPI(service);
@@ -62,9 +61,9 @@ class AgentRestAPITest {
   void buildPromptReturnsMessages() {
     AgentService service = mock(AgentService.class);
     AgentEngine engine = mock(AgentEngine.class);
-    when(service.resolveEngine("agent", "config.json")).thenReturn(engine);
-    when(service.getOrCreateSession("session")).thenReturn("session");
-    when(engine.buildPrompt("session")).thenReturn(List.of(Message.system("sys"), Message.user("hi")));
+    when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
+    when(engine.buildPrompt("session"))
+        .thenReturn(List.of(Message.system("sys"), Message.user("hi")));
 
     AgentRestAPI resource = new AgentRestAPI(service);
     AgentRequest request = new AgentRequest();

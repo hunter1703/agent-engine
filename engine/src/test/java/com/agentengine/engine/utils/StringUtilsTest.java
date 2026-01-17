@@ -19,4 +19,3 @@ class StringUtilsTest {
     assertThat(StringUtils.isNotBlank(" ")).isFalse();
   }
 }
-

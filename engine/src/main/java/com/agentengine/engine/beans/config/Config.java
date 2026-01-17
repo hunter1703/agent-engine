@@ -4,4 +4,3 @@ public interface Config {
 
   default void validate() {}
 }
-

@@ -33,4 +33,3 @@ class StateStoreConfigTest {
     assertThat(mongo.getSummariesCollection()).isEqualTo("summaries");
   }
 }
-

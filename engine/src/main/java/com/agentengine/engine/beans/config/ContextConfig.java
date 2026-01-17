@@ -20,4 +20,3 @@ public abstract class ContextConfig implements Config {
     LAST_N
   }
 }
-

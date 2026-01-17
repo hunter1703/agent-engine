@@ -25,4 +25,3 @@ public interface SessionStore {
       String summary,
       long createdAt);
 }
-

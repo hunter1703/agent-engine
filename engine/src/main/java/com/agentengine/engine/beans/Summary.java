@@ -6,4 +6,3 @@ public record Summary(
     String summarizedFromMessageId,
     String summarizedTillMessageId,
     long createdTime) {}
-

@@ -26,4 +26,3 @@ class ToolRegistryTest {
     assertThat(filtered).isEmpty();
   }
 }
-

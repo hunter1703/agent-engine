@@ -73,4 +73,3 @@ public final class LangChain4JLLMModel implements LLMModel {
     return AiMessage.from(message.getContent());
   }
 }
-

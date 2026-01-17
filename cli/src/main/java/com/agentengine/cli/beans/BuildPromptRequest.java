@@ -6,4 +6,3 @@ public class BuildPromptRequest extends Request {
     super(RequestType.BUILD_PROMPT);
   }
 }
-

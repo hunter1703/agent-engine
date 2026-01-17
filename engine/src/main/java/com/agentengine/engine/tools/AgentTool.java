@@ -9,4 +9,3 @@ public interface AgentTool {
 
   String execute(Map<String, Object> args);
 }
-

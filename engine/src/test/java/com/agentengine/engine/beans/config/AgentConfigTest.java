@@ -30,4 +30,3 @@ class AgentConfigTest {
     config.validate();
   }
 }
-

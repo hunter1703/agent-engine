@@ -12,4 +12,3 @@ public final class StringUtils {
     return !isBlank(str);
   }
 }
-

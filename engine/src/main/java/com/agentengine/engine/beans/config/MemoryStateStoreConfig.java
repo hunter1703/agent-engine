@@ -5,4 +5,3 @@ public class MemoryStateStoreConfig extends StateStoreConfig {
     super(StateStoreType.MEMORY);
   }
 }
-

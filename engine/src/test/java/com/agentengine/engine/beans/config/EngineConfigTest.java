@@ -56,4 +56,3 @@ class EngineConfigTest {
     assertThat(config.getToolRetryLimit()).isEqualTo(5);
   }
 }
-

@@ -33,4 +33,3 @@ class TemplateUtilsTest {
     assertThat(rendered).isEqualTo("Route: tool");
   }
 }
-

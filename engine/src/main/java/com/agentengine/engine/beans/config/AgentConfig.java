@@ -54,4 +54,3 @@ public final class AgentConfig implements Config {
     return new AgentConfig();
   }
 }
-

@@ -67,4 +67,3 @@ public class Message {
     return new Message(Role.ASSISTANT, content, thoughts, null, null);
   }
 }
-

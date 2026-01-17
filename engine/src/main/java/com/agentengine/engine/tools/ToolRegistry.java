@@ -1,11 +1,11 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.beans.config.AgentConfig;
+import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import com.agentengine.engine.plugins.PluginLoader;
 import java.util.ServiceLoader;
 
 public final class ToolRegistry {

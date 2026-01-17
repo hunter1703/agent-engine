@@ -15,4 +15,3 @@ public interface AgentListener {
 
   default void onToolRepair(final String sessionId) {}
 }
-

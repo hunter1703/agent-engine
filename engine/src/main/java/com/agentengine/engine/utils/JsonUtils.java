@@ -59,4 +59,3 @@ public final class JsonUtils {
     return JSON.toJSONString(value);
   }
 }
-

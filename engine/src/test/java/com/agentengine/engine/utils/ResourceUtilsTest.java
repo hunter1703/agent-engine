@@ -39,4 +39,3 @@ class ResourceUtilsTest {
     assertThat(yamlConfig.getProvider()).isEqualTo("OLLAMA");
   }
 }
-

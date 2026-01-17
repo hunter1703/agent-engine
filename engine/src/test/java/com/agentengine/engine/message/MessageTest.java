@@ -20,4 +20,3 @@ class MessageTest {
     assertThat(assistant.getThoughts()).isEqualTo("thoughts");
   }
 }
-

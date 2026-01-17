@@ -18,4 +18,3 @@ public abstract class AbstractAgentEngine implements AgentEngine {
     }
   }
 }
-

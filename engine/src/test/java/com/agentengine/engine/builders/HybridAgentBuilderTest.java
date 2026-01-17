@@ -2,12 +2,12 @@ package com.agentengine.engine.builders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.alibaba.fastjson2.JSONFactory;
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.ToolsConfig;
 import com.agentengine.engine.message.Message;
+import com.alibaba.fastjson2.JSONFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -83,4 +83,3 @@ class HybridAgentBuilderTest {
     assertThat(builder.agentNames()).isNull();
   }
 }
-

@@ -31,4 +31,3 @@ class ToolsConfigTest {
     assertThat(config.getConfigs()).containsKey("tool");
   }
 }
-

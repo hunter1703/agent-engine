@@ -1,10 +1,10 @@
 package com.agentengine.engine.utils;
 
-import com.alibaba.fastjson2.TypeReference;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.state.SessionStore;
+import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.ArrayList;
@@ -336,4 +336,3 @@ public final class EngineUtils {
     return requests;
   }
 }
-

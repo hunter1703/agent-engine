@@ -6,4 +6,3 @@ public enum Role {
   ASSISTANT,
   TOOL
 }
-

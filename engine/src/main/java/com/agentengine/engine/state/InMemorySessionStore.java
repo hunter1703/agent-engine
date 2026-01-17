@@ -85,4 +85,3 @@ public final class InMemorySessionStore implements SessionStore {
     private final List<Summary> summaries = new CopyOnWriteArrayList<>();
   }
 }
-

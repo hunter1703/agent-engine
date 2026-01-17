@@ -10,4 +10,3 @@ public interface ToolProvider {
 
   AgentTool create(Map<String, Object> toolConfig, AgentConfig agentConfig);
 }
-

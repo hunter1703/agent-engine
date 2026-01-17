@@ -90,4 +90,3 @@ public final class EngineConfig implements Config {
     this.heavy = heavy;
   }
 }
-

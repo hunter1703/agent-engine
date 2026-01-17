@@ -25,4 +25,3 @@ class ContextConfigTest {
     assertThat(lastN.getType()).isEqualTo("custom");
   }
 }
-

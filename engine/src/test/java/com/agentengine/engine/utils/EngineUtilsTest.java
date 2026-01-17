@@ -144,8 +144,7 @@ class EngineUtilsTest {
     String payload =
         JsonUtils.toJson(
             java.util.Map.of(
-                "toolRequests",
-                List.of("raw", java.util.Map.of("id", "2", "name", "tool2"), 3)));
+                "toolRequests", List.of("raw", java.util.Map.of("id", "2", "name", "tool2"), 3)));
 
     Message parsed = EngineUtils.parseJsonPayload(payload);
 

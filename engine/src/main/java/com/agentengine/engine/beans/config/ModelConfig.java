@@ -171,4 +171,3 @@ public class ModelConfig implements Config {
     this.contextConfig = contextConfig;
   }
 }
-

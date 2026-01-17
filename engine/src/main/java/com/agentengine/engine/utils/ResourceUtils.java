@@ -38,4 +38,3 @@ public final class ResourceUtils {
     return YamlUtils.fromFile(path, ModelConfig.class);
   }
 }
-

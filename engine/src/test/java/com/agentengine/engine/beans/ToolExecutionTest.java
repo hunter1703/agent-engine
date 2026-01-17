@@ -27,4 +27,3 @@ class ToolExecutionTest {
     assertThat(message.getContent()).contains("Tool output : hi");
   }
 }
-

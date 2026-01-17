@@ -182,7 +182,8 @@ class AbstractAgentBuilderTest {
         builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of());
 
     assertThat(reasoning).isInstanceOf(com.agentengine.engine.context.LastNContextBuilder.class);
-    assertThat(toolAssistant).isInstanceOf(com.agentengine.engine.context.LastNContextBuilder.class);
+    assertThat(toolAssistant)
+        .isInstanceOf(com.agentengine.engine.context.LastNContextBuilder.class);
   }
 
   @Test

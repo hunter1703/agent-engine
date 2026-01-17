@@ -18,4 +18,3 @@ public class InvokeAgentRequest extends Request {
     this.userMessage = userMessage;
   }
 }
-

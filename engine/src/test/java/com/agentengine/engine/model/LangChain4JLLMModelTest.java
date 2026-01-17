@@ -68,4 +68,3 @@ class LangChain4JLLMModelTest {
     assertThat(model.thoughtsEndTag()).isEqualTo("end");
   }
 }
-

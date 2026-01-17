@@ -11,4 +11,3 @@ public interface AgentEngine {
 
   List<Message> buildPrompt(String sessionId);
 }
-

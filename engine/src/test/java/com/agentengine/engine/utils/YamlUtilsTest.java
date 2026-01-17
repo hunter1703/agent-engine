@@ -34,4 +34,3 @@ class YamlUtilsTest {
     assertThat(parsed).containsEntry("name", "example");
   }
 }
-

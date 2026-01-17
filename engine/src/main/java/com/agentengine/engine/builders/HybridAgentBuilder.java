@@ -67,4 +67,3 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
     return null;
   }
 }
-

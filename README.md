@@ -29,9 +29,15 @@ Run the REST service locally:
 ./gradlew :rest:quarkusDev
 ```
 
+Or use the root shortcut:
+```bash
+./gradlew restDev
+```
+
 Endpoints:
 - `POST /agent/invoke` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
 - `POST /agent/prompt` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "..." }`
+- `GET /agent/events?agentName=...&agentConfigPath=...&sessionId=...` for SSE event stream
 
 Environment defaults:
 - `AGENT_NAME` sets the default agent name
@@ -69,6 +75,25 @@ Build the engine JAR first so the plugin compiles:
 ```bash
 ./gradlew :engine:jar
 ```
+
+Copy built plugin JARs into the runtime plugin directory:
+```bash
+./gradlew syncPlugins
+```
+
+`syncPlugins` copies `plugins/**/build/libs/*.jar` into the top-level `plugins/` directory
+so the runtime `PLUGIN_DIR` can load them.
+
+## Deployment
+Build the REST app and container image:
+```bash
+./gradlew :rest:build
+docker build -f deploy/Dockerfile -t agent-engine:latest .
+```
+
+Systemd service template:
+- `deploy/agent-engine.service`
+- Deployment guide: `deploy/README.md`
 
 Then place the resulting JAR into your deployment plugin directory and add it to the classpath
 on startup.

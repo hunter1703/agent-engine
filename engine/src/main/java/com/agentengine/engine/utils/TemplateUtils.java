@@ -33,4 +33,3 @@ public final class TemplateUtils {
     return TemplateUtils.render(template, context);
   }
 }
-
