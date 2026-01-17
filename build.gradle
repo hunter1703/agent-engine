@@ -1,3 +1,5 @@
+import java.io.IOException
+import java.net.Socket
 import org.gradle.api.file.RelativePath
 
 allprojects {
@@ -26,10 +28,6 @@ tasks.register('test') {
     dependsOn coreModules.collect { module -> "${module}:test" }
 }
 
-tasks.register('restDev') {
-    dependsOn ':interfaces:rest:quarkusDev'
-}
-
 final def pluginDirs = file('plugins').listFiles()?.findAll { pluginDir ->
     pluginDir.directory && new File(pluginDir, 'build.gradle').exists()
 } ?: []
@@ -48,7 +46,7 @@ final def pluginBuildTasks = pluginDirs.collect { pluginDir ->
     }
 }
 
-tasks.register('syncPlugins', Copy) {
+tasks.register('preparePlugins', Copy) {
     dependsOn ':engine:jar'
     dependsOn pluginBuildTasks
     from('plugins') {
@@ -59,4 +57,40 @@ tasks.register('syncPlugins', Copy) {
         includeEmptyDirs = false
     }
     into('plugins')
+}
+
+final def mongoArgs = (findProperty('mongoArgs') ?: './configs').toString().split('\s+')
+final def restPort = (System.getenv('QUARKUS_HTTP_PORT') ?: '8080') as int
+
+final def isPortInUse = { int port ->
+    try {
+        Socket socket = new Socket('127.0.0.1', port)
+        socket.close()
+        return true
+    } catch (IOException ignored) {
+        return false
+    }
+}
+
+tasks.register('setupMongo', Exec) {
+    commandLine 'bash', file('deploy/docker/setup-mongo.sh').absolutePath, *mongoArgs
+}
+
+tasks.register('deployEngine') {
+    dependsOn 'setupMongo'
+    dependsOn 'preparePlugins'
+    dependsOn ':interfaces:rest:build'
+    dependsOn ':interfaces:rest:quarkusDev'
+}
+
+project(':interfaces:rest') {
+    tasks.named('quarkusDev') {
+        environment 'MONGODB_CONNECTION_STRING', System.getenv('MONGODB_CONNECTION_STRING') ?: 'mongodb://localhost:27000'
+        environment 'CONFIG_DB_NAME', System.getenv('CONFIG_DB_NAME') ?: 'AGENT_ENGINE'
+        environment 'PLUGIN_DIR', System.getenv('PLUGIN_DIR') ?: './plugins'
+        onlyIf { !isPortInUse(restPort) }
+        mustRunAfter(rootProject.tasks.named('setupMongo'))
+        mustRunAfter(rootProject.tasks.named('preparePlugins'))
+        mustRunAfter(tasks.named('build'))
+    }
 }

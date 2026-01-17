@@ -35,7 +35,7 @@ Run the REST service locally:
 
 Or use the root shortcut:
 ```bash
-./gradlew restDev
+./gradlew deployEngine
 ```
 
 Endpoints:
@@ -95,10 +95,10 @@ Build the engine JAR first so the plugin compiles:
 
 Build and copy plugin JARs into the runtime plugin directory:
 ```bash
-./gradlew syncPlugins
+./gradlew preparePlugins
 ```
 
-`syncPlugins` builds each plugin under `plugins/` and copies the resulting `*-plugin.jar`
+`preparePlugins` builds each plugin under `plugins/` and copies the resulting `*-plugin.jar`
 artifacts into the top-level `plugins/` directory so the runtime `PLUGIN_DIR` can load them.
 
 Run the build tooling tests:
@@ -121,8 +121,23 @@ Systemd service template:
 MONGODB_CONNECTION_STRING=mongodb://localhost:27000 \
 CONFIG_DB_NAME=AGENT_ENGINE \
 PLUGIN_DIR=./plugins \
-./gradlew :interfaces:rest:quarkusDev
+./gradlew restStack
 ```
+
+### Convenience script
+```bash
+./scripts/run-rest-dev.sh
+./scripts/run-rest-dev.sh --force ./configs
+```
+
+### Master Gradle task
+```bash
+./gradlew restStack
+./gradlew deployEngine -PmongoArgs="--force ./configs"
+```
+
+The `deployEngine` task skips starting Quarkus if the REST port is already in use (defaults to
+`8080`, or `QUARKUS_HTTP_PORT` if set), so reruns are safe.
 
 Invoke by agent id (Mongo `_id`):
 ```bash
