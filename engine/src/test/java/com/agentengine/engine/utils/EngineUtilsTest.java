@@ -9,6 +9,7 @@ import com.agentengine.engine.state.SessionStore;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class EngineUtilsTest {
@@ -143,8 +144,7 @@ class EngineUtilsTest {
   void parseJsonPayloadHandlesMixedToolRequestFormats() {
     String payload =
         JsonUtils.toJson(
-            java.util.Map.of(
-                "toolRequests", List.of("raw", java.util.Map.of("id", "2", "name", "tool2"), 3)));
+            Map.of("toolRequests", List.of("raw", Map.of("id", "2", "name", "tool2"), 3)));
 
     Message parsed = EngineUtils.parseJsonPayload(payload);
 

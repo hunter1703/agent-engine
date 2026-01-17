@@ -6,11 +6,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.alibaba.fastjson2.JSONFactory;
 import com.agentengine.cli.beans.BuildPromptRequest;
 import com.agentengine.cli.beans.InvokeAgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
+import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.events.AgentEventAdapter;
+import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.beans.config.AgentConfig;
@@ -20,11 +23,14 @@ import com.agentengine.engine.builders.AgentBuilderFactory;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -33,7 +39,7 @@ import org.junit.jupiter.api.Test;
 
 class StdioAgentServerTest {
   private PrintStream originalOut;
-  private java.io.InputStream originalIn;
+  private InputStream originalIn;
 
   @BeforeEach
   void setup() {
@@ -89,7 +95,7 @@ class StdioAgentServerTest {
 
   @Test
   void runProcessesInvokeAndBuildPromptRequests() throws Exception {
-    com.alibaba.fastjson2.JSONFactory.getDefaultObjectReaderProvider()
+    JSONFactory.getDefaultObjectReaderProvider()
         .addAutoTypeAccept("com.agentengine.cli.beans.");
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
@@ -100,8 +106,7 @@ class StdioAgentServerTest {
     when(builder.build(anyString(), any())).thenReturn(engine);
     when(builderFactory.getBuilder(anyString())).thenReturn(builder);
 
-    com.agentengine.engine.beans.config.ConfigLoader configLoader =
-        mock(com.agentengine.engine.beans.config.ConfigLoader.class);
+    ConfigLoader configLoader = mock(ConfigLoader.class);
     when(configLoader.loadConfig(any())).thenReturn(AgentConfig.empty());
 
     StdioAgentServer server = new StdioAgentServer(builderFactory, configLoader);
@@ -114,7 +119,7 @@ class StdioAgentServerTest {
     String promptJson =
         "{" + "\"@type\":\"com.agentengine.cli.beans.BuildPromptRequest\"," + "\"id\":\"req-2\"}";
     String input = invokeJson + "\n" + promptJson + "\n";
-    System.setIn(new java.io.ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
+    System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
 
     int result = server.run("app", "agent", "config.json");
 
@@ -135,8 +140,7 @@ class StdioAgentServerTest {
     when(builder.build(anyString(), any())).thenReturn(engine);
     when(builderFactory.getBuilder(anyString())).thenReturn(builder);
 
-    com.agentengine.engine.beans.config.ConfigLoader configLoader =
-        mock(com.agentengine.engine.beans.config.ConfigLoader.class);
+    ConfigLoader configLoader = mock(ConfigLoader.class);
     AgentConfig config = AgentConfig.empty();
     EngineConfig engineConfig = config.getEngine();
     engineConfig.setReasoning("reasoning.json");
@@ -152,7 +156,7 @@ class StdioAgentServerTest {
     adapter.onToolExecution(
         "session",
         new ToolExecution(
-            new ToolCall("id", "echo", Map.of()), "ok", "done", java.time.Instant.now(), 1));
+            new ToolCall("id", "echo", Map.of()), "ok", "done", Instant.now(), 1));
     adapter.onReasoningStart("session");
     adapter.onToolRepair("session");
 
@@ -185,7 +189,7 @@ class StdioAgentServerTest {
     }
 
     @Override
-    public void registerListener(final com.agentengine.engine.AgentListener listener) {}
+    public void registerListener(final AgentListener listener) {}
 
     @Override
     public List<Message> buildPrompt(final String sessionId) {
@@ -207,7 +211,7 @@ class StdioAgentServerTest {
     }
 
     @Override
-    public void publish(final com.agentengine.engine.events.AgentEvent event) {
+    public void publish(final AgentEvent event) {
       invokeSendEvent(server, event.sessionId(), event.event(), event.payload());
     }
   }

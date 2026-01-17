@@ -2,13 +2,19 @@ package com.agentengine.engine.builders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.MongoStateStoreConfig;
 import com.agentengine.engine.beans.config.StateStoreConfig;
 import com.agentengine.engine.context.ContextBuilder;
+import com.agentengine.engine.context.LastNContextBuilder;
+import com.agentengine.engine.model.LLMModel;
+import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
+import com.agentengine.engine.tools.AgentTool;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -181,9 +187,8 @@ class AbstractAgentBuilderTest {
     ContextBuilder toolAssistant =
         builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of());
 
-    assertThat(reasoning).isInstanceOf(com.agentengine.engine.context.LastNContextBuilder.class);
-    assertThat(toolAssistant)
-        .isInstanceOf(com.agentengine.engine.context.LastNContextBuilder.class);
+    assertThat(reasoning).isInstanceOf(LastNContextBuilder.class);
+    assertThat(toolAssistant).isInstanceOf(LastNContextBuilder.class);
   }
 
   @Test
@@ -200,10 +205,10 @@ class AbstractAgentBuilderTest {
     ollama.setBaseUrl("http://localhost");
     ollama.setResponseFormat("json");
 
-    com.agentengine.engine.model.LLMModel openAiModel = builder.callBuildChatModel(openAi);
-    com.agentengine.engine.model.LLMModel ollamaModel = builder.callBuildChatModel(ollama);
+    LLMModel openAiModel = builder.callBuildChatModel(openAi);
+    LLMModel ollamaModel = builder.callBuildChatModel(ollama);
 
-    assertThat(openAiModel).isInstanceOf(com.agentengine.engine.model.LangChain4JLLMModel.class);
+    assertThat(openAiModel).isInstanceOf(LangChain4JLLMModel.class);
     assertThat(ollamaModel.responseFormat().type()).isEqualTo(ResponseFormatType.JSON);
   }
 
@@ -215,13 +220,13 @@ class AbstractAgentBuilderTest {
     config.setBaseUrl("http://localhost");
     config.setResponseFormat("text");
 
-    com.agentengine.engine.model.LLMModel model = builder.callBuildChatModel(config);
+    LLMModel model = builder.callBuildChatModel(config);
 
     assertThat(model.responseFormat().type()).isEqualTo(ResponseFormatType.TEXT);
   }
 
   private static final class TestAgentBuilder extends AbstractAgentBuilder {
-    private com.agentengine.engine.model.LLMModel callBuildChatModel(final ModelConfig config) {
+    private LLMModel callBuildChatModel(final ModelConfig config) {
       return buildChatModel(config);
     }
 
@@ -242,7 +247,7 @@ class AbstractAgentBuilderTest {
         final SessionStore sessionStore,
         final boolean hybrid,
         final String systemMessage,
-        final List<com.agentengine.engine.tools.AgentTool> tools) {
+        final List<AgentTool> tools) {
       return buildReasoningContextBuilder(config, sessionStore, hybrid, systemMessage, tools);
     }
 
@@ -250,13 +255,12 @@ class AbstractAgentBuilderTest {
         final ModelConfig config,
         final SessionStore sessionStore,
         final String systemMessage,
-        final List<com.agentengine.engine.tools.AgentTool> tools) {
+        final List<AgentTool> tools) {
       return buildToolAssistantContextBuilder(config, sessionStore, systemMessage, tools);
     }
 
     @Override
-    public com.agentengine.engine.AgentEngine build(
-        String agentName, com.agentengine.engine.beans.config.AgentConfig agentConfig) {
+    public AgentEngine build(String agentName, AgentConfig agentConfig) {
       return null;
     }
 

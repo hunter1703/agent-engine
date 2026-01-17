@@ -3,6 +3,7 @@ package com.agentengine.engine.events;
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.message.ToolCall;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +25,7 @@ public final class AgentEventAdapter implements AgentListener {
 
   @Override
   public void onToolExecution(final String sessionId, final ToolExecution toolExecution) {
-    Map<String, Object> payload = new java.util.HashMap<>();
+    Map<String, Object> payload = new HashMap<>();
     payload.put("id", toolExecution.getId());
     payload.put("tool_name", toolExecution.getToolCall().name());
     payload.put("status", toolExecution.getStatus());

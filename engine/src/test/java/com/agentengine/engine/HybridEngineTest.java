@@ -6,6 +6,7 @@ import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.context.BaseContextBuilder;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
+import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
@@ -361,13 +362,12 @@ class HybridEngineTest {
   }
 
   private static final class CapturingListener implements AgentListener {
-    private final List<List<com.agentengine.engine.message.ToolCall>> toolPlans = new ArrayList<>();
+    private final List<List<ToolCall>> toolPlans = new ArrayList<>();
     private final List<ToolExecution> toolExecutions = new ArrayList<>();
     private int toolRepairs = 0;
 
     @Override
-    public void onToolPlan(
-        final String sessionId, final List<com.agentengine.engine.message.ToolCall> toolCalls) {
+    public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
       toolPlans.add(toolCalls);
     }
 

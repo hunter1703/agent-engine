@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public final class ShellCommandTool implements AgentTool {
@@ -44,7 +45,7 @@ public final class ShellCommandTool implements AgentTool {
     try {
       final Process process = builder.start();
       final boolean finished =
-          process.waitFor(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+          process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
       String output = readAll(process);
       output = truncate(output.trim());
       if (!finished) {

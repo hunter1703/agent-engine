@@ -13,13 +13,16 @@ import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.builders.AgentBuilder;
 import com.agentengine.engine.builders.AgentBuilderFactory;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class AgentServiceTest {
 
-  @org.junit.jupiter.api.AfterEach
+  @AfterEach
   void clearPluginDir() {
     System.clearProperty("PLUGIN_DIR");
   }
@@ -45,16 +48,16 @@ class AgentServiceTest {
 
   @Test
   void resolveEngineUsesPluginConfigDirectoryByDefault(
-      @org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
+      @TempDir Path tempDir) throws Exception {
     AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
     ConfigLoader configLoader = mock(ConfigLoader.class);
     AgentBuilder builder = mock(AgentBuilder.class);
     AgentEngine engine = mock(AgentEngine.class);
 
     Path configDir = tempDir.resolve("config");
-    java.nio.file.Files.createDirectories(configDir);
+    Files.createDirectories(configDir);
     Path configPath = configDir.resolve("agent.json");
-    java.nio.file.Files.writeString(configPath, "{}\n");
+    Files.writeString(configPath, "{}\n");
     System.setProperty("PLUGIN_DIR", tempDir.toString());
 
     when(builderFactory.getBuilder("agent")).thenReturn(builder);

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.beans.config.AgentConfig;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.stream.Stream;
@@ -33,8 +35,7 @@ class AgentBuilderFactoryTest {
     }
 
     @Override
-    public com.agentengine.engine.AgentEngine build(
-        final String agentName, final com.agentengine.engine.beans.config.AgentConfig agentConfig) {
+    public AgentEngine build(final String agentName, final AgentConfig agentConfig) {
       return null;
     }
 

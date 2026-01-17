@@ -2,6 +2,8 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.beans.config.ModelConfig;
+import com.alibaba.fastjson2.TypeReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -45,7 +47,7 @@ class JsonUtilsTest {
     Files.writeString(path, "{\"count\":3}");
 
     Map<String, Object> parsed =
-        JsonUtils.fromFile(path, new com.alibaba.fastjson2.TypeReference<>() {});
+        JsonUtils.fromFile(path, new TypeReference<>() {});
 
     assertThat(parsed).containsEntry("count", 3);
   }
@@ -54,8 +56,7 @@ class JsonUtilsTest {
   void fromMapConvertsToTargetClass() {
     Map<String, Object> data = Map.of("provider", "OPEN_AI", "model", "gpt");
 
-    com.agentengine.engine.beans.config.ModelConfig config =
-        JsonUtils.fromMap(data, com.agentengine.engine.beans.config.ModelConfig.class);
+    ModelConfig config = JsonUtils.fromMap(data, ModelConfig.class);
 
     assertThat(config.getProvider()).isEqualTo("OPEN_AI");
     assertThat(config.getModel()).isEqualTo("gpt");
@@ -64,7 +65,7 @@ class JsonUtilsTest {
   @Test
   void fromJsonTypeReferenceParsesMap() {
     Map<String, Object> parsed =
-        JsonUtils.fromJson("{\"value\":42}", new com.alibaba.fastjson2.TypeReference<>() {});
+        JsonUtils.fromJson("{\"value\":42}", new TypeReference<>() {});
 
     assertThat(parsed).containsEntry("value", 42);
   }

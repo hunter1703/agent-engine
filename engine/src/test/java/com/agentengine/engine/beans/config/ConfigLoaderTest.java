@@ -3,6 +3,7 @@ package com.agentengine.engine.beans.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,6 @@ class ConfigLoaderTest {
 
     assertThatThrownBy(() -> loader.loadConfig(missingPath))
         .isInstanceOf(RuntimeException.class)
-        .hasCauseInstanceOf(java.io.FileNotFoundException.class);
+        .hasCauseInstanceOf(FileNotFoundException.class);
   }
 }

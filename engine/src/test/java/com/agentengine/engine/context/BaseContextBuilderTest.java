@@ -7,6 +7,7 @@ import com.agentengine.engine.message.Role;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.tools.AgentTool;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class BaseContextBuilderTest {
@@ -49,7 +50,7 @@ class BaseContextBuilderTest {
   private record StubTool(String name, String description) implements AgentTool {
 
     @Override
-    public String execute(java.util.Map<String, Object> args) {
+    public String execute(Map<String, Object> args) {
       return "ok";
     }
   }

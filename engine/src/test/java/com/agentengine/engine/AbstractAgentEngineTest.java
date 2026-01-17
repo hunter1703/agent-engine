@@ -2,6 +2,7 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.message.Message;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -27,15 +28,13 @@ class AbstractAgentEngineTest {
     }
 
     @Override
-    public com.agentengine.engine.message.Message invoke(
-        final String sessionId, final com.agentengine.engine.message.Message message) {
+    public Message invoke(final String sessionId, final Message message) {
       return null;
     }
 
     @Override
-    public java.util.List<com.agentengine.engine.message.Message> buildPrompt(
-        final String sessionId) {
-      return java.util.List.of();
+    public List<Message> buildPrompt(final String sessionId) {
+      return List.of();
     }
   }
 

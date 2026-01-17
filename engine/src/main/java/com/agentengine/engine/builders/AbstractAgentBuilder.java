@@ -57,7 +57,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
       final List<AgentTool> tools) {
     final String templateName =
         resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
-    final Map<String, Object> context = new java.util.HashMap<>();
+    final Map<String, Object> context = new HashMap<>();
     context.put("thoughts_enabled", config.isThoughtsEnabled());
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
       context.put("response_schema", loadReasonerSchema(config));
@@ -81,7 +81,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
       final String systemMessage,
       final List<AgentTool> tools) {
     final String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
-    final Map<String, Object> context = new java.util.HashMap<>();
+    final Map<String, Object> context = new HashMap<>();
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
       context.put("tool_schema", loadToolCallSchema());
     }
