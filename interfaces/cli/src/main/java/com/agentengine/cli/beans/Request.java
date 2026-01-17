@@ -1,13 +1,14 @@
 package com.agentengine.cli.beans;
 
+import com.alibaba.fastjson2.annotation.JSONField;
+
 public class Request {
 
   private String id;
-  private String type;
+  private RequestType type;
 
-  protected Request(final RequestType type) {
-    this.type = type.name();
-  }
+  @JSONField(name = "user_message")
+  private String userMessage;
 
   public String getId() {
     return id;
@@ -17,15 +18,23 @@ public class Request {
     this.id = id;
   }
 
-  public String getType() {
+  public RequestType getType() {
     return type;
   }
 
-  public void setType(final String type) {
+  public void setType(final RequestType type) {
     this.type = type;
   }
 
-  protected enum RequestType {
+  public String getUserMessage() {
+    return userMessage;
+  }
+
+  public void setUserMessage(final String userMessage) {
+    this.userMessage = userMessage;
+  }
+
+  public enum RequestType {
     INVOKE_AGENT,
     BUILD_PROMPT,
     BUILD_EVENT,

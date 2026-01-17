@@ -1,11 +1,12 @@
 {
   "engine": {
+    "type": "hybrid",
     "prompt": "You are a helpful assistant.",
     "reasoning": "models/qwq_32b.json",
     "tool": "models/qwq_32b.json"
   },
   "context": {
-    "@type": "com.agentengine.engine.beans.config.LastNContextConfig",
+    "type": "last_n",
     "keep_last": 6
   },
   "tools": {
@@ -17,6 +18,6 @@
     }
   },
   "state_store": {
-    "@type": "com.agentengine.engine.beans.config.MemoryStateStoreConfig"
+    "type": "memory"
   }
 }

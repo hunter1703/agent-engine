@@ -1,3 +1,5 @@
+import org.gradle.api.file.RelativePath
+
 subprojects {
     repositories {
         mavenCentral()
@@ -16,10 +18,33 @@ tasks.register('restDev') {
     dependsOn ':interfaces:rest:quarkusDev'
 }
 
+final def pluginDirs = file('plugins').listFiles()?.findAll { pluginDir ->
+    pluginDir.directory && new File(pluginDir, 'build.gradle').exists()
+} ?: []
+
+final def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+final def gradleWrapper = new File(rootDir, isWindows ? 'gradlew.bat' : 'gradlew').absolutePath
+
+final def pluginBuildTasks = pluginDirs.collect { pluginDir ->
+    final def suffix = pluginDir.name
+        .split('[^A-Za-z0-9]+')
+        .findAll { it }
+        .collect { it.capitalize() }
+        .join('')
+    tasks.register("buildPlugin${suffix}", Exec) {
+        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'build'
+    }
+}
+
 tasks.register('syncPlugins', Copy) {
     dependsOn ':engine:jar'
+    dependsOn pluginBuildTasks
     from('plugins') {
-        include '**/build/libs/*.jar'
+        include '**/build/libs/*-plugin.jar'
+        eachFile { fileCopyDetails ->
+            fileCopyDetails.relativePath = new RelativePath(true, fileCopyDetails.name)
+        }
+        includeEmptyDirs = false
     }
     into('plugins')
 }

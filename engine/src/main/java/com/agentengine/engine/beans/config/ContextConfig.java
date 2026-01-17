@@ -1,5 +1,10 @@
 package com.agentengine.engine.beans.config;
 
+import com.alibaba.fastjson2.annotation.JSONType;
+
+@JSONType(
+    typeKey = "type",
+    seeAlso = {LastNContextConfig.class, SummarizingContextConfig.class})
 public abstract class ContextConfig implements Config {
   private String type;
 

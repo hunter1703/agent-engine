@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.EngineConfig;
+import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.beans.config.ToolsConfig;
 import com.agentengine.engine.message.Message;
-import com.alibaba.fastjson2.JSONFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,9 +20,6 @@ class HybridAgentBuilderTest {
 
   @Test
   void buildCreatesHybridEngineWithDefaultPrompt() throws Exception {
-    JSONFactory.getDefaultObjectReaderProvider()
-        .addAutoTypeAccept("com.agentengine.engine.beans.config.");
-
     Path reasoningModel = tempDir.resolve("reasoning.json");
     Path toolModel = tempDir.resolve("tool.json");
 
@@ -36,7 +32,7 @@ class HybridAgentBuilderTest {
           "base_url": "http://localhost",
           "response_format": "text",
           "context_config": {
-            "@type": "com.agentengine.engine.beans.config.LastNContextConfig",
+            "type": "last_n",
             "keep_last": 1
           }
         }
@@ -50,14 +46,14 @@ class HybridAgentBuilderTest {
           "base_url": "http://localhost",
           "response_format": "text",
           "context_config": {
-            "@type": "com.agentengine.engine.beans.config.LastNContextConfig",
+            "type": "last_n",
             "keep_last": 1
           }
         }
         """);
 
     AgentConfig agentConfig = AgentConfig.empty();
-    EngineConfig engine = agentConfig.getEngine();
+    HybridEngineConfig engine = (HybridEngineConfig) agentConfig.getEngine();
     engine.setReasoning(reasoningModel.toString());
     engine.setTool(toolModel.toString());
     engine.setPrompt("");

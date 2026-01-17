@@ -16,7 +16,7 @@ maps to `ModelConfig` and is referenced from agent configs.
 - `num_predict`: maximum tokens to generate
 - `max_context_length`: context window size
 - `stop_tokens`: list of stop strings
-- `context_config`: optional context config object with `@type`
+- `context_config`: optional context config object with `type`
 
 ## Example
 ```json

@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 class EngineConfigTest {
 
   @Test
-  void validateRequiresReasoningAndPrompt() {
-    EngineConfig config = new EngineConfig();
+  void hybridRequiresReasoningPromptAndTool() {
+    HybridEngineConfig config = new HybridEngineConfig();
     config.setPrompt("prompt");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
@@ -18,38 +18,36 @@ class EngineConfigTest {
     config.setPrompt(null);
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
+
+    config.setPrompt("prompt");
+
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
+
+    config.setTool("tool");
+
+    config.validate();
   }
 
   @Test
-  void validateEnsuresRouterDependencies() {
-    EngineConfig config = new EngineConfig();
+  void routerRequiresRouterAndTargets() {
+    RouterEngineConfig config = new RouterEngineConfig();
     config.setReasoning("reasoner");
     config.setPrompt("prompt");
+
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
+
     config.setRouter("router");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
     config.setTool("tool");
-    config.setHeavy("heavy");
-    config.setRouter(null);
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void validateAllowsValidConfigurations() {
-    EngineConfig config = new EngineConfig();
-    config.setReasoning("reasoner");
-    config.setPrompt("prompt");
-    config.setTool("tool");
-    config.setRouter("router");
 
     config.validate();
   }
 
   @Test
   void toolRetryLimitDefaultsAndCanBeSet() {
-    EngineConfig config = new EngineConfig();
+    HybridEngineConfig config = new HybridEngineConfig();
     assertThat(config.getToolRetryLimit()).isEqualTo(2);
 
     config.setToolRetryLimit(5);

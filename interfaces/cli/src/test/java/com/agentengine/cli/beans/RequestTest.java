@@ -2,32 +2,20 @@ package com.agentengine.cli.beans;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.cli.beans.Request.RequestType;
 import org.junit.jupiter.api.Test;
 
 class RequestTest {
 
   @Test
-  void requestTypesDefaultFromSubclass() {
-    InvokeAgentRequest invoke = new InvokeAgentRequest();
-    BuildPromptRequest prompt = new BuildPromptRequestTest();
+  void requestStoresTypeAndUserMessage() {
+    Request request = new Request();
+    request.setType(RequestType.INVOKE_AGENT);
+    request.setId("req-1");
+    request.setUserMessage("hello");
 
-    assertThat(invoke.getType()).isEqualTo("INVOKE_AGENT");
-    assertThat(prompt.getType()).isEqualTo("BUILD_PROMPT");
-  }
-
-  @Test
-  void invokeRequestStoresUserMessageAndId() {
-    InvokeAgentRequest invoke = new InvokeAgentRequest();
-    invoke.setId("req-1");
-    invoke.setUserMessage("hello");
-
-    assertThat(invoke.getId()).isEqualTo("req-1");
-    assertThat(invoke.getUserMessage()).isEqualTo("hello");
-  }
-
-  private static final class BuildPromptRequestTest extends BuildPromptRequest {
-    private BuildPromptRequestTest() {
-      super();
-    }
+    assertThat(request.getType()).isEqualTo(RequestType.INVOKE_AGENT);
+    assertThat(request.getId()).isEqualTo("req-1");
+    assertThat(request.getUserMessage()).isEqualTo("hello");
   }
 }

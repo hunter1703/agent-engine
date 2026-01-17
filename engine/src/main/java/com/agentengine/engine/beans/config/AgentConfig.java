@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.annotation.JSONField;
 
 public final class AgentConfig implements Config {
   private ToolsConfig tools = new ToolsConfig();
-  private EngineConfig engine = new EngineConfig();
+  private AbstractEngineConfig engine = new HybridEngineConfig();
   private ContextConfig context = new SummarizingContextConfig();
 
   @JSONField(name = "state_store")
@@ -26,11 +26,11 @@ public final class AgentConfig implements Config {
     this.tools = tools;
   }
 
-  public EngineConfig getEngine() {
+  public AbstractEngineConfig getEngine() {
     return engine;
   }
 
-  public void setEngine(final EngineConfig engine) {
+  public void setEngine(final AbstractEngineConfig engine) {
     this.engine = engine;
   }
 

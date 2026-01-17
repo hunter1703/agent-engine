@@ -2,7 +2,8 @@ package com.agentengine.engine.builders;
 
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.EngineConfig;
+import com.agentengine.engine.beans.config.AbstractEngineConfig;
+import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.ToolsConfig;
 import com.agentengine.engine.context.ContextBuilder;
@@ -22,13 +23,16 @@ import java.util.Objects;
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
   public HybridEngine build(final String agentName, final AgentConfig agentConfig) {
-    final EngineConfig engineConfig = agentConfig.getEngine();
-    final String promptFromConfig = engineConfig.getPrompt();
+    final AbstractEngineConfig engineConfig = agentConfig.getEngine();
+    if (!(engineConfig instanceof HybridEngineConfig hybridConfig)) {
+      throw new IllegalArgumentException("Hybrid engine requires hybrid engine config");
+    }
+    final String promptFromConfig = hybridConfig.getPrompt();
     final String systemPrompt =
         StringUtils.isBlank(promptFromConfig) ? DEFAULT_SYSTEM_PROMPT : promptFromConfig;
 
-    final String reasoningLLM = engineConfig.getReasoning();
-    final String toolLLM = engineConfig.getTool();
+    final String reasoningLLM = hybridConfig.getReasoning();
+    final String toolLLM = hybridConfig.getTool();
 
     final ModelConfig reasoningConfig =
         Objects.requireNonNull(ResourceUtils.loadModelConfig(reasoningLLM));

@@ -88,13 +88,18 @@ Build the engine JAR first so the plugin compiles:
 ./gradlew :engine:jar
 ```
 
-Copy built plugin JARs into the runtime plugin directory:
+Build and copy plugin JARs into the runtime plugin directory:
 ```bash
 ./gradlew syncPlugins
 ```
 
-`syncPlugins` copies `plugins/**/build/libs/*.jar` into the top-level `plugins/` directory
-so the runtime `PLUGIN_DIR` can load them.
+`syncPlugins` builds each plugin under `plugins/` and copies the resulting `*-plugin.jar`
+artifacts into the top-level `plugins/` directory so the runtime `PLUGIN_DIR` can load them.
+
+Run the build tooling tests:
+```bash
+./gradlew -p buildSrc test
+```
 
 ## Deployment
 Build the REST app and container image:

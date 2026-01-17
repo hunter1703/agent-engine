@@ -1,7 +1,9 @@
 package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONField;
+import com.alibaba.fastjson2.annotation.JSONType;
 
+@JSONType(typeName = "mongo")
 public class MongoStateStoreConfig extends StateStoreConfig {
   @JSONField(name = "uri")
   private String uri;

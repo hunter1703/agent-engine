@@ -6,9 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.alibaba.fastjson2.JSONFactory;
-import com.agentengine.cli.beans.BuildPromptRequest;
-import com.agentengine.cli.beans.InvokeAgentRequest;
+import com.agentengine.cli.beans.Request;
+import com.agentengine.cli.beans.Request.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.config.ConfigLoader;
@@ -17,7 +16,7 @@ import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.EngineConfig;
+import com.agentengine.engine.beans.config.HybridEngineConfig;
 import com.agentengine.engine.builders.AgentBuilder;
 import com.agentengine.engine.builders.AgentBuilderFactory;
 import com.agentengine.engine.message.Message;
@@ -62,7 +61,8 @@ class StdioAgentServerTest {
     setField(server, "agent", new FakeAgent());
     setField(server, "sessionId", "session");
 
-    InvokeAgentRequest request = new InvokeAgentRequest();
+    Request request = new Request();
+    request.setType(RequestType.INVOKE_AGENT);
     request.setId("req-1");
     request.setUserMessage("hello");
 
@@ -83,7 +83,8 @@ class StdioAgentServerTest {
     setField(server, "agent", new FakeAgent());
     setField(server, "sessionId", "session");
 
-    BuildPromptRequest request = new BuildPromptRequestTest();
+    Request request = new Request();
+    request.setType(RequestType.BUILD_PROMPT);
     request.setId("req-2");
 
     server.buildPrompt(request);
@@ -95,8 +96,6 @@ class StdioAgentServerTest {
 
   @Test
   void runProcessesInvokeAndBuildPromptRequests() throws Exception {
-    JSONFactory.getDefaultObjectReaderProvider()
-        .addAutoTypeAccept("com.agentengine.cli.beans.");
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     System.setOut(new PrintStream(output, true, StandardCharsets.UTF_8));
 
@@ -113,11 +112,11 @@ class StdioAgentServerTest {
 
     String invokeJson =
         "{"
-            + "\"@type\":\"com.agentengine.cli.beans.InvokeAgentRequest\","
+            + "\"type\":\"INVOKE_AGENT\","
             + "\"id\":\"req-1\","
             + "\"user_message\":\"hello\"}";
     String promptJson =
-        "{" + "\"@type\":\"com.agentengine.cli.beans.BuildPromptRequest\"," + "\"id\":\"req-2\"}";
+        "{" + "\"type\":\"BUILD_PROMPT\"," + "\"id\":\"req-2\"}";
     String input = invokeJson + "\n" + promptJson + "\n";
     System.setIn(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
 
@@ -142,9 +141,10 @@ class StdioAgentServerTest {
 
     ConfigLoader configLoader = mock(ConfigLoader.class);
     AgentConfig config = AgentConfig.empty();
-    EngineConfig engineConfig = config.getEngine();
+    HybridEngineConfig engineConfig = (HybridEngineConfig) config.getEngine();
     engineConfig.setReasoning("reasoning.json");
     engineConfig.setPrompt("prompt");
+    engineConfig.setTool("tool.json");
     when(configLoader.loadConfig(any())).thenReturn(config);
 
     StdioAgentServer server = new StdioAgentServer(builderFactory, configLoader);
@@ -194,12 +194,6 @@ class StdioAgentServerTest {
     @Override
     public List<Message> buildPrompt(final String sessionId) {
       return List.of(Message.system("sys"));
-    }
-  }
-
-  private static final class BuildPromptRequestTest extends BuildPromptRequest {
-    private BuildPromptRequestTest() {
-      super();
     }
   }
 

@@ -1,8 +1,7 @@
 package com.agentengine.cli;
 
-import com.agentengine.cli.beans.BuildPromptRequest;
-import com.agentengine.cli.beans.InvokeAgentRequest;
 import com.agentengine.cli.beans.Request;
+import com.agentengine.cli.beans.Request.RequestType;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
@@ -51,9 +50,13 @@ public final class StdioAgentServer implements QuarkusApplication {
         continue;
       }
       final Request request = JsonUtils.fromJson(line, Request.class);
-      switch (request) {
-        case InvokeAgentRequest invokeAgentRequest -> invoke(invokeAgentRequest);
-        case BuildPromptRequest buildPromptRequest -> buildPrompt(buildPromptRequest);
+      final RequestType requestType = request.getType();
+      if (requestType == null) {
+        throw new IllegalArgumentException("Missing request type");
+      }
+      switch (requestType) {
+        case INVOKE_AGENT -> invoke(request);
+        case BUILD_PROMPT -> buildPrompt(request);
         default ->
             throw new IllegalArgumentException(
                 STR."Unsupported request type: \{request.getType()}");
@@ -72,14 +75,17 @@ public final class StdioAgentServer implements QuarkusApplication {
     agent.registerListener(new AgentEventAdapter(new StdoutEventPublisher()));
   }
 
-  public void invoke(final InvokeAgentRequest request) {
+  public void invoke(final Request request) {
     final String userText = request.getUserMessage();
+    if (userText == null || userText.isBlank()) {
+      throw new IllegalArgumentException("Missing user_message");
+    }
     final Message response = agent.invoke(sessionId, Message.user(userText));
     sendEvent(request.getId(), "thoughts", response.getThoughts());
     sendEvent(request.getId(), "finalAnswer", response.getContent());
   }
 
-  public void buildPrompt(final BuildPromptRequest request) {
+  public void buildPrompt(final Request request) {
     final List<Message> messages = agent.buildPrompt(sessionId);
     final List<Map<String, String>> out = new ArrayList<>();
     for (Message message : messages) {

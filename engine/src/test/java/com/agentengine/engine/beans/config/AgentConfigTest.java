@@ -23,9 +23,10 @@ class AgentConfigTest {
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
-    EngineConfig engine = config.getEngine();
+    HybridEngineConfig engine = (HybridEngineConfig) config.getEngine();
     engine.setReasoning("reasoner.json");
     engine.setPrompt("prompt");
+    engine.setTool("tool.json");
 
     config.validate();
   }
