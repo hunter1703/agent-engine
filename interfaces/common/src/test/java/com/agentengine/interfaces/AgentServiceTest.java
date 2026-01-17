@@ -96,6 +96,20 @@ class AgentServiceTest {
         .hasMessageContaining("agentName");
   }
 
+  @Test
+  void resolveEngineRejectsMissingConfig() {
+    AgentBuilderFactory builderFactory = mock(AgentBuilderFactory.class);
+    ConfigLoader configLoader = mock(ConfigLoader.class);
+    ConfigRepository configRepository = mock(ConfigRepository.class);
+
+    when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(null);
+
+    AgentService service = new AgentService(builderFactory, configLoader, configRepository);
+
+    assertThatThrownBy(() -> service.getOrStartEngine("agent", "config.json"))
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("agentName");
+  }
+
   private static AgentConfig buildValidAgentConfig() {
     AgentConfig config = AgentConfig.empty();
     HybridEngineConfig engine = (HybridEngineConfig) config.getEngine();

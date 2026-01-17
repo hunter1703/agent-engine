@@ -9,6 +9,7 @@ import com.agentengine.engine.events.AgentEventAdapter;
 import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.utils.StringUtils;
+import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.inject.Instance;
@@ -58,6 +59,7 @@ public class AgentRestAPI {
   @Path("/events")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
+  @Blocking
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
   public Multi<AgentEvent> events(final AgentRequest request) {

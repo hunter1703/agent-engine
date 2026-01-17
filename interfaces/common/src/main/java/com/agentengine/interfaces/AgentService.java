@@ -3,18 +3,13 @@ package com.agentengine.interfaces;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.ConfigRepository;
 import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
-import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.builders.AgentBuilderFactory;
 import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.StringUtils;
 import com.agentengine.interfaces.common.utils.HashUtils;
 import jakarta.inject.Singleton;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -33,7 +28,13 @@ public class AgentService {
   }
 
   public AgentEngine getOrStartEngine(final String agentName, final String configPath) {
+    if (StringUtils.isBlank(agentName)) {
+      throw new IllegalArgumentException("agentName is required");
+    }
     final AgentConfig agentConfig = resolveAgentConfig(agentName, configPath);
+    if (agentConfig == null) {
+      throw new IllegalArgumentException(STR."agentName \"\{agentName}\" has no resolved config");
+    }
     agentConfig.validate();
     final String key = HashUtils.HMACSHA256_Base64(STR."\{agentName}|\{JsonUtils.toJson(agentConfig)}");
     return engines.computeIfAbsent(
