@@ -84,10 +84,7 @@ tasks.register('deployEngine') {
 }
 
 project(':interfaces:rest') {
-    tasks.named('quarkusDev') {
-        environment 'MONGODB_CONNECTION_STRING', System.getenv('MONGODB_CONNECTION_STRING') ?: 'mongodb://localhost:27000'
-        environment 'CONFIG_DB_NAME', System.getenv('CONFIG_DB_NAME') ?: 'AGENT_ENGINE'
-        environment 'PLUGIN_DIR', System.getenv('PLUGIN_DIR') ?: './plugins'
+    tasks.matching { it.name == 'quarkusDev' }.configureEach {
         onlyIf { !isPortInUse(restPort) }
         mustRunAfter(rootProject.tasks.named('setupMongo'))
         mustRunAfter(rootProject.tasks.named('preparePlugins'))

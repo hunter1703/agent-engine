@@ -34,7 +34,7 @@ public class ModelConfig implements Config {
 
   private boolean thoughtsEnabled;
 
-  private ContextConfig contextConfig;
+  private ContextConfig contextConfig = new LastNContextConfig();
 
   private String serverCommand;
 

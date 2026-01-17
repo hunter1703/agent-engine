@@ -330,16 +330,29 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
   protected static LLMModel buildChatModel(final ModelConfig modelConfig) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
-    final ChatLanguageModel chatModel = switch (provider) {
-      case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
+    return switch (provider) {
+      case ModelConfig.Provider.OLLAMA -> new LangChain4JLLMModel(
+          buildOllama(modelConfig, responseFormat),
+          responseFormat,
+          modelConfig.isThoughtsEnabled(),
+          modelConfig.getThoughtsStartTag(),
+          modelConfig.getThoughtsEndTag());
       case ModelConfig.Provider.LLAMA_CPP -> {
         LlamaCppServerUtils.ensureRunning(modelConfig);
-        yield buildOpenAI(modelConfig, responseFormat);
+        yield new LangChain4JLLMModel(
+            buildOpenAI(modelConfig, responseFormat),
+            responseFormat,
+            modelConfig.isThoughtsEnabled(),
+            modelConfig.getThoughtsStartTag(),
+            modelConfig.getThoughtsEndTag());
       }
-      case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
+      case ModelConfig.Provider.OPEN_AI -> new LangChain4JLLMModel(
+          buildOpenAI(modelConfig, responseFormat),
+          responseFormat,
+          modelConfig.isThoughtsEnabled(),
+          modelConfig.getThoughtsStartTag(),
+          modelConfig.getThoughtsEndTag());
     };
-    return new LangChain4JLLMModel(chatModel, responseFormat, modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
   }
 
   protected static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {

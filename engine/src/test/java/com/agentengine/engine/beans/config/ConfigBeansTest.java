@@ -83,6 +83,13 @@ class ConfigBeansTest {
   }
 
   @Test
+  void modelConfigDefaultsContextConfig() {
+    ModelConfig config = new ModelConfig();
+
+    assertThat(config.getContextConfig()).isInstanceOf(LastNContextConfig.class);
+  }
+
+  @Test
   void routerEngineConfigValidatesRequiredFields() {
     RouterEngineConfig config = new RouterEngineConfig();
     config.setReasoning("reasoner.json");

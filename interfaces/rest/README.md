@@ -59,7 +59,7 @@ Events:
 When MongoDB is configured, omit `agentConfigPath` and the service loads configs from MongoDB
 by `agentName`.
 
-MongoDB is configured via the JVM system property `MONGODB_CONNECTION_STRING` (default
+MongoDB is configured via the environment variable `MONGODB_CONNECTION_STRING` (default
 `mongodb://localhost:27000`). The database name is currently fixed to `AGENT_ENGINE`.
 
 ### Event Payloads (SSE)

@@ -23,4 +23,4 @@ This produces the Quarkus runnable distribution in `interfaces/rest/build/quarku
 
 ## Runtime Settings
 - `PLUGIN_DIR` (default: `./plugins`) to locate plugin JARs.
-- `MONGODB_CONNECTION_STRING` is read from a JVM system property (set in `ExecStart`).
+- `MONGODB_CONNECTION_STRING` is read from the environment (set in `ExecStart` or the service environment).

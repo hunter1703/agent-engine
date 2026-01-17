@@ -45,7 +45,7 @@ Endpoints:
 
 Runtime settings:
 - `PLUGIN_DIR` (env or system property) points to a directory of plugin JARs (default `plugins`)
-- `MONGODB_CONNECTION_STRING` is read from a JVM system property (default `mongodb://localhost:27017`)
+- `MONGODB_CONNECTION_STRING` is read from the environment (default `mongodb://localhost:27000`)
 
 ## Testing
 ```bash
@@ -109,7 +109,7 @@ Systemd service template:
 ```bash
 ./deploy/docker/setup-mongo.sh ./configs
 ./deploy/docker/setup-mongo.sh --force ./configs
-./gradlew deployEngine -DMONGODB_CONNECTION_STRING=mongodb://localhost:27000
+MONGODB_CONNECTION_STRING=mongodb://localhost:27000 ./gradlew deployEngine
 ```
 
 ### Convenience script
@@ -119,7 +119,7 @@ Systemd service template:
 ```
 
 If you need a non-default MongoDB connection string, set:
-`JAVA_TOOL_OPTIONS=-DMONGODB_CONNECTION_STRING=mongodb://localhost:27000` before running.
+`MONGODB_CONNECTION_STRING=mongodb://localhost:27000` before running.
 
 ### Master Gradle task
 ```bash

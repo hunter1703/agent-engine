@@ -2,6 +2,7 @@ package com.agentengine.engine;
 
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
+import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.StringUtils;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -54,8 +55,11 @@ public final class MongoConfigRepository implements ConfigRepository {
   }
 
   private static MongoClient createClient() {
-    final ConnectionString connectionString = new ConnectionString(
-        System.getProperty("MONGODB_CONNECTION_STRING", "mongodb://localhost:27000"));
+    final String fromEnv = System.getenv("MONGODB_CONNECTION_STRING");
+    final String connectionValue = StringUtils.isNotBlank(fromEnv)
+        ? fromEnv
+        : "mongodb://localhost:27000";
+    final ConnectionString connectionString = new ConnectionString(connectionValue);
     MongoClientSettings mongoClientSettings = MongoClientSettings.builder().applicationName("agent-engine")
         .applyConnectionString(connectionString).build();
     return MongoClients.create(mongoClientSettings);
