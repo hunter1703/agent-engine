@@ -23,9 +23,17 @@ public class ConfigLoader {
     }
     final String ext = extension(path.getFileName().toString());
     if ("yaml".equals(ext) || "yml".equals(ext)) {
-      return YamlUtils.fromFile(path, AgentConfig.class);
+      return JsonUtils.fromMap(YamlUtils.toMap(readContent(path)), AgentConfig.class);
     }
     return JsonUtils.fromFile(path, AgentConfig.class);
+  }
+
+  private static String readContent(final Path path) {
+    try {
+      return Files.readString(path);
+    } catch (java.io.IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   private static String extension(final String name) {

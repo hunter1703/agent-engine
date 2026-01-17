@@ -167,7 +167,8 @@ class HybridEngineTest {
 
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
-    assertThat(result).isNull();
+    assertThat(result.getContent())
+        .isEqualTo("Number of assistant invocations exceeded maximum : 1");
   }
 
   @Test

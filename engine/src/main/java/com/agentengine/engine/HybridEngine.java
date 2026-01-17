@@ -48,12 +48,14 @@ public class HybridEngine extends AbstractAgentEngine {
   @Override
   public Message invoke(final String sessionId, final Message message) {
     sessionStore.appendMessage(getReasoningSessionId(sessionId), message);
+    Message finalResponse = null;
     do {
       final Message result = runReasoner(sessionId);
 
       final String finalAnswer = result.getContent();
       if (StringUtils.isNotBlank(finalAnswer)) {
         invokeListeners(listener -> listener.onFinalAnswer(sessionId, result));
+        finalResponse = result;
         break;
       }
 
@@ -61,7 +63,12 @@ public class HybridEngine extends AbstractAgentEngine {
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
 
-    return Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
+    if (finalResponse != null) {
+      return finalResponse;
+    }
+    final Message invocationsExceededMessage = Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
+    invokeListeners(listener -> listener.onFinalAnswer(sessionId, invocationsExceededMessage));
+    return invocationsExceededMessage;
   }
 
   @Override
