@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.events.AgentEvent;
+import com.agentengine.interfaces.AgentService;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.subscription.Cancellable;
 import java.util.concurrent.LinkedBlockingQueue;

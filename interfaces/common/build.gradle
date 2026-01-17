@@ -1,7 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
-    id 'io.quarkus' version '3.22.2'
 }
 
 repositories {
@@ -12,17 +10,11 @@ dependencies {
     implementation(enforcedPlatform(
         "${property('quarkusPlatformGroupId')}:${property('quarkusPlatformArtifactId')}:${property('quarkusPlatformVersion')}"
     ))
-    implementation platform('io.quarkiverse.langchain4j:quarkus-langchain4j-bom:0.26.1')
     implementation project(':engine')
     implementation project(':engine:client')
-    implementation project(':interfaces:common')
-    implementation 'io.quarkus:quarkus-rest-jackson'
+    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 
-    testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'org.assertj:assertj-core:3.25.3'
     testImplementation 'org.mockito:mockito-core:5.11.0'
-}
-
-tasks.withType(Test).configureEach {
-    systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }

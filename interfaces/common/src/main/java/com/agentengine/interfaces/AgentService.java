@@ -1,6 +1,7 @@
-package com.agentengine.api;
+package com.agentengine.interfaces;
 
 import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoader;
 import com.agentengine.engine.builders.AgentBuilderFactory;
@@ -33,7 +34,7 @@ public class AgentService {
         key,
         ignored -> {
           AgentConfig config = configLoader.loadConfig(Paths.get(resolvedConfigPath));
-          return builderFactory.getBuilder(resolvedName).build(resolvedName, config);
+            return builderFactory.getBuilder(resolvedName).build(resolvedName, config);
         });
   }
 

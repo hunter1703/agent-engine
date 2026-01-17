@@ -7,7 +7,9 @@ public interface AgentEngine {
 
   Message invoke(String sessionId, Message message);
 
-  void registerListener(AgentListener listener);
+  void registerListener(String sessionId, AgentListener listener);
+
+  void unRegisterListener(String sessionId);
 
   List<Message> buildPrompt(String sessionId);
 }

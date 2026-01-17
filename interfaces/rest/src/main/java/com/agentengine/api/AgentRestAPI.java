@@ -7,6 +7,8 @@ import com.agentengine.engine.events.AgentEventAdapter;
 import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.utils.StringUtils;
+import com.agentengine.interfaces.AgentService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -20,6 +22,7 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 @Path("/agent")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@RunOnVirtualThread
 public class AgentRestAPI {
   private final AgentService agentService;
 
@@ -56,29 +59,30 @@ public class AgentRestAPI {
     return new PromptResponse(sessionId, messages);
   }
 
-  @GET
+  @POST
   @Path("/events")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
-  public Multi<AgentEvent> events(
-      @QueryParam("agentName") final String agentName,
-      @QueryParam("agentConfigPath") final String agentConfigPath,
-      @QueryParam("sessionId") final String sessionId) {
-    AgentEngine engine = agentService.getOrStartEngine(agentName, agentConfigPath);
-    String resolvedSessionId = getOrCreateSession(sessionId);
+  public Multi<AgentEvent> events(final AgentRequest agentRequest) {
+    AgentEngine engine = agentService.getOrStartEngine(agentRequest.getAgentName(), agentRequest.getAgentConfigPath());
+    final String sessionId = getOrCreateSession(agentRequest.getSessionId());
     return Multi.createFrom()
         .emitter(
             emitter -> {
               AtomicBoolean active = new AtomicBoolean(true);
-              emitter.emit(new AgentEvent("session", resolvedSessionId, Map.of("status", "ready")));
+              emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "ready")));
               AgentEventPublisher publisher =
                   event -> {
                     if (active.get()) {
                       emitter.emit(event);
                     }
                   };
-              engine.registerListener(new AgentEventAdapter(publisher));
-              emitter.onTermination(() -> active.set(false));
+              engine.registerListener(sessionId, new AgentEventAdapter(publisher));
+              engine.invoke(sessionId, Message.user(agentRequest.getMessage()));
+              emitter.onTermination(() -> {
+                active.set(false);
+                engine.unRegisterListener(sessionId);
+              });
             });
   }
 

@@ -2,6 +2,7 @@ package com.agentengine.engine.events;
 
 import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.ToolExecution;
+import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.ToolCall;
 import java.util.HashMap;
 import java.util.List;
@@ -47,5 +48,10 @@ public final class AgentEventAdapter implements AgentListener {
   @Override
   public void onToolRepair(final String sessionId) {
     publisher.publish(new AgentEvent("tool_repair", sessionId, Map.of("status", "repair")));
+  }
+
+  @Override
+  public void onFinalAnswer(final String sessionId, final Message message) {
+    publisher.publish(new AgentEvent("final_answer", sessionId, Map.of("final_answer", message.getContent(), "thoughts", message.getThoughts())));
   }
 }

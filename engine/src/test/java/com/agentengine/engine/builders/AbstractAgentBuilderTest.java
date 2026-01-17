@@ -1,6 +1,7 @@
 package com.agentengine.engine.builders;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.beans.config.AgentConfig;
@@ -8,8 +9,10 @@ import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.MongoStateStoreConfig;
 import com.agentengine.engine.beans.config.StateStoreConfig;
+import com.agentengine.engine.beans.config.SummarizingContextConfig;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.context.LastNContextBuilder;
+import com.agentengine.engine.message.Message;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
@@ -22,6 +25,7 @@ import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -144,12 +148,50 @@ class AbstractAgentBuilderTest {
     Map<String, Object> implicitObject =
         Map.of("properties", Map.of("flag", Map.of("type", "boolean")));
     Map<String, Object> nullSchema = Map.of("type", "null");
+    Map<String, Object> itemsSchema = Map.of("items", Map.of("type", "string"));
 
     JsonSchemaElement objectElement = builder.callBuildJsonSchemaElement(implicitObject);
     JsonSchemaElement nullElement = builder.callBuildJsonSchemaElement(nullSchema);
+    JsonSchemaElement itemsElement = builder.callBuildJsonSchemaElement(itemsSchema);
 
     assertThat(objectElement).isInstanceOf(JsonObjectSchema.class);
     assertThat(nullElement).isInstanceOf(JsonEnumSchema.class);
+    assertThat(itemsElement).isInstanceOf(JsonArraySchema.class);
+  }
+
+  @Test
+  void buildJsonSchemaElementSupportsNullSchemaAndOneOf() {
+    JsonSchemaElement nullSchema = builder.callBuildJsonSchemaElement(null);
+    JsonSchemaElement oneOfSchema =
+        builder.callBuildJsonSchemaElement(
+            Map.of("oneOf", List.of(Map.of("type", "string"), Map.of("type", "integer"))));
+
+    assertThat(nullSchema).isInstanceOf(JsonObjectSchema.class);
+    assertThat(oneOfSchema).isInstanceOf(JsonAnyOfSchema.class);
+  }
+
+  @Test
+  void buildJsonSchemaElementHonorsDescriptions() {
+    JsonSchemaElement stringElement =
+        builder.callBuildJsonSchemaElement(Map.of("type", "string", "description", "desc"));
+    JsonSchemaElement intElement =
+        builder.callBuildJsonSchemaElement(Map.of("type", "integer", "description", "desc"));
+    JsonSchemaElement numberElement =
+        builder.callBuildJsonSchemaElement(Map.of("type", "number", "description", "desc"));
+    JsonSchemaElement booleanElement =
+        builder.callBuildJsonSchemaElement(Map.of("type", "boolean", "description", "desc"));
+    JsonSchemaElement arrayElement =
+        builder.callBuildJsonSchemaElement(
+            Map.of("type", "array", "description", "desc", "items", Map.of("type", "string")));
+    JsonSchemaElement enumElement =
+        builder.callBuildJsonSchemaElement(Map.of("enum", List.of("A"), "description", "desc"));
+
+    assertThat(readDescription(stringElement)).isEqualTo("desc");
+    assertThat(readDescription(intElement)).isEqualTo("desc");
+    assertThat(readDescription(numberElement)).isEqualTo("desc");
+    assertThat(readDescription(booleanElement)).isEqualTo("desc");
+    assertThat(readDescription(arrayElement)).isEqualTo("desc");
+    assertThat(readDescription(enumElement)).isEqualTo("desc");
   }
 
   @Test
@@ -192,6 +234,64 @@ class AbstractAgentBuilderTest {
   }
 
   @Test
+  void buildContextBuildersRejectUnsupportedContextConfig() {
+    ModelConfig config = new ModelConfig();
+    config.setResponseFormat("json");
+    config.setThoughtsEnabled(false);
+    config.setContextConfig(new SummarizingContextConfig());
+
+    SessionStore sessionStore = new InMemorySessionStore();
+
+    assertThatThrownBy(
+            () ->
+                builder.callBuildReasoningContextBuilder(
+                    config, sessionStore, false, "system", List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("context config");
+
+    assertThatThrownBy(
+            () ->
+                builder.callBuildToolAssistantContextBuilder(
+                    config, sessionStore, "system", List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("context config");
+  }
+
+  @Test
+  void buildContextBuildersUseNonHybridTemplates() {
+    ModelConfig config = new ModelConfig();
+    config.setResponseFormat("json");
+    config.setThoughtsEnabled(false);
+    config.setContextConfig(new LastNContextConfig());
+
+    SessionStore sessionStore = new InMemorySessionStore();
+    ContextBuilder reasoning =
+        builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system", List.of());
+    List<Message> prompt = reasoning.buildPrompt("session");
+
+    String protocolMessage = prompt.getFirst().getContent();
+    assertThat(protocolMessage)
+        .contains("You must return a single JSON object")
+        .contains("Return JSON only");
+  }
+
+  @Test
+  void buildToolAssistantUsesTextTemplate() {
+    ModelConfig config = new ModelConfig();
+    config.setResponseFormat("text");
+    config.setContextConfig(new LastNContextConfig());
+
+    SessionStore sessionStore = new InMemorySessionStore();
+    ContextBuilder toolAssistant =
+        builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of());
+    List<Message> prompt = toolAssistant.buildPrompt("session");
+
+    assertThat(prompt.getFirst().getContent())
+        .contains("tool-calling model")
+        .contains("Use only tools listed inside <AVAILABLE_TOOLS>");
+  }
+
+  @Test
   void buildChatModelBuildsLangChainModelForProviders() {
     ModelConfig openAi = new ModelConfig();
     openAi.setProvider("OPEN_AI");
@@ -210,6 +310,19 @@ class AbstractAgentBuilderTest {
 
     assertThat(openAiModel).isInstanceOf(LangChain4JLLMModel.class);
     assertThat(ollamaModel.responseFormat().type()).isEqualTo(ResponseFormatType.JSON);
+  }
+
+  @Test
+  void buildChatModelSupportsLlamaCppProvider() {
+    ModelConfig config = new ModelConfig();
+    config.setProvider("LLAMA_CPP");
+    config.setModel("llama");
+    config.setBaseUrl("http://localhost");
+    config.setResponseFormat("json");
+
+    LLMModel model = builder.callBuildChatModel(config);
+
+    assertThat(model.responseFormat().type()).isEqualTo(ResponseFormatType.JSON);
   }
 
   @Test
@@ -268,5 +381,20 @@ class AbstractAgentBuilderTest {
     public List<String> agentNames() {
       return List.of();
     }
+  }
+
+  private static String readDescription(final JsonSchemaElement element) {
+    for (String methodName : List.of("description", "getDescription")) {
+      try {
+        Method method = element.getClass().getMethod(methodName);
+        Object value = method.invoke(element);
+        if (value instanceof String text) {
+          return text;
+        }
+      } catch (ReflectiveOperationException ignored) {
+        // ignored
+      }
+    }
+    return null;
   }
 }

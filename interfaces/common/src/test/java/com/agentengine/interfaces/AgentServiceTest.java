@@ -1,4 +1,4 @@
-package com.agentengine.api;
+package com.agentengine.interfaces;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

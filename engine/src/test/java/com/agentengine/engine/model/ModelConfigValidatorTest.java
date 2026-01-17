@@ -32,4 +32,37 @@ class ModelConfigValidatorTest {
 
     assertThat(errors).isEmpty();
   }
+
+  @Test
+  void validateFlagsInvalidProviderAndResponseFormat() throws Exception {
+    Path path = tempDir.resolve("invalid.json");
+    Files.writeString(
+        path, "{\"provider\":\"BAD\",\"model\":\"model\",\"response_format\":\"xml\"}\n");
+
+    List<String> errors = ModelConfigValidator.validate(path);
+
+    assertThat(errors).anyMatch(error -> error.contains("provider must"));
+    assertThat(errors).anyMatch(error -> error.contains("response_format"));
+  }
+
+  @Test
+  void validateRequiresThoughtTagsWhenEnabled() throws Exception {
+    Path path = tempDir.resolve("thoughts.json");
+    Files.writeString(
+        path, "{\"provider\":\"OPEN_AI\",\"model\":\"gpt\",\"thoughts_enabled\":true}\n");
+
+    List<String> errors = ModelConfigValidator.validate(path);
+
+    assertThat(errors).anyMatch(error -> error.contains("thoughts_start_tag"));
+    assertThat(errors).anyMatch(error -> error.contains("thoughts_end_tag"));
+  }
+
+  @Test
+  void validateReturnsErrorWhenConfigMissing() {
+    Path path = tempDir.resolve("missing.json");
+
+    List<String> errors = ModelConfigValidator.validate(path);
+
+    assertThat(errors).anyMatch(error -> error.contains("Unable to read model config"));
+  }
 }

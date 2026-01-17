@@ -10,6 +10,8 @@ import com.agentengine.client.AgentRequest;
 import com.agentengine.engine.AgentEngine;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
+import com.agentengine.interfaces.AgentService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -77,5 +79,10 @@ class AgentRestAPITest {
     assertThat(response.sessionId()).isEqualTo("session");
     assertThat(response.messages()).hasSize(2);
     assertThat(response.messages().getFirst().role()).isEqualTo("system");
+  }
+
+  @Test
+  void resourceRunsOnVirtualThread() {
+    assertThat(AgentRestAPI.class.getAnnotation(RunOnVirtualThread.class)).isNotNull();
   }
 }

@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'com.diffplug.spotless' version '6.25.0'
     id 'jacoco'
 }
 
@@ -25,17 +24,6 @@ dependencies {
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'org.assertj:assertj-core:3.25.3'
     testImplementation 'org.mockito:mockito-core:5.11.0'
-}
-
-spotless {
-    java {
-        googleJavaFormat('1.22.0')
-    }
-    format('misc') {
-        target '*.md', '.gitignore', '*.yml', '*.yaml'
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
 }
 
 tasks.jacocoTestReport {

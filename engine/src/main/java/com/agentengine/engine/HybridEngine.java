@@ -53,13 +53,15 @@ public class HybridEngine extends AbstractAgentEngine {
 
       final String finalAnswer = result.getContent();
       if (StringUtils.isNotBlank(finalAnswer)) {
-        return result;
+        invokeListeners(listener -> listener.onFinalAnswer(sessionId, result));
+        break;
       }
 
       executeToolRequests(sessionId, result.getId(), result.getToolRequests());
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
-    return null;
+
+    return Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
   }
 
   @Override

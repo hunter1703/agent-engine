@@ -19,7 +19,7 @@ class ConfigLoaderTest {
     Files.writeString(
         configPath,
         "{"
-            + "\"engine\":{\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
+            + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"prompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
             + "}");
 
     ConfigLoader loader = new ConfigLoader();
@@ -33,13 +33,29 @@ class ConfigLoaderTest {
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
     Files.writeString(
-        configPath, "engine:\n  reasoning: reasoning.json\n  prompt: hello\n  tool: tool.json\n");
+        configPath,
+        "engine:\n  type: hybrid\n  reasoning: reasoning.json\n  prompt: hello\n  tool: tool.json\n");
 
     ConfigLoader loader = new ConfigLoader();
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getReasoning()).isEqualTo("reasoning.json");
     assertThat(config.getEngine().getPrompt()).isEqualTo("hello");
+  }
+
+  @Test
+  void loadConfigDefaultsToJsonWhenExtensionMissing() throws Exception {
+    Path configPath = tempDir.resolve("agent");
+    Files.writeString(
+        configPath,
+        "{"
+            + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"prompt\":\"Hello\",\"tool\":\"tool.json\"}"
+            + "}");
+
+    ConfigLoader loader = new ConfigLoader();
+    AgentConfig config = loader.loadConfig(configPath);
+
+    assertThat(config.getEngine().getPrompt()).isEqualTo("Hello");
   }
 
   @Test

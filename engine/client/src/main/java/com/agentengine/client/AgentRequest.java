@@ -4,29 +4,21 @@ import com.alibaba.fastjson2.annotation.JSONField;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
 public class AgentRequest {
-  private String id;
-  private RequestType type;
+  private String type;
+  @JSONField(alternateNames = {"agent_name"})
   private String agentName;
+  @JSONField(alternateNames = {"agent_config_path"})
   private String agentConfigPath;
   private String sessionId;
 
-  @JsonAlias("user_message")
   @JSONField(alternateNames = {"user_message"})
   private String message;
 
-  public String getId() {
-    return id;
-  }
-
-  public void setId(final String id) {
-    this.id = id;
-  }
-
-  public RequestType getType() {
+  public String getType() {
     return type;
   }
 
-  public void setType(final RequestType type) {
+  public void setType(final String type) {
     this.type = type;
   }
 
