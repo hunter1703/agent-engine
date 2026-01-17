@@ -5,30 +5,73 @@ This project is a standalone Java 21/Quarkus agent engine that uses
 `quarkus-langchain4j` for model integrations.
 
 ## Project Layout
-- `src/main/java/com/agentengine/engine`: core engine, config, context, state, tooling
-- `src/main/java/com/agentengine/agents`: agent definitions (e.g., `shell_agent`)
-- `src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
+- `engine/src/main/java/com/agentengine/engine`: core engine, config, context, state, tooling
+- `cli/src/main/java/com/agentengine/cli`: JSON-over-stdio CLI/runtime
+- `rest/src/main/java/com/agentengine/api`: REST service layer
+- `plugins/`: optional tool/plugin projects (build into JARs)
 - `models/`: model registry configs (JSON/YAML)
-- `agents/`: agent configs (JSON/YAML) used by the default builder
+- `plugins/<plugin>/config`: agent configs (JSON/YAML) shipped with plugins
 - `examples/`: sample configs and CLI command payloads
+
+## Modules
+- `engine`: core engine library
+- `cli`: stdio interface (depends on `engine`)
+- `rest`: REST service (depends on `engine`)
 
 ## Quick Start
 ```bash
 ./gradlew build
 ```
 
+## Service
+Run the REST service locally:
+```bash
+./gradlew :rest:quarkusDev
+```
+
+Endpoints:
+- `POST /agent/invoke` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
+- `POST /agent/prompt` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "..." }`
+
+Environment defaults:
+- `AGENT_NAME` sets the default agent name
+- `AGENT_CONFIG_PATH` sets the default config path
+- `PLUGIN_DIR` points to a directory of plugin JARs (default `plugins`)
+
 ## Testing
 ```bash
-./gradlew test
+./gradlew :engine:test
 ```
 
 - Coverage report: `build/reports/jacoco/test/html/index.html`
 - Add new tests under `src/test/java` using JUnit5 + AssertJ
 
+## CLI
 To run the stdio server:
 ```bash
-./gradlew run --args="server"
+./gradlew :cli:run --args="server"
 ```
+
+## Plugins
+Plugins are external JARs that implement `com.agentengine.engine.tools.ToolProvider` via
+`META-INF/services` and are added to the runtime classpath.
+
+At runtime, the engine loads plugin JARs from `PLUGIN_DIR` (or `./plugins` by default).
+Agent configs live under `PLUGIN_DIR/config/<agent>.json|yaml` by default.
+
+Build the shell tool plugin:
+```bash
+cd plugins/shell-agent
+./gradlew build
+```
+
+Build the engine JAR first so the plugin compiles:
+```bash
+./gradlew :engine:jar
+```
+
+Then place the resulting JAR into your deployment plugin directory and add it to the classpath
+on startup.
 
 ## Notes
 - Agent configs use the Java schema (`engine` holds prompt + model keys; `context` holds `summarizer_model`).

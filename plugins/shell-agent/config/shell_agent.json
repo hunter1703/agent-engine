@@ -1,0 +1,22 @@
+{
+  "engine": {
+    "prompt": "You are a helpful assistant.",
+    "reasoning": "models/qwq_32b.json",
+    "tool": "models/qwq_32b.json"
+  },
+  "context": {
+    "@type": "com.agentengine.engine.beans.config.LastNContextConfig",
+    "keep_last": 10
+  },
+  "tools": {
+    "enabled": ["run_cmd"],
+    "configs": {
+      "run_cmd": {
+        "timeout_seconds": 30
+      }
+    }
+  },
+  "state_store": {
+    "@type": "com.agentengine.engine.beans.config.MemoryStateStoreConfig"
+  }
+}

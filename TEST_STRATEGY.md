@@ -1,7 +1,7 @@
 # Test Strategy
 
 ## Scope
-- Unit-test the core engine utilities (`EngineUtils`, `CollectionUtils`, `TemplateUtils`), state management (`InMemorySessionStore`), configuration loading (`ConfigLoader`, `ResourceUtils`), and context assembly (`BaseContextBuilder`).
+- Unit-test the core engine utilities (`EngineUtils`, `CollectionUtils`, `TemplateUtils`), state management (`InMemorySessionStore`), configuration loading (`ConfigLoader`, `ResourceUtils`), and context assembly (`BaseContextBuilder`) in the `engine` module.
 - Exercise `HybridEngine` behaviors with fake models/tools to validate tool orchestration, retries, and session updates without hitting real models or IO.
 
 ## Unit vs Integration
