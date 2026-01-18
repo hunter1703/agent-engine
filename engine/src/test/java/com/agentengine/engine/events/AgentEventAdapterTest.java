@@ -45,13 +45,31 @@ class AgentEventAdapterTest {
     AgentEventAdapter adapter = new AgentEventAdapter(published::add);
 
     adapter.onReasoningStart("session-2");
-    adapter.onReasoningEnd("session-2");
-    adapter.onToolRepair("session-2");
+    adapter.onReasoningEnd("session-2", Message.assistant("done", "thoughts"));
+    adapter.onToolRepair("session-2", List.of(), List.of());
 
     assertThat(published).hasSize(3);
     assertThat(published.get(0).event()).isEqualTo("reasoning_start");
     assertThat(published.get(1).event()).isEqualTo("reasoning_end");
     assertThat(published.get(2).event()).isEqualTo("tool_repair");
+
+    Map<?, ?> payload = (Map<?, ?>) published.get(1).payload();
+    assertThat(payload.get("responseContent")).isEqualTo("done");
+    assertThat(payload.get("responseThoughts")).isEqualTo("thoughts");
+  }
+
+  @Test
+  void adapterPublishesReasoningEndWithoutMessage() {
+    List<AgentEvent> published = new ArrayList<>();
+    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
+
+    adapter.onReasoningEnd("session-5", null);
+
+    assertThat(published).hasSize(1);
+    AgentEvent event = published.getFirst();
+    assertThat(event.event()).isEqualTo("reasoning_end");
+    Map<?, ?> payload = (Map<?, ?>) event.payload();
+    assertThat(payload.get("status")).isEqualTo("end");
   }
 
   @Test

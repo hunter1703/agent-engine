@@ -4,12 +4,8 @@ import com.agentengine.engine.AgentListener;
 import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.ToolCall;
-import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.utils.CollectionUtils;
-import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.ToolRequest;
-
-import javax.tools.Tool;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,17 +37,27 @@ public final class AgentEventAdapter implements AgentListener {
 
   @Override
   public void onReasoningStart(final String sessionId) {
-    publisher.publish(new AgentEvent("reasoning", sessionId, Map.of("status", "start")));
+    publisher.publish(new AgentEvent("reasoning_start", sessionId, Map.of("status", "start")));
   }
 
   @Override
   public void onReasoningEnd(final String sessionId, final Message message) {
-    publisher.publish(new AgentEvent("reasoning", sessionId, Map.of("status", "end", "responseContent", message.getContent(), "responseThoughts", message.getThoughts())));
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("status", "end");
+    if (message != null) {
+      payload.put("responseContent", message.getContent());
+      payload.put("responseThoughts", message.getThoughts());
+    }
+    publisher.publish(new AgentEvent("reasoning_end", sessionId, payload));
   }
 
   @Override
   public void onToolRepair(final String sessionId, final List<ToolCall> toolCalls, final List<ToolRequest> missingToolRequests) {
-    publisher.publish(new AgentEvent("tool", sessionId, Map.of("status", "repair", "toolCalls", JsonUtils.toJson(toolCalls), "remainingToolRequests", CollectionUtils.isEmpty(missingToolRequests) ? "" : JsonUtils.toJson(missingToolRequests))));
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("status", "repair");
+    payload.put("toolCalls", CollectionUtils.nullSafeList(toolCalls));
+    payload.put("remainingToolRequests", CollectionUtils.nullSafeList(missingToolRequests));
+    publisher.publish(new AgentEvent("tool_repair", sessionId, payload));
   }
 
   @Override

@@ -16,6 +16,8 @@ import java.util.*;
 import java.util.function.Function;
 
 public class HybridEngine extends AbstractAgentEngine {
+  private static final String MISSING_TOOL_OR_FINAL_MESSAGE =
+      "You must provide a final answer or tool requests as defined in protocol.";
   private final LLMModel reasoningModel;
   private final LLMModel toolAssistantModel;
   private final Map<String, AgentTool> toolByName;
@@ -56,8 +58,7 @@ public class HybridEngine extends AbstractAgentEngine {
 
       final List<String> toolRequests = result.getToolRequests();
       if (CollectionUtils.isEmpty(toolRequests)) {
-        //TODO: add prompt so that reasoning model either gives final answer or tool requests
-        sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system());
+        sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(MISSING_TOOL_OR_FINAL_MESSAGE));
         continue;
       }
       executeToolRequests(sessionId, result.getId(), toolRequests);
@@ -84,7 +85,8 @@ public class HybridEngine extends AbstractAgentEngine {
     try {
       message = _runReasoner(sessionId, 5);
     } finally {
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId, message));
+      final Message reasonerMessage = message;
+      invokeListeners(listener -> listener.onReasoningEnd(sessionId, reasonerMessage));
     }
     return message;
   }
