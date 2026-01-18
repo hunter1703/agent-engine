@@ -36,7 +36,7 @@ public class AgentService {
       throw new IllegalArgumentException(STR."agentName \"\{agentName}\" has no resolved config");
     }
     agentConfig.validate();
-    final String key = HashUtils.HMACSHA256_Base64(STR."\{agentName}|\{JsonUtils.toJson(agentConfig)}");
+    final String key = HashUtils.HMACSHA256_Base64(STR."\{agentName}|\{JsonUtils.toStableJson(agentConfig)}");
     return engines.computeIfAbsent(
         key,
         ignored -> builderFactory.getBuilder(agentConfig.getEngine().getType()).build(agentName, agentConfig));

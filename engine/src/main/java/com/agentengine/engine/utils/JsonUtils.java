@@ -1,6 +1,7 @@
 package com.agentengine.engine.utils;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,5 +60,9 @@ public final class JsonUtils {
 
   public static String toJson(final Object value) {
     return JSON.toJSONString(value);
+  }
+
+  public static String toStableJson(final Object value) {
+    return JSON.toJSONString(value, JSONWriter.Feature.SortMapEntriesByKeys);
   }
 }

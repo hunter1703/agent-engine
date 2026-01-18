@@ -22,6 +22,7 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler {
     return RequestType.INVOKE_AGENT;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public AgentResponse handle(final AgentRequest request) {
     final AgentEngine engine = getOrCreateEngine(request);

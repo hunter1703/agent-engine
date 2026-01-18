@@ -28,6 +28,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
     return RequestType.STREAMING_INVOKE_AGENT;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public Multi<AgentEvent> handle(final AgentRequest request) {
     final AgentEngine engine = getOrCreateEngine(request);

@@ -23,6 +23,7 @@ public class BuildPromptRequestHandler extends AbstractAgentRequestHandler {
     return RequestType.BUILD_PROMPT;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public AgentResponse handle(final AgentRequest request) {
     final AgentEngine engine = getOrCreateEngine(request);
