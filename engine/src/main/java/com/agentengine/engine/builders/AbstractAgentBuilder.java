@@ -331,27 +331,17 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
     return switch (provider) {
-      case ModelConfig.Provider.OLLAMA -> new LangChain4JLLMModel(
-          buildOllama(modelConfig, responseFormat),
-          responseFormat,
-          modelConfig.isThoughtsEnabled(),
-          modelConfig.getThoughtsStartTag(),
-          modelConfig.getThoughtsEndTag());
+      case ModelConfig.Provider.OLLAMA ->
+        new LangChain4JLLMModel(buildOllama(modelConfig, responseFormat), responseFormat,
+            modelConfig.isThoughtsEnabled(), modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
       case ModelConfig.Provider.LLAMA_CPP -> {
         LlamaCppServerUtils.ensureRunning(modelConfig);
-        yield new LangChain4JLLMModel(
-            buildOpenAI(modelConfig, responseFormat),
-            responseFormat,
-            modelConfig.isThoughtsEnabled(),
-            modelConfig.getThoughtsStartTag(),
-            modelConfig.getThoughtsEndTag());
+        yield new LangChain4JLLMModel(buildOpenAI(modelConfig, responseFormat), responseFormat,
+            modelConfig.isThoughtsEnabled(), modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
       }
-      case ModelConfig.Provider.OPEN_AI -> new LangChain4JLLMModel(
-          buildOpenAI(modelConfig, responseFormat),
-          responseFormat,
-          modelConfig.isThoughtsEnabled(),
-          modelConfig.getThoughtsStartTag(),
-          modelConfig.getThoughtsEndTag());
+      case ModelConfig.Provider.OPEN_AI ->
+        new LangChain4JLLMModel(buildOpenAI(modelConfig, responseFormat), responseFormat,
+            modelConfig.isThoughtsEnabled(), modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag());
     };
   }
 

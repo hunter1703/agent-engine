@@ -50,7 +50,9 @@ public final class AgentEventAdapter implements AgentListener {
 
   @Override
   public void onFinalAnswer(final String sessionId, final Message message) {
-    publisher.publish(new AgentEvent("final_answer", sessionId,
-        Map.of("final_answer", message.getContent(), "thoughts", message.getThoughts())));
+    Map<String, Object> payload = new HashMap<>();
+    payload.put("final_answer", message.getContent());
+    payload.put("thoughts", message.getThoughts());
+    publisher.publish(new AgentEvent("final_answer", sessionId, payload));
   }
 }

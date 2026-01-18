@@ -34,6 +34,12 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
     final String sessionId = request.getSessionId();
     return Multi.createFrom().emitter(emitter -> {
       AtomicBoolean active = new AtomicBoolean(true);
+
+      emitter.onTermination(() -> {
+        active.set(false);
+        engine.unRegisterListener(sessionId);
+      });
+
       emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "ready")));
       AgentEventPublisher publisher = event -> {
         if (active.get()) {
@@ -42,10 +48,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
       };
       engine.registerListener(sessionId, new AgentEventAdapter(publisher));
       engine.invoke(sessionId, Message.user(request.getMessage()));
-      emitter.onTermination(() -> {
-        active.set(false);
-        engine.unRegisterListener(sessionId);
-      });
+      emitter.complete();
     });
   }
 }

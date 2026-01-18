@@ -70,4 +70,20 @@ class AgentEventAdapterTest {
     assertThat(payload.get("final_answer")).isEqualTo("done");
     assertThat(payload.get("thoughts")).isEqualTo("thoughts");
   }
+
+  @Test
+  void adapterPublishesFinalAnswerWithNullThoughts() {
+    List<AgentEvent> published = new ArrayList<>();
+    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
+
+    Message message = Message.assistant("done", null);
+    adapter.onFinalAnswer("session-4", message);
+
+    assertThat(published).hasSize(1);
+    AgentEvent event = published.getFirst();
+    Map<String, ?> payload = (Map<String, ?>) event.payload();
+    assertThat(payload.get("final_answer")).isEqualTo("done");
+    assertThat(payload).containsKey("thoughts");
+    assertThat(payload.get("thoughts")).isNull();
+  }
 }
