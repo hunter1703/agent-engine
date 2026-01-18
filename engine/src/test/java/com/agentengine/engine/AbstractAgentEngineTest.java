@@ -24,7 +24,7 @@ class AbstractAgentEngineTest {
   private static final class TestEngine extends AbstractAgentEngine {
     private void trigger(final String sessionId) {
       invokeListeners(listener -> listener.onReasoningStart(sessionId));
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId, Message.assistant("done", null)));
+      invokeListeners(listener -> listener.onReasoningEnd(sessionId, Message.assistant("done")));
     }
 
     @Override

@@ -1,10 +1,9 @@
 package com.agentengine.engine.state;
 
 import com.agentengine.engine.beans.Summary;
-import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.message.Message;
+
 import java.util.List;
-import java.util.Map;
 
 public interface SessionStore {
 
@@ -12,9 +11,7 @@ public interface SessionStore {
 
   String appendMessage(String sessionId, Message message);
 
-  void addToolExecutions(String sessionId, String messageId, List<ToolExecution> toolExecutions);
-
-  Map<String, List<ToolExecution>> getToolExecutions(String sessionId, List<String> messageIds);
+  void updateMessage(String sessionId, String messageId, Message message);
 
   List<Summary> getSummaries(String sessionId);
 

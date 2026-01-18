@@ -5,6 +5,7 @@ import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.state.SessionStore;
 import com.alibaba.fastjson2.TypeReference;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.ArrayList;
@@ -257,6 +258,16 @@ public final class EngineUtils {
     }
     final String content = finalAnswer == null ? "" : finalAnswer;
     return new Message(null, content, thoughts, toolRequests, toolCalls);
+  }
+
+  public static List<ToolCall> transformToToolCalls(final List<ToolExecutionRequest> requests) {
+    final List<ToolCall> toolCalls = new ArrayList<>();
+    for (final ToolExecutionRequest request : CollectionUtils.nullSafeList(requests)) {
+      final ToolCall toolCall = new ToolCall(request.id(), request.name(), JsonUtils.fromJson(request.arguments(), new TypeReference<>() {
+      }));
+      toolCalls.add(toolCall);
+    }
+    return toolCalls;
   }
 
   private static List<ToolCall> parseToolCallsFromJsonMap(final Map<String, Object> payload) {

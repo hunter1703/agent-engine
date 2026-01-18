@@ -1,7 +1,9 @@
 package com.agentengine.engine.beans;
 
 import com.agentengine.engine.message.Message;
+import com.agentengine.engine.message.Role;
 import com.agentengine.engine.message.ToolCall;
+import java.util.List;
 import java.time.Instant;
 
 public final class ToolExecution {
@@ -47,20 +49,5 @@ public final class ToolExecution {
 
   public long getDurationMs() {
     return durationMs;
-  }
-
-  public Message toMessage() {
-    return Message.tool(
-        STR."""
-                Tool Id : \{
-            id}
-                Tool call : \{
-            toolCall
-                .name()}
-                Tool Status : \{
-            status}
-                Tool output : \{
-            output}
-                """);
   }
 }

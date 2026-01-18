@@ -20,10 +20,10 @@ class EngineUtilsTest {
     String sessionId = "session";
 
     sessionStore.appendMessage(sessionId, Message.user("hello"));
-    sessionStore.appendMessage(sessionId, Message.assistant("first", null));
-    sessionStore.appendMessage(sessionId, Message.assistant("second", null));
+    sessionStore.appendMessage(sessionId, Message.assistant("first"));
+    sessionStore.appendMessage(sessionId, Message.assistant("second"));
     sessionStore.appendMessage(sessionId, Message.user("reset"));
-    sessionStore.appendMessage(sessionId, Message.assistant("third", null));
+    sessionStore.appendMessage(sessionId, Message.assistant("third"));
 
     assertThat(EngineUtils.invocationsThisTurn(sessionStore, sessionId)).isEqualTo(1);
   }

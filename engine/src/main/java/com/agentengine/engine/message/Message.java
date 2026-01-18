@@ -1,5 +1,8 @@
 package com.agentengine.engine.message;
 
+import com.agentengine.engine.utils.EngineUtils;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
 import java.util.List;
 
 public class Message {
@@ -17,6 +20,15 @@ public class Message {
     this.thoughts = thoughts;
     this.toolRequests = toolRequests;
     this.toolCalls = toolCalls;
+  }
+
+  public Message(final Message other, final String content) {
+    this.id = other.id;
+    this.role = other.role;
+    this.content = content;
+    this.thoughts = other.thoughts;
+    this.toolRequests = other.toolRequests;
+    this.toolCalls = other.toolCalls;
   }
 
   public void setId(final String id) {
@@ -55,11 +67,11 @@ public class Message {
     return new Message(Role.USER, content, null, null, null);
   }
 
-  public static Message tool(final String content) {
-    return new Message(Role.TOOL, content, null, null, null);
+  public static Message assistant(final String content) {
+    return new Message(Role.ASSISTANT, content, null, null, null);
   }
 
-  public static Message assistant(final String content, final String thoughts) {
-    return new Message(Role.ASSISTANT, content, thoughts, null, null);
+  public static Message assistant(final String content, List<ToolExecutionRequest> executionRequests) {
+    return new Message(Role.ASSISTANT, content, null, null, EngineUtils.transformToToolCalls(executionRequests));
   }
 }

@@ -1,11 +1,10 @@
 package com.agentengine.engine.state;
 
 import com.agentengine.engine.beans.Summary;
-import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.message.Message;
-import com.agentengine.engine.utils.CollectionUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -14,48 +13,45 @@ public final class InMemorySessionStore implements SessionStore {
 
   @Override
   public List<Message> getMessages(final String sessionId) {
-    return new ArrayList<>(session(sessionId).messages);
+    SessionState session = session(sessionId);
+    List<Message> messages = new ArrayList<>();
+    for (String messageId : session.messageOrder) {
+      Message message = session.messagesById.get(messageId);
+      if (message != null) {
+        messages.add(message);
+      }
+    }
+    return messages;
   }
 
   @Override
   public String appendMessage(final String sessionId, final Message message) {
     message.setId(UUID.randomUUID().toString().replaceAll("-", ""));
     final SessionState session = session(sessionId);
-    session.messages.add(message);
+    session.messagesById.put(message.getId(), message);
+    session.messageOrder.add(message.getId());
     return message.getId();
   }
 
   @Override
-  public void addToolExecutions(final String sessionId, final String messageId,
-      final List<ToolExecution> toolExecutions) {
+  public void updateMessage(final String sessionId, final String messageId, final Message message) {
     final SessionState session = session(sessionId);
-    toolExecutions.forEach(toolExecution -> {
-      toolExecution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
-    });
-    session.toolExecutions.computeIfAbsent(messageId, _ -> new ArrayList<>()).addAll(toolExecutions);
-  }
-
-  @Override
-  public Map<String, List<ToolExecution>> getToolExecutions(final String sessionId, final List<String> messageIds) {
-    final SessionState session = session(sessionId);
-    final Map<String, List<ToolExecution>> toolExecutions = new HashMap<>();
-    for (final String messageId : messageIds) {
-      toolExecutions.put(messageId, CollectionUtils.nullSafeList(session.toolExecutions.get(messageId)));
+    if (!session.messagesById.containsKey(messageId)) {
+      return;
     }
-    return toolExecutions;
+    message.setId(messageId);
+    session.messagesById.put(messageId, message);
   }
 
   @Override
   public List<Summary> getSummaries(final String sessionId) {
-    final SessionState session = session(sessionId);
-    return new ArrayList<>(session.summaries);
+    return new ArrayList<>(session(sessionId).summaries);
   }
 
   @Override
   public void addSummary(final String sessionId, final String summarizedFromMessageId,
       final String summarizedUptoMessageId, final String summary, final long createdAt) {
-    final SessionState session = session(sessionId);
-    session.summaries.add(new Summary(UUID.randomUUID().toString().replaceAll("-", ""), summary,
+    session(sessionId).summaries.add(new Summary(UUID.randomUUID().toString().replaceAll("-", ""), summary,
         summarizedFromMessageId, summarizedUptoMessageId, createdAt));
   }
 
@@ -64,8 +60,8 @@ public final class InMemorySessionStore implements SessionStore {
   }
 
   private static final class SessionState {
-    private final List<Message> messages = new CopyOnWriteArrayList<>();
-    private final ConcurrentMap<String, List<ToolExecution>> toolExecutions = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Message> messagesById = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<String> messageOrder = new ConcurrentLinkedQueue<>();
     private final List<Summary> summaries = new CopyOnWriteArrayList<>();
   }
 }

@@ -44,9 +44,9 @@ class AgentSseTest {
       AgentListener listener = listenerRef.get();
       if (listener != null) {
         listener.onReasoningStart("session");
-        listener.onFinalAnswer("session", Message.assistant("done", null));
+        listener.onFinalAnswer("session", Message.assistant("done"));
       }
-      return Message.assistant("done", null);
+      return Message.assistant("done");
     });
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));

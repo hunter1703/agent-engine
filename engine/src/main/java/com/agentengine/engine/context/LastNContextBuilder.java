@@ -1,14 +1,12 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.engine.beans.ToolExecution;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.state.SessionStore;
 import com.agentengine.engine.tools.AgentTool;
-import com.agentengine.engine.utils.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+
+import static com.agentengine.engine.message.Role.*;
 
 public final class LastNContextBuilder extends BaseContextBuilder {
   private final int keepLast;
@@ -22,22 +20,19 @@ public final class LastNContextBuilder extends BaseContextBuilder {
   @Override
   public List<Message> buildPrompt(final String sessionId) {
     final List<Message> messages = sessionStore.getMessages(sessionId);
+    return super.buildPrompt(selectRecentMessages(messages));
+  }
 
-    final List<Message> recent = messages.size() <= keepLast
-        ? messages
-        : messages.subList(messages.size() - keepLast, messages.size());
-    final Map<String, List<ToolExecution>> messageIdVsToolExecutions = sessionStore.getToolExecutions(sessionId,
-        recent.stream().map(Message::getId).collect(Collectors.toList()));
-
-    final List<Message> toBuildWith = new ArrayList<>();
-    for (final Message message : recent) {
-      toBuildWith.add(message);
-      final List<ToolExecution> toolExecutions = messageIdVsToolExecutions.get(message.getId());
-      if (CollectionUtils.isNotEmpty(toolExecutions)) {
-        toolExecutions.forEach(toolExecution -> toBuildWith.add(toolExecution.toMessage()));
+  private List<Message> selectRecentMessages(final List<Message> messages) {
+    final List<Message> recent = new ArrayList<>();
+    int count = 0;
+    for (int i = messages.size() - 1; i >= 0; i--) {
+      final Message message = messages.get(i);
+      recent.add(message);
+      if (++count == keepLast) {
+        break;
       }
     }
-
-    return super.buildPrompt(toBuildWith);
+    return recent.reversed();
   }
 }

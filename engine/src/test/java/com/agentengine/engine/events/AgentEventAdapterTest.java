@@ -45,7 +45,7 @@ class AgentEventAdapterTest {
     AgentEventAdapter adapter = new AgentEventAdapter(published::add);
 
     adapter.onReasoningStart("session-2");
-    adapter.onReasoningEnd("session-2", Message.assistant("done", "thoughts"));
+    adapter.onReasoningEnd("session-2", Message.assistant("done"));
     adapter.onToolRepair("session-2", List.of(), List.of());
 
     assertThat(published).hasSize(3);
@@ -94,7 +94,7 @@ class AgentEventAdapterTest {
     List<AgentEvent> published = new ArrayList<>();
     AgentEventAdapter adapter = new AgentEventAdapter(published::add);
 
-    Message message = Message.assistant("done", null);
+    Message message = Message.assistant("done");
     adapter.onFinalAnswer("session-4", message);
 
     assertThat(published).hasSize(1);

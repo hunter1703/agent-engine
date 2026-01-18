@@ -34,7 +34,7 @@ class LangChain4JLLMModelTest {
     LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel,
         new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build(), true, "<think>", "</think>");
 
-    List<Message> prompt = List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior", null));
+    List<Message> prompt = List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior"));
 
     Message result = model.generate(prompt);
 

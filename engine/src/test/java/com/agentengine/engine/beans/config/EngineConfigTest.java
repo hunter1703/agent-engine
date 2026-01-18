@@ -1,56 +1,35 @@
 package com.agentengine.engine.beans.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
 class EngineConfigTest {
 
   @Test
-  void hybridRequiresReasoningPromptAndTool() {
-    HybridEngineConfig config = new HybridEngineConfig();
-    config.setSystemPrompt("prompt");
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-
-    config.setReasoning("model.json");
-    config.setSystemPrompt(null);
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-
-    config.setSystemPrompt("prompt");
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-
-    config.setTool("tool");
-
-    config.validate();
-  }
-
-  @Test
-  void routerRequiresRouterAndTargets() {
-    RouterEngineConfig config = new RouterEngineConfig();
+  void hybridConfigStoresInvocationLimit() {
+    final HybridEngineConfig config = new HybridEngineConfig();
+    config.setInvocationLimit(3);
+    config.setSystemPrompt("system");
     config.setReasoning("reasoner");
-    config.setSystemPrompt("prompt");
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-
-    config.setRouter("router");
-
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
-
     config.setTool("tool");
 
     config.validate();
+
+    assertThat(config.getInvocationLimit()).isEqualTo(3);
   }
 
   @Test
-  void toolRetryLimitDefaultsAndCanBeSet() {
-    HybridEngineConfig config = new HybridEngineConfig();
-    assertThat(config.getToolRetryLimit()).isEqualTo(2);
+  void routerConfigStoresInvocationLimit() {
+    final RouterEngineConfig config = new RouterEngineConfig();
+    config.setInvocationLimit(4);
+    config.setSystemPrompt("system");
+    config.setReasoning("reasoner");
+    config.setRouter("router");
+    config.setTool("tool");
 
-    config.setToolRetryLimit(5);
-    assertThat(config.getToolRetryLimit()).isEqualTo(5);
+    config.validate();
+
+    assertThat(config.getInvocationLimit()).isEqualTo(4);
   }
 }

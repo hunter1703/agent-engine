@@ -35,3 +35,4 @@ and REST) for interacting with agents.
 19. Avoid redundant or low-value tests that do not exercise functional behavior.
 20. Document REST endpoints with MicroProfile OpenAPI annotations.
 21. Avoid qualified class names; add explicit imports instead.
+22. Avoid synchronized constructs; prefer virtual-thread-friendly patterns.

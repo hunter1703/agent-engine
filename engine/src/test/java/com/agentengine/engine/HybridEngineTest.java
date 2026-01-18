@@ -57,16 +57,9 @@ class HybridEngineTest {
     assertThat(listener.toolExecutions).hasSize(1);
     assertThat(listener.toolExecutions.getFirst().getOutput()).isEqualTo("hi");
 
-    List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
-    Message toolRequestMessage = reasoningMessages.stream()
-        .filter(message -> message.getToolRequests() != null && !message.getToolRequests().isEmpty()).findFirst()
-        .orElseThrow();
-    List<ToolExecution> executions = sessionStore
-        .getToolExecutions(sessionId + "_reasoning", List.of(toolRequestMessage.getId()))
-        .get(toolRequestMessage.getId());
-
-    assertThat(executions).hasSize(1);
-    assertThat(executions.getFirst().getStatus()).isEqualTo("ok");
+    List<Message> reasoningMessages = sessionStore.getMessages(STR."\{sessionId}_reasoning");
+    assertThat(reasoningMessages).anyMatch(message -> message.getRole() == Role.USER
+        && message.getContent().contains("tool_calls"));
   }
 
   @Test
@@ -155,7 +148,9 @@ class HybridEngineTest {
 
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolExecutions).isEmpty();
-    assertThat(sessionStore.getToolExecutions(sessionId + "_reasoning", List.of())).isEmpty();
+    List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
+    assertThat(reasoningMessages).anyMatch(message -> message.getRole() == Role.USER
+        && message.getContent().contains("Unknown tool"));
   }
 
   @Test
@@ -206,7 +201,9 @@ class HybridEngineTest {
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(sessionStore.getToolExecutions(sessionId + "_reasoning", List.of())).isEmpty();
+    List<Message> reasoningMessages = sessionStore.getMessages(STR."\{sessionId}_reasoning");
+    assertThat(reasoningMessages).noneMatch(message -> message.getRole() == Role.USER
+        && message.getContent().contains("tool_calls"));
   }
 
   private static final class QueueModel implements LLMModel {
