@@ -54,7 +54,13 @@ public class HybridEngine extends AbstractAgentEngine {
         break;
       }
 
-      executeToolRequests(sessionId, result.getId(), result.getToolRequests());
+      final List<String> toolRequests = result.getToolRequests();
+      if (CollectionUtils.isEmpty(toolRequests)) {
+        //TODO: add prompt so that reasoning model either gives final answer or tool requests
+        sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system());
+        continue;
+      }
+      executeToolRequests(sessionId, result.getId(), toolRequests);
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
 
@@ -74,11 +80,13 @@ public class HybridEngine extends AbstractAgentEngine {
 
   private Message runReasoner(final String sessionId) {
     invokeListeners(listener -> listener.onReasoningStart(sessionId));
+    Message message = null;
     try {
-      return _runReasoner(sessionId, 5);
+      message = _runReasoner(sessionId, 5);
     } finally {
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId));
+      invokeListeners(listener -> listener.onReasoningEnd(sessionId, message));
     }
+    return message;
   }
 
   private Message _runReasoner(final String sessionId, final int maxRetries) {
@@ -116,11 +124,10 @@ public class HybridEngine extends AbstractAgentEngine {
     sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
 
     final List<ToolRequest> requestInfos = EngineUtils.parseToolRequestInfo(toolRequests);
-    final int expectedCount = requestInfos.size();
     final Map<String, ToolCall> matchedCallsById = new HashMap<>();
     List<ToolRequest> remainingRequests = new ArrayList<>(requestInfos);
     int repairAttempts = 0;
-    List<ToolCall> toolCalls;
+    List<ToolCall> toolCalls = null;
     do {
       final List<Message> prompt = toolAssistantContextBuilder.buildPrompt(getToolSessionId(sessionId));
       Message response = toolAssistantModel.generate(prompt);
@@ -135,8 +142,10 @@ public class HybridEngine extends AbstractAgentEngine {
       final Map<String, ToolCall> newlyMatched = selectMatchingToolCalls(toolCalls, remainingRequests);
       newlyMatched.forEach(matchedCallsById::putIfAbsent);
       remainingRequests = unresolvedRequests(requestInfos, matchedCallsById);
-      if (!remainingRequests.isEmpty()) {
-        invokeListeners(listener -> listener.onToolRepair(sessionId));
+      if (CollectionUtils.isNotEmpty(remainingRequests)) {
+        final List<ToolCall> newToolCalls = CollectionUtils.nullSafeList(toolCalls);
+        final List<ToolRequest> newRemainingRequests = CollectionUtils.nullSafeList(remainingRequests);
+        invokeListeners(listener -> listener.onToolRepair(sessionId, newToolCalls, newRemainingRequests));
         final List<String> missingRequests = remainingRequests.stream().map(ToolRequest::raw).toList();
         sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(TemplateUtils
             .renderTemplateForName("hybrid/repair/empty_tool_call.txt", Map.of("toolRequests", missingRequests))));

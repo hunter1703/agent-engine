@@ -48,6 +48,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
       };
       engine.registerListener(sessionId, new AgentEventAdapter(publisher));
       engine.invoke(sessionId, Message.user(request.getMessage()));
+      emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "done")));
       emitter.complete();
     });
   }

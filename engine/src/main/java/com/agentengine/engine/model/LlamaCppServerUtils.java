@@ -3,6 +3,9 @@ package com.agentengine.engine.model;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.utils.CollectionUtils;
 import com.agentengine.engine.utils.StringUtils;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -18,9 +21,13 @@ import java.util.logging.Logger;
 
 public final class LlamaCppServerUtils {
   private static final Logger LOGGER = Logger.getLogger(LlamaCppServerUtils.class.getName());
-  private static final Duration STARTUP_TIMEOUT = Duration.ofSeconds(10);
+  private static final Duration READY_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration READY_POLL_INTERVAL = Duration.ofMillis(500);
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
+  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+      .connectTimeout(Duration.ofSeconds(2))
+      .build();
 
   private LlamaCppServerUtils() {
   }
@@ -37,6 +44,7 @@ public final class LlamaCppServerUtils {
       return;
     }
     if (isReachable(address)) {
+      waitForReady(address, READY_TIMEOUT);
       return;
     }
     if (StringUtils.isBlank(config.getServerCommand())) {
@@ -50,7 +58,7 @@ public final class LlamaCppServerUtils {
       return startServer(config, address);
     });
     if (server != null) {
-      waitForStartup(address, STARTUP_TIMEOUT);
+      waitForReady(address, READY_TIMEOUT);
     }
   }
 
@@ -117,18 +125,60 @@ public final class LlamaCppServerUtils {
     }
   }
 
-  private static void waitForStartup(final ServerAddress address, final Duration timeout) {
+  private static void waitForReady(final ServerAddress address, final Duration timeout) {
+    URI modelsEndpoint = buildModelsEndpoint(address.baseUrl());
+    if (modelsEndpoint == null) {
+      return;
+    }
     long deadline = System.nanoTime() + timeout.toNanos();
     while (System.nanoTime() < deadline) {
-      if (isReachable(address)) {
+      if (isModelReady(modelsEndpoint)) {
         return;
       }
       try {
-        Thread.sleep(200);
+        Thread.sleep(READY_POLL_INTERVAL.toMillis());
       } catch (InterruptedException ex) {
         Thread.currentThread().interrupt();
         return;
       }
+    }
+    LOGGER.warning(STR."LLAMA_CPP server did not report ready within timeout for \{address.baseUrl()}");
+  }
+
+  static URI buildModelsEndpoint(final String baseUrl) {
+    if (StringUtils.isBlank(baseUrl)) {
+      return null;
+    }
+    try {
+      URI baseUri = new URI(baseUrl);
+      String path = baseUri.getPath();
+      String normalizedPath = StringUtils.isBlank(path) ? "/v1" : path;
+      if (normalizedPath.endsWith("/")) {
+        normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
+      }
+      String modelsPath = STR."\{normalizedPath}/models";
+      return new URI(baseUri.getScheme(), baseUri.getUserInfo(), baseUri.getHost(), baseUri.getPort(), modelsPath, null,
+          null);
+    } catch (URISyntaxException ex) {
+      LOGGER.log(Level.WARNING, STR."Invalid baseUrl: \{baseUrl}", ex);
+      return null;
+    }
+  }
+
+  private static boolean isModelReady(final URI modelsEndpoint) {
+    try {
+      HttpRequest request = HttpRequest.newBuilder(modelsEndpoint)
+          .timeout(Duration.ofSeconds(2))
+          .GET()
+          .build();
+      HttpResponse<Void> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding());
+      int statusCode = response.statusCode();
+      if (statusCode == 404) {
+        return true;
+      }
+      return statusCode >= 200 && statusCode < 300;
+    } catch (Exception ex) {
+      return false;
     }
   }
 
