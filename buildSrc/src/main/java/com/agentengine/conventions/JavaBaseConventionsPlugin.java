@@ -15,6 +15,7 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
   public void apply(final Project project) {
     project.getPluginManager().apply("java");
     project.getPluginManager().apply("com.diffplug.spotless");
+    project.getPluginManager().apply("org.kordamp.gradle.jandex");
 
     project
         .getExtensions()
@@ -73,6 +74,11 @@ public class JavaBaseConventionsPlugin implements Plugin<Project> {
         .getTasks()
         .withType(JavaExec.class)
         .configureEach(task -> task.jvmArgs("--enable-preview"));
+
+    project.getTasks().named("jar").configure(task -> task.dependsOn("jandex"));
+
+    project.getPluginManager().withPlugin("io.quarkus", applied ->
+        project.getTasks().named("quarkusDependenciesBuild").configure(task -> task.dependsOn("jandex")));
   }
 
   private static void configureTestDependencyConstraints(final DependencyHandler dependencies) {
