@@ -1,8 +1,10 @@
 package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeName = "router")
+@BsonDiscriminator(value = "router")
 public final class RouterEngineConfig extends EngineConfig {
   private String router;
   private String tool;

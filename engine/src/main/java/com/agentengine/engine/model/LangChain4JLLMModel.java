@@ -60,12 +60,13 @@ public final class LangChain4JLLMModel implements LLMModel {
   }
 
   private ChatMessage toChatMessage(final Message message) {
+    final String content = message.getContent();
     if (message.getRole() == Role.SYSTEM) {
-      return SystemMessage.from(message.getContent());
+      return SystemMessage.from(content);
     }
     if (message.getRole() == Role.USER) {
-      return UserMessage.from(message.getContent());
+      return UserMessage.from(content);
     }
-    return AiMessage.from(message.getContent());
+    return AiMessage.from(content == null ? "" : content);
   }
 }

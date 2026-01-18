@@ -1,8 +1,10 @@
 package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeName = "hybrid")
+@BsonDiscriminator(value = "hybrid")
 public final class HybridEngineConfig extends EngineConfig {
   private String tool;
 

@@ -1,8 +1,10 @@
 package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeName = "summarize")
+@BsonDiscriminator(value = "summarize")
 public class SummarizingContextConfig extends ContextConfig {
   private Double triggerThreshold;
 

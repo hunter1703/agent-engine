@@ -1,8 +1,10 @@
 package com.agentengine.engine.beans.config;
 
 import com.alibaba.fastjson2.annotation.JSONType;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeKey = "type", seeAlso = {LastNContextConfig.class, SummarizingContextConfig.class})
+@BsonDiscriminator(key = "type")
 public abstract class ContextConfig implements Config {
   private String type;
 
