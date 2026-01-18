@@ -18,7 +18,9 @@ class JsonUtilsTest {
 
   @Test
   void fromJsonReturnsNullOnBlank() {
-    assertThat(JsonUtils.fromJson("", Map.class)).isNull();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> parsed = (Map<String, Object>) JsonUtils.fromJson("", Map.class);
+    assertThat(parsed).isNull();
   }
 
   @Test
@@ -28,7 +30,8 @@ class JsonUtilsTest {
 
   @Test
   void fromJsonParsesJsonString() {
-    Map<String, Object> parsed = JsonUtils.fromJson("{\"value\":42}", Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> parsed = (Map<String, Object>) JsonUtils.fromJson("{\"value\":42}", Map.class);
 
     assertThat(parsed).containsEntry("value", 42);
   }
@@ -38,7 +41,8 @@ class JsonUtilsTest {
     Path path = tempDir.resolve("data.json");
     Files.writeString(path, "{\"name\":\"test\"}");
 
-    Map<String, Object> parsed = JsonUtils.fromFile(path, Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> parsed = (Map<String, Object>) JsonUtils.fromFile(path, Map.class);
 
     assertThat(parsed).containsEntry("name", "test");
   }

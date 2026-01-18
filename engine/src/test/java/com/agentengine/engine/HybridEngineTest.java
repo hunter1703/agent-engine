@@ -11,6 +11,7 @@ import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
 import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.utils.ToolRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.ArrayDeque;
@@ -303,7 +304,8 @@ class HybridEngineTest {
     }
 
     @Override
-    public void onToolRepair(final String sessionId) {
+    public void onToolRepair(final String sessionId, final List<ToolCall> toolCalls,
+        final List<ToolRequest> remainingRequests) {
       toolRepairs++;
     }
 

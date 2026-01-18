@@ -2,6 +2,15 @@
   "model": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M",
   "provider": "LLAMA_CPP",
   "baseUrl": "http://127.0.0.1:17002/v1",
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/local-agent/llamacpp_models/deepseek-r1-distill-qwen-14b-q4_k_m.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17002"
+  ],
   "responseFormat": "json",
   "thoughtsEnabled": false,
   "temperature": 0.6,

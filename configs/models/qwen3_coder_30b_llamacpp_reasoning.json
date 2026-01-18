@@ -3,6 +3,15 @@
   "provider": "LLAMA_CPP",
   "baseUrl": "http://127.0.0.1:17001/v1",
   "thoughtsEnabled": false,
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/local-agent/llamacpp_models/qwen3-coder-30b.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17001"
+  ],
   "responseFormat": "text",
   "temperature": 0.2,
   "numPredict": 120,

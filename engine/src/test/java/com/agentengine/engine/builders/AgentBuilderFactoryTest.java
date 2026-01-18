@@ -17,7 +17,8 @@ class AgentBuilderFactoryTest {
   void returnsNamedBuilderOrFallback() {
     AgentBuilder named = new StubBuilder("alpha");
     AgentBuilder other = new StubBuilder("beta");
-    Instance<AgentBuilder> instance = mock(Instance.class);
+    @SuppressWarnings("unchecked")
+    Instance<AgentBuilder> instance = (Instance<AgentBuilder>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.of(named, other));
     HybridAgentBuilder fallback = mock(HybridAgentBuilder.class);
 

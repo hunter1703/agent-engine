@@ -2,7 +2,7 @@
   "engine": {
     "type": "hybrid",
     "systemPrompt": "You are a helpful assistant.",
-    "reasoning": "qwen2_5_0_5b_instruct",
+    "reasoning": "qwen3_coder_30b_llamacpp_reasoning",
     "tool": "qwen3_coder_30b_llamacpp"
   },
   "context": {

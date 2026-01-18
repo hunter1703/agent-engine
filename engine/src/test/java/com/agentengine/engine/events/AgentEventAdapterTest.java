@@ -99,7 +99,8 @@ class AgentEventAdapterTest {
 
     assertThat(published).hasSize(1);
     AgentEvent event = published.getFirst();
-    Map<String, ?> payload = (Map<String, ?>) event.payload();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> payload = (Map<String, Object>) event.payload();
     assertThat(payload.get("final_answer")).isEqualTo("done");
     assertThat(payload).containsKey("thoughts");
     assertThat(payload.get("thoughts")).isNull();

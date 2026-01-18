@@ -2,6 +2,15 @@
   "model": "qwq-32b",
   "provider": "LLAMA_CPP",
   "baseUrl": "http://127.0.0.1:17004/v1",
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/local-agent/llamacpp_models/qwq-32b.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17004"
+  ],
   "thoughtsEnabled": false,
   "thoughtsStartTag": "<think>",
   "thoughtsEndTag": "</think>",

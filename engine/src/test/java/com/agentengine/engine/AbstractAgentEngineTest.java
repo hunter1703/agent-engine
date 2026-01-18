@@ -24,7 +24,7 @@ class AbstractAgentEngineTest {
   private static final class TestEngine extends AbstractAgentEngine {
     private void trigger(final String sessionId) {
       invokeListeners(listener -> listener.onReasoningStart(sessionId));
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId));
+      invokeListeners(listener -> listener.onReasoningEnd(sessionId, Message.assistant("done", null)));
     }
 
     @Override
@@ -63,8 +63,8 @@ class AbstractAgentEngineTest {
     }
 
     @Override
-    public void onReasoningEnd(final String sessionId) {
-      called.add("end-" + sessionId);
+    public void onReasoningEnd(final String sessionId, final Message message) {
+      called.add(STR."end-\{sessionId}");
     }
 
     @Override

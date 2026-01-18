@@ -2,6 +2,15 @@
   "model": "deepseek-r1-32b",
   "provider": "LLAMA_CPP",
   "baseUrl": "http://127.0.0.1:17003/v1",
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/local-agent/llamacpp_models/deepseek-r1-32b.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17003"
+  ],
   "thoughtsEnabled": false,
   "temperature": 0.6,
   "topK": 40,

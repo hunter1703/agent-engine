@@ -31,7 +31,8 @@ class YamlUtilsTest {
     Path path = tempDir.resolve("data.yaml");
     Files.writeString(path, "name: example\n");
 
-    Map<String, Object> parsed = YamlUtils.fromFile(path, Map.class);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> parsed = (Map<String, Object>) YamlUtils.fromFile(path, Map.class);
 
     assertThat(parsed).containsEntry("name", "example");
   }
