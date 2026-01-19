@@ -2,17 +2,15 @@ package com.agentengine.engine.context;
 
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.agentengine.engine.message.Role.*;
 
 public final class LastNContextBuilder extends BaseContextBuilder {
   private final int keepLast;
 
   public LastNContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage,
-      final List<AgentTool> tools, final int keepLast) {
+                             final List<Tool> tools, final int keepLast) {
     super(sessionStore, systemMessage, protocolMessage, tools);
     this.keepLast = Math.max(1, keepLast);
   }

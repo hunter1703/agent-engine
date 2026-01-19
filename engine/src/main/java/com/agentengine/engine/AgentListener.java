@@ -5,10 +5,11 @@ import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.utils.ToolRequest;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface AgentListener {
-  default void onToolPlan(String sessionId, List<ToolCall> toolCalls) {
+  default void onToolPlan(String sessionId, Collection<ToolCall> toolCalls) {
   }
 
   default void onToolExecution(String sessionId, ToolExecution toolExecution) {

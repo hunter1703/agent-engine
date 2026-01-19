@@ -2,7 +2,7 @@ package com.agentengine.engine.context;
 
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.utils.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public class BaseContextBuilder implements ContextBuilder {
   private final Message toolMessage;
 
   public BaseContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage,
-      final List<AgentTool> tools) {
+      final List<Tool> tools) {
     this.sessionStore = sessionStore;
     this.systemMessage = Message.system(systemMessage);
     this.protocolMessage = Message.system(protocolMessage);
@@ -40,12 +40,12 @@ public class BaseContextBuilder implements ContextBuilder {
     return prompt;
   }
 
-  private Message buildToolMessage(final List<AgentTool> tools) {
+  private Message buildToolMessage(final List<Tool> tools) {
     if (tools == null || tools.isEmpty()) {
       return null;
     }
     final StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
-    for (AgentTool tool : tools) {
+    for (Tool tool : tools) {
       String line = STR."- \{tool.name()}";
       if (tool.description() != null && !tool.description().isBlank()) {
         line += STR." - \{tool.description()}";

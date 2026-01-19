@@ -2,7 +2,6 @@ package com.agentengine.engine.builders;
 
 import com.agentengine.engine.ConfigRepository;
 import com.agentengine.engine.HybridEngine;
-import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.beans.config.EngineConfig;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.HybridEngineConfig;
@@ -11,13 +10,11 @@ import com.agentengine.engine.beans.config.ToolsConfig;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.tools.ToolRegistry;
-import com.agentengine.engine.utils.ResourceUtils;
 import com.agentengine.engine.utils.StringUtils;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.Objects;
 
 @Singleton
 public final class HybridAgentBuilder extends AbstractAgentBuilder {
@@ -45,7 +42,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
     final SessionStore sessionStore = buildStateStore(agentConfig.getStateStore());
     final ToolsConfig toolsConfig = agentConfig.getTools();
-    final List<AgentTool> tools = ToolRegistry.loadTools(agentName, toolsConfig);
+    final List<Tool> tools = ToolRegistry.loadTools(agentName, toolsConfig);
 
     final ContextBuilder reasoningContextBuilder = buildReasoningContextBuilder(reasoningConfig, sessionStore, true,
         systemPrompt, tools);

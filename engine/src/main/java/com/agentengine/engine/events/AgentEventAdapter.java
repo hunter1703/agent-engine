@@ -6,6 +6,8 @@ import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.utils.CollectionUtils;
 import com.agentengine.engine.utils.ToolRequest;
+
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +20,7 @@ public final class AgentEventAdapter implements AgentListener {
   }
 
   @Override
-  public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
+  public void onToolPlan(final String sessionId, final Collection<ToolCall> toolCalls) {
     List<Map<String, Object>> payload = toolCalls.stream()
         .map(call -> Map.of("id", call.id(), "name", call.name(), "args", call.args())).toList();
     publisher.publish(new AgentEvent("tool_plan", sessionId, payload));

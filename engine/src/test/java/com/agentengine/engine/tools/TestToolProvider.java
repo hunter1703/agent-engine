@@ -1,6 +1,5 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.beans.config.AgentConfig;
 import java.util.Map;
 
 public class TestToolProvider implements ToolProvider {
@@ -15,8 +14,8 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public AgentTool create(final Map<String, Object> toolConfig) {
-    return new AgentTool() {
+  public Tool create(final Map<String, Object> toolConfig) {
+    return new Tool() {
       @Override
       public String name() {
         return "fake";

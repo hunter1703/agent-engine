@@ -1,7 +1,6 @@
 package com.agentengine.engine.builders;
 
 import com.agentengine.engine.ConfigRepository;
-import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.beans.config.LastNContextConfig;
 import com.agentengine.engine.beans.config.ModelConfig;
 import com.agentengine.engine.beans.config.MongoStateStoreConfig;
@@ -13,7 +12,7 @@ import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.utils.CollectionUtils;
 import com.agentengine.engine.utils.JsonUtils;
 import com.agentengine.engine.utils.ResourceUtils;
@@ -57,7 +56,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
   }
 
   protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
-      final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
+      final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<Tool> tools) {
     final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
     context.put("thoughtsEnabled", config.isThoughtsEnabled());
@@ -73,7 +72,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
   }
 
   protected static ContextBuilder buildToolAssistantContextBuilder(final ModelConfig config,
-      final SessionStore sessionStore, final String systemMessage, final List<AgentTool> tools) {
+      final SessionStore sessionStore, final String systemMessage, final List<Tool> tools) {
     final String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {

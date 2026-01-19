@@ -16,13 +16,13 @@ class ToolRegistryTest {
     toolsConfig.setEnabled(List.of("ALL"));
     toolsConfig.setConfigs(toolConfigs);
 
-    List<AgentTool> tools = ToolRegistry.loadTools("test-agent", toolsConfig);
+    List<Tool> tools = ToolRegistry.loadTools("test-agent", toolsConfig);
 
     assertThat(tools).hasSize(1);
     assertThat(tools.getFirst().execute(Map.of("value", "fix"))).isEqualTo("pre-fix");
 
     toolsConfig.setEnabled(List.of("other"));
-    List<AgentTool> filtered = ToolRegistry.loadTools("test-agent", toolsConfig);
+    List<Tool> filtered = ToolRegistry.loadTools("test-agent", toolsConfig);
 
     assertThat(filtered).isEmpty();
   }

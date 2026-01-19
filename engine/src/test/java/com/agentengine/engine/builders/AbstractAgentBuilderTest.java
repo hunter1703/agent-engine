@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.NoopConfigRepository;
 import com.agentengine.engine.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.LastNContextConfig;
@@ -19,7 +18,7 @@ import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -331,12 +330,12 @@ class AbstractAgentBuilderTest {
     }
 
     private ContextBuilder callBuildReasoningContextBuilder(final ModelConfig config, final SessionStore sessionStore,
-        final boolean hybrid, final String systemMessage, final List<AgentTool> tools) {
+        final boolean hybrid, final String systemMessage, final List<Tool> tools) {
       return buildReasoningContextBuilder(config, sessionStore, hybrid, systemMessage, tools);
     }
 
     private ContextBuilder callBuildToolAssistantContextBuilder(final ModelConfig config,
-        final SessionStore sessionStore, final String systemMessage, final List<AgentTool> tools) {
+        final SessionStore sessionStore, final String systemMessage, final List<Tool> tools) {
       return buildToolAssistantContextBuilder(config, sessionStore, systemMessage, tools);
     }
 

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.message.Message;
 import com.agentengine.engine.message.Role;
 import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -17,7 +17,7 @@ class BaseContextBuilderTest {
     InMemorySessionStore sessionStore = new InMemorySessionStore();
     sessionStore.appendMessage("session", Message.user("hi"));
 
-    List<AgentTool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
+    List<Tool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
     BaseContextBuilder builder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
 
     List<Message> prompt = builder.buildPrompt("session");
@@ -46,7 +46,7 @@ class BaseContextBuilderTest {
     assertThat(prompt.get(2).getRole()).isEqualTo(Role.USER);
   }
 
-  private record StubTool(String name, String description) implements AgentTool {
+  private record StubTool(String name, String description) implements Tool {
 
     @Override
     public String execute(Map<String, Object> args) {

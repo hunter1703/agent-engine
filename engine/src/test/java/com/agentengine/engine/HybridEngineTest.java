@@ -10,15 +10,13 @@ import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.state.SessionStore;
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.utils.ToolRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
+
 import org.junit.jupiter.api.Test;
 
 class HybridEngineTest {
@@ -40,7 +38,7 @@ class HybridEngineTest {
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
         List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
 
-    List<AgentTool> tools = List.of(new EchoTool());
+    List<Tool> tools = List.of(new EchoTool());
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
@@ -53,7 +51,7 @@ class HybridEngineTest {
 
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolPlans).hasSize(1);
-    assertThat(listener.toolPlans.getFirst().getFirst().name()).isEqualTo("echo");
+    assertThat(listener.toolPlans.getFirst().iterator().next().name()).isEqualTo("echo");
     assertThat(listener.toolExecutions).hasSize(1);
     assertThat(listener.toolExecutions.getFirst().getOutput()).isEqualTo("hi");
 
@@ -81,7 +79,7 @@ class HybridEngineTest {
             new Message(Role.ASSISTANT, goodToolPayload, null, null, null)));
 
     FlakyTool tool = new FlakyTool();
-    List<AgentTool> tools = List.of(tool);
+    List<Tool> tools = List.of(tool);
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
@@ -111,7 +109,7 @@ class HybridEngineTest {
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.TEXT,
         List.of(new Message(Role.ASSISTANT, "", null, null, null)));
 
-    List<AgentTool> tools = List.of();
+    List<Tool> tools = List.of();
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
@@ -167,7 +165,7 @@ class HybridEngineTest {
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.TEXT,
         List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
 
-    List<AgentTool> tools = List.of(new EchoTool());
+    List<Tool> tools = List.of(new EchoTool());
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
@@ -244,7 +242,7 @@ class HybridEngineTest {
     }
   }
 
-  private record EchoTool() implements AgentTool {
+  private record EchoTool() implements Tool {
     @Override
     public String name() {
       return "echo";
@@ -261,7 +259,7 @@ class HybridEngineTest {
     }
   }
 
-  private static final class FlakyTool implements AgentTool {
+  private static final class FlakyTool implements Tool {
     private int invocations = 0;
 
     @Override
@@ -285,13 +283,13 @@ class HybridEngineTest {
   }
 
   private static final class CapturingListener implements AgentListener {
-    private final List<List<ToolCall>> toolPlans = new ArrayList<>();
+    private final List<Collection<ToolCall>> toolPlans = new ArrayList<>();
     private final List<ToolExecution> toolExecutions = new ArrayList<>();
     private int toolRepairs = 0;
     private final List<String> finalAnswers = new ArrayList<>();
 
     @Override
-    public void onToolPlan(final String sessionId, final List<ToolCall> toolCalls) {
+    public void onToolPlan(final String sessionId, final Collection<ToolCall> toolCalls) {
       toolPlans.add(toolCalls);
     }
 

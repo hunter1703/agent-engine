@@ -58,6 +58,19 @@ public final class PluginLoader {
     if (fromEnv != null && !fromEnv.isBlank()) {
       return Paths.get(fromEnv);
     }
-    return Paths.get(DEFAULT_PLUGIN_DIR);
+    Path resolved = findPluginDir(Paths.get(System.getProperty("user.dir", ".")).toAbsolutePath());
+    return resolved == null ? Paths.get(DEFAULT_PLUGIN_DIR) : resolved;
+  }
+
+  private static Path findPluginDir(final Path start) {
+    Path current = start;
+    while (current != null) {
+      Path candidate = current.resolve(DEFAULT_PLUGIN_DIR);
+      if (Files.isDirectory(candidate)) {
+        return candidate;
+      }
+      current = current.getParent();
+    }
+    return null;
   }
 }

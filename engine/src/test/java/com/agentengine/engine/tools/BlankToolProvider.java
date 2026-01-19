@@ -14,7 +14,7 @@ public class BlankToolProvider implements ToolProvider {
   }
 
   @Override
-  public AgentTool create(final Map<String, Object> toolConfig) {
+  public Tool create(final Map<String, Object> toolConfig) {
     return null;
   }
 }

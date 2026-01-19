@@ -1,6 +1,5 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.beans.config.AgentConfig;
 import java.util.Map;
 
 public interface ToolProvider {
@@ -8,5 +7,5 @@ public interface ToolProvider {
 
   String toolName();
 
-  AgentTool create(Map<String, Object> toolConfig);
+  Tool create(Map<String, Object> toolConfig);
 }
