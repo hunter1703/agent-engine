@@ -54,7 +54,8 @@ public final class AgentEventAdapter implements AgentListener {
   }
 
   @Override
-  public void onToolRepair(final String sessionId, final List<ToolCall> toolCalls, final List<ToolRequest> missingToolRequests) {
+  public void onToolRepair(final String sessionId, final List<ToolCall> toolCalls,
+      final List<ToolRequest> missingToolRequests) {
     Map<String, Object> payload = new HashMap<>();
     payload.put("status", "repair");
     payload.put("toolCalls", CollectionUtils.nullSafeList(toolCalls));

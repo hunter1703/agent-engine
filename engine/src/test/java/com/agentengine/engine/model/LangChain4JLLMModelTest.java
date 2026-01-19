@@ -42,8 +42,8 @@ class LangChain4JLLMModelTest {
     assertThat(result.getThoughts()).isNull();
 
     @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<ChatMessage>> captor = (ArgumentCaptor<List<ChatMessage>>) (ArgumentCaptor<?>)
-        ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<List<ChatMessage>> captor = (ArgumentCaptor<List<ChatMessage>>) (ArgumentCaptor<?>) ArgumentCaptor
+        .forClass(List.class);
     verify(chatModel).chat(captor.capture());
     List<ChatMessage> captured = captor.getValue();
     assertThat(captured.getFirst()).isInstanceOf(SystemMessage.class);

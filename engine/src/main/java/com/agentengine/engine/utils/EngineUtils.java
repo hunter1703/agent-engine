@@ -263,8 +263,9 @@ public final class EngineUtils {
   public static List<ToolCall> transformToToolCalls(final List<ToolExecutionRequest> requests) {
     final List<ToolCall> toolCalls = new ArrayList<>();
     for (final ToolExecutionRequest request : CollectionUtils.nullSafeList(requests)) {
-      final ToolCall toolCall = new ToolCall(request.id(), request.name(), JsonUtils.fromJson(request.arguments(), new TypeReference<>() {
-      }));
+      final ToolCall toolCall = new ToolCall(request.id(), request.name(),
+          JsonUtils.fromJson(request.arguments(), new TypeReference<>() {
+          }));
       toolCalls.add(toolCall);
     }
     return toolCalls;

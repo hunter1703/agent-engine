@@ -10,7 +10,7 @@ public final class LastNContextBuilder extends BaseContextBuilder {
   private final int keepLast;
 
   public LastNContextBuilder(final SessionStore sessionStore, final String systemMessage, final String protocolMessage,
-                             final List<Tool> tools, final int keepLast) {
+      final List<Tool> tools, final int keepLast) {
     super(sessionStore, systemMessage, protocolMessage, tools);
     this.keepLast = Math.max(1, keepLast);
   }

@@ -22,26 +22,18 @@ class MongoConfigRepositoryTest {
 
   @Test
   void buildClientSettingsRegistersPojoCodecs() {
-    List<String> discriminators = List.of(
-        HybridEngineConfig.class.getName(),
-        RouterEngineConfig.class.getName(),
-        LastNContextConfig.class.getName(),
-        SummarizingContextConfig.class.getName(),
-        MemoryStateStoreConfig.class.getName(),
-        MongoStateStoreConfig.class.getName());
-    MongoClientSettings settings = MongoConfigRepository.buildClientSettings(
-        "mongodb://localhost:27000",
+    List<String> discriminators = List.of(HybridEngineConfig.class.getName(), RouterEngineConfig.class.getName(),
+        LastNContextConfig.class.getName(), SummarizingContextConfig.class.getName(),
+        MemoryStateStoreConfig.class.getName(), MongoStateStoreConfig.class.getName());
+    MongoClientSettings settings = MongoConfigRepository.buildClientSettings("mongodb://localhost:27000",
         discriminators);
 
     Codec<AgentConfig> codec = settings.getCodecRegistry().get(AgentConfig.class);
     assertThat(codec).isNotNull();
 
-    String json = "{" +
-        "\"_id\":\"shell_agent\"," +
-        "\"engine\":{\"type\":\"hybrid\",\"systemPrompt\":\"You are a helper.\",\"reasoning\":\"model\",\"tool\":\"model\"}," +
-        "\"context\":{\"type\":\"last_n\",\"keepLast\":10}," +
-        "\"stateStore\":{\"type\":\"memory\"}" +
-        "}";
+    String json = "{" + "\"_id\":\"shell_agent\","
+        + "\"engine\":{\"type\":\"hybrid\",\"systemPrompt\":\"You are a helper.\",\"reasoning\":\"model\",\"tool\":\"model\"},"
+        + "\"context\":{\"type\":\"last_n\",\"keepLast\":10}," + "\"stateStore\":{\"type\":\"memory\"}" + "}";
     BsonDocument document = BsonDocument.parse(json);
     AgentConfig config = codec.decode(new BsonDocumentReader(document), DecoderContext.builder().build());
 

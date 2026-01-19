@@ -14,7 +14,7 @@
 - Rerun the test suite to confirm the test passes.
 
 ## Mocking & Fixtures
-- Use in-memory fakes for `LLMModel`, `SessionStore`, and `AgentTool`.
+- Use in-memory fakes for `LLMModel`, `SessionStore`, and `Tool`.
 - Use JUnit `@TempDir` for filesystem-backed config loading.
 - Avoid network calls and external model invocations.
 

@@ -147,8 +147,8 @@ class HybridEngineTest {
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolExecutions).isEmpty();
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
-    assertThat(reasoningMessages).anyMatch(message -> message.getRole() == Role.USER
-        && message.getContent().contains("Unknown tool"));
+    assertThat(reasoningMessages)
+        .anyMatch(message -> message.getRole() == Role.USER && message.getContent().contains("Unknown tool"));
   }
 
   @Test

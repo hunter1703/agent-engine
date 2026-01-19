@@ -57,7 +57,7 @@ public final class MongoConfigRepository implements ConfigRepository {
   private <T> T findDocument(final String collectionName, final String id, final Class<T> clazz) {
     try {
       MongoCollection<Document> collection = mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName);
-        return collection.find(Filters.eq("_id", id), clazz).limit(1).first();
+      return collection.find(Filters.eq("_id", id), clazz).limit(1).first();
     } catch (Exception ex) {
       LOGGER.log(Level.WARNING, "Failed to read config from MongoDB", ex);
       return null;
@@ -80,19 +80,15 @@ public final class MongoConfigRepository implements ConfigRepository {
     ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
     for (String discriminator : CollectionUtils.nullSafeList(bsonDiscriminators)) {
       try {
-        pojoCodecProviderBuilder.register(ClassModel.builder(Class.forName(discriminator, true, classLoader))
-            .enableDiscriminator(true)
-            .build());
+        pojoCodecProviderBuilder.register(
+            ClassModel.builder(Class.forName(discriminator, true, classLoader)).enableDiscriminator(true).build());
       } catch (ClassNotFoundException ex) {
         // Ignore
       }
     }
-    CodecRegistry codecRegistry = fromRegistries(
-        MongoClientSettings.getDefaultCodecRegistry(),
+    CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
         fromProviders(pojoCodecProviderBuilder.build()));
-    return MongoClientSettings.builder().applicationName("agent-engine")
-        .applyConnectionString(connectionString)
-        .codecRegistry(codecRegistry)
-        .build();
+    return MongoClientSettings.builder().applicationName("agent-engine").applyConnectionString(connectionString)
+        .codecRegistry(codecRegistry).build();
   }
 }

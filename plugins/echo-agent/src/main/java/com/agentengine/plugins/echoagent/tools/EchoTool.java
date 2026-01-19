@@ -1,9 +1,9 @@
 package com.agentengine.plugins.echoagent.tools;
 
-import com.agentengine.engine.tools.AgentTool;
+import com.agentengine.engine.tools.Tool;
 import java.util.Map;
 
-public final class EchoTool implements AgentTool {
+public final class EchoTool implements Tool {
   @Override
   public String name() {
     return "echo";

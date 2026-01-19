@@ -25,9 +25,7 @@ public final class LlamaCppServerUtils {
   private static final Duration READY_POLL_INTERVAL = Duration.ofMillis(500);
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
-  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-      .connectTimeout(Duration.ofSeconds(2))
-      .build();
+  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
   private LlamaCppServerUtils() {
   }
@@ -167,10 +165,7 @@ public final class LlamaCppServerUtils {
 
   private static boolean isModelReady(final URI modelsEndpoint) {
     try {
-      HttpRequest request = HttpRequest.newBuilder(modelsEndpoint)
-          .timeout(Duration.ofSeconds(2))
-          .GET()
-          .build();
+      HttpRequest request = HttpRequest.newBuilder(modelsEndpoint).timeout(Duration.ofSeconds(2)).GET().build();
       HttpResponse<Void> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding());
       int statusCode = response.statusCode();
       if (statusCode == 404) {
