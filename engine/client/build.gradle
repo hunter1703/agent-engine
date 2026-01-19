@@ -1,3 +1,7 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
 dependencies {
     implementation 'com.alibaba.fastjson2:fastjson2:2.0.48'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.17.1'

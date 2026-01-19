@@ -1,6 +1,6 @@
 plugins {
-    id 'application'
-    id 'io.quarkus' version '3.22.2'
+    id 'com.agentengine.java-application-conventions'
+    id 'io.quarkus' version '3.23.0'
 }
 
 dependencies {

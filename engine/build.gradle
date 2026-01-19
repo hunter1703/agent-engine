@@ -1,5 +1,6 @@
 plugins {
     id 'jacoco'
+    id 'com.agentengine.java-library-conventions'
 }
 
 dependencies {

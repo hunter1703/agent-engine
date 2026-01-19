@@ -9,8 +9,8 @@ allprojects {
 subprojects {
     repositories {
         mavenCentral()
+        mavenLocal()
     }
-    apply plugin: 'com.agentengine.java-base-conventions'
 }
 
 final def coreModules = [

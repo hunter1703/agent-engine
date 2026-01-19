@@ -1,3 +1,7 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
 dependencies {
     implementation project(':engine')
     implementation project(':engine:client')
