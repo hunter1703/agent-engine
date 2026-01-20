@@ -1,12 +1,12 @@
-package com.agentengine.api.handlers;
+package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.api.AgentResponse;
-import com.agentengine.api.MessageDto;
-import com.agentengine.api.PromptResponse;
+import com.agentengine.interfaces.rest.dto.AgentResponse;
+import com.agentengine.interfaces.rest.dto.MessageDto;
+import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.interfaces.AgentManager;
+import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 import java.util.List;
 

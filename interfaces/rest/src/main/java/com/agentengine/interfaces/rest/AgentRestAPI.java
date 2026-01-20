@@ -1,6 +1,9 @@
-package com.agentengine.api;
+package com.agentengine.interfaces.rest;
 
-import com.agentengine.api.handlers.AgentRequestHandler;
+import com.agentengine.interfaces.rest.dto.AgentResponse;
+import com.agentengine.interfaces.rest.dto.InvokeResponse;
+import com.agentengine.interfaces.rest.dto.PromptResponse;
+import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.events.AgentEvent;

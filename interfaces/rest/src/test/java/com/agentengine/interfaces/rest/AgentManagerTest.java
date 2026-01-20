@@ -1,4 +1,4 @@
-package com.agentengine.interfaces;
+package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,6 +18,7 @@ import com.agentengine.engine.client.beans.config.ConfigLoader;
 import com.agentengine.engine.client.beans.config.HybridEngineConfig;
 import com.agentengine.engine.client.builders.AgentBuilder;
 import com.agentengine.engine.client.builders.AgentBuilderFactory;
+import com.agentengine.interfaces.rest.services.AgentManager;
 import org.junit.jupiter.api.Test;
 
 class AgentManagerTest {

@@ -1,4 +1,4 @@
-package com.agentengine.api.handlers;
+package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
@@ -7,7 +7,11 @@ import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
 import com.agentengine.engine.events.AgentEventPublisher;
 import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.interfaces.AgentManager;
+import com.agentengine.interfaces.rest.services.AGUIAgent;
+import com.agentengine.interfaces.rest.services.AGUISubscriber;
+import com.agentengine.interfaces.rest.services.AgentManager;
+import com.agui.core.agent.RunAgentParameters;
+import com.agui.core.event.BaseEvent;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Singleton;
 
@@ -28,8 +32,8 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
 
   @SuppressWarnings("unchecked")
   @Override
-  public Multi<AgentEvent> handle(final AgentRequest request) {
-    final AgentEngine engine = getOrCreateEngine(request);
+  public Multi<? extends BaseEvent> handle(final AgentRequest request) {
+    final AGUIAgent engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     return Multi.createFrom().emitter(emitter -> {
       AtomicBoolean active = new AtomicBoolean(true);
@@ -46,7 +50,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
         }
       };
       engine.registerListener(sessionId, new AgentEventAdapter(publisher));
-      engine.invoke(sessionId, Message.user(request.getMessage()));
+      engine.runAgent(new RunAgentParameters.Builder().threadId(sessionId).build(), new AGUISubscriber(emitter));
       emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "done")));
       emitter.complete();
     });

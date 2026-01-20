@@ -1,4 +1,4 @@
-package com.agentengine.api.handlers;
+package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;

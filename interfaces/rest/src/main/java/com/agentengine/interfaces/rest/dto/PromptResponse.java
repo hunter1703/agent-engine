@@ -1,4 +1,4 @@
-package com.agentengine.api;
+package com.agentengine.interfaces.rest.dto;
 
 import java.util.List;
 

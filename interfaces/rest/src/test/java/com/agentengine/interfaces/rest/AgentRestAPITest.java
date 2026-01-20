@@ -1,4 +1,4 @@
-package com.agentengine.api;
+package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -6,16 +6,19 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.api.handlers.AgentRequestHandler;
-import com.agentengine.api.handlers.BuildPromptRequestHandler;
-import com.agentengine.api.handlers.InvokeAgentRequestHandler;
-import com.agentengine.api.handlers.StreamingInvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.dto.AgentResponse;
+import com.agentengine.interfaces.rest.dto.InvokeResponse;
+import com.agentengine.interfaces.rest.dto.PromptResponse;
+import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
+import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.client.beans.session.Message;
 import com.agentengine.engine.client.beans.session.Role;
-import com.agentengine.interfaces.AgentManager;
+import com.agentengine.interfaces.rest.services.AgentManager;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;

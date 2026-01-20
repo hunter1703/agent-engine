@@ -1,8 +1,9 @@
-package com.agentengine.api.handlers;
+package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.interfaces.AgentManager;
+import com.agentengine.interfaces.rest.services.AGUIAgent;
+import com.agentengine.interfaces.rest.services.AgentManager;
 
 public abstract class AbstractAgentRequestHandler implements AgentRequestHandler {
 
@@ -12,7 +13,7 @@ public abstract class AbstractAgentRequestHandler implements AgentRequestHandler
     this.agentManager = agentManager;
   }
 
-  protected AgentEngine getOrCreateEngine(final AgentRequest request) {
+  protected AGUIAgent getOrCreateEngine(final AgentRequest request) {
     return agentManager.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
   }
 }

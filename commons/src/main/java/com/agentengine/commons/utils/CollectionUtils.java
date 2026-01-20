@@ -36,6 +36,13 @@ public final class CollectionUtils {
     return (String) map.get(key);
   }
 
+  public static <T> T getFirst(final Collection<T> collection) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return null;
+    }
+    return collection.iterator().next();
+  }
+
   public static Long getLongValueFromMap(final Map<String, Object> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;

@@ -1,12 +1,12 @@
-package com.agentengine.api.handlers;
+package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.api.AgentResponse;
-import com.agentengine.api.InvokeResponse;
+import com.agentengine.interfaces.rest.dto.AgentResponse;
+import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.interfaces.AgentManager;
+import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 
 @Singleton

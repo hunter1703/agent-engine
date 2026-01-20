@@ -1,4 +1,4 @@
-package com.agentengine.api;
+package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,11 +14,11 @@ import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.client.AgentListener;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.interfaces.AgentManager;
-import com.agentengine.api.handlers.BuildPromptRequestHandler;
-import com.agentengine.api.handlers.AgentRequestHandler;
-import com.agentengine.api.handlers.InvokeAgentRequestHandler;
-import com.agentengine.api.handlers.StreamingInvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
+import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.services.AgentManager;
 import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.inject.Instance;
 import java.time.Duration;
