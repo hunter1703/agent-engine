@@ -7,11 +7,11 @@ import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.StringUtils;
 import com.agentengine.commons.utils.TemplateUtils;
-import com.agentengine.engine.client.beans.ToolExecution;
-import com.agentengine.engine.client.message.Message;
-import com.agentengine.engine.client.message.ToolCall;
+import com.agentengine.engine.client.beans.session.ToolExecution;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.ToolCall;
 import com.agentengine.engine.client.state.SessionStore;
-import com.agentengine.engine.client.beans.ToolRequest;
+import com.agentengine.engine.client.beans.session.ToolRequest;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.tools.Tool;
@@ -19,6 +19,7 @@ import com.agentengine.engine.utils.EngineUtils;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class HybridEngine extends AbstractAgentEngine {
   private static final String MISSING_TOOL_AND_FINAL_MESSAGE = "You must provide at least a final answer or tool requests as defined in protocol.";
@@ -73,7 +74,7 @@ public class HybridEngine extends AbstractAgentEngine {
         sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
         continue;
       }
-      executeToolRequests(sessionId, result, toolRequests);
+      executeToolRequests(sessionId, toolRequests);
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
 
@@ -143,7 +144,7 @@ public class HybridEngine extends AbstractAgentEngine {
     return STR."\{sessionId}_tool";
   }
 
-  private Map<String, ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests) {
+  private List<ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests) {
     final String message = TemplateUtils.renderTemplateForName("hybrid/tool_assistant_json.txt", Map.of("toolRequests",
         JsonUtils.toJson(toolRequests), "tool_schema", loadResourceAsString("/schemas/hybrid/tool_call_schema.json")));
     sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
@@ -182,8 +183,7 @@ public class HybridEngine extends AbstractAgentEngine {
     return buildOrderedToolCalls(toolRequests, matchedCallsById);
   }
 
-  private void executeToolRequests(final String sessionId, final Message reasoningMessage,
-      final List<String> toolRequests) {
+  private void executeToolRequests(final String sessionId, final List<String> toolRequests) {
     if (CollectionUtils.isEmpty(toolRequests)) {
       return;
     }
@@ -191,53 +191,35 @@ public class HybridEngine extends AbstractAgentEngine {
     // assistant context
     // sessionStore.appendMessage(getToolSessionId(sessionId),
     // cloneMessage(reasoningMessage));
-    executeToolPlan(sessionId, toolRequests, 1);
+    executeToolPlan(sessionId, toolRequests);
   }
 
-  private void executeToolPlan(final String sessionId, final List<String> toolRequests, int numTries) {
-    List<ToolRequest> failedToolRequests = new ArrayList<>();
-    List<ToolRequest> remainingToolRequests = CollectionUtils
-        .nullSafeMutableList(EngineUtils.parseToolRequestInfo(toolRequests));
-    final List<ToolExecution> allExecutions = new ArrayList<>();
-    do {
-      numTries--;
-      final Map<String, ToolCall> toolCalls = runToolAssistant(sessionId, remainingToolRequests);
-      final Collection<ToolCall> allToolCalls = toolCalls.values();
-      invokeListeners(listener -> listener.onToolPlan(sessionId, allToolCalls));
-      if (CollectionUtils.isEmpty(toolCalls)) {
-        return;
-      }
-      final List<ToolExecution> executions = _executeTools(allToolCalls);
-      executions
-          .forEach(toolExecution -> invokeListeners(listener -> listener.onToolExecution(sessionId, toolExecution)));
-      final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
-          execution -> execution.getToolCall() == null ? null : execution.getToolCall().id(), Function.identity());
-      final List<ToolCall> failed = new ArrayList<>();
-      final Map<String, String> failedToolsVsErrors = new HashMap<>();
-      for (final ToolRequest toolRequest : remainingToolRequests) {
-        final String id = toolRequest.id();
-        final ToolCall toolCall = toolCalls.get(id);
-        final ToolExecution toolResult = toolCallIdVsResult.get(id);
-        if (numTries == 0 || (toolResult != null && "ok".equals(toolResult.getStatus()))) {
-          allExecutions.add(toolResult);
-        } else {
-          failed.add(toolCall);
-          failedToolsVsErrors.put(JsonUtils.toJson(toolCall),
-              toolResult == null ? "Missing tool execution" : toolResult.getOutput());
-          failedToolRequests.add(toolRequest);
-        }
-      }
+  private void executeToolPlan(final String sessionId, final List<String> toolRequests) {
+    // Process initial requests
+    final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests));
+    if (CollectionUtils.isEmpty(toolCalls)) {
+      sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system("Unable to execute tools. Please try alternate approach"));
+      return;
+    }
 
-      final String failureMessage = TemplateUtils.renderTemplateForName("shared/tool_failure.txt",
-          Map.of("failures", failedToolsVsErrors));
-      if (CollectionUtils.isNotEmpty(failed) && numTries > 0) {
-        sessionStore.appendMessage(getToolSessionId(sessionId), Message.system(failureMessage));
-      }
-      remainingToolRequests = failedToolRequests;
-      failedToolRequests.clear();
-    } while (numTries > 0);
+    invokeListeners(listener -> listener.onToolPlan(sessionId, toolCalls));
 
-    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(buildToolResultMessage(allExecutions)));
+    final List<ToolExecution> executions = _executeTools(toolCalls);
+    emitToolExecutionEvents(sessionId, executions);
+    final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions, execution -> execution.getToolCall().id(), Function.identity());
+    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(buildToolResultMessage(toolCalls.stream().map(toolCall -> toolCallIdVsResult.get(toolCall.id())).toList())));
+  }
+
+  /**
+   * Emits tool execution events for known tools (excluding unknown tools)
+   */
+  private void emitToolExecutionEvents(String sessionId, List<ToolExecution> executions) {
+    for (ToolExecution toolExecution : executions) {
+      // Skip execution events for unknown tools (identified by specific status)
+      if (!"unknown".equals(toolExecution.getStatus())) {
+        invokeListeners(listener -> listener.onToolExecution(sessionId, toolExecution));
+      }
+    }
   }
 
   private void appendUserMessage(final String sessionId, final Message message) {
@@ -269,7 +251,7 @@ public class HybridEngine extends AbstractAgentEngine {
       String status = "ok";
       String output;
       if (tool == null) {
-        status = "error";
+        status = "unknown";  // Specific status for unknown tools
         output = STR."Unknown tool: \{call.name()}";
       } else {
         try {
@@ -333,10 +315,11 @@ public class HybridEngine extends AbstractAgentEngine {
     return remaining;
   }
 
-  private static Map<String, ToolCall> buildOrderedToolCalls(final List<ToolRequest> toolRequests,
+  // returns tool calls in order of requests, skipping unmatched requests
+  private static List<ToolCall> buildOrderedToolCalls(final List<ToolRequest> toolRequests,
       final Map<String, ToolCall> matchedCalls) {
     if (CollectionUtils.isEmpty(toolRequests) || CollectionUtils.isEmpty(matchedCalls)) {
-      return Map.of();
+      return List.of();
     }
     final List<ToolCall> ordered = new ArrayList<>();
     for (ToolRequest requestInfo : toolRequests) {
@@ -348,6 +331,6 @@ public class HybridEngine extends AbstractAgentEngine {
         ordered.add(call);
       }
     }
-    return CollectionUtils.transformToMap(ordered, ToolCall::id, Function.identity());
+    return ordered;
   }
 }
