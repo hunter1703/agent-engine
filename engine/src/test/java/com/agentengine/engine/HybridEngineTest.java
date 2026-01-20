@@ -62,7 +62,7 @@ class HybridEngineTest {
   }
 
   @Test
-  void invokeTriggersToolRepairAndHandlesToolFailure() {
+  void invokeHandlesToolExecution() {
     SessionStore sessionStore = new InMemorySessionStore();
     String sessionId = "session";
 
@@ -72,14 +72,11 @@ class HybridEngineTest {
 
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(first, second));
 
-    String badToolPayload = "{" + "\"toolRequests\":[{\"id\":\"wrong\",\"name\":\"echo\"}]" + "}";
-    String goodToolPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\"}]" + "}";
+    String toolPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\"}]" + "}";
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(new Message(Role.ASSISTANT, badToolPayload, null, null, null),
-            new Message(Role.ASSISTANT, goodToolPayload, null, null, null),
-            new Message(Role.ASSISTANT, goodToolPayload, null, null, null)));
+        List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
 
-    FlakyTool tool = new FlakyTool();
+    EchoTool tool = new EchoTool();  // Using EchoTool instead of FlakyTool since retries are removed
     List<Tool> tools = List.of(tool);
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
@@ -92,12 +89,12 @@ class HybridEngineTest {
     Message result = engine.invoke(sessionId, Message.user("hello"));
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.toolRepairs).isGreaterThanOrEqualTo(1);
+    // With simplified logic, no repairs should be triggered
+    assertThat(listener.toolRepairs).isEqualTo(0);
     assertThat(listener.toolExecutions).isNotEmpty();
-    assertThat(tool.invocations).isGreaterThanOrEqualTo(2);
 
     List<Message> toolMessages = sessionStore.getMessages(sessionId + "_tool");
-    assertThat(toolMessages).anyMatch(message -> message.getRole() == Role.SYSTEM);
+    assertThat(toolMessages).isNotEmpty();
   }
 
   @Test

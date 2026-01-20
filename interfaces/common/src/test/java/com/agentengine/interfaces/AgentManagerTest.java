@@ -9,14 +9,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.ConfigRepository;
-import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.ConfigLoader;
-import com.agentengine.engine.beans.config.HybridEngineConfig;
-import com.agentengine.engine.builders.AgentBuilder;
-import com.agentengine.engine.builders.AgentBuilderFactory;
 import java.nio.file.Paths;
+
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.ConfigRepository;
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.beans.config.ConfigLoader;
+import com.agentengine.engine.client.beans.config.HybridEngineConfig;
+import com.agentengine.engine.client.builders.AgentBuilder;
+import com.agentengine.engine.client.builders.AgentBuilderFactory;
 import org.junit.jupiter.api.Test;
 
 class AgentManagerTest {
