@@ -76,7 +76,7 @@ class HybridEngineTest {
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
         List.of(new Message(Role.ASSISTANT, toolPayload, null, null, null)));
 
-    EchoTool tool = new EchoTool();  // Using EchoTool instead of FlakyTool since retries are removed
+    EchoTool tool = new EchoTool(); // Using EchoTool instead of FlakyTool since retries are removed
     List<Tool> tools = List.of(tool);
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);

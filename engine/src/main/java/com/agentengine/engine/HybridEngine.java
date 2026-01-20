@@ -198,7 +198,8 @@ public class HybridEngine extends AbstractAgentEngine {
     // Process initial requests
     final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests));
     if (CollectionUtils.isEmpty(toolCalls)) {
-      sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system("Unable to execute tools. Please try alternate approach"));
+      sessionStore.appendMessage(getReasoningSessionId(sessionId),
+          Message.system("Unable to execute tools. Please try alternate approach"));
       return;
     }
 
@@ -206,8 +207,10 @@ public class HybridEngine extends AbstractAgentEngine {
 
     final List<ToolExecution> executions = _executeTools(toolCalls);
     emitToolExecutionEvents(sessionId, executions);
-    final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions, execution -> execution.getToolCall().id(), Function.identity());
-    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(buildToolResultMessage(toolCalls.stream().map(toolCall -> toolCallIdVsResult.get(toolCall.id())).toList())));
+    final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
+        execution -> execution.getToolCall().id(), Function.identity());
+    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(
+        buildToolResultMessage(toolCalls.stream().map(toolCall -> toolCallIdVsResult.get(toolCall.id())).toList())));
   }
 
   /**
