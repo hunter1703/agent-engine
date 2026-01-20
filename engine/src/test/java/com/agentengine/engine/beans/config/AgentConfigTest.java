@@ -3,6 +3,8 @@ package com.agentengine.engine.beans.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.beans.config.HybridEngineConfig;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigTest {

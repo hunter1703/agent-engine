@@ -1,13 +1,19 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
-import com.agentengine.engine.message.ToolCall;
-import com.agentengine.engine.state.SessionStore;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.commons.utils.JsonUtils;
+import com.agentengine.commons.utils.TemplateUtils;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
+import com.agentengine.engine.client.beans.session.ToolCall;
+import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.client.beans.session.ToolRequest;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

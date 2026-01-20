@@ -2,7 +2,8 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.message.Message;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.AgentListener;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;

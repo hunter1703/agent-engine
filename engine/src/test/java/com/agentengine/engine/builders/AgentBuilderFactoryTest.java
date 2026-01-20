@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.beans.config.AgentConfig;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.builders.AgentBuilder;
+import com.agentengine.engine.builders.AgentBuilderFactoryImpl;
+import com.agentengine.engine.client.builders.AgentBuilderFactory;
 import jakarta.enterprise.inject.Instance;
-import java.util.List;
+
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +25,7 @@ class AgentBuilderFactoryTest {
     when(instance.stream()).thenReturn(Stream.of(named, other));
     HybridAgentBuilder fallback = mock(HybridAgentBuilder.class);
 
-    AgentBuilderFactory factory = new AgentBuilderFactory(instance, fallback);
+    AgentBuilderFactory factory = new AgentBuilderFactoryImpl(instance, fallback);
 
     assertThat(factory.getBuilder("alpha")).isSameAs(named);
     assertThat(factory.getBuilder("missing")).isSameAs(fallback);

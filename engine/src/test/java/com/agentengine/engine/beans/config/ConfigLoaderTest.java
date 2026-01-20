@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.beans.config.ConfigLoaderImpl;
+import com.agentengine.engine.client.beans.config.ConfigLoader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -21,7 +25,7 @@ class ConfigLoaderTest {
         + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
         + "}");
 
-    ConfigLoader loader = new ConfigLoader();
+    ConfigLoader loader = new ConfigLoaderImpl();
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getReasoning()).isEqualTo("reasoner.json");
@@ -34,7 +38,7 @@ class ConfigLoaderTest {
     Files.writeString(configPath,
         "engine:\n  type: hybrid\n  reasoning: reasoning.json\n  systemPrompt: hello\n  tool: tool.json\n");
 
-    ConfigLoader loader = new ConfigLoader();
+    ConfigLoader loader = new ConfigLoaderImpl();
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getReasoning()).isEqualTo("reasoning.json");
@@ -48,7 +52,7 @@ class ConfigLoaderTest {
         + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"Hello\",\"tool\":\"tool.json\"}"
         + "}");
 
-    ConfigLoader loader = new ConfigLoader();
+    ConfigLoader loader = new ConfigLoaderImpl();
     AgentConfig config = loader.loadConfig(configPath);
 
     assertThat(config.getEngine().getSystemPrompt()).isEqualTo("Hello");
@@ -58,7 +62,7 @@ class ConfigLoaderTest {
   void loadConfigFailsWhenFileIsMissing() {
     Path missingPath = tempDir.resolve("missing.json");
 
-    ConfigLoader loader = new ConfigLoader();
+    ConfigLoader loader = new ConfigLoaderImpl();
 
     assertThatThrownBy(() -> loader.loadConfig(missingPath)).isInstanceOf(RuntimeException.class)
         .hasCauseInstanceOf(FileNotFoundException.class);

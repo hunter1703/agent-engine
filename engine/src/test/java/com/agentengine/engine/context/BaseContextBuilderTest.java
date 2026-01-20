@@ -2,8 +2,8 @@ package com.agentengine.engine.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.tools.Tool;
 import java.util.List;

@@ -8,17 +8,13 @@ dependencies {
             "${property('quarkusPlatformGroupId')}:${property('quarkusPlatformArtifactId')}:${property('quarkusPlatformVersion')}"
     ))
     implementation project(':interfaces:common')
-    implementation project(':engine')
+    implementation project(':commons')
 
     // Quarkus extensions
     implementation 'io.quarkus:quarkus-websockets'
     implementation 'io.quarkus:quarkus-arc'
     implementation 'io.quarkus:quarkus-smallrye-health'
 
-    // Jackson for JSON processing
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
 
     // Testing
     testImplementation 'io.quarkus:quarkus-junit5'

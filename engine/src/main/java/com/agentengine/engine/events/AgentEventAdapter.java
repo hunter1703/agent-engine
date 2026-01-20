@@ -1,11 +1,11 @@
 package com.agentengine.engine.events;
 
-import com.agentengine.engine.AgentListener;
-import com.agentengine.engine.beans.ToolExecution;
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.ToolCall;
-import com.agentengine.engine.utils.CollectionUtils;
-import com.agentengine.engine.utils.ToolRequest;
+import com.agentengine.engine.client.AgentListener;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.engine.client.beans.session.ToolExecution;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.ToolCall;
+import com.agentengine.engine.client.beans.session.ToolRequest;
 
 import java.util.Collection;
 import java.util.HashMap;

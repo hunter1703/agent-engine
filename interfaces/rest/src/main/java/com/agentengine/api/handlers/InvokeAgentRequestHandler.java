@@ -2,19 +2,18 @@ package com.agentengine.api.handlers;
 
 import com.agentengine.api.AgentResponse;
 import com.agentengine.api.InvokeResponse;
-import com.agentengine.api.handlers.AgentRequestHandler;
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.message.Message;
-import com.agentengine.interfaces.AgentService;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.interfaces.AgentManager;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler {
 
-  public InvokeAgentRequestHandler(final AgentService agentService) {
-    super(agentService);
+  public InvokeAgentRequestHandler(final AgentManager agentManager) {
+    super(agentManager);
   }
 
   @Override

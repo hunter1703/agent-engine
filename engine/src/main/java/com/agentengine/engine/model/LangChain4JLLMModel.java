@@ -1,9 +1,8 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
-import com.agentengine.engine.message.ToolCall;
-import com.agentengine.engine.utils.CollectionUtils;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
+import com.agentengine.engine.utils.EngineUtils;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -36,7 +35,7 @@ public final class LangChain4JLLMModel implements LLMModel {
     }
     final ChatResponse response = model.chat(prompt);
     final AiMessage aiMessage = response.aiMessage();
-    return Message.assistant(aiMessage.text(), aiMessage.toolExecutionRequests());
+    return Message.assistant(aiMessage.text(), EngineUtils.transformToToolCalls(aiMessage.toolExecutionRequests()));
   }
 
   @Override

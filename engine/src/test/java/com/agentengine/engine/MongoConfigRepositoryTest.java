@@ -2,13 +2,13 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.HybridEngineConfig;
-import com.agentengine.engine.beans.config.LastNContextConfig;
-import com.agentengine.engine.beans.config.MemoryStateStoreConfig;
-import com.agentengine.engine.beans.config.MongoStateStoreConfig;
-import com.agentengine.engine.beans.config.RouterEngineConfig;
-import com.agentengine.engine.beans.config.SummarizingContextConfig;
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.beans.config.HybridEngineConfig;
+import com.agentengine.engine.client.beans.config.LastNContextConfig;
+import com.agentengine.engine.client.beans.config.MemoryStateStoreConfig;
+import com.agentengine.engine.client.beans.config.MongoStateStoreConfig;
+import com.agentengine.engine.client.beans.config.RouterEngineConfig;
+import com.agentengine.engine.client.beans.config.SummarizingContextConfig;
 import com.mongodb.MongoClientSettings;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;

@@ -2,7 +2,7 @@ package com.agentengine.plugins.shellagent.tools;
 
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.tools.ToolProvider;
-import com.agentengine.engine.utils.CollectionUtils;
+import com.agentengine.commons.utils.CollectionUtils;
 import java.time.Duration;
 import java.util.Map;
 

@@ -2,8 +2,8 @@ package com.agentengine.engine.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.beans.config.ModelConfig;
-import com.agentengine.engine.beans.config.ModelConfig.Provider;
+import com.agentengine.engine.client.beans.config.ModelConfig;
+import com.agentengine.engine.client.beans.config.ModelConfig.Provider;
 import com.sun.net.httpserver.HttpServer;
 import java.net.URI;
 import java.net.InetSocketAddress;

@@ -1,7 +1,8 @@
 package com.agentengine.engine.state;
 
-import com.agentengine.engine.beans.Summary;
-import com.agentengine.engine.message.Message;
+import com.agentengine.engine.client.beans.session.Summary;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.state.SessionStore;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;

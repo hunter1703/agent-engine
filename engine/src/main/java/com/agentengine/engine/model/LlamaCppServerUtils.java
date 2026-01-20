@@ -1,8 +1,8 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.beans.config.ModelConfig;
-import com.agentengine.engine.utils.CollectionUtils;
-import com.agentengine.engine.utils.StringUtils;
+import com.agentengine.engine.client.beans.config.ModelConfig;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.commons.utils.StringUtils;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;

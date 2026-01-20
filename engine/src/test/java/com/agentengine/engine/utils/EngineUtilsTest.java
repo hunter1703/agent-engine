@@ -2,10 +2,12 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
+import com.agentengine.commons.utils.JsonUtils;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
 import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.state.SessionStore;
+import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.client.beans.session.ToolRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.List;

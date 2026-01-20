@@ -1,9 +1,9 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.beans.config.ToolsConfig;
+import com.agentengine.engine.client.beans.config.ToolsConfig;
 import com.agentengine.engine.plugins.PluginLoader;
-import com.agentengine.engine.utils.CollectionUtils;
-import com.agentengine.engine.utils.StringUtils;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.commons.utils.StringUtils;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -18,7 +18,12 @@ public final class ToolRegistry {
       return Collections.emptyList();
     }
     final List<Tool> tools = new ArrayList<>();
-    final ServiceLoader<ToolProvider> loader = ServiceLoader.load(ToolProvider.class, PluginLoader.getClassLoader());
+    // Try to use context classloader first (useful for tests), fallback to PluginLoader classloader
+    ClassLoader serviceClassLoader = Thread.currentThread().getContextClassLoader();
+    if (serviceClassLoader.getResource("META-INF/services/com.agentengine.engine.tools.ToolProvider") == null) {
+      serviceClassLoader = PluginLoader.getClassLoader();
+    }
+    final ServiceLoader<ToolProvider> loader = ServiceLoader.load(ToolProvider.class, serviceClassLoader);
     final List<String> enabled = CollectionUtils.isEmpty(toolsConfig.getEnabled())
         ? List.of("ALL")
         : toolsConfig.getEnabled();

@@ -2,7 +2,7 @@ package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.beans.config.ToolsConfig;
+import com.agentengine.engine.client.beans.config.ToolsConfig;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

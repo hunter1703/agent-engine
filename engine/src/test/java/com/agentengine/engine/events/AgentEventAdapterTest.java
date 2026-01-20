@@ -2,10 +2,10 @@ package com.agentengine.engine.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.beans.ToolExecution;
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
-import com.agentengine.engine.message.ToolCall;
+import com.agentengine.engine.client.beans.session.ToolExecution;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
+import com.agentengine.engine.client.beans.session.ToolCall;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +55,7 @@ class AgentEventAdapterTest {
 
     Map<?, ?> payload = (Map<?, ?>) published.get(1).payload();
     assertThat(payload.get("responseContent")).isEqualTo("done");
-    assertThat(payload.get("responseThoughts")).isEqualTo("thoughts");
+    assertThat(payload.get("responseThoughts")).isNull();
   }
 
   @Test

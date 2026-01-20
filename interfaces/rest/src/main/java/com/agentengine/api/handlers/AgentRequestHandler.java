@@ -1,9 +1,7 @@
 package com.agentengine.api.handlers;
 
-import com.agentengine.api.AgentResponse;
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
 
 public interface AgentRequestHandler {
 

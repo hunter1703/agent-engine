@@ -1,9 +1,9 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.state.SessionStore;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
-import com.agentengine.engine.utils.CollectionUtils;
+import com.agentengine.commons.utils.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 

@@ -1,5 +1,8 @@
 package com.agentengine.engine;
 
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.AgentListener;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;

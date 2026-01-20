@@ -1,9 +1,10 @@
 package com.agentengine.engine;
 
-import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.ModelConfig;
-import com.agentengine.engine.utils.CollectionUtils;
-import com.agentengine.engine.utils.StringUtils;
+import com.agentengine.engine.client.ConfigRepository;
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.beans.config.ModelConfig;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.commons.utils.StringUtils;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;

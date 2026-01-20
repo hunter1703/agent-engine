@@ -1,16 +1,21 @@
 package com.agentengine.engine;
 
-import static com.agentengine.engine.utils.ResourceUtils.loadResourceAsString;
+import static com.agentengine.commons.utils.ResourceUtils.loadResourceAsString;
 import static java.lang.StringTemplate.STR;
 
-import com.agentengine.engine.beans.ToolExecution;
+import com.agentengine.commons.utils.CollectionUtils;
+import com.agentengine.commons.utils.JsonUtils;
+import com.agentengine.commons.utils.StringUtils;
+import com.agentengine.commons.utils.TemplateUtils;
+import com.agentengine.engine.client.beans.ToolExecution;
+import com.agentengine.engine.client.message.Message;
+import com.agentengine.engine.client.message.ToolCall;
+import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.client.beans.ToolRequest;
 import com.agentengine.engine.context.ContextBuilder;
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.ToolCall;
 import com.agentengine.engine.model.LLMModel;
-import com.agentengine.engine.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
-import com.agentengine.engine.utils.*;
+import com.agentengine.engine.utils.EngineUtils;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;

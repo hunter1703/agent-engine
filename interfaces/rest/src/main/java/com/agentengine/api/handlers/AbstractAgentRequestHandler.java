@@ -1,18 +1,18 @@
 package com.agentengine.api.handlers;
 
-import com.agentengine.client.AgentRequest;
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.interfaces.AgentService;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.interfaces.AgentManager;
 
 public abstract class AbstractAgentRequestHandler implements AgentRequestHandler {
 
-  private final AgentService agentService;
+  private final AgentManager agentManager;
 
-  public AbstractAgentRequestHandler(AgentService agentService) {
-    this.agentService = agentService;
+  public AbstractAgentRequestHandler(AgentManager agentManager) {
+    this.agentManager = agentManager;
   }
 
   protected AgentEngine getOrCreateEngine(final AgentRequest request) {
-    return agentService.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
+    return agentManager.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
   }
 }

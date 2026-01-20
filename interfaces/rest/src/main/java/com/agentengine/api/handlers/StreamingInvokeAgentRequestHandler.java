@@ -1,15 +1,13 @@
 package com.agentengine.api.handlers;
 
-import com.agentengine.api.AgentResponse;
-import com.agentengine.api.InvokeResponse;
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
 import com.agentengine.engine.events.AgentEventPublisher;
-import com.agentengine.engine.message.Message;
-import com.agentengine.interfaces.AgentService;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.interfaces.AgentManager;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Singleton;
 
@@ -19,8 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Singleton
 public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHandler {
 
-  public StreamingInvokeAgentRequestHandler(final AgentService agentService) {
-    super(agentService);
+  public StreamingInvokeAgentRequestHandler(final AgentManager agentManager) {
+    super(agentManager);
   }
 
   @Override

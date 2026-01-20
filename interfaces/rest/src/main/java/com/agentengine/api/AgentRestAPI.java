@@ -1,14 +1,10 @@
 package com.agentengine.api;
 
 import com.agentengine.api.handlers.AgentRequestHandler;
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.events.AgentEvent;
-import com.agentengine.engine.events.AgentEventAdapter;
-import com.agentengine.engine.events.AgentEventPublisher;
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.utils.StringUtils;
+import com.agentengine.commons.utils.StringUtils;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
@@ -17,10 +13,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

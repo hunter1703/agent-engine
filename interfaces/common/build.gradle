@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':engine')
+    implementation project(':commons')
     implementation project(':engine:client')
     implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 

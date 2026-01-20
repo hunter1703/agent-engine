@@ -7,12 +7,12 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.MongoConfigRepository;
-import com.agentengine.engine.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.HybridEngineConfig;
-import com.agentengine.engine.beans.config.LastNContextConfig;
-import com.agentengine.engine.beans.config.ModelConfig;
-import com.agentengine.engine.beans.config.ToolsConfig;
-import com.agentengine.engine.message.Message;
+import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.client.beans.config.HybridEngineConfig;
+import com.agentengine.engine.client.beans.config.LastNContextConfig;
+import com.agentengine.engine.client.beans.config.ModelConfig;
+import com.agentengine.engine.client.beans.config.ToolsConfig;
+import com.agentengine.engine.client.beans.session.Message;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

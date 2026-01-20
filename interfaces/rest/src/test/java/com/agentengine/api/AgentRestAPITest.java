@@ -10,12 +10,12 @@ import com.agentengine.api.handlers.AgentRequestHandler;
 import com.agentengine.api.handlers.BuildPromptRequestHandler;
 import com.agentengine.api.handlers.InvokeAgentRequestHandler;
 import com.agentengine.api.handlers.StreamingInvokeAgentRequestHandler;
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.message.Message;
-import com.agentengine.engine.message.Role;
-import com.agentengine.interfaces.AgentService;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.client.beans.session.Role;
+import com.agentengine.interfaces.AgentManager;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
@@ -26,7 +26,7 @@ class AgentRestAPITest {
 
   @Test
   void invokeReturnsSessionAndResponse() {
-    AgentService service = mock(AgentService.class);
+    AgentManager service = mock(AgentManager.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(eq("session"), any())).thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
@@ -50,7 +50,7 @@ class AgentRestAPITest {
 
   @Test
   void invokeHandlesNullEngineResponse() {
-    AgentService service = mock(AgentService.class);
+    AgentManager service = mock(AgentManager.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(eq("session"), any())).thenReturn(null);
@@ -74,7 +74,7 @@ class AgentRestAPITest {
 
   @Test
   void invokeBuildPromptReturnsMessages() {
-    AgentService service = mock(AgentService.class);
+    AgentManager service = mock(AgentManager.class);
     AgentEngine engine = mock(AgentEngine.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.buildPrompt("session")).thenReturn(List.of(Message.system("sys"), Message.user("hi")));
@@ -100,7 +100,7 @@ class AgentRestAPITest {
     assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
   }
 
-  private static Instance<AgentRequestHandler> buildHandlers(final AgentService service) {
+  private static Instance<AgentRequestHandler> buildHandlers(final AgentManager service) {
     InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);

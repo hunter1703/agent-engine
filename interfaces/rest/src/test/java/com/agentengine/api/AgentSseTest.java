@@ -8,13 +8,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.client.AgentRequest;
-import com.agentengine.client.AgentRequest.RequestType;
-import com.agentengine.engine.AgentEngine;
-import com.agentengine.engine.AgentListener;
+import com.agentengine.engine.client.AgentRequest;
+import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.AgentListener;
 import com.agentengine.engine.events.AgentEvent;
-import com.agentengine.engine.message.Message;
-import com.agentengine.interfaces.AgentService;
+import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.interfaces.AgentManager;
 import com.agentengine.api.handlers.BuildPromptRequestHandler;
 import com.agentengine.api.handlers.AgentRequestHandler;
 import com.agentengine.api.handlers.InvokeAgentRequestHandler;
@@ -31,7 +31,7 @@ class AgentSseTest {
 
   @Test
   void eventsStreamEmitsListenerEvents() {
-    AgentService service = mock(AgentService.class);
+    AgentManager service = mock(AgentManager.class);
     AgentEngine engine = mock(AgentEngine.class);
     AtomicReference<AgentListener> listenerRef = new AtomicReference<>();
     doAnswer(invocation -> {
@@ -67,7 +67,7 @@ class AgentSseTest {
 
   }
 
-  private static Instance<AgentRequestHandler> buildHandlers(final AgentService service) {
+  private static Instance<AgentRequestHandler> buildHandlers(final AgentManager service) {
     InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
