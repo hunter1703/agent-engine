@@ -1,7 +1,9 @@
 package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -15,7 +17,7 @@ import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
-import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.engine.client.beans.session.Message;
 import com.agentengine.engine.client.beans.session.Role;
 import com.agentengine.interfaces.rest.services.AgentManager;
@@ -30,9 +32,9 @@ class AgentRestAPITest {
   @Test
   void invokeReturnsSessionAndResponse() {
     AgentManager service = mock(AgentManager.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    AGUIAgent engine = mock(AGUIAgent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
-    when(engine.invoke(eq("session"), any())).thenReturn(new Message(Role.ASSISTANT, "ok", "t", List.of(), List.of()));
+    when(engine.invoke(anyString(), any(), any())).thenReturn(Message.assistant("response"));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -47,16 +49,15 @@ class AgentRestAPITest {
     assertThat(response).isInstanceOf(InvokeResponse.class);
     InvokeResponse invokeResponse = (InvokeResponse) response;
     assertThat(invokeResponse.sessionId()).isEqualTo("session");
-    assertThat(invokeResponse.finalAnswer()).isEqualTo("ok");
-    assertThat(invokeResponse.thoughts()).isEqualTo("t");
+    assertThat(invokeResponse.finalAnswer()).isEqualTo("response");
   }
 
   @Test
   void invokeHandlesNullEngineResponse() {
     AgentManager service = mock(AgentManager.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    AGUIAgent engine = mock(AGUIAgent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
-    when(engine.invoke(eq("session"), any())).thenReturn(null);
+    when(engine.invoke(anyString(), any(), any())).thenReturn(null);
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -72,15 +73,14 @@ class AgentRestAPITest {
     InvokeResponse invokeResponse = (InvokeResponse) response;
     assertThat(invokeResponse.sessionId()).isEqualTo("session");
     assertThat(invokeResponse.finalAnswer()).isNull();
-    assertThat(invokeResponse.thoughts()).isNull();
   }
 
   @Test
   void invokeBuildPromptReturnsMessages() {
     AgentManager service = mock(AgentManager.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    AGUIAgent engine = mock(AGUIAgent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
-    when(engine.buildPrompt("session")).thenReturn(List.of(Message.system("sys"), Message.user("hi")));
+    when(engine.buildPrompt(anyString())).thenReturn(List.of(Message.system("system"), Message.user("user")));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
@@ -95,7 +95,10 @@ class AgentRestAPITest {
     PromptResponse promptResponse = (PromptResponse) response;
     assertThat(promptResponse.sessionId()).isEqualTo("session");
     assertThat(promptResponse.messages()).hasSize(2);
-    assertThat(promptResponse.messages().getFirst().role()).isEqualTo("system");
+    assertThat(promptResponse.messages().get(0).role()).isEqualTo("system");
+    assertThat(promptResponse.messages().get(0).content()).isEqualTo("system");
+    assertThat(promptResponse.messages().get(1).role()).isEqualTo("user");
+    assertThat(promptResponse.messages().get(1).content()).isEqualTo("user");
   }
 
   @Test

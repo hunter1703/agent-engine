@@ -21,6 +21,11 @@ public class SSESubscriberTest {
 
         // Verify that we can call methods without errors
         AgentSubscriberParams mockParams = Mockito.mock(AgentSubscriberParams.class);
+        // Mock the behavior to avoid NPE
+        com.agui.core.agent.RunAgentInput mockInput = Mockito.mock(com.agui.core.agent.RunAgentInput.class);
+        Mockito.when(mockParams.input()).thenReturn(mockInput);
+        Mockito.when(mockInput.runId()).thenReturn("test-run-id");
+
         subscriber.onRunInitialized(mockParams);
 
         // Verify emitter was called

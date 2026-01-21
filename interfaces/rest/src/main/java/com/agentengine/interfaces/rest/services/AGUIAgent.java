@@ -66,7 +66,7 @@ public class AGUIAgent implements AgentEngine {
 
     @Override
     public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return agentEngine.invoke(sessionId, message, listener);
     }
 
     @Override

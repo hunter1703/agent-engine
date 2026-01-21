@@ -236,4 +236,11 @@ class EngineUtilsTest {
 
     assertThat(repairMessage).isEmpty();
   }
+
+  @Test
+  void parseToolRequestInfoHandlesEmptyList() {
+    List<ToolRequest> parsed = EngineUtils.parseToolRequestInfo(List.of());
+
+    assertThat(parsed).isEmpty();
+  }
 }

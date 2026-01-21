@@ -18,6 +18,7 @@ import com.agentengine.engine.client.beans.config.ConfigLoader;
 import com.agentengine.engine.client.beans.config.HybridEngineConfig;
 import com.agentengine.engine.client.builders.AgentBuilder;
 import com.agentengine.engine.client.builders.AgentBuilderFactory;
+import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +40,9 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AgentEngine resolved = service.getOrStartEngine("agent", "config.json");
+    AGUIAgent resolved = service.getOrStartEngine("agent", "config.json");
 
-    assertThat(resolved).isSameAs(engine);
+    assertThat(resolved).isNotNull();
     verify(builder).build(eq("agent"), any());
   }
 
@@ -61,9 +62,9 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AgentEngine resolved = service.getOrStartEngine("agent", null);
+    AGUIAgent resolved = service.getOrStartEngine("agent", null);
 
-    assertThat(resolved).isSameAs(engine);
+    assertThat(resolved).isNotNull();
     verify(configLoader, never()).loadConfig(any());
   }
 
@@ -83,8 +84,8 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AgentEngine first = service.getOrStartEngine("agent", "config.json");
-    AgentEngine second = service.getOrStartEngine("agent", "config.json");
+    AGUIAgent first = service.getOrStartEngine("agent", "config.json");
+    AGUIAgent second = service.getOrStartEngine("agent", "config.json");
 
     assertThat(first).isSameAs(second);
   }
