@@ -60,8 +60,8 @@ class HybridAgentTest {
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolPlans).hasSize(1);
     assertThat(listener.toolPlans.getFirst().iterator().next().name()).isEqualTo("echo");
-    assertThat(listener.toolExecutions).hasSize(1);
-    assertThat(listener.toolExecutions.getFirst().getOutput()).isEqualTo("hi");
+    assertThat(listener.toolResults).hasSize(1);
+    assertThat(listener.toolResults.values().iterator().next()).isEqualTo("hi");
 
     List<Message> reasoningMessages = sessionStore.getMessages(STR."\{sessionId}_reasoning");
     assertThat(reasoningMessages).anyMatch(message -> message.getRole() == Role.USER
@@ -103,7 +103,7 @@ class HybridAgentTest {
     assertThat(result.getContent()).isEqualTo("done");
     // With simplified logic, no repairs should be triggered
     assertThat(listener.toolRepairs).isEqualTo(0);
-    assertThat(listener.toolExecutions).isNotEmpty();
+    assertThat(listener.toolResults).isNotEmpty();
 
     List<Message> toolMessages = sessionStore.getMessages(sessionId + "_tool");
     assertThat(toolMessages).isNotEmpty();
@@ -164,7 +164,8 @@ class HybridAgentTest {
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.toolResults).isEmpty();
+    assertThat(listener.toolResults).hasSize(1);
+    assertThat(listener.toolResults.values().iterator().next()).contains("Unknown tool");
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
     assertThat(reasoningMessages)
         .anyMatch(message -> message.getRole() == Role.USER && message.getContent().contains("Unknown tool"));
@@ -228,7 +229,7 @@ class HybridAgentTest {
     assertThat(listener.finishedSteps).contains("Reasoning Turn 1");
     assertThat(listener.reasoningMessageStarts).isEqualTo(1);
     assertThat(listener.reasoningMessageEnds).isEqualTo(1);
-    assertThat(listener.reasoningDeltas).contains("FINAL: done");
+    assertThat(listener.reasoningDeltas).contains("done");
     assertThat(listener.textMessageStarts).hasSize(1);
     assertThat(listener.textMessageDeltas).contains("done");
     assertThat(listener.textMessageEnds).hasSize(1);
@@ -346,8 +347,8 @@ class HybridAgentTest {
   }
 
   private static final class CapturingListener implements AgentListener {
+    private final Map<String, String> toolResults = new HashMap<>();
     private final List<Collection<ToolCall>> toolPlans = new ArrayList<>();
-    private final List<ToolExecution> toolExecutions = new ArrayList<>();
     private int toolRepairs = 0;
     private final List<String> finalAnswers = new ArrayList<>();
     private final List<String> startedRuns = new ArrayList<>();
@@ -355,8 +356,8 @@ class HybridAgentTest {
     private final List<String> startedSteps = new ArrayList<>();
     private final List<String> finishedSteps = new ArrayList<>();
     private final List<String> reasoningDeltas = new ArrayList<>();
-    private int reasoningStarts = 0;
-    private int reasoningEnds = 0;
+    private int reasoningMessageStarts = 0;
+    private int reasoningMessageEnds = 0;
     private final List<String> textMessageStarts = new ArrayList<>();
     private final List<String> textMessageDeltas = new ArrayList<>();
     private final List<String> textMessageEnds = new ArrayList<>();

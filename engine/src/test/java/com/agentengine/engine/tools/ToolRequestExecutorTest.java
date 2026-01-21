@@ -69,7 +69,8 @@ class ToolRequestExecutorTest {
         executor.executeRequests(sessionId, toolRequests, listener);
 
         assertThat(listener.toolPlans).hasSize(1);
-        assertThat(listener.toolResults).isEmpty(); // Unknown tools don't emit result events
+        assertThat(listener.toolResults).hasSize(1);
+        assertThat(listener.toolResults.values().iterator().next()).contains("Unknown tool");
     }
 
     @Test
