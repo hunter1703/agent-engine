@@ -74,6 +74,10 @@ public final class CollectionUtils {
     return !isEmpty(collection);
   }
 
+  public static boolean isNotEmpty(final Map<?, ?> map) {
+    return !isEmpty(map);
+  }
+
   public static <T, K, V> Map<K, V> transformToMultiKeyMap(final Collection<T> collection,
       final Function<T, ? extends Collection<K>> keysFunction, final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();

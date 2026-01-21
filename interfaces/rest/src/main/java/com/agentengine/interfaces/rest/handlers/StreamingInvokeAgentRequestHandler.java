@@ -13,6 +13,7 @@ import com.agentengine.interfaces.rest.services.AgentManager;
 import com.agui.core.agent.RunAgentParameters;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.subscription.MultiEmitter;
 import jakarta.inject.Singleton;
 
 import java.util.Map;
@@ -32,26 +33,11 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
 
   @SuppressWarnings("unchecked")
   @Override
-  public Multi<? extends BaseEvent> handle(final AgentRequest request) {
+  public Multi<BaseEvent> handle(final AgentRequest request) {
     final AGUIAgent engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     return Multi.createFrom().emitter(emitter -> {
-      AtomicBoolean active = new AtomicBoolean(true);
-
-      emitter.onTermination(() -> {
-        active.set(false);
-        engine.unRegisterListener(sessionId);
-      });
-
-      emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "ready")));
-      AgentEventPublisher publisher = event -> {
-        if (active.get()) {
-          emitter.emit(event);
-        }
-      };
-      engine.registerListener(sessionId, new AgentEventAdapter(publisher));
-      engine.runAgent(new RunAgentParameters.Builder().threadId(sessionId).build(), new AGUISubscriber(emitter));
-      emitter.emit(new AgentEvent("session", sessionId, Map.of("status", "done")));
+      engine.run(sessionId, request.getMessage(), new SSESubscriber(emitter));
       emitter.complete();
     });
   }

@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest.services;
 
+import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.client.AgentListener;
 import com.agentengine.engine.client.beans.session.Message;
@@ -8,28 +9,23 @@ import com.agentengine.engine.client.beans.session.ToolExecution;
 import com.agentengine.engine.client.beans.session.ToolRequest;
 import com.agentengine.interfaces.rest.services.beans.ToolPlanEvent;
 import com.agui.core.agent.AgentSubscriber;
-import com.agui.core.agent.RunAgentInput;
 import com.agui.core.exception.AGUIException;
-import com.agui.core.message.BaseMessage;
-import com.agui.core.state.State;
-import com.agui.server.LocalAgent;
+import com.agui.core.function.FunctionCall;
+import com.agui.core.message.AssistantMessage;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
-public class AGUIAgent extends LocalAgent {
+public class AGUIAgent implements AgentEngine {
 
     private final AgentEngine agentEngine;
-    public AGUIAgent(final String id, final AgentEngine agentEngine) throws AGUIException {
-        super(id, new State(), null, "", null);
+
+    public AGUIAgent(final AgentEngine agentEngine) throws AGUIException {
         this.agentEngine = agentEngine;
     }
 
-    @Override
-    protected void run(final RunAgentInput runAgentInput, final AgentSubscriber agentSubscriber) {
-        agentEngine.registerListener(runAgentInput.threadId(), new AgentListener() {
-
+    public void run(final String sessionId, final String message, final AgentSubscriber agentSubscriber) {
+        agentEngine.invoke(sessionId, Message.user(message), new AgentListener() {
             @Override
             public void onToolPlan(String sessionId, Collection<ToolCall> toolCalls) {
                 agentSubscriber.onCustomEvent(new ToolPlanEvent(toolCalls));
@@ -37,6 +33,12 @@ public class AGUIAgent extends LocalAgent {
 
             @Override
             public void onToolExecution(String sessionId, ToolExecution toolExecution) {
+                // Convert ToolExecution to ToolCall and notify subscriber
+                ToolCall toolCall = toolExecution.getToolCall();
+                if (toolCall != null) {
+                    agentSubscriber.onNewToolCall(new com.agui.core.tool.ToolCall(toolCall.id(), "TOOL",
+                        new FunctionCall(toolCall.name(), JsonUtils.toJson(toolCall.args()))));
+                }
             }
 
             @Override
@@ -53,8 +55,22 @@ public class AGUIAgent extends LocalAgent {
 
             @Override
             public void onFinalAnswer(final String sessionId, final Message message) {
-
+                // Convert the message to a BaseMessage and notify subscriber
+                // Since we can't directly instantiate UserMessage with content, we'll create it and set content
+                AssistantMessage baseMessage = new AssistantMessage();
+                baseMessage.setContent(message.getContent());
+                agentSubscriber.onNewMessage(baseMessage);
             }
         });
+    }
+
+    @Override
+    public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<Message> buildPrompt(final String sessionId) {
+        return agentEngine.buildPrompt(sessionId);
     }
 }

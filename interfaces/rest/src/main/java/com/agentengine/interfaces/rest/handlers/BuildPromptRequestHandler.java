@@ -6,6 +6,7 @@ import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.engine.client.AgentRequest;
 import com.agentengine.engine.client.AgentRequest.RequestType;
 import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -25,10 +26,10 @@ public class BuildPromptRequestHandler extends AbstractAgentRequestHandler {
   @SuppressWarnings("unchecked")
   @Override
   public AgentResponse handle(final AgentRequest request) {
-    final AgentEngine engine = getOrCreateEngine(request);
+    final AGUIAgent engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     List<MessageDto> messages = engine.buildPrompt(sessionId).stream()
-        .map(message -> new MessageDto(message.getRole().name().toLowerCase(), message.getContent())).toList();
+            .map(message -> new MessageDto(message.getRole().name().toLowerCase(), message.getContent())).toList();
     return new PromptResponse(sessionId, messages);
   }
 }

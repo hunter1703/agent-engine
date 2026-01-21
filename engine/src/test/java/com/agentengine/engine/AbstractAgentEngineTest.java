@@ -2,6 +2,7 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.client.AgentEngine;
 import com.agentengine.engine.client.beans.session.Message;
 import com.agentengine.engine.client.AgentListener;
 import java.util.ArrayList;
@@ -22,14 +23,22 @@ class AbstractAgentEngineTest {
     assertThat(called).containsExactly("start-s1", "end-s1");
   }
 
-  private static final class TestEngine extends AbstractAgentEngine {
+  private static final class TestEngine implements AgentEngine {
+    private final List<AgentListener> listeners = new ArrayList<>();
+
+    public void registerListener(String sessionId, AgentListener listener) {
+      listeners.add(listener);
+    }
+
     private void trigger(final String sessionId) {
-      invokeListeners(listener -> listener.onReasoningStart(sessionId));
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId, Message.assistant("done")));
+      for (AgentListener listener : listeners) {
+        listener.onReasoningStart(sessionId);
+        listener.onReasoningEnd(sessionId, Message.assistant("done"));
+      }
     }
 
     @Override
-    public Message invoke(final String sessionId, final Message message) {
+    public Message invoke(final String sessionId, final Message message, AgentListener listener) {
       return null;
     }
 

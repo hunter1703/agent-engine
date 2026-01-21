@@ -46,9 +46,7 @@ class HybridEngineTest {
         sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener("session", listener);
-
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolPlans).hasSize(1);
@@ -84,9 +82,7 @@ class HybridEngineTest {
         sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener("session", listener);
-
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
     // With simplified logic, no repairs should be triggered
@@ -113,7 +109,12 @@ class HybridEngineTest {
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
         sessionStore, 1);
 
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
+      @Override
+      public void onFinalAnswer(String sessionId, Message message) {
+        // Not needed for this test
+      }
+    });
 
     assertThat(result.getContent()).isEqualTo("Number of assistant invocations exceeded maximum : 1");
   }
@@ -138,9 +139,7 @@ class HybridEngineTest {
         sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
-    engine.registerListener("session", listener);
-
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
     assertThat(listener.toolExecutions).isEmpty();
@@ -169,7 +168,12 @@ class HybridEngineTest {
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
         sessionStore, 2);
 
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
+      @Override
+      public void onFinalAnswer(String sessionId, Message message) {
+        // Not needed for this test
+      }
+    });
 
     assertThat(result.getContent()).isEqualTo("done");
     List<Message> toolMessages = sessionStore.getMessages(sessionId + "_tool");
@@ -194,7 +198,12 @@ class HybridEngineTest {
     HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, List.of(), reasoningContext, toolContext,
         sessionStore, 2);
 
-    Message result = engine.invoke(sessionId, Message.user("hello"));
+    Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
+      @Override
+      public void onFinalAnswer(String sessionId, Message message) {
+        // Not needed for this test
+      }
+    });
 
     assertThat(result.getContent()).isEqualTo("done");
     List<Message> reasoningMessages = sessionStore.getMessages(STR."\{sessionId}_reasoning");

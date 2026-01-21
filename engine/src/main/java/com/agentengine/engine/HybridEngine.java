@@ -7,6 +7,8 @@ import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.StringUtils;
 import com.agentengine.commons.utils.TemplateUtils;
+import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.client.AgentListener;
 import com.agentengine.engine.client.beans.session.ToolExecution;
 import com.agentengine.engine.client.beans.session.Message;
 import com.agentengine.engine.client.beans.session.ToolCall;
@@ -21,7 +23,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class HybridEngine extends AbstractAgentEngine {
+public class HybridEngine implements AgentEngine {
   private static final String MISSING_TOOL_AND_FINAL_MESSAGE = "You must provide at least a final answer or tool requests as defined in protocol.";
   private final LLMModel reasoningModel;
   private final LLMModel toolAssistantModel;
@@ -48,23 +50,23 @@ public class HybridEngine extends AbstractAgentEngine {
   }
 
   @Override
-  public Message invoke(final String sessionId, final Message message) {
+  public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
     appendUserMessage(getReasoningSessionId(sessionId), message);
     appendUserMessage(getToolSessionId(sessionId), message);
     Message finalResponse = null;
     do {
       final Message result;
       try {
-        result = runReasoner(sessionId);
+        result = runReasoner(sessionId, listener);
       } catch (Exception ex) {
         final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
-        invokeListeners(listener -> listener.onFinalAnswer(sessionId, failure));
+        listener.onFinalAnswer(sessionId, failure);
         return failure;
       }
 
       final String finalAnswer = result.getContent();
       if (StringUtils.isNotBlank(finalAnswer)) {
-        invokeListeners(listener -> listener.onFinalAnswer(sessionId, result));
+        listener.onFinalAnswer(sessionId, result);
         finalResponse = result;
         break;
       }
@@ -74,7 +76,7 @@ public class HybridEngine extends AbstractAgentEngine {
         sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
         continue;
       }
-      executeToolRequests(sessionId, toolRequests);
+      executeToolRequests(sessionId, toolRequests, listener);
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
 
@@ -83,7 +85,7 @@ public class HybridEngine extends AbstractAgentEngine {
     }
     final Message invocationsExceededMessage =
         Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
-    invokeListeners(listener -> listener.onFinalAnswer(sessionId, invocationsExceededMessage));
+    listener.onFinalAnswer(sessionId, invocationsExceededMessage);
     return invocationsExceededMessage;
   }
 
@@ -92,14 +94,13 @@ public class HybridEngine extends AbstractAgentEngine {
     return reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId));
   }
 
-  private Message runReasoner(final String sessionId) {
-    invokeListeners(listener -> listener.onReasoningStart(sessionId));
+  private Message runReasoner(final String sessionId, final AgentListener listener) {
+    listener.onReasoningStart(sessionId);
     Message message = null;
     try {
       message = _runReasoner(sessionId, 5);
     } finally {
-      final Message reasonerMessage = message;
-      invokeListeners(listener -> listener.onReasoningEnd(sessionId, reasonerMessage));
+        listener.onReasoningEnd(sessionId, message);
     }
     return message;
   }
@@ -144,7 +145,7 @@ public class HybridEngine extends AbstractAgentEngine {
     return STR."\{sessionId}_tool";
   }
 
-  private List<ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests) {
+  private List<ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests, final AgentListener listener) {
     final String message = TemplateUtils.renderTemplateForName("hybrid/tool_assistant_json.txt", Map.of("toolRequests",
         JsonUtils.toJson(toolRequests), "tool_schema", loadResourceAsString("/schemas/hybrid/tool_call_schema.json")));
     sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
@@ -167,7 +168,7 @@ public class HybridEngine extends AbstractAgentEngine {
       if (CollectionUtils.isNotEmpty(remainingRequests)) {
         final List<ToolCall> newToolCalls = CollectionUtils.nullSafeList(toolCalls);
         final List<ToolRequest> newRemainingRequests = CollectionUtils.nullSafeList(remainingRequests);
-        invokeListeners(listener -> listener.onToolRepair(sessionId, newToolCalls, newRemainingRequests));
+        listener.onToolRepair(sessionId, newToolCalls, newRemainingRequests);
         final List<String> missingRequests = remainingRequests.stream().map(ToolRequest::raw).toList();
         sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(TemplateUtils
             .renderTemplateForName("hybrid/repair/empty_tool_call.txt", Map.of("toolRequests", missingRequests))));
@@ -183,7 +184,7 @@ public class HybridEngine extends AbstractAgentEngine {
     return buildOrderedToolCalls(toolRequests, matchedCallsById);
   }
 
-  private void executeToolRequests(final String sessionId, final List<String> toolRequests) {
+  private void executeToolRequests(final String sessionId, final List<String> toolRequests, final AgentListener listener) {
     if (CollectionUtils.isEmpty(toolRequests)) {
       return;
     }
@@ -191,22 +192,22 @@ public class HybridEngine extends AbstractAgentEngine {
     // assistant context
     // sessionStore.appendMessage(getToolSessionId(sessionId),
     // cloneMessage(reasoningMessage));
-    executeToolPlan(sessionId, toolRequests);
+    executeToolPlan(sessionId, toolRequests, listener);
   }
 
-  private void executeToolPlan(final String sessionId, final List<String> toolRequests) {
+  private void executeToolPlan(final String sessionId, final List<String> toolRequests, final AgentListener listener) {
     // Process initial requests
-    final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests));
+    final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests), listener);
     if (CollectionUtils.isEmpty(toolCalls)) {
       sessionStore.appendMessage(getReasoningSessionId(sessionId),
           Message.system("Unable to execute tools. Please try alternate approach"));
       return;
     }
 
-    invokeListeners(listener -> listener.onToolPlan(sessionId, toolCalls));
+    listener.onToolPlan(sessionId, toolCalls);
 
     final List<ToolExecution> executions = _executeTools(toolCalls);
-    emitToolExecutionEvents(sessionId, executions);
+    emitToolExecutionEvents(sessionId, executions, listener);
     final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
         execution -> execution.getToolCall().id(), Function.identity());
     sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(
@@ -216,11 +217,11 @@ public class HybridEngine extends AbstractAgentEngine {
   /**
    * Emits tool execution events for known tools (excluding unknown tools)
    */
-  private void emitToolExecutionEvents(String sessionId, List<ToolExecution> executions) {
+  private void emitToolExecutionEvents(String sessionId, List<ToolExecution> executions, final AgentListener listener) {
     for (ToolExecution toolExecution : executions) {
       // Skip execution events for unknown tools (identified by specific status)
       if (!"unknown".equals(toolExecution.getStatus())) {
-        invokeListeners(listener -> listener.onToolExecution(sessionId, toolExecution));
+        listener.onToolExecution(sessionId, toolExecution);
       }
     }
   }

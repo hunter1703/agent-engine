@@ -44,7 +44,7 @@ public class AgentManager {
         ignored -> {
           final AgentEngine engine = builderFactory.getBuilder(agentConfig.getEngine().getType()).build(agentName, agentConfig);
           try {
-            return new AGUIAgent(key, engine);
+            return new AGUIAgent(engine);
           } catch (AGUIException e) {
             throw new RuntimeException(STR."Failed to create AGUIAgent for agentName \"\{agentName}\"", e);
           }
