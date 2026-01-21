@@ -49,26 +49,32 @@ public class HybridAgent implements Agent {
   @Override
   public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
     listener.onStart(sessionId);
+    final String runId = UUID.randomUUID().toString();
+    listener.onRunStarted(sessionId, runId);
     appendUserMessage(getReasoningSessionId(sessionId), message);
     appendUserMessage(getToolSessionId(sessionId), message);
     Message finalResponse = null;
     do {
       final Message result;
       try {
+        final String stepName = STR."Reasoning Turn \{EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId)) + 1}";
+        listener.onStepStarted(sessionId, stepName);
         result = runReasoner(sessionId, listener);
+        listener.onStepFinished(sessionId, stepName);
       } catch (AgentException ex) {
         listener.onError(sessionId, ex);
         throw ex;
       } catch (Exception ex) {
         listener.onError(sessionId, ex);
         final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
-        listener.onFinalAnswer(sessionId, failure);
+        emitFinalAnswer(sessionId, failure, listener);
+        listener.onRunFinished(sessionId, runId);
         return failure;
       }
 
       final String finalAnswer = result.getContent();
       if (StringUtils.isNotBlank(finalAnswer)) {
-        listener.onFinalAnswer(sessionId, result);
+        emitFinalAnswer(sessionId, result, listener);
         finalResponse = result;
         break;
       }
@@ -84,11 +90,13 @@ public class HybridAgent implements Agent {
 
     if (finalResponse != null) {
       listener.onEnd(sessionId);
+      listener.onRunFinished(sessionId, runId);
       return finalResponse;
     }
     final Message invocationsExceededMessage =
         Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
-    listener.onFinalAnswer(sessionId, invocationsExceededMessage);
+    emitFinalAnswer(sessionId, invocationsExceededMessage, listener);
+    listener.onRunFinished(sessionId, runId);
     return invocationsExceededMessage;
   }
 
@@ -98,12 +106,16 @@ public class HybridAgent implements Agent {
   }
 
   private Message runReasoner(final String sessionId, final AgentListener listener) {
-    listener.onReasoningStart(sessionId);
+    final String messageId = UUID.randomUUID().toString();
+    listener.onReasoningMessageStart(sessionId, messageId, "assistant");
     Message message = null;
     try {
       message = _runReasoner(sessionId, 5);
+      if (StringUtils.isNotBlank(message.getContent())) {
+        listener.onReasoningMessageDelta(sessionId, messageId, message.getContent());
+      }
     } finally {
-      listener.onReasoningEnd(sessionId, message);
+      listener.onReasoningMessageEnd(sessionId, messageId);
     }
     return message;
   }
@@ -196,5 +208,13 @@ public class HybridAgent implements Agent {
 
   private void appendUserMessage(final String sessionId, final Message message) {
     sessionStore.appendMessage(sessionId, Message.user(message.getContent()));
+  }
+
+  private void emitFinalAnswer(final String sessionId, final Message message, final AgentListener listener) {
+    final String messageId = UUID.randomUUID().toString();
+    listener.onTextMessageStart(sessionId, messageId, "assistant");
+    listener.onTextMessageDelta(sessionId, messageId, message.getContent());
+    listener.onTextMessageEnd(sessionId, messageId);
+    listener.onFinalAnswer(sessionId, message);
   }
 }

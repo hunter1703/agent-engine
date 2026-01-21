@@ -1,5 +1,8 @@
 # Agent Guidelines
 
+> [!IMPORTANT]
+> This project is in an active development phase. Backward compatibility is not guaranteed, and breaking changes may occur frequently as we refine the core APIs and integration protocols.
+
 ## Project Summary
 Agent Engine is a modular Java 21/Quarkus agent runtime built on LangChain4j. It provides a
 plugin-based tool system, configurable agent definitions, and multiple interface modules (CLI

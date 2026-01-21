@@ -32,8 +32,8 @@ class AbstractAgentTest {
 
     private void trigger(final String sessionId) {
       for (AgentListener listener : listeners) {
-        listener.onReasoningStart(sessionId);
-        listener.onReasoningEnd(sessionId, Message.assistant("done"));
+        listener.onStepStarted(sessionId, "test-step");
+        listener.onStepFinished(sessionId, "test-step");
       }
     }
 
@@ -56,7 +56,7 @@ class AbstractAgentTest {
     }
 
     @Override
-    public void onReasoningStart(final String sessionId) {
+    public void onStepStarted(final String sessionId, final String stepName) {
       called.add(STR."start-\{sessionId}");
     }
 
@@ -73,7 +73,7 @@ class AbstractAgentTest {
     }
 
     @Override
-    public void onReasoningEnd(final String sessionId, final Message message) {
+    public void onStepFinished(final String sessionId, final String stepName) {
       called.add(STR."end-\{sessionId}");
     }
 

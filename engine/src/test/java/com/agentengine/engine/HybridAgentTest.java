@@ -22,6 +22,7 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 
 import java.util.*;
 
+import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.Test;
 
 class HybridAgentTest {
@@ -163,7 +164,7 @@ class HybridAgentTest {
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.toolExecutions).isEmpty();
+    assertThat(listener.toolResults).isEmpty();
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
     assertThat(reasoningMessages)
         .anyMatch(message -> message.getRole() == Role.USER && message.getContent().contains("Unknown tool"));
@@ -204,6 +205,33 @@ class HybridAgentTest {
     assertThat(result.getContent()).isEqualTo("done");
     List<Message> toolMessages = sessionStore.getMessages(sessionId + "_tool");
     assertThat(toolMessages).anyMatch(message -> message.getRole() == Role.ASSISTANT);
+  }
+
+  @Test
+  void invokeEmitsAllGranularEvents() {
+    SessionStore sessionStore = new InMemorySessionStore();
+    String sessionId = "session";
+
+    Message response = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(response));
+    AgenticToolExecutor toolExecutor = mock(AgenticToolExecutor.class);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class),
+        sessionStore, 1);
+
+    CapturingListener listener = new CapturingListener();
+    engine.invoke(sessionId, Message.user("hello"), listener);
+
+    assertThat(listener.startedRuns).hasSize(1);
+    assertThat(listener.finishedRuns).hasSize(1);
+    assertThat(listener.startedSteps).contains("Reasoning Turn 1");
+    assertThat(listener.finishedSteps).contains("Reasoning Turn 1");
+    assertThat(listener.reasoningMessageStarts).isEqualTo(1);
+    assertThat(listener.reasoningMessageEnds).isEqualTo(1);
+    assertThat(listener.reasoningDeltas).contains("FINAL: done");
+    assertThat(listener.textMessageStarts).hasSize(1);
+    assertThat(listener.textMessageDeltas).contains("done");
+    assertThat(listener.textMessageEnds).hasSize(1);
   }
 
   @Test
@@ -322,6 +350,66 @@ class HybridAgentTest {
     private final List<ToolExecution> toolExecutions = new ArrayList<>();
     private int toolRepairs = 0;
     private final List<String> finalAnswers = new ArrayList<>();
+    private final List<String> startedRuns = new ArrayList<>();
+    private final List<String> finishedRuns = new ArrayList<>();
+    private final List<String> startedSteps = new ArrayList<>();
+    private final List<String> finishedSteps = new ArrayList<>();
+    private final List<String> reasoningDeltas = new ArrayList<>();
+    private int reasoningStarts = 0;
+    private int reasoningEnds = 0;
+    private final List<String> textMessageStarts = new ArrayList<>();
+    private final List<String> textMessageDeltas = new ArrayList<>();
+    private final List<String> textMessageEnds = new ArrayList<>();
+
+    @Override
+    public void onRunStarted(String sessionId, String runId) {
+      startedRuns.add(runId);
+    }
+
+    @Override
+    public void onRunFinished(String sessionId, String runId) {
+      finishedRuns.add(runId);
+    }
+
+    @Override
+    public void onStepStarted(String sessionId, String stepName) {
+      startedSteps.add(stepName);
+    }
+
+    @Override
+    public void onStepFinished(String sessionId, String stepName) {
+      finishedSteps.add(stepName);
+    }
+
+    @Override
+    public void onTextMessageStart(String sessionId, String messageId, String role) {
+      textMessageStarts.add(messageId);
+    }
+
+    @Override
+    public void onTextMessageDelta(String sessionId, String messageId, String delta) {
+      textMessageDeltas.add(delta);
+    }
+
+    @Override
+    public void onTextMessageEnd(String sessionId, String messageId) {
+      textMessageEnds.add(messageId);
+    }
+
+    @Override
+    public void onReasoningMessageStart(String sessionId, String messageId, String role) {
+      reasoningMessageStarts++;
+    }
+
+    @Override
+    public void onReasoningMessageDelta(String sessionId, String messageId, String delta) {
+      reasoningDeltas.add(delta);
+    }
+
+    @Override
+    public void onReasoningMessageEnd(String sessionId, String messageId) {
+      reasoningMessageEnds++;
+    }
 
     @Override
     public void onToolPlan(final String sessionId, final Collection<ToolCall> toolCalls) {
@@ -329,8 +417,8 @@ class HybridAgentTest {
     }
 
     @Override
-    public void onToolExecution(final String sessionId, final ToolExecution toolExecution) {
-      toolExecutions.add(toolExecution);
+    public void onToolCallResult(String sessionId, String toolCallId, String content) {
+      toolResults.put(toolCallId, content);
     }
 
     @Override

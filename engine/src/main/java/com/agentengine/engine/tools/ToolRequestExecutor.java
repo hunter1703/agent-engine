@@ -56,7 +56,8 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
     }
 
     @Override
-    public List<ToolExecution> execute(final String sessionId, final List<ToolCall> toolCalls, final AgentListener listener) {
+    public List<ToolExecution> execute(final String sessionId, final List<ToolCall> toolCalls,
+            final AgentListener listener) {
         if (CollectionUtils.isEmpty(toolCalls)) {
             // Caller is responsible for handling empty execution plan
             return Collections.emptyList();
@@ -64,8 +65,7 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
 
         listener.onToolPlan(sessionId, toolCalls);
 
-        final List<ToolExecution> executions = _executeTools(sessionId, toolCalls);
-        emitToolExecutionEvents(sessionId, executions, listener);
+        final List<ToolExecution> executions = _executeTools(sessionId, toolCalls, listener);
 
         return executions;
     }
@@ -132,9 +132,15 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
         return buildOrderedToolCalls(toolRequests, matchedCallsById);
     }
 
-  private List<ToolExecution> _executeTools(final String sessionId, final Collection<ToolCall> toolCalls) {
+  private List<ToolExecution> _executeTools(final String sessionId, final Collection<ToolCall> toolCalls, final AgentListener listener) {
     final List<ToolExecution> executions = new ArrayList<>();
     for (ToolCall call : toolCalls) {
+      listener.onToolCallStart(sessionId, call.id(), call.name());
+      if (call.args() != null) {
+        listener.onToolCallArgs(sessionId, call.id(), JsonUtils.toJson(call.args()));
+      }
+      listener.onToolCallEnd(sessionId, call.id());
+
       final Tool tool = toolByName.get(call.name());
       final Instant start = Instant.now();
       String status = "ok";
@@ -153,6 +159,8 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
           output = STR."Tool error in \{call.name()}: \{ex.getMessage()}";
         }
       }
+      listener.onToolCallResult(sessionId, call.id(), output);
+
       final Instant end = Instant.now();
       final ToolExecution toolExecution =
           new ToolExecution(call, status, output, start, end.toEpochMilli() - start.toEpochMilli());
@@ -162,16 +170,6 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
     }
     return executions;
   }
-
-    private void emitToolExecutionEvents(String sessionId, List<ToolExecution> executions,
-            final AgentListener listener) {
-        for (ToolExecution toolExecution : executions) {
-            // Skip execution events for unknown tools (identified by specific status)
-            if (!"unknown".equals(toolExecution.getStatus())) {
-                listener.onToolExecution(sessionId, toolExecution);
-            }
-        }
-    }
 
     private static String buildToolResultMessage(final List<ToolExecution> executions) {
         List<Map<String, Object>> results = new ArrayList<>();

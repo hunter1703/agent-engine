@@ -46,8 +46,8 @@ class ToolRequestExecutorTest {
 
         assertThat(listener.toolPlans).hasSize(1);
         assertThat(listener.toolPlans.getFirst().iterator().next().name()).isEqualTo("echo");
-        assertThat(listener.toolExecutions).hasSize(1);
-        assertThat(listener.toolExecutions.getFirst().getOutput()).isEqualTo("hi");
+        assertThat(listener.toolResults).hasSize(1);
+        assertThat(listener.toolResults.values().iterator().next()).isEqualTo("hi");
     }
 
     @Test
@@ -69,7 +69,7 @@ class ToolRequestExecutorTest {
         executor.executeRequests(sessionId, toolRequests, listener);
 
         assertThat(listener.toolPlans).hasSize(1);
-        assertThat(listener.toolExecutions).isEmpty(); // Unknown tools don't emit execution events
+        assertThat(listener.toolResults).isEmpty(); // Unknown tools don't emit result events
     }
 
     @Test
@@ -120,9 +120,8 @@ class ToolRequestExecutorTest {
 
         executor.executeRequests(sessionId, toolRequests, listener);
 
-        assertThat(listener.toolExecutions).hasSize(1);
-        assertThat(listener.toolExecutions.getFirst().getStatus()).isEqualTo("error");
-        assertThat(listener.toolExecutions.getFirst().getOutput()).contains("boom");
+        assertThat(listener.toolResults).hasSize(1);
+        assertThat(listener.toolResults.values().iterator().next()).contains("boom");
     }
 
     @Test
@@ -156,7 +155,7 @@ class ToolRequestExecutorTest {
         executor.executeRequests(sessionId, toolRequests, listener);
 
         assertThat(listener.toolRepairs).isEqualTo(1);
-        assertThat(listener.toolExecutions).hasSize(1);
+        assertThat(listener.toolResults).hasSize(1);
     }
 
     @Test
@@ -210,7 +209,7 @@ class ToolRequestExecutorTest {
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getOutput()).isEqualTo("hello");
         assertThat(listener.toolPlans).hasSize(1);
-        assertThat(listener.toolExecutions).hasSize(1);
+        assertThat(listener.toolResults).hasSize(1);
     }
 
     private static final class QueueModel implements LLMModel {
@@ -270,7 +269,7 @@ class ToolRequestExecutorTest {
 
     private static final class CapturingListener implements AgentListener {
         private final List<Collection<ToolCall>> toolPlans = new ArrayList<>();
-        private final List<ToolExecution> toolExecutions = new ArrayList<>();
+        private final Map<String, String> toolResults = new HashMap<>();
         private int toolRepairs = 0;
 
         @Override
@@ -279,8 +278,8 @@ class ToolRequestExecutorTest {
         }
 
         @Override
-        public void onToolExecution(final String sessionId, final ToolExecution toolExecution) {
-            toolExecutions.add(toolExecution);
+        public void onToolCallResult(String sessionId, String toolCallId, String content) {
+            toolResults.put(toolCallId, content);
         }
 
         @Override
