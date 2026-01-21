@@ -2,8 +2,8 @@ package com.agentengine.engine.beans.config;
 
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.YamlUtils;
-import com.agentengine.engine.client.beans.config.AgentConfig;
-import com.agentengine.engine.client.beans.config.ConfigLoader;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.ConfigLoader;
 import jakarta.inject.Singleton;
 
 import java.io.FileNotFoundException;

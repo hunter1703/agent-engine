@@ -3,11 +3,11 @@ package com.agentengine.interfaces.rest.services;
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.StringUtils;
 import com.agentengine.commons.utils.HashUtils;
-import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.engine.client.ConfigRepository;
-import com.agentengine.engine.client.beans.config.AgentConfig;
-import com.agentengine.engine.client.beans.config.ConfigLoader;
-import com.agentengine.engine.client.builders.AgentBuilderFactory;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.ConfigRepository;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.ConfigLoader;
+import com.agentengine.engine.api.builders.AgentBuilderFactory;
 import com.agui.core.exception.AGUIException;
 import com.agui.server.LocalAgent;
 import jakarta.inject.Singleton;
@@ -42,7 +42,7 @@ public class AgentManager {
     return engines.computeIfAbsent(
         key,
         ignored -> {
-          final AgentEngine engine = builderFactory.getBuilder(agentConfig.getEngine().getType()).build(agentName, agentConfig);
+          final Agent engine = builderFactory.getBuilder(agentConfig.getEngine().getType()).build(agentName, agentConfig);
           try {
             return new AGUIAgent(engine);
           } catch (AGUIException e) {

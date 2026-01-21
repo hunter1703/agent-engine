@@ -1,12 +1,12 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.client.AgentListener;
+import com.agentengine.engine.api.AgentListener;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentRequest.RequestType;
-import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 
@@ -25,7 +25,7 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler {
   @SuppressWarnings("unchecked")
   @Override
   public AgentResponse handle(final AgentRequest request) {
-    final AgentEngine engine = getOrCreateEngine(request);
+    final Agent engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     Message response = engine.invoke(sessionId, Message.user(request.getMessage()), new AgentListener() {
       @Override

@@ -1,0 +1,49 @@
+[versions]
+quarkus = "3.23.0"
+quarkus-langchain4j = "0.26.1"
+langchain4j = "1.0.0-beta2"
+jackson = "2.17.1"
+assertj = "3.26.3"
+junit = "5.10.3"
+mockito = "5.11.0"
+ag-ui = "0.0.1"
+ok-http = "4.12.0"
+
+[libraries]
+# BOMs
+quarkus-bom = { group = "io.quarkus", name = "quarkus-bom", version.ref = "quarkus" }
+quarkus-langchain4j-bom = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-bom", version.ref = "quarkus-langchain4j" }
+langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version.ref = "langchain4j" }
+
+# Quarkus & LangChain4j Core
+quarkus-langchain4j-core = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-core" }
+langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
+langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai" }
+langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama" }
+quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client" }
+quarkus-rest-jackson = { group = "io.quarkus", name = "quarkus-rest-jackson" }
+quarkus-smallrye-openapi = { group = "io.quarkus", name = "quarkus-smallrye-openapi" }
+
+# Testing
+assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+quarkus-junit5 = { group = "io.quarkus", name = "quarkus-junit5" }
+
+# AG-UI
+ag-ui-core = { group = "com.ag-ui", name = "core", version.ref = "ag-ui" }
+ag-ui-server = { group = "com.ag-ui", name = "server", version.ref = "ag-ui" }
+ag-ui-json = { group = "com.ag-ui", name = "json", version.ref = "ag-ui" }
+ag-ui-http = { group = "com.ag-ui", name = "http", version.ref = "ag-ui" }
+ag-ui-ok-http = { group = "com.ag-ui", name = "ok-http", version.ref = "ok-http" }
+
+# Commons & Utilities
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
+jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
+jackson-annotations = { group = "com.fasterxml.jackson.core", name = "jackson-annotations", version.ref = "jackson" }
+fastjson2 = { group = "com.alibaba.fastjson2", name = "fastjson2", version = "2.0.48" }
+jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
+mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }

@@ -1,6 +1,6 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.client.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.StringUtils;
 import java.net.http.HttpClient;

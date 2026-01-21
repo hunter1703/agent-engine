@@ -11,13 +11,13 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Paths;
 
-import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.engine.client.ConfigRepository;
-import com.agentengine.engine.client.beans.config.AgentConfig;
-import com.agentengine.engine.client.beans.config.ConfigLoader;
-import com.agentengine.engine.client.beans.config.HybridEngineConfig;
-import com.agentengine.engine.client.builders.AgentBuilder;
-import com.agentengine.engine.client.builders.AgentBuilderFactory;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.ConfigRepository;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.ConfigLoader;
+import com.agentengine.engine.api.beans.config.HybridEngineConfig;
+import com.agentengine.engine.api.builders.AgentBuilder;
+import com.agentengine.engine.api.builders.AgentBuilderFactory;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class AgentManagerTest {
     ConfigLoader configLoader = mock(ConfigLoader.class);
     ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    Agent engine = mock(Agent.class);
     AgentConfig agentConfig = buildValidAgentConfig();
 
     when(builderFactory.getBuilder("hybrid")).thenReturn(builder);
@@ -52,7 +52,7 @@ class AgentManagerTest {
     ConfigLoader configLoader = mock(ConfigLoader.class);
     ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    Agent engine = mock(Agent.class);
     AgentConfig config = buildValidAgentConfig();
 
     when(configRepository.loadAgentConfig("agent")).thenReturn(config);
@@ -74,7 +74,7 @@ class AgentManagerTest {
     ConfigLoader configLoader = mock(ConfigLoader.class);
     ConfigRepository configRepository = mock(ConfigRepository.class);
     AgentBuilder builder = mock(AgentBuilder.class);
-    AgentEngine engine = mock(AgentEngine.class);
+    Agent engine = mock(Agent.class);
     AgentConfig agentConfig = buildValidAgentConfig();
 
     when(builderFactory.getBuilder("hybrid")).thenReturn(builder);

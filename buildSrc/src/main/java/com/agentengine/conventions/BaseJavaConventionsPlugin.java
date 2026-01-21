@@ -3,30 +3,29 @@ package com.agentengine.conventions;
 import com.diffplug.gradle.spotless.SpotlessExtension;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
+
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 
 public abstract class BaseJavaConventionsPlugin {
-    
+
     protected void configureCommonFunctionality(Project project) {
         project.getPluginManager().apply("java");
         project.getPluginManager().apply("com.diffplug.spotless");
         project.getPluginManager().apply("org.kordamp.gradle.jandex");
 
         // Configure Java toolchain
-        project.getExtensions().configure(JavaPluginExtension.class, extension ->
-            extension.getToolchain()
+        project.getExtensions().configure(JavaPluginExtension.class, extension -> extension.getToolchain()
                 .getLanguageVersion()
                 .set(JavaLanguageVersion.of(21)));
 
         // Configure code formatting
         project.getExtensions().configure(SpotlessExtension.class, spotless -> {
             spotless.java(java -> java.eclipse()
-                .configFile(project.getRootProject().file("config/spotless/eclipse.xml")));
-            
+                    .configFile(project.getRootProject().file("config/spotless/eclipse.xml")));
+
             spotless.format("misc", misc -> {
                 misc.target("*.md", ".gitignore", "*.yml", "*.yaml");
                 misc.trimTrailingWhitespace();
@@ -47,25 +46,15 @@ public abstract class BaseJavaConventionsPlugin {
         });
 
         // Apply preview flag to JavaExec tasks
-        project.getTasks().withType(JavaExec.class).configureEach(task -> 
-            task.jvmArgs("--enable-preview"));
+        project.getTasks().withType(JavaExec.class).configureEach(task -> task.jvmArgs("--enable-preview"));
 
         // Ensure jandex runs before jar creation
         project.getTasks().named("jar").configure(task -> task.dependsOn("jandex"));
 
         // For Quarkus projects, ensure jandex runs before quarkus dependencies build
-        project.getPluginManager().withPlugin("io.quarkus", applied ->
-            project.getTasks().named("quarkusDependenciesBuild").configure(task -> 
-                task.dependsOn("jandex")));
+        project.getPluginManager().withPlugin("io.quarkus", applied -> project.getTasks()
+                .named("quarkusDependenciesBuild").configure(task -> task.dependsOn("jandex")));
 
-        // Configure test dependency constraints
-        configureTestDependencyConstraints(project.getDependencies());
     }
 
-    private void configureTestDependencyConstraints(DependencyHandler dependencies) {
-        dependencies.getConstraints().add("testImplementation", "org.assertj:assertj-core:3.25.3");
-        dependencies.getConstraints().add("testImplementation", "org.mockito:mockito-core:5.11.0");
-        dependencies.getConstraints().add("testImplementation", "org.junit.jupiter:junit-jupiter:5.9.2");
-        dependencies.getConstraints().add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher:1.9.2");
-    }
 }

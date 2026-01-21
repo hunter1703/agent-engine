@@ -4,11 +4,11 @@ plugins {
 
 dependencies {
     implementation project(':commons')
-    implementation project(':engine:client')
+    implementation project(':engine:api')
     implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.mockito:mockito-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.junit.jupiter
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

@@ -7,12 +7,12 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.HybridEngine;
 import com.agentengine.engine.MongoConfigRepository;
-import com.agentengine.engine.client.beans.config.AgentConfig;
-import com.agentengine.engine.client.beans.config.HybridEngineConfig;
-import com.agentengine.engine.client.beans.config.LastNContextConfig;
-import com.agentengine.engine.client.beans.config.ModelConfig;
-import com.agentengine.engine.client.beans.config.ToolsConfig;
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.HybridEngineConfig;
+import com.agentengine.engine.api.beans.config.LastNContextConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.ToolsConfig;
+import com.agentengine.engine.api.beans.session.Message;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -47,10 +47,10 @@ class HybridAgentBuilderTest {
   }
 
   @Test
-  void agentNamesDefaultsToNull() {
+  void typeReturnsHybrid() {
     HybridAgentBuilder builder = new HybridAgentBuilder(mock(MongoConfigRepository.class));
 
-    assertThat(builder.type()).isNull();
+    assertThat(builder.type()).isEqualTo("hybrid");
   }
 
   private static ModelConfig buildModelConfig(final String provider, final String model, final String baseUrl) {

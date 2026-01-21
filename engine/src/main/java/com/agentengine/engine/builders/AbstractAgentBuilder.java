@@ -1,18 +1,18 @@
 package com.agentengine.engine.builders;
 
-import com.agentengine.engine.client.ConfigRepository;
-import com.agentengine.engine.client.beans.config.LastNContextConfig;
-import com.agentengine.engine.client.beans.config.ModelConfig;
-import com.agentengine.engine.client.beans.config.MongoStateStoreConfig;
-import com.agentengine.engine.client.beans.config.StateStoreConfig;
-import com.agentengine.engine.client.builders.AgentBuilder;
+import com.agentengine.engine.api.ConfigRepository;
+import com.agentengine.engine.api.beans.config.LastNContextConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.MongoStateStoreConfig;
+import com.agentengine.engine.api.beans.config.StateStoreConfig;
+import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.context.LastNContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
 import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.api.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.JsonUtils;
@@ -202,6 +202,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     return builder.build();
   }
 
+  @SuppressWarnings("unchecked")
   private static JsonSchemaElement buildArraySchema(final Map<String, Object> jsonSchema) {
     final JsonArraySchema.Builder builder = JsonArraySchema.builder();
     final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
@@ -210,13 +211,11 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     }
     final Object items = jsonSchema.get("items");
     if (items instanceof final Map<?, ?> itemsMap) {
-      // noinspection unchecked
       builder.items(buildJsonSchemaElement((Map<String, Object>) itemsMap));
     } else if (items instanceof final List<?> list) {
       final List<JsonSchemaElement> itemElements = new ArrayList<>();
       for (final Object item : list) {
         if (item instanceof final Map<?, ?> entryMap) {
-          // noinspection unchecked
           itemElements.add(buildJsonSchemaElement((Map<String, Object>) entryMap));
         }
       }
@@ -286,6 +285,7 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     return null;
   }
 
+  @SuppressWarnings("unchecked")
   private static List<JsonSchemaElement> buildAnyOfElements(final Object value) {
     if (!(value instanceof final List<?> list)) {
       return List.of();
@@ -293,7 +293,6 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     final List<JsonSchemaElement> elements = new ArrayList<>();
     for (final Object entry : list) {
       if (entry instanceof final Map<?, ?> map) {
-        // noinspection unchecked
         elements.add(buildJsonSchemaElement((Map<String, Object>) map));
       }
     }

@@ -3,9 +3,9 @@ package com.agentengine.interfaces.rest.handlers;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.MessageDto;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentRequest.RequestType;
-import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
@@ -29,7 +29,7 @@ public class BuildPromptRequestHandler extends AbstractAgentRequestHandler {
     final AGUIAgent engine = getOrCreateEngine(request);
     final String sessionId = request.getSessionId();
     List<MessageDto> messages = engine.buildPrompt(sessionId).stream()
-            .map(message -> new MessageDto(message.getRole().name().toLowerCase(), message.getContent())).toList();
+        .map(message -> new MessageDto(message.getRole().name().toLowerCase(), message.getContent())).toList();
     return new PromptResponse(sessionId, messages);
   }
 }

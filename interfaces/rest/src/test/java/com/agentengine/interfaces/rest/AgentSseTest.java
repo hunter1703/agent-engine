@@ -8,12 +8,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
-import com.agentengine.engine.client.AgentListener;
+import com.agentengine.engine.api.AgentListener;
 import com.agentengine.engine.events.AgentEvent;
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
@@ -46,7 +46,8 @@ class AgentSseTest {
     Multi<AgentEvent> stream = resource.events(request);
     assertThat(stream).isNotNull();
 
-    // The StreamingInvokeAgentRequestHandler now uses SSESubscriber which doesn't emit AgentEvent
+    // The StreamingInvokeAgentRequestHandler now uses SSESubscriber which doesn't
+    // emit AgentEvent
     // So we'll just verify that the stream is created without throwing an exception
     assertThat(stream).isNotNull();
   }

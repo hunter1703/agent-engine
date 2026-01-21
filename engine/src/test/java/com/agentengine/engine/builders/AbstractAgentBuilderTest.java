@@ -3,21 +3,21 @@ package com.agentengine.engine.builders;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.NoopConfigRepository;
-import com.agentengine.engine.client.beans.config.AgentConfig;
-import com.agentengine.engine.client.beans.config.LastNContextConfig;
-import com.agentengine.engine.client.beans.config.ModelConfig;
-import com.agentengine.engine.client.beans.config.MongoStateStoreConfig;
-import com.agentengine.engine.client.beans.config.StateStoreConfig;
-import com.agentengine.engine.client.beans.config.SummarizingContextConfig;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.LastNContextConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.MongoStateStoreConfig;
+import com.agentengine.engine.api.beans.config.StateStoreConfig;
+import com.agentengine.engine.api.beans.config.SummarizingContextConfig;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.context.LastNContextBuilder;
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.api.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -340,7 +340,7 @@ class AbstractAgentBuilderTest {
     }
 
     @Override
-    public AgentEngine build(String agentName, AgentConfig agentConfig) {
+    public Agent build(String agentName, AgentConfig agentConfig) {
       return null;
     }
 

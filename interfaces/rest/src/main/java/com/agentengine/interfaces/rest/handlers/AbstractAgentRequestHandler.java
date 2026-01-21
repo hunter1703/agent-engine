@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 

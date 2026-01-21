@@ -15,7 +15,7 @@ subprojects {
 
 final def coreModules = [
     ':engine',
-    ':engine:client',
+    ':engine:api',
     ':interfaces:common',
     ':interfaces:rest'
 ]

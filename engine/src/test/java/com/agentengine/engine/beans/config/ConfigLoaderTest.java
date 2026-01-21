@@ -7,9 +7,9 @@ import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import com.agentengine.engine.client.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.beans.config.ConfigLoaderImpl;
-import com.agentengine.engine.client.beans.config.ConfigLoader;
+import com.agentengine.engine.api.beans.config.ConfigLoader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

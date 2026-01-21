@@ -1,8 +1,8 @@
 package com.agentengine.engine.builders;
 
 import com.agentengine.commons.utils.CollectionUtils;
-import com.agentengine.engine.client.builders.AgentBuilder;
-import com.agentengine.engine.client.builders.AgentBuilderFactory;
+import com.agentengine.engine.api.builders.AgentBuilder;
+import com.agentengine.engine.api.builders.AgentBuilderFactory;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

@@ -2,17 +2,17 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.client.beans.session.ToolExecution;
+import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.context.BaseContextBuilder;
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.beans.session.Role;
-import com.agentengine.engine.client.beans.session.ToolCall;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.client.state.SessionStore;
+import com.agentengine.engine.api.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
-import com.agentengine.engine.client.beans.session.ToolRequest;
-import com.agentengine.engine.client.AgentListener;
+import com.agentengine.engine.api.beans.session.ToolRequest;
+import com.agentengine.engine.api.AgentListener;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 

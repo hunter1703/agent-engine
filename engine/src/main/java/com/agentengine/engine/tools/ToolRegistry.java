@@ -1,6 +1,6 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.client.beans.config.ToolsConfig;
+import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.StringUtils;

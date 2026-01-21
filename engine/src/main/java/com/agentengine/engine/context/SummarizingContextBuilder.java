@@ -3,7 +3,7 @@
 // import com.agentengine.engine.message.Message;
 // import com.agentengine.engine.message.Role;
 // import com.agentengine.engine.model.LLMModel;
-// import com.agentengine.engine.client.state.SessionStore;
+// import com.agentengine.engine.api.state.SessionStore;
 // import com.agentengine.engine.tools.AgentTool;
 //
 // import java.time.Instant;

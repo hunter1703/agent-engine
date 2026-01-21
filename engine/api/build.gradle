@@ -1,0 +1,12 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation libs.fastjson2
+    implementation libs.jackson.annotations
+    implementation libs.mongodb.bson
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+}

@@ -1,6 +1,6 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Message;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import java.util.List;
 

@@ -7,13 +7,17 @@ import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.StringUtils;
 import com.agentengine.commons.utils.TemplateUtils;
-import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.engine.client.AgentListener;
-import com.agentengine.engine.client.beans.session.ToolExecution;
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.beans.session.ToolCall;
-import com.agentengine.engine.client.state.SessionStore;
-import com.agentengine.engine.client.beans.session.ToolRequest;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.AgentListener;
+import com.agentengine.engine.api.beans.ToolContext;
+import com.agentengine.engine.api.beans.ToolResult;
+import com.agentengine.engine.api.exception.AgentException;
+import com.agentengine.engine.api.exception.ModelInvocationException;
+import com.agentengine.engine.api.beans.session.ToolExecution;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.ToolCall;
+import com.agentengine.engine.api.state.SessionStore;
+import com.agentengine.engine.api.beans.session.ToolRequest;
 import com.agentengine.engine.context.ContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.tools.Tool;
@@ -23,7 +27,9 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class HybridEngine implements AgentEngine {
+public class HybridEngine implements Agent {
+  private static final String REASONING_SESSION_SUFFIX = "_reasoning";
+  private static final String TOOL_SESSION_SUFFIX = "_tool";
   private static final String MISSING_TOOL_AND_FINAL_MESSAGE = "You must provide at least a final answer or tool requests as defined in protocol.";
   private final LLMModel reasoningModel;
   private final LLMModel toolAssistantModel;
@@ -51,6 +57,7 @@ public class HybridEngine implements AgentEngine {
 
   @Override
   public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
+    listener.onStart(sessionId);
     appendUserMessage(getReasoningSessionId(sessionId), message);
     appendUserMessage(getToolSessionId(sessionId), message);
     Message finalResponse = null;
@@ -58,7 +65,11 @@ public class HybridEngine implements AgentEngine {
       final Message result;
       try {
         result = runReasoner(sessionId, listener);
+      } catch (AgentException ex) {
+        listener.onError(sessionId, ex);
+        throw ex;
       } catch (Exception ex) {
+        listener.onError(sessionId, ex);
         final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
         listener.onFinalAnswer(sessionId, failure);
         return failure;
@@ -81,6 +92,7 @@ public class HybridEngine implements AgentEngine {
         < invocationLimit);
 
     if (finalResponse != null) {
+      listener.onEnd(sessionId);
       return finalResponse;
     }
     final Message invocationsExceededMessage =
@@ -100,7 +112,7 @@ public class HybridEngine implements AgentEngine {
     try {
       message = _runReasoner(sessionId, 5);
     } finally {
-        listener.onReasoningEnd(sessionId, message);
+      listener.onReasoningEnd(sessionId, message);
     }
     return message;
   }
@@ -108,7 +120,12 @@ public class HybridEngine implements AgentEngine {
   private Message _runReasoner(final String sessionId, final int maxRetries) {
     final List<Message> prompt = CollectionUtils
         .nullSafeMutableList(reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId)));
-    Message response = reasoningModel.generate(prompt);
+    Message response;
+    try {
+      response = reasoningModel.generate(prompt);
+    } catch (Exception e) {
+      throw new ModelInvocationException("reasoning-model", "Failed to generate reasoning response", e);
+    }
     response = EngineUtils.sanitizeMessage(response, reasoningModel.responseFormat(), reasoningModel.thoughtsEnabled(),
         reasoningModel.thoughtsStartTag(), reasoningModel.thoughtsEndTag());
 
@@ -138,14 +155,15 @@ public class HybridEngine implements AgentEngine {
   }
 
   private static String getReasoningSessionId(final String sessionId) {
-    return STR."\{sessionId}_reasoning";
+    return sessionId + REASONING_SESSION_SUFFIX;
   }
 
   private static String getToolSessionId(final String sessionId) {
-    return STR."\{sessionId}_tool";
+    return sessionId + TOOL_SESSION_SUFFIX;
   }
 
-  private List<ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests, final AgentListener listener) {
+  private List<ToolCall> runToolAssistant(final String sessionId, final List<ToolRequest> toolRequests,
+      final AgentListener listener) {
     final String message = TemplateUtils.renderTemplateForName("hybrid/tool_assistant_json.txt", Map.of("toolRequests",
         JsonUtils.toJson(toolRequests), "tool_schema", loadResourceAsString("/schemas/hybrid/tool_call_schema.json")));
     sessionStore.appendMessage(getToolSessionId(sessionId), Message.user(message));
@@ -156,7 +174,12 @@ public class HybridEngine implements AgentEngine {
 
     do {
       final List<Message> prompt = toolAssistantContextBuilder.buildPrompt(getToolSessionId(sessionId));
-      Message response = toolAssistantModel.generate(prompt);
+      Message response;
+      try {
+        response = toolAssistantModel.generate(prompt);
+      } catch (Exception e) {
+        throw new ModelInvocationException("tool-assistant-model", "Failed to generate tool assistant response", e);
+      }
       final Message sanitized = EngineUtils.sanitizeMessage(response, toolAssistantModel.responseFormat(),
           toolAssistantModel.thoughtsEnabled(), toolAssistantModel.thoughtsStartTag(),
           toolAssistantModel.thoughtsEndTag());
@@ -184,7 +207,8 @@ public class HybridEngine implements AgentEngine {
     return buildOrderedToolCalls(toolRequests, matchedCallsById);
   }
 
-  private void executeToolRequests(final String sessionId, final List<String> toolRequests, final AgentListener listener) {
+  private void executeToolRequests(final String sessionId, final List<String> toolRequests,
+      final AgentListener listener) {
     if (CollectionUtils.isEmpty(toolRequests)) {
       return;
     }
@@ -197,7 +221,8 @@ public class HybridEngine implements AgentEngine {
 
   private void executeToolPlan(final String sessionId, final List<String> toolRequests, final AgentListener listener) {
     // Process initial requests
-    final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests), listener);
+    final List<ToolCall> toolCalls = runToolAssistant(sessionId, EngineUtils.parseToolRequestInfo(toolRequests),
+        listener);
     if (CollectionUtils.isEmpty(toolCalls)) {
       sessionStore.appendMessage(getReasoningSessionId(sessionId),
           Message.system("Unable to execute tools. Please try alternate approach"));
@@ -206,7 +231,7 @@ public class HybridEngine implements AgentEngine {
 
     listener.onToolPlan(sessionId, toolCalls);
 
-    final List<ToolExecution> executions = _executeTools(toolCalls);
+    final List<ToolExecution> executions = _executeTools(sessionId, toolCalls);
     emitToolExecutionEvents(sessionId, executions, listener);
     final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
         execution -> execution.getToolCall().id(), Function.identity());
@@ -247,7 +272,7 @@ public class HybridEngine implements AgentEngine {
     return JsonUtils.toJson(payload);
   }
 
-  private List<ToolExecution> _executeTools(final Collection<ToolCall> toolCalls) {
+  private List<ToolExecution> _executeTools(final String sessionId, final Collection<ToolCall> toolCalls) {
     final List<ToolExecution> executions = new ArrayList<>();
     for (ToolCall call : toolCalls) {
       final Tool tool = toolByName.get(call.name());
@@ -259,7 +284,10 @@ public class HybridEngine implements AgentEngine {
         output = STR."Unknown tool: \{call.name()}";
       } else {
         try {
-          output = tool.execute(call.args());
+          final ToolContext context = new ToolContext(sessionId);
+          final ToolResult result = tool.executeWithContext(context, call.args());
+          output = result.output();
+          status = result.status();
         } catch (Exception ex) {
           status = "error";
           output = STR."Tool error in \{call.name()}: \{ex.getMessage()}";

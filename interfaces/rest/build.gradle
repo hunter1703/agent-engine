@@ -1,6 +1,6 @@
 plugins {
     id 'com.agentengine.java-application-conventions'
-    id 'io.quarkus' version '3.23.0'
+    alias(libs.plugins.quarkus)
 }
 
 repositories {
@@ -8,34 +8,32 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    implementation(enforcedPlatform(
-        "${property('quarkusPlatformGroupId')}:${property('quarkusPlatformArtifactId')}:${property('quarkusPlatformVersion')}"
-    ))
-    implementation platform('io.quarkiverse.langchain4j:quarkus-langchain4j-bom:0.26.1')
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation platform(libs.quarkus.langchain4j.bom)
     implementation project(':engine')
-    implementation project(':engine:client')
+    implementation project(':engine:api')
     implementation project(':interfaces:common')
     implementation project(':commons')
-    implementation 'io.quarkus:quarkus-rest-jackson'
-    implementation 'io.quarkus:quarkus-smallrye-openapi'
-    implementation 'io.quarkus:quarkus-mongodb-client'
+    implementation libs.quarkus.rest.jackson
+    implementation libs.quarkus.smallrye.openapi
+    implementation libs.quarkus.mongodb.client
 
     // AG-UI Core components
-    implementation 'com.ag-ui:core:0.0.1'
+    implementation libs.ag.ui.core
 
     // AG-UI Server components
-    implementation 'com.ag-ui:server:0.0.1'
+    implementation libs.ag.ui.server
 
     // AG-UI JSON utilities
-    implementation 'com.ag-ui:json:0.0.1'
+    implementation libs.ag.ui.json
 
     // AG-UI HTTP client (if you need to connect to remote agents)
-    implementation 'com.ag-ui:http:0.0.1'
-    implementation 'com.ag-ui:ok-http:4.12.0' // Version tied to OkHttp
+    implementation libs.ag.ui.http
+    implementation libs.ag.ui.ok.http
 
-    testImplementation 'io.quarkus:quarkus-junit5'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.mockito:mockito-core'
+    testImplementation libs.quarkus.junit5
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
 }
 
 tasks.withType(Test).configureEach {

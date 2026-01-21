@@ -3,11 +3,11 @@ package com.agentengine.engine.utils;
 import com.agentengine.commons.utils.CollectionUtils;
 import com.agentengine.commons.utils.JsonUtils;
 import com.agentengine.commons.utils.TemplateUtils;
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.beans.session.Role;
-import com.agentengine.engine.client.beans.session.ToolCall;
-import com.agentengine.engine.client.state.SessionStore;
-import com.agentengine.engine.client.beans.session.ToolRequest;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.api.beans.session.ToolCall;
+import com.agentengine.engine.api.state.SessionStore;
+import com.agentengine.engine.api.beans.session.ToolRequest;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -283,7 +283,7 @@ public final class EngineUtils {
       if (payload.containsKey("tool_name")) {
         Object nameValue = payload.get("tool_name");
         Object argsValue = payload.get("tool_args");
-        // noinspection unchecked
+        @SuppressWarnings("unchecked")
         Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
         return List.of(new ToolCall(null, nameValue == null ? "" : nameValue.toString(), args));
       }
@@ -299,7 +299,7 @@ public final class EngineUtils {
         continue;
       }
       final Object argsValue = map.get("args");
-      // noinspection unchecked
+      @SuppressWarnings("unchecked")
       final Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap
           ? (Map<String, Object>) argsMap
           : Map.of();

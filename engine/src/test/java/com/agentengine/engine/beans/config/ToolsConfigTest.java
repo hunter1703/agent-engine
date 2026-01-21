@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 
-import com.agentengine.engine.client.beans.config.ToolsConfig;
+import com.agentengine.engine.api.beans.config.ToolsConfig;
 import org.junit.jupiter.api.Test;
 
 class ToolsConfigTest {

@@ -2,10 +2,10 @@ package com.agentengine.engine.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.client.beans.session.ToolExecution;
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.beans.session.Role;
-import com.agentengine.engine.client.beans.session.ToolCall;
+import com.agentengine.engine.api.beans.session.ToolExecution;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.api.beans.session.ToolCall;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;

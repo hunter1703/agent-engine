@@ -4,8 +4,8 @@ import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentRequest.RequestType;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.commons.utils.StringUtils;
 import io.smallrye.common.annotation.Blocking;
@@ -48,8 +48,8 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "200", description = "Invoke response or prompt response", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(oneOf = {
       InvokeResponse.class, PromptResponse.class})))
   public AgentResponse invoke(final AgentRequest request) {
-    request.setSessionId(getOrCreateSession(request.getSessionId()));
-    return handlers.get(RequestType.valueOf(request.getType())).handle(request);
+    final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+    return handlers.get(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
   }
 
   @POST
@@ -60,8 +60,8 @@ public class AgentRestAPI {
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
   public Multi<AgentEvent> events(final AgentRequest request) {
-    request.setSessionId(getOrCreateSession(request.getSessionId()));
-    return handlers.get(RequestType.STREAMING_INVOKE_AGENT).handle(request);
+    final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+    return handlers.get(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
   }
 
   private static String getOrCreateSession(final String sessionId) {

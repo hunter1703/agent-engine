@@ -1,7 +1,7 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.beans.session.Role;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.utils.EngineUtils;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;

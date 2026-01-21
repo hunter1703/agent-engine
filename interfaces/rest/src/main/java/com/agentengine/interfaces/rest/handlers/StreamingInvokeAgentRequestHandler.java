@@ -1,12 +1,12 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.client.AgentRequest;
-import com.agentengine.engine.client.AgentRequest.RequestType;
-import com.agentengine.engine.client.AgentEngine;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.events.AgentEvent;
 import com.agentengine.engine.events.AgentEventAdapter;
 import com.agentengine.engine.events.AgentEventPublisher;
-import com.agentengine.engine.client.beans.session.Message;
+import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AGUISubscriber;
 import com.agentengine.interfaces.rest.services.AgentManager;

@@ -2,14 +2,14 @@ package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.client.AgentEngine;
-import com.agentengine.engine.client.beans.session.Message;
-import com.agentengine.engine.client.AgentListener;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.AgentListener;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class AbstractAgentEngineTest {
+class AbstractAgentTest {
 
   @Test
   void invokeListenersNotifiesAllRegisteredListeners() {
@@ -23,7 +23,7 @@ class AbstractAgentEngineTest {
     assertThat(called).containsExactly("start-s1", "end-s1");
   }
 
-  private static final class TestEngine implements AgentEngine {
+  private static final class TestEngine implements Agent {
     private final List<AgentListener> listeners = new ArrayList<>();
 
     public void registerListener(String sessionId, AgentListener listener) {
