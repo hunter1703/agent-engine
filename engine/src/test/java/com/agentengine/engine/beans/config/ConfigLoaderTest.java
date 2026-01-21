@@ -22,13 +22,13 @@ class ConfigLoaderTest {
   void loadConfigReadsJsonAndValidatesEngineFields() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(configPath, "{"
-        + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"You are helpful\",\"tool\":\"tool.json\"}"
+        + "\"engine\":{\"type\":\"hybrid\",\"reasoningModelId\":\"reasoner.json\",\"systemPrompt\":\"You are helpful\",\"toolAssistantModelId\":\"tool.json\"}"
         + "}");
 
     ConfigLoader loader = new ConfigLoaderImpl();
     AgentConfig config = loader.loadConfig(configPath);
 
-    assertThat(config.getEngine().getReasoning()).isEqualTo("reasoner.json");
+    assertThat(config.getEngine().getReasoningModelId()).isEqualTo("reasoner.json");
     assertThat(config.getEngine().getSystemPrompt()).isEqualTo("You are helpful");
   }
 
@@ -36,12 +36,12 @@ class ConfigLoaderTest {
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
     Files.writeString(configPath,
-        "engine:\n  type: hybrid\n  reasoning: reasoning.json\n  systemPrompt: hello\n  tool: tool.json\n");
+        "engine:\n  type: hybrid\n  reasoningModelId: reasoning.json\n  systemPrompt: hello\n  toolAssistantModelId: tool.json\n");
 
     ConfigLoader loader = new ConfigLoaderImpl();
     AgentConfig config = loader.loadConfig(configPath);
 
-    assertThat(config.getEngine().getReasoning()).isEqualTo("reasoning.json");
+    assertThat(config.getEngine().getReasoningModelId()).isEqualTo("reasoning.json");
     assertThat(config.getEngine().getSystemPrompt()).isEqualTo("hello");
   }
 
@@ -49,7 +49,7 @@ class ConfigLoaderTest {
   void loadConfigDefaultsToJsonWhenExtensionMissing() throws Exception {
     Path configPath = tempDir.resolve("agent");
     Files.writeString(configPath, "{"
-        + "\"engine\":{\"type\":\"hybrid\",\"reasoning\":\"reasoner.json\",\"systemPrompt\":\"Hello\",\"tool\":\"tool.json\"}"
+        + "\"engine\":{\"type\":\"hybrid\",\"reasoningModelId\":\"reasoner.json\",\"systemPrompt\":\"Hello\",\"toolAssistantModelId\":\"tool.json\"}"
         + "}");
 
     ConfigLoader loader = new ConfigLoaderImpl();

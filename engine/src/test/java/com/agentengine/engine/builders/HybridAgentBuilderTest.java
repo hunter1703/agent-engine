@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.HybridEngine;
+import com.agentengine.engine.HybridAgent;
 import com.agentengine.engine.MongoConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.HybridEngineConfig;
+import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.beans.config.LastNContextConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
@@ -28,9 +28,9 @@ class HybridAgentBuilderTest {
     when(repository.loadModelConfig("tool")).thenReturn(toolModel);
 
     AgentConfig agentConfig = AgentConfig.empty();
-    HybridEngineConfig engine = (HybridEngineConfig) agentConfig.getEngine();
-    engine.setReasoning("reasoner");
-    engine.setTool("tool");
+    HybridAgentConfig engine = (HybridAgentConfig) agentConfig.getEngine();
+    engine.setReasoningModelId("reasoner");
+    engine.setToolAssistantModelId("tool");
     engine.setSystemPrompt("");
 
     ToolsConfig tools = new ToolsConfig();
@@ -39,7 +39,7 @@ class HybridAgentBuilderTest {
     agentConfig.setTools(tools);
 
     HybridAgentBuilder builder = new HybridAgentBuilder(repository);
-    HybridEngine engineInstance = builder.build("test-agent", agentConfig);
+    HybridAgent engineInstance = builder.build("test-agent", agentConfig);
 
     List<Message> prompt = engineInstance.buildPrompt("session");
 

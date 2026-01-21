@@ -1,9 +1,11 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.engine.api.beans.config.HybridAgentConfig;
+
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeKey = "type", seeAlso = {HybridEngineConfig.class, RouterEngineConfig.class})
+@JSONType(typeKey = "type", seeAlso = { HybridAgentConfig.class, RouterEngineConfig.class })
 @BsonDiscriminator(key = "type")
 public abstract class EngineConfig implements Config {
   private String type;
@@ -13,7 +15,7 @@ public abstract class EngineConfig implements Config {
   private Integer toolRetryLimit = 2;
 
   private String systemPrompt;
-  private String reasoning;
+  private String reasoningModelId;
 
   protected EngineConfig(final EngineType engineType) {
     this.type = engineType.name().toLowerCase();
@@ -51,17 +53,17 @@ public abstract class EngineConfig implements Config {
     this.systemPrompt = systemPrompt;
   }
 
-  public String getReasoning() {
-    return reasoning;
+  public String getReasoningModelId() {
+    return reasoningModelId;
   }
 
-  public void setReasoning(final String reasoning) {
-    this.reasoning = reasoning;
+  public void setReasoningModelId(final String reasoningModelId) {
+    this.reasoningModelId = reasoningModelId;
   }
 
   protected final void validateBase() {
-    if (reasoning == null || reasoning.isBlank()) {
-      throw new IllegalArgumentException("engine.reasoning is required");
+    if (reasoningModelId == null || reasoningModelId.isBlank()) {
+      throw new IllegalArgumentException("engine.reasoningModelId is required");
     }
     if (systemPrompt == null || systemPrompt.isBlank()) {
       throw new IllegalArgumentException("engine.systemPrompt is required");

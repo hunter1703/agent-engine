@@ -198,70 +198,6 @@ class AbstractAgentBuilderTest {
   }
 
   @Test
-  void buildContextBuildersUseLastNConfig() {
-    ModelConfig config = new ModelConfig();
-    config.setResponseFormat("json");
-    config.setThoughtsEnabled(true);
-    config.setContextConfig(new LastNContextConfig());
-
-    SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder reasoning = builder.callBuildReasoningContextBuilder(config, sessionStore, true, "system",
-        List.of());
-    ContextBuilder toolAssistant = builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system",
-        List.of());
-
-    assertThat(reasoning).isInstanceOf(LastNContextBuilder.class);
-    assertThat(toolAssistant).isInstanceOf(LastNContextBuilder.class);
-  }
-
-  @Test
-  void buildContextBuildersRejectUnsupportedContextConfig() {
-    ModelConfig config = new ModelConfig();
-    config.setResponseFormat("json");
-    config.setThoughtsEnabled(false);
-    config.setContextConfig(new SummarizingContextConfig());
-
-    SessionStore sessionStore = new InMemorySessionStore();
-
-    assertThatThrownBy(() -> builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system", List.of()))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("context config");
-
-    assertThatThrownBy(() -> builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system", List.of()))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("context config");
-  }
-
-  @Test
-  void buildContextBuildersUseNonHybridTemplates() {
-    ModelConfig config = new ModelConfig();
-    config.setResponseFormat("json");
-    config.setThoughtsEnabled(false);
-    config.setContextConfig(new LastNContextConfig());
-
-    SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder reasoning = builder.callBuildReasoningContextBuilder(config, sessionStore, false, "system",
-        List.of());
-    List<Message> prompt = reasoning.buildPrompt("session");
-
-    String protocolMessage = prompt.getFirst().getContent();
-    assertThat(protocolMessage).contains("You must return a single JSON object").contains("Return JSON only");
-  }
-
-  @Test
-  void buildToolAssistantUsesTextTemplate() {
-    ModelConfig config = new ModelConfig();
-    config.setResponseFormat("text");
-    config.setContextConfig(new LastNContextConfig());
-
-    SessionStore sessionStore = new InMemorySessionStore();
-    ContextBuilder toolAssistant = builder.callBuildToolAssistantContextBuilder(config, sessionStore, "system",
-        List.of());
-    List<Message> prompt = toolAssistant.buildPrompt("session");
-
-    assertThat(prompt.getFirst().getContent()).contains("tool-calling model")
-        .contains("Use only tools listed inside <AVAILABLE_TOOLS>");
-  }
-
-  @Test
   void buildChatModelBuildsLangChainModelForProviders() {
     ModelConfig openAi = new ModelConfig();
     openAi.setProvider("OPEN_AI");
@@ -327,16 +263,6 @@ class AbstractAgentBuilderTest {
 
     private SessionStore callBuildStateStore(final StateStoreConfig config) {
       return buildStateStore(config);
-    }
-
-    private ContextBuilder callBuildReasoningContextBuilder(final ModelConfig config, final SessionStore sessionStore,
-        final boolean hybrid, final String systemMessage, final List<Tool> tools) {
-      return buildReasoningContextBuilder(config, sessionStore, hybrid, systemMessage, tools);
-    }
-
-    private ContextBuilder callBuildToolAssistantContextBuilder(final ModelConfig config,
-        final SessionStore sessionStore, final String systemMessage, final List<Tool> tools) {
-      return buildToolAssistantContextBuilder(config, sessionStore, systemMessage, tools);
     }
 
     @Override

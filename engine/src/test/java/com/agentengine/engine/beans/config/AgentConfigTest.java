@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.HybridEngineConfig;
+import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigTest {
@@ -25,10 +25,10 @@ class AgentConfigTest {
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 
-    HybridEngineConfig engine = (HybridEngineConfig) config.getEngine();
-    engine.setReasoning("reasoner.json");
+    HybridAgentConfig engine = (HybridAgentConfig) config.getEngine();
+    engine.setReasoningModelId("reasoner.json");
     engine.setSystemPrompt("prompt");
-    engine.setTool("tool.json");
+    engine.setToolAssistantModelId("tool.json");
 
     config.validate();
   }

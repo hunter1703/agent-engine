@@ -56,37 +56,6 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     this.configRepository = configRepository;
   }
 
-  protected static ContextBuilder buildReasoningContextBuilder(final ModelConfig config,
-      final SessionStore sessionStore, final boolean hybrid, final String systemMessage, final List<Tool> tools) {
-    final String templateName = resolveReasoningProtocolTemplate(hybrid, config.getResponseFormat());
-    final Map<String, Object> context = new HashMap<>();
-    context.put("thoughtsEnabled", config.isThoughtsEnabled());
-    if ("json".equalsIgnoreCase(config.getResponseFormat())) {
-      context.put("response_schema", loadReasonerSchema(config));
-    }
-    final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
-    return switch (config.getContextConfig()) {
-      case LastNContextConfig lastNContextConfig ->
-        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
-      default -> throw new IllegalArgumentException("Unknown context config");
-    };
-  }
-
-  protected static ContextBuilder buildToolAssistantContextBuilder(final ModelConfig config,
-      final SessionStore sessionStore, final String systemMessage, final List<Tool> tools) {
-    final String templateName = resolveToolAssistantProtocolTemplate(config.getResponseFormat());
-    final Map<String, Object> context = new HashMap<>();
-    if ("json".equalsIgnoreCase(config.getResponseFormat())) {
-      context.put("tool_schema", loadToolCallSchema());
-    }
-    final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
-    return switch (config.getContextConfig()) {
-      case LastNContextConfig lastNContextConfig ->
-        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
-      default -> throw new IllegalArgumentException("Unknown context config");
-    };
-  }
-
   protected static ResponseFormat getResponseFormat(final ModelConfig config) {
     if ("json".equals(config.getResponseFormat())) {
       Map<String, Object> responseJsonSchema = config.isThoughtsEnabled()
@@ -312,20 +281,6 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     return strings;
   }
 
-  private static String loadReasonerSchema(final ModelConfig config) {
-    if (!"json".equalsIgnoreCase(config.getResponseFormat())) {
-      return "";
-    }
-    String path = config.isThoughtsEnabled()
-        ? "/schemas/hybrid/reasoner_with_thoughts.json"
-        : "/schemas/hybrid/reasoner_without_thoughts.json";
-    return ResourceUtils.loadResourceAsString(path);
-  }
-
-  private static String loadToolCallSchema() {
-    return ResourceUtils.loadResourceAsString("/schemas/hybrid/tool_call_schema.json");
-  }
-
   protected static LLMModel buildChatModel(final ModelConfig modelConfig) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getProvider());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
@@ -366,27 +321,4 @@ public abstract class AbstractAgentBuilder implements AgentBuilder {
     return new InMemorySessionStore();
   }
 
-  private static String resolveReasoningProtocolTemplate(final boolean hybrid, final String responseFormat) {
-    if ("json".equalsIgnoreCase(responseFormat)) {
-      if (hybrid) {
-        return "hybrid/reasoner_json.txt";
-      } else {
-        return "simple/assistant_json.txt";
-      }
-    } else {
-      if (hybrid) {
-        return "hybrid/reasoner_text.txt";
-      } else {
-        return "simple/assistant_text.txt";
-      }
-    }
-  }
-
-  private static String resolveToolAssistantProtocolTemplate(final String responseFormat) {
-    if ("json".equalsIgnoreCase(responseFormat)) {
-      return "hybrid/tool_assistant_json.txt";
-    } else {
-      return "hybrid/tool_assistant_text.txt";
-    }
-  }
 }

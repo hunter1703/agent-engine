@@ -15,7 +15,7 @@ import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
-import com.agentengine.engine.api.beans.config.HybridEngineConfig;
+import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.builders.AgentBuilderFactory;
 import com.agentengine.interfaces.rest.services.AGUIAgent;
@@ -115,9 +115,9 @@ class AgentManagerTest {
 
   private static AgentConfig buildValidAgentConfig() {
     AgentConfig config = AgentConfig.empty();
-    HybridEngineConfig engine = (HybridEngineConfig) config.getEngine();
-    engine.setReasoning("reasoner.json");
-    engine.setTool("tool.json");
+    HybridAgentConfig engine = (HybridAgentConfig) config.getEngine();
+    engine.setReasoningModelId("reasoner.json");
+    engine.setToolAssistantModelId("tool.json");
     engine.setSystemPrompt("You are helpful.");
     return config;
   }

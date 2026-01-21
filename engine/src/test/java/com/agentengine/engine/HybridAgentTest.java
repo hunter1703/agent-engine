@@ -12,6 +12,10 @@ import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.api.state.SessionStore;
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.api.beans.session.ToolRequest;
+import com.agentengine.engine.tools.AgenticToolExecutor;
+import com.agentengine.engine.tools.ToolExecutor;
+import com.agentengine.engine.tools.ToolRequestExecutor;
+import com.agentengine.engine.HybridAgent;
 import com.agentengine.engine.api.AgentListener;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -20,7 +24,7 @@ import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
-class HybridEngineTest {
+class HybridAgentTest {
 
   @Test
   void invokeRunsToolPlanAndReturnsFinalAnswer() {
@@ -41,8 +45,12 @@ class HybridEngineTest {
 
     List<Tool> tools = List.of(new EchoTool());
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+    Map<String, Tool> toolMap = new HashMap<>();
+    tools.forEach(t -> toolMap.put(t.name(), t));
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, toolMap, sessionStore);
+    
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
         sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
@@ -78,7 +86,14 @@ class HybridEngineTest {
     List<Tool> tools = List.of(tool);
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
     BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+
+    Map<String, Tool> toolMap = new HashMap<>();
+    tools.forEach(t -> toolMap.put(t.name(), t));
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, toolMap,
+        sessionStore);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
         sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
@@ -105,8 +120,11 @@ class HybridEngineTest {
 
     List<Tool> tools = List.of();
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, Map.of(),
+        sessionStore);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
         sessionStore, 1);
 
     Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
@@ -134,9 +152,12 @@ class HybridEngineTest {
         List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null, null)));
 
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, List.of(), reasoningContext, toolContext,
-        sessionStore, 2);
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, Map.of(),
+        sessionStore);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
+        sessionStore, 5);
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
@@ -164,8 +185,13 @@ class HybridEngineTest {
 
     List<Tool> tools = List.of(new EchoTool());
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, tools, reasoningContext, toolContext,
+    Map<String, Tool> toolMap = new HashMap<>();
+    tools.forEach(t -> toolMap.put(t.name(), t));
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", tools);
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, toolMap,
+        sessionStore);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
         sessionStore, 2);
 
     Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
@@ -194,11 +220,13 @@ class HybridEngineTest {
         List.of(new Message(Role.ASSISTANT, "", null, null, null)));
 
     BaseContextBuilder reasoningContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    BaseContextBuilder toolContext = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
-    HybridEngine engine = new HybridEngine(reasoningModel, toolAssistantModel, List.of(), reasoningContext, toolContext,
+    BaseContextBuilder toolContextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of());
+    AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, Map.of(), sessionStore);
+    
+    HybridAgent agent = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
         sessionStore, 2);
 
-    Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
+    Message result = agent.invoke(sessionId, Message.user("hello"), new AgentListener() {
       @Override
       public void onFinalAnswer(String sessionId, Message message) {
         // Not needed for this test

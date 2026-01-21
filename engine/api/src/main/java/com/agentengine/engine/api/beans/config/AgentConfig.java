@@ -2,7 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 public final class AgentConfig implements Config {
   private ToolsConfig tools = new ToolsConfig();
-  private EngineConfig engine = new HybridEngineConfig();
+  private EngineConfig engine = new HybridAgentConfig();
   private ContextConfig context = new SummarizingContextConfig();
 
   private StateStoreConfig stateStore = new MemoryStateStoreConfig();
