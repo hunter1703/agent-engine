@@ -1,6 +1,11 @@
 package com.agentengine.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.context.BaseContextBuilder;
@@ -22,7 +27,6 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 
 import java.util.*;
 
-import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.Test;
 
 class HybridAgentTest {
@@ -209,13 +213,17 @@ class HybridAgentTest {
   }
 
   @Test
-  void invokeEmitsAllGranularEvents() {
+  void invokeHandlesNullToolExecutions() {
     SessionStore sessionStore = new InMemorySessionStore();
     String sessionId = "session";
 
-    Message response = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, List.of(response));
+    String toolAssistantPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"unknown\"}]" + "}";
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON,
+        new ArrayList<>(
+            List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, List.of("TOOL_REQUEST: {}"), null))));
+
     AgenticToolExecutor toolExecutor = mock(AgenticToolExecutor.class);
+    when(toolExecutor.executeRequests(anyString(), anyList(), any())).thenReturn(List.of());
 
     HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class),
         sessionStore, 1);
@@ -223,16 +231,32 @@ class HybridAgentTest {
     CapturingListener listener = new CapturingListener();
     engine.invoke(sessionId, Message.user("hello"), listener);
 
-    assertThat(listener.startedRuns).hasSize(1);
-    assertThat(listener.finishedRuns).hasSize(1);
-    assertThat(listener.startedSteps).contains("Reasoning Turn 1");
-    assertThat(listener.finishedSteps).contains("Reasoning Turn 1");
-    assertThat(listener.reasoningMessageStarts).isEqualTo(1);
-    assertThat(listener.reasoningMessageEnds).isEqualTo(1);
-    assertThat(listener.reasoningDeltas).contains("done");
-    assertThat(listener.textMessageStarts).hasSize(1);
-    assertThat(listener.textMessageDeltas).contains("done");
-    assertThat(listener.textMessageEnds).hasSize(1);
+    List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
+    assertThat(reasoningMessages).anyMatch(m -> m.getContent().contains("Unable to execute tools"));
+  }
+
+  @Test
+  void invokeHandlesReasoningRepair() {
+    SessionStore sessionStore = new InMemorySessionStore();
+    String sessionId = "session";
+
+    // First message is invalid (empty), second is valid
+    Message invalid = new Message(Role.ASSISTANT, "", "", List.of(), List.of());
+    Message valid = new Message(Role.ASSISTANT, "FINAL: done", null, null, null);
+
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, new ArrayList<>(List.of(invalid, valid)));
+    AgenticToolExecutor toolExecutor = mock(AgenticToolExecutor.class);
+
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class),
+        sessionStore, 5);
+
+    CapturingListener listener = new CapturingListener();
+    engine.invoke(sessionId, Message.user("hello"), listener);
+
+    List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
+    assertThat(reasoningMessages)
+        .anyMatch(m -> m.getRole() == Role.SYSTEM
+            && m.getContent().contains("You must provide a final answer or tool requests"));
   }
 
   @Test

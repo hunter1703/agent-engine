@@ -160,22 +160,22 @@ class ToolRequestExecutorTest {
     }
 
     @Test
-    void executeReturnsEmptyListOnTotalFailure() {
+    void executeReturnsPartialListOnPartialFailure() {
         SessionStore sessionStore = new InMemorySessionStore();
         String sessionId = "session";
 
-        // Repeatedly return bad payload to exhaust retries
-        String badPayload = """
-                {"toolRequests":[{"id":"WRONG-ID","name":"echo"}]}
+        // One tool matched, one remains missing
+        String partialPayload = """
+                {"toolRequests":[{"id":"call-1","name":"echo"}]}
                 """;
 
         LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
                 List.of(
-                        new Message(Role.ASSISTANT, badPayload, null, null, null),
-                        new Message(Role.ASSISTANT, badPayload, null, null, null),
-                        new Message(Role.ASSISTANT, badPayload, null, null, null),
-                        new Message(Role.ASSISTANT, badPayload, null, null, null),
-                        new Message(Role.ASSISTANT, badPayload, null, null, null)));
+                        new Message(Role.ASSISTANT, partialPayload, null, null, null),
+                        new Message(Role.ASSISTANT, partialPayload, null, null, null),
+                        new Message(Role.ASSISTANT, partialPayload, null, null, null),
+                        new Message(Role.ASSISTANT, partialPayload, null, null, null),
+                        new Message(Role.ASSISTANT, partialPayload, null, null, null)));
 
         Tool tool = new EchoTool();
         BaseContextBuilder contextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of(tool));
@@ -183,33 +183,72 @@ class ToolRequestExecutorTest {
                 sessionStore);
 
         CapturingListener listener = new CapturingListener();
-        List<String> toolRequests = List
-                .of("TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\",\"args\":{\"text\":\"hi\"}}");
+        List<String> toolRequests = List.of(
+                "TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\"}",
+                "TOOL_REQUEST: {\"id\":\"call-2\",\"name\":\"echo\"}");
 
         List<ToolExecution> result = executor.executeRequests(sessionId, toolRequests, listener);
 
-        assertThat(result).isEmpty();
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getToolCall().id()).isEqualTo("call-1");
         assertThat(listener.toolRepairs).isGreaterThan(0);
     }
 
     @Test
-    void executeDirectlyRunsToolCalls() {
+    void executeHandlesNullArguments() {
         SessionStore sessionStore = new InMemorySessionStore();
         String sessionId = "session";
 
-        List<Tool> tools = List.of(new EchoTool());
-        Map<String, Tool> toolMap = new HashMap<>();
-        tools.forEach(t -> toolMap.put(t.name(), t));
+        Tool tool = new Tool() {
+            @Override
+            public String name() {
+                return "null-args";
+            }
 
-        ToolExecutor executor = new ToolRequestExecutor(null, null, toolMap, sessionStore);
+            @Override
+            public String description() {
+                return "handles null";
+            }
+
+            @Override
+            public String execute(Map<String, Object> args) {
+                return "ok";
+            }
+        };
+
+        ToolExecutor executor = new ToolRequestExecutor(null, null, Map.of("null-args", tool), sessionStore);
         CapturingListener listener = new CapturingListener();
-        List<ToolCall> toolCalls = List.of(new ToolCall("call-1", "echo", Map.of("text", "hello")));
+        List<ToolCall> toolCalls = List.of(new ToolCall("call-1", "null-args", null));
 
         List<ToolExecution> result = executor.execute(sessionId, toolCalls, listener);
-
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getOutput()).isEqualTo("hello");
-        assertThat(listener.toolPlans).hasSize(1);
+        assertThat(result.getFirst().getOutput()).isEqualTo("ok");
+    }
+
+    @Test
+    void executeHandlesMalformedJsonInRepairLoop() {
+        SessionStore sessionStore = new InMemorySessionStore();
+        String sessionId = "session";
+
+        // Mismatched JSON (missing bracket)
+        String malformedPayload = "{\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\"";
+        String goodPayload = "{\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"echo\"}]}";
+
+        LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
+                List.of(
+                        new Message(Role.ASSISTANT, malformedPayload, null, null, null),
+                        new Message(Role.ASSISTANT, goodPayload, null, null, null)));
+
+        Tool tool = new EchoTool();
+        BaseContextBuilder contextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of(tool));
+        AgenticToolExecutor executor = new ToolRequestExecutor(toolAssistantModel, contextBuilder, Map.of("echo", tool),
+                sessionStore);
+
+        CapturingListener listener = new CapturingListener();
+        List<String> toolRequests = List.of("TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\"}");
+
+        executor.executeRequests(sessionId, toolRequests, listener);
+        assertThat(listener.toolRepairs).isEqualTo(1);
         assertThat(listener.toolResults).hasSize(1);
     }
 

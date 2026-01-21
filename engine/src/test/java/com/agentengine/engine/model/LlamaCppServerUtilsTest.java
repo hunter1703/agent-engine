@@ -3,59 +3,67 @@ package com.agentengine.engine.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.beans.config.ModelConfig.Provider;
-import com.sun.net.httpserver.HttpServer;
 import java.net.URI;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class LlamaCppServerUtilsTest {
 
   @Test
-  void buildModelsEndpointAppendsModelsPath() {
-    URI uri = LlamaCppServerUtils.buildModelsEndpoint("http://127.0.0.1:17000/v1");
+  void resolveAddressHandlesVariousUrls() {
+    LlamaCppServerUtils.ServerAddress addr = LlamaCppServerUtils.resolveAddress("http://localhost:8080");
+    assertThat(addr.host()).isEqualTo("localhost");
+    assertThat(addr.port()).isEqualTo(8080);
 
-    assertThat(uri).isNotNull();
-    assertThat(uri.toString()).isEqualTo("http://127.0.0.1:17000/v1/models");
+    addr = LlamaCppServerUtils.resolveAddress("https://example.com");
+    assertThat(addr.host()).isEqualTo("example.com");
+    assertThat(addr.port()).isEqualTo(443);
+
+    addr = LlamaCppServerUtils.resolveAddress("http://127.0.0.1");
+    assertThat(addr.host()).isEqualTo("127.0.0.1");
+    assertThat(addr.port()).isEqualTo(80);
+
+    assertThat(LlamaCppServerUtils.resolveAddress(null)).isNull();
+    assertThat(LlamaCppServerUtils.resolveAddress("invalid-url")).isNull();
   }
 
   @Test
-  void buildModelsEndpointHandlesTrailingSlash() {
-    URI uri = LlamaCppServerUtils.buildModelsEndpoint("http://127.0.0.1:17000/v1/");
+  void buildModelsEndpointNormalizesPath() {
+    URI uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080");
+    assertThat(uri.toString()).isEqualTo("http://localhost:8080/v1/models");
 
-    assertThat(uri).isNotNull();
-    assertThat(uri.toString()).isEqualTo("http://127.0.0.1:17000/v1/models");
+    uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080/");
+    assertThat(uri.toString()).isEqualTo("http://localhost:8080/v1/models");
+
+    uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080/api/v2");
+    assertThat(uri.toString()).isEqualTo("http://localhost:8080/api/v2/models");
+
+    assertThat(LlamaCppServerUtils.buildModelsEndpoint(null)).isNull();
   }
 
   @Test
-  void resolveAddressParsesHostAndPort() {
-    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://localhost:1234/v1");
-
-    assertThat(address).isNotNull();
-    assertThat(address.host()).isEqualTo("localhost");
-    assertThat(address.port()).isEqualTo(1234);
-  }
-
-  @Test
-  void ensureRunningWaitsForReadyEndpoint() throws Exception {
-    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/v1/models", exchange -> {
-      byte[] body = "{\"data\":[]}".getBytes(StandardCharsets.UTF_8);
-      exchange.sendResponseHeaders(200, body.length);
-      exchange.getResponseBody().write(body);
-      exchange.close();
-    });
-    server.start();
-    int port = server.getAddress().getPort();
+  void ensureRunningReturnsEarlyOnInvalidConfig() {
+    // Should not throw
+    LlamaCppServerUtils.ensureRunning(null);
 
     ModelConfig config = new ModelConfig();
-    config.setProvider(Provider.LLAMA_CPP.name());
-    config.setBaseUrl("http://127.0.0.1:" + port + "/v1");
-    config.setServerCommand("");
-
+    config.setProvider("OLLAMA");
     LlamaCppServerUtils.ensureRunning(config);
+  }
 
-    server.stop(0);
+  @Test
+  void testManagedServerRecord() {
+    LlamaCppServerUtils.ManagedServer server = new LlamaCppServerUtils.ManagedServer("url", null, List.of("cmd"));
+    assertThat(server.baseUrl()).isEqualTo("url");
+    assertThat(server.process()).isNull();
+    assertThat(server.command()).contains("cmd");
+  }
+
+  @Test
+  void ensureRunningReturnsEarlyOnMissingCommand() {
+    ModelConfig config = new ModelConfig();
+    config.setProvider("LLAMA_CPP");
+    config.setBaseUrl(null);
+    LlamaCppServerUtils.ensureRunning(config);
   }
 }

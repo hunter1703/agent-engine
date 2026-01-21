@@ -150,8 +150,8 @@ public final class LlamaCppServerUtils {
     try {
       URI baseUri = new URI(baseUrl);
       String path = baseUri.getPath();
-      String normalizedPath = StringUtils.isBlank(path) ? "/v1" : path;
-      if (normalizedPath.endsWith("/")) {
+      String normalizedPath = (StringUtils.isBlank(path) || "/".equals(path)) ? "/v1" : path;
+      if (normalizedPath.endsWith("/") && normalizedPath.length() > 1) {
         normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
       }
       String modelsPath = STR."\{normalizedPath}/models";

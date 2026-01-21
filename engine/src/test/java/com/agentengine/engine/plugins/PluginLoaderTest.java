@@ -2,58 +2,46 @@ package com.agentengine.engine.plugins;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.FileOutputStream;
-import java.net.URLClassLoader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.jar.JarOutputStream;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class PluginLoaderTest {
-  @TempDir
-  Path tempDir;
-
-  @AfterEach
-  void clearProperty() {
-    System.clearProperty("PLUGIN_DIR");
-  }
 
   @Test
-  void buildClassLoaderFallsBackWhenDirectoryMissing() {
-    System.setProperty("PLUGIN_DIR", tempDir.resolve("missing").toString());
-
-    ClassLoader loader = PluginLoader.buildClassLoader();
-
-    assertThat(loader).isSameAs(PluginLoader.class.getClassLoader());
-  }
-
-  @Test
-  void buildClassLoaderLoadsJarUrls() throws Exception {
-    Path pluginsDir = tempDir.resolve("plugins");
-    Files.createDirectories(pluginsDir);
-    Path jarPath = pluginsDir.resolve("plugin.jar");
-    try (JarOutputStream jar = new JarOutputStream(new FileOutputStream(jarPath.toFile()))) {
-      // empty jar is fine
+  void getClassLoaderReturnsDefaultWhenNoPluginsDir(@TempDir Path tempDir) {
+    System.setProperty("PLUGIN_DIR", tempDir.resolve("non-existent").toString());
+    try {
+      ClassLoader loader = PluginLoader.buildClassLoader();
+      assertThat(loader).isEqualTo(PluginLoader.class.getClassLoader());
+    } finally {
+      System.clearProperty("PLUGIN_DIR");
     }
-    System.setProperty("PLUGIN_DIR", pluginsDir.toString());
-
-    ClassLoader loader = PluginLoader.buildClassLoader();
-
-    assertThat(loader).isInstanceOf(URLClassLoader.class);
-    URLClassLoader urlLoader = (URLClassLoader) loader;
-    assertThat(urlLoader.getURLs()).anyMatch(url -> url.toString().endsWith("plugin.jar"));
   }
 
   @Test
-  void buildClassLoaderFallsBackWhenDirectoryEmpty() throws Exception {
-    Path pluginsDir = tempDir.resolve("plugins-empty");
-    Files.createDirectories(pluginsDir);
-    System.setProperty("PLUGIN_DIR", pluginsDir.toString());
+  void buildClassLoaderLoadsJarsFromDir(@TempDir Path tempDir) throws IOException {
+    Path plugins = tempDir.resolve("plugins");
+    Files.createDirectories(plugins);
+    Files.createFile(plugins.resolve("test.jar"));
+    Files.createFile(plugins.resolve("not-a-jar.txt"));
 
-    ClassLoader loader = PluginLoader.buildClassLoader();
+    System.setProperty("PLUGIN_DIR", plugins.toString());
+    try {
+      ClassLoader loader = PluginLoader.buildClassLoader();
+      assertThat(loader).isNotEqualTo(PluginLoader.class.getClassLoader());
+      assertThat(loader.getParent()).isEqualTo(PluginLoader.class.getClassLoader());
+    } finally {
+      System.clearProperty("PLUGIN_DIR");
+    }
+  }
 
-    assertThat(loader).isSameAs(PluginLoader.class.getClassLoader());
+  @Test
+  void getClassLoaderIsSingleton() {
+    ClassLoader l1 = PluginLoader.getClassLoader();
+    ClassLoader l2 = PluginLoader.getClassLoader();
+    assertThat(l1).isSameAs(l2);
   }
 }

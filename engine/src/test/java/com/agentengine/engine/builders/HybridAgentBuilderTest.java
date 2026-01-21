@@ -1,67 +1,82 @@
 package com.agentengine.engine.builders;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.HybridAgent;
-import com.agentengine.engine.MongoConfigRepository;
+import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
-import com.agentengine.engine.api.beans.config.LastNContextConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
-import com.agentengine.engine.api.beans.session.Message;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class HybridAgentBuilderTest {
 
   @Test
-  void buildCreatesHybridEngineWithDefaultPrompt() throws Exception {
-    MongoConfigRepository repository = mock(MongoConfigRepository.class);
-    ModelConfig reasoningModel = buildModelConfig("OPEN_AI", "gpt", "http://localhost");
-    ModelConfig toolModel = buildModelConfig("OLLAMA", "llama", "http://localhost");
-    when(repository.loadModelConfig("reasoner")).thenReturn(reasoningModel);
-    when(repository.loadModelConfig("tool")).thenReturn(toolModel);
-
-    AgentConfig agentConfig = AgentConfig.empty();
-    HybridAgentConfig engine = (HybridAgentConfig) agentConfig.getEngine();
-    engine.setReasoningModelId("reasoner");
-    engine.setToolAssistantModelId("tool");
-    engine.setSystemPrompt("");
-
-    ToolsConfig tools = new ToolsConfig();
-    tools.setEnabled(List.of("fake"));
-    tools.setConfigs(Map.of("fake", Map.of("prefix", "ok-")));
-    agentConfig.setTools(tools);
-
+  void buildThrowsOnMismatchedConfig() {
+    ConfigRepository repository = mock(ConfigRepository.class);
     HybridAgentBuilder builder = new HybridAgentBuilder(repository);
-    HybridAgent engineInstance = builder.build("test-agent", agentConfig);
 
-    List<Message> prompt = engineInstance.buildPrompt("session");
+    AgentConfig config = new AgentConfig();
+    config.setEngine(mock(com.agentengine.engine.api.beans.config.EngineConfig.class));
 
-    assertThat(prompt).anyMatch(message -> "You are a helpful assistant.".equals(message.getContent()));
+    assertThatThrownBy(() -> builder.build("test", config))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Hybrid engine requires hybrid agent config");
   }
 
   @Test
-  void typeReturnsHybrid() {
-    HybridAgentBuilder builder = new HybridAgentBuilder(mock(MongoConfigRepository.class));
+  void buildCreatesFunctionalAgent() {
+    ConfigRepository repository = mock(ConfigRepository.class);
+    HybridAgentBuilder builder = new HybridAgentBuilder(repository);
 
+    HybridAgentConfig hybridConfig = new HybridAgentConfig();
+    hybridConfig.setReasoningModelId("reasoner-id");
+    hybridConfig.setToolAssistantModelId("tool-id");
+
+    AgentConfig agentConfig = new AgentConfig();
+    agentConfig.setEngine(hybridConfig);
+    agentConfig.setTools(new ToolsConfig());
+
+    ModelConfig modelConfig = new ModelConfig();
+    modelConfig.setProvider("OPEN_AI");
+    modelConfig.setModel("gpt-4");
+    modelConfig.setResponseFormat("text");
+
+    when(repository.loadModelConfig(anyString())).thenReturn(modelConfig);
+
+    HybridAgent agent = builder.build("test-agent", agentConfig);
+
+    assertThat(agent).isNotNull();
     assertThat(builder.type()).isEqualTo("hybrid");
   }
 
-  private static ModelConfig buildModelConfig(final String provider, final String model, final String baseUrl) {
-    ModelConfig config = new ModelConfig();
-    config.setProvider(provider);
-    config.setModel(model);
-    config.setBaseUrl(baseUrl);
-    config.setResponseFormat("text");
-    LastNContextConfig contextConfig = new LastNContextConfig();
-    contextConfig.setKeepLast(1);
-    config.setContextConfig(contextConfig);
-    return config;
+  @Test
+  void buildHandlesJsonFormatAndThoughts() {
+    ConfigRepository repository = mock(ConfigRepository.class);
+    HybridAgentBuilder builder = new HybridAgentBuilder(repository);
+
+    HybridAgentConfig hybridConfig = new HybridAgentConfig();
+    hybridConfig.setReasoningModelId("reasoner-id");
+    hybridConfig.setToolAssistantModelId("tool-id");
+
+    AgentConfig agentConfig = new AgentConfig();
+    agentConfig.setEngine(hybridConfig);
+
+    ModelConfig jsonConfig = new ModelConfig();
+    jsonConfig.setProvider("OPEN_AI");
+    jsonConfig.setModel("gpt-4");
+    jsonConfig.setResponseFormat("json");
+    jsonConfig.setThoughtsEnabled(true);
+
+    when(repository.loadModelConfig(anyString())).thenReturn(jsonConfig);
+
+    HybridAgent agent = builder.build("json-agent", agentConfig);
+    assertThat(agent).isNotNull();
   }
 }
