@@ -183,13 +183,9 @@ public class HybridAgent implements Agent {
         execution -> execution.getToolCall().id(), Function.identity());
 
     // Append tool results to reasoning session history
-    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.user(
-        buildToolResultMessage(executions.stream()
-            .map(ToolExecution::getToolCall)
-            .filter(Objects::nonNull)
-            .map(call -> toolCallIdVsResult.get(call.id()))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList()))));
+    sessionStore.appendMessage(getReasoningSessionId(sessionId),
+        Message.user(buildToolResultMessage(executions.stream().map(ToolExecution::getToolCall).filter(Objects::nonNull)
+            .map(call -> toolCallIdVsResult.get(call.id())).filter(Objects::nonNull).collect(Collectors.toList()))));
   }
 
   private static String buildToolResultMessage(final List<ToolExecution> executions) {

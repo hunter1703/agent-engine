@@ -25,8 +25,7 @@ class HybridAgentBuilderTest {
     AgentConfig config = new AgentConfig();
     config.setEngine(mock(com.agentengine.engine.api.beans.config.EngineConfig.class));
 
-    assertThatThrownBy(() -> builder.build("test", config))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> builder.build("test", config)).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Hybrid engine requires hybrid agent config");
   }
 

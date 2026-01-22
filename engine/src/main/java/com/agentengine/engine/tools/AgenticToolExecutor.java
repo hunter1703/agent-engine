@@ -8,5 +8,6 @@ import java.util.List;
 
 public interface AgenticToolExecutor extends ToolExecutor {
 
-    List<ToolExecution> executeRequests(final String sessionId, final List<String> toolRequests, final AgentListener listener);
+  List<ToolExecution> executeRequests(final String sessionId, final List<String> toolRequests,
+      final AgentListener listener);
 }

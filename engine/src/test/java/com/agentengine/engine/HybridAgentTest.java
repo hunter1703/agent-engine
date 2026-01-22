@@ -98,8 +98,7 @@ class HybridAgentTest {
     AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, toolMap,
         sessionStore);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
-        sessionStore, 2);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext, sessionStore, 2);
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
@@ -129,8 +128,7 @@ class HybridAgentTest {
     AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, Map.of(),
         sessionStore);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
-        sessionStore, 1);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext, sessionStore, 1);
 
     Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
       @Override
@@ -161,8 +159,7 @@ class HybridAgentTest {
     AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, Map.of(),
         sessionStore);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
-        sessionStore, 5);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext, sessionStore, 5);
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
@@ -197,8 +194,7 @@ class HybridAgentTest {
     AgenticToolExecutor toolExecutor = new ToolRequestExecutor(toolAssistantModel, toolContextBuilder, toolMap,
         sessionStore);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext,
-        sessionStore, 2);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, reasoningContext, sessionStore, 2);
 
     Message result = engine.invoke(sessionId, Message.user("hello"), new AgentListener() {
       @Override
@@ -218,15 +214,13 @@ class HybridAgentTest {
     String sessionId = "session";
 
     String toolAssistantPayload = "{" + "\"toolRequests\":[{\"id\":\"call-1\",\"name\":\"unknown\"}]" + "}";
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON,
-        new ArrayList<>(
-            List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, List.of("TOOL_REQUEST: {}"), null))));
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, new ArrayList<>(
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, List.of("TOOL_REQUEST: {}"), null))));
 
     AgenticToolExecutor toolExecutor = mock(AgenticToolExecutor.class);
     when(toolExecutor.executeRequests(anyString(), anyList(), any())).thenReturn(List.of());
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class),
-        sessionStore, 1);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class), sessionStore, 1);
 
     CapturingListener listener = new CapturingListener();
     engine.invoke(sessionId, Message.user("hello"), listener);
@@ -247,16 +241,14 @@ class HybridAgentTest {
     LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT, new ArrayList<>(List.of(invalid, valid)));
     AgenticToolExecutor toolExecutor = mock(AgenticToolExecutor.class);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class),
-        sessionStore, 5);
+    HybridAgent engine = new HybridAgent(reasoningModel, toolExecutor, mock(BaseContextBuilder.class), sessionStore, 5);
 
     CapturingListener listener = new CapturingListener();
     engine.invoke(sessionId, Message.user("hello"), listener);
 
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
-    assertThat(reasoningMessages)
-        .anyMatch(m -> m.getRole() == Role.SYSTEM
-            && m.getContent().contains("You must provide a final answer or tool requests"));
+    assertThat(reasoningMessages).anyMatch(
+        m -> m.getRole() == Role.SYSTEM && m.getContent().contains("You must provide a final answer or tool requests"));
   }
 
   @Test

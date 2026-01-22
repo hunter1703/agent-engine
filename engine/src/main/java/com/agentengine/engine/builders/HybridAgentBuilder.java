@@ -78,8 +78,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
 
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
-        new LastNContextBuilder(sessionStore, systemPrompt, protocolMessage,
-            tools, lastNContextConfig.getKeepLast());
+        new LastNContextBuilder(sessionStore, systemPrompt, protocolMessage, tools, lastNContextConfig.getKeepLast());
       default -> throw new IllegalArgumentException("Unknown context config for tool assistant");
     };
   }
@@ -100,8 +99,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
     final String protocolMessage = TemplateUtils.renderTemplateForName(templateName, context);
     return switch (config.getContextConfig()) {
       case LastNContextConfig lastNContextConfig ->
-        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage,
-            tools, lastNContextConfig.getKeepLast());
+        new LastNContextBuilder(sessionStore, systemMessage, protocolMessage, tools, lastNContextConfig.getKeepLast());
       default -> throw new IllegalArgumentException("Unknown context config");
     };
   }
@@ -118,7 +116,8 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder {
     if (!"json".equalsIgnoreCase(config.getResponseFormat())) {
       return "";
     }
-    String path = config.isThoughtsEnabled() ? "/schemas/hybrid/reasoner_with_thoughts.json"
+    String path = config.isThoughtsEnabled()
+        ? "/schemas/hybrid/reasoner_with_thoughts.json"
         : "/schemas/hybrid/reasoner_without_thoughts.json";
     return com.agentengine.commons.utils.ResourceUtils.loadResourceAsString(path);
   }
