@@ -2,8 +2,8 @@
   "engine": {
     "type": "hybrid",
     "systemPrompt": "You are a helpful assistant.",
-    "reasoning": "qwen3_coder_30b_llamacpp_reasoning",
-    "tool": "qwen3_coder_30b_llamacpp"
+    "reasoningModelId": "qwen3_coder_30b_llamacpp_reasoning",
+    "toolAssistantModelId": "qwen3_coder_30b_llamacpp"
   },
   "context": {
     "type": "last_n",
