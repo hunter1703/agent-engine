@@ -54,10 +54,12 @@ public class HybridAgent implements Agent {
     appendUserMessage(getReasoningSessionId(sessionId), message);
     appendUserMessage(getToolSessionId(sessionId), message);
     Message finalResponse = Message.assistant("");
+    int reasoningTurns = 0;
     do {
       final Message result;
       try {
-        final String stepName = STR."Reasoning Turn \{EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId)) + 1}";
+        reasoningTurns++;
+        final String stepName = STR."Reasoning Turn \{reasoningTurns}";
         listener.onStepStarted(sessionId, stepName);
         result = runReasoner(sessionId, listener);
         listener.onStepFinished(sessionId, stepName);
@@ -82,15 +84,22 @@ public class HybridAgent implements Agent {
       final List<String> toolRequests = result.getToolRequests();
       if (CollectionUtils.isEmpty(toolRequests)) {
         sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
+        if (StringUtils.isBlank(result.getContent())) {
+          break;
+        }
         continue;
       }
       executeToolRequests(sessionId, toolRequests, listener);
-    } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
-        < invocationLimit);
+    } while (reasoningTurns < invocationLimit);
 
-      listener.onEnd(sessionId);
-      listener.onRunFinished(sessionId, runId);
-      return finalResponse;
+    // If we exited the loop due to hitting the invocation limit, return a special message
+    if (StringUtils.isBlank(finalResponse.getContent()) && reasoningTurns >= invocationLimit) {
+      finalResponse = Message.assistant(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
+    }
+
+    listener.onEnd(sessionId);
+    listener.onRunFinished(sessionId, runId);
+    return finalResponse;
   }
 
   @Override
@@ -145,7 +154,8 @@ public class HybridAgent implements Agent {
     sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(repairMessage));
 
     if (maxRetries == 0) {
-      return response;
+      // Return an empty message when retries are exhausted
+      return Message.assistant("");
     }
     return _runReasoner(sessionId, maxRetries - 1);
   }

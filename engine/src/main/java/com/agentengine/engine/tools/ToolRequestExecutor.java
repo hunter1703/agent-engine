@@ -107,7 +107,13 @@ public class ToolRequestExecutor implements AgenticToolExecutor {
             final Message sanitized = EngineUtils.sanitizeMessage(response, toolAssistantModel.responseFormat(),
                     toolAssistantModel.thoughtsEnabled(), toolAssistantModel.thoughtsStartTag(),
                     toolAssistantModel.thoughtsEndTag());
-            final List<ToolCall> toolCalls = CollectionUtils.nullSafeList(sanitized.getToolCalls());
+            List<ToolCall> toolCalls = CollectionUtils.nullSafeList(sanitized.getToolCalls());
+            if (toolCalls.isEmpty() && StringUtils.isNotBlank(sanitized.getContent())) {
+                final Message parsed = EngineUtils.parseJsonPayload(sanitized.getContent());
+                if (parsed != null) {
+                    toolCalls = CollectionUtils.nullSafeList(parsed.getToolCalls());
+                }
+            }
             sessionStore.appendMessage(getToolSessionId(sessionId), sanitized);
 
             final Map<String, ToolCall> newlyMatched = selectMatchingToolCalls(toolCalls, remainingRequests);

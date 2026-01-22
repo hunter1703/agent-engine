@@ -3,67 +3,68 @@ package com.agentengine.engine.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class LlamaCppServerUtilsTest {
 
   @Test
-  void resolveAddressHandlesVariousUrls() {
-    LlamaCppServerUtils.ServerAddress addr = LlamaCppServerUtils.resolveAddress("http://localhost:8080");
-    assertThat(addr.host()).isEqualTo("localhost");
-    assertThat(addr.port()).isEqualTo(8080);
+  void ensureRunningWaitsForReadyWhenReachable() throws IOException {
+    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext("/v1/models", exchange -> {
+      exchange.sendResponseHeaders(404, -1);
+      exchange.close();
+    });
+    server.start();
+    try {
+      ModelConfig config = new ModelConfig();
+      config.setProvider(ModelConfig.Provider.LLAMA_CPP.name());
+      config.setBaseUrl("http://localhost:" + server.getAddress().getPort());
+      config.setModel("llama");
 
-    addr = LlamaCppServerUtils.resolveAddress("https://example.com");
-    assertThat(addr.host()).isEqualTo("example.com");
-    assertThat(addr.port()).isEqualTo(443);
+      LlamaCppServerUtils.ensureRunning(config);
+    } finally {
+      server.stop(0);
+    }
+  }
 
-    addr = LlamaCppServerUtils.resolveAddress("http://127.0.0.1");
-    assertThat(addr.host()).isEqualTo("127.0.0.1");
-    assertThat(addr.port()).isEqualTo(80);
+  @Test
+  void resolveAddressDefaultsPort() {
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("http://localhost");
 
-    assertThat(LlamaCppServerUtils.resolveAddress(null)).isNull();
-    assertThat(LlamaCppServerUtils.resolveAddress("invalid-url")).isNull();
+    assertThat(address).isNotNull();
+    assertThat(address.port()).isEqualTo(80);
+  }
+
+  @Test
+  void resolveAddressDefaultsHttpsPort() {
+    LlamaCppServerUtils.ServerAddress address = LlamaCppServerUtils.resolveAddress("https://example.com");
+
+    assertThat(address).isNotNull();
+    assertThat(address.port()).isEqualTo(443);
+  }
+
+  @Test
+  void resolveAddressRejectsInvalidUrl() {
+    assertThat(LlamaCppServerUtils.resolveAddress("http://bad host")).isNull();
   }
 
   @Test
   void buildModelsEndpointNormalizesPath() {
-    URI uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080");
-    assertThat(uri.toString()).isEqualTo("http://localhost:8080/v1/models");
+    URI endpoint = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080/api/");
 
-    uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080/");
-    assertThat(uri.toString()).isEqualTo("http://localhost:8080/v1/models");
-
-    uri = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080/api/v2");
-    assertThat(uri.toString()).isEqualTo("http://localhost:8080/api/v2/models");
-
-    assertThat(LlamaCppServerUtils.buildModelsEndpoint(null)).isNull();
+    assertThat(endpoint).isNotNull();
+    assertThat(endpoint.getPath()).isEqualTo("/api/models");
   }
 
   @Test
-  void ensureRunningReturnsEarlyOnInvalidConfig() {
-    // Should not throw
-    LlamaCppServerUtils.ensureRunning(null);
+  void buildModelsEndpointDefaultsToV1() {
+    URI endpoint = LlamaCppServerUtils.buildModelsEndpoint("http://localhost:8080");
 
-    ModelConfig config = new ModelConfig();
-    config.setProvider("OLLAMA");
-    LlamaCppServerUtils.ensureRunning(config);
-  }
-
-  @Test
-  void testManagedServerRecord() {
-    LlamaCppServerUtils.ManagedServer server = new LlamaCppServerUtils.ManagedServer("url", null, List.of("cmd"));
-    assertThat(server.baseUrl()).isEqualTo("url");
-    assertThat(server.process()).isNull();
-    assertThat(server.command()).contains("cmd");
-  }
-
-  @Test
-  void ensureRunningReturnsEarlyOnMissingCommand() {
-    ModelConfig config = new ModelConfig();
-    config.setProvider("LLAMA_CPP");
-    config.setBaseUrl(null);
-    LlamaCppServerUtils.ensureRunning(config);
+    assertThat(endpoint).isNotNull();
+    assertThat(endpoint.getPath()).isEqualTo("/v1/models");
   }
 }

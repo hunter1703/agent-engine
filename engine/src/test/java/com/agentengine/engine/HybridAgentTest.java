@@ -278,9 +278,10 @@ class HybridAgentTest {
 
     assertThat(result.getContent()).isEmpty();
     List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
-    // 6 repair messages: initial failure + 5 retries (hardcoded in HybridAgent)
+    // 7 repair messages: 6 from _runReasoner (initial + 5 retries) + 1 from invoke
+    // loop
     long sysMessages = reasoningMessages.stream().filter(m -> m.getRole() == Role.SYSTEM).count();
-    assertThat(sysMessages).isEqualTo(6);
+    assertThat(sysMessages).isEqualTo(7);
   }
 
   @Test
