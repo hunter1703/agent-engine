@@ -1,7 +1,10 @@
 package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentListener;
 import com.agentengine.engine.api.beans.session.Message;
@@ -13,6 +16,7 @@ import com.agentengine.engine.context.BaseContextBuilder;
 import com.agentengine.engine.model.LLMModel;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.api.state.SessionStore;
+import com.agentengine.engine.api.exception.ModelInvocationException;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.*;
@@ -250,6 +254,58 @@ class ToolRequestExecutorTest {
         executor.executeRequests(sessionId, toolRequests, listener);
         assertThat(listener.toolRepairs).isEqualTo(1);
         assertThat(listener.toolResults).hasSize(1);
+    }
+
+    @Test
+    void executeExhaustsRetriesOnRepeatedBadPayloads() {
+        SessionStore sessionStore = new InMemorySessionStore();
+        String sessionId = "session";
+
+        // Always return a payload that doesn't resolve the request
+        String badPayload = "{\"toolRequests\":[{\"id\":\"WRONG-ID\",\"name\":\"echo\"}]}";
+
+        LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
+                List.of(
+                        new Message(Role.ASSISTANT, badPayload, null, null, null),
+                        new Message(Role.ASSISTANT, badPayload, null, null, null),
+                        new Message(Role.ASSISTANT, badPayload, null, null, null),
+                        new Message(Role.ASSISTANT, badPayload, null, null, null),
+                        new Message(Role.ASSISTANT, badPayload, null, null, null)));
+
+        Tool tool = new EchoTool();
+        BaseContextBuilder contextBuilder = new BaseContextBuilder(sessionStore, "system", "protocol", List.of(tool));
+        AgenticToolExecutor executor = new ToolRequestExecutor(toolAssistantModel, contextBuilder, Map.of("echo", tool),
+                sessionStore);
+
+        CapturingListener listener = new CapturingListener();
+        List<String> toolRequests = List.of("TOOL_REQUEST: {\"id\":\"call-1\",\"name\":\"echo\"}");
+
+        List<ToolExecution> result = executor.executeRequests(sessionId, toolRequests, listener);
+
+        assertThat(result).isEmpty();
+        assertThat(listener.toolRepairs).isEqualTo(4);
+    }
+
+    @Test
+    void executeThrowsOnModelFailure() {
+        SessionStore sessionStore = new InMemorySessionStore();
+        String sessionId = "session";
+
+        LLMModel toolAssistantModel = mock(LLMModel.class);
+        when(toolAssistantModel.generate(anyList())).thenThrow(new RuntimeException("model down"));
+        when(toolAssistantModel.responseFormat())
+                .thenReturn(ResponseFormat.builder().type(ResponseFormatType.JSON).build());
+
+        BaseContextBuilder contextBuilder = mock(BaseContextBuilder.class);
+        AgenticToolExecutor executor = new ToolRequestExecutor(toolAssistantModel, contextBuilder, Map.of(),
+                sessionStore);
+
+        assertThatThrownBy(
+                () -> executor.executeRequests(sessionId, List.of("TOOL_REQUEST: {}"), new CapturingListener()))
+                .isInstanceOf(ModelInvocationException.class)
+                .hasMessageContaining("Failed to generate tool assistant response")
+                .satisfies(ex -> assertThat(((ModelInvocationException) ex).getModelId())
+                        .isEqualTo("tool-assistant-model"));
     }
 
     private static final class QueueModel implements LLMModel {

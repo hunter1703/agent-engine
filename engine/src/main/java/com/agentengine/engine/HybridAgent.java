@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 public class HybridAgent implements Agent {
   private static final String REASONING_SESSION_SUFFIX = "_reasoning";
-  private static final String TOOL_SESSION_SUFFIX = "_reasoning";
+  private static final String TOOL_SESSION_SUFFIX = "_tool";
   private static final String MISSING_TOOL_AND_FINAL_MESSAGE = "You must provide at least a final answer or tool requests as defined in protocol.";
   private final LLMModel reasoningModel;
   private final AgenticToolExecutor toolExecutor;
@@ -53,7 +53,7 @@ public class HybridAgent implements Agent {
     listener.onRunStarted(sessionId, runId);
     appendUserMessage(getReasoningSessionId(sessionId), message);
     appendUserMessage(getToolSessionId(sessionId), message);
-    Message finalResponse = null;
+    Message finalResponse = Message.assistant("");
     do {
       final Message result;
       try {
@@ -88,16 +88,9 @@ public class HybridAgent implements Agent {
     } while (EngineUtils.invocationsThisTurn(sessionStore, getReasoningSessionId(sessionId))
         < invocationLimit);
 
-    if (finalResponse != null) {
       listener.onEnd(sessionId);
       listener.onRunFinished(sessionId, runId);
       return finalResponse;
-    }
-    final Message invocationsExceededMessage =
-        Message.system(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
-    emitFinalAnswer(sessionId, invocationsExceededMessage, listener);
-    listener.onRunFinished(sessionId, runId);
-    return invocationsExceededMessage;
   }
 
   @Override

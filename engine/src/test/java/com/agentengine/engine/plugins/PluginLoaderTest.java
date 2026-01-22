@@ -44,4 +44,15 @@ class PluginLoaderTest {
     ClassLoader l2 = PluginLoader.getClassLoader();
     assertThat(l1).isSameAs(l2);
   }
+
+  @Test
+  void buildClassLoaderReturnsDefaultWhenEmptyDir(@TempDir Path tempDir) {
+    System.setProperty("PLUGIN_DIR", tempDir.toAbsolutePath().toString());
+    try {
+      ClassLoader loader = PluginLoader.buildClassLoader();
+      assertThat(loader).isEqualTo(PluginLoader.class.getClassLoader());
+    } finally {
+      System.clearProperty("PLUGIN_DIR");
+    }
+  }
 }

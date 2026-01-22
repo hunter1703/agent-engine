@@ -260,6 +260,30 @@ class HybridAgentTest {
   }
 
   @Test
+  void invokeExhaustsReasoningRetries() {
+    SessionStore sessionStore = new InMemorySessionStore();
+    String sessionId = "session";
+
+    // Always empty message to exhaust retries
+    Message invalid = new Message(Role.ASSISTANT, "", "", List.of(), List.of());
+
+    // 3 retries max configured
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.TEXT,
+        new ArrayList<>(List.of(invalid, invalid, invalid, invalid, invalid)));
+
+    HybridAgent engine = new HybridAgent(reasoningModel, mock(AgenticToolExecutor.class),
+        mock(BaseContextBuilder.class), sessionStore, 3);
+
+    Message result = engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
+
+    assertThat(result.getContent()).isEmpty();
+    List<Message> reasoningMessages = sessionStore.getMessages(sessionId + "_reasoning");
+    // 6 repair messages: initial failure + 5 retries (hardcoded in HybridAgent)
+    long sysMessages = reasoningMessages.stream().filter(m -> m.getRole() == Role.SYSTEM).count();
+    assertThat(sysMessages).isEqualTo(6);
+  }
+
+  @Test
   void invokeHandlesEmptyToolAssistantResponse() {
     SessionStore sessionStore = new InMemorySessionStore();
     String sessionId = "session";

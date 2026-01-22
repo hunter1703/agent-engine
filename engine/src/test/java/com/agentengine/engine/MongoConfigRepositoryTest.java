@@ -22,13 +22,23 @@ class MongoConfigRepositoryTest {
   }
 
   @Test
+  void buildClientSettingsHandlesInvalidDiscriminators() {
+    List<String> discriminators = List.of("com.nonexistent.Class", "java.lang.String");
+    MongoClientSettings settings = MongoConfigRepository.buildClientSettings("mongodb://localhost:27017",
+        discriminators);
+    assertThat(settings).isNotNull();
+    assertThat(settings.getCodecRegistry()).isNotNull();
+  }
+
+  @Test
   void loadMethodsReturnNullOnBlankNames() {
     MongoClientSupport support = mock(MongoClientSupport.class);
     when(support.getBsonDiscriminators()).thenReturn(List.of());
 
-    // We can't easily instantiate the full repo without it trying to create a REAL
-    // Mongo client
-    // because createClient is private and called in constructor.
-    // However, we can at least test the static methods.
+    // Testing the logic without hitting the REAL mongo client constructor (which
+    // would happen in real impl)
+    // We can't easily test the full instance here because it creates a mongo client
+    // in the constructor.
+    // However, the static logic is covered above.
   }
 }
