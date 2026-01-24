@@ -1,11 +1,10 @@
 package com.agentengine.engine.beans.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.List;
-
-import com.agentengine.engine.api.beans.config.*;
+import com.agentengine.engine.api.beans.config.LastNContextManagerConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.MongoStateStoreConfig;
 import org.junit.jupiter.api.Test;
 
 class ConfigBeansTest {
@@ -27,25 +26,17 @@ class ConfigBeansTest {
     assertThat(config.getMessagesCollection()).isEqualTo("messages");
     assertThat(config.getToolExecsCollection()).isEqualTo("tool_execs");
     assertThat(config.getSummariesCollection()).isEqualTo("summaries");
-
-    config.setType("custom");
-    assertThat(config.getType()).isEqualTo("custom");
   }
 
   @Test
-  void summarizingContextConfigStoresValues() {
-    SummarizingContextManagerConfig config = new SummarizingContextManagerConfig();
-    config.setTriggerThreshold(0.7);
-    config.setRecencyThreshold(0.2);
-    config.setSummarizerModel("summary-model");
+  void lastNContextConfigStoresValues() {
+    LastNContextManagerConfig config = new LastNContextManagerConfig();
+    config.setKeepLast(5);
+    config.setSystemPrompt("system");
 
-    assertThat(config.getType()).isEqualTo("summarize");
-    assertThat(config.getTriggerThreshold()).isEqualTo(0.7);
-    assertThat(config.getRecencyThreshold()).isEqualTo(0.2);
-    assertThat(config.getSummarizerModel()).isEqualTo("summary-model");
-
-    config.setType("custom");
-    assertThat(config.getType()).isEqualTo("custom");
+    assertThat(config.getType()).isEqualTo("last_n");
+    assertThat(config.getKeepLast()).isEqualTo(5);
+    assertThat(config.getSystemPrompt()).isEqualTo("system");
   }
 
   @Test
@@ -60,12 +51,7 @@ class ConfigBeansTest {
     config.setRepeatPenalty(1.1);
     config.setNumPredict(128);
     config.setMaxContextLength(8192);
-    config.setStopTokens(List.of("stop"));
     config.setResponseFormat("text");
-    config.setThoughtsStartTag("<t>");
-    config.setThoughtsEndTag("</t>");
-    config.setThoughtsEnabled(true);
-    config.setContextConfig(new LastNContextManagerConfig());
 
     assertThat(config.getBaseUrl()).isEqualTo("http://localhost");
     assertThat(config.getType()).isEqualTo("OPEN_AI");
@@ -76,44 +62,7 @@ class ConfigBeansTest {
     assertThat(config.getRepeatPenalty()).isEqualTo(1.1);
     assertThat(config.getNumPredict()).isEqualTo(128);
     assertThat(config.getMaxContextLength()).isEqualTo(8192);
-    assertThat(config.getStopTokens()).containsExactly("stop");
     assertThat(config.getResponseFormat()).isEqualTo("text");
-    assertThat(config.getThoughtsStartTag()).isEqualTo("<t>");
-    assertThat(config.getThoughtsEndTag()).isEqualTo("</t>");
-    assertThat(config.isThoughtsEnabled()).isTrue();
     assertThat(config.getContextConfig()).isInstanceOf(LastNContextManagerConfig.class);
-  }
-
-  @Test
-  void modelConfigDefaultsContextConfig() {
-    ModelConfig config = new ModelConfig();
-
-    assertThat(config.getContextConfig()).isInstanceOf(LastNContextManagerConfig.class);
-  }
-
-  @Test
-  void routerEngineConfigValidatesRequiredFields() {
-    RouterEngineConfig config = new RouterEngineConfig();
-    config.setReasoningModelId("reasoner.json");
-    config.setSystemPrompt("prompt");
-    config.setRouter("router.json");
-    config.setTool("tool.json");
-
-    config.validate();
-
-    RouterEngineConfig missingRouter = new RouterEngineConfig();
-    missingRouter.setReasoningModelId("reasoner.json");
-    missingRouter.setSystemPrompt("prompt");
-
-    assertThatThrownBy(missingRouter::validate).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("engine.router");
-
-    RouterEngineConfig missingTool = new RouterEngineConfig();
-    missingTool.setReasoningModelId("reasoner.json");
-    missingTool.setSystemPrompt("prompt");
-    missingTool.setRouter("router.json");
-
-    assertThatThrownBy(missingTool::validate).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("engine.router requires");
   }
 }

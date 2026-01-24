@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class BaseContextManagerTest {
 
   @Test
-  void buildPromptIncludesProtocolToolsSystemAndMessages() {
+  void buildPromptIncludesSystemProtocolAndTools() {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
     sessionStore.appendMessage("session", "run", Message.user("hi"));
 
@@ -22,17 +22,15 @@ class BaseContextManagerTest {
 
     List<Message> prompt = builder.buildPrompt("session");
 
-    assertThat(prompt).hasSize(4);
-    assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
-    assertThat(prompt.get(0).getRole()).isEqualTo(Role.SYSTEM);
-    assertThat(prompt.get(1).getContent()).contains("<AVAILABLE_TOOLS>");
-    assertThat(prompt.get(1).getContent()).contains("calc");
-    assertThat(prompt.get(2).getContent()).isEqualTo("system");
-    assertThat(prompt.get(3).getRole()).isEqualTo(Role.USER);
+    assertThat(prompt).hasSize(2);
+    assertThat(prompt.getFirst().getRole()).isEqualTo(Role.SYSTEM);
+    assertThat(prompt.getFirst().getContent()).contains("protocol");
+    assertThat(prompt.getFirst().getContent()).contains("system");
+    assertThat(prompt.getFirst().getContent()).contains("<AVAILABLE_TOOLS>");
   }
 
   @Test
-  void buildPromptSkipsToolBlockWhenNoToolsProvided() {
+  void buildPromptOmitsToolBlockWhenNoTools() {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
     sessionStore.appendMessage("session", "run", Message.user("hi"));
 
@@ -40,10 +38,9 @@ class BaseContextManagerTest {
 
     List<Message> prompt = builder.buildPrompt("session");
 
-    assertThat(prompt).hasSize(3);
-    assertThat(prompt.get(0).getContent()).isEqualTo("protocol");
-    assertThat(prompt.get(1).getContent()).isEqualTo("system");
-    assertThat(prompt.get(2).getRole()).isEqualTo(Role.USER);
+    assertThat(prompt).hasSize(2);
+    assertThat(prompt.getFirst().getContent()).doesNotContain("<AVAILABLE_TOOLS>");
+    assertThat(prompt.get(1).getRole()).isEqualTo(Role.USER);
   }
 
   private record StubTool(String name, String description) implements Tool {

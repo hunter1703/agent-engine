@@ -5,6 +5,7 @@ import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.StateStore;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.tools.ToolPromptUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class BaseContextManager implements ContextManager {
     ---
 
     # TOOLS
-    \{buildToolMessage(tools)}
+    \{ToolPromptUtils.buildToolMessage(tools)}
     """);
   }
 
@@ -47,19 +48,4 @@ public class BaseContextManager implements ContextManager {
     return prompt;
   }
 
-  private String buildToolMessage(final List<Tool> tools) {
-    if (tools == null || tools.isEmpty()) {
-      return "";
-    }
-    final StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
-    for (Tool tool : tools) {
-      String line = STR."- \{tool.name()}";
-      if (tool.description() != null && !tool.description().isBlank()) {
-        line += STR." - \{tool.description()}";
-      }
-      builder.append(line).append("\n");
-    }
-    builder.append("</AVAILABLE_TOOLS>");
-    return builder.toString();
-  }
 }

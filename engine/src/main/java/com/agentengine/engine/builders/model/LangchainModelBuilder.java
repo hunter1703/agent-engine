@@ -44,17 +44,21 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
 
     private final ConfigRepository configRepository;
     private final ContextManagerProvider contextManagerProvider;
+    private final ToolRegistry toolRegistry;
 
-    public LangchainModelBuilder(ConfigRepository configRepository, ContextManagerProvider contextManagerProvider) {
+    public LangchainModelBuilder(final ConfigRepository configRepository,
+                                 final ContextManagerProvider contextManagerProvider,
+                                 final ToolRegistry toolRegistry) {
         this.configRepository = configRepository;
         this.contextManagerProvider = contextManagerProvider;
+        this.toolRegistry = toolRegistry;
     }
 
     @Override
     public LangChain4JLLMModel build(final String agentName, final AgentModelConfig agentModelConfig) {
         final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
         final String protocolMessage = buildProtocolMessage(modelConfig);
-        final List<Tool> tools = CollectionUtils.nullSafeMutableList(ToolRegistry.loadTools(agentName, agentModelConfig.getTools()));
+        final List<Tool> tools = CollectionUtils.nullSafeMutableList(toolRegistry.loadTools(agentName, agentModelConfig.getTools()));
         final ContextManager contextManager = contextManagerProvider.get(agentModelConfig.getContextManagerConfig(), protocolMessage, tools);
         return buildChatModel(modelConfig, contextManager);
     }

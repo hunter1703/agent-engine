@@ -9,6 +9,8 @@ import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.StateStore;
 import com.agentengine.engine.api.beans.session.PlanItem;
+import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.api.beans.session.PlanUpdate;
 import com.alibaba.fastjson2.TypeReference;
 import com.agentengine.engine.api.utils.StringUtils;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -23,8 +25,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class EngineUtils {
-  private static final String PLAN_TOOL_NAME = "plan_items";
-  private static final String LEGACY_PLAN_TOOL_NAME = "plan";
+  private static final String UPDATE_PLAN_TOOL_NAME = "update_plan";
+  private static final String LEGACY_PLAN_TOOL_NAME = "plan_items";
+  private static final String LEGACY_PLAN_TOOL_NAME_ALT = "plan";
 
   private static final Pattern FINAL_BLOCK = Pattern.compile("FINAL:\\s*(.*)$",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -69,8 +72,8 @@ public final class EngineUtils {
     final String thoughts = getThoughts(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
     final List<ToolCall> toolCalls = new ArrayList<>(CollectionUtils.nullSafeList(message.getToolCalls()));
     if (!planItems.isEmpty()) {
-      toolCalls.add(new ToolCall(UUID.randomUUID().toString(), PLAN_TOOL_NAME, Map.of("items", planItems.stream()
-          .map(item -> Map.of("id", item.id(), "description", item.description()))
+      toolCalls.add(new ToolCall(UUID.randomUUID().toString(), UPDATE_PLAN_TOOL_NAME, Map.of("plan", planItems.stream()
+          .map(EngineUtils::planItemToMap)
           .toList())));
     }
     return new Message(message.getRole(), finalAnswer, thoughts, toolCalls);
@@ -133,7 +136,7 @@ public final class EngineUtils {
         continue;
       }
       index++;
-      items.add(new PlanItem(STR."step-\{index}", trimmed));
+      items.add(PlanItem.pending(trimmed));
     }
     return items;
   }
@@ -174,54 +177,31 @@ public final class EngineUtils {
     return thoughts == null ? null : thoughts.trim();
   }
 
-  public static List<PlanItem> parsePlanItems(final List<ToolCall> toolCalls) {
+  public static PlanUpdate parsePlanUpdate(final List<ToolCall> toolCalls) {
     if (CollectionUtils.isEmpty(toolCalls)) {
-      return List.of();
+      return null;
     }
-    final List<PlanItem> items = new ArrayList<>();
     for (ToolCall call : toolCalls) {
       if (call == null || call.args() == null || call.name() == null) {
         continue;
       }
-      if (!PLAN_TOOL_NAME.equalsIgnoreCase(call.name()) && !LEGACY_PLAN_TOOL_NAME.equalsIgnoreCase(call.name())) {
+      if (!UPDATE_PLAN_TOOL_NAME.equalsIgnoreCase(call.name())
+          && !LEGACY_PLAN_TOOL_NAME.equalsIgnoreCase(call.name())
+          && !LEGACY_PLAN_TOOL_NAME_ALT.equalsIgnoreCase(call.name())) {
         continue;
       }
-      final Object rawItems = call.args().getOrDefault("items", call.args().get("steps"));
-      if (!(rawItems instanceof List<?> list)) {
-        continue;
-      }
-      int index = 0;
-      for (Object item : list) {
-        index++;
-        String id = null;
-        String description = null;
-        if (item instanceof Map<?, ?> rawMap) {
-          @SuppressWarnings("unchecked")
-          final Map<String, Object> map = (Map<String, Object>) rawMap;
-          id = CollectionUtils.getStringValueFromMap(map, "id");
-          if (id == null) {
-            id = CollectionUtils.getStringValueFromMap(map, "step");
-          }
-          description = CollectionUtils.getStringValueFromMap(map, "description");
-          if (description == null) {
-            description = CollectionUtils.getStringValueFromMap(map, "task");
-          }
-          if (description == null) {
-            description = CollectionUtils.getStringValueFromMap(map, "title");
-          }
-        } else if (item != null) {
-          description = item.toString();
-        }
-        if (StringUtils.isBlank(description)) {
-          continue;
-        }
-        if (StringUtils.isBlank(id)) {
-          id = STR."step-\{index}";
-        }
-        items.add(new PlanItem(id, description));
-      }
+      final Map<String, Object> args = call.args();
+      final String explanation = CollectionUtils.getStringValueFromMap(args, "explanation");
+      final Object rawItems = args.getOrDefault("plan", args.getOrDefault("items", args.get("steps")));
+      final List<PlanItem> items = parsePlanItems(rawItems);
+      return new PlanUpdate(explanation, items);
     }
-    return items;
+    return null;
+  }
+
+  public static List<PlanItem> parsePlanItems(final List<ToolCall> toolCalls) {
+    final PlanUpdate update = parsePlanUpdate(toolCalls);
+    return update == null || update.plan() == null ? List.of() : update.plan();
   }
 
   public static Message parseJsonPayload(final String text) {
@@ -304,6 +284,55 @@ public final class EngineUtils {
       calls.add(new ToolCall(idValue == null ? null : idValue.toString(), nameValue.toString(), args));
     }
     return calls;
+  }
+
+  private static List<PlanItem> parsePlanItems(final Object rawItems) {
+    if (!(rawItems instanceof List<?> list)) {
+      return List.of();
+    }
+    final List<PlanItem> items = new ArrayList<>();
+    for (Object item : list) {
+      if (item == null) {
+        continue;
+      }
+      if (item instanceof Map<?, ?> rawMap) {
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> map = (Map<String, Object>) rawMap;
+        final String step = extractPlanStep(map);
+        if (StringUtils.isBlank(step)) {
+          continue;
+        }
+        final PlanStatus status = PlanStatus.fromString(CollectionUtils.getStringValueFromMap(map, "status"));
+        items.add(new PlanItem(step, status));
+      } else {
+        final String step = item.toString();
+        if (StringUtils.isNotBlank(step)) {
+          items.add(PlanItem.pending(step));
+        }
+      }
+    }
+    return items;
+  }
+
+  private static String extractPlanStep(final Map<String, Object> map) {
+    String step = CollectionUtils.getStringValueFromMap(map, "step");
+    if (step == null) {
+      step = CollectionUtils.getStringValueFromMap(map, "description");
+    }
+    if (step == null) {
+      step = CollectionUtils.getStringValueFromMap(map, "task");
+    }
+    if (step == null) {
+      step = CollectionUtils.getStringValueFromMap(map, "title");
+    }
+    if (step == null) {
+      step = CollectionUtils.getStringValueFromMap(map, "id");
+    }
+    return step;
+  }
+
+  private static Map<String, Object> planItemToMap(final PlanItem item) {
+    return Map.of("step", item.step(), "status", item.status().name().toLowerCase());
   }
 
 }

@@ -27,6 +27,14 @@ public interface Tool {
     }
   }
 
+  default boolean isMutating() {
+    return false;
+  }
+
+  default boolean supportsParallel() {
+    return false;
+  }
+
   default boolean retry(final String status, final String output) {
     return false;
   }

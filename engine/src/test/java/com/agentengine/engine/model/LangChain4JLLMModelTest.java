@@ -6,14 +6,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.context.BaseContextManager;
+import com.agentengine.engine.state.InMemoryStateStore;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -31,8 +34,12 @@ class LangChain4JLLMModelTest {
     when(response.aiMessage()).thenReturn(aiMessage);
     when(chatModel.chat(anyList())).thenReturn(response);
 
+    ContextManager contextManager =
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of());
     LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel,
-        new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build(), true, "<think>", "</think>");
+        new ResponseFormat.Builder().type(dev.langchain4j.model.chat.request.ResponseFormatType.TEXT).build(), true,
+        "<think>", "</think>",
+        contextManager);
 
     List<Message> prompt = List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior"));
 
@@ -54,11 +61,14 @@ class LangChain4JLLMModelTest {
   @Test
   void exposesResponseFormatAndThoughtTags() {
     ChatLanguageModel chatModel = mock(ChatLanguageModel.class);
+    ContextManager contextManager =
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of());
 
-    ResponseFormat format = new ResponseFormat.Builder().type(ResponseFormatType.JSON).build();
-    LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, format, false, "start", "end");
+    ResponseFormat format = new ResponseFormat.Builder()
+        .type(dev.langchain4j.model.chat.request.ResponseFormatType.JSON).build();
+    LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, format, false, "start", "end", contextManager);
 
-    assertThat(model.responseFormat()).isEqualTo(format);
+    assertThat(model.responseFormat()).isEqualTo(ResponseFormatType.JSON);
     assertThat(model.thoughtsEnabled()).isFalse();
     assertThat(model.thoughtsStartTag()).isEqualTo("start");
     assertThat(model.thoughtsEndTag()).isEqualTo("end");

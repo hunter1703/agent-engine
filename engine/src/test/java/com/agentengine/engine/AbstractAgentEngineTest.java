@@ -1,5 +1,6 @@
 package com.agentengine.engine;
 
+import static java.lang.StringTemplate.STR;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.Agent;

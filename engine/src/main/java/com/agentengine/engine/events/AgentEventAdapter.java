@@ -1,6 +1,8 @@
 package com.agentengine.engine.events;
 
 import com.agentengine.engine.api.AgentListener;
+import com.agentengine.engine.api.beans.session.PlanUpdate;
+import java.util.HashMap;
 import java.util.Map;
 
 public final class AgentEventAdapter implements AgentListener {
@@ -82,5 +84,19 @@ public final class AgentEventAdapter implements AgentListener {
   @Override
   public void onThinkingMessageEnd(String sessionId, String messageId) {
     publisher.publish(new AgentEvent("thinking_message_end", sessionId, Map.of("messageId", messageId)));
+  }
+
+  @Override
+  public void onPlanUpdate(final String sessionId, final PlanUpdate update) {
+    if (update == null) {
+      return;
+    }
+    final Map<String, Object> payload = new HashMap<>();
+    payload.put("explanation", update.explanation());
+    payload.put("plan", update.plan() == null ? null : update.plan().stream()
+        .filter(item -> item != null && item.step() != null)
+        .map(item -> Map.of("step", item.step(), "status", item.status().name().toLowerCase()))
+        .toList());
+    publisher.publish(new AgentEvent("plan_update", sessionId, payload));
   }
 }

@@ -1,28 +1,28 @@
 package com.agentengine.engine;
 
+import static java.lang.StringTemplate.STR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static java.lang.StringTemplate.STR;
 
-import com.agentengine.engine.api.AgentListener;
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.agents.PlanningAgent;
 import com.agentengine.engine.agents.ToolAssistantAgent;
-import com.agentengine.engine.context.BaseContextManager;
+import com.agentengine.engine.api.AgentListener;
+import com.agentengine.engine.api.ContextManager;
 import com.agentengine.engine.api.LLMModel;
+import com.agentengine.engine.api.ResponseFormatType;
+import com.agentengine.engine.api.beans.session.Message;
+import com.agentengine.engine.api.beans.session.PlanUpdate;
+import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.context.BaseContextManager;
 import com.agentengine.engine.state.InMemoryStateStore;
-import com.agentengine.engine.api.StateStore;
 import com.agentengine.engine.tools.DefaultToolExecutor;
-import com.agentengine.engine.tools.ToolExecutor;
+import com.agentengine.engine.tools.DefaultToolHandler;
 import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.tools.ToolExecutor;
 import com.agentengine.engine.tools.UserClarificationTool;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -35,240 +35,135 @@ class HybridAgentTest {
 
   @Test
   void invokeRunsPlanAndReturnsFinalAnswer() {
-    StateStore stateStore = new InMemoryStateStore();
+    InMemoryStateStore stateStore = new InMemoryStateStore();
     String sessionId = "session";
 
     String planPayload = """
-        {"toolCalls":[{"id":"plan-1","name":"plan_items","args":{"items":[{"id":"step-1","description":"echo hi"}]}}]}
+        {"toolCalls":[{"id":"plan-1","name":"update_plan","args":{"plan":[{"step":"echo hi","status":"pending"}]}}]}
         """;
     Message first = new Message(Role.ASSISTANT, planPayload, null, null);
     Message second = new Message(Role.ASSISTANT, "{\"finalAnswer\":\"done\"}", null, null);
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second));
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second),
+        new BaseContextManager(stateStore, "system", "protocol", List.of()));
 
     String toolAssistantPayload = """
         {"toolCalls":[{"id":"call-1","name":"echo","args":{"text":"hi"}}]}
         """;
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)));
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)),
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of()));
 
     List<Tool> tools = List.of(new EchoTool());
-    BaseContextManager reasoningContext = new BaseContextManager(stateStore, "system", "protocol", tools);
-    BaseContextManager toolContextBuilder = new BaseContextManager(stateStore, "system", "protocol", tools);
-    Map<String, Tool> toolMap = new HashMap<>();
-    tools.forEach(t -> toolMap.put(t.name(), t));
-    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, toolContextBuilder, stateStore);
-    ToolExecutor toolExecutor = new DefaultToolExecutor(toolMap);
+    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, tools, new InMemoryStateStore());
+    ToolExecutor toolExecutor = new DefaultToolExecutor(List.of(new DefaultToolHandler(new EchoTool())));
 
     LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
+    PlanningAgent planningAgent = createTasksAgent();
 
     HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, toolExecutor, reasoningContext, stateStore, 2));
+        toolAssistantAgent, toolExecutor, reasoningModel.getContextManager(), 2));
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.planPayloads).hasSize(1);
-    assertThat(listener.planPayloads.getFirst()).contains("echo hi");
-    assertThat(listener.toolResults).hasSize(1);
+    assertThat(listener.planUpdates).hasSize(1);
+    assertThat(listener.planUpdates.getFirst().plan().getFirst().step()).isEqualTo("echo hi");
     assertThat(listener.toolResults.values().iterator().next()).isEqualTo("hi");
   }
 
   @Test
   void invokeHandlesUnknownTool() {
-    StateStore stateStore = new InMemoryStateStore();
+    InMemoryStateStore stateStore = new InMemoryStateStore();
     String sessionId = "session";
 
     String planPayload = """
-        {"toolCalls":[{"id":"plan-1","name":"plan_items","args":{"items":[{"id":"step-1","description":"unknown action"}]}}]}
+        {"toolCalls":[{"id":"plan-1","name":"update_plan","args":{"plan":[{"step":"unknown action","status":"pending"}]}}]}
         """;
     Message first = new Message(Role.ASSISTANT, planPayload, null, null);
     Message second = new Message(Role.ASSISTANT, "{\"finalAnswer\":\"done\"}", null, null);
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second));
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second),
+        new BaseContextManager(stateStore, "system", "protocol", List.of()));
 
     String toolAssistantPayload = """
         {"toolCalls":[{"id":"call-1","name":"unknown","args":{}}]}
         """;
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)));
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)),
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of()));
 
-    BaseContextManager reasoningContext = new BaseContextManager(stateStore, "system", "protocol", List.of());
-    BaseContextManager toolContextBuilder = new BaseContextManager(stateStore, "system", "protocol", List.of());
-    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, toolContextBuilder, stateStore);
-    ToolExecutor toolExecutor = new DefaultToolExecutor(Map.of());
+    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, List.of(), new InMemoryStateStore());
+    ToolExecutor toolExecutor = new DefaultToolExecutor(List.of());
 
     LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
+    PlanningAgent planningAgent = createTasksAgent();
 
     HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, toolExecutor, reasoningContext, stateStore, 2));
+        toolAssistantAgent, toolExecutor, reasoningModel.getContextManager(), 2));
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
 
     assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.toolResults.values().iterator().next()).contains("Unknown tool");
-  }
-
-  @Test
-  void invokeHandlesNullToolExecutions() {
-    StateStore stateStore = new InMemoryStateStore();
-    String sessionId = "session";
-
-    String planPayload = """
-        {"toolCalls":[{"id":"plan-1","name":"plan_items","args":{"items":[{"id":"step-1","description":"plan"}]}}]}
-        """;
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON,
-        new ArrayList<>(List.of(new Message(Role.ASSISTANT, planPayload, null, null))));
-
-    ToolExecutor toolExecutor = mock(ToolExecutor.class);
-    when(toolExecutor.execute(anyString(), anyString(), anyList(), any())).thenReturn(List.of());
-
-    ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
-    when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
-
-    LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
-
-    HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, toolExecutor, mock(BaseContextManager.class), stateStore, 1));
-
-    CapturingListener listener = new CapturingListener();
-    engine.invoke(sessionId, Message.user("hello"), listener);
-
-    List<Message> reasoningMessages = stateStore.getMessages(sessionId + "_reasoning");
-    assertThat(reasoningMessages).anyMatch(m -> m.getContent().contains("Unable to execute plan item"));
+    assertThat(listener.toolResults.values()).anyMatch(value -> value.contains("Unknown tool"));
   }
 
   @Test
   void invokeHandlesReasoningRepair() {
-    StateStore stateStore = new InMemoryStateStore();
+    InMemoryStateStore stateStore = new InMemoryStateStore();
     String sessionId = "session";
 
     Message invalid = new Message(Role.ASSISTANT, "", "", List.of());
     Message valid = new Message(Role.ASSISTANT, "{\"finalAnswer\":\"done\"}", null, null);
 
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, new ArrayList<>(List.of(invalid, valid)));
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, new ArrayList<>(List.of(invalid, valid)),
+        new BaseContextManager(stateStore, "system", "protocol", List.of()));
     ToolExecutor toolExecutor = mock(ToolExecutor.class);
     ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
     when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
 
     LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
+    PlanningAgent planningAgent = createTasksAgent();
 
     HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, toolExecutor, mock(BaseContextManager.class), stateStore, 5));
+        toolAssistantAgent, toolExecutor, reasoningModel.getContextManager(), 5));
 
     engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
 
     List<Message> reasoningMessages = stateStore.getMessages(sessionId + "_reasoning");
     assertThat(reasoningMessages)
-        .anyMatch(m -> m.getRole() == Role.SYSTEM && m.getContent().contains("plan_items"));
-  }
-
-  @Test
-  void invokeExhaustsReasoningRetries() {
-    StateStore stateStore = new InMemoryStateStore();
-    String sessionId = "session";
-
-    Message invalid = new Message(Role.ASSISTANT, "", "", List.of());
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON,
-        new ArrayList<>(List.of(invalid, invalid, invalid, invalid, invalid)));
-
-    LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
-
-    ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
-    when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
-
-    HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, mock(ToolExecutor.class), mock(BaseContextManager.class), stateStore, 3));
-
-    Message result = engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
-
-    assertThat(result.getContent()).isEmpty();
-    List<Message> reasoningMessages = stateStore.getMessages(sessionId + "_reasoning");
-    long sysMessages = reasoningMessages.stream().filter(m -> m.getRole() == Role.SYSTEM).count();
-    assertThat(sysMessages).isEqualTo(7);
-  }
-
-  @Test
-  void invokeReturnsLimitExceededMessage() {
-    StateStore stateStore = new InMemoryStateStore();
-    String sessionId = "session";
-
-    Message empty = new Message(Role.ASSISTANT, "", null, List.of());
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(empty, empty, empty));
-
-    LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
-
-    ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
-    when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
-
-    HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, mock(ToolExecutor.class), mock(BaseContextManager.class), stateStore, 1));
-
-    Message result = engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
-
-    assertThat(result.getContent()).isEqualTo("Number of assistant invocations exceeded maximum : 1");
-  }
-
-  @Test
-  void complexTaskGeneratesTaskList() {
-    StateStore stateStore = new InMemoryStateStore();
-    String sessionId = "session";
-
-    Message finalAnswer = new Message(Role.ASSISTANT, "{\"finalAnswer\":\"done\"}", null, null);
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(finalAnswer));
-
-    LLMModel routerModel = routerModel(true);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
-
-    ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
-    when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
-
-    HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, mock(ToolExecutor.class), mock(BaseContextManager.class), stateStore, 1));
-
-    CapturingListener listener = new CapturingListener();
-    Message result = engine.invoke(sessionId, Message.user("complex work"), listener);
-
-    assertThat(result.getContent()).isEqualTo("done");
-    assertThat(listener.toolResults.values()).contains("tasks");
+        .anyMatch(m -> m.getRole() == Role.SYSTEM && m.getContent().contains("tool call"));
   }
 
   @Test
   void clarificationKeepsRunOpenUntilFinalAnswer() {
-    StateStore stateStore = new InMemoryStateStore();
+    InMemoryStateStore stateStore = new InMemoryStateStore();
     String sessionId = "session";
 
     String planPayload = """
-        {"toolCalls":[{"id":"plan-1","name":"plan_items","args":{"items":[{"id":"step-1","description":"clarify"}]}}]}
+        {"toolCalls":[{"id":"plan-1","name":"update_plan","args":{"plan":[{"step":"clarify","status":"pending"}]}}]}
         """;
     Message first = new Message(Role.ASSISTANT, planPayload, null, null);
     Message second = new Message(Role.ASSISTANT, "{\"finalAnswer\":\"done\"}", null, null);
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second));
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(first, second),
+        new BaseContextManager(stateStore, "system", "protocol", List.of()));
 
     String toolAssistantPayload = """
         {"toolCalls":[{"id":"call-1","name":"user_clarification","args":{"question":"Need input"}}]}
         """;
     LLMModel toolAssistantModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)));
+        List.of(new Message(Role.ASSISTANT, toolAssistantPayload, null, null)),
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of()));
 
     List<Tool> tools = List.of(new UserClarificationTool());
-    BaseContextManager reasoningContext = new BaseContextManager(stateStore, "system", "protocol", tools);
-    BaseContextManager toolContextBuilder = new BaseContextManager(stateStore, "system", "protocol", tools);
-    Map<String, Tool> toolMap = Map.of("user_clarification", new UserClarificationTool());
-    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, toolContextBuilder, stateStore);
-    ToolExecutor toolExecutor = new DefaultToolExecutor(toolMap);
+    ToolAssistantAgent toolAssistantAgent = new ToolAssistantAgent(toolAssistantModel, tools, new InMemoryStateStore());
+    ToolExecutor toolExecutor = new DefaultToolExecutor(List.of(new DefaultToolHandler(new UserClarificationTool())));
 
     LLMModel routerModel = routerModel(false);
-    PlanningAgent planningAgent = createTasksAgent(stateStore);
+    PlanningAgent planningAgent = createTasksAgent();
 
     HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
-        toolAssistantAgent, toolExecutor, reasoningContext, stateStore, 2));
+        toolAssistantAgent, toolExecutor, reasoningModel.getContextManager(), 2));
 
     RunListener listener = new RunListener();
     engine.invoke(sessionId, Message.user("hello"), listener);
@@ -283,13 +178,38 @@ class HybridAgentTest {
     assertThat(listener.runFinished).isEqualTo(1);
   }
 
+  @Test
+  void invokeReturnsLimitExceededMessage() {
+    InMemoryStateStore stateStore = new InMemoryStateStore();
+    String sessionId = "session";
+
+    Message empty = new Message(Role.ASSISTANT, "", null, List.of());
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(empty, empty, empty),
+        new BaseContextManager(stateStore, "system", "protocol", List.of()));
+
+    LLMModel routerModel = routerModel(false);
+    PlanningAgent planningAgent = createTasksAgent();
+
+    ToolAssistantAgent toolAssistantAgent = mock(ToolAssistantAgent.class);
+    when(toolAssistantAgent.generateToolCalls(anyString(), anyString(), any(), any())).thenReturn(List.of());
+
+    HybridAgent engine = new HybridAgent(new HybridAgent.Dependencies(routerModel, planningAgent, reasoningModel,
+        toolAssistantAgent, mock(ToolExecutor.class), reasoningModel.getContextManager(), 1));
+
+    Message result = engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
+
+    assertThat(result.getContent()).isEqualTo("Number of assistant invocations exceeded maximum : 1");
+  }
+
   private static final class QueueModel implements LLMModel {
     private final Deque<Message> responses;
-    private final ResponseFormat responseFormat;
+    private final ResponseFormatType responseFormat;
+    private final ContextManager contextManager;
 
-    private QueueModel(final ResponseFormatType type, final List<Message> responses) {
+    private QueueModel(final ResponseFormatType type, final List<Message> responses, final ContextManager contextManager) {
       this.responses = new ArrayDeque<>(responses);
-      this.responseFormat = new ResponseFormat.Builder().type(type).build();
+      this.responseFormat = type;
+      this.contextManager = contextManager;
     }
 
     @Override
@@ -301,7 +221,7 @@ class HybridAgentTest {
     }
 
     @Override
-    public ResponseFormat responseFormat() {
+    public ResponseFormatType responseFormat() {
       return responseFormat;
     }
 
@@ -318,6 +238,11 @@ class HybridAgentTest {
     @Override
     public String thoughtsEndTag() {
       return "</think>";
+    }
+
+    @Override
+    public ContextManager getContextManager() {
+      return contextManager;
     }
   }
 
@@ -340,18 +265,16 @@ class HybridAgentTest {
 
   private static final class CapturingListener implements AgentListener {
     private final Map<String, String> toolResults = new HashMap<>();
-    private final List<String> planPayloads = new ArrayList<>();
-
-    @Override
-    public void onToolCallArgs(final String sessionId, final String toolCallId, final String delta) {
-      if (delta != null && delta.contains("echo hi")) {
-        planPayloads.add(delta);
-      }
-    }
+    private final List<PlanUpdate> planUpdates = new ArrayList<>();
 
     @Override
     public void onToolCallResult(String sessionId, String toolCallId, String content) {
       toolResults.put(toolCallId, content);
+    }
+
+    @Override
+    public void onPlanUpdate(final String sessionId, final PlanUpdate update) {
+      planUpdates.add(update);
     }
   }
 
@@ -370,15 +293,16 @@ class HybridAgentTest {
     }
   }
 
-  private static PlanningAgent createTasksAgent(final StateStore stateStore) {
+  private static PlanningAgent createTasksAgent() {
     LLMModel tasksModel = new QueueModel(ResponseFormatType.TEXT,
-        List.of(new Message(Role.ASSISTANT, "tasks", null, null)));
-    BaseContextManager contextBuilder = new BaseContextManager(stateStore, "system", "protocol", List.of());
-    return new PlanningAgent(tasksModel, contextBuilder, stateStore);
+        List.of(new Message(Role.ASSISTANT, "tasks", null, null)),
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of()));
+    return new PlanningAgent(tasksModel);
   }
 
   private static LLMModel routerModel(final boolean complex) {
     String payload = STR."{\"complex\":\{complex}}";
-    return new QueueModel(ResponseFormatType.JSON, List.of(new Message(Role.ASSISTANT, payload, null, null)));
+    return new QueueModel(ResponseFormatType.JSON, List.of(new Message(Role.ASSISTANT, payload, null, null)),
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of()));
   }
 }

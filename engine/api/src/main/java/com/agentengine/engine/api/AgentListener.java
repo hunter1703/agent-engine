@@ -1,5 +1,7 @@
 package com.agentengine.engine.api;
 
+import com.agentengine.engine.api.beans.session.PlanUpdate;
+
 public interface AgentListener {
   default void onRunStarted(String sessionId, String runId) {
   }
@@ -44,5 +46,8 @@ public interface AgentListener {
   }
 
   default void onThinkingMessageEnd(String sessionId, String messageId) {
+  }
+
+  default void onPlanUpdate(String sessionId, PlanUpdate update) {
   }
 }

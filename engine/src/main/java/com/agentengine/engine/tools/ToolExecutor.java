@@ -1,7 +1,6 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentListener;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
 

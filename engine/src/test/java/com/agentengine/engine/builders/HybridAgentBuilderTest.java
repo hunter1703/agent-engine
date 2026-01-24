@@ -1,81 +1,91 @@
 package com.agentengine.engine.builders;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.HybridAgent;
-import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.agents.PlanningAgent;
+import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.api.LLMModel;
+import com.agentengine.engine.api.ResponseFormatType;
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.beans.config.ToolsConfig;
+import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.builders.agent.HybridAgentBuilder;
+import com.agentengine.engine.builders.agent.PlanningAgentBuilder;
+import com.agentengine.engine.builders.model.ModelProvider;
+import com.agentengine.engine.context.BaseContextManager;
+import com.agentengine.engine.state.InMemoryStateStore;
+import com.agentengine.engine.tools.ToolRegistry;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class HybridAgentBuilderTest {
 
   @Test
-  void buildThrowsOnMismatchedConfig() {
-    ConfigRepository repository = mock(ConfigRepository.class);
-    HybridAgentBuilder builder = new HybridAgentBuilder(repository);
+  void buildCreatesHybridAgent() {
+    ModelProvider modelProvider = mock(ModelProvider.class);
+    PlanningAgentBuilder planningAgentBuilder = mock(PlanningAgentBuilder.class);
 
-    AgentConfig config = new AgentConfig();
-    config.setEngine(mock(EngineConfig.class));
+    LLMModel model = new StubModel();
+    when(modelProvider.get(anyString(), any())).thenReturn(model);
+    when(planningAgentBuilder.build(any())).thenReturn(new PlanningAgent(model));
 
-    assertThatThrownBy(() -> builder.build("test", config)).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Hybrid engine requires hybrid agent config");
-  }
+    HybridAgentBuilder builder = new HybridAgentBuilder(modelProvider, planningAgentBuilder, new ToolRegistry());
 
-  @Test
-  void buildCreatesFunctionalAgent() {
-    ConfigRepository repository = mock(ConfigRepository.class);
-    HybridAgentBuilder builder = new HybridAgentBuilder(repository);
+    HybridAgentConfig config = new HybridAgentConfig();
+    config.setName("test-agent");
+    config.setModel(modelConfig("reasoner"));
+    config.setRouterModel(modelConfig("router"));
+    config.setPlanningModel(modelConfig("planner"));
 
-    HybridAgentConfig hybridConfig = new HybridAgentConfig();
-    hybridConfig.setReasoningModelId("reasoner-id");
-    hybridConfig.setRouterModelId("tool-id");
-
-    AgentConfig agentConfig = new AgentConfig();
-    agentConfig.setEngine(hybridConfig);
-    agentConfig.setTools(new ToolsConfig());
-
-    ModelConfig modelConfig = new ModelConfig();
-    modelConfig.setType("OPEN_AI");
-    modelConfig.setModel("gpt-4");
-    modelConfig.setResponseFormat("text");
-
-    when(repository.loadModelConfig(anyString())).thenReturn(modelConfig);
-
-    HybridAgent agent = builder.build("test-agent", agentConfig);
+    HybridAgent agent = builder.build(config);
 
     assertThat(agent).isNotNull();
     assertThat(builder.type()).isEqualTo("hybrid");
   }
 
-  @Test
-  void buildHandlesJsonFormatAndThoughts() {
-    ConfigRepository repository = mock(ConfigRepository.class);
-    HybridAgentBuilder builder = new HybridAgentBuilder(repository);
+  private static AgentModelConfig modelConfig(final String id) {
+    AgentModelConfig config = new AgentModelConfig();
+    config.setModelId(id);
+    return config;
+  }
 
-    HybridAgentConfig hybridConfig = new HybridAgentConfig();
-    hybridConfig.setReasoningModelId("reasoner-id");
-    hybridConfig.setRouterModelId("tool-id");
+  private static final class StubModel implements LLMModel {
+    private final ContextManager contextManager =
+        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of());
 
-    AgentConfig agentConfig = new AgentConfig();
-    agentConfig.setEngine(hybridConfig);
+    @Override
+    public Message generate(final List<Message> messages) {
+      return Message.assistant("");
+    }
 
-    ModelConfig jsonConfig = new ModelConfig();
-    jsonConfig.setType("OPEN_AI");
-    jsonConfig.setModel("gpt-4");
-    jsonConfig.setResponseFormat("json");
-    jsonConfig.setThoughtsEnabled(true);
+    @Override
+    public ResponseFormatType responseFormat() {
+      return ResponseFormatType.JSON;
+    }
 
-    when(repository.loadModelConfig(anyString())).thenReturn(jsonConfig);
+    @Override
+    public boolean thoughtsEnabled() {
+      return false;
+    }
 
-    HybridAgent agent = builder.build("json-agent", agentConfig);
-    assertThat(agent).isNotNull();
+    @Override
+    public String thoughtsStartTag() {
+      return "<think>";
+    }
+
+    @Override
+    public String thoughtsEndTag() {
+      return "</think>";
+    }
+
+    @Override
+    public ContextManager getContextManager() {
+      return contextManager;
+    }
   }
 }

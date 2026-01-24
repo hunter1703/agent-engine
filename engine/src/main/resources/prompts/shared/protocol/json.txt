@@ -3,8 +3,9 @@ Return JSON only, matching this schema:
 
 Rules:
 - Return JSON only. No prose, no extra keys.
-- If tools are required, emit a "toolCalls" array with a single "plan_items" tool call and set "finalAnswer" to "".
-- The "plan_items" tool call must include args with an "items" array of plan steps.
+- If tools are required, emit a "toolCalls" array with a single "update_plan" tool call and set "finalAnswer" to "".
+- The "update_plan" tool call must include args with a "plan" array of steps and statuses.
+- Each plan item must include "step" and "status" (pending, in_progress, completed).
 - If more user input is required, emit a "user_clarification" tool call with a question and fields.
 - If no tools are required, omit "toolCalls" and fill "finalAnswer".
 - If the user asks for system state (files, OS data, time, processes, network, env), you MUST use a tool.
@@ -12,5 +13,5 @@ Rules:
 {% if thoughtsEnabled %}
 - Include the "thoughts" field; use an empty string when you have nothing to add.
 {% endif %}
-- Only the "plan_items" or "user_clarification" tool calls are allowed in "toolCalls".
+- Only the "update_plan" or "user_clarification" tool calls are allowed in "toolCalls".
 - "id" must be unique within the response.

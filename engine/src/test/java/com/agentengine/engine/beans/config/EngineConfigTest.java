@@ -1,36 +1,30 @@
 package com.agentengine.engine.beans.config;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import org.junit.jupiter.api.Test;
 
 class EngineConfigTest {
 
   @Test
-  void hybridConfigStoresInvocationLimit() {
-    final HybridAgentConfig config = new HybridAgentConfig();
-    config.setInvocationLimit(3);
-    config.setSystemPrompt("system");
-    config.setReasoningModelId("reasoner");
-    config.setRouterModelId("tool");
+  void hybridConfigRequiresRouterAndPlanningModels() {
+    HybridAgentConfig config = new HybridAgentConfig();
+    config.setName("agent");
+    config.setModel(model("reasoner"));
+
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
+
+    config.setRouterModel(model("router"));
+    config.setPlanningModel(model("planner"));
 
     config.validate();
-
-    assertThat(config.getInvocationLimit()).isEqualTo(3);
   }
 
-  @Test
-  void routerConfigStoresInvocationLimit() {
-    final RouterEngineConfig config = new RouterEngineConfig();
-    config.setInvocationLimit(4);
-    config.setSystemPrompt("system");
-    config.setReasoningModelId("reasoner");
-    config.setRouter("router");
-    config.setTool("tool");
-
-    config.validate();
-
-    assertThat(config.getInvocationLimit()).isEqualTo(4);
+  private static AgentModelConfig model(final String id) {
+    AgentModelConfig model = new AgentModelConfig();
+    model.setModelId(id);
+    return model;
   }
 }

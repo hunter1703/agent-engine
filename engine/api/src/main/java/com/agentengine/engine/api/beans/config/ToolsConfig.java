@@ -33,4 +33,7 @@ public final class ToolsConfig {
   public void setStandardTools(final List<String> standardTools) {
     this.standardTools = standardTools;
   }
+
+  public void validate() {
+  }
 }

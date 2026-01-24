@@ -14,7 +14,7 @@ class DefaultToolExecutorTest {
 
   @Test
   void executeRunsToolsAndCapturesResults() {
-    DefaultToolExecutor executor = new DefaultToolExecutor(Map.of("echo", new EchoTool()));
+    DefaultToolExecutor executor = new DefaultToolExecutor(List.of(new DefaultToolHandler(new EchoTool())));
     ToolCall call = new ToolCall("call-1", "echo", Map.of("text", "hi"));
 
     CapturingListener listener = new CapturingListener();
@@ -27,7 +27,7 @@ class DefaultToolExecutorTest {
 
   @Test
   void executeMarksUnknownTools() {
-    DefaultToolExecutor executor = new DefaultToolExecutor(Map.of());
+    DefaultToolExecutor executor = new DefaultToolExecutor(List.of());
     ToolCall call = new ToolCall("call-1", "unknown", Map.of());
 
     List<ToolExecution> executions = executor.execute("session", "run", List.of(call), new CapturingListener());

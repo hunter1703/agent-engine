@@ -11,25 +11,27 @@ class ToolRegistryTest {
 
   @Test
   void loadToolsFiltersByAgentNameAndEnabledList() {
+    ToolRegistry registry = new ToolRegistry();
     Map<String, Map<String, Object>> toolConfigs = Map.of("fake", Map.of("prefix", "pre-"));
     ToolsConfig toolsConfig = new ToolsConfig();
     toolsConfig.setEnabled(List.of("ALL"));
     toolsConfig.setConfigs(toolConfigs);
 
-    List<Tool> tools = ToolRegistry.loadTools("test-agent", toolsConfig);
+    List<Tool> tools = registry.loadTools("test-agent", toolsConfig);
 
     assertThat(tools).hasSize(1);
     assertThat(tools.getFirst().execute(Map.of("value", "fix"))).isEqualTo("pre-fix");
 
     toolsConfig.setEnabled(List.of("other"));
-    List<Tool> filtered = ToolRegistry.loadTools("test-agent", toolsConfig);
+    List<Tool> filtered = registry.loadTools("test-agent", toolsConfig);
 
     assertThat(filtered).isEmpty();
   }
 
   @Test
   void loadToolsSkipsMismatchedAgentAndNullConfig() {
-    assertThat(ToolRegistry.loadTools("other-agent", new ToolsConfig())).isEmpty();
-    assertThat(ToolRegistry.loadTools("test-agent", null)).isEmpty();
+    ToolRegistry registry = new ToolRegistry();
+    assertThat(registry.loadTools("other-agent", new ToolsConfig())).isEmpty();
+    assertThat(registry.loadTools("test-agent", null)).isEmpty();
   }
 }

@@ -9,13 +9,14 @@ import jakarta.inject.Singleton;
 import java.util.*;
 import java.util.logging.Logger;
 
+@Singleton
 public final class ToolRegistry {
     private static final Logger LOGGER = Logger.getLogger(ToolRegistry.class.getName());
 
-    private ToolRegistry() {
+    public ToolRegistry() {
     }
 
-    public static List<Tool> loadTools(final String agentName, final ToolsConfig toolsConfig) {
+    public List<Tool> loadTools(final String agentName, final ToolsConfig toolsConfig) {
         if (toolsConfig == null) {
             return Collections.emptyList();
         }
@@ -56,5 +57,9 @@ public final class ToolRegistry {
             }
         }
         return tools;
+    }
+
+    public List<ToolHandler> loadToolHandlers(final String agentName, final ToolsConfig toolsConfig) {
+        return loadTools(agentName, toolsConfig).stream().map(DefaultToolHandler::new).toList();
     }
 }
