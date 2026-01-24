@@ -1,76 +1,107 @@
 package com.agentengine.engine;
 
-import static com.agentengine.commons.utils.ResourceUtils.loadResourceAsString;
 import static java.lang.StringTemplate.STR;
 
-import com.agentengine.commons.utils.CollectionUtils;
-import com.agentengine.commons.utils.JsonUtils;
-import com.agentengine.commons.utils.StringUtils;
-import com.agentengine.commons.utils.TemplateUtils;
+import com.agentengine.engine.agents.PlanningAgent;
+import com.agentengine.engine.agents.ToolAssistantAgent;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.AgentListener;
-import com.agentengine.engine.api.exception.AgentException;
-import com.agentengine.engine.api.exception.ModelInvocationException;
+import com.agentengine.engine.api.beans.ToolContext;
+import com.agentengine.engine.api.beans.ToolResult;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.api.beans.session.PlanItem;
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
-import com.agentengine.engine.api.beans.session.ToolRequest;
-import com.agentengine.engine.api.state.SessionStore;
-import com.agentengine.engine.context.ContextBuilder;
-import com.agentengine.engine.model.LLMModel;
-import com.agentengine.engine.tools.AgenticToolExecutor;
+import com.agentengine.engine.api.exception.AgentException;
+import com.agentengine.engine.api.exception.ModelInvocationException;
+import com.agentengine.engine.api.StateStore;
+import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.ResourceUtils;
+import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.api.LLMModel;
 import com.agentengine.engine.tools.ToolExecutor;
 import com.agentengine.engine.utils.EngineUtils;
-import java.time.Instant;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class HybridAgent implements Agent {
+  private static final String ROUTER_SESSION_SUFFIX = "_router";
   private static final String REASONING_SESSION_SUFFIX = "_reasoning";
   private static final String TOOL_SESSION_SUFFIX = "_tool";
-  private static final String MISSING_TOOL_AND_FINAL_MESSAGE = "You must provide at least a final answer or tool requests as defined in protocol.";
+  private static final String MISSING_TOOL_AND_FINAL_MESSAGE =
+      "You must provide either a final answer or a plan_items tool call as defined in protocol.";
+  private static final String PLAN_TOOL_NAME = "plan_items";
+  private static final String CLARIFICATION_STATUS = "clarification_required";
+  private static final String CLARIFICATION_TOOL_NAME = "user_clarification";
   private final LLMModel reasoningModel;
-  private final AgenticToolExecutor toolExecutor;
-  private final ContextBuilder reasoningContextBuilder;
-  private final SessionStore sessionStore;
+  private final LLMModel routerModel;
+  private final PlanningAgent planningAgent;
+  private final ToolExecutor toolExecutor;
+  private final ContextManager contextManager;
+  private final StateStore stateStore;
   private final int invocationLimit;
+  private final Map<String, RunState> runStates = new ConcurrentHashMap<>();
 
-  public HybridAgent(final LLMModel reasoningModel, final AgenticToolExecutor toolExecutor,
-      final ContextBuilder reasoningContextBuilder, final SessionStore sessionStore, final int invocationLimit) {
-    this.reasoningModel = reasoningModel;
-    this.toolExecutor = toolExecutor;
-    this.reasoningContextBuilder = reasoningContextBuilder;
-    this.sessionStore = sessionStore;
-    this.invocationLimit = Math.max(1, invocationLimit);
-  }
+    public HybridAgent(LLMModel reasoningModel, LLMModel routerModel, PlanningAgent planningAgent, ToolExecutor toolExecutor, ContextManager contextManager, StateStore stateStore, int invocationLimit) {
+        this.reasoningModel = reasoningModel;
+        this.routerModel = routerModel;
+        this.planningAgent = planningAgent;
+        this.toolExecutor = toolExecutor;
+        this.contextManager = contextManager;
+        this.stateStore = stateStore;
+        this.invocationLimit = invocationLimit;
+    }
 
-  @Override
+    @Override
   public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
-    listener.onStart(sessionId);
-    final String runId = UUID.randomUUID().toString();
-    listener.onRunStarted(sessionId, runId);
-    appendUserMessage(getReasoningSessionId(sessionId), message);
-    appendUserMessage(getToolSessionId(sessionId), message);
+    RunState runState = runStates.get(sessionId);
+    final boolean awaitingClarification = runState != null && runState.awaitingClarification();
+    final String runId = awaitingClarification ? runState.runId() : UUID.randomUUID().toString();
+    if (!awaitingClarification) {
+      listener.onRunStarted(sessionId, runId);
+      appendUserMessage(getReasoningSessionId(sessionId), runId, message);
+      appendUserMessage(getToolSessionId(sessionId), runId, message);
+      runState = new RunState(runId, new ArrayDeque<>(), false, false, null);
+      runStates.put(sessionId, runState);
+      if (shouldGenerateTasks(sessionId, runId, message)) {
+        generateTaskList(sessionId, runId, message, listener, runState);
+      }
+    } else {
+      runState = resumeFromClarification(sessionId, runId, message, listener, runState);
+      runStates.put(sessionId, runState);
+    }
     Message finalResponse = Message.assistant("");
     int reasoningTurns = 0;
+    final Deque<PlanItem> pendingPlan = runState.pendingPlan();
     do {
       final Message result;
       try {
         reasoningTurns++;
         final String stepName = STR."Reasoning Turn \{reasoningTurns}";
         listener.onStepStarted(sessionId, stepName);
-        result = runReasoner(sessionId, listener);
+        result = runReasoner(sessionId, runId, listener);
         listener.onStepFinished(sessionId, stepName);
       } catch (AgentException ex) {
-        listener.onError(sessionId, ex);
+        listener.onRunError(sessionId, runId, ex);
+        runStates.remove(sessionId);
         throw ex;
       } catch (Exception ex) {
-        listener.onError(sessionId, ex);
+        listener.onRunError(sessionId, runId, ex);
         final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
         emitFinalAnswer(sessionId, failure, listener);
         listener.onRunFinished(sessionId, runId);
+        runStates.remove(sessionId);
         return failure;
       }
 
@@ -81,15 +112,40 @@ public class HybridAgent implements Agent {
         break;
       }
 
-      final List<String> toolRequests = result.getToolRequests();
-      if (CollectionUtils.isEmpty(toolRequests)) {
-        sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
+      final List<ToolCall> toolCalls = CollectionUtils.nullSafeList(result.getToolCalls());
+      final List<PlanItem> planItems = EngineUtils.parsePlanItems(toolCalls);
+      if (planItems.isEmpty() && containsClarification(toolCalls)) {
+        List<ToolExecution> executions = toolExecutor.execute(sessionId, runId, toolCalls, listener);
+        ToolExecution clarification = findClarification(executions);
+        if (clarification != null) {
+          runStates.put(sessionId, runState.withClarification(clarification.getToolCall()));
+          return Message.assistant("");
+        }
+        appendToolResults(sessionId, runId, executions);
+        continue;
+      }
+      if (CollectionUtils.isNotEmpty(planItems)) {
+        pendingPlan.clear();
+        pendingPlan.addAll(planItems);
+        emitPlanToolCall(sessionId, planItems, listener);
+      }
+
+      if (pendingPlan.isEmpty()) {
+        stateStore.appendMessage(getReasoningSessionId(sessionId), runId,
+            Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
         if (StringUtils.isBlank(result.getContent())) {
           break;
         }
         continue;
       }
-      executeToolRequests(sessionId, toolRequests, listener);
+
+      List<ToolExecution> executions = executePlanItem(sessionId, runId, pendingPlan.removeFirst(), listener);
+      ToolExecution clarification = findClarification(executions);
+      if (clarification != null) {
+        runStates.put(sessionId, runState.withClarification(clarification.getToolCall()));
+        return Message.assistant("");
+      }
+      appendToolResults(sessionId, runId, executions);
     } while (reasoningTurns < invocationLimit);
 
     // If we exited the loop due to hitting the invocation limit, return a special message
@@ -97,34 +153,30 @@ public class HybridAgent implements Agent {
       finalResponse = Message.assistant(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
     }
 
-    listener.onEnd(sessionId);
     listener.onRunFinished(sessionId, runId);
+    runStates.remove(sessionId);
     return finalResponse;
   }
 
   @Override
   public List<Message> buildPrompt(final String sessionId) {
-    return reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId));
+    return contextManager.buildPrompt(getReasoningSessionId(sessionId));
   }
 
-  private Message runReasoner(final String sessionId, final AgentListener listener) {
-    final String messageId = UUID.randomUUID().toString();
-    listener.onReasoningMessageStart(sessionId, messageId, "assistant");
-    Message message = null;
-    try {
-      message = _runReasoner(sessionId, 5);
-      if (StringUtils.isNotBlank(message.getContent())) {
-        listener.onReasoningMessageDelta(sessionId, messageId, message.getContent());
-      }
-    } finally {
-      listener.onReasoningMessageEnd(sessionId, messageId);
+  private Message runReasoner(final String sessionId, final String runId, final AgentListener listener) {
+    Message message = _runReasoner(sessionId, runId, 5);
+    if (message != null && StringUtils.isNotBlank(message.getThoughts())) {
+      final String messageId = UUID.randomUUID().toString();
+      listener.onThinkingMessageStart(sessionId, messageId, "assistant");
+      listener.onThinkingMessageDelta(sessionId, messageId, message.getThoughts());
+      listener.onThinkingMessageEnd(sessionId, messageId);
     }
     return message;
   }
 
-  private Message _runReasoner(final String sessionId, final int maxRetries) {
+  private Message _runReasoner(final String sessionId, final String runId, final int maxRetries) {
     final List<Message> prompt = CollectionUtils
-        .nullSafeMutableList(reasoningContextBuilder.buildPrompt(getReasoningSessionId(sessionId)));
+        .nullSafeMutableList(contextManager.buildPrompt(getReasoningSessionId(sessionId)));
     Message response;
     try {
       response = reasoningModel.generate(prompt);
@@ -138,26 +190,25 @@ public class HybridAgent implements Agent {
     if (StringUtils.isNotBlank(response.getContent())) {
       sb.append(response.getContent()).append("\n\n");
     }
-    if (CollectionUtils.isNotEmpty(response.getToolRequests())) {
-      sb.append("TOOL REQUESTS").append("\n");
-      response.getToolRequests().forEach(request -> {
-        sb.append("* ").append(request).append("\n");
-      });
+    final List<PlanItem> planItems = EngineUtils.parsePlanItems(response.getToolCalls());
+    if (CollectionUtils.isNotEmpty(planItems)) {
+      sb.append("PLAN").append("\n");
+      planItems.forEach(item -> sb.append("* ").append(item.description()).append("\n"));
     }
-    sessionStore.appendMessage(getReasoningSessionId(sessionId), new Message(response, sb.toString()));
+    stateStore.appendMessage(getReasoningSessionId(sessionId), runId, new Message(response, sb.toString()));
 
     final String repairMessage = EngineUtils.getRepairMessageIfInvalid(response);
 
     if (StringUtils.isBlank(repairMessage)) {
       return response;
     }
-    sessionStore.appendMessage(getReasoningSessionId(sessionId), Message.system(repairMessage));
+    stateStore.appendMessage(getReasoningSessionId(sessionId), runId, Message.system(repairMessage));
 
     if (maxRetries == 0) {
       // Return an empty message when retries are exhausted
       return Message.assistant("");
     }
-    return _runReasoner(sessionId, maxRetries - 1);
+    return _runReasoner(sessionId, runId, maxRetries - 1);
   }
 
   private static String getReasoningSessionId(final String sessionId) {
@@ -168,24 +219,30 @@ public class HybridAgent implements Agent {
     return sessionId + TOOL_SESSION_SUFFIX;
   }
 
-  private void executeToolRequests(final String sessionId, final List<String> toolRequests,
+  private List<ToolExecution> executePlanItem(final String sessionId, final String runId, final PlanItem planItem,
       final AgentListener listener) {
-    List<ToolExecution> executions = toolExecutor.executeRequests(sessionId, toolRequests, listener);
+    List<ToolCall> toolCalls = toolAssistantAgent.generateToolCalls(sessionId, runId, planItem, listener);
+    List<ToolExecution> executions = toolExecutor.execute(sessionId, runId, toolCalls, listener);
 
     if (CollectionUtils.isEmpty(executions)) {
       // Executor failed to map requests to tools or execution failed silently
-      sessionStore.appendMessage(getReasoningSessionId(sessionId),
-          Message.system("Unable to execute tools. Please try alternate approach"));
-      return;
+      stateStore.appendMessage(getReasoningSessionId(sessionId), runId,
+          Message.system(STR."Unable to execute plan item \"\{planItem.description()}\". Please try alternate approach"));
+      return List.of();
     }
 
-    final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
-        execution -> execution.getToolCall().id(), Function.identity());
+    return executions;
+  }
 
-    // Append tool results to reasoning session history
-    sessionStore.appendMessage(getReasoningSessionId(sessionId),
-        Message.user(buildToolResultMessage(executions.stream().map(ToolExecution::getToolCall).filter(Objects::nonNull)
-            .map(call -> toolCallIdVsResult.get(call.id())).filter(Objects::nonNull).collect(Collectors.toList()))));
+  private void emitPlanToolCall(final String sessionId, final List<PlanItem> planItems,
+      final AgentListener listener) {
+    final String toolCallId = UUID.randomUUID().toString();
+    listener.onToolCallStart(sessionId, toolCallId, PLAN_TOOL_NAME);
+    final Map<String, Object> payload = Map.of("items", planItems.stream()
+        .map(item -> Map.of("id", item.id(), "description", item.description()))
+        .toList());
+    listener.onToolCallArgs(sessionId, toolCallId, JsonUtils.toJson(payload));
+    listener.onToolCallEnd(sessionId, toolCallId);
   }
 
   private static String buildToolResultMessage(final List<ToolExecution> executions) {
@@ -205,8 +262,8 @@ public class HybridAgent implements Agent {
     return JsonUtils.toJson(payload);
   }
 
-  private void appendUserMessage(final String sessionId, final Message message) {
-    sessionStore.appendMessage(sessionId, Message.user(message.getContent()));
+  private void appendUserMessage(final String sessionId, final String runId, final Message message) {
+    stateStore.appendMessage(sessionId, runId, Message.user(message.getContent()));
   }
 
   private void emitFinalAnswer(final String sessionId, final Message message, final AgentListener listener) {
@@ -214,6 +271,119 @@ public class HybridAgent implements Agent {
     listener.onTextMessageStart(sessionId, messageId, "assistant");
     listener.onTextMessageDelta(sessionId, messageId, message.getContent());
     listener.onTextMessageEnd(sessionId, messageId);
-    listener.onFinalAnswer(sessionId, message);
+  }
+
+
+  private void appendToolResults(final String sessionId, final String runId, final List<ToolExecution> executions) {
+    if (CollectionUtils.isEmpty(executions)) {
+      return;
+    }
+    final Map<String, ToolExecution> toolCallIdVsResult = CollectionUtils.transformToMap(executions,
+        execution -> execution.getToolCall().id(), Function.identity());
+
+    stateStore.appendMessage(getReasoningSessionId(sessionId), runId,
+        Message.user(buildToolResultMessage(executions.stream().map(ToolExecution::getToolCall).filter(Objects::nonNull)
+            .map(call -> toolCallIdVsResult.get(call.id())).filter(Objects::nonNull).collect(Collectors.toList()))));
+  }
+
+  private ToolExecution findClarification(final List<ToolExecution> executions) {
+    if (CollectionUtils.isEmpty(executions)) {
+      return null;
+    }
+    for (ToolExecution execution : executions) {
+      if (execution != null && CLARIFICATION_STATUS.equals(execution.getStatus())
+          && execution.getToolCall() != null
+          && CLARIFICATION_TOOL_NAME.equalsIgnoreCase(execution.getToolCall().name())) {
+        return execution;
+      }
+    }
+    return null;
+  }
+
+  private boolean containsClarification(final List<ToolCall> toolCalls) {
+    if (CollectionUtils.isEmpty(toolCalls)) {
+      return false;
+    }
+    return toolCalls.stream().anyMatch(call -> call != null
+        && CLARIFICATION_TOOL_NAME.equalsIgnoreCase(call.name()));
+  }
+
+  private RunState resumeFromClarification(final String sessionId, final String runId, final Message message,
+      final AgentListener listener, final RunState runState) {
+    final ToolCall pendingCall = runState.pendingClarification();
+    if (pendingCall == null) {
+      return runState.clearClarification();
+    }
+    final ToolExecution execution = new ToolExecution(pendingCall, "ok",
+        message == null ? "" : message.getContent(), null, 0);
+    execution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+    listener.onToolCallResult(sessionId, pendingCall.id(), execution.getOutput());
+    appendToolResults(sessionId, runId, List.of(execution));
+    return runState.clearClarification();
+  }
+
+  private boolean shouldGenerateTasks(final String sessionId, final String runId, final Message message) {
+    if (planningAgent == null || routerModel == null) {
+      return false;
+    }
+    final String prompt = ResourceUtils.loadResourceAsString("/prompts/hybrid/complexity_router.txt");
+    final String content = message == null || message.getContent() == null ? "" : message.getContent();
+    final List<Message> routerPrompt = List.of(Message.system(prompt), Message.user(content));
+    final Message response = routerModel.generate(routerPrompt);
+    stateStore.appendMessage(getRouterSessionId(sessionId), runId, Message.user(content));
+    if (response != null) {
+      stateStore.appendMessage(getRouterSessionId(sessionId), runId, response);
+    }
+    final String responseContent = response == null ? "" : response.getContent();
+    final Map<String, Object> payload = JsonUtils.fromJson(responseContent, Map.class);
+    if (payload != null && payload.get("complex") instanceof Boolean complex) {
+      return complex;
+    }
+    return responseContent.toLowerCase().contains("true");
+  }
+
+  private void generateTaskList(final String sessionId, final String runId, final Message message,
+      final AgentListener listener,
+      final RunState runState) {
+    if (runState.tasksGenerated()) {
+      return;
+    }
+    final String toolCallId = UUID.randomUUID().toString();
+    listener.onToolCallStart(sessionId, toolCallId, planningAgent.name());
+    final Map<String, Object> args = Map.of("message", message == null ? "" : message.getContent());
+    listener.onToolCallArgs(sessionId, toolCallId, JsonUtils.toJson(args));
+    listener.onToolCallEnd(sessionId, toolCallId);
+    final ToolResult result = planningAgent.executeWithContext(new ToolContext(sessionId), args);
+    listener.onToolCallResult(sessionId, toolCallId, result.output());
+    ToolCall call = new ToolCall(toolCallId, planningAgent.name(), args);
+    ToolExecution execution = new ToolExecution(call, result.status(), result.output(), null, 0);
+    execution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+    appendToolResults(sessionId, runId, List.of(execution));
+    runStates.put(sessionId, runState.withTasksGenerated());
+  }
+
+  private static String getRouterSessionId(final String sessionId) {
+    return sessionId + ROUTER_SESSION_SUFFIX;
+  }
+
+  public record Dependencies(LLMModel routerModel, PlanningAgent planningAgent, LLMModel reasoningModel,
+                             ToolAssistantAgent toolAssistantAgent, ToolExecutor toolExecutor,
+                             ContextManager reasoningContextManager, StateStore stateStore, int invocationLimit) {
+  }
+
+  private record RunState(String runId, Deque<PlanItem> pendingPlan, boolean tasksGenerated,
+      boolean awaitingClarification, ToolCall pendingClarification) {
+
+    private RunState withClarification(final ToolCall toolCall) {
+      return new RunState(runId, pendingPlan, tasksGenerated, true, toolCall);
+    }
+
+    private RunState clearClarification() {
+      return new RunState(runId, pendingPlan, tasksGenerated, false, null);
+    }
+
+    private RunState withTasksGenerated() {
+      return new RunState(runId, pendingPlan, true, awaitingClarification, pendingClarification);
+    }
   }
 }

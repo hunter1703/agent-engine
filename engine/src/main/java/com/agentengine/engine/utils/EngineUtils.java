@@ -1,39 +1,41 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.commons.utils.CollectionUtils;
-import com.agentengine.commons.utils.JsonUtils;
-import com.agentengine.commons.utils.TemplateUtils;
+import com.agentengine.engine.api.ResponseFormatType;
+import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.beans.session.ToolCall;
-import com.agentengine.engine.api.state.SessionStore;
-import com.agentengine.engine.api.beans.session.ToolRequest;
+import com.agentengine.engine.api.StateStore;
+import com.agentengine.engine.api.beans.session.PlanItem;
 import com.alibaba.fastjson2.TypeReference;
+import com.agentengine.engine.api.utils.StringUtils;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class EngineUtils {
+  private static final String PLAN_TOOL_NAME = "plan_items";
+  private static final String LEGACY_PLAN_TOOL_NAME = "plan";
 
   private static final Pattern FINAL_BLOCK = Pattern.compile("FINAL:\\s*(.*)$",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-  private static final Pattern TOOL_REQUEST_BLOCK = Pattern.compile(
-      "TOOL_REQUEST:\\s*(.*?)(?=\\n\\s*TOOL_REQUEST:|\\n\\s*FINAL:|$)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern PLAN_BLOCK = Pattern.compile(
+      "PLAN:\\s*(.*?)(?=\\n\\s*FINAL:|$)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   private EngineUtils() {
   }
 
-  public static int invocationsThisTurn(final SessionStore sessionStore, final String sessionId) {
-    final List<Message> messages = sessionStore.getMessages(sessionId);
+  public static int invocationsThisTurn(final StateStore stateStore, final String sessionId) {
+    final List<Message> messages = stateStore.getMessages(sessionId);
     int count = 0;
     for (int i = messages.size() - 1; i >= 0; i--) {
       final Message message = messages.get(i);
@@ -47,56 +49,60 @@ public final class EngineUtils {
     return count;
   }
 
-  public static Message sanitizeMessage(final Message message, final ResponseFormat format,
+  public static Message sanitizeMessage(final Message message, final ResponseFormatType format,
       final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
     if (message == null) {
       return null;
     }
     final String content = message.getContent();
-    if (format.type() == ResponseFormatType.JSON) {
+    if (format == ResponseFormatType.JSON) {
       final Message parsed = parseJsonPayload(content);
       if (parsed == null) {
-        return new Message(message.getRole(), "", "", List.of(), List.of());
+        return new Message(message.getRole(), "", "", List.of());
       }
       return new Message(message.getRole(), parsed.getContent(), parsed.getThoughts(),
-          CollectionUtils.nullSafeList(parsed.getToolRequests()), CollectionUtils.nullSafeList(parsed.getToolCalls()));
+          CollectionUtils.nullSafeList(parsed.getToolCalls()));
     }
     final String cleaned = stripThoughtBlock(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
-    final List<String> toolRequests = getToolRequests(cleaned);
-    final String finalAnswer = toolRequests.isEmpty() ? getFinalAnswer(cleaned) : null;
+    final List<PlanItem> planItems = parsePlanItemsFromText(cleaned);
+    final String finalAnswer = planItems.isEmpty() ? getFinalAnswer(cleaned) : null;
     final String thoughts = getThoughts(content, thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
-    return new Message(message.getRole(), finalAnswer, thoughts, toolRequests,
-        CollectionUtils.nullSafeList(message.getToolCalls()));
+    final List<ToolCall> toolCalls = new ArrayList<>(CollectionUtils.nullSafeList(message.getToolCalls()));
+    if (!planItems.isEmpty()) {
+      toolCalls.add(new ToolCall(UUID.randomUUID().toString(), PLAN_TOOL_NAME, Map.of("items", planItems.stream()
+          .map(item -> Map.of("id", item.id(), "description", item.description()))
+          .toList())));
+    }
+    return new Message(message.getRole(), finalAnswer, thoughts, toolCalls);
   }
 
   public static String getRepairMessageIfInvalid(final Message message) {
     final String content = message.getContent();
-    final List<String> toolRequests = message.getToolRequests();
+    final List<ToolCall> toolCalls = CollectionUtils.nullSafeList(message.getToolCalls());
     final String thoughts = message.getThoughts();
 
     final boolean finalAnswerAndToolCallsPresent = StringUtils.isNotBlank(content)
-        && CollectionUtils.isNotEmpty(toolRequests);
+        && CollectionUtils.isNotEmpty(toolCalls);
     final boolean emptyResponse = StringUtils.isBlank(content) && StringUtils.isBlank(thoughts)
-        && CollectionUtils.isEmpty(toolRequests);
-    final List<ToolRequest> toolRequestInfos = parseToolRequestInfo(toolRequests);
-    boolean missingToolRequestId = false;
-    boolean missingToolRequestName = false;
-    boolean duplicateToolRequestId = false;
+        && CollectionUtils.isEmpty(toolCalls);
+    boolean missingToolCallId = false;
+    boolean missingToolCallName = false;
+    boolean duplicateToolCallId = false;
     final Set<String> seenIds = new HashSet<>();
-    for (ToolRequest info : toolRequestInfos) {
-      if (StringUtils.isBlank(info.id())) {
-        missingToolRequestId = true;
-      } else if (!seenIds.add(info.id())) {
-        duplicateToolRequestId = true;
+    for (ToolCall call : toolCalls) {
+      if (StringUtils.isBlank(call.id())) {
+        missingToolCallId = true;
+      } else if (!seenIds.add(call.id())) {
+        duplicateToolCallId = true;
       }
-      if (StringUtils.isBlank(info.name())) {
-        missingToolRequestName = true;
+      if (StringUtils.isBlank(call.name())) {
+        missingToolCallName = true;
       }
     }
     return TemplateUtils.renderTemplateForName("hybrid/repair/invalid_message.txt",
         Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse,
-            "missingToolRequestId", missingToolRequestId, "missingToolRequestName", missingToolRequestName,
-            "duplicateToolRequestId", duplicateToolRequestId));
+            "missingToolCallId", missingToolCallId, "missingToolCallName", missingToolCallName,
+            "duplicateToolCallId", duplicateToolCallId));
   }
 
   private static String getFinalAnswer(final String cleaned) {
@@ -105,6 +111,31 @@ public final class EngineUtils {
     }
     final Matcher finalMatch = FINAL_BLOCK.matcher(cleaned);
     return (finalMatch.find() ? finalMatch.group(1) : cleaned).trim();
+  }
+
+  private static List<PlanItem> parsePlanItemsFromText(final String cleaned) {
+    if (StringUtils.isBlank(cleaned)) {
+      return List.of();
+    }
+    final Matcher matcher = PLAN_BLOCK.matcher(cleaned);
+    if (!matcher.find()) {
+      return List.of();
+    }
+    final String planBlock = matcher.group(1) == null ? "" : matcher.group(1);
+    final List<PlanItem> items = new ArrayList<>();
+    int index = 0;
+    for (String line : planBlock.split("\\R")) {
+      String trimmed = line.trim();
+      if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+        trimmed = trimmed.substring(1).trim();
+      }
+      if (StringUtils.isBlank(trimmed)) {
+        continue;
+      }
+      index++;
+      items.add(new PlanItem(STR."step-\{index}", trimmed));
+    }
+    return items;
   }
 
   private static String stripThoughtBlock(
@@ -143,83 +174,54 @@ public final class EngineUtils {
     return thoughts == null ? null : thoughts.trim();
   }
 
-  private static List<String> getToolRequests(final String cleaned) {
-    if (StringUtils.isBlank(cleaned)) {
+  public static List<PlanItem> parsePlanItems(final List<ToolCall> toolCalls) {
+    if (CollectionUtils.isEmpty(toolCalls)) {
       return List.of();
     }
-    final Matcher matcher = TOOL_REQUEST_BLOCK.matcher(cleaned);
-    final List<String> toolRequests = new ArrayList<>();
-    while (matcher.find()) {
-      final String toolRequest = matcher.group(1) == null ? null : matcher.group(1).trim();
-      if (StringUtils.isNotBlank(toolRequest)) {
-        toolRequests.add(toolRequest);
+    final List<PlanItem> items = new ArrayList<>();
+    for (ToolCall call : toolCalls) {
+      if (call == null || call.args() == null || call.name() == null) {
+        continue;
       }
-    }
-    return toolRequests;
-  }
-
-  public static List<ToolRequest> parseToolRequestInfo(final List<String> toolRequests) {
-    if (CollectionUtils.isEmpty(toolRequests)) {
-      return List.of();
-    }
-    final List<ToolRequest> infos = new ArrayList<>();
-    for (String request : toolRequests) {
-      String id = null;
-      String name = null;
-      if (StringUtils.isNotBlank(request)) {
-        final Map<String, Object> jsonMap = parseToolRequestJson(request.trim());
-        if (jsonMap != null) {
-          id = CollectionUtils.getStringValueFromMap(jsonMap, "id");
-          name = CollectionUtils.getStringValueFromMap(jsonMap, "name");
-          if (name == null) {
-            name = CollectionUtils.getStringValueFromMap(jsonMap, "tool");
+      if (!PLAN_TOOL_NAME.equalsIgnoreCase(call.name()) && !LEGACY_PLAN_TOOL_NAME.equalsIgnoreCase(call.name())) {
+        continue;
+      }
+      final Object rawItems = call.args().getOrDefault("items", call.args().get("steps"));
+      if (!(rawItems instanceof List<?> list)) {
+        continue;
+      }
+      int index = 0;
+      for (Object item : list) {
+        index++;
+        String id = null;
+        String description = null;
+        if (item instanceof Map<?, ?> rawMap) {
+          @SuppressWarnings("unchecked")
+          final Map<String, Object> map = (Map<String, Object>) rawMap;
+          id = CollectionUtils.getStringValueFromMap(map, "id");
+          if (id == null) {
+            id = CollectionUtils.getStringValueFromMap(map, "step");
           }
-        }
-        if (StringUtils.isBlank(id) || StringUtils.isBlank(name)) {
-          final String[] lines = request.split("\\R");
-          for (String line : lines) {
-            String trimmed = line.trim();
-            if (trimmed.startsWith("-")) {
-              trimmed = trimmed.substring(1).trim();
-            }
-            final int colonIndex = trimmed.indexOf(':');
-            if (colonIndex <= 0) {
-              continue;
-            }
-            final String key = trimmed.substring(0, colonIndex).trim().toLowerCase();
-            final String value = trimmed.substring(colonIndex + 1).trim();
-            if ("id".equals(key) && StringUtils.isBlank(id)) {
-              id = value;
-            } else if (("tool".equals(key) || "name".equals(key)) && StringUtils.isBlank(name)) {
-              name = value;
-            }
+          description = CollectionUtils.getStringValueFromMap(map, "description");
+          if (description == null) {
+            description = CollectionUtils.getStringValueFromMap(map, "task");
           }
+          if (description == null) {
+            description = CollectionUtils.getStringValueFromMap(map, "title");
+          }
+        } else if (item != null) {
+          description = item.toString();
         }
-      }
-      infos.add(new ToolRequest(id, name, request));
-    }
-    return infos;
-  }
-
-  private static Map<String, Object> parseToolRequestJson(final String request) {
-    if (StringUtils.isBlank(request)) {
-      return null;
-    }
-    try {
-      return JsonUtils.fromJson(request, new TypeReference<>() {
-      });
-    } catch (Exception ex) {
-      final int start = request.indexOf('{');
-      final int end = request.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        try {
-          return JsonUtils.fromJson(request.substring(start, end + 1), new TypeReference<>() {
-          });
-        } catch (Exception ignored) {
+        if (StringUtils.isBlank(description)) {
+          continue;
         }
+        if (StringUtils.isBlank(id)) {
+          id = STR."step-\{index}";
+        }
+        items.add(new PlanItem(id, description));
       }
     }
-    return null;
+    return items;
   }
 
   public static Message parseJsonPayload(final String text) {
@@ -257,13 +259,8 @@ public final class EngineUtils {
     final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, "finalAnswer");
     final String thoughts = CollectionUtils.getStringValueFromMap(payload, "thoughts");
     final List<ToolCall> toolCalls = parseToolCallsFromJsonMap(payload);
-    List<String> toolRequests = parseToolRequestStrings(payload.get("toolRequests"));
-    if (toolRequests.isEmpty() && payload.containsKey("tool_name")) {
-      toolRequests = List.of(JsonUtils
-          .toJson(Map.of("name", payload.get("tool_name"), "args", payload.getOrDefault("tool_args", Map.of()))));
-    }
     final String content = finalAnswer == null ? "" : finalAnswer;
-    return new Message(null, content, thoughts, toolRequests, toolCalls);
+    return new Message(null, content, thoughts, toolCalls);
   }
 
   public static List<ToolCall> transformToToolCalls(final List<ToolExecutionRequest> requests) {
@@ -278,8 +275,8 @@ public final class EngineUtils {
   }
 
   private static List<ToolCall> parseToolCallsFromJsonMap(final Map<String, Object> payload) {
-    final Object toolRequests = payload.get("toolRequests");
-    if (!(toolRequests instanceof List<?> list)) {
+    final Object toolCallsValue = payload.containsKey("toolCalls") ? payload.get("toolCalls") : payload.get("toolRequests");
+    if (!(toolCallsValue instanceof List<?> list)) {
       if (payload.containsKey("tool_name")) {
         Object nameValue = payload.get("tool_name");
         Object argsValue = payload.get("tool_args");
@@ -309,27 +306,4 @@ public final class EngineUtils {
     return calls;
   }
 
-  private static List<String> parseToolRequestStrings(final Object toolRequests) {
-    if (!(toolRequests instanceof List<?> list)) {
-      return List.of();
-    }
-    final List<String> requests = new ArrayList<>();
-    for (Object item : list) {
-      if (item == null) {
-        continue;
-      }
-      if (item instanceof String value) {
-        if (!value.isBlank()) {
-          requests.add(value);
-        }
-        continue;
-      }
-      if (item instanceof Map<?, ?> map) {
-        requests.add(JsonUtils.toJson(map));
-        continue;
-      }
-      requests.add(item.toString());
-    }
-    return requests;
-  }
 }

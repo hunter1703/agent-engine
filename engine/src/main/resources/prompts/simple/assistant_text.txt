@@ -12,17 +12,13 @@ FINAL:
 - The final user-visible answer. No tool logs, no chain-of-thought.
 - Concise and actionable. If tools are required, call them; otherwise answer.
 
-TOOL_REQUEST:
-- Only include this section when a tool is required.
-- Use this schema:
-  - id: <unique id within the response> (required)
-  - tool: <tool name> (required)
-  - intent: <what you need, with detail> (required)
-  - inputs: <structured inputs or paths; optional>
+PLAN:
+- Only include this section when tools are required.
+- Provide one or more concrete steps that can be executed with available tools.
 
 Rules:
 - The full conversation history is provided above; do not claim you lack access to it.
-- If you need tools, provide TOOL_REQUEST, then respond with FINAL after tools complete.
+- If you need tools, provide PLAN, then respond with FINAL after tools complete.
 - Always include a FINAL section, even if it’s a short confirmation.
 - Do not invent tools; only use tools listed inside <AVAILABLE_TOOLS>.
 - Never use tools for greetings, chit-chat, or meta questions about the conversation.
