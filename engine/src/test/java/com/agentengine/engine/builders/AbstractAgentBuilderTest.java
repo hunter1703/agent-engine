@@ -6,19 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.NoopConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.LastNContextConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.beans.config.MongoStateStoreConfig;
 import com.agentengine.engine.api.beans.config.StateStoreConfig;
-import com.agentengine.engine.api.beans.config.SummarizingContextConfig;
-import com.agentengine.engine.context.ContextBuilder;
-import com.agentengine.engine.context.LastNContextBuilder;
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.model.LLMModel;
+import com.agentengine.engine.api.LLMModel;
+import com.agentengine.engine.builders.agent.AbstractAgentBuilder;
 import com.agentengine.engine.model.LangChain4JLLMModel;
-import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.api.state.SessionStore;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.state.InMemoryStateStore;
+import com.agentengine.engine.api.StateStore;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonAnyOfSchema;
@@ -192,21 +187,21 @@ class AbstractAgentBuilderTest {
 
   @Test
   void buildStateStoreFallsBackToInMemoryForMongo() {
-    SessionStore sessionStore = builder.callBuildStateStore(new MongoStateStoreConfig());
+    StateStore stateStore = builder.callBuildStateStore(new MongoStateStoreConfig());
 
-    assertThat(sessionStore).isInstanceOf(InMemorySessionStore.class);
+    assertThat(stateStore).isInstanceOf(InMemoryStateStore.class);
   }
 
   @Test
   void buildChatModelBuildsLangChainModelForProviders() {
     ModelConfig openAi = new ModelConfig();
-    openAi.setProvider("OPEN_AI");
+    openAi.setType("OPEN_AI");
     openAi.setModel("gpt");
     openAi.setBaseUrl("http://localhost");
     openAi.setResponseFormat("text");
 
     ModelConfig ollama = new ModelConfig();
-    ollama.setProvider("OLLAMA");
+    ollama.setType("OLLAMA");
     ollama.setModel("llama");
     ollama.setBaseUrl("http://localhost");
     ollama.setResponseFormat("json");
@@ -221,7 +216,7 @@ class AbstractAgentBuilderTest {
   @Test
   void buildChatModelSupportsLlamaCppProvider() {
     ModelConfig config = new ModelConfig();
-    config.setProvider("LLAMA_CPP");
+    config.setType("LLAMA_CPP");
     config.setModel("llama");
     config.setBaseUrl("http://localhost");
     config.setResponseFormat("json");
@@ -234,7 +229,7 @@ class AbstractAgentBuilderTest {
   @Test
   void buildChatModelUsesTextResponseFormat() {
     ModelConfig config = new ModelConfig();
-    config.setProvider("OPEN_AI");
+    config.setType("OPEN_AI");
     config.setModel("gpt");
     config.setBaseUrl("http://localhost");
     config.setResponseFormat("text");
@@ -261,7 +256,7 @@ class AbstractAgentBuilderTest {
       return buildJsonSchemaElement(jsonSchema);
     }
 
-    private SessionStore callBuildStateStore(final StateStoreConfig config) {
+    private StateStore callBuildStateStore(final StateStoreConfig config) {
       return buildStateStore(config);
     }
 

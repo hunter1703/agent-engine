@@ -40,3 +40,4 @@ and REST) for interacting with agents.
 21. Avoid qualified class names; add explicit imports instead.
 22. Avoid synchronized constructs; prefer virtual-thread-friendly patterns.
 23. Avoid methods with long argument lists. Avoid side-effect methods wherever possible; use them only when it makes sense in the context of the abstraction.
+24. Record future improvements, deferred issues, or follow-up features in `TODO.md`.

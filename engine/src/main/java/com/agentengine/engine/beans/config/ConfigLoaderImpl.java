@@ -1,12 +1,13 @@
 package com.agentengine.engine.beans.config;
 
-import com.agentengine.commons.utils.JsonUtils;
-import com.agentengine.commons.utils.YamlUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.YamlUtils;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
 import jakarta.inject.Singleton;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -35,7 +36,7 @@ public class ConfigLoaderImpl implements ConfigLoader {
   private static String readContent(final Path path) {
     try {
       return Files.readString(path);
-    } catch (java.io.IOException ex) {
+    } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }

@@ -3,7 +3,6 @@ package com.agentengine.engine.beans.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
-import com.agentengine.engine.api.beans.config.RouterEngineConfig;
 import org.junit.jupiter.api.Test;
 
 class EngineConfigTest {
@@ -14,7 +13,7 @@ class EngineConfigTest {
     config.setInvocationLimit(3);
     config.setSystemPrompt("system");
     config.setReasoningModelId("reasoner");
-    config.setToolAssistantModelId("tool");
+    config.setRouterModelId("tool");
 
     config.validate();
 

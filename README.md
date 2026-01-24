@@ -155,3 +155,6 @@ curl -N -X POST http://localhost:8080/agent/events \
 - LLAMA_CPP configs can auto-start `llama-server` when `serverCommand` is provided.
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.
 - Prompt templates live in `engine/src/main/resources/prompts` and render via Jinjava.
+- Agent listener output is delivered through `onTextMessageStart/Delta/End` events rather than a separate final-answer hook.
+- Hybrid agents include a built-in documentation tool: `tasks`.
+- The standard `user_clarification` tool requests required input during a run.

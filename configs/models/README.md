@@ -17,7 +17,7 @@ only.
 - `numPredict`: maximum tokens to generate
 - `maxContextLength`: context window size
 - `stopTokens`: list of stop strings
-- `contextConfig`: optional context config object with `type`
+- `contextManagerConfig`: optional context config object with `type`
 - `serverCommand`: llama.cpp server command to launch (LLAMA_CPP)
 - `serverArgs`: list of server arguments
 - `serverWorkdir`: working directory for the server process

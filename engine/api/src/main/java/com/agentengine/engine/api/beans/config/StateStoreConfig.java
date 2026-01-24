@@ -12,6 +12,7 @@ public abstract class StateStoreConfig implements Config {
     this.type = stateStoreType.name().toLowerCase();
   }
 
+  @Override
   public String getType() {
     return type;
   }
@@ -20,7 +21,7 @@ public abstract class StateStoreConfig implements Config {
     this.type = type;
   }
 
-  protected enum StateStoreType {
+  public enum StateStoreType {
     MEMORY, MONGO
   }
 }

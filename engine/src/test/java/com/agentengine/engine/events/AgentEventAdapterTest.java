@@ -2,10 +2,6 @@ package com.agentengine.engine.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.Role;
-import com.agentengine.engine.api.beans.session.ToolCall;
-import com.agentengine.engine.api.beans.session.ToolRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,18 +60,18 @@ class AgentEventAdapterTest {
   }
 
   @Test
-  void adapterPublishesReasoningMessageEvents() {
+  void adapterPublishesThinkingMessageEvents() {
     List<AgentEvent> published = new ArrayList<>();
     AgentEventAdapter adapter = new AgentEventAdapter(published::add);
 
-    adapter.onReasoningMessageStart("session-1", "msg-1", "assistant");
-    adapter.onReasoningMessageDelta("session-1", "msg-1", "thinking...");
-    adapter.onReasoningMessageEnd("session-1", "msg-1");
+    adapter.onThinkingMessageStart("session-1", "msg-1", "assistant");
+    adapter.onThinkingMessageDelta("session-1", "msg-1", "thinking...");
+    adapter.onThinkingMessageEnd("session-1", "msg-1");
 
     assertThat(published).hasSize(3);
-    assertThat(published.get(0).event()).isEqualTo("reasoning_message_start");
-    assertThat(published.get(1).event()).isEqualTo("reasoning_message_delta");
-    assertThat(published.get(2).event()).isEqualTo("reasoning_message_end");
+    assertThat(published.get(0).event()).isEqualTo("thinking_message_start");
+    assertThat(published.get(1).event()).isEqualTo("thinking_message_delta");
+    assertThat(published.get(2).event()).isEqualTo("thinking_message_end");
 
     Map<?, ?> deltaPayload = (Map<?, ?>) published.get(1).payload();
     assertThat(deltaPayload.get("delta")).isEqualTo("thinking...");
@@ -102,39 +98,4 @@ class AgentEventAdapterTest {
     assertThat(resultPayload.get("result")).isEqualTo("hi");
   }
 
-  @Test
-  void adapterPublishesToolPlanAndRepair() {
-    List<AgentEvent> published = new ArrayList<>();
-    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
-
-    ToolCall call = new ToolCall("call-1", "echo", Map.of("text", "hi"));
-    adapter.onToolPlan("session-1", List.of(call));
-
-    ToolRequest req = new ToolRequest("call-2", "echo", "{\"text\": \"hi\"}");
-    adapter.onToolRepair("session-1", List.of(call), List.of(req));
-
-    assertThat(published).hasSize(2);
-    assertThat(published.get(0).event()).isEqualTo("tool_plan");
-    assertThat(published.get(1).event()).isEqualTo("tool_repair");
-
-    Map<?, ?> repairPayload = (Map<?, ?>) published.get(1).payload();
-    assertThat(repairPayload.get("status")).isEqualTo("repair");
-    assertThat(repairPayload.get("toolCalls")).asList().hasSize(1);
-  }
-
-  @Test
-  void adapterPublishesFinalAnswer() {
-    List<AgentEvent> published = new ArrayList<>();
-    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
-
-    Message msg = new Message(Role.ASSISTANT, "done", "think", List.of(), List.of());
-    adapter.onFinalAnswer("session-1", msg);
-
-    assertThat(published).hasSize(1);
-    assertThat(published.get(0).event()).isEqualTo("final_answer");
-
-    Map<?, ?> payload = (Map<?, ?>) published.get(0).payload();
-    assertThat(payload.get("final_answer")).isEqualTo("done");
-    assertThat(payload.get("thoughts")).isEqualTo("think");
-  }
 }

@@ -1,53 +1,63 @@
 package com.agentengine.engine.api.beans.config;
 
-public final class AgentConfig implements Config {
-  private ToolsConfig tools = new ToolsConfig();
-  private EngineConfig engine = new HybridAgentConfig();
-  private ContextConfig context = new SummarizingContextConfig();
+import com.agentengine.engine.api.utils.StringUtils;
+import com.alibaba.fastjson2.annotation.JSONType;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-  private StateStoreConfig stateStore = new MemoryStateStoreConfig();
+@JSONType(typeKey = "type", seeAlso = {HybridAgentConfig.class})
+@BsonDiscriminator(key = "type")
+public class AgentConfig implements Config {
+  private String type;
+  private String name;
+  private AgentModelConfig model;
+
+  public AgentConfig() {
+    this.type = AgentType.DEFAULT.name().toLowerCase();
+  }
+
+  public AgentConfig(AgentType agentType) {
+    this.type = agentType.name().toLowerCase();
+  }
 
   @Override
   public void validate() {
-    tools.validate();
-    engine.validate();
-    context.validate();
-    stateStore.validate();
+    if (StringUtils.isBlank(name)) {
+      throw new IllegalArgumentException("name is required");
+    }
+
+    model.validate();
   }
 
-  public ToolsConfig getTools() {
-    return tools;
+  public String getName() {
+    return name;
   }
 
-  public void setTools(final ToolsConfig tools) {
-    this.tools = tools;
+  public void setName(final String name) {
+    this.name = name;
   }
 
-  public EngineConfig getEngine() {
-    return engine;
+  @Override
+  public String getType() {
+    return type;
   }
 
-  public void setEngine(final EngineConfig engine) {
-    this.engine = engine;
+  public void setType(final String type) {
+    this.type = type;
   }
 
-  public ContextConfig getContext() {
-    return context;
+  public AgentModelConfig getModel() {
+    return model;
   }
 
-  public void setContext(final ContextConfig context) {
-    this.context = context;
-  }
-
-  public StateStoreConfig getStateStore() {
-    return stateStore;
-  }
-
-  public void setStateStore(final StateStoreConfig stateStore) {
-    this.stateStore = stateStore;
+  public void setModel(final AgentModelConfig model) {
+    this.model = model;
   }
 
   public static AgentConfig empty() {
-    return new AgentConfig();
+    return new HybridAgentConfig();
+  }
+
+  public enum AgentType {
+    DEFAULT, HYBRID
   }
 }

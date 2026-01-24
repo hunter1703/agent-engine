@@ -34,7 +34,7 @@ class ConfigBeansTest {
 
   @Test
   void summarizingContextConfigStoresValues() {
-    SummarizingContextConfig config = new SummarizingContextConfig();
+    SummarizingContextManagerConfig config = new SummarizingContextManagerConfig();
     config.setTriggerThreshold(0.7);
     config.setRecencyThreshold(0.2);
     config.setSummarizerModel("summary-model");
@@ -52,7 +52,7 @@ class ConfigBeansTest {
   void modelConfigStoresValues() {
     ModelConfig config = new ModelConfig();
     config.setBaseUrl("http://localhost");
-    config.setProvider("OPEN_AI");
+    config.setType("OPEN_AI");
     config.setModel("gpt-4");
     config.setTemperature(0.1);
     config.setTopK(4);
@@ -65,10 +65,10 @@ class ConfigBeansTest {
     config.setThoughtsStartTag("<t>");
     config.setThoughtsEndTag("</t>");
     config.setThoughtsEnabled(true);
-    config.setContextConfig(new LastNContextConfig());
+    config.setContextConfig(new LastNContextManagerConfig());
 
     assertThat(config.getBaseUrl()).isEqualTo("http://localhost");
-    assertThat(config.getProvider()).isEqualTo("OPEN_AI");
+    assertThat(config.getType()).isEqualTo("OPEN_AI");
     assertThat(config.getModel()).isEqualTo("gpt-4");
     assertThat(config.getTemperature()).isEqualTo(0.1);
     assertThat(config.getTopK()).isEqualTo(4);
@@ -81,14 +81,14 @@ class ConfigBeansTest {
     assertThat(config.getThoughtsStartTag()).isEqualTo("<t>");
     assertThat(config.getThoughtsEndTag()).isEqualTo("</t>");
     assertThat(config.isThoughtsEnabled()).isTrue();
-    assertThat(config.getContextConfig()).isInstanceOf(LastNContextConfig.class);
+    assertThat(config.getContextConfig()).isInstanceOf(LastNContextManagerConfig.class);
   }
 
   @Test
   void modelConfigDefaultsContextConfig() {
     ModelConfig config = new ModelConfig();
 
-    assertThat(config.getContextConfig()).isInstanceOf(LastNContextConfig.class);
+    assertThat(config.getContextConfig()).isInstanceOf(LastNContextManagerConfig.class);
   }
 
   @Test

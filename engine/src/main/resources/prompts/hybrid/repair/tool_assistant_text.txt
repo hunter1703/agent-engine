@@ -1,4 +1,0 @@
-You did not produce valid tool calls.
-Return one tool call per request, in order, using the available tools.
-Preserve the request id and tool name.
-Do not output JSON or explanatory text.

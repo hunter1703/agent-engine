@@ -3,9 +3,9 @@ package com.agentengine.interfaces.rest.handlers;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 
-public interface AgentRequestHandler {
+public interface AgentRequestHandler<T> {
 
   RequestType requestType();
 
-  <T> T handle(AgentRequest request);
+  T handle(AgentRequest request);
 }

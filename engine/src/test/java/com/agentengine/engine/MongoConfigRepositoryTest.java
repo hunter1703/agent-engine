@@ -14,7 +14,7 @@ class MongoConfigRepositoryTest {
   @Test
   void buildClientSettingsIgnoresUnknownDiscriminator() {
     MongoClientSettings settings = MongoConfigRepository.buildClientSettings("mongodb://localhost:27017",
-        List.of("com.agentengine.MissingType"));
+        List.of("MissingType"));
 
     assertThat(settings.getApplicationName()).isEqualTo("agent-engine");
     assertThat(settings.getCodecRegistry()).isNotNull();

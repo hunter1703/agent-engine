@@ -1,0 +1,17 @@
+Your previous response was invalid.
+Return a corrected response as JSON only, matching this schema:
+{{ response_schema }}
+
+Rules:
+- Return JSON only. No prose, no extra keys.
+- If tools are required, emit a "toolCalls" array with a single "plan_items" tool call and set "finalAnswer" to "".
+- The "plan_items" tool call must include args with an "items" array of plan steps.
+- If more user input is required, emit a "user_clarification" tool call with a question and fields.
+- If no tools are required, omit "toolCalls" and fill "finalAnswer".
+- If the user asks for system state (files, OS data, time, processes, network, env), you MUST use a tool.
+- Do NOT include role labels like "[AI]", "[Human]", or "[Tool]" in the JSON.
+{% if thoughtsEnabled %}
+- Include the "thoughts" field; use an empty string when you have nothing to add.
+{% endif %}
+- Only the "plan_items" or "user_clarification" tool calls are allowed in "toolCalls".
+- "id" must be unique within the response.

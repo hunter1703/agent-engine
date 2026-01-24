@@ -1,14 +1,15 @@
 package com.agentengine.engine.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.commons.utils.CollectionUtils;
-import com.agentengine.commons.utils.StringUtils;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.StringUtils;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -34,7 +35,7 @@ public final class LlamaCppServerUtils {
     if (config == null) {
       return;
     }
-    if (!ModelConfig.Provider.LLAMA_CPP.name().equalsIgnoreCase(config.getProvider())) {
+    if (!ModelConfig.Provider.LLAMA_CPP.name().equalsIgnoreCase(config.getType())) {
       return;
     }
     final ServerAddress address = resolveAddress(config.getBaseUrl());
@@ -116,7 +117,7 @@ public final class LlamaCppServerUtils {
 
   private static boolean isReachable(final ServerAddress address) {
     try (Socket socket = new Socket()) {
-      socket.connect(new java.net.InetSocketAddress(address.host(), address.port()), 500);
+      socket.connect(new InetSocketAddress(address.host(), address.port()), 500);
       return true;
     } catch (Exception ex) {
       return false;

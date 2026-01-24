@@ -59,10 +59,6 @@ class AbstractAgentTest {
     public void onStepStarted(final String sessionId, final String stepName) {
       called.add(STR."start-\{sessionId}");
     }
-
-    @Override
-    public void onFinalAnswer(final String sessionId, final Message message) {
-    }
   }
 
   private static final class EndListener implements AgentListener {
@@ -75,10 +71,6 @@ class AbstractAgentTest {
     @Override
     public void onStepFinished(final String sessionId, final String stepName) {
       called.add(STR."end-\{sessionId}");
-    }
-
-    @Override
-    public void onFinalAnswer(final String sessionId, final Message message) {
     }
   }
 }

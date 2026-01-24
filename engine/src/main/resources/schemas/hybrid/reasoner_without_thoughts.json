@@ -5,7 +5,7 @@
     "finalAnswer": {
       "type": "string"
     },
-    "toolRequests": {
+    "toolCalls": {
       "type": "array",
       "minItems": 1,
       "items": {
@@ -18,14 +18,14 @@
           "name": {
             "type": "string"
           },
-          "intent": {
-            "type": "string"
+          "args": {
+            "type": "object"
           }
         },
         "required": [
           "id",
           "name",
-          "intent"
+          "args"
         ]
       }
     }
@@ -37,13 +37,13 @@
       ],
       "not": {
         "required": [
-          "toolRequests"
+          "toolCalls"
         ]
       }
     },
     {
       "required": [
-        "toolRequests"
+        "toolCalls"
       ],
       "not": {
         "required": [

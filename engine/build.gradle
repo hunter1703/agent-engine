@@ -9,8 +9,8 @@ dependencies {
     implementation platform(libs.quarkus.langchain4j.bom)
     implementation platform(libs.langchain4j.bom)
     implementation libs.quarkus.langchain4j.core
-    implementation project(':commons')
     implementation project(':engine:api')
+    implementation libs.fastjson2
     implementation libs.langchain4j.core
     implementation libs.langchain4j.open.ai
     implementation libs.langchain4j.ollama

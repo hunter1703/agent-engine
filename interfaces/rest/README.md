@@ -63,10 +63,12 @@ MongoDB is configured via the environment variable `MONGODB_CONNECTION_STRING` (
 `mongodb://localhost:27000`). The database name is currently fixed to `AGENT_ENGINE`.
 
 ### Event Payloads (SSE)
-Each event is an `AgentEvent` object with `event`, `sessionId`, and a JSON `payload`.
-- `event: "session"`: `{ "status": "ready" }` emitted on connect.
-- `event: "tool_plan"`: list of `{ "id", "name", "args" }` tool calls.
-- `event: "tool_execution"`: `{ "id", "tool_name", "status", "output", "duration_ms" }`.
-- `event: "reasoning_start"` or `"reasoning_end"`: `{ "status": "start" | "end" }`.
-- `event: "tool_repair"`: `{ "status": "repair" }`.
-- `event: "final_answer"`: `{ "final_answer": "...", "thoughts": "..." }`.
+Each event is an AG-UI `BaseEvent` JSON payload, compatible with the AG-UI protocol.
+Common events include:
+- `RUN_STARTED` / `RUN_FINISHED` / `RUN_ERROR`
+- `STEP_STARTED` / `STEP_FINISHED`
+- `TEXT_MESSAGE_START` / `TEXT_MESSAGE_CONTENT` / `TEXT_MESSAGE_END`
+- `TOOL_CALL_START` / `TOOL_CALL_ARGS` / `TOOL_CALL_END` / `TOOL_CALL_RESULT`
+
+The server also emits `ThinkingTextMessage*` events with raw metadata for reasoning deltas and emits
+planning data via standard `TOOL_CALL_*` events.

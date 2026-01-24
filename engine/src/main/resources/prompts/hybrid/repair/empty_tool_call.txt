@@ -1,7 +1,5 @@
-Missing or mismatched tool calls.
-Return exactly one tool call per request, in the same order.
+Missing tool calls for the plan item.
+Return at least one tool call that satisfies the requested plan item.
 
-Expected tool requests:
-{% for request in toolRequests %}
-- {{ request }}
-{% endfor %}
+Plan item:
+- {{ planItem }}

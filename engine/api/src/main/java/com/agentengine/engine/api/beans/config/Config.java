@@ -4,4 +4,6 @@ public interface Config {
 
   default void validate() {
   }
+
+  String getType();
 }

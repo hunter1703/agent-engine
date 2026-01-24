@@ -10,7 +10,7 @@ public class ModelConfig implements Config {
 
   private String baseUrl;
 
-  private String provider;
+  private String type;
   private String model;
   private Double temperature;
 
@@ -34,7 +34,7 @@ public class ModelConfig implements Config {
 
   private boolean thoughtsEnabled;
 
-  private ContextConfig contextConfig = new LastNContextConfig();
+  private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
 
   private String serverCommand;
 
@@ -50,12 +50,13 @@ public class ModelConfig implements Config {
     this.baseUrl = baseUrl;
   }
 
-  public String getProvider() {
-    return provider;
+  @Override
+  public String getType() {
+    return type;
   }
 
-  public void setProvider(final String provider) {
-    this.provider = provider;
+  public void setType(final String type) {
+    this.type = type;
   }
 
   public String getModel() {
@@ -154,12 +155,12 @@ public class ModelConfig implements Config {
     this.thoughtsEnabled = thoughtsEnabled;
   }
 
-  public ContextConfig getContextConfig() {
-    return contextConfig;
+  public ContextManagerConfig getContextConfig() {
+    return contextManagerConfig;
   }
 
-  public void setContextConfig(final ContextConfig contextConfig) {
-    this.contextConfig = contextConfig;
+  public void setContextConfig(final ContextManagerConfig contextManagerConfig) {
+    this.contextManagerConfig = contextManagerConfig;
   }
 
   public String getServerCommand() {

@@ -17,8 +17,6 @@ import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
-import com.agentengine.engine.api.builders.AgentBuilderFactory;
-import com.agentengine.interfaces.rest.services.AGUIAgent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +38,7 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AGUIAgent resolved = service.getOrStartEngine("agent", "config.json");
+    Agent resolved = service.getOrStartEngine("agent", "config.json");
 
     assertThat(resolved).isNotNull();
     verify(builder).build(eq("agent"), any());
@@ -62,7 +60,7 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AGUIAgent resolved = service.getOrStartEngine("agent", null);
+    Agent resolved = service.getOrStartEngine("agent", null);
 
     assertThat(resolved).isNotNull();
     verify(configLoader, never()).loadConfig(any());
@@ -84,8 +82,8 @@ class AgentManagerTest {
 
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
-    AGUIAgent first = service.getOrStartEngine("agent", "config.json");
-    AGUIAgent second = service.getOrStartEngine("agent", "config.json");
+    Agent first = service.getOrStartEngine("agent", "config.json");
+    Agent second = service.getOrStartEngine("agent", "config.json");
 
     assertThat(first).isSameAs(second);
   }
@@ -117,7 +115,7 @@ class AgentManagerTest {
     AgentConfig config = AgentConfig.empty();
     HybridAgentConfig engine = (HybridAgentConfig) config.getEngine();
     engine.setReasoningModelId("reasoner.json");
-    engine.setToolAssistantModelId("tool.json");
+    engine.setRouterModelId("tool.json");
     engine.setSystemPrompt("You are helpful.");
     return config;
   }

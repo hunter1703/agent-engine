@@ -21,7 +21,7 @@ class LlamaCppServerUtilsTest {
     server.start();
     try {
       ModelConfig config = new ModelConfig();
-      config.setProvider(ModelConfig.Provider.LLAMA_CPP.name());
+      config.setType(ModelConfig.Provider.LLAMA_CPP.name());
       config.setBaseUrl("http://localhost:" + server.getAddress().getPort());
       config.setModel("llama");
 

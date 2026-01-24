@@ -1,10 +1,8 @@
 package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -17,14 +15,13 @@ import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.interfaces.rest.services.AGUIAgent;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import io.smallrye.common.annotation.RunOnVirtualThread;
+import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AgentRestAPITest {
@@ -32,7 +29,7 @@ class AgentRestAPITest {
   @Test
   void invokeReturnsSessionAndResponse() {
     AgentManager service = mock(AgentManager.class);
-    AGUIAgent engine = mock(AGUIAgent.class);
+    Agent engine = mock(Agent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(anyString(), any(), any())).thenReturn(Message.assistant("response"));
 
@@ -55,7 +52,7 @@ class AgentRestAPITest {
   @Test
   void invokeHandlesNullEngineResponse() {
     AgentManager service = mock(AgentManager.class);
-    AGUIAgent engine = mock(AGUIAgent.class);
+    Agent engine = mock(Agent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.invoke(anyString(), any(), any())).thenReturn(null);
 
@@ -78,7 +75,7 @@ class AgentRestAPITest {
   @Test
   void invokeBuildPromptReturnsMessages() {
     AgentManager service = mock(AgentManager.class);
-    AGUIAgent engine = mock(AGUIAgent.class);
+    Agent engine = mock(Agent.class);
     when(service.getOrStartEngine("agent", "config.json")).thenReturn(engine);
     when(engine.buildPrompt(anyString())).thenReturn(List.of(Message.system("system"), Message.user("user")));
 
@@ -110,8 +107,6 @@ class AgentRestAPITest {
     InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
-    Instance<AgentRequestHandler> instance = mock(Instance.class);
-    when(instance.stream()).thenReturn(Stream.of(invokeHandler, buildPromptHandler, streamingHandler));
-    return instance;
+    return new HandlerInstance(List.<AgentRequestHandler>of(invokeHandler, buildPromptHandler, streamingHandler));
   }
 }

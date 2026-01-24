@@ -6,8 +6,8 @@ import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.events.AgentEvent;
-import com.agentengine.commons.utils.StringUtils;
+import com.agui.core.event.BaseEvent;
+import com.agentengine.engine.api.utils.StringUtils;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
@@ -27,6 +27,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 
 @Path("/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -49,7 +50,7 @@ public class AgentRestAPI {
       InvokeResponse.class, PromptResponse.class})))
   public AgentResponse invoke(final AgentRequest request) {
     final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return handlers.get(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
+    return (AgentResponse) handlers.get(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
   }
 
   @POST
@@ -59,9 +60,10 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Multi<AgentEvent> events(final AgentRequest request) {
+  @SuppressWarnings("unchecked")
+  public Multi<BaseEvent> events(final AgentRequest request) {
     final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return handlers.get(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+    return (Multi<BaseEvent>) handlers.get(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
   }
 
   private static String getOrCreateSession(final String sessionId) {

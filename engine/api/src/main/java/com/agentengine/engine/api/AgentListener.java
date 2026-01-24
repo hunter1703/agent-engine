@@ -1,18 +1,13 @@
 package com.agentengine.engine.api;
 
-import com.agentengine.engine.api.beans.session.ToolExecution;
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.ToolCall;
-import com.agentengine.engine.api.beans.session.ToolRequest;
-
-import java.util.Collection;
-import java.util.List;
-
-public interface AgentListener extends EngineListener {
+public interface AgentListener {
   default void onRunStarted(String sessionId, String runId) {
   }
 
   default void onRunFinished(String sessionId, String runId) {
+  }
+
+  default void onRunError(String sessionId, String runId, Throwable t) {
   }
 
   default void onTextMessageStart(String sessionId, String messageId, String role) {
@@ -42,20 +37,12 @@ public interface AgentListener extends EngineListener {
   default void onToolCallResult(String sessionId, String toolCallId, String content) {
   }
 
-  default void onReasoningMessageStart(String sessionId, String messageId, String role) {
+  default void onThinkingMessageStart(String sessionId, String messageId, String role) {
   }
 
-  default void onReasoningMessageDelta(String sessionId, String messageId, String delta) {
+  default void onThinkingMessageDelta(String sessionId, String messageId, String delta) {
   }
 
-  default void onReasoningMessageEnd(String sessionId, String messageId) {
+  default void onThinkingMessageEnd(String sessionId, String messageId) {
   }
-
-  default void onToolPlan(String sessionId, Collection<ToolCall> toolCalls) {
-  }
-
-  default void onToolRepair(String sessionId, List<ToolCall> toolCalls, List<ToolRequest> remainingRequests) {
-  }
-
-  void onFinalAnswer(String sessionId, Message message);
 }

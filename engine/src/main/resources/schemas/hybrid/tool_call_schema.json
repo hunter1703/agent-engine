@@ -2,7 +2,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "toolRequests": {
+    "toolCalls": {
       "type": "array",
       "minItems": 1,
       "items": {
@@ -28,6 +28,6 @@
     }
   },
   "required": [
-    "toolRequests"
+    "toolCalls"
   ]
 }

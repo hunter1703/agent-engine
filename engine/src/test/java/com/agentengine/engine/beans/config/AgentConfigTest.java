@@ -28,7 +28,7 @@ class AgentConfigTest {
     HybridAgentConfig engine = (HybridAgentConfig) config.getEngine();
     engine.setReasoningModelId("reasoner.json");
     engine.setSystemPrompt("prompt");
-    engine.setToolAssistantModelId("tool.json");
+    engine.setRouterModelId("tool.json");
 
     config.validate();
   }

@@ -1,15 +1,6 @@
 package com.agentengine.engine.events;
 
 import com.agentengine.engine.api.AgentListener;
-import com.agentengine.commons.utils.CollectionUtils;
-import com.agentengine.engine.api.beans.session.ToolExecution;
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.ToolCall;
-import com.agentengine.engine.api.beans.session.ToolRequest;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class AgentEventAdapter implements AgentListener {
@@ -17,13 +8,6 @@ public final class AgentEventAdapter implements AgentListener {
 
   public AgentEventAdapter(final AgentEventPublisher publisher) {
     this.publisher = publisher;
-  }
-
-  @Override
-  public void onToolPlan(final String sessionId, final Collection<ToolCall> toolCalls) {
-    List<Map<String, Object>> payload = toolCalls.stream()
-        .map(call -> Map.of("id", call.id(), "name", call.name(), "args", call.args())).toList();
-    publisher.publish(new AgentEvent("tool_plan", sessionId, payload));
   }
 
   @Override
@@ -84,37 +68,19 @@ public final class AgentEventAdapter implements AgentListener {
   }
 
   @Override
-  public void onReasoningMessageStart(String sessionId, String messageId, String role) {
+  public void onThinkingMessageStart(String sessionId, String messageId, String role) {
     publisher
-        .publish(new AgentEvent("reasoning_message_start", sessionId, Map.of("messageId", messageId, "role", role)));
+        .publish(new AgentEvent("thinking_message_start", sessionId, Map.of("messageId", messageId, "role", role)));
   }
 
   @Override
-  public void onReasoningMessageDelta(String sessionId, String messageId, String delta) {
+  public void onThinkingMessageDelta(String sessionId, String messageId, String delta) {
     publisher
-        .publish(new AgentEvent("reasoning_message_delta", sessionId, Map.of("messageId", messageId, "delta", delta)));
+        .publish(new AgentEvent("thinking_message_delta", sessionId, Map.of("messageId", messageId, "delta", delta)));
   }
 
   @Override
-  public void onReasoningMessageEnd(String sessionId, String messageId) {
-    publisher.publish(new AgentEvent("reasoning_message_end", sessionId, Map.of("messageId", messageId)));
-  }
-
-  @Override
-  public void onToolRepair(final String sessionId, final List<ToolCall> toolCalls,
-      final List<ToolRequest> missingToolRequests) {
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("status", "repair");
-    payload.put("toolCalls", CollectionUtils.nullSafeList(toolCalls));
-    payload.put("remainingToolRequests", CollectionUtils.nullSafeList(missingToolRequests));
-    publisher.publish(new AgentEvent("tool_repair", sessionId, payload));
-  }
-
-  @Override
-  public void onFinalAnswer(final String sessionId, final Message message) {
-    Map<String, Object> payload = new HashMap<>();
-    payload.put("final_answer", message.getContent());
-    payload.put("thoughts", message.getThoughts());
-    publisher.publish(new AgentEvent("final_answer", sessionId, payload));
+  public void onThinkingMessageEnd(String sessionId, String messageId) {
+    publisher.publish(new AgentEvent("thinking_message_end", sessionId, Map.of("messageId", messageId)));
   }
 }

@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     implementation files('../../engine/build/libs/engine.jar')
+    implementation files('../../engine/api/build/libs/api.jar')
 }
 
 java {

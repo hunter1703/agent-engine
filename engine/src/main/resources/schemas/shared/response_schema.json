@@ -7,7 +7,7 @@
     "thoughts": {
       "type": "string"
     },
-    "toolRequests": {
+    "toolCalls": {
       "type": "array",
       "items": {
         "type": "object",
@@ -18,14 +18,14 @@
           "id": {
             "type": "string"
           },
-          "intent": {
-            "type": "string"
+          "args": {
+            "type": "object"
           }
         },
         "required": [
           "id",
           "name",
-          "intent"
+          "args"
         ],
         "additionalProperties": false
       }

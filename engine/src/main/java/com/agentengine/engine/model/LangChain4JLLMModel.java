@@ -1,5 +1,8 @@
 package com.agentengine.engine.model;
 
+import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.api.LLMModel;
+import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.utils.EngineUtils;
@@ -17,14 +20,16 @@ public final class LangChain4JLLMModel implements LLMModel {
   private final boolean thoughtsEnabled;
   private final String thoughtsStartTag;
   private final String thoughtsEndTag;
+  private final ContextManager contextManager;
 
   public LangChain4JLLMModel(final ChatLanguageModel model, final ResponseFormat responseFormat,
-      final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag) {
+                             final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag, ContextManager contextManager) {
     this.model = model;
     this.responseFormat = responseFormat;
     this.thoughtsEnabled = thoughtsEnabled;
     this.thoughtsStartTag = thoughtsStartTag;
     this.thoughtsEndTag = thoughtsEndTag;
+      this.contextManager = contextManager;
   }
 
   @Override
@@ -39,8 +44,8 @@ public final class LangChain4JLLMModel implements LLMModel {
   }
 
   @Override
-  public ResponseFormat responseFormat() {
-    return responseFormat;
+  public ResponseFormatType responseFormat() {
+    return responseFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.JSON ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
   }
 
   @Override
@@ -56,6 +61,11 @@ public final class LangChain4JLLMModel implements LLMModel {
   @Override
   public String thoughtsEndTag() {
     return thoughtsEndTag;
+  }
+
+  @Override
+  public ContextManager getContextManager() {
+    return contextManager;
   }
 
   private ChatMessage toChatMessage(final Message message) {

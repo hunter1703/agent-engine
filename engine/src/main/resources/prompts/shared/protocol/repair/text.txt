@@ -1,0 +1,20 @@
+Your previous response was invalid because it either omitted PLAN/FINAL or included both.
+If you included both PLAN and FINAL, remove one and follow the protocol strictly.
+Context note: the conversation history is available above; do not claim you lack access to it.
+Return a corrected response that follows the hybrid protocol.
+If the user asks for system state (files, OS data, time, processes, network, env), use PLAN.
+Otherwise provide FINAL.
+Do NOT output raw tool-call JSON.
+PLAN steps must map to available tools listed.
+Thoughts handling:
+{% if thoughtsEnabled %}
+If you include thoughts, wrap them in <{{ thoughtTag }}>...</{{ thoughtTag }}>.
+Do NOT use a THOUGHTS section.
+{% else %}
+Do NOT include thoughts or a THOUGHTS section.
+{% endif %}
+If tools are required, respond exactly like:
+PLAN:
+- <step describing a concrete tool action>
+- <next step>
+Do not include any other sections.

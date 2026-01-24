@@ -1,15 +1,13 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.commons.utils.JsonUtils;
-import com.agentengine.commons.utils.StringUtils;
-import com.agentengine.commons.utils.HashUtils;
+import com.agentengine.engine.api.utils.HashUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
-import com.agentengine.engine.api.builders.AgentBuilderFactory;
-import com.agui.core.exception.AGUIException;
-import com.agui.server.LocalAgent;
+import com.agentengine.engine.builders.agent.AgentProvider;
 import jakarta.inject.Singleton;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -17,19 +15,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Singleton
 public class AgentManager {
-  private final AgentBuilderFactory builderFactory;
+  private final AgentProvider agentProvider;
   private final ConfigLoader configLoader;
   private final ConfigRepository configRepository;
-  private final Map<String, AGUIAgent> engines = new ConcurrentHashMap<>();
+  private final Map<String, Agent> engines = new ConcurrentHashMap<>();
 
-  public AgentManager(final AgentBuilderFactory builderFactory, final ConfigLoader configLoader,
+  public AgentManager(final AgentProvider agentProvider, final ConfigLoader configLoader,
       final ConfigRepository configRepository) {
-    this.builderFactory = builderFactory;
+    this.agentProvider = agentProvider;
     this.configLoader = configLoader;
     this.configRepository = configRepository;
   }
 
-  public AGUIAgent getOrStartEngine(final String agentName, final String configPath) {
+  public Agent getOrStartEngine(final String agentName, final String configPath) {
     if (StringUtils.isBlank(agentName)) {
       throw new IllegalArgumentException("agentName is required");
     }
@@ -41,14 +39,7 @@ public class AgentManager {
     final String key = HashUtils.HMACSHA256_Base64(STR."\{agentName}|\{JsonUtils.toStableJson(agentConfig)}");
     return engines.computeIfAbsent(
         key,
-        ignored -> {
-          final Agent engine = builderFactory.getBuilder(agentConfig.getEngine().getType()).build(agentName, agentConfig);
-          try {
-            return new AGUIAgent(engine);
-          } catch (AGUIException e) {
-            throw new RuntimeException(STR."Failed to create AGUIAgent for agentName \"\{agentName}\"", e);
-          }
-        });
+        ignored -> agentProvider.get(agentConfig));
   }
 
   private AgentConfig resolveAgentConfig(final String agentName, final String configPath) {
