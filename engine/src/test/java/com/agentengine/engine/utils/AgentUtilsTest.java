@@ -29,18 +29,6 @@ class AgentUtilsTest {
     assertThat(update.plan().getFirst().step()).isEqualTo("echo");
   }
 
-  @Test
-  void sanitizeMessageParsesPlanFromText() {
-    String content = "PLAN:\n- run ls\n- check pwd";
-    Message response = new Message(Role.ASSISTANT, content, null, null);
-
-    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.TEXT, false, null, null);
-
-    PlanUpdate update = AgentUtils.parsePlanUpdate(sanitized.getToolCalls());
-    assertThat(update.plan()).hasSize(2);
-    assertThat(update.plan().getFirst().step()).isEqualTo("run ls");
-    assertThat(update.plan().getFirst().status()).isEqualTo(PlanStatus.PENDING);
-  }
 
   @Test
   void getRepairMessageFlagsMixedFinalAndPlan() {
@@ -73,5 +61,6 @@ class AgentUtilsTest {
 
     assertThat(items).hasSize(2);
     assertThat(items.getFirst().step()).isEqualTo("first step");
+    assertThat(items.getFirst().id()).isNotBlank();
   }
 }

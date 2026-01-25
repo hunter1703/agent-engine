@@ -1,23 +1,48 @@
 {
-  "engine": {
-    "type": "hybrid",
-    "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
-    "reasoningModelId": "qwen3_coder_30b_llamacpp_reasoning",
-    "toolAssistantModelId": "qwen3_coder_30b_llamacpp"
-  },
-  "context": {
-    "type": "last_n",
-    "keepLast": 10
-  },
-  "tools": {
-    "enabled": ["run_cmd"],
-    "configs": {
-      "run_cmd": {
-        "timeout_seconds": 30
+  "type": "hybrid",
+  "name": "shell_agent",
+  "model": {
+    "modelId": "qwen3_coder_30b_llamacpp_reasoning",
+    "role": "reasoning",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
+      "keepLast": 10
+    },
+    "tools": {
+      "enabled": ["run_cmd"],
+      "configs": {
+        "run_cmd": {
+          "timeout_seconds": 30
+        }
       }
     }
   },
-  "stateStore": {
+  "routerModel": {
+    "modelId": "qwen3_coder_30b_llamacpp",
+    "role": "router",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "systemPrompt": "You are a routing model that decides if a request requires multi-step execution.",
+      "keepLast": 6
+    },
+    "tools": {
+      "enabled": ["NONE"]
+    }
+  },
+  "planningModel": {
+    "modelId": "qwen3_coder_30b_llamacpp",
+    "role": "planning",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "systemPrompt": "You manage a task plan for complex work. Output a Markdown list where each line uses: - [status] (id:step-1) task description. Status must be one of: pending, in_progress, completed. When mode=initial, produce a full ordered plan with stable ids. When mode=update, update statuses, adjust wording, and reorder only non-active items. Keep the active step first; do not remove it unless it is completed. Reuse ids from current_plan for existing items; only mint new ids for new items. If no changes are needed, return an empty response. Keep steps concise, concrete, and tool-executable.",
+      "keepLast": 6
+    },
+    "tools": {
+      "enabled": ["NONE"]
+    }
+  },
+  "sessionStore": {
     "type": "memory"
   }
 }
