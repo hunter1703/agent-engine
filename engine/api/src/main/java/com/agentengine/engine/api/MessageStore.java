@@ -7,8 +7,10 @@ import java.util.List;
 public interface MessageStore {
 
   /**
-   * @param sessionId unique globally
-   * @param modelId unique within a given session only
+   * @param sessionId
+   *          unique globally
+   * @param modelId
+   *          unique within a given session only
    * @return
    */
   List<Message> getMessages(String sessionId, String modelId);

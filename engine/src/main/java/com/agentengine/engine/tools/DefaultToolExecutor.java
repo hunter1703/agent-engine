@@ -18,45 +18,45 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 public final class DefaultToolExecutor implements ToolExecutor {
-    private final Map<String, Tool> toolByName;
-    private final Semaphore mutatingGate = new Semaphore(1);
-    private final Map<String, Semaphore> toolGates = new ConcurrentHashMap<>();
+  private final Map<String, Tool> toolByName;
+  private final Semaphore mutatingGate = new Semaphore(1);
+  private final Map<String, Semaphore> toolGates = new ConcurrentHashMap<>();
 
-    public DefaultToolExecutor(final List<Tool> tools) {
-        final Map<String, Tool> toolMap = new ConcurrentHashMap<>();
-        for (final Tool tool : CollectionUtils.nullSafeList(tools)) {
-            toolMap.put(tool.name(), tool);
-        }
-        this.toolByName = toolMap;
+  public DefaultToolExecutor(final List<Tool> tools) {
+    final Map<String, Tool> toolMap = new ConcurrentHashMap<>();
+    for (final Tool tool : CollectionUtils.nullSafeList(tools)) {
+      toolMap.put(tool.name(), tool);
+    }
+    this.toolByName = toolMap;
+  }
+
+  @Override
+  public List<ToolExecution> execute(final String sessionId, final String runId, final List<ToolCall> toolCalls,
+      final AgentListener listener) {
+    if (CollectionUtils.isEmpty(toolCalls)) {
+      return List.of();
     }
 
-    @Override
-    public List<ToolExecution> execute(final String sessionId, final String runId, final List<ToolCall> toolCalls,
-                                       final AgentListener listener) {
-        if (CollectionUtils.isEmpty(toolCalls)) {
-            return List.of();
-        }
+    final List<ToolExecution> executions = new ArrayList<>();
+    for (ToolCall call : toolCalls) {
+      if (call == null) {
+        continue;
+      }
+      listener.onToolCallStart(sessionId, call.id(), call.name());
+      if (call.args() != null) {
+        listener.onToolCallArgs(sessionId, call.id(), JsonUtils.toJson(call.args()));
+      }
+      listener.onToolCallEnd(sessionId, call.id());
 
-        final List<ToolExecution> executions = new ArrayList<>();
-        for (ToolCall call : toolCalls) {
-            if (call == null) {
-                continue;
-            }
-            listener.onToolCallStart(sessionId, call.id(), call.name());
-            if (call.args() != null) {
-                listener.onToolCallArgs(sessionId, call.id(), JsonUtils.toJson(call.args()));
-            }
-            listener.onToolCallEnd(sessionId, call.id());
-
-            final ToolExecution execution = executeTool(call, new ToolContext(sessionId));
-            listener.onToolCallResult(sessionId, call.id(), execution.getOutput());
-            execution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
-            executions.add(execution);
-        }
-        return executions;
+      final ToolExecution execution = executeTool(call, new ToolContext(sessionId));
+      listener.onToolCallResult(sessionId, call.id(), execution.getOutput());
+      execution.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+      executions.add(execution);
     }
+    return executions;
+  }
 
-    private ToolExecution executeTool(final ToolCall call, final ToolContext context) {
+  private ToolExecution executeTool(final ToolCall call, final ToolContext context) {
         final Tool tool = toolByName.get(call.name());
         final Instant start = Instant.now();
 
@@ -85,26 +85,27 @@ public final class DefaultToolExecutor implements ToolExecutor {
         }
     }
 
-    private ToolExecution createToolExecution(final ToolCall call, final String status, final String output, final Instant start) {
-        final Instant end = Instant.now();
-        return new ToolExecution(call, status, output, start, end.toEpochMilli() - start.toEpochMilli());
-    }
+  private ToolExecution createToolExecution(final ToolCall call, final String status, final String output,
+      final Instant start) {
+    final Instant end = Instant.now();
+    return new ToolExecution(call, status, output, start, end.toEpochMilli() - start.toEpochMilli());
+  }
 
-    private void acquireGate(final Semaphore gate) {
-        if (gate == null) {
-            return;
-        }
-        try {
-            gate.acquire();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new ToolExecutionException("tool-executor", "Tool execution interrupted", ex);
-        }
+  private void acquireGate(final Semaphore gate) {
+    if (gate == null) {
+      return;
     }
+    try {
+      gate.acquire();
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new ToolExecutionException("tool-executor", "Tool execution interrupted", ex);
+    }
+  }
 
-    private void releaseGate(final Semaphore gate) {
-        if (gate != null) {
-            gate.release();
-        }
+  private void releaseGate(final Semaphore gate) {
+    if (gate != null) {
+      gate.release();
     }
+  }
 }

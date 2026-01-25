@@ -11,9 +11,9 @@ import java.util.logging.Logger;
 
 @Singleton
 public final class ToolRegistry {
-    private static final Logger LOGGER = Logger.getLogger(ToolRegistry.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(ToolRegistry.class.getName());
 
-    public List<Tool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
+  public List<Tool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
         if (toolsConfig == null) {
             return Collections.emptyList();
         }

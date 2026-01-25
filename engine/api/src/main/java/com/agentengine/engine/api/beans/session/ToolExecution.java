@@ -1,7 +1,5 @@
 package com.agentengine.engine.api.beans.session;
 
-import com.agentengine.engine.api.beans.session.ToolCall;
-
 import java.time.Instant;
 
 public final class ToolExecution {

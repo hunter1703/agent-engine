@@ -1,5 +1,5 @@
 package com.agentengine.engine.api;
 
 public enum ResponseFormatType {
-    JSON, TEXT
+  JSON, TEXT
 }

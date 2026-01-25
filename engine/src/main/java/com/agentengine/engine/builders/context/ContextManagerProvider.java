@@ -17,30 +17,30 @@ import java.util.function.Function;
 @Singleton
 public class ContextManagerProvider {
 
-    private final Map<String, ContextManagerBuilder<?, ?>> typeVsBuilder;
-    private final ContextManagerBuilder<?, ?> defaultBuilder;
+  private final Map<String, ContextManagerBuilder<?, ?>> typeVsBuilder;
+  private final ContextManagerBuilder<?, ?> defaultBuilder;
 
-    @Inject
-    public ContextManagerProvider(final Instance<ContextManagerBuilder<?, ?>> allBuilders,
-                                  final LastNContextManagerBuilder lastNContextManagerBuilder) {
-        this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ContextManagerBuilder::type,
-                Function.identity());
-        this.defaultBuilder = lastNContextManagerBuilder;
-    }
+  @Inject
+  public ContextManagerProvider(final Instance<ContextManagerBuilder<?, ?>> allBuilders,
+      final LastNContextManagerBuilder lastNContextManagerBuilder) {
+    this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ContextManagerBuilder::type,
+        Function.identity());
+    this.defaultBuilder = lastNContextManagerBuilder;
+  }
 
-    public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(final String role, final C config, final String protocolMessage, final List<Tool> tools) {
-        //noinspection unchecked
-        final ContextManagerBuilder<C, CM> builder = (ContextManagerBuilder<C, CM>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-        return builder.build(role, config, protocolMessage, tools);
-    }
+  public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(final String role,
+      final C config, final String protocolMessage, final List<Tool> tools) {
+    // noinspection unchecked
+    final ContextManagerBuilder<C, CM> builder = (ContextManagerBuilder<C, CM>) typeVsBuilder
+        .getOrDefault(config.getType(), defaultBuilder);
+    return builder.build(role, config, protocolMessage, tools);
+  }
 
-    public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(final String role,
-                                                                                          final C config,
-                                                                                          final String protocolMessage,
-                                                                                          final List<Tool> tools,
-                                                                                          final MessageStore messageStore) {
-        //noinspection unchecked
-        final ContextManagerBuilder<C, CM> builder = (ContextManagerBuilder<C, CM>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-        return builder.build(role, config, protocolMessage, tools, messageStore);
-    }
+  public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(final String role,
+      final C config, final String protocolMessage, final List<Tool> tools, final MessageStore messageStore) {
+    // noinspection unchecked
+    final ContextManagerBuilder<C, CM> builder = (ContextManagerBuilder<C, CM>) typeVsBuilder
+        .getOrDefault(config.getType(), defaultBuilder);
+    return builder.build(role, config, protocolMessage, tools, messageStore);
+  }
 }

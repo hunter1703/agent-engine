@@ -23,13 +23,14 @@ public final class LangChain4JLLMModel implements LLMModel {
   private final ContextManager contextManager;
 
   public LangChain4JLLMModel(final ChatLanguageModel model, final ResponseFormat responseFormat,
-                             final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag, ContextManager contextManager) {
+      final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag,
+      ContextManager contextManager) {
     this.model = model;
     this.responseFormat = responseFormat;
     this.thoughtsEnabled = thoughtsEnabled;
     this.thoughtsStartTag = thoughtsStartTag;
     this.thoughtsEndTag = thoughtsEndTag;
-      this.contextManager = contextManager;
+    this.contextManager = contextManager;
   }
 
   @Override
@@ -45,7 +46,9 @@ public final class LangChain4JLLMModel implements LLMModel {
 
   @Override
   public ResponseFormatType responseFormat() {
-    return responseFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.JSON ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
+    return responseFormat.type() == dev.langchain4j.model.chat.request.ResponseFormatType.JSON
+        ? ResponseFormatType.JSON
+        : ResponseFormatType.TEXT;
   }
 
   @Override

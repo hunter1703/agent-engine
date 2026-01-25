@@ -22,8 +22,8 @@ class AgentDefinitionsTest {
   }
 
   private static final class NoopModel implements LLMModel {
-    private final ContextManager contextManager =
-        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of());
+    private final ContextManager contextManager = new BaseContextManager(new InMemoryStateStore(), "system", "protocol",
+        List.of());
 
     @Override
     public Message generate(final List<Message> messages) {

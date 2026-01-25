@@ -48,8 +48,6 @@ public abstract class ContextManagerConfig implements Config {
     this.messageStore = messageStore;
   }
 
-
-
   public enum ContextType {
     SUMMARIZE, LAST_N
   }

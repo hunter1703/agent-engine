@@ -31,11 +31,8 @@ class AGUIEventEmitterTest {
     assertThat(started.getRunId()).isEqualTo("run-1");
     assertThat(started.getRawEvent()).isEqualTo(Map.of("input", Map.of("message", "hello")));
 
-    RunFinishedEvent finished = (RunFinishedEvent) events.stream()
-        .filter(event -> event instanceof RunFinishedEvent)
-        .map(RunFinishedEvent.class::cast)
-        .findFirst()
-        .orElseThrow();
+    RunFinishedEvent finished = (RunFinishedEvent) events.stream().filter(event -> event instanceof RunFinishedEvent)
+        .map(RunFinishedEvent.class::cast).findFirst().orElseThrow();
     assertThat(finished.getType()).isEqualTo(EventType.RUN_FINISHED);
     assertThat(finished.getResult()).isEqualTo("done");
   }

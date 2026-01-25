@@ -17,7 +17,7 @@ public final class AGUIEventEmitter implements AgentListener {
   private StringBuilder assistantMessage;
 
   public AGUIEventEmitter(final String threadId, final String inputMessage,
-                          final Consumer<? super BaseEvent> eventConsumer) {
+      final Consumer<? super BaseEvent> eventConsumer) {
     this.threadId = threadId;
     this.inputMessage = inputMessage;
     this.eventConsumer = eventConsumer;

@@ -15,7 +15,7 @@ public class AgentRequest {
   }
 
   private AgentRequest(final String type, final String agentId, final String agentConfigPath, final String sessionId,
-                       final String message) {
+      final String message) {
     this.type = type;
     this.agentId = agentId;
     this.agentConfigPath = agentConfigPath;

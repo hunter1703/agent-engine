@@ -1,6 +1,5 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.LLMModel;
 import com.agentengine.engine.api.MessageStoreMark;
 import com.agentengine.engine.api.beans.ToolContext;

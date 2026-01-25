@@ -15,29 +15,29 @@ import java.util.function.Function;
 @Singleton
 public class ModelProvider {
 
-    private final Map<String, ModelBuilder<?>> typeVsBuilder;
-    private final ModelBuilder<?> defaultBuilder;
+  private final Map<String, ModelBuilder<?>> typeVsBuilder;
+  private final ModelBuilder<?> defaultBuilder;
 
-    @Inject
-    public ModelProvider(final Instance<ModelBuilder<?>> allBuilders,
-                         final LangchainModelBuilder langchainModelBuilder) {
-        this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ModelBuilder::type, Function.identity());
-        this.defaultBuilder = langchainModelBuilder;
-    }
+  @Inject
+  public ModelProvider(final Instance<ModelBuilder<?>> allBuilders, final LangchainModelBuilder langchainModelBuilder) {
+    this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ModelBuilder::type,
+        Function.identity());
+    this.defaultBuilder = langchainModelBuilder;
+  }
 
-    public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config) {
-        //noinspection unchecked
-        final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-        return builder.build(agentId, config);
-    }
+  public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config) {
+    // noinspection unchecked
+    final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
+    return builder.build(agentId, config);
+  }
 
-    public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config,
-                                                                  final MessageStore messageStore) {
-        if (messageStore == null) {
-            return get(agentId, config);
-        }
-        //noinspection unchecked
-        final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-        return builder.build(agentId, config, messageStore);
+  public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config,
+      final MessageStore messageStore) {
+    if (messageStore == null) {
+      return get(agentId, config);
     }
+    // noinspection unchecked
+    final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
+    return builder.build(agentId, config, messageStore);
+  }
 }

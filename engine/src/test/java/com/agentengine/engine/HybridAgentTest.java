@@ -2,10 +2,7 @@ package com.agentengine.engine;
 
 import static java.lang.StringTemplate.STR;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.PlanningAgent;
 import com.agentengine.engine.api.AgentListener;
@@ -50,8 +47,8 @@ class HybridAgentTest {
     LLMModel routerModel = routerModel(false);
     PlanningAgent planningAgent = createTasksAgent();
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        toolExecutor, new InMemorySessionStore(), 2, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, toolExecutor,
+        new InMemorySessionStore(), 2, "test-agent");
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
@@ -81,8 +78,8 @@ class HybridAgentTest {
     LLMModel routerModel = routerModel(false);
     PlanningAgent planningAgent = createTasksAgent();
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        toolExecutor, new InMemorySessionStore(), 2, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, toolExecutor,
+        new InMemorySessionStore(), 2, "test-agent");
 
     CapturingListener listener = new CapturingListener();
     Message result = engine.invoke(sessionId, Message.user("hello"), listener);
@@ -106,14 +103,13 @@ class HybridAgentTest {
     LLMModel routerModel = routerModel(false);
     PlanningAgent planningAgent = createTasksAgent();
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        toolExecutor, new InMemorySessionStore(), 5, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, toolExecutor,
+        new InMemorySessionStore(), 5, "test-agent");
 
     engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
 
     List<Message> reasoningMessages = stateStore.getMessages("test-agent", sessionId);
-    assertThat(reasoningMessages)
-        .anyMatch(m -> m.getRole() == Role.SYSTEM && m.getContent().contains("tool call"));
+    assertThat(reasoningMessages).anyMatch(m -> m.getRole() == Role.SYSTEM && m.getContent().contains("tool call"));
   }
 
   @Test
@@ -135,8 +131,8 @@ class HybridAgentTest {
     LLMModel routerModel = routerModel(false);
     PlanningAgent planningAgent = createTasksAgent();
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        toolExecutor, new InMemorySessionStore(), 2, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, toolExecutor,
+        new InMemorySessionStore(), 2, "test-agent");
 
     RunListener listener = new RunListener();
     engine.invoke(sessionId, Message.user("hello"), listener);
@@ -163,8 +159,8 @@ class HybridAgentTest {
     LLMModel routerModel = routerModel(false);
     PlanningAgent planningAgent = createTasksAgent();
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        mock(ToolExecutor.class), new InMemorySessionStore(), 1, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, mock(ToolExecutor.class),
+        new InMemorySessionStore(), 1, "test-agent");
 
     Message result = engine.invoke(sessionId, Message.user("hello"), new CapturingListener());
 
@@ -188,14 +184,13 @@ class HybridAgentTest {
         new BaseContextManager(stateStore, "system", "protocol", List.of()));
     PlanningAgent planningAgent = new PlanningAgent(tasksModel);
 
-    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent,
-        new DefaultToolExecutor(List.of()), new InMemorySessionStore(), 2, "test-agent");
+    HybridAgent engine = new HybridAgent(reasoningModel, routerModel, planningAgent, new DefaultToolExecutor(List.of()),
+        new InMemorySessionStore(), 2, "test-agent");
 
     engine.invoke(sessionId, Message.user("complex"), new CapturingListener());
 
-    assertThat(reasoningModel.prompts())
-        .anyMatch(prompt -> prompt.stream().anyMatch(message ->
-            message.getRole() == Role.SYSTEM && message.getContent().contains("Current plan step: step one")));
+    assertThat(reasoningModel.prompts()).anyMatch(prompt -> prompt.stream().anyMatch(
+        message -> message.getRole() == Role.SYSTEM && message.getContent().contains("Current plan step: step one")));
   }
 
   private static final class QueueModel implements LLMModel {
@@ -203,7 +198,8 @@ class HybridAgentTest {
     private final ResponseFormatType responseFormat;
     private final ContextManager contextManager;
 
-    private QueueModel(final ResponseFormatType type, final List<Message> responses, final ContextManager contextManager) {
+    private QueueModel(final ResponseFormatType type, final List<Message> responses,
+        final ContextManager contextManager) {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;

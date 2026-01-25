@@ -1,9 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
 public enum PlanStatus {
-  PENDING,
-  IN_PROGRESS,
-  COMPLETED;
+  PENDING, IN_PROGRESS, COMPLETED;
 
   public static PlanStatus fromString(final String value) {
     if (value == null || value.isBlank()) {

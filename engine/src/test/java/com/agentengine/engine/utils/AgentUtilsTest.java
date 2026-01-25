@@ -55,9 +55,8 @@ class AgentUtilsTest {
 
   @Test
   void parsePlanUpdateHandlesMapItems() {
-    ToolCall call = new ToolCall("plan-1", "update_plan", Map.of("plan", List.of(
-        Map.of("step", "do it", "status", "in_progress"),
-        Map.of("step", "next", "status", "pending"))));
+    ToolCall call = new ToolCall("plan-1", "update_plan", Map.of("plan",
+        List.of(Map.of("step", "do it", "status", "in_progress"), Map.of("step", "next", "status", "pending"))));
 
     PlanUpdate update = AgentUtils.parsePlanUpdate(List.of(call));
 

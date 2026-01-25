@@ -10,30 +10,32 @@ import jakarta.inject.Singleton;
 import java.util.List;
 
 @Singleton
-public class LastNContextManagerBuilder extends AbstractContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
+public class LastNContextManagerBuilder
+    extends
+      AbstractContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
 
-    public LastNContextManagerBuilder(final MessageStoreProvider messageStoreProvider) {
-        super(messageStoreProvider);
-    }
+  public LastNContextManagerBuilder(final MessageStoreProvider messageStoreProvider) {
+    super(messageStoreProvider);
+  }
 
-    @Override
-    public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig, final String protocolMessage, final List<Tool> tools) {
-        return build(role, contextConfig, protocolMessage, tools, null);
-    }
+  @Override
+  public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig,
+      final String protocolMessage, final List<Tool> tools) {
+    return build(role, contextConfig, protocolMessage, tools, null);
+  }
 
-    @Override
-    public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig,
-                                     final String protocolMessage, final List<Tool> tools,
-                                     final MessageStore messageStore) {
-        final MessageStore resolved = messageStore == null
-                ? messageStoreProvider.get(contextConfig.getMessageStore())
-                : messageStore;
-        return new LastNContextManager(role, resolved, contextConfig.getSystemPrompt(), protocolMessage, tools,
-                contextConfig.getKeepLast());
-    }
+  @Override
+  public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig,
+      final String protocolMessage, final List<Tool> tools, final MessageStore messageStore) {
+    final MessageStore resolved = messageStore == null
+        ? messageStoreProvider.get(contextConfig.getMessageStore())
+        : messageStore;
+    return new LastNContextManager(role, resolved, contextConfig.getSystemPrompt(), protocolMessage, tools,
+        contextConfig.getKeepLast());
+  }
 
-    @Override
-    public String type() {
-        return ContextManagerConfig.ContextType.LAST_N.name().toLowerCase();
-    }
+  @Override
+  public String type() {
+    return ContextManagerConfig.ContextType.LAST_N.name().toLowerCase();
+  }
 }

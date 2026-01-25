@@ -55,8 +55,8 @@ class HybridAgentBuilderTest {
   }
 
   private static final class StubModel implements LLMModel {
-    private final ContextManager contextManager =
-        new BaseContextManager(new InMemoryStateStore(), "system", "protocol", List.of());
+    private final ContextManager contextManager = new BaseContextManager(new InMemoryStateStore(), "system", "protocol",
+        List.of());
 
     @Override
     public Message generate(final List<Message> messages) {

@@ -7,4 +7,5 @@ public interface MessageStoreBuilder<C extends MessageStoreConfig, S extends Mes
 
   S build(C config);
 
-  String type();}
+  String type();
+}

@@ -14,20 +14,21 @@ import java.util.function.Function;
 @Singleton
 public class MessageStoreProvider {
 
-    private final Map<String, MessageStoreBuilder<?, ?>> typeVsBuilder;
-    private final MessageStoreBuilder<?, ?> defaultBuilder;
+  private final Map<String, MessageStoreBuilder<?, ?>> typeVsBuilder;
+  private final MessageStoreBuilder<?, ?> defaultBuilder;
 
-    @Inject
-    public MessageStoreProvider(final Instance<MessageStoreBuilder<?, ?>> allBuilders,
-                                final InMemoryMessageStoreBuilder inMemoryMessageStoreBuilder) {
-        this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), MessageStoreBuilder::type,
-                Function.identity());
-        this.defaultBuilder = inMemoryMessageStoreBuilder;
-    }
+  @Inject
+  public MessageStoreProvider(final Instance<MessageStoreBuilder<?, ?>> allBuilders,
+      final InMemoryMessageStoreBuilder inMemoryMessageStoreBuilder) {
+    this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), MessageStoreBuilder::type,
+        Function.identity());
+    this.defaultBuilder = inMemoryMessageStoreBuilder;
+  }
 
-    public <C extends MessageStoreConfig, S extends MessageStore> S get(final C config) {
-        //noinspection unchecked
-        final MessageStoreBuilder<C, S> builder = (MessageStoreBuilder<C, S>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-        return builder.build(config);
-    }
+  public <C extends MessageStoreConfig, S extends MessageStore> S get(final C config) {
+    // noinspection unchecked
+    final MessageStoreBuilder<C, S> builder = (MessageStoreBuilder<C, S>) typeVsBuilder.getOrDefault(config.getType(),
+        defaultBuilder);
+    return builder.build(config);
+  }
 }

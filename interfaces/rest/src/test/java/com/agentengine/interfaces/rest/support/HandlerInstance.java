@@ -57,14 +57,13 @@ public final class HandlerInstance implements Instance<AgentRequestHandler<?>> {
   }
 
   @Override
-  public <U extends AgentRequestHandler<?>> Instance<U> select(final Class<U> subtype,
-      final Annotation... qualifiers) {
+  public <U extends AgentRequestHandler<?>> Instance<U> select(final Class<U> subtype, final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public <U extends AgentRequestHandler<?>> Instance<U> select(
-      final TypeLiteral<U> subtype, final Annotation... qualifiers) {
+  public <U extends AgentRequestHandler<?>> Instance<U> select(final TypeLiteral<U> subtype,
+      final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 }

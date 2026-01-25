@@ -9,7 +9,8 @@ import java.util.List;
 public final class LastNContextManager extends BaseContextManager {
   private final int keepLast;
 
-  public LastNContextManager(final String role, final MessageStore messageStore, final String systemMessage, final String protocolMessage, final List<Tool> tools, final int keepLast) {
+  public LastNContextManager(final String role, final MessageStore messageStore, final String systemMessage,
+      final String protocolMessage, final List<Tool> tools, final int keepLast) {
     super(role, messageStore, systemMessage, protocolMessage, tools);
     this.keepLast = Math.max(1, keepLast);
   }

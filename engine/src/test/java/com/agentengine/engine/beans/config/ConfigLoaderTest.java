@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.beans.config.ConfigLoaderImpl;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,13 +18,9 @@ class ConfigLoaderTest {
   @Test
   void loadConfigReadsJsonAndValidates() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
-    Files.writeString(configPath, "{"
-        + "\"type\":\"hybrid\","
-        + "\"name\":\"agent\","
-        + "\"model\":{\"modelId\":\"reasoner\"},"
-        + "\"routerModel\":{\"modelId\":\"router\"},"
-        + "\"planningModel\":{\"modelId\":\"planner\"}"
-        + "}");
+    Files.writeString(configPath,
+        "{" + "\"type\":\"hybrid\"," + "\"name\":\"agent\"," + "\"model\":{\"modelId\":\"reasoner\"},"
+            + "\"routerModel\":{\"modelId\":\"router\"}," + "\"planningModel\":{\"modelId\":\"planner\"}" + "}");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 

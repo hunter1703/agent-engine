@@ -25,8 +25,8 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
   private final MessageStoreProvider messageStoreProvider;
 
   public HybridAgentBuilder(final ModelProvider modelProvider, final PlanningAgentBuilder planningAgentBuilder,
-                            final ToolRegistry toolRegistry, final SessionStoreProvider sessionStoreProvider,
-                            final MessageStoreProvider messageStoreProvider) {
+      final ToolRegistry toolRegistry, final SessionStoreProvider sessionStoreProvider,
+      final MessageStoreProvider messageStoreProvider) {
     super(modelProvider, sessionStoreProvider);
     this.planningAgentBuilder = planningAgentBuilder;
     this.toolRegistry = toolRegistry;
@@ -35,10 +35,12 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
 
   @Override
   public HybridAgent build(final HybridAgentConfig agentConfig) {
-    final MessageStore sharedMessageStore = messageStoreProvider.get(
-            agentConfig.getModel().getContextManagerConfig().getMessageStore());
-    final LLMModel reasoningModel = modelProvider.get(agentConfig.getName(), agentConfig.getModel(), sharedMessageStore);
-    final LLMModel routerModel = modelProvider.get(agentConfig.getName(), agentConfig.getRouterModel(), sharedMessageStore);
+    final MessageStore sharedMessageStore = messageStoreProvider
+        .get(agentConfig.getModel().getContextManagerConfig().getMessageStore());
+    final LLMModel reasoningModel = modelProvider.get(agentConfig.getName(), agentConfig.getModel(),
+        sharedMessageStore);
+    final LLMModel routerModel = modelProvider.get(agentConfig.getName(), agentConfig.getRouterModel(),
+        sharedMessageStore);
 
     final ToolsConfig toolsConfig = agentConfig.getModel().getTools();
     final List<Tool> tools = toolRegistry.loadTools(agentConfig.getName(), toolsConfig);
@@ -49,7 +51,8 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
     final ToolExecutor toolExecutor = new DefaultToolExecutor(tools);
 
     final SessionStore sessionStore = sessionStoreProvider.get(agentConfig.getSessionStore());
-    return new HybridAgent(reasoningModel, routerModel, toolExecutor, sessionStore, DEFAULT_INVOCATION_LIMIT, agentConfig.getName());
+    return new HybridAgent(reasoningModel, routerModel, toolExecutor, sessionStore, DEFAULT_INVOCATION_LIMIT,
+        agentConfig.getName());
   }
 
   @Override

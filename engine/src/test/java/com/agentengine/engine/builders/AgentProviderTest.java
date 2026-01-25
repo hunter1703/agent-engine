@@ -31,12 +31,13 @@ class AgentProviderTest {
 
     AgentConfig config = new AgentConfig();
     config.setType("alpha");
-    assertThat((Object)factory.get(config)).isNotNull();
+    assertThat((Object) factory.get(config)).isNotNull();
 
-    // Use HybridAgentConfig for the fallback case since HybridAgentBuilder expects it
+    // Use HybridAgentConfig for the fallback case since HybridAgentBuilder expects
+    // it
     com.agentengine.engine.api.beans.config.HybridAgentConfig missing = new com.agentengine.engine.api.beans.config.HybridAgentConfig();
     missing.setType("missing");
-    assertThat((Object)factory.get(missing)).isSameAs(fallbackAgent);
+    assertThat((Object) factory.get(missing)).isSameAs(fallbackAgent);
   }
 
   private static final class StubBuilder implements AgentBuilder<AgentConfig, Agent> {

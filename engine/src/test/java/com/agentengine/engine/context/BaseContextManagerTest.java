@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
-import com.agentengine.engine.state.InMemoryMessageStore;
 import com.agentengine.engine.tools.Tool;
 import java.util.List;
 import java.util.Map;

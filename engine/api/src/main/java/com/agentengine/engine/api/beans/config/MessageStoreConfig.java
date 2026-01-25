@@ -3,12 +3,7 @@ package com.agentengine.engine.api.beans.config;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-import java.util.Map;
-
-@JSONType(
-    typeKey = "type",
-    seeAlso = { InMemoryMessageStoreConfig.class }
-)
+@JSONType(typeKey = "type", seeAlso = {InMemoryMessageStoreConfig.class})
 @BsonDiscriminator(key = "type")
 public abstract class MessageStoreConfig implements Config {
 

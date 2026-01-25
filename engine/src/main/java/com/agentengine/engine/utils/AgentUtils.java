@@ -77,8 +77,8 @@ public final class AgentUtils {
     }
     return TemplateUtils.renderTemplateForName("hybrid/repair/invalid_message.txt",
         Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse,
-            "missingToolCallId", missingToolCallId, "missingToolCallName", missingToolCallName,
-            "duplicateToolCallId", duplicateToolCallId));
+            "missingToolCallId", missingToolCallId, "missingToolCallName", missingToolCallName, "duplicateToolCallId",
+            duplicateToolCallId));
   }
 
   public static List<PlanItem> parsePlanItemsFromText(final String text) {

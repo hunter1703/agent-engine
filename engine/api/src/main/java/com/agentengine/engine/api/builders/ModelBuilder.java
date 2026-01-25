@@ -5,11 +5,11 @@ import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 
 public interface ModelBuilder<L extends LLMModel> {
-    L build(String agentId, AgentModelConfig config);
+  L build(String agentId, AgentModelConfig config);
 
-    default L build(String agentId, AgentModelConfig config, MessageStore messageStore) {
-        return build(agentId, config);
-    }
+  default L build(String agentId, AgentModelConfig config, MessageStore messageStore) {
+    return build(agentId, config);
+  }
 
-    String type();
+  String type();
 }

@@ -1,17 +1,12 @@
 package com.agentengine.engine.state;
 
 import com.agentengine.engine.api.SessionStore;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Session;
 import com.agentengine.engine.api.utils.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class InMemorySessionStore implements SessionStore {
   private final Map<String, Session> sessions = new ConcurrentHashMap<>();

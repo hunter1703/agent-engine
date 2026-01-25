@@ -9,12 +9,12 @@ import java.util.List;
 
 public interface ContextManagerBuilder<C extends ContextManagerConfig, CM extends ContextManager> {
 
-    CM build(String role, C contextConfig, String protocolMessage, List<Tool> availableTools);
+  CM build(String role, C contextConfig, String protocolMessage, List<Tool> availableTools);
 
-    default CM build(String role, C contextConfig, String protocolMessage, List<Tool> availableTools,
-                     MessageStore messageStore) {
-        return build(role, contextConfig, protocolMessage, availableTools);
-    }
+  default CM build(String role, C contextConfig, String protocolMessage, List<Tool> availableTools,
+      MessageStore messageStore) {
+    return build(role, contextConfig, protocolMessage, availableTools);
+  }
 
-    String type();
+  String type();
 }

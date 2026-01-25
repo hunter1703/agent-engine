@@ -41,7 +41,7 @@ public class BaseContextManager implements ContextManager {
   @Override
   public String appendMessage(final String sessionId, final String runId, final Message message) {
     message.setRunId(runId);
-    return messageStore.appendMessage(sessionId, role , message);
+    return messageStore.appendMessage(sessionId, role, message);
   }
 
   @Override
