@@ -29,7 +29,6 @@ class AgentUtilsTest {
     assertThat(update.plan().getFirst().step()).isEqualTo("echo");
   }
 
-
   @Test
   void getRepairMessageFlagsMixedFinalAndPlan() {
     ToolCall planCall = new ToolCall("plan-1", "update_plan",

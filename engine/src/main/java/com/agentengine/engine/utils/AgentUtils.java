@@ -75,8 +75,8 @@ public final class AgentUtils {
         missingToolCallName = true;
       }
     }
-    final boolean invalid = finalAnswerAndToolCallsPresent || emptyResponse || missingToolCallId
-        || missingToolCallName || duplicateToolCallId;
+    final boolean invalid = finalAnswerAndToolCallsPresent || emptyResponse || missingToolCallId || missingToolCallName
+        || duplicateToolCallId;
     if (!invalid) {
       return null;
     }

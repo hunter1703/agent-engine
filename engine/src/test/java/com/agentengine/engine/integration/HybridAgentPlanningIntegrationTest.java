@@ -43,26 +43,25 @@ class HybridAgentPlanningIntegrationTest {
     BaseContextManager routerContext = new BaseContextManager("router", store, "system", "protocol", List.of());
     BaseContextManager planningContext = new BaseContextManager("planning", store, "system", "protocol", List.of());
 
-    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(Message.assistant("")), reasoningContext);
-    LLMModel routerModel = new QueueModel(ResponseFormatType.JSON,
-        List.of(Message.assistant("{\"complex\":true}")), routerContext);
+    LLMModel reasoningModel = new QueueModel(ResponseFormatType.JSON, List.of(Message.assistant("")), reasoningContext);
+    LLMModel routerModel = new QueueModel(ResponseFormatType.JSON, List.of(Message.assistant("{\"complex\":true}")),
+        routerContext);
 
-    LLMModel planningModel = new QueueModel(ResponseFormatType.TEXT, List.of(
-        Message.assistant("- [pending] (id:step-1) first step\n- [pending] (id:step-2) second step"),
-        Message.assistant("- [in_progress] (id:step-1) first step updated\n- [pending] (id:step-2) second step")),
+    LLMModel planningModel = new QueueModel(ResponseFormatType.TEXT,
+        List.of(Message.assistant("- [pending] (id:step-1) first step\n- [pending] (id:step-2) second step"),
+            Message.assistant("- [in_progress] (id:step-1) first step updated\n- [pending] (id:step-2) second step")),
         planningContext);
     PlanningAgent planningAgent = new PlanningAgent(planningModel);
     ToolExecutor toolExecutor = new DefaultToolExecutor(List.of(planningAgent));
 
-    HybridAgent agent = new HybridAgent(reasoningModel, routerModel, toolExecutor,
-        new InMemorySessionStore(), 1, "test-agent");
+    HybridAgent agent = new HybridAgent(reasoningModel, routerModel, toolExecutor, new InMemorySessionStore(), 1,
+        "test-agent");
 
     agent.invoke("session", Message.user("do work"), Agent.NO_OP_LISTENER);
 
     List<Message> messages = store.getMessages("session", "reasoning");
-    assertThat(messages).anyMatch(message -> message.getRole() == Role.SYSTEM
-        && message.getContent().contains("Active plan item updated"));
+    assertThat(messages).anyMatch(
+        message -> message.getRole() == Role.SYSTEM && message.getContent().contains("Active plan item updated"));
     assertThat(messages).anyMatch(message -> message.getRole() == Role.SYSTEM
         && message.getContent().contains("Current plan step: first step updated"));
   }
@@ -72,7 +71,8 @@ class HybridAgentPlanningIntegrationTest {
     private final ResponseFormatType responseFormat;
     private final ContextManager contextManager;
 
-    private QueueModel(final ResponseFormatType type, final List<Message> responses, final ContextManager contextManager) {
+    private QueueModel(final ResponseFormatType type, final List<Message> responses,
+        final ContextManager contextManager) {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;
