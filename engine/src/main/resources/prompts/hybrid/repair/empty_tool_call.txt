@@ -1,5 +1,0 @@
-Missing tool calls for the plan item.
-Return at least one tool call that satisfies the requested plan item.
-
-Plan item:
-- {{ planItem }}
