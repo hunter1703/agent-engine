@@ -1,7 +1,7 @@
 package com.agentengine.engine.context;
 
+import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.StateStore;
 import com.agentengine.engine.tools.Tool;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,14 +9,14 @@ import java.util.List;
 public final class LastNContextManager extends BaseContextManager {
   private final int keepLast;
 
-  public LastNContextManager(final StateStore stateStore, final String systemMessage, final String protocolMessage, final List<Tool> tools, final int keepLast) {
-    super(stateStore, systemMessage, protocolMessage, tools);
+  public LastNContextManager(final String role, final MessageStore messageStore, final String systemMessage, final String protocolMessage, final List<Tool> tools, final int keepLast) {
+    super(role, messageStore, systemMessage, protocolMessage, tools);
     this.keepLast = Math.max(1, keepLast);
   }
 
   @Override
   public List<Message> buildPrompt(final String sessionId) {
-    final List<Message> messages = stateStore.getMessages(sessionId);
+    final List<Message> messages = messageStore.getMessages(sessionId, role);
     return super.buildPrompt(selectRecentMessages(messages));
   }
 

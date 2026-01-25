@@ -14,7 +14,7 @@ class DefaultToolExecutorTest {
 
   @Test
   void executeRunsToolsAndCapturesResults() {
-    DefaultToolExecutor executor = new DefaultToolExecutor(List.of(new DefaultToolHandler(new EchoTool())));
+    DefaultToolExecutor executor = new DefaultToolExecutor(List.of(new EchoTool()));
     ToolCall call = new ToolCall("call-1", "echo", Map.of("text", "hi"));
 
     CapturingListener listener = new CapturingListener();

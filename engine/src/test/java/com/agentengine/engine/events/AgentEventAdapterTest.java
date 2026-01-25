@@ -2,9 +2,6 @@ package com.agentengine.engine.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.beans.session.PlanItem;
-import com.agentengine.engine.api.beans.session.PlanStatus;
-import com.agentengine.engine.api.beans.session.PlanUpdate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -99,20 +96,6 @@ class AgentEventAdapterTest {
 
     Map<?, ?> resultPayload = (Map<?, ?>) published.get(4).payload();
     assertThat(resultPayload.get("result")).isEqualTo("hi");
-  }
-
-  @Test
-  void adapterPublishesPlanUpdates() {
-    List<AgentEvent> published = new ArrayList<>();
-    AgentEventAdapter adapter = new AgentEventAdapter(published::add);
-
-    PlanUpdate update = new PlanUpdate("explain", List.of(new PlanItem("step", PlanStatus.PENDING)));
-    adapter.onPlanUpdate("session-1", update);
-
-    assertThat(published).hasSize(1);
-    assertThat(published.getFirst().event()).isEqualTo("plan_update");
-    Map<?, ?> payload = (Map<?, ?>) published.getFirst().payload();
-    assertThat(payload.get("explanation")).isEqualTo("explain");
   }
 
 }

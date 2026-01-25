@@ -5,7 +5,7 @@ import com.agentengine.engine.api.LLMModel;
 import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
-import com.agentengine.engine.utils.EngineUtils;
+import com.agentengine.engine.utils.AgentUtils;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -40,7 +40,7 @@ public final class LangChain4JLLMModel implements LLMModel {
     }
     final ChatResponse response = model.chat(prompt);
     final AiMessage aiMessage = response.aiMessage();
-    return Message.assistant(aiMessage.text(), EngineUtils.transformToToolCalls(aiMessage.toolExecutionRequests()));
+    return Message.assistant(aiMessage.text(), AgentUtils.transformToToolCalls(aiMessage.toolExecutionRequests()));
   }
 
   @Override

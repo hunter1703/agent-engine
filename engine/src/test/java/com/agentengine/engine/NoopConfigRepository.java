@@ -6,12 +6,12 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 
 public final class NoopConfigRepository implements ConfigRepository {
   @Override
-  public AgentConfig loadAgentConfig(final String agentName) {
+  public AgentConfig loadAgentConfig(final String agentId) {
     return null;
   }
 
   @Override
-  public ModelConfig loadModelConfig(final String modelName) {
+  public ModelConfig loadModelConfig(final String modelId) {
     return null;
   }
 }

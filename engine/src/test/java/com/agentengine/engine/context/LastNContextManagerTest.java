@@ -14,8 +14,8 @@ class LastNContextManagerTest {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
     String sessionId = "session";
 
-    sessionStore.appendMessage(sessionId, "run", Message.user("first"));
-    sessionStore.appendMessage(sessionId, "run", Message.user("second"));
+    sessionStore.appendMessage("test-agent", sessionId, "run", Message.user("first"));
+    sessionStore.appendMessage("test-agent", sessionId, "run", Message.user("second"));
 
     LastNContextManager builder = new LastNContextManager(sessionStore, "system", "protocol", List.of(), 1);
 

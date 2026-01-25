@@ -89,12 +89,12 @@ class AgentManagerTest {
   }
 
   @Test
-  void resolveEngineRejectsMissingAgentName() {
+  void resolveEngineRejectsMissingAgentId() {
     AgentManager service = new AgentManager(mock(AgentBuilderFactory.class), mock(ConfigLoader.class),
         mock(ConfigRepository.class));
 
     assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("agentName");
+        .hasMessageContaining("agentId");
   }
 
   @Test
@@ -108,7 +108,7 @@ class AgentManagerTest {
     AgentManager service = new AgentManager(builderFactory, configLoader, configRepository);
 
     assertThatThrownBy(() -> service.getOrStartEngine("agent", "config.json"))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("agentName");
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("agentId");
   }
 
   private static AgentConfig buildValidAgentConfig() {

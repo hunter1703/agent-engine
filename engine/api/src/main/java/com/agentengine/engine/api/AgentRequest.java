@@ -6,7 +6,7 @@ package com.agentengine.engine.api;
  */
 public class AgentRequest {
   private String type;
-  private String agentName;
+  private String agentId;
   private String agentConfigPath;
   private String sessionId;
   private String message;
@@ -14,10 +14,10 @@ public class AgentRequest {
   public AgentRequest() {
   }
 
-  private AgentRequest(final String type, final String agentName, final String agentConfigPath, final String sessionId,
-      final String message) {
+  private AgentRequest(final String type, final String agentId, final String agentConfigPath, final String sessionId,
+                       final String message) {
     this.type = type;
-    this.agentName = agentName;
+    this.agentId = agentId;
     this.agentConfigPath = agentConfigPath;
     this.sessionId = sessionId;
     this.message = message;
@@ -27,7 +27,7 @@ public class AgentRequest {
    * Creates a copy of this request with the specified session ID.
    */
   public AgentRequest withSessionId(final String sessionId) {
-    return new AgentRequest(this.type, this.agentName, this.agentConfigPath, sessionId, this.message);
+    return new AgentRequest(this.type, this.agentId, this.agentConfigPath, sessionId, this.message);
   }
 
   public String getType() {
@@ -38,12 +38,12 @@ public class AgentRequest {
     this.type = type;
   }
 
-  public String getAgentName() {
-    return agentName;
+  public String getAgentId() {
+    return agentId;
   }
 
-  public void setAgentName(final String agentName) {
-    this.agentName = agentName;
+  public void setAgentId(final String agentId) {
+    this.agentId = agentId;
   }
 
   public String getAgentConfigPath() {

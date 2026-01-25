@@ -18,24 +18,25 @@ class AgentProviderTest {
 
   @Test
   void returnsNamedBuilderOrFallback() {
-    AgentBuilder named = new StubBuilder("alpha");
-    AgentBuilder other = new StubBuilder("beta");
+    Agent fallbackAgent = mock(Agent.class);
+    AgentBuilder<AgentConfig, Agent> named = new StubBuilder("alpha");
+    AgentBuilder<AgentConfig, Agent> other = new StubBuilder("beta");
     @SuppressWarnings("unchecked")
-    Instance<AgentBuilder> instance = (Instance<AgentBuilder>) mock(Instance.class);
+    Instance<AgentBuilder<?, ?>> instance = (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.of(named, other));
     HybridAgentBuilder fallback = mock(HybridAgentBuilder.class);
-    Agent fallbackAgent = mock(Agent.class);
-    when(fallback.build(any())).thenReturn(fallbackAgent);
+    when(fallback.build(any())).then(invocation -> fallbackAgent);
 
     AgentProvider factory = new AgentProvider(instance, fallback);
 
     AgentConfig config = new AgentConfig();
     config.setType("alpha");
-    assertThat(factory.get(config)).isNotNull();
+    assertThat((Object)factory.get(config)).isNotNull();
 
-    AgentConfig missing = new AgentConfig();
+    // Use HybridAgentConfig for the fallback case since HybridAgentBuilder expects it
+    com.agentengine.engine.api.beans.config.HybridAgentConfig missing = new com.agentengine.engine.api.beans.config.HybridAgentConfig();
     missing.setType("missing");
-    assertThat(factory.get(missing)).isSameAs(fallbackAgent);
+    assertThat((Object)factory.get(missing)).isSameAs(fallbackAgent);
   }
 
   private static final class StubBuilder implements AgentBuilder<AgentConfig, Agent> {

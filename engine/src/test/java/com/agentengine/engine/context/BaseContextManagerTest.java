@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
-import com.agentengine.engine.state.InMemoryStateStore;
+import com.agentengine.engine.state.InMemoryMessageStore;
 import com.agentengine.engine.tools.Tool;
 import java.util.List;
 import java.util.Map;
@@ -15,7 +15,7 @@ class BaseContextManagerTest {
   @Test
   void buildPromptIncludesSystemProtocolAndTools() {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
-    sessionStore.appendMessage("session", "run", Message.user("hi"));
+    sessionStore.appendMessage("test-agent", "session", "run", Message.user("hi"));
 
     List<Tool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
     BaseContextManager builder = new BaseContextManager(sessionStore, "system", "protocol", tools);
@@ -32,7 +32,7 @@ class BaseContextManagerTest {
   @Test
   void buildPromptOmitsToolBlockWhenNoTools() {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
-    sessionStore.appendMessage("session", "run", Message.user("hi"));
+    sessionStore.appendMessage("test-agent", "session", "run", Message.user("hi"));
 
     BaseContextManager builder = new BaseContextManager(sessionStore, "system", "protocol", List.of());
 

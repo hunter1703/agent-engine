@@ -2,10 +2,9 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
-import com.agentengine.engine.api.beans.config.ContextManagerConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.builders.ContextManagerBuilder;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
@@ -55,11 +54,19 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     }
 
     @Override
-    public LangChain4JLLMModel build(final String agentName, final AgentModelConfig agentModelConfig) {
+    public LangChain4JLLMModel build(final String agentId, final AgentModelConfig agentModelConfig) {
+        return build(agentId, agentModelConfig, null);
+    }
+
+    @Override
+    public LangChain4JLLMModel build(final String agentId, final AgentModelConfig agentModelConfig,
+                                     final MessageStore messageStore) {
         final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
         final String protocolMessage = buildProtocolMessage(modelConfig);
-        final List<Tool> tools = CollectionUtils.nullSafeMutableList(toolRegistry.loadTools(agentName, agentModelConfig.getTools()));
-        final ContextManager contextManager = contextManagerProvider.get(agentModelConfig.getContextManagerConfig(), protocolMessage, tools);
+        final List<Tool> tools = CollectionUtils.nullSafeMutableList(toolRegistry.loadTools(agentId, agentModelConfig.getTools()));
+        final ContextManager contextManager = messageStore == null
+                ? contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(), protocolMessage, tools)
+                : contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(), protocolMessage, tools, messageStore);
         return buildChatModel(modelConfig, contextManager);
     }
 
@@ -325,6 +332,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
         final String templateName = resolveReasoningProtocolTemplate(config.getResponseFormat());
         final Map<String, Object> context = new HashMap<>();
         context.put("thoughtsEnabled", config.isThoughtsEnabled());
+        context.put("thoughtsStartTag", config.getThoughtsStartTag());
+        context.put("thoughtsEndTag", config.getThoughtsEndTag());
         if ("json".equalsIgnoreCase(config.getResponseFormat())) {
             context.put("response_schema", loadReasonerSchema(config));
         }

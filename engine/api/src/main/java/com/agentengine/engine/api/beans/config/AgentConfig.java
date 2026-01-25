@@ -10,6 +10,7 @@ public class AgentConfig implements Config {
   private String type;
   private String name;
   private AgentModelConfig model;
+  private SessionStoreConfig sessionStore = new InMemorySessionStoreConfig();
 
   public AgentConfig() {
     this.type = AgentType.DEFAULT.name().toLowerCase();
@@ -17,15 +18,6 @@ public class AgentConfig implements Config {
 
   public AgentConfig(AgentType agentType) {
     this.type = agentType.name().toLowerCase();
-  }
-
-  @Override
-  public void validate() {
-    if (StringUtils.isBlank(name)) {
-      throw new IllegalArgumentException("name is required");
-    }
-
-    model.validate();
   }
 
   public String getName() {
@@ -51,6 +43,24 @@ public class AgentConfig implements Config {
 
   public void setModel(final AgentModelConfig model) {
     this.model = model;
+  }
+
+  public SessionStoreConfig getSessionStore() {
+    return sessionStore;
+  }
+
+  public void setSessionStore(final SessionStoreConfig sessionStore) {
+    this.sessionStore = sessionStore;
+  }
+
+  @Override
+  public void validate() {
+    if (StringUtils.isBlank(name)) {
+      throw new IllegalArgumentException("name is required");
+    }
+
+    model.validate();
+    sessionStore.validate();
   }
 
   public static AgentConfig empty() {

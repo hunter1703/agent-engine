@@ -13,20 +13,20 @@ import java.util.function.Function;
 @Singleton
 public class AgentProvider {
 
-  private final Map<String, AgentBuilder<?, ?>> nameVsBuilder;
+  private final Map<String, AgentBuilder<?, ?>> typeVsBuilder;
   private final HybridAgentBuilder hybridAgentBuilder;
 
   @Inject
   public AgentProvider(final Instance<AgentBuilder<?, ?>> allBuilders,
                        final HybridAgentBuilder hybridAgentBuilder) {
-    nameVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type,
+    typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type,
         Function.identity());
     this.hybridAgentBuilder = hybridAgentBuilder;
   }
 
   public <C extends AgentConfig, A extends Agent> A get(final C config) {
     //noinspection unchecked
-    final AgentBuilder<C, A> builder = (AgentBuilder<C, A>) nameVsBuilder.getOrDefault(config.getType(), hybridAgentBuilder);
+    final AgentBuilder<C, A> builder = (AgentBuilder<C, A>) typeVsBuilder.getOrDefault(config.getType(), hybridAgentBuilder);
     return builder.build(config);
   }
 }

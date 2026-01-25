@@ -13,6 +13,6 @@ public abstract class AbstractAgentRequestHandler<T> implements AgentRequestHand
   }
 
   protected Agent getOrCreateEngine(final AgentRequest request) {
-    return agentManager.getOrStartEngine(request.getAgentName(), request.getAgentConfigPath());
+    return agentManager.getOrStartEngine(request.getAgentId(), request.getAgentConfigPath());
   }
 }

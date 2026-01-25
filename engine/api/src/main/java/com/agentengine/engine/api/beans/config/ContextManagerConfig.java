@@ -9,7 +9,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 public abstract class ContextManagerConfig implements Config {
   private String type;
   private String systemPrompt;
-  private StateStoreConfig stateStore = new MemoryStateStoreConfig();
+  private MessageStoreConfig messageStore = new InMemoryMessageStoreConfig();
 
   protected ContextManagerConfig(final ContextType contextType) {
     this.type = contextType.name().toLowerCase();
@@ -20,6 +20,7 @@ public abstract class ContextManagerConfig implements Config {
     if (StringUtils.isBlank(systemPrompt)) {
       throw new IllegalArgumentException("systemPrompt is required");
     }
+    messageStore.validate();
   }
 
   @Override
@@ -39,14 +40,15 @@ public abstract class ContextManagerConfig implements Config {
     this.systemPrompt = systemPrompt;
   }
 
-
-  public StateStoreConfig getStateStore() {
-    return stateStore;
+  public MessageStoreConfig getMessageStore() {
+    return messageStore;
   }
 
-  public void setStateStore(final StateStoreConfig stateStore) {
-    this.stateStore = stateStore;
+  public void setMessageStore(final MessageStoreConfig messageStore) {
+    this.messageStore = messageStore;
   }
+
+
 
   public enum ContextType {
     SUMMARIZE, LAST_N

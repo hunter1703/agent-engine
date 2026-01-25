@@ -13,10 +13,7 @@ import java.util.logging.Logger;
 public final class ToolRegistry {
     private static final Logger LOGGER = Logger.getLogger(ToolRegistry.class.getName());
 
-    public ToolRegistry() {
-    }
-
-    public List<Tool> loadTools(final String agentName, final ToolsConfig toolsConfig) {
+    public List<Tool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
         if (toolsConfig == null) {
             return Collections.emptyList();
         }
@@ -33,8 +30,8 @@ public final class ToolRegistry {
                 : toolsConfig.getEnabled();
         final Map<String, Map<String, Object>> toolConfigs = toolsConfig.getConfigs();
         for (ToolProvider provider : loader) {
-            LOGGER.info(STR."Found provider : \{provider.getClass().getName()} for agent : \{provider.agentName()} for tool : \{provider.toolName()}");
-            if (!Objects.equals(provider.agentName(), agentName)) {
+            LOGGER.info(STR."Found provider : \{provider.getClass().getName()} for agent : \{provider.agentId()} for tool : \{provider.toolName()}");
+            if (!Objects.equals(provider.agentId(), agentId)) {
                 continue;
             }
             final String toolName = provider.toolName();
@@ -51,15 +48,6 @@ public final class ToolRegistry {
             }
             tools.add(tool);
         }
-        if (CollectionUtils.isNotEmpty(toolsConfig.getStandardTools())) {
-            if (toolsConfig.getStandardTools().contains(UserClarificationTool.NAME)) {
-                tools.add(new UserClarificationTool());
-            }
-        }
         return tools;
-    }
-
-    public List<ToolHandler> loadToolHandlers(final String agentName, final ToolsConfig toolsConfig) {
-        return loadTools(agentName, toolsConfig).stream().map(DefaultToolHandler::new).toList();
     }
 }

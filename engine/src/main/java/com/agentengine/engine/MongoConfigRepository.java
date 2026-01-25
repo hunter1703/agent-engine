@@ -40,19 +40,19 @@ public final class MongoConfigRepository implements ConfigRepository {
   }
 
   @Override
-  public AgentConfig loadAgentConfig(final String agentName) {
-    if (StringUtils.isBlank(agentName)) {
+  public AgentConfig loadAgentConfig(final String agentId) {
+    if (StringUtils.isBlank(agentId)) {
       return null;
     }
-    return findDocument(AGENT_COLLECTION, agentName, AgentConfig.class);
+    return findDocument(AGENT_COLLECTION, agentId, AgentConfig.class);
   }
 
   @Override
-  public ModelConfig loadModelConfig(final String modelName) {
-    if (StringUtils.isBlank(modelName)) {
+  public ModelConfig loadModelConfig(final String modelId) {
+    if (StringUtils.isBlank(modelId)) {
       return null;
     }
-    return findDocument(MODEL_COLLECTION, modelName, ModelConfig.class);
+    return findDocument(MODEL_COLLECTION, modelId, ModelConfig.class);
   }
 
   private <T> T findDocument(final String collectionName, final String id, final Class<T> clazz) {

@@ -16,16 +16,16 @@ class InMemoryStateStoreTest {
     String runId = "run-1";
 
     Message message = Message.user("hello");
-    String messageId = sessionStore.appendMessage(sessionId, runId, message);
+    String messageId = sessionStore.appendMessage("test-agent", sessionId, runId, message);
 
     assertThat(messageId).isNotBlank();
     assertThat(message.getId()).isEqualTo(messageId);
     assertThat(message.getRunId()).isEqualTo(runId);
 
-    List<Message> messages = sessionStore.getMessages(sessionId);
+    List<Message> messages = sessionStore.getMessages("test-agent", sessionId);
     messages.clear();
 
-    assertThat(sessionStore.getMessages(sessionId)).hasSize(1);
+    assertThat(sessionStore.getMessages("test-agent", sessionId)).hasSize(1);
   }
 
   @Test
@@ -34,12 +34,12 @@ class InMemoryStateStoreTest {
     String sessionId = "session";
     String runId = "run-1";
     Message message = Message.user("hello");
-    String messageId = sessionStore.appendMessage(sessionId, runId, message);
+    String messageId = sessionStore.appendMessage("test-agent", sessionId, runId, message);
 
     Message updated = Message.user("updated");
-    sessionStore.updateMessage(sessionId, messageId, updated);
+    sessionStore.updateMessage("test-agent", sessionId, messageId, updated);
 
-    List<Message> messages = sessionStore.getMessages(sessionId);
+    List<Message> messages = sessionStore.getMessages("test-agent", sessionId);
     assertThat(messages).hasSize(1);
     assertThat(messages.getFirst().getId()).isEqualTo(messageId);
     assertThat(messages.getFirst().getContent()).isEqualTo("updated");
@@ -48,9 +48,9 @@ class InMemoryStateStoreTest {
   @Test
   void addSummaryStoresSummaryEntries() {
     InMemoryStateStore sessionStore = new InMemoryStateStore();
-    sessionStore.addSummary("session", "from", "to", "summary", 123L);
+    sessionStore.addSummary("test-agent", "session", "from", "to", "summary", 123L);
 
-    List<Summary> summaries = sessionStore.getSummaries("session");
+    List<Summary> summaries = sessionStore.getSummaries("test-agent", "session");
 
     assertThat(summaries).hasSize(1);
     assertThat(summaries.getFirst().content()).isEqualTo("summary");

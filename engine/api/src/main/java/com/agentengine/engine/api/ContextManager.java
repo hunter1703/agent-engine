@@ -9,4 +9,8 @@ public interface ContextManager {
   List<Message> buildPrompt(String sessionId);
 
   String appendMessage(String sessionId, String runId, Message message);
+
+  MessageStoreMark mark(String sessionId);
+
+  void reset(String sessionId, MessageStoreMark mark);
 }

@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class TestToolProvider implements ToolProvider {
   @Override
-  public String agentName() {
+  public String agentId() {
     return "test-agent";
   }
 

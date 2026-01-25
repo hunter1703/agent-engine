@@ -45,7 +45,7 @@ class AgentSseTest {
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
-    request.setAgentName("agent");
+    request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");

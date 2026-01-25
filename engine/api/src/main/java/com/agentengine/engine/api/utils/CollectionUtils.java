@@ -54,6 +54,17 @@ public final class CollectionUtils {
     };
   }
 
+  public static Boolean getBooleanValueFromMap(final Map<String, Object> map, final String key) {
+    if (CollectionUtils.isEmpty(map)) {
+      return null;
+    }
+    final Object value = map.get(key);
+    if (value instanceof Boolean bool) {
+      return bool;
+    }
+    return value == null ? null : Boolean.parseBoolean(value.toString());
+  }
+
   @SuppressWarnings("unchecked")
   public static <K, V> Map<K, V> getMapFromMap(final Map<String, Object> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {

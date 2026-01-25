@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.api.beans.session.PlanItem;
 import com.agentengine.engine.api.beans.session.PlanUpdate;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.beans.session.ToolCall;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class EngineUtilsTest {
+class AgentUtilsTest {
 
   @Test
   void sanitizeMessageParsesPlanFromJson() {
@@ -21,9 +22,9 @@ class EngineUtilsTest {
         """;
     Message response = new Message(Role.ASSISTANT, payload, null, null);
 
-    Message sanitized = EngineUtils.sanitizeMessage(response, ResponseFormatType.JSON, true, "<think>", "</think>");
+    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.JSON, true, "<think>", "</think>");
 
-    PlanUpdate update = EngineUtils.parsePlanUpdate(sanitized.getToolCalls());
+    PlanUpdate update = AgentUtils.parsePlanUpdate(sanitized.getToolCalls());
     assertThat(update.plan()).hasSize(1);
     assertThat(update.plan().getFirst().step()).isEqualTo("echo");
   }
@@ -33,9 +34,9 @@ class EngineUtilsTest {
     String content = "PLAN:\n- run ls\n- check pwd";
     Message response = new Message(Role.ASSISTANT, content, null, null);
 
-    Message sanitized = EngineUtils.sanitizeMessage(response, ResponseFormatType.TEXT, false, null, null);
+    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.TEXT, false, null, null);
 
-    PlanUpdate update = EngineUtils.parsePlanUpdate(sanitized.getToolCalls());
+    PlanUpdate update = AgentUtils.parsePlanUpdate(sanitized.getToolCalls());
     assertThat(update.plan()).hasSize(2);
     assertThat(update.plan().getFirst().step()).isEqualTo("run ls");
     assertThat(update.plan().getFirst().status()).isEqualTo(PlanStatus.PENDING);
@@ -43,24 +44,35 @@ class EngineUtilsTest {
 
   @Test
   void getRepairMessageFlagsMixedFinalAndPlan() {
-    ToolCall planCall = new ToolCall("plan-1", "update_plan", Map.of("plan", List.of("step")));
+    ToolCall planCall = new ToolCall("plan-1", "update_plan",
+        Map.of("plan", List.of(Map.of("step", "step", "status", "pending"))));
     Message response = new Message(Role.ASSISTANT, "done", null, List.of(planCall));
 
-    String repairMessage = EngineUtils.getRepairMessageIfInvalid(response);
+    String repairMessage = AgentUtils.getRepairMessageIfInvalid(response);
 
     assertThat(repairMessage).contains("final answer");
   }
 
   @Test
-  void parsePlanUpdateHandlesMapAndString() {
+  void parsePlanUpdateHandlesMapItems() {
     ToolCall call = new ToolCall("plan-1", "update_plan", Map.of("plan", List.of(
         Map.of("step", "do it", "status", "in_progress"),
-        "next")));
+        Map.of("step", "next", "status", "pending"))));
 
-    PlanUpdate update = EngineUtils.parsePlanUpdate(List.of(call));
+    PlanUpdate update = AgentUtils.parsePlanUpdate(List.of(call));
 
     assertThat(update.plan()).hasSize(2);
     assertThat(update.plan().getFirst().status()).isEqualTo(PlanStatus.IN_PROGRESS);
     assertThat(update.plan().get(1).step()).isEqualTo("next");
+  }
+
+  @Test
+  void parsePlanItemsFromTextHandlesMarkdownList() {
+    String output = "- first step\n- second step";
+
+    List<PlanItem> items = AgentUtils.parsePlanItemsFromText(output);
+
+    assertThat(items).hasSize(2);
+    assertThat(items.getFirst().step()).isEqualTo("first step");
   }
 }

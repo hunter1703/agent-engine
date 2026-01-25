@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class ToolRegistryTest {
 
   @Test
-  void loadToolsFiltersByAgentNameAndEnabledList() {
+  void loadToolsFiltersByAgentIdAndEnabledList() {
     ToolRegistry registry = new ToolRegistry();
     Map<String, Map<String, Object>> toolConfigs = Map.of("fake", Map.of("prefix", "pre-"));
     ToolsConfig toolsConfig = new ToolsConfig();

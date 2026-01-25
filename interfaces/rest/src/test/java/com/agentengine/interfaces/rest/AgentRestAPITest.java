@@ -35,7 +35,7 @@ class AgentRestAPITest {
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
-    request.setAgentName("agent");
+    request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
@@ -58,7 +58,7 @@ class AgentRestAPITest {
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
-    request.setAgentName("agent");
+    request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
@@ -81,7 +81,7 @@ class AgentRestAPITest {
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
     AgentRequest request = new AgentRequest();
-    request.setAgentName("agent");
+    request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setType(RequestType.BUILD_PROMPT.name());

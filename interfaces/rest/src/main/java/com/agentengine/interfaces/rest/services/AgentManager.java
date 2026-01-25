@@ -27,25 +27,25 @@ public class AgentManager {
     this.configRepository = configRepository;
   }
 
-  public Agent getOrStartEngine(final String agentName, final String configPath) {
-    if (StringUtils.isBlank(agentName)) {
-      throw new IllegalArgumentException("agentName is required");
+  public Agent getOrStartEngine(final String agentId, final String configPath) {
+    if (StringUtils.isBlank(agentId)) {
+      throw new IllegalArgumentException("agentId is required");
     }
-    final AgentConfig agentConfig = resolveAgentConfig(agentName, configPath);
+    final AgentConfig agentConfig = resolveAgentConfig(agentId, configPath);
     if (agentConfig == null) {
-      throw new IllegalArgumentException(STR."agentName \"\{agentName}\" has no resolved config");
+      throw new IllegalArgumentException(STR."agentId \"\{agentId}\" has no resolved config");
     }
     agentConfig.validate();
-    final String key = HashUtils.HMACSHA256_Base64(STR."\{agentName}|\{JsonUtils.toStableJson(agentConfig)}");
+    final String key = HashUtils.HMACSHA256_Base64(STR."\{agentId}|\{JsonUtils.toStableJson(agentConfig)}");
     return engines.computeIfAbsent(
         key,
         ignored -> agentProvider.get(agentConfig));
   }
 
-  private AgentConfig resolveAgentConfig(final String agentName, final String configPath) {
+  private AgentConfig resolveAgentConfig(final String agentId, final String configPath) {
     if (StringUtils.isNotBlank(configPath)) {
       return configLoader.loadConfig(Paths.get(configPath));
     }
-    return configRepository.loadAgentConfig(agentName);
+    return configRepository.loadAgentConfig(agentId);
   }
 }

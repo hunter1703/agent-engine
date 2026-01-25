@@ -4,6 +4,8 @@ import com.agentengine.engine.api.utils.StringUtils;
 
 public class AgentModelConfig implements Config {
     private String modelId;
+    // unique role of the model within the agent
+    private String role;
     private String type;
     private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
     private ToolsConfig tools = new ToolsConfig();
@@ -18,6 +20,14 @@ public class AgentModelConfig implements Config {
 
     public void setModelId(final String modelId) {
         this.modelId = modelId;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(final String role) {
+        this.role = role;
     }
 
     @Override

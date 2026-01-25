@@ -1,5 +1,7 @@
 package com.agentengine.engine.tools;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.api.utils.JsonUtils;
@@ -8,11 +10,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class ToolOutputFormatter {
-  private ToolOutputFormatter() {
+public final class ToolUtils {
+  private ToolUtils() {
   }
 
-  public static String format(final List<ToolExecution> executions) {
+  public static String buildToolMessage(final List<Tool> tools) {
+    if (tools == null || tools.isEmpty()) {
+      return "";
+    }
+    final StringBuilder builder = new StringBuilder("<AVAILABLE_TOOLS>\n");
+    for (Tool tool : tools) {
+      if (tool == null || tool.name() == null || tool.name().isBlank()) {
+        continue;
+      }
+      String line = STR."- \{tool.name()}";
+      if (tool.description() != null && !tool.description().isBlank()) {
+        line += STR." - \{tool.description()}";
+      }
+      builder.append(line).append("\n");
+    }
+    builder.append("</AVAILABLE_TOOLS>");
+    return builder.toString();
+  }
+
+  public static String formatToolExecutions(final List<ToolExecution> executions) {
     final List<Map<String, Object>> results = new ArrayList<>();
     for (ToolExecution execution : executions) {
       final ToolCall call = execution == null ? null : execution.getToolCall();

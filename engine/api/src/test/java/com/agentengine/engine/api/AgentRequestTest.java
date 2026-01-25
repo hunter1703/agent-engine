@@ -10,7 +10,7 @@ class AgentRequestTest {
   void withSessionIdCreatesNewInstanceWithUpdatedSessionId() {
     AgentRequest original = new AgentRequest();
     original.setType("INVOKE_AGENT");
-    original.setAgentName("test-agent");
+    original.setAgentId("test-agent");
     original.setAgentConfigPath("config.json");
     original.setSessionId("original-session");
     original.setMessage("hello");
@@ -20,7 +20,7 @@ class AgentRequestTest {
     assertThat(modified).isNotSameAs(original);
     assertThat(modified.getSessionId()).isEqualTo("new-session");
     assertThat(modified.getType()).isEqualTo("INVOKE_AGENT");
-    assertThat(modified.getAgentName()).isEqualTo("test-agent");
+    assertThat(modified.getAgentId()).isEqualTo("test-agent");
     assertThat(modified.getAgentConfigPath()).isEqualTo("config.json");
     assertThat(modified.getMessage()).isEqualTo("hello");
     assertThat(original.getSessionId()).isEqualTo("original-session");

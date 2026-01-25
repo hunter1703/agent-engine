@@ -6,7 +6,7 @@ import java.util.Map;
 
 public final class EchoToolProvider implements ToolProvider {
   @Override
-  public String agentName() {
+  public String agentId() {
     return "echo_agent";
   }
 

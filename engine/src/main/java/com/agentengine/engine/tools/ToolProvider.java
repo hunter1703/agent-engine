@@ -3,7 +3,7 @@ package com.agentengine.engine.tools;
 import java.util.Map;
 
 public interface ToolProvider {
-  String agentName();
+  String agentId();
 
   String toolName();
 
