@@ -11,16 +11,28 @@ public final class PlanningAgent extends AbstractSingleModelAgent {
 
   public static final String NAME = "tasks";
   public static final String DEFAULT_SYSTEM_PROMPT = """
-      You produce Task List artifacts that track an agent's progress on complex work.
-      Write a Markdown list of items covering research, implementation, verification,
-      and related action items. Keep it concise, checkbox-based, and suitable as a
-      live snapshot of the agent's progress that the user may not need to edit.
+      You manage a task plan for complex work.
+      Output a Markdown list where each line uses:
+      - [status] (id:step-1) task description
+
+      Status must be one of: pending, in_progress, completed.
+
+      Input fields (when provided in tool args):
+      - mode: "initial" or "update"
+      - current_plan: the existing plan items with status
+      - active_step: the step currently being worked on
+
+      Rules:
+      - When mode=initial, produce a full ordered plan with stable ids.
+      - When mode=update, update statuses, adjust wording, and reorder only non-active items.
+      - Keep the active step first; do not remove it unless it is completed.
+      - Reuse ids from current_plan for existing items; only mint new ids for new items.
+      - If no changes are needed, return an empty response.
+      - Keep steps concise, concrete, and tool-executable.
       """;
 
   private static final String DESCRIPTION = """
-      Generate a Task List artifact: a concise Markdown checklist of research,
-      implementation, verification, and related action items used to track progress.
-      Treat it as a live snapshot of work rather than a document the user must edit.
+      Generate or update a task plan as a Markdown list with explicit statuses.
       """;
 
   public PlanningAgent(final LLMModel model) {

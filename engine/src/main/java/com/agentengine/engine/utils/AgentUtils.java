@@ -16,12 +16,17 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class AgentUtils {
   private static final String UPDATE_PLAN_TOOL_NAME = "update_plan";
 
   private static final Pattern LIST_ITEM = Pattern.compile("^(?:[-*]|\\d+\\.)\\s*(.+)$");
+  private static final Pattern STATUS_PREFIX = Pattern.compile("^\\[(pending|in_progress|completed)]\\s*(.+)$",
+      Pattern.CASE_INSENSITIVE);
+  private static final Pattern ID_PREFIX = Pattern.compile("^(?:\\(id:|id=)([^)\\s]+)\\)?\\s*(.+)$",
+      Pattern.CASE_INSENSITIVE);
 
   private AgentUtils() {
   }
@@ -81,6 +86,7 @@ public final class AgentUtils {
       return List.of();
     }
     final List<PlanItem> items = new ArrayList<>();
+    int index = 0;
     for (String line : text.split("\\R")) {
       String trimmed = line.trim();
       if (trimmed.isEmpty()) {
@@ -91,9 +97,27 @@ public final class AgentUtils {
         continue;
       }
       trimmed = matcher.group(1).trim();
-      if (StringUtils.isNotBlank(trimmed)) {
-        items.add(PlanItem.pending(trimmed));
+      if (StringUtils.isBlank(trimmed)) {
+        continue;
       }
+      PlanStatus status = PlanStatus.PENDING;
+      final Matcher statusMatcher = STATUS_PREFIX.matcher(trimmed);
+      if (statusMatcher.matches()) {
+        status = PlanStatus.fromString(statusMatcher.group(1));
+        trimmed = statusMatcher.group(2).trim();
+      }
+      String id = null;
+      final var idMatcher = ID_PREFIX.matcher(trimmed);
+      if (idMatcher.matches()) {
+        id = idMatcher.group(1);
+        trimmed = idMatcher.group(2).trim();
+      }
+      if (StringUtils.isBlank(trimmed)) {
+        continue;
+      }
+      index++;
+      final String resolvedId = StringUtils.isBlank(id) ? derivePlanId(trimmed, index) : id;
+      items.add(new PlanItem(resolvedId, trimmed, status));
     }
     return items;
   }
@@ -238,6 +262,7 @@ public final class AgentUtils {
       return List.of();
     }
     final List<PlanItem> items = new ArrayList<>();
+    int index = 0;
     for (Object item : list) {
       if (!(item instanceof Map<?, ?> rawMap)) {
         continue;
@@ -248,10 +273,27 @@ public final class AgentUtils {
       if (StringUtils.isBlank(step)) {
         continue;
       }
+      index++;
+      final String id = CollectionUtils.getStringValueFromMap(map, "id");
+      final String resolvedId = StringUtils.isBlank(id) ? derivePlanId(step, index) : id;
       final PlanStatus status = PlanStatus.fromString(CollectionUtils.getStringValueFromMap(map, "status"));
-      items.add(new PlanItem(step, status));
+      items.add(new PlanItem(resolvedId, step, status));
     }
     return items;
+  }
+
+  private static String derivePlanId(final String step, final int index) {
+    if (StringUtils.isBlank(step)) {
+      return STR."step-\{index}";
+    }
+    final String normalized = step.toLowerCase()
+        .replaceAll("[^a-z0-9]+", "-")
+        .replaceAll("^-|-$", "");
+    if (StringUtils.isBlank(normalized)) {
+      return STR."step-\{index}";
+    }
+    final String trimmed = normalized.length() > 32 ? normalized.substring(0, 32) : normalized;
+    return STR."\{trimmed}-\{index}";
   }
 
 }
