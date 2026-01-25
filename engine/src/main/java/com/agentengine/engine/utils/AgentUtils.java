@@ -75,6 +75,11 @@ public final class AgentUtils {
         missingToolCallName = true;
       }
     }
+    final boolean invalid = finalAnswerAndToolCallsPresent || emptyResponse || missingToolCallId
+        || missingToolCallName || duplicateToolCallId;
+    if (!invalid) {
+      return null;
+    }
     return TemplateUtils.renderTemplateForName("hybrid/repair/invalid_message.txt",
         Map.of("finalAnswerAndToolCallsPresent", finalAnswerAndToolCallsPresent, "emptyResponse", emptyResponse,
             "missingToolCallId", missingToolCallId, "missingToolCallName", missingToolCallName, "duplicateToolCallId",

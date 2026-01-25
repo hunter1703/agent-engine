@@ -58,7 +58,9 @@ public class AgentConfig implements Config {
     if (StringUtils.isBlank(name)) {
       throw new IllegalArgumentException("name is required");
     }
-
+    if (model == null) {
+      throw new IllegalArgumentException("model is required");
+    }
     model.validate();
     sessionStore.validate();
   }

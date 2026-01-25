@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
+import com.agentengine.engine.state.InMemoryMessageStore;
 import com.agentengine.engine.tools.Tool;
 import java.util.List;
 import java.util.Map;
@@ -13,13 +14,15 @@ class BaseContextManagerTest {
 
   @Test
   void buildPromptIncludesSystemProtocolAndTools() {
-    InMemoryStateStore sessionStore = new InMemoryStateStore();
-    sessionStore.appendMessage("test-agent", "session", "run", Message.user("hi"));
+    final InMemoryMessageStore messageStore = new InMemoryMessageStore();
+    final String sessionId = "session";
+    final String role = "reasoning";
+    messageStore.appendMessage(sessionId, role, Message.user("hi"));
 
-    List<Tool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
-    BaseContextManager builder = new BaseContextManager(sessionStore, "system", "protocol", tools);
+    final List<Tool> tools = List.of(new StubTool("calc", "calculator"), new StubTool("echo", null));
+    final BaseContextManager builder = new BaseContextManager(role, messageStore, "system", "protocol", tools);
 
-    List<Message> prompt = builder.buildPrompt("session");
+    final List<Message> prompt = builder.buildPrompt(sessionId);
 
     assertThat(prompt).hasSize(2);
     assertThat(prompt.getFirst().getRole()).isEqualTo(Role.SYSTEM);
@@ -30,12 +33,14 @@ class BaseContextManagerTest {
 
   @Test
   void buildPromptOmitsToolBlockWhenNoTools() {
-    InMemoryStateStore sessionStore = new InMemoryStateStore();
-    sessionStore.appendMessage("test-agent", "session", "run", Message.user("hi"));
+    final InMemoryMessageStore messageStore = new InMemoryMessageStore();
+    final String sessionId = "session";
+    final String role = "reasoning";
+    messageStore.appendMessage(sessionId, role, Message.user("hi"));
 
-    BaseContextManager builder = new BaseContextManager(sessionStore, "system", "protocol", List.of());
+    final BaseContextManager builder = new BaseContextManager(role, messageStore, "system", "protocol", List.of());
 
-    List<Message> prompt = builder.buildPrompt("session");
+    final List<Message> prompt = builder.buildPrompt(sessionId);
 
     assertThat(prompt).hasSize(2);
     assertThat(prompt.getFirst().getContent()).doesNotContain("<AVAILABLE_TOOLS>");

@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.HybridAgent;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.agent.HybridAgentBuilder;
@@ -18,24 +20,24 @@ class AgentProviderTest {
 
   @Test
   void returnsNamedBuilderOrFallback() {
-    Agent fallbackAgent = mock(Agent.class);
-    AgentBuilder<AgentConfig, Agent> named = new StubBuilder("alpha");
-    AgentBuilder<AgentConfig, Agent> other = new StubBuilder("beta");
+    final HybridAgent fallbackAgent = mock(HybridAgent.class);
+    final AgentBuilder<AgentConfig, Agent> named = new StubBuilder("alpha");
+    final AgentBuilder<AgentConfig, Agent> other = new StubBuilder("beta");
     @SuppressWarnings("unchecked")
-    Instance<AgentBuilder<?, ?>> instance = (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
+    final Instance<AgentBuilder<?, ?>> instance = (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.of(named, other));
-    HybridAgentBuilder fallback = mock(HybridAgentBuilder.class);
+    final HybridAgentBuilder fallback = mock(HybridAgentBuilder.class);
     when(fallback.build(any())).then(invocation -> fallbackAgent);
 
-    AgentProvider factory = new AgentProvider(instance, fallback);
+    final AgentProvider factory = new AgentProvider(instance, fallback);
 
-    AgentConfig config = new AgentConfig();
+    final AgentConfig config = new AgentConfig();
     config.setType("alpha");
     assertThat((Object) factory.get(config)).isNotNull();
 
     // Use HybridAgentConfig for the fallback case since HybridAgentBuilder expects
     // it
-    com.agentengine.engine.api.beans.config.HybridAgentConfig missing = new com.agentengine.engine.api.beans.config.HybridAgentConfig();
+    final HybridAgentConfig missing = new HybridAgentConfig();
     missing.setType("missing");
     assertThat((Object) factory.get(missing)).isSameAs(fallbackAgent);
   }

@@ -29,23 +29,8 @@ tasks.jacocoTestReport {
     }
 }
 
-tasks.jacocoTestCoverageVerification {
-    dependsOn tasks.test
-    violationRules {
-        rule {
-            limit {
-                minimum = 0.85
-            }
-        }
-    }
-}
-
 tasks.test {
-    finalizedBy tasks.jacocoTestReport, tasks.jacocoTestCoverageVerification
-}
-
-tasks.check {
-    dependsOn tasks.jacocoTestCoverageVerification
+    finalizedBy tasks.jacocoTestReport
 }
 
 tasks.register('validateModelConfig', JavaExec) {

@@ -31,6 +31,12 @@ public final class HybridAgentConfig extends AgentConfig {
 
   @Override
   public void validate() {
+    if (routerModel == null) {
+      throw new IllegalArgumentException("routerModel is required");
+    }
+    if (planningModel == null) {
+      throw new IllegalArgumentException("planningModel is required");
+    }
     routerModel.validate();
     planningModel.validate();
     super.validate();
