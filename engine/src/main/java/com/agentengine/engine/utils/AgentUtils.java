@@ -1,6 +1,5 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
@@ -31,7 +30,6 @@ public final class AgentUtils {
   private AgentUtils() {
   }
 
-  
   public static String getRepairMessageIfInvalid(final Message message) {
     final String content = message.getContent();
     final List<ToolCall> toolCalls = CollectionUtils.nullSafeList(message.getToolCalls());

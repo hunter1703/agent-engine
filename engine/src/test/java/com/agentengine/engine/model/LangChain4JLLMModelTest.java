@@ -1,7 +1,6 @@
 package com.agentengine.engine.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,7 +18,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -51,8 +49,7 @@ class LangChain4JLLMModelTest {
     assertThat(result.getThoughts()).isNull();
 
     @SuppressWarnings("unchecked")
-    final ArgumentCaptor<ChatRequest> captor = (ArgumentCaptor<ChatRequest>) ArgumentCaptor
-        .forClass(ChatRequest.class);
+    final ArgumentCaptor<ChatRequest> captor = (ArgumentCaptor<ChatRequest>) ArgumentCaptor.forClass(ChatRequest.class);
     verify(chatModel).chat(captor.capture());
     final List<ChatMessage> captured = captor.getValue().messages();
     assertThat(captured.getFirst()).isInstanceOf(SystemMessage.class);

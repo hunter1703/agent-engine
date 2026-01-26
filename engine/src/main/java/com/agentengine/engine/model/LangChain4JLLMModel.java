@@ -41,7 +41,9 @@ public final class LangChain4JLLMModel implements LLMModel {
     this.thoughtsEndTag = thoughtsEndTag;
     this.contextManager = contextManager;
     this.toolSpecifications = buildToolSpecifications(tools);
-    this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(CollectionUtils.isNotEmpty(tools)).parseToolCallsFromText(parseToolCallsFromText).areThoughtsEnabled(thoughtsEnabled).withThoughtsStartTag(thoughtsStartTag).withThoughtsEndTag(thoughtsEndTag);
+    this.messageParser = MessageParser.create().withResponseFormat(responseFormat())
+        .toolCallingAllowed(CollectionUtils.isNotEmpty(tools)).parseToolCallsFromText(parseToolCallsFromText)
+        .areThoughtsEnabled(thoughtsEnabled).withThoughtsStartTag(thoughtsStartTag).withThoughtsEndTag(thoughtsEndTag);
   }
 
   @Override

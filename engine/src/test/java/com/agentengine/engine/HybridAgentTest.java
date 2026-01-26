@@ -202,7 +202,9 @@ class HybridAgentTest {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;
-      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true).parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag()).withThoughtsEndTag(thoughtsEndTag());
+      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true)
+          .parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag())
+          .withThoughtsEndTag(thoughtsEndTag());
     }
 
     @Override
@@ -269,7 +271,9 @@ class HybridAgentTest {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;
-      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true).parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag()).withThoughtsEndTag(thoughtsEndTag());
+      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true)
+          .parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag())
+          .withThoughtsEndTag(thoughtsEndTag());
     }
 
     @Override

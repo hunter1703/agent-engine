@@ -55,18 +55,18 @@ public final class ToolUtils {
   }
 
   public static List<ToolSpecification> buildToolSpecifications(final List<Tool> tools) {
-      if (CollectionUtils.isEmpty(tools)) {
-          return List.of();
+    if (CollectionUtils.isEmpty(tools)) {
+      return List.of();
+    }
+    final List<ToolSpecification> specifications = new ArrayList<>();
+    for (Tool tool : tools) {
+      if (tool == null || StringUtils.isBlank(tool.name())) {
+        continue;
       }
-      final List<ToolSpecification> specifications = new ArrayList<>();
-      for (Tool tool : tools) {
-          if (tool == null || StringUtils.isBlank(tool.name())) {
-              continue;
-          }
-          final JsonObjectSchema parameters = JsonObjectSchema.builder().additionalProperties(true).build();
-          specifications.add(ToolSpecification.builder().name(tool.name())
-                  .description(tool.description() == null ? "" : tool.description()).parameters(parameters).build());
-      }
-      return specifications;
+      final JsonObjectSchema parameters = JsonObjectSchema.builder().additionalProperties(true).build();
+      specifications.add(ToolSpecification.builder().name(tool.name())
+          .description(tool.description() == null ? "" : tool.description()).parameters(parameters).build());
+    }
+    return specifications;
   }
 }

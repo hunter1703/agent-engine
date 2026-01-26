@@ -13,7 +13,6 @@ import com.agentengine.engine.model.LlamaCppServerUtils;
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.alibaba.fastjson2.TypeReference;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -94,7 +93,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
     };
     return new LangChain4JLLMModel(chatLanguageModel, responseFormat, modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, tools, !supportsToolCalling);
+        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, tools,
+        !supportsToolCalling);
   }
 
   private static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {

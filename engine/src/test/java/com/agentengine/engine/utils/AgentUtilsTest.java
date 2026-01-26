@@ -2,7 +2,6 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.beans.session.PlanItem;

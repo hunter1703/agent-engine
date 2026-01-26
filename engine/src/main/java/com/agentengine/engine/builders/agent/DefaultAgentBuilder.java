@@ -10,18 +10,18 @@ import jakarta.inject.Singleton;
 @Singleton
 public final class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, DefaultAgent> {
 
-    public DefaultAgentBuilder(ModelProvider modelProvider, SessionStoreProvider sessionStoreProvider) {
-        super(modelProvider, sessionStoreProvider);
-    }
+  public DefaultAgentBuilder(ModelProvider modelProvider, SessionStoreProvider sessionStoreProvider) {
+    super(modelProvider, sessionStoreProvider);
+  }
 
-    @Override
-    public DefaultAgent build(AgentConfig config) {
-        final LLMModel model = modelProvider.get(config.getName(), config.getModel(), null);
-        return new DefaultAgent(config.getName(), "Default Agent - single model agent", model);
-    }
+  @Override
+  public DefaultAgent build(AgentConfig config) {
+    final LLMModel model = modelProvider.get(config.getName(), config.getModel(), null);
+    return new DefaultAgent(config.getName(), "Default Agent - single model agent", model);
+  }
 
-    @Override
-    public String type() {
-        return AgentConfig.AgentType.DEFAULT.name().toLowerCase();
-    }
+  @Override
+  public String type() {
+    return AgentConfig.AgentType.DEFAULT.name().toLowerCase();
+  }
 }
