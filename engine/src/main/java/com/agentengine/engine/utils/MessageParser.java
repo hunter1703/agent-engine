@@ -130,7 +130,7 @@ public class MessageParser {
         final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, FINAL_ANSWER_KEY);
         final String thoughts = thoughtsEnabled ? CollectionUtils.getStringValueFromMap(payload, THOUGHTS_KEY) : null;
         final List<ToolCall> toolCalls = toolCallingAllowed && parseToolCallsFromText ? parseToolCallsFromJsonMap(payload) : List.of();
-        return new Message(null, finalAnswer, thoughts, toolCalls);
+        return new Message(Role.ASSISTANT, finalAnswer, thoughts, toolCalls); // Fixed: Use ASSISTANT role instead of null
     }
 
     private List<ToolCall> parseToolCallsFromJsonMap(final Map<String, Object> payload) {

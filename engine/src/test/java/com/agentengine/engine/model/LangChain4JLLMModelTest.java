@@ -16,8 +16,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,8 +33,9 @@ class LangChain4JLLMModelTest {
     final AiMessage aiMessage = mock(AiMessage.class);
 
     when(aiMessage.text()).thenReturn("hello");
+    when(aiMessage.toolExecutionRequests()).thenReturn(List.of()); // Fix: Prevent NPE by mocking toolExecutionRequests
     when(response.aiMessage()).thenReturn(aiMessage);
-    when(chatModel.chat(anyList())).thenReturn(response);
+    when(chatModel.chat(org.mockito.ArgumentMatchers.any(ChatRequest.class))).thenReturn(response);
 
     final ContextManager contextManager = new BaseContextManager("reasoning", new InMemoryMessageStore(), "system",
         "protocol", List.of());
@@ -48,10 +51,10 @@ class LangChain4JLLMModelTest {
     assertThat(result.getThoughts()).isNull();
 
     @SuppressWarnings("unchecked")
-    final ArgumentCaptor<List<ChatMessage>> captor = (ArgumentCaptor<List<ChatMessage>>) (ArgumentCaptor<?>) ArgumentCaptor
-        .forClass(List.class);
+    final ArgumentCaptor<ChatRequest> captor = (ArgumentCaptor<ChatRequest>) ArgumentCaptor
+        .forClass(ChatRequest.class);
     verify(chatModel).chat(captor.capture());
-    final List<ChatMessage> captured = captor.getValue();
+    final List<ChatMessage> captured = captor.getValue().messages();
     assertThat(captured.getFirst()).isInstanceOf(SystemMessage.class);
     assertThat(captured.get(1)).isInstanceOf(UserMessage.class);
     assertThat(captured.get(2)).isInstanceOf(AiMessage.class);

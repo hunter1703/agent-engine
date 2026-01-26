@@ -13,6 +13,7 @@ import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.context.BaseContextManager;
 import com.agentengine.engine.state.InMemoryMessageStore;
 import com.agentengine.engine.state.InMemorySessionStore;
+import com.agentengine.engine.utils.MessageParser;
 import com.agentengine.engine.tools.DefaultToolExecutor;
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.tools.ToolExecutor;
@@ -194,12 +195,14 @@ class HybridAgentTest {
     private final Deque<Message> responses;
     private final ResponseFormatType responseFormat;
     private final ContextManager contextManager;
+    private final MessageParser messageParser;
 
     private QueueModel(final ResponseFormatType type, final List<Message> responses,
         final ContextManager contextManager) {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;
+      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true).parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag()).withThoughtsEndTag(thoughtsEndTag());
     }
 
     @Override
@@ -207,7 +210,8 @@ class HybridAgentTest {
       if (responses.isEmpty()) {
         return new Message(Role.ASSISTANT, "", null, null);
       }
-      return responses.removeFirst();
+      Message response = responses.removeFirst();
+      return messageParser.parse(response); // Apply the same parsing as the real model
     }
 
     @Override
@@ -257,6 +261,7 @@ class HybridAgentTest {
     private final Deque<Message> responses;
     private final ResponseFormatType responseFormat;
     private final ContextManager contextManager;
+    private final MessageParser messageParser;
     private final List<List<Message>> prompts = new ArrayList<>();
 
     private CapturingModel(final ResponseFormatType type, final List<Message> responses,
@@ -264,6 +269,7 @@ class HybridAgentTest {
       this.responses = new ArrayDeque<>(responses);
       this.responseFormat = type;
       this.contextManager = contextManager;
+      this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(true).parseToolCallsFromText(true).areThoughtsEnabled(thoughtsEnabled()).withThoughtsStartTag(thoughtsStartTag()).withThoughtsEndTag(thoughtsEndTag());
     }
 
     @Override
@@ -272,7 +278,8 @@ class HybridAgentTest {
       if (responses.isEmpty()) {
         return new Message(Role.ASSISTANT, "", null, null);
       }
-      return responses.removeFirst();
+      Message response = responses.removeFirst();
+      return messageParser.parse(response); // Apply the same parsing as the real model
     }
 
     @Override
