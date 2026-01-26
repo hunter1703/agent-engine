@@ -9,20 +9,20 @@ import java.lang.annotation.Annotation;
 import java.util.Iterator;
 import java.util.List;
 
-public final class HandlerInstance implements Instance<AgentRequestHandler> {
-  private final List<AgentRequestHandler> handlers;
+public final class HandlerInstance implements Instance<AgentRequestHandler<?>> {
+  private final List<AgentRequestHandler<?>> handlers;
 
-  public HandlerInstance(final List<AgentRequestHandler> handlers) {
+  public HandlerInstance(final List<AgentRequestHandler<?>> handlers) {
     this.handlers = handlers;
   }
 
   @Override
-  public @NotNull Iterator<AgentRequestHandler> iterator() {
+  public @NotNull Iterator<AgentRequestHandler<?>> iterator() {
     return handlers.iterator();
   }
 
   @Override
-  public AgentRequestHandler get() {
+  public AgentRequestHandler<?> get() {
     return handlers.getFirst();
   }
 
@@ -42,27 +42,27 @@ public final class HandlerInstance implements Instance<AgentRequestHandler> {
   }
 
   @Override
-  public Handle<AgentRequestHandler> getHandle() {
+  public Handle<AgentRequestHandler<?>> getHandle() {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public Iterable<? extends Handle<AgentRequestHandler>> handles() {
+  public Iterable<? extends Handle<AgentRequestHandler<?>>> handles() {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public Instance<AgentRequestHandler> select(final Annotation... qualifiers) {
+  public Instance<AgentRequestHandler<?>> select(final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public <U extends AgentRequestHandler> Instance<U> select(final Class<U> subtype, final Annotation... qualifiers) {
+  public <U extends AgentRequestHandler<?>> Instance<U> select(final Class<U> subtype, final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public <U extends AgentRequestHandler> Instance<U> select(final TypeLiteral<U> subtype,
+  public <U extends AgentRequestHandler<?>> Instance<U> select(final TypeLiteral<U> subtype,
       final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }

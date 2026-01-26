@@ -62,7 +62,7 @@ class AgentSseTest {
     assertThat(events.get(4).getType()).isEqualTo(EventType.RUN_FINISHED);
   }
 
-  private static Instance<AgentRequestHandler> buildHandlers(final AgentManager service) {
+  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentManager service) {
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     final StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);

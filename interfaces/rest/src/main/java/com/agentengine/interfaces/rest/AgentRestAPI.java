@@ -34,10 +34,10 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @RunOnVirtualThread
 @Tag(name = "Agent")
 public class AgentRestAPI {
-  private final Map<RequestType, AgentRequestHandler> handlers;
+  private final Map<RequestType, AgentRequestHandler<?>> handlers;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler> handlers) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
   }
@@ -49,7 +49,7 @@ public class AgentRestAPI {
       InvokeResponse.class, PromptResponse.class})))
   public AgentResponse invoke(final AgentRequest request) {
     final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return (AgentResponse) handlers.get(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
+    return (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
   }
 
   @POST
@@ -62,7 +62,15 @@ public class AgentRestAPI {
   @SuppressWarnings("unchecked")
   public Multi<BaseEvent> events(final AgentRequest request) {
     final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return (Multi<BaseEvent>) handlers.get(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+    return (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+  }
+
+  private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
+    final AgentRequestHandler<?> handler = handlers.get(requestType);
+    if (handler == null) {
+      throw new IllegalArgumentException(STR."No handler registered for request type: \{requestType}");
+    }
+    return handler;
   }
 
   private static String getOrCreateSession(final String sessionId) {

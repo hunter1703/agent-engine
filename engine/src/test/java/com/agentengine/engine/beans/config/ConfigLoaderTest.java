@@ -39,6 +39,49 @@ class ConfigLoaderTest {
   }
 
   @Test
+  void loadConfigSupportsInMemoryStores() throws Exception {
+    final Path configPath = tempDir.resolve("agent.json");
+    Files.writeString(configPath, """
+        {
+          "type": "hybrid",
+          "name": "agent",
+          "model": {
+            "modelId": "reasoner",
+            "contextManagerConfig": {
+              "type": "last_n",
+              "systemPrompt": "system",
+              "messageStore": {
+                "type": "memory"
+              }
+            }
+          },
+          "routerModel": {
+            "modelId": "router",
+            "contextManagerConfig": {
+              "type": "last_n",
+              "systemPrompt": "router"
+            }
+          },
+          "planningModel": {
+            "modelId": "planner",
+            "contextManagerConfig": {
+              "type": "last_n",
+              "systemPrompt": "planner"
+            }
+          },
+          "sessionStore": {
+            "type": "memory"
+          }
+        }
+        """);
+
+    final AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
+
+    assertThat(config.getName()).isEqualTo("agent");
+    assertThat(config.getSessionStore().getType()).isEqualTo("memory");
+  }
+
+  @Test
   void loadConfigFailsWhenFileIsMissing() {
     Path missingPath = tempDir.resolve("missing.json");
 
