@@ -4,7 +4,7 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeKey = "type", seeAlso = {HybridAgentConfig.class})
+@JSONType(typeKey = "type", seeAlso = {HybridAgentConfig.class}, seeAlsoDefault = AgentConfig.class)
 @BsonDiscriminator(key = "type")
 public class AgentConfig implements Config {
   private String type;

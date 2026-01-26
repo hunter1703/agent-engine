@@ -82,7 +82,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   }
 
   private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig, final ContextManager contextManager,
-      final List<Tool> tools, final boolean toolCallingEnabled) {
+      final List<Tool> tools, final boolean supportsToolCalling) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
     final ChatLanguageModel chatLanguageModel = switch (provider) {
@@ -93,25 +93,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       }
       case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
     };
-    final List<ToolSpecification> toolSpecifications = buildToolSpecifications(tools);
     return new LangChain4JLLMModel(chatLanguageModel, responseFormat, modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, toolSpecifications);
-  }
-
-  private static List<ToolSpecification> buildToolSpecifications(final List<Tool> tools) {
-    if (CollectionUtils.isEmpty(tools)) {
-      return List.of();
-    }
-    final List<ToolSpecification> specifications = new ArrayList<>();
-    for (Tool tool : tools) {
-      if (tool == null || StringUtils.isBlank(tool.name())) {
-        continue;
-      }
-      final JsonObjectSchema parameters = JsonObjectSchema.builder().additionalProperties(true).build();
-      specifications.add(ToolSpecification.builder().name(tool.name())
-          .description(tool.description() == null ? "" : tool.description()).parameters(parameters).build());
-    }
-    return specifications;
+        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, tools, !supportsToolCalling);
   }
 
   private static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {

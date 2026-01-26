@@ -12,6 +12,15 @@ Response quality:
 - State assumptions explicitly when you must infer context.
 - Keep the response concise and well-structured.
 
+{% if toolCallingAllowed and parseToolCallsFromText %}
+Tool Calling:
+- If you need to call tools, format them as JSON objects in your text response.
+- Format: {"id": "unique_id", "name": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}
+- Generate unique IDs for each tool call so that results can be correlated later.
+- Multiple tool calls should be on separate lines or clearly delineated.
+- Do not mix tool calls with final answers in the same response.
+{% endif %}
+
 {% if thoughtsEnabled and thoughtsStartTag and thoughtsEndTag %}
 Thoughts:
 - If thoughts are enabled, wrap them exactly in {{ thoughtsStartTag }}...{{ thoughtsEndTag }}.

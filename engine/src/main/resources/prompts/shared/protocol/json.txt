@@ -15,12 +15,6 @@ Decision rules:
 - If you need tools, populate "toolCalls" and set "finalAnswer" to "" (empty string).
 - Do not return both a final answer and tool calls.
 
-Tool call rules:
-- Each tool call must include "id" (unique), "name" (must match an available tool), and "args" (object).
-- Never fabricate tool names, arguments, or tool results.
-- Use tools for external state (files, system data, time, environment, network, or user data not in context).
-- Do not emit planning or plan-update tool calls; planning is handled by a dedicated planner.
-
 Quality and clarification:
 - Keep "finalAnswer" concise, complete, and directly responsive.
 - If required information is missing or ambiguous, ask a clarifying question in "finalAnswer" and do not call tools.
@@ -29,4 +23,10 @@ Quality and clarification:
 Thoughts:
 - Include a "thoughts" field as a string; it may be empty.
 - Keep thoughts brief and separate from tool calls or final answers.
+{% endif %}
+
+{% if toolCallingAllowed %}
+Tool call rules:
+- Each tool call must include "id" (unique), "name" (must match an available tool), and "args" (object).
+- Never fabricate tool names, arguments, or tool results.
 {% endif %}

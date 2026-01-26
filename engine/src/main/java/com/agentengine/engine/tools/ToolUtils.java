@@ -4,7 +4,12 @@ import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.StringUtils;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,5 +52,21 @@ public final class ToolUtils {
       results.add(entry);
     }
     return JsonUtils.toJson(Map.of("tool_calls", results));
+  }
+
+  public static List<ToolSpecification> buildToolSpecifications(final List<Tool> tools) {
+      if (CollectionUtils.isEmpty(tools)) {
+          return List.of();
+      }
+      final List<ToolSpecification> specifications = new ArrayList<>();
+      for (Tool tool : tools) {
+          if (tool == null || StringUtils.isBlank(tool.name())) {
+              continue;
+          }
+          final JsonObjectSchema parameters = JsonObjectSchema.builder().additionalProperties(true).build();
+          specifications.add(ToolSpecification.builder().name(tool.name())
+                  .description(tool.description() == null ? "" : tool.description()).parameters(parameters).build());
+      }
+      return specifications;
   }
 }

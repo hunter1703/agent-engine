@@ -6,7 +6,9 @@ import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.utils.AgentUtils;
+import com.agentengine.engine.utils.MessageParser;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -17,6 +19,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.agentengine.engine.tools.ToolUtils.buildToolSpecifications;
+
 public final class LangChain4JLLMModel implements LLMModel {
   private final ChatLanguageModel model;
   private final ResponseFormat responseFormat;
@@ -25,17 +29,19 @@ public final class LangChain4JLLMModel implements LLMModel {
   private final String thoughtsEndTag;
   private final ContextManager contextManager;
   private final List<ToolSpecification> toolSpecifications;
+  private final MessageParser messageParser;
 
   public LangChain4JLLMModel(final ChatLanguageModel model, final ResponseFormat responseFormat,
       final boolean thoughtsEnabled, final String thoughtsStartTag, final String thoughtsEndTag,
-      final ContextManager contextManager, final List<ToolSpecification> toolSpecifications) {
+      final ContextManager contextManager, final List<Tool> tools, final boolean parseToolCallsFromText) {
     this.model = model;
     this.responseFormat = responseFormat;
     this.thoughtsEnabled = thoughtsEnabled;
     this.thoughtsStartTag = thoughtsStartTag;
     this.thoughtsEndTag = thoughtsEndTag;
     this.contextManager = contextManager;
-    this.toolSpecifications = toolSpecifications;
+    this.toolSpecifications = buildToolSpecifications(tools);
+    this.messageParser = MessageParser.create().withResponseFormat(responseFormat()).toolCallingAllowed(CollectionUtils.isNotEmpty(tools)).parseToolCallsFromText(parseToolCallsFromText).areThoughtsEnabled(thoughtsEnabled).withThoughtsStartTag(thoughtsStartTag).withThoughtsEndTag(thoughtsEndTag);
   }
 
   @Override
@@ -56,8 +62,7 @@ public final class LangChain4JLLMModel implements LLMModel {
 
     final Message assistantMessage = Message.assistant(aiMessage.text(), null,
         AgentUtils.transformToToolCalls(aiMessage.toolExecutionRequests()));
-    return AgentUtils.sanitizeMessage(assistantMessage, responseFormat(), CollectionUtils.isEmpty(toolSpecifications),
-        thoughtsEnabled, thoughtsStartTag, thoughtsEndTag);
+    return messageParser.parse(assistantMessage);
   }
 
   @Override
