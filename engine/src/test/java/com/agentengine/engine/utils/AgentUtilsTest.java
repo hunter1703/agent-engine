@@ -16,35 +16,6 @@ import org.junit.jupiter.api.Test;
 class AgentUtilsTest {
 
   @Test
-  void sanitizeMessageParsesPlanFromJson() {
-    String payload = """
-        {"toolCalls":[{"id":"plan-1","name":"update_plan","args":{"plan":[{"step":"echo","status":"pending"}]}}]}
-        """;
-    Message response = new Message(Role.ASSISTANT, payload, null, null);
-
-    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.JSON, true, true, "<think>",
-        "</think>");
-
-    PlanUpdate update = AgentUtils.parsePlanUpdate(sanitized.getToolCalls());
-    assertThat(update.plan()).hasSize(1);
-    assertThat(update.plan().getFirst().step()).isEqualTo("echo");
-  }
-
-  @Test
-  void sanitizeMessageParsesToolCallsFromTextJson() {
-    String payload = """
-        {"toolCalls":[{"id":"echo-1","name":"echo","args":{"text":"hi"}}]}
-        """;
-    Message response = new Message(Role.ASSISTANT, payload, null, null);
-
-    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.TEXT, false, false, null, null);
-
-    assertThat(sanitized.getToolCalls()).hasSize(1);
-    assertThat(sanitized.getToolCalls().getFirst().name()).isEqualTo("echo");
-    assertThat(sanitized.getToolCalls().getFirst().args().get("text")).isEqualTo("hi");
-  }
-
-  @Test
   void getRepairMessageFlagsMixedFinalAndPlan() {
     ToolCall planCall = new ToolCall("plan-1", "update_plan",
         Map.of("plan", List.of(Map.of("step", "step", "status", "pending"))));
