@@ -6,7 +6,6 @@ import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.AgentListener;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.LLMModel;
-import com.agentengine.engine.utils.AgentUtils;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,11 +52,9 @@ public abstract class AbstractSingleModelAgent implements Agent {
   private Message runModel(final String sessionId, final String runId, final AgentListener listener) {
     final List<Message> prompt = CollectionUtils.nullSafeMutableList(buildPrompt(sessionId));
     final Message response = model.generate(prompt);
-    final Message sanitized = AgentUtils.sanitizeMessage(response, model.responseFormat(), model.thoughtsEnabled(),
-        model.thoughtsStartTag(), model.thoughtsEndTag());
-    model.getContextManager().appendMessage(sessionId, runId, sanitized);
-    emitAssistantMessage(sessionId, sanitized, listener);
-    return sanitized;
+    model.getContextManager().appendMessage(sessionId, runId, response);
+    emitAssistantMessage(sessionId, response, listener);
+    return response;
   }
 
   private void appendUserMessage(final String sessionId, final String runId, final Message message) {

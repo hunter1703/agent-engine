@@ -70,7 +70,7 @@ public class Message {
     return new Message(Role.ASSISTANT, content, null, null);
   }
 
-  public static Message assistant(final String content, List<ToolCall> toolCalls) {
-    return new Message(Role.ASSISTANT, content, null, toolCalls);
+  public static Message assistant(final String content, final String thoughts, List<ToolCall> toolCalls) {
+    return new Message(Role.ASSISTANT, content, thoughts, toolCalls);
   }
 }

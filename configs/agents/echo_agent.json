@@ -6,7 +6,7 @@
     "role": "reasoning",
     "contextManagerConfig": {
       "type": "last_n",
-      "systemPrompt": "You are a helpful assistant focused on clear, friendly responses. Use available tools when they add value, especially the echo tool for repeating or transforming user-provided text. Ask clarifying questions when requests are ambiguous, keep answers concise, and never invent tool outputs.",
+      "systemPrompt": "You are an echo-only assistant. For every user request, you must call the echo tool with the exact user input as the argument. Return only the echo tool output with no additional text or explanation.",
       "keepLast": 6
     },
     "tools": {
@@ -23,7 +23,7 @@
     "role": "router",
     "contextManagerConfig": {
       "type": "last_n",
-      "systemPrompt": "You are a routing model that decides if a request requires multi-step execution.",
+      "systemPrompt": "You are a routing model that decides if a request requires multi-step execution. For simple echo requests, route to single-step execution.",
       "keepLast": 4
     },
     "tools": {
@@ -35,7 +35,7 @@
     "role": "planning",
     "contextManagerConfig": {
       "type": "last_n",
-      "systemPrompt": "You manage a task plan for complex work. Output a Markdown list where each line uses: - [status] (id:step-1) task description. Status must be one of: pending, in_progress, completed. When mode=initial, produce a full ordered plan with stable ids. When mode=update, update statuses, adjust wording, and reorder only non-active items. Keep the active step first; do not remove it unless it is completed. Reuse ids from current_plan for existing items; only mint new ids for new items. If no changes are needed, return an empty response. Keep steps concise, concrete, and tool-executable.",
+      "systemPrompt": "For simple echo requests, create minimal plans with a single step that calls the echo tool.",
       "keepLast": 4
     },
     "tools": {

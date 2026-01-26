@@ -18,18 +18,19 @@ public final class ToolRegistry {
             return Collections.emptyList();
         }
         final List<Tool> tools = new ArrayList<>();
-        // Try to use context classloader first (useful for tests), fallback to PluginLoader classloader
-        ClassLoader serviceClassLoader = Thread.currentThread().getContextClassLoader();
-        final String serviceResource = STR."META-INF/services/\{ToolProvider.class.getName()}";
-        if (serviceClassLoader.getResource(serviceResource) == null) {
-            serviceClassLoader = PluginLoader.getClassLoader();
+        final ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        final ClassLoader pluginLoader = PluginLoader.getClassLoader();
+        final Set<String> seenProviders = new HashSet<>();
+        final List<ToolProvider> providers = new ArrayList<>();
+        loadProviders(contextLoader, providers, seenProviders);
+        if (pluginLoader != contextLoader) {
+            loadProviders(pluginLoader, providers, seenProviders);
         }
-        final ServiceLoader<ToolProvider> loader = ServiceLoader.load(ToolProvider.class, serviceClassLoader);
         final List<String> enabled = CollectionUtils.isEmpty(toolsConfig.getEnabled())
                 ? List.of("ALL")
                 : toolsConfig.getEnabled();
         final Map<String, Map<String, Object>> toolConfigs = toolsConfig.getConfigs();
-        for (ToolProvider provider : loader) {
+        for (ToolProvider provider : providers) {
             LOGGER.info(STR."Found provider : \{provider.getClass().getName()} for agent : \{provider.agentId()} for tool : \{provider.toolName()}");
             if (!Objects.equals(provider.agentId(), agentId)) {
                 continue;
@@ -50,4 +51,22 @@ public final class ToolRegistry {
         }
         return tools;
     }
+
+  private static void loadProviders(final ClassLoader classLoader, final List<ToolProvider> providers,
+      final Set<String> seenProviders) {
+    if (classLoader == null) {
+      return;
+    }
+    final ServiceLoader<ToolProvider> loader = ServiceLoader.load(ToolProvider.class, classLoader);
+    for (ToolProvider provider : loader) {
+      if (provider == null) {
+        continue;
+      }
+      final String name = provider.getClass().getName();
+      if (!seenProviders.add(name)) {
+        continue;
+      }
+      providers.add(provider);
+    }
+  }
 }

@@ -13,6 +13,7 @@ import com.agentengine.engine.model.LlamaCppServerUtils;
 import com.agentengine.engine.tools.Tool;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.alibaba.fastjson2.TypeReference;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
@@ -64,12 +65,15 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final String protocolMessage = buildProtocolMessage(modelConfig);
     final List<Tool> tools = CollectionUtils
         .nullSafeMutableList(toolRegistry.loadTools(agentId, agentModelConfig.getTools()));
+    final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
+    final List<Tool> promptTools = toolCallingEnabled ? List.of() : CollectionUtils.nullSafeMutableList(tools);
     final ContextManager contextManager = messageStore == null
         ? contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
-            protocolMessage, tools)
+            protocolMessage, promptTools)
         : contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
-            protocolMessage, tools, messageStore);
-    return buildChatModel(modelConfig, contextManager);
+            protocolMessage, promptTools, messageStore);
+    return buildChatModel(modelConfig, contextManager,
+        toolCallingEnabled ? CollectionUtils.nullSafeMutableList(tools) : List.of(), toolCallingEnabled);
   }
 
   @Override
@@ -77,8 +81,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return AgentModelConfig.AgentType.LANGCHAIN.name().toLowerCase();
   }
 
-  private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig,
-      final ContextManager contextManager) {
+  private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig, final ContextManager contextManager,
+      final List<Tool> tools, final boolean toolCallingEnabled) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
     final ChatLanguageModel chatLanguageModel = switch (provider) {
@@ -89,8 +93,25 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       }
       case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
     };
+    final List<ToolSpecification> toolSpecifications = buildToolSpecifications(tools);
     return new LangChain4JLLMModel(chatLanguageModel, responseFormat, modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager);
+        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, toolSpecifications);
+  }
+
+  private static List<ToolSpecification> buildToolSpecifications(final List<Tool> tools) {
+    if (CollectionUtils.isEmpty(tools)) {
+      return List.of();
+    }
+    final List<ToolSpecification> specifications = new ArrayList<>();
+    for (Tool tool : tools) {
+      if (tool == null || StringUtils.isBlank(tool.name())) {
+        continue;
+      }
+      final JsonObjectSchema parameters = JsonObjectSchema.builder().additionalProperties(true).build();
+      specifications.add(ToolSpecification.builder().name(tool.name())
+          .description(tool.description() == null ? "" : tool.description()).parameters(parameters).build());
+    }
+    return specifications;
   }
 
   private static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {

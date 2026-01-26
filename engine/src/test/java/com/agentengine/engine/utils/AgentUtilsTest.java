@@ -22,11 +22,26 @@ class AgentUtilsTest {
         """;
     Message response = new Message(Role.ASSISTANT, payload, null, null);
 
-    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.JSON, true, "<think>", "</think>");
+    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.JSON, true, true, "<think>",
+        "</think>");
 
     PlanUpdate update = AgentUtils.parsePlanUpdate(sanitized.getToolCalls());
     assertThat(update.plan()).hasSize(1);
     assertThat(update.plan().getFirst().step()).isEqualTo("echo");
+  }
+
+  @Test
+  void sanitizeMessageParsesToolCallsFromTextJson() {
+    String payload = """
+        {"toolCalls":[{"id":"echo-1","name":"echo","args":{"text":"hi"}}]}
+        """;
+    Message response = new Message(Role.ASSISTANT, payload, null, null);
+
+    Message sanitized = AgentUtils.sanitizeMessage(response, ResponseFormatType.TEXT, false, false, null, null);
+
+    assertThat(sanitized.getToolCalls()).hasSize(1);
+    assertThat(sanitized.getToolCalls().getFirst().name()).isEqualTo("echo");
+    assertThat(sanitized.getToolCalls().getFirst().args().get("text")).isEqualTo("hi");
   }
 
   @Test

@@ -38,7 +38,7 @@ class LangChain4JLLMModelTest {
         "protocol", List.of());
     final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel,
         new ResponseFormat.Builder().type(dev.langchain4j.model.chat.request.ResponseFormatType.TEXT).build(), true,
-        "<think>", "</think>", contextManager);
+        "<think>", "</think>", contextManager, List.of(), false);
 
     final List<Message> prompt = List.of(Message.system("sys"), Message.user("hi"), Message.assistant("prior"));
 
@@ -65,7 +65,8 @@ class LangChain4JLLMModelTest {
 
     final ResponseFormat format = new ResponseFormat.Builder()
         .type(dev.langchain4j.model.chat.request.ResponseFormatType.JSON).build();
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, format, false, "start", "end", contextManager);
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, format, false, "start", "end", contextManager,
+        List.of(), false);
 
     assertThat(model.responseFormat()).isEqualTo(ResponseFormatType.JSON);
     assertThat(model.thoughtsEnabled()).isFalse();

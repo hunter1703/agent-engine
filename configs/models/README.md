@@ -13,6 +13,7 @@ only.
 - `responseFormat`: `text` or `json`
 - `thoughtsEnabled`: boolean
 - `thoughtsStartTag`, `thoughtsEndTag`: tags for thought blocks
+- `toolCallingEnabled`: enable native tool calling (if supported by provider)
 - `temperature`, `topK`, `topP`, `repeatPenalty`
 - `numPredict`: maximum tokens to generate
 - `maxContextLength`: context window size

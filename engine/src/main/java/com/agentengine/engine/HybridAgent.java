@@ -184,8 +184,6 @@ public final class HybridAgent implements Agent {
     } catch (Exception e) {
       throw new ModelInvocationException("reasoning-model", "Failed to generate reasoning response", e);
     }
-    response = AgentUtils.sanitizeMessage(response, reasoningModel.responseFormat(), reasoningModel.thoughtsEnabled(),
-        reasoningModel.thoughtsStartTag(), reasoningModel.thoughtsEndTag());
     reasoningModel.getContextManager().appendMessage(sessionId, runId, response);
 
     final String repairMessage = AgentUtils.getRepairMessageIfInvalid(response);
