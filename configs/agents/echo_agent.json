@@ -1,5 +1,5 @@
 {
-  "type": "hybrid",
+  "type": "default",
   "name": "echo_agent",
   "model": {
     "modelId": "qwen2_5_0_5b_instruct",
@@ -16,31 +16,8 @@
           "prefix": "hello-"
         }
       }
-    }
-  },
-  "routerModel": {
-    "modelId": "qwen2_5_0_5b_instruct",
-    "role": "router",
-    "contextManagerConfig": {
-      "type": "last_n",
-      "systemPrompt": "You are a routing model that decides if a request requires multi-step execution. For simple echo requests, route to single-step execution.",
-      "keepLast": 4
     },
-    "tools": {
-      "enabled": ["NONE"]
-    }
-  },
-  "planningModel": {
-    "modelId": "qwen2_5_0_5b_instruct",
-    "role": "planning",
-    "contextManagerConfig": {
-      "type": "last_n",
-      "systemPrompt": "For simple echo requests, create minimal plans with a single step that calls the echo tool.",
-      "keepLast": 4
-    },
-    "tools": {
-      "enabled": ["NONE"]
-    }
+    "responseFormat": "TEXT"
   },
   "sessionStore": {
     "type": "memory"

@@ -25,12 +25,12 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING:-mongodb://localhost:27000}
+MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING:-mongodb://localhost:27002}
 CONFIG_DB_NAME=${CONFIG_DB_NAME:-AGENT_ENGINE}
 
 port=$(echo "$MONGODB_CONNECTION_STRING" | sed -E 's|.*:([0-9]+).*|\1|')
 if [[ -z "$port" || "$port" == "$MONGODB_CONNECTION_STRING" ]]; then
-  port=27000
+  port=27002
 fi
 
 image="agent-engine-mongodb"
