@@ -5,11 +5,11 @@ This directory contains model configuration JSON files imported into MongoDB. Ea
 only.
 
 ## Required Fields
-- `provider`: one of `OLLAMA`, `LLAMA_CPP`, `OPEN_AI`
+- `type`: one of `OLLAMA`, `LLAMA_CPP`, `OPEN_AI`
 - `model`: model name or identifier
 
 ## Optional Fields
-- `baseUrl`: provider base URL
+- `baseUrl`: backend base URL
 - `responseFormat`: `text` or `json`
 - `thoughtsEnabled`: boolean
 - `thoughtsStartTag`, `thoughtsEndTag`: tags for thought blocks
@@ -25,7 +25,7 @@ only.
 ## Example
 ```json
 {
-  "provider": "OLLAMA",
+  "type": "OLLAMA",
   "model": "qwen3-coder:30b",
   "responseFormat": "text",
   "temperature": 0.2
@@ -35,7 +35,7 @@ only.
 ## LLAMA_CPP Auto-Start
 ```json
 {
-  "provider": "LLAMA_CPP",
+  "type": "LLAMA_CPP",
   "model": "qwq-32b",
   "baseUrl": "http://127.0.0.1:17004/v1",
   "serverCommand": "/path/to/llama-server",

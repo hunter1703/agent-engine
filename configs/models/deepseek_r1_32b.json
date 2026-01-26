@@ -1,6 +1,6 @@
 {
   "model": "deepseek-r1-32b",
-  "provider": "LLAMA_CPP",
+  "type": "LLAMA_CPP",
   "baseUrl": "http://127.0.0.1:17003/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
