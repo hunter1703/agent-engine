@@ -104,9 +104,9 @@ class AgentRestAPITest {
   }
 
   private static Instance<AgentRequestHandler> buildHandlers(final AgentManager service) {
-    InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
-    BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
-    return new HandlerInstance(List.<AgentRequestHandler>of(invokeHandler, buildPromptHandler, streamingHandler));
+    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
+    final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
+    final StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
+    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler));
   }
 }

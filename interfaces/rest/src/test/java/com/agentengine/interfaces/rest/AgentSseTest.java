@@ -12,8 +12,8 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.AgentListener;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.services.AgentManager;
@@ -63,9 +63,9 @@ class AgentSseTest {
   }
 
   private static Instance<AgentRequestHandler> buildHandlers(final AgentManager service) {
-    InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
-    BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
-    return new HandlerInstance(List.<AgentRequestHandler>of(invokeHandler, buildPromptHandler, streamingHandler));
+    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
+    final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
+    final StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
+    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler));
   }
 }
