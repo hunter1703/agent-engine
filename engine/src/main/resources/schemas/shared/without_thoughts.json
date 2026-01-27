@@ -31,27 +31,5 @@
       },
       "description": "List of tools to call. Either this or finalAnswer should be provided."
     }
-  },
-  "anyOf": [
-    {
-      "required": [
-        "finalAnswer"
-      ],
-      "not": {
-        "required": [
-          "toolCalls"
-        ]
-      }
-    },
-    {
-      "required": [
-        "toolCalls"
-      ],
-      "not": {
-        "required": [
-          "finalAnswer"
-        ]
-      }
-    }
-  ]
+  }
 }

@@ -32,12 +32,12 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
 
   static {
-    DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS = JsonUtils.fromJson(
-        ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_with_thoughts.json"), new TypeReference<>() {
+    DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS = JsonUtils
+        .fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/with_thoughts.json"), new TypeReference<>() {
         });
 
-    DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS = JsonUtils.fromJson(
-        ResourceUtils.loadResourceAsString("/schemas/hybrid/reasoner_without_thoughts.json"), new TypeReference<>() {
+    DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS = JsonUtils
+        .fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/without_thoughts.json"), new TypeReference<>() {
         });
   }
 
@@ -112,7 +112,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   }
 
   protected static ResponseFormat getResponseFormat(final ModelConfig config) {
-    if ("json".equals(config.getResponseFormat())) {
+    if ("json".equalsIgnoreCase(config.getResponseFormat())) {
       Map<String, Object> responseJsonSchema = config.isThoughtsEnabled()
           ? DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS
           : DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
@@ -361,8 +361,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       return "";
     }
     String path = config.isThoughtsEnabled()
-        ? "/schemas/hybrid/reasoner_with_thoughts.json"
-        : "/schemas/hybrid/reasoner_without_thoughts.json";
+        ? "/schemas/shared/with_thoughts.json"
+        : "/schemas/shared/without_thoughts.json";
     return ResourceUtils.loadResourceAsString(path);
   }
 }
