@@ -2,6 +2,7 @@ package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import java.util.List;
 import java.util.Map;

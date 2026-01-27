@@ -5,7 +5,7 @@ import static java.lang.StringTemplate.STR;
 import com.agentengine.engine.api.beans.ToolContext;
 import com.agentengine.engine.api.beans.ToolResult;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.tools.Tool;
+
 import java.util.Map;
 import java.util.Objects;
 

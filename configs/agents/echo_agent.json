@@ -2,7 +2,7 @@
   "type": "default",
   "agentId": "echo_agent",
   "model": {
-    "modelId": "deepseek_r1_distill_qwen_14b",
+    "modelId": "qwen3_coder_30b_llamacpp",
     "role": "reasoning",
     "contextManagerConfig": {
       "type": "last_n",

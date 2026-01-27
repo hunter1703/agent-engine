@@ -2,6 +2,7 @@ package com.agentengine.engine.tools;
 
 import static java.lang.StringTemplate.STR;
 
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.api.utils.CollectionUtils;
@@ -14,8 +15,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public final class ToolUtils {
+  private static final Logger LOG = Logger.getLogger(ToolUtils.class.getName());
   private ToolUtils() {
   }
 
@@ -32,7 +35,7 @@ public final class ToolUtils {
       if (tool.description() != null && !tool.description().isBlank()) {
         line += STR." - \{tool.description()}";
       }
-      builder.append(line).append("\n");
+      builder.append(line).append("\n\t-").append("tool args schema - ").append(JsonUtils.toJson(tool.parametersSchema())).append("\n");
     }
     builder.append("</AVAILABLE_TOOLS>");
     return builder.toString();

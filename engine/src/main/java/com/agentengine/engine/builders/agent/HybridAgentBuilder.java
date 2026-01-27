@@ -3,6 +3,7 @@ package com.agentengine.engine.builders.agent;
 import com.agentengine.engine.HybridAgent;
 import com.agentengine.engine.agents.PlanningAgent;
 import com.agentengine.engine.api.LLMModel;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;

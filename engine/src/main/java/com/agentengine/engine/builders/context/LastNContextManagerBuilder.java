@@ -4,7 +4,7 @@ import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.*;
 import com.agentengine.engine.builders.messagestore.MessageStoreProvider;
 import com.agentengine.engine.context.LastNContextManager;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import jakarta.inject.Singleton;
 
 import java.util.List;

@@ -49,6 +49,7 @@ jackson-annotations = { group = "com.fasterxml.jackson.core", name = "jackson-an
 fastjson2 = { group = "com.alibaba.fastjson2", name = "fastjson2", version = "2.0.48" }
 jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
 mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
+vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

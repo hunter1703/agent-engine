@@ -5,7 +5,7 @@ import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.ContextManagerConfig;
 import com.agentengine.engine.api.builders.ContextManagerBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

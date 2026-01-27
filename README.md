@@ -56,7 +56,7 @@ Runtime settings:
 - Add new tests under `<module>/src/test/java` using JUnit5 + AssertJ
 
 ## Plugins
-Plugins are external JARs that implement `com.agentengine.engine.tools.ToolProvider` via
+Plugins are external JARs that implement `com.agentengine.engine.api.ToolProvider` via
 `META-INF/services` and are added to the runtime classpath.
 
 At runtime, the engine loads plugin JARs from `PLUGIN_DIR` (or `./plugins` by default).

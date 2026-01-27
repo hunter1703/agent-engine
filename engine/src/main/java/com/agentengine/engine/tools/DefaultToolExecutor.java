@@ -1,6 +1,7 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentListener;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.beans.ToolContext;
 import com.agentengine.engine.api.beans.ToolResult;
 import com.agentengine.engine.api.beans.session.ToolCall;
@@ -8,6 +9,8 @@ import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.api.exception.ToolExecutionException;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
 public final class DefaultToolExecutor implements ToolExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultToolExecutor.class);
   private final Map<String, Tool> toolByName;
   private final Semaphore mutatingGate = new Semaphore(1);
   private final Map<String, Semaphore> toolGates = new ConcurrentHashMap<>();

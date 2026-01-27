@@ -1,5 +1,8 @@
 package com.agentengine.engine.tools;
 
+import com.agentengine.engine.api.Tool;
+import com.agentengine.engine.api.ToolProvider;
+
 import java.util.Map;
 
 public class BlankToolProvider implements ToolProvider {

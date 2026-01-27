@@ -1,4 +1,4 @@
-package com.agentengine.engine.tools;
+package com.agentengine.engine.api;
 
 import com.agentengine.engine.api.beans.ToolContext;
 import com.agentengine.engine.api.beans.ToolResult;
@@ -18,6 +18,10 @@ public interface Tool {
   String description();
 
   String execute(Map<String, Object> args);
+
+  default Map<String, Object> parametersSchema() {
+    return Map.of();
+  }
 
   /**
    * Execute the tool with context information. Override this method to access

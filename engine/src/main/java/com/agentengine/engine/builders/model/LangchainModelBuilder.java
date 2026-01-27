@@ -10,7 +10,7 @@ import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -20,6 +20,8 @@ import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +46,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   private final ConfigRepository configRepository;
   private final ContextManagerProvider contextManagerProvider;
   private final ToolRegistry toolRegistry;
+  private static final Logger LOG = LoggerFactory.getLogger(LangChain4JLLMModel.class);
 
   public LangchainModelBuilder(final ConfigRepository configRepository,
       final ContextManagerProvider contextManagerProvider, final ToolRegistry toolRegistry) {
@@ -64,15 +67,18 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final String protocolMessage = buildProtocolMessage(modelConfig);
     final List<Tool> tools = CollectionUtils
         .nullSafeMutableList(toolRegistry.loadTools(agentId, agentModelConfig.getTools()));
+    final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    final List<Tool> promptTools = toolCallingEnabled ? List.of() : CollectionUtils.nullSafeMutableList(tools);
+    final List<Tool> promptTools = !toolCallingEnabled || toolCallingSupported
+        ? List.of()
+        : CollectionUtils.nullSafeMutableList(tools);
     final ContextManager contextManager = messageStore == null
         ? contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
             protocolMessage, promptTools)
         : contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
             protocolMessage, promptTools, messageStore);
     return buildChatModel(modelConfig, contextManager,
-        toolCallingEnabled ? CollectionUtils.nullSafeMutableList(tools) : List.of(), toolCallingEnabled);
+        toolCallingEnabled ? CollectionUtils.nullSafeMutableList(tools) : List.of(), toolCallingSupported);
   }
 
   @Override

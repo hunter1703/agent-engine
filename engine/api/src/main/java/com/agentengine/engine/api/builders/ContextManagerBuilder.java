@@ -3,7 +3,7 @@ package com.agentengine.engine.api.builders;
 import com.agentengine.engine.api.ContextManager;
 import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.ContextManagerConfig;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 
 import java.util.List;
 

@@ -7,7 +7,7 @@ import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.sessionstore.SessionStoreProvider;
 import com.agentengine.engine.tools.DefaultToolExecutor;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.tools.ToolExecutor;
 import com.agentengine.engine.tools.ToolRegistry;
 

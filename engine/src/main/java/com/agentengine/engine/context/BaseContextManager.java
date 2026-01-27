@@ -5,7 +5,7 @@ import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.MessageStoreMark;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.tools.ToolUtils;
 import java.util.ArrayList;
 import java.util.List;

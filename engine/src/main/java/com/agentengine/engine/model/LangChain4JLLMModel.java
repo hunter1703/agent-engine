@@ -6,7 +6,7 @@ import com.agentengine.engine.api.ResponseFormatType;
 import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.utils.AgentUtils;
 import com.agentengine.engine.utils.MessageParser;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -15,6 +15,8 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,7 @@ import java.util.List;
 import static com.agentengine.engine.tools.ToolUtils.buildToolSpecifications;
 
 public final class LangChain4JLLMModel implements LLMModel {
+  private static final Logger LOG = LoggerFactory.getLogger(LangChain4JLLMModel.class);
   private final ChatLanguageModel model;
   private final ResponseFormat responseFormat;
   private final boolean thoughtsEnabled;

@@ -5,7 +5,6 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.AgentListener;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
 import com.agentengine.engine.api.LLMModel;
 import com.agentengine.engine.tools.ToolExecutor;
@@ -23,6 +22,7 @@ public abstract class AbstractSingleModelAgent implements Agent {
   private final String description;
   private final LLMModel model;
   private final ToolExecutor toolExecutor;
+  private final int maxInvocations = 10;
 
   protected AbstractSingleModelAgent(final String name, final String description, final LLMModel model) {
     this(name, description, model, null);
@@ -56,20 +56,21 @@ public abstract class AbstractSingleModelAgent implements Agent {
     try {
       appendUserMessage(sessionId, runId, message);
       listener.onRunStarted(sessionId, runId);
-
-      Message response = runModel(sessionId, runId, listener);
-
-      // Handle tool calls if a tool executor is available
-      if (toolExecutor != null && response != null && CollectionUtils.isNotEmpty(response.getToolCalls())) {
-        // Execute the tool calls
-        List<ToolExecution> executions = toolExecutor.execute(sessionId, runId, response.getToolCalls(), listener);
-
-        // Append the tool results to the context
-        appendToolResults(sessionId, runId, executions);
-
-        // Generate a final response based on the tool results
+      Message response;
+      int count = 0;
+      do {
         response = runModel(sessionId, runId, listener);
-      }
+        // Handle tool calls if a tool executor is available
+        if (toolExecutor != null && response != null && CollectionUtils.isNotEmpty(response.getToolCalls())) {
+          // Execute the tool calls
+          List<ToolExecution> executions = toolExecutor.execute(sessionId, runId, response.getToolCalls(), listener);
+
+          // Append the tool results to the context
+          appendToolResults(sessionId, runId, executions);
+          continue;
+        }
+        break;
+      } while (++count < maxInvocations);
 
       listener.onRunFinished(sessionId, runId);
       return response;
@@ -137,16 +138,5 @@ public abstract class AbstractSingleModelAgent implements Agent {
       listener.onTextMessageDelta(sessionId, id, message.getContent());
     }
     listener.onTextMessageEnd(sessionId, id);
-
-    // Emit tool call events if there are any
-    if (CollectionUtils.isNotEmpty(message.getToolCalls())) {
-      for (ToolCall toolCall : message.getToolCalls()) {
-        listener.onToolCallStart(sessionId, toolCall.id(), toolCall.name());
-        if (toolCall.args() != null) {
-          listener.onToolCallArgs(sessionId, toolCall.id(), toolCall.args().toString());
-        }
-        listener.onToolCallEnd(sessionId, toolCall.id());
-      }
-    }
   }
 }

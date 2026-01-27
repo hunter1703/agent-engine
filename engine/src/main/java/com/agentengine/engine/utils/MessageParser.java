@@ -29,7 +29,7 @@ public class MessageParser {
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
   private boolean toolCallingAllowed = false;
-  private boolean parseToolCallsFromText = false;
+  private boolean parseToolCallsFromText = true;
   private boolean thoughtsEnabled = false;
   private String thoughtsStartTag = null;
   private String thoughtsEndTag = null;

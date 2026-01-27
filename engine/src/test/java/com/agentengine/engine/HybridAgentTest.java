@@ -15,7 +15,7 @@ import com.agentengine.engine.state.InMemoryMessageStore;
 import com.agentengine.engine.state.InMemorySessionStore;
 import com.agentengine.engine.utils.MessageParser;
 import com.agentengine.engine.tools.DefaultToolExecutor;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.tools.ToolExecutor;
 import com.agentengine.engine.tools.UserClarificationTool;
 import java.util.ArrayDeque;

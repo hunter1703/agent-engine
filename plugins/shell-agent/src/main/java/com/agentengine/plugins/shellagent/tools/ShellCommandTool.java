@@ -1,6 +1,7 @@
 package com.agentengine.plugins.shellagent.tools;
 
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.Tool;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -61,6 +62,23 @@ public final class ShellCommandTool implements Tool {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e.getMessage(), e);
     }
+  }
+
+  @Override
+  public Map<String, Object> parametersSchema() {
+    //noinspection unchecked
+    return JsonUtils.fromJson("""
+            {
+              "type": "object",
+              "properties": {
+                  "command": {
+                  "type": "string",
+                  "description": "The shell command to execute"
+                  }
+              },
+              "required": ["command"]
+            }
+            """, Map.class);
   }
 
   private String readAll(Process process) throws IOException {

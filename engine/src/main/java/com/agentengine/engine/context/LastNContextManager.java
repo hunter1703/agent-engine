@@ -2,7 +2,7 @@ package com.agentengine.engine.context;
 
 import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.tools.Tool;
+import com.agentengine.engine.api.Tool;
 import java.util.ArrayList;
 import java.util.List;
 

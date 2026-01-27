@@ -34,7 +34,8 @@ public class ModelConfig implements Config {
 
   private boolean thoughtsEnabled;
 
-  private boolean toolCallingEnabled;
+  private boolean toolCallingEnabled = true;
+  private boolean toolCallingSupported = true;
 
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
 
@@ -163,6 +164,14 @@ public class ModelConfig implements Config {
 
   public void setToolCallingEnabled(final boolean toolCallingEnabled) {
     this.toolCallingEnabled = toolCallingEnabled;
+  }
+
+  public boolean isToolCallingSupported() {
+    return toolCallingSupported;
+  }
+
+  public void setToolCallingSupported(final boolean toolCallingSupported) {
+    this.toolCallingSupported = toolCallingSupported;
   }
 
   public ContextManagerConfig getContextConfig() {
