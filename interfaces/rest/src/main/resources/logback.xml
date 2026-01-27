@@ -33,7 +33,7 @@
     </root>
 
     <!-- Application loggers -->
-    <logger name="com.agentengine" level="INFO" additivity="false">
+    <logger name="com.agentengine" level="DEBUG" additivity="false">
         <appender-ref ref="STDOUT"/>
     </logger>
 

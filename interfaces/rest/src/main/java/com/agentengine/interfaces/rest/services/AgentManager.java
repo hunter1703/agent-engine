@@ -55,6 +55,7 @@ public class AgentManager {
 
     Agent agent = engines.computeIfAbsent(key, k -> {
       LOG.info("Creating new agent instance - agent_id={} config_hash={} operation=agent.create", agentId, key.substring(0, Math.min(8, key.length())));
+      LOG.debug("Creating new agent instance - agent_id={} config_name=\"{}\" config_hash={}", agentId, agentConfig.getName(), key.substring(0, Math.min(8, key.length())));
       return agentProvider.get(agentConfig);
     });
 

@@ -19,6 +19,8 @@ public abstract class AbstractAgentRequestHandler<T> implements AgentRequestHand
   protected Agent getOrCreateEngine(final AgentRequest request) {
     LOG.debug("Getting or creating agent engine - agent_id={} config_path=\"{}\"", request.getAgentId(),
         request.getAgentConfigPath());
+    LOG.trace("Agent engine request details - agent_id={} type={} config_path=\"{}\" session_id={}",
+        request.getAgentId(), request.getType(), request.getAgentConfigPath(), request.getSessionId());
     return agentManager.getOrStartEngine(request.getAgentId(), request.getAgentConfigPath());
   }
 }

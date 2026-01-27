@@ -63,6 +63,8 @@ public final class HybridAgent implements Agent {
     public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
         LOG.info("Hybrid agent invocation started - session_id={} agent_id={} operation=agent.invoke.start",
                  sessionId, agentId);
+        LOG.debug("Hybrid agent invocation details - session_id={} agent_id={} message_length={}",
+                  sessionId, agentId, message != null && message.getContent() != null ? message.getContent().length() : 0);
 
         try {
             Session session = loadSession(sessionId);
@@ -75,14 +77,18 @@ public final class HybridAgent implements Agent {
                 listener.onRunStarted(sessionId, runId);
 
                 if (shouldGenerateTasks(sessionId, runId) && !session.isTasksGenerated()) {
+                    LOG.debug("Generating initial task list for session - session_id={} run_id={}", sessionId, runId);
                     final List<PlanItem> planned = generateTaskList(sessionId, runId, message, listener, session, true);
                     if (CollectionUtils.isNotEmpty(planned)) {
                         final String note = updatePlan(session, new PlanUpdate("Planning agent", planned));
                         emitPlanUpdateNote(sessionId, runId, note);
                         session.setTasksGenerated(true);
+                        LOG.debug("Initial task list generated - session_id={} run_id={} task_count={}",
+                                 sessionId, runId, planned.size());
                     }
                 }
             } else {
+                LOG.debug("Resuming from clarification - session_id={} run_id={}", sessionId, runId);
                 resumeFromClarification(sessionId, runId, message, session, listener);
             }
 
@@ -93,9 +99,13 @@ public final class HybridAgent implements Agent {
                 try {
                     reasoningTurns++;
                     final String stepName = STR."Reasoning Turn \{reasoningTurns}";
+                    LOG.debug("Starting reasoning turn - session_id={} run_id={} turn_number={}",
+                             sessionId, runId, reasoningTurns);
                     listener.onStepStarted(sessionId, stepName);
                     result = runReasoner(sessionId, runId, listener);
                     listener.onStepFinished(sessionId, stepName);
+                    LOG.debug("Completed reasoning turn - session_id={} run_id={} turn_number={}",
+                             sessionId, runId, reasoningTurns);
                 } catch (AgentException ex) {
                     LOG.error("Agent exception during reasoning - session_id={} run_id={} turn_number={} error=\"{}\"",
                               sessionId, runId, reasoningTurns, ex.getMessage(), ex);
@@ -116,11 +126,13 @@ public final class HybridAgent implements Agent {
                 }
 
                 if (result == null) {
+                    LOG.debug("Null result received, continuing to next turn - session_id={} run_id={}", sessionId, runId);
                     continue;
                 }
 
                 final String finalAnswer = result.getContent();
                 if (StringUtils.isNotBlank(finalAnswer)) {
+                    LOG.debug("Final answer received, ending invocation - session_id={} run_id={}", sessionId, runId);
                     emitFinalAnswer(sessionId, result, listener);
                     finalResponse = result;
                     break;
@@ -128,6 +140,8 @@ public final class HybridAgent implements Agent {
 
                 List<ToolCall> toolCalls = CollectionUtils.nullSafeMutableList(result.getToolCalls());
                 if (containsPlanToolCalls(toolCalls)) {
+                    LOG.debug("Processing plan tool calls - session_id={} run_id={} call_count={}",
+                             sessionId, runId, toolCalls.size());
                     emitPlanToolEvents(sessionId, toolCalls, listener);
                     reasoningModel.getContextManager().appendMessage(sessionId, runId,
                         Message.system("Planning updates come from the planning tool, not the reasoning model."));
@@ -136,16 +150,23 @@ public final class HybridAgent implements Agent {
 
                 List<ToolExecution> executions;
                 if (CollectionUtils.isNotEmpty(toolCalls)) {
+                    LOG.debug("Executing tool calls - session_id={} run_id={} call_count={}",
+                             sessionId, runId, toolCalls.size());
                     executions = toolExecutor.execute(sessionId, runId, toolCalls, listener);
                 } else {
+                    LOG.debug("No tool calls, checking for plan refresh - session_id={} run_id={}", sessionId, runId);
                     final List<PlanItem> refreshed = generateTaskList(sessionId, runId, message, listener, session, false);
                     if (CollectionUtils.isNotEmpty(refreshed)) {
                         final String note = updatePlan(session, new PlanUpdate("Planning agent", refreshed));
                         emitPlanUpdateNote(sessionId, runId, note);
+                        LOG.debug("Plan refreshed - session_id={} run_id={} task_count={}",
+                                 sessionId, runId, refreshed.size());
                     }
                     if (hasPendingPlan(session)) {
+                        LOG.debug("Executing pending plan item - session_id={} run_id={}", sessionId, runId);
                         executions = executePlanItem(sessionId, runId, selectPlanItemForWork(session), listener);
                     } else {
+                        LOG.debug("No pending plan, adding missing tool message - session_id={} run_id={}", sessionId, runId);
                         reasoningModel.getContextManager().appendMessage(sessionId, runId,
                                 Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
                         continue;
@@ -154,6 +175,7 @@ public final class HybridAgent implements Agent {
 
                 final ToolExecution clarification = findClarification(executions);
                 if (clarification != null) {
+                    LOG.debug("Clarification required - session_id={} run_id={}", sessionId, runId);
                     session.setAwaitingClarification(true);
                     session.setPendingClarification(clarification.getToolCall());
                     session.setRunId(runId);
@@ -161,6 +183,8 @@ public final class HybridAgent implements Agent {
                     return Message.assistant("");
                 }
 
+                LOG.debug("Appending tool results - session_id={} run_id={} execution_count={}",
+                         sessionId, runId, executions.size());
                 appendToolResults(sessionId, runId, executions);
             } while (reasoningTurns < invocationLimit);
 
@@ -175,6 +199,8 @@ public final class HybridAgent implements Agent {
 
             LOG.info("Hybrid agent invocation completed - session_id={} agent_id={} operation=agent.invoke.complete outcome=success",
                      sessionId, agentId);
+            LOG.debug("Hybrid agent invocation result - session_id={} agent_id={} response_length={}",
+                      sessionId, agentId, finalResponse != null && finalResponse.getContent() != null ? finalResponse.getContent().length() : 0);
 
             return finalResponse;
         } catch (Exception e) {

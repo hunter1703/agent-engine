@@ -29,6 +29,8 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
   public AgentResponse handle(final AgentRequest request) {
     LOG.info("Agent invocation handler started - agent_id={} session_id={} operation=agent.invoke.start",
         request.getAgentId(), request.getSessionId());
+    LOG.debug("Agent invocation handler details - agent_id={} session_id={} message_length={}", request.getAgentId(),
+        request.getSessionId(), request.getMessage() != null ? request.getMessage().length() : 0);
 
     try {
       final Agent engine = getOrCreateEngine(request);
@@ -38,6 +40,10 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
       LOG.info(
           "Agent invocation handler completed - agent_id={} session_id={} operation=agent.invoke.complete outcome=success",
           request.getAgentId(), request.getSessionId());
+      LOG.debug("Agent invocation handler response - agent_id={} session_id={} response_length={} thoughts_length={}",
+          request.getAgentId(), request.getSessionId(),
+          response != null && response.getContent() != null ? response.getContent().length() : 0,
+          response != null && response.getThoughts() != null ? response.getThoughts().length() : 0);
 
       return new InvokeResponse(sessionId, response == null ? null : response.getContent(),
           response == null ? null : response.getThoughts());

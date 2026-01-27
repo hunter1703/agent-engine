@@ -58,6 +58,8 @@ public class AgentRestAPI {
 
     LOG.info("Agent invocation started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
         request.getSessionId());
+    LOG.debug("Agent invocation request details - trace_id={} agent_config_path=\"{}\" message_length={}", traceId,
+        request.getAgentConfigPath(), request.getMessage() != null ? request.getMessage().length() : 0);
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
@@ -66,6 +68,8 @@ public class AgentRestAPI {
 
       LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success", traceId,
           request.getAgentId(), request.getSessionId());
+      LOG.debug("Agent invocation response details - trace_id={} response_type=\"{}\"", traceId,
+          response != null ? response.getClass().getSimpleName() : "null");
 
       return response;
     } catch (Exception e) {
@@ -91,6 +95,8 @@ public class AgentRestAPI {
 
     LOG.info("Agent events streaming started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
         request.getSessionId());
+    LOG.debug("Agent events streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
+        traceId, request.getAgentConfigPath(), request.getMessage() != null ? request.getMessage().length() : 0);
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
@@ -99,6 +105,8 @@ public class AgentRestAPI {
 
       LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           request.getAgentId(), request.getSessionId());
+      LOG.debug("Agent events streaming response details - trace_id={} response_type=\"{}\"", traceId,
+          response != null ? response.getClass().getSimpleName() : "null");
 
       return response;
     } catch (Exception e) {
