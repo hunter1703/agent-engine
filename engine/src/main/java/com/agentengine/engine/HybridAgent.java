@@ -32,7 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class HybridAgent implements Agent {
+  private static final Logger LOG = LoggerFactory.getLogger(HybridAgent.class);
   private static final String UPDATE_PLAN_TOOL_NAME = "update_plan";
   private static final String CLARIFICATION_STATUS = "clarification_required";
   private static final String CLARIFICATION_TOOL_NAME = "user_clarification";
@@ -57,106 +61,127 @@ public final class HybridAgent implements Agent {
 
   @Override
     public Message invoke(final String sessionId, final Message message, final AgentListener listener) {
-        Session session = loadSession(sessionId);
-        final boolean awaitingClarification = session.isAwaitingClarification();
-        final String runId = awaitingClarification ? session.getRunId() : UUID.randomUUID().toString();
-        if (!awaitingClarification) {
-            resetSessionExecution(session, runId);
-            reasoningModel.getContextManager().appendMessage(sessionId, runId, Message.user(message.getContent()));
-            listener.onRunStarted(sessionId, runId);
+        LOG.info("Hybrid agent invocation started - session_id={} agent_id={} operation=agent.invoke.start",
+                 sessionId, agentId);
 
-            if (shouldGenerateTasks(sessionId, runId) && !session.isTasksGenerated()) {
-                final List<PlanItem> planned = generateTaskList(sessionId, runId, message, listener, session, true);
-                if (CollectionUtils.isNotEmpty(planned)) {
-                    final String note = updatePlan(session, new PlanUpdate("Planning agent", planned));
-                    emitPlanUpdateNote(sessionId, runId, note);
-                    session.setTasksGenerated(true);
+        try {
+            Session session = loadSession(sessionId);
+            final boolean awaitingClarification = session.isAwaitingClarification();
+            final String runId = awaitingClarification ? session.getRunId() : UUID.randomUUID().toString();
+
+            if (!awaitingClarification) {
+                resetSessionExecution(session, runId);
+                reasoningModel.getContextManager().appendMessage(sessionId, runId, Message.user(message.getContent()));
+                listener.onRunStarted(sessionId, runId);
+
+                if (shouldGenerateTasks(sessionId, runId) && !session.isTasksGenerated()) {
+                    final List<PlanItem> planned = generateTaskList(sessionId, runId, message, listener, session, true);
+                    if (CollectionUtils.isNotEmpty(planned)) {
+                        final String note = updatePlan(session, new PlanUpdate("Planning agent", planned));
+                        emitPlanUpdateNote(sessionId, runId, note);
+                        session.setTasksGenerated(true);
+                    }
                 }
-            }
-        } else {
-            resumeFromClarification(sessionId, runId, message, session, listener);
-        }
-
-        Message finalResponse = Message.assistant("");
-        int reasoningTurns = 0;
-        do {
-            final Message result;
-            try {
-                reasoningTurns++;
-                final String stepName = STR."Reasoning Turn \{reasoningTurns}";
-                listener.onStepStarted(sessionId, stepName);
-                result = runReasoner(sessionId, runId, listener);
-                listener.onStepFinished(sessionId, stepName);
-            } catch (AgentException ex) {
-                listener.onRunError(sessionId, runId, ex);
-                clearSessionExecution(session);
-                persistSession(session);
-                throw ex;
-            } catch (Exception ex) {
-                listener.onRunError(sessionId, runId, ex);
-                final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
-                emitFinalAnswer(sessionId, failure, listener);
-                listener.onRunFinished(sessionId, runId);
-                clearSessionExecution(session);
-                persistSession(session);
-                return failure;
-            }
-
-            if (result == null) {
-                break;
-            }
-
-            final String finalAnswer = result.getContent();
-            if (StringUtils.isNotBlank(finalAnswer)) {
-                emitFinalAnswer(sessionId, result, listener);
-                finalResponse = result;
-                break;
-            }
-
-            List<ToolCall> toolCalls = CollectionUtils.nullSafeMutableList(result.getToolCalls());
-      if (containsPlanToolCalls(toolCalls)) {
-        emitPlanToolEvents(sessionId, toolCalls, listener);
-        reasoningModel.getContextManager().appendMessage(sessionId, runId,
-            Message.system("Planning updates come from the planning tool, not the reasoning model."));
-        toolCalls = filterOutPlanToolCalls(toolCalls);
-      }
-
-            List<ToolExecution> executions;
-            if (CollectionUtils.isNotEmpty(toolCalls)) {
-                executions = toolExecutor.execute(sessionId, runId, toolCalls, listener);
             } else {
-                final List<PlanItem> refreshed = generateTaskList(sessionId, runId, message, listener, session, false);
-                if (CollectionUtils.isNotEmpty(refreshed)) {
-                    final String note = updatePlan(session, new PlanUpdate("Planning agent", refreshed));
-                    emitPlanUpdateNote(sessionId, runId, note);
+                resumeFromClarification(sessionId, runId, message, session, listener);
+            }
+
+            Message finalResponse = Message.assistant("");
+            int reasoningTurns = 0;
+            do {
+                final Message result;
+                try {
+                    reasoningTurns++;
+                    final String stepName = STR."Reasoning Turn \{reasoningTurns}";
+                    listener.onStepStarted(sessionId, stepName);
+                    result = runReasoner(sessionId, runId, listener);
+                    listener.onStepFinished(sessionId, stepName);
+                } catch (AgentException ex) {
+                    LOG.error("Agent exception during reasoning - session_id={} run_id={} turn_number={} error=\"{}\"",
+                              sessionId, runId, reasoningTurns, ex.getMessage(), ex);
+                    listener.onRunError(sessionId, runId, ex);
+                    clearSessionExecution(session);
+                    persistSession(session);
+                    throw ex;
+                } catch (Exception ex) {
+                    LOG.error("Unexpected exception during reasoning - session_id={} run_id={} turn_number={} error=\"{}\"",
+                              sessionId, runId, reasoningTurns, ex.getMessage(), ex);
+                    listener.onRunError(sessionId, runId, ex);
+                    final Message failure = Message.system(STR."Reasoner failed: \{ex.getMessage()}");
+                    emitFinalAnswer(sessionId, failure, listener);
+                    listener.onRunFinished(sessionId, runId);
+                    clearSessionExecution(session);
+                    persistSession(session);
+                    return failure;
                 }
-                if (hasPendingPlan(session)) {
-                    executions = executePlanItem(sessionId, runId, selectPlanItemForWork(session), listener);
-                } else {
-                    reasoningModel.getContextManager().appendMessage(sessionId, runId,
-                            Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
+
+                if (result == null) {
                     continue;
                 }
+
+                final String finalAnswer = result.getContent();
+                if (StringUtils.isNotBlank(finalAnswer)) {
+                    emitFinalAnswer(sessionId, result, listener);
+                    finalResponse = result;
+                    break;
+                }
+
+                List<ToolCall> toolCalls = CollectionUtils.nullSafeMutableList(result.getToolCalls());
+                if (containsPlanToolCalls(toolCalls)) {
+                    emitPlanToolEvents(sessionId, toolCalls, listener);
+                    reasoningModel.getContextManager().appendMessage(sessionId, runId,
+                        Message.system("Planning updates come from the planning tool, not the reasoning model."));
+                    toolCalls = filterOutPlanToolCalls(toolCalls);
+                }
+
+                List<ToolExecution> executions;
+                if (CollectionUtils.isNotEmpty(toolCalls)) {
+                    executions = toolExecutor.execute(sessionId, runId, toolCalls, listener);
+                } else {
+                    final List<PlanItem> refreshed = generateTaskList(sessionId, runId, message, listener, session, false);
+                    if (CollectionUtils.isNotEmpty(refreshed)) {
+                        final String note = updatePlan(session, new PlanUpdate("Planning agent", refreshed));
+                        emitPlanUpdateNote(sessionId, runId, note);
+                    }
+                    if (hasPendingPlan(session)) {
+                        executions = executePlanItem(sessionId, runId, selectPlanItemForWork(session), listener);
+                    } else {
+                        reasoningModel.getContextManager().appendMessage(sessionId, runId,
+                                Message.system(MISSING_TOOL_AND_FINAL_MESSAGE));
+                        continue;
+                    }
+                }
+
+                final ToolExecution clarification = findClarification(executions);
+                if (clarification != null) {
+                    session.setAwaitingClarification(true);
+                    session.setPendingClarification(clarification.getToolCall());
+                    session.setRunId(runId);
+                    persistSession(session);
+                    return Message.assistant("");
+                }
+
+                appendToolResults(sessionId, runId, executions);
+            } while (reasoningTurns < invocationLimit);
+
+            if (StringUtils.isBlank(finalResponse.getContent()) && reasoningTurns >= invocationLimit) {
+                LOG.warn("Invocation limit exceeded - session_id={} run_id={} limit={}",
+                         sessionId, runId, invocationLimit);
+                finalResponse = Message.assistant(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
             }
 
-            final ToolExecution clarification = findClarification(executions);
-            if (clarification != null) {
-                session.setAwaitingClarification(true);
-                session.setPendingClarification(clarification.getToolCall());
-                session.setRunId(runId);
-                persistSession(session);
-                return Message.assistant("");
-            }
-            appendToolResults(sessionId, runId, executions);
-        } while (reasoningTurns < invocationLimit);
+            listener.onRunFinished(sessionId, runId);
+            persistSession(clearSessionExecution(session));
 
-        if (StringUtils.isBlank(finalResponse.getContent()) && reasoningTurns >= invocationLimit) {
-            finalResponse = Message.assistant(STR."Number of assistant invocations exceeded maximum : \{invocationLimit}");
+            LOG.info("Hybrid agent invocation completed - session_id={} agent_id={} operation=agent.invoke.complete outcome=success",
+                     sessionId, agentId);
+
+            return finalResponse;
+        } catch (Exception e) {
+            LOG.error("Hybrid agent invocation failed - session_id={} agent_id={} operation=agent.invoke.error outcome=failure error=\"{}\"",
+                      sessionId, agentId, e.getMessage(), e);
+            throw e;
         }
-
-        listener.onRunFinished(sessionId, runId);
-        persistSession(clearSessionExecution(session));
-        return finalResponse;
     }
 
   @Override

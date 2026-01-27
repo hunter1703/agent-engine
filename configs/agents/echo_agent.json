@@ -2,11 +2,11 @@
   "type": "default",
   "name": "echo_agent",
   "model": {
-    "modelId": "qwen2_5_0_5b_instruct",
+    "modelId": "deepseek_r1_distill_qwen_14b",
     "role": "reasoning",
     "contextManagerConfig": {
       "type": "last_n",
-      "systemPrompt": "You are an echo-only assistant. For every user request, you must call the echo tool with the exact user input as the argument. Return only the echo tool output with no additional text or explanation.",
+      "systemPrompt": "You are an echo-only assistant. For every user request, you must call the echo tool with the exact user      │\n │       input as the 'text' argument. Respond in JSON format with a 'toolCalls' array containing the echo tool call. Do not provide any   │\n │       other text or explanation.",
       "keepLast": 6
     },
     "tools": {
@@ -17,7 +17,7 @@
         }
       }
     },
-    "responseFormat": "TEXT"
+    "responseFormat": "JSON"
   },
   "sessionStore": {
     "type": "memory"

@@ -1,5 +1,8 @@
 package com.agentengine.interfaces.rest.handlers;
 
+import static java.lang.StringTemplate.STR;
+
+import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.engine.api.AgentRequest;
@@ -9,8 +12,12 @@ import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Singleton
 public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<AgentResponse> {
+  private static final Logger LOG = LoggerFactory.getLogger(InvokeAgentRequestHandler.class);
 
   public InvokeAgentRequestHandler(final AgentManager agentManager) {
     super(agentManager);
@@ -23,10 +30,23 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
 
   @Override
   public AgentResponse handle(final AgentRequest request) {
-    final Agent engine = getOrCreateEngine(request);
-    final String sessionId = request.getSessionId();
-    Message response = engine.invoke(sessionId, Message.user(request.getMessage()), Agent.NO_OP_LISTENER);
-    return new InvokeResponse(sessionId, response == null ? null : response.getContent(),
-        response == null ? null : response.getThoughts());
+    LOG.info("Agent invocation handler started - agent_id={} session_id={} operation=agent.invoke.start",
+             request.getAgentId(), request.getSessionId());
+
+    try {
+      final Agent engine = getOrCreateEngine(request);
+      final String sessionId = request.getSessionId();
+      Message response = engine.invoke(sessionId, Message.user(request.getMessage()), Agent.NO_OP_LISTENER);
+
+      LOG.info("Agent invocation handler completed - agent_id={} session_id={} operation=agent.invoke.complete outcome=success",
+               request.getAgentId(), request.getSessionId());
+
+      return new InvokeResponse(sessionId, response == null ? null : response.getContent(),
+          response == null ? null : response.getThoughts());
+    } catch (Exception e) {
+      LOG.error("Agent invocation handler failed - agent_id={} session_id={} operation=agent.invoke.error outcome=failure error=\"{}\"",
+                request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      throw e;
+    }
   }
 }

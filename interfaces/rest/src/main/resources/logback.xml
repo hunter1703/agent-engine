@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <!-- Timestamp -->
+                <timestamp/>
+                
+                <!-- Level -->
+                <logLevel/>
+                
+                <!-- Logger name -->
+                <loggerName/>
+                
+                <!-- Thread name -->
+                <threadName/>
+                
+                <!-- Message -->
+                <message/>
+                
+                <!-- Exception -->
+                <exception/>
+                
+                <!-- MDC (custom fields) -->
+                <mdc/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!-- Application loggers -->
+    <logger name="com.agentengine" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <!-- Quarkus loggers -->
+    <logger name="io.quarkus" level="WARN" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+
+    <!-- Third-party loggers -->
+    <logger name="org.hibernate" level="WARN" additivity="false">
+        <appender-ref ref="STDOUT"/>
+    </logger>
+</configuration>

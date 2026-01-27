@@ -24,6 +24,11 @@ quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client"
 quarkus-rest-jackson = { group = "io.quarkus", name = "quarkus-rest-jackson" }
 quarkus-smallrye-openapi = { group = "io.quarkus", name = "quarkus-smallrye-openapi" }
 
+# Logging
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version = "2.0.16" }
+logback-classic = { group = "ch.qos.logback", name = "logback-classic", version = "1.5.12" }
+logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version = "7.4" }
+
 # Testing
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }

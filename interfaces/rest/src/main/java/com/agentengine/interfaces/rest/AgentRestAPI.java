@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest;
 
+import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
@@ -27,6 +28,9 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 @Path("/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -34,6 +38,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @RunOnVirtualThread
 @Tag(name = "Agent")
 public class AgentRestAPI {
+  private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
 
   @Inject
@@ -48,8 +53,27 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "200", description = "Invoke response or prompt response", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(oneOf = {
       InvokeResponse.class, PromptResponse.class})))
   public AgentResponse invoke(final AgentRequest request) {
-    final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
+    // Generate or retrieve trace ID for this request
+    String traceId = LoggingUtils.getOrCreateTraceId();
+
+    LOG.info("Agent invocation started - trace_id={} agent_id={} session_id={}",
+             traceId, request.getAgentId(), request.getSessionId());
+
+    try {
+      final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+      AgentResponse response = (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
+
+      LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success",
+               traceId, request.getAgentId(), request.getSessionId());
+
+      return response;
+    } catch (Exception e) {
+      LOG.error("Agent invocation failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
+                traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      throw e;
+    } finally {
+      MDC.clear();
+    }
   }
 
   @POST
@@ -61,14 +85,35 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
   @SuppressWarnings("unchecked")
   public Multi<BaseEvent> events(final AgentRequest request) {
-    final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-    return (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+    // Generate or retrieve trace ID for this request
+    String traceId = LoggingUtils.getOrCreateTraceId();
+
+    LOG.info("Agent events streaming started - trace_id={} agent_id={} session_id={}",
+             traceId, request.getAgentId(), request.getSessionId());
+
+    try {
+      final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+      Multi<BaseEvent> response = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+
+      LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}",
+               traceId, request.getAgentId(), request.getSessionId());
+
+      return response;
+    } catch (Exception e) {
+      LOG.error("Agent events streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
+                traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      throw e;
+    } finally {
+      MDC.clear();
+    }
   }
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
     final AgentRequestHandler<?> handler = handlers.get(requestType);
     if (handler == null) {
-      throw new IllegalArgumentException(STR."No handler registered for request type: \{requestType}");
+      String errorMsg = STR."No handler registered for request type: \{requestType}";
+      LOG.error("Handler lookup failed - request_type={} error=\"{}\"", requestType, errorMsg);
+      throw new IllegalArgumentException(errorMsg);
     }
     return handler;
   }
@@ -77,6 +122,8 @@ public class AgentRestAPI {
     if (StringUtils.isNotBlank(sessionId)) {
       return sessionId;
     }
-    return UUID.randomUUID().toString();
+    String newSessionId = UUID.randomUUID().toString();
+    LOG.debug("New session created - session_id={}", newSessionId);
+    return newSessionId;
   }
 }

@@ -10,6 +10,9 @@ repositories {
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation platform(libs.quarkus.langchain4j.bom)
+    implementation libs.logback.classic
+    implementation libs.logstash.logback.encoder
+    implementation libs.slf4j.api
     implementation project(':engine')
     implementation project(':engine:api')
     implementation project(':interfaces:common')
