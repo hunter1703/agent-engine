@@ -1,6 +1,6 @@
 {
   "type": "default",
-  "name": "echo_agent",
+  "agentId": "echo_agent",
   "model": {
     "modelId": "deepseek_r1_distill_qwen_14b",
     "role": "reasoning",

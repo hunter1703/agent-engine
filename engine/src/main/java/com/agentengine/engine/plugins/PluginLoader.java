@@ -9,7 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class PluginLoader {
+  private static final Logger LOG = LoggerFactory.getLogger(PluginLoader.class);
   private static final String PLUGIN_DIR_PROPERTY = "PLUGIN_DIR";
   private static final String DEFAULT_PLUGIN_DIR = "plugins";
   private static final AtomicReference<ClassLoader> LOADER = new AtomicReference<>();
@@ -37,10 +41,12 @@ public final class PluginLoader {
       paths.filter(path -> path.toString().endsWith(".jar")).forEach(path -> {
         try {
           urls.add(path.toUri().toURL());
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+          LOG.warn("Failed to convert path to URL: {}", path, e);
         }
       });
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      LOG.warn("Failed to list plugin directory: {}", pluginsDir, e);
       return PluginLoader.class.getClassLoader();
     }
     if (urls.isEmpty()) {

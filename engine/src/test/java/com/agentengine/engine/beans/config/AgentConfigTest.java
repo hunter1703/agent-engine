@@ -21,7 +21,7 @@ class AgentConfigTest {
   @Test
   void validateRequiresNameAndModels() {
     HybridAgentConfig config = new HybridAgentConfig();
-    config.setName("agent");
+    config.setAgentId("agent");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 

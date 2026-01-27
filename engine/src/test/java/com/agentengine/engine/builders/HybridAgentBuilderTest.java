@@ -47,7 +47,7 @@ class HybridAgentBuilderTest {
         sessionStoreProvider, messageStoreProvider);
 
     final HybridAgentConfig config = new HybridAgentConfig();
-    config.setName("test-agent");
+    config.setAgentId("test-agent");
     config.setModel(modelConfig("reasoner"));
     config.setRouterModel(modelConfig("router"));
     config.setPlanningModel(modelConfig("planner"));

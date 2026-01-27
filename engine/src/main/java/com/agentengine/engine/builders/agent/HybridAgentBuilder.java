@@ -20,16 +20,13 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
   private static final int DEFAULT_INVOCATION_LIMIT = 6;
 
   private final PlanningAgentBuilder planningAgentBuilder;
-  private final ToolRegistry toolRegistry;
-
   private final MessageStoreProvider messageStoreProvider;
 
   public HybridAgentBuilder(final ModelProvider modelProvider, final PlanningAgentBuilder planningAgentBuilder,
       final ToolRegistry toolRegistry, final SessionStoreProvider sessionStoreProvider,
       final MessageStoreProvider messageStoreProvider) {
-    super(modelProvider, sessionStoreProvider);
+    super(modelProvider, sessionStoreProvider, toolRegistry);
     this.planningAgentBuilder = planningAgentBuilder;
-    this.toolRegistry = toolRegistry;
     this.messageStoreProvider = messageStoreProvider;
   }
 
@@ -37,13 +34,13 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
   public HybridAgent build(final HybridAgentConfig agentConfig) {
     final MessageStore sharedMessageStore = messageStoreProvider
         .get(agentConfig.getModel().getContextManagerConfig().getMessageStore());
-    final LLMModel reasoningModel = modelProvider.get(agentConfig.getName(), agentConfig.getModel(),
+    final LLMModel reasoningModel = modelProvider.get(agentConfig.getAgentId(), agentConfig.getModel(),
         sharedMessageStore);
-    final LLMModel routerModel = modelProvider.get(agentConfig.getName(), agentConfig.getRouterModel(),
+    final LLMModel routerModel = modelProvider.get(agentConfig.getAgentId(), agentConfig.getRouterModel(),
         sharedMessageStore);
 
     final ToolsConfig toolsConfig = agentConfig.getModel().getTools();
-    final List<Tool> tools = toolRegistry.loadTools(agentConfig.getName(), toolsConfig);
+    final List<Tool> tools = toolRegistry.loadTools(agentConfig.getAgentId(), toolsConfig);
     final PlanningAgent planningAgent = createPlanningAgent(agentConfig, sharedMessageStore);
     tools.add(new UserClarificationTool());
     tools.add(planningAgent);
@@ -52,7 +49,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
 
     final SessionStore sessionStore = sessionStoreProvider.get(agentConfig.getSessionStore());
     return new HybridAgent(reasoningModel, routerModel, toolExecutor, sessionStore, DEFAULT_INVOCATION_LIMIT,
-        agentConfig.getName());
+        agentConfig.getAgentId());
   }
 
   @Override
@@ -62,7 +59,7 @@ public final class HybridAgentBuilder extends AbstractAgentBuilder<HybridAgentCo
 
   private PlanningAgent createPlanningAgent(final HybridAgentConfig agentConfig, final MessageStore messageStore) {
     final AgentConfig config = new AgentConfig();
-    config.setName(agentConfig.getName());
+    config.setAgentId(agentConfig.getAgentId());
     config.setModel(agentConfig.getPlanningModel());
     return planningAgentBuilder.build(config, messageStore);
   }

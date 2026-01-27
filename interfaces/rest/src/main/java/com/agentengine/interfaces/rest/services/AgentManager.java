@@ -55,7 +55,7 @@ public class AgentManager {
 
     Agent agent = engines.computeIfAbsent(key, k -> {
       LOG.info("Creating new agent instance - agent_id={} config_hash={} operation=agent.create", agentId, key.substring(0, Math.min(8, key.length())));
-      LOG.debug("Creating new agent instance - agent_id={} config_name=\"{}\" config_hash={}", agentId, agentConfig.getName(), key.substring(0, Math.min(8, key.length())));
+      LOG.debug("Creating new agent instance - agent_id={} config_name=\"{}\" config_hash={}", agentId, agentConfig.getAgentId(), key.substring(0, Math.min(8, key.length())));
       return agentProvider.get(agentConfig);
     });
 
@@ -76,7 +76,7 @@ public class AgentManager {
     if (config == null) {
       LOG.warn("Agent configuration not found - agent_id={} config_path=\"{}\"", agentId, configPath);
     } else {
-      LOG.debug("Agent configuration loaded - agent_id={} config_name=\"{}\"", agentId, config.getName());
+      LOG.debug("Agent configuration loaded - agent_id={} config_name=\"{}\"", agentId, config.getAgentId());
     }
 
     return config;

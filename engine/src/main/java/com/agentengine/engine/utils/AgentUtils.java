@@ -18,7 +18,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class AgentUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(AgentUtils.class);
   private static final String UPDATE_PLAN_TOOL_NAME = "update_plan";
 
   private static final Pattern LIST_ITEM = Pattern.compile("^(?:[-*]|\\d+\\.)\\s*(.+)$");
@@ -150,7 +154,9 @@ public final class AgentUtils {
         try {
           payload = JsonUtils.fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {
           });
-        } catch (Exception ignored) {
+        } catch (Exception innerEx) {
+          // Log the exception for debugging purposes
+          LOG.warn("Failed to parse JSON payload from substring", innerEx);
         }
       }
     }

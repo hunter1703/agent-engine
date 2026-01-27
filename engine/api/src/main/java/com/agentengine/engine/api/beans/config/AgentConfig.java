@@ -8,7 +8,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(key = "type")
 public class AgentConfig implements Config {
   private String type;
-  private String name;
+  private String agentId;
   private AgentModelConfig model;
   private SessionStoreConfig sessionStore = new InMemorySessionStoreConfig();
 
@@ -20,12 +20,12 @@ public class AgentConfig implements Config {
     this.type = agentType.name().toLowerCase();
   }
 
-  public String getName() {
-    return name;
+  public String getAgentId() {
+    return agentId;
   }
 
-  public void setName(final String name) {
-    this.name = name;
+  public void setAgentId(final String agentId) {
+    this.agentId = agentId;
   }
 
   @Override
@@ -55,7 +55,7 @@ public class AgentConfig implements Config {
 
   @Override
   public void validate() {
-    if (StringUtils.isBlank(name)) {
+    if (StringUtils.isBlank(agentId)) {
       throw new IllegalArgumentException("name is required");
     }
     if (model == null) {

@@ -19,23 +19,23 @@ class ConfigLoaderTest {
   void loadConfigReadsJsonAndValidates() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(configPath,
-        "{" + "\"type\":\"hybrid\"," + "\"name\":\"agent\"," + "\"model\":{\"modelId\":\"reasoner\"},"
+        "{" + "\"type\":\"hybrid\"," + "\"agentId\":\"agent\"," + "\"model\":{\"modelId\":\"reasoner\"},"
             + "\"routerModel\":{\"modelId\":\"router\"}," + "\"planningModel\":{\"modelId\":\"planner\"}" + "}");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 
-    assertThat(config.getName()).isEqualTo("agent");
+    assertThat(config.getAgentId()).isEqualTo("agent");
   }
 
   @Test
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
     Files.writeString(configPath,
-        "type: hybrid\nname: agent\nmodel:\n  modelId: reasoner\nrouterModel:\n  modelId: router\nplanningModel:\n  modelId: planner\n");
+        "type: hybrid\nagentId: agent\nmodel:\n  modelId: reasoner\nrouterModel:\n  modelId: router\nplanningModel:\n  modelId: planner\n");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 
-    assertThat(config.getName()).isEqualTo("agent");
+    assertThat(config.getAgentId()).isEqualTo("agent");
   }
 
   @Test
@@ -44,7 +44,7 @@ class ConfigLoaderTest {
     Files.writeString(configPath, """
         {
           "type": "hybrid",
-          "name": "agent",
+          "agentId": "agent",
           "model": {
             "modelId": "reasoner",
             "contextManagerConfig": {
@@ -77,7 +77,7 @@ class ConfigLoaderTest {
 
     final AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 
-    assertThat(config.getName()).isEqualTo("agent");
+    assertThat(config.getAgentId()).isEqualTo("agent");
     assertThat(config.getSessionStore().getType()).isEqualTo("memory");
   }
 

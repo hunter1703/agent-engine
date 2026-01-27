@@ -105,7 +105,7 @@ class AgentManagerTest {
 
   private static AgentConfig buildValidAgentConfig() {
     final HybridAgentConfig config = new HybridAgentConfig();
-    config.setName("agent");
+    config.setAgentId("agent");
     config.setModel(model("reasoner.json"));
     config.setRouterModel(model("router.json"));
     config.setPlanningModel(model("planner.json"));

@@ -4,10 +4,15 @@ import com.agentengine.engine.api.beans.ToolContext;
 import com.agentengine.engine.api.beans.ToolResult;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Tool that can be executed by an agent.
  */
 public interface Tool {
+  Logger LOG = LoggerFactory.getLogger(Tool.class);
+
   String name();
 
   String description();
@@ -23,6 +28,7 @@ public interface Tool {
       final String output = execute(args);
       return ToolResult.ok(output);
     } catch (Exception e) {
+      LOG.warn("Tool execution failed: {}", name(), e);
       return ToolResult.error(e.getMessage());
     }
   }

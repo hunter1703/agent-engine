@@ -15,9 +15,13 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
 
 public class MessageParser {
+  private static final Logger LOG = LoggerFactory.getLogger(MessageParser.class);
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
   private static final String THOUGHTS_KEY = "thoughts";
   private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
@@ -178,6 +182,7 @@ public class MessageParser {
         });
       } catch (Exception e) {
         // If parsing fails, continue with empty args
+        LOG.warn("Failed to parse tool call arguments: {}", argsStr, e);
         args = Map.of();
       }
 

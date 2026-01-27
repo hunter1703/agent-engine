@@ -3,11 +3,12 @@
   "additionalProperties": false,
   "properties": {
     "finalAnswer": {
-      "type": "string"
+      "type": "string",
+      "description": "The final answer to the user. Either this or toolCalls should be provided."
     },
     "toolCalls": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -27,7 +28,8 @@
           "name",
           "args"
         ]
-      }
+      },
+      "description": "List of tools to call. Either this or finalAnswer should be provided."
     }
   },
   "anyOf": [

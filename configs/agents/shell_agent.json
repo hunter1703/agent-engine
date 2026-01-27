@@ -1,6 +1,6 @@
 {
   "type": "hybrid",
-  "name": "shell_agent",
+  "agentId": "shell_agent",
   "model": {
     "modelId": "qwen3_coder_30b_llamacpp_reasoning",
     "role": "reasoning",
