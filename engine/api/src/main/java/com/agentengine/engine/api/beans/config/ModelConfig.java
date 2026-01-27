@@ -35,7 +35,7 @@ public class ModelConfig implements Config {
   private boolean thoughtsEnabled;
 
   private boolean toolCallingEnabled = true;
-  private boolean toolCallingSupported = true;
+  private boolean toolCallingSupported;
 
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
 
