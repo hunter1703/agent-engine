@@ -56,20 +56,21 @@ public class AgentRestAPI {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();
 
-    LOG.info("Agent invocation started - trace_id={} agent_id={} session_id={}",
-             traceId, request.getAgentId(), request.getSessionId());
+    LOG.info("Agent invocation started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
+        request.getSessionId());
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-      AgentResponse response = (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType())).handle(effectiveRequest);
+      AgentResponse response = (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType()))
+          .handle(effectiveRequest);
 
-      LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success",
-               traceId, request.getAgentId(), request.getSessionId());
+      LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success", traceId,
+          request.getAgentId(), request.getSessionId());
 
       return response;
     } catch (Exception e) {
-      LOG.error("Agent invocation failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
-                traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      LOG.error("Agent invocation failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"", traceId,
+          request.getAgentId(), request.getSessionId(), e.getMessage(), e);
       throw e;
     } finally {
       MDC.clear();
@@ -88,20 +89,21 @@ public class AgentRestAPI {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();
 
-    LOG.info("Agent events streaming started - trace_id={} agent_id={} session_id={}",
-             traceId, request.getAgentId(), request.getSessionId());
+    LOG.info("Agent events streaming started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
+        request.getSessionId());
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-      Multi<BaseEvent> response = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+      Multi<BaseEvent> response = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT)
+          .handle(effectiveRequest);
 
-      LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}",
-               traceId, request.getAgentId(), request.getSessionId());
+      LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
+          request.getAgentId(), request.getSessionId());
 
       return response;
     } catch (Exception e) {
       LOG.error("Agent events streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
-                traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+          traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
       throw e;
     } finally {
       MDC.clear();

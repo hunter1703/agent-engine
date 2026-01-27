@@ -1,8 +1,5 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import static java.lang.StringTemplate.STR;
-
-import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.engine.api.AgentRequest;
@@ -31,21 +28,23 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
   @Override
   public AgentResponse handle(final AgentRequest request) {
     LOG.info("Agent invocation handler started - agent_id={} session_id={} operation=agent.invoke.start",
-             request.getAgentId(), request.getSessionId());
+        request.getAgentId(), request.getSessionId());
 
     try {
       final Agent engine = getOrCreateEngine(request);
       final String sessionId = request.getSessionId();
       Message response = engine.invoke(sessionId, Message.user(request.getMessage()), Agent.NO_OP_LISTENER);
 
-      LOG.info("Agent invocation handler completed - agent_id={} session_id={} operation=agent.invoke.complete outcome=success",
-               request.getAgentId(), request.getSessionId());
+      LOG.info(
+          "Agent invocation handler completed - agent_id={} session_id={} operation=agent.invoke.complete outcome=success",
+          request.getAgentId(), request.getSessionId());
 
       return new InvokeResponse(sessionId, response == null ? null : response.getContent(),
           response == null ? null : response.getThoughts());
     } catch (Exception e) {
-      LOG.error("Agent invocation handler failed - agent_id={} session_id={} operation=agent.invoke.error outcome=failure error=\"{}\"",
-                request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      LOG.error(
+          "Agent invocation handler failed - agent_id={} session_id={} operation=agent.invoke.error outcome=failure error=\"{}\"",
+          request.getAgentId(), request.getSessionId(), e.getMessage(), e);
       throw e;
     }
   }

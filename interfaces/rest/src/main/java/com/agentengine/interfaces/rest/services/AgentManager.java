@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest.services;
 
 import static java.lang.StringTemplate.STR;
 
-import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.engine.api.utils.HashUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
