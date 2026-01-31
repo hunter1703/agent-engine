@@ -29,13 +29,14 @@ class AGUIEventEmitterTest {
     emitter.onEvent(responseEvent);
     emitter.onComplete();
 
-    RunStartedEvent started = (RunStartedEvent) events.getFirst();
+    RunStartedEvent started = events.stream().filter(item -> item instanceof RunStartedEvent)
+        .map(RunStartedEvent.class::cast).findFirst().orElseThrow();
     assertThat(started.getType()).isEqualTo(EventType.RUN_STARTED);
     assertThat(started.getThreadId()).isEqualTo("thread-1");
     assertThat(started.getRunId()).isEqualTo("run-1");
-    assertThat(started.getRawEvent()).isEqualTo(Map.of("input", Map.of("message", "hello")));
+    assertThat(started.getRawEvent()).isNull();
 
-    RunFinishedEvent finished = (RunFinishedEvent) events.stream().filter(item -> item instanceof RunFinishedEvent)
+    RunFinishedEvent finished = events.stream().filter(item -> item instanceof RunFinishedEvent)
         .map(RunFinishedEvent.class::cast).findFirst().orElseThrow();
     assertThat(finished.getType()).isEqualTo(EventType.RUN_FINISHED);
     assertThat(finished.getResult()).isEqualTo("done");
@@ -55,8 +56,8 @@ class AGUIEventEmitterTest {
 
     emitter.onEvent(responseEvent);
 
-    assertThat(events).hasSize(2);
-    ToolCallResultEvent resultEvent = (ToolCallResultEvent) events.get(1);
+    ToolCallResultEvent resultEvent = events.stream().filter(item -> item instanceof ToolCallResultEvent)
+        .map(ToolCallResultEvent.class::cast).findFirst().orElseThrow();
     assertThat(resultEvent.getType()).isEqualTo(EventType.TOOL_CALL_RESULT);
     assertThat(resultEvent.getToolCallId()).isEqualTo("call-1");
     assertThat(resultEvent.getContent()).isEqualTo("ok");

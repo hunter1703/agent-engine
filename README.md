@@ -180,5 +180,7 @@ curl -N -X POST http://localhost:8080/agent/events \
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.
 - Prompt templates live in `engine/src/main/resources/prompts` and render via Jinjava.
 - Agent listener output is delivered through `onTextMessageStart/Delta/End` events rather than a separate final-answer hook.
-- Simple agents include a built-in planning tool: `plan_tool`.
+- Enable planning by adding `planning` under `tools.standardTools` (or `tools.enabled`), which expands to
+  `create_plan`, `update_plan_info`, `revise_current_plan`, `update_subtask_state`, `finish_plan`, and
+  `view_current_plan`.
 - The standard `user_clarification` tool requests required input during a run.

@@ -60,6 +60,29 @@ class ToolRegistryTest {
   }
 
   @Test
+  void loadToolsExpandsPlanningToolGroup() {
+    ToolProvider createPlanProvider = buildProvider("create_plan");
+    ToolProvider finishPlanProvider = buildProvider("finish_plan");
+    ToolProvider otherProvider = buildProvider("other_tool");
+
+    Instance<ToolProvider> providers = mock(Instance.class);
+    when(providers.iterator())
+        .thenReturn(List.of(createPlanProvider, finishPlanProvider, otherProvider).iterator());
+    when(providers.stream()).thenReturn(Stream.of(createPlanProvider, finishPlanProvider, otherProvider));
+
+    ToolRegistry registry = new ToolRegistry(providers);
+    ToolsConfig toolsConfig = new ToolsConfig();
+    toolsConfig.setEnabled(List.of("planning"));
+
+    AgentConfig config = new AgentConfig();
+    config.setAgentId("test-agent");
+    AgentContext context = new AgentContext(config, new InMemorySessionService());
+    List<BaseTool> tools = registry.loadTools(context, toolsConfig);
+
+    assertThat(tools).hasSize(2);
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   void loadToolsSkipsMismatchedAgentAndNullConfig() {
     Instance<ToolProvider> providers = mock(Instance.class);
@@ -75,5 +98,18 @@ class ToolRegistryTest {
 
   private static Map<String, Object> anyMap() {
     return org.mockito.ArgumentMatchers.anyMap();
+  }
+
+  private static ToolProvider buildProvider(final String toolName) {
+    ToolProvider provider = mock(ToolProvider.class);
+    when(provider.agentId()).thenReturn("ALL");
+    when(provider.toolName()).thenReturn(toolName);
+    BaseTool tool = FunctionTool.create(new Object() {
+      public Map<String, Object> run(Map<String, Object> args) {
+        return Map.of("status", "ok");
+      }
+    }, "run");
+    when(provider.create(org.mockito.ArgumentMatchers.any(AgentContext.class), anyMap())).thenReturn(tool);
+    return provider;
   }
 }

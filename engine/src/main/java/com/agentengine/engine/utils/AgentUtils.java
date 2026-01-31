@@ -1,12 +1,8 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.alibaba.fastjson2.TypeReference;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,17 +46,4 @@ public final class AgentUtils {
     return payload;
   }
 
-  public static List<ToolCall> transformToToolCalls(final List<ToolExecutionRequest> requests) {
-    final List<ToolCall> toolCalls = new ArrayList<>();
-    if (requests == null) {
-      return toolCalls;
-    }
-    for (final ToolExecutionRequest request : requests) {
-      final ToolCall toolCall = new ToolCall(request.id(), request.name(),
-          JsonUtils.fromJson(request.arguments(), new TypeReference<>() {
-          }));
-      toolCalls.add(toolCall);
-    }
-    return toolCalls;
-  }
 }
