@@ -1,5 +1,6 @@
 package com.agentengine.engine.tools;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
@@ -33,11 +34,13 @@ public final class ToolRegistry {
     this.providers = Collections.unmodifiableList(allProviders);
   }
 
-  public List<BaseTool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
+  public List<BaseTool> loadTools(final AgentContext agentContext, final ToolsConfig toolsConfig) {
     if (toolsConfig == null) {
       return Collections.emptyList();
     }
     final List<BaseTool> tools = new ArrayList<>();
+
+    final String agentId = agentContext == null ? null : agentContext.agentId();
 
     final List<String> enabled = CollectionUtils.isEmpty(toolsConfig.getEnabled())
         ? List.of("ALL")
@@ -56,7 +59,7 @@ public final class ToolRegistry {
         continue;
       }
       final Map<String, Object> toolConfig = toolConfigs == null ? null : toolConfigs.get(toolName);
-      final BaseTool tool = provider.create(toolConfig);
+      final BaseTool tool = provider.create(agentContext, toolConfig);
       if (tool == null) {
         continue;
       }

@@ -20,9 +20,9 @@ public final class ToolUtils {
       if (tool == null || tool.name() == null || tool.name().isBlank()) {
         continue;
       }
-      String line = "- " + tool.name();
+      String line = STR."- \{tool.name()}";
       if (tool.description() != null && !tool.description().isBlank()) {
-        line += " - " + tool.description();
+        line += STR." - \{tool.description()}";
       }
       builder.append(line).append("\n\t-").append("tool args schema - ")
           .append(

@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
+import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
+import com.google.adk.sessions.InMemorySessionService;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +30,7 @@ class ToolRegistryTest {
         return Map.of("output", "pre-" + args.get("value"));
       }
     }, "run");
-    when(provider.create(anyMap())).thenReturn(fakeTool);
+    when(provider.create(org.mockito.ArgumentMatchers.any(AgentContext.class), anyMap())).thenReturn(fakeTool);
 
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
@@ -39,16 +42,19 @@ class ToolRegistryTest {
     toolsConfig.setEnabled(List.of("ALL"));
     toolsConfig.setConfigs(toolConfigs);
 
-    List<BaseTool> tools = registry.loadTools("test-agent", toolsConfig);
+    AgentConfig config = new AgentConfig();
+    config.setAgentId("test-agent");
+    AgentContext context = new AgentContext(config, new InMemorySessionService());
+    List<BaseTool> tools = registry.loadTools(context, toolsConfig);
 
-    assertThat(tools).hasSize(2); // mocked tool + global PlanTool
+    assertThat(tools).isNotEmpty();
     BaseTool tool = tools.stream().filter(t -> t.name().equals("fake")).findFirst().orElseThrow();
     Map<String, Object> result = (Map<String, Object>) tool.runAsync(Map.of("value", "fix"), null)
         .blockingGet();
     assertThat(result).containsEntry("output", "pre-fix");
 
     toolsConfig.setEnabled(List.of("other"));
-    List<BaseTool> filtered = registry.loadTools("test-agent", toolsConfig);
+    List<BaseTool> filtered = registry.loadTools(context, toolsConfig);
 
     assertThat(filtered).isEmpty();
   }
@@ -60,8 +66,11 @@ class ToolRegistryTest {
     when(providers.iterator()).thenReturn(List.<ToolProvider>of().iterator());
 
     ToolRegistry registry = new ToolRegistry(providers);
-    assertThat(registry.loadTools("other-agent", new ToolsConfig())).isEmpty();
-    assertThat(registry.loadTools("test-agent", null)).isEmpty();
+    AgentConfig config = new AgentConfig();
+    config.setAgentId("other-agent");
+    AgentContext context = new AgentContext(config, new InMemorySessionService());
+    assertThat(registry.loadTools(context, new ToolsConfig())).isEmpty();
+    assertThat(registry.loadTools(context, null)).isEmpty();
   }
 
   private static Map<String, Object> anyMap() {

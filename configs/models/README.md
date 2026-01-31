@@ -4,6 +4,7 @@ This directory contains model configuration JSON files imported into MongoDB. Ea
 `ModelConfig` and is referenced from agent configs by ID. The setup script imports JSON files
 only.
 
+
 ## Required Fields
 - `type`: one of `OLLAMA`, `LLAMA_CPP`, `OPEN_AI`
 - `model`: model name or identifier

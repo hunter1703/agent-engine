@@ -1,5 +1,6 @@
 package com.agentengine.engine.tools;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
@@ -19,7 +20,7 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public BaseTool create(final Map<String, Object> toolConfig) {
+  public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     return new BaseTool("fake", "test tool") {
       @Override
       public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {

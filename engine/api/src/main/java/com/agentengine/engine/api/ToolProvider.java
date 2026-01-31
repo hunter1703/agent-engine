@@ -9,5 +9,5 @@ public interface ToolProvider {
 
   String toolName();
 
-  BaseTool create(Map<String, Object> toolConfig);
+  BaseTool create(AgentContext agentContext, Map<String, Object> toolConfig);
 }

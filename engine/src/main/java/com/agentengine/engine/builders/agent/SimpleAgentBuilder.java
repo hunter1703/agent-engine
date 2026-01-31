@@ -1,5 +1,6 @@
 package com.agentengine.engine.builders.agent;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.agents.SimpleAgent;
@@ -9,6 +10,7 @@ import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.tools.ToolUtils;
 import com.google.adk.tools.BaseTool;
+import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -26,19 +28,33 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
   }
 
   @Override
-  public SimpleAgent build(AgentConfig config) {
-    final AgentBuilder builder = getBuilder(config);
+  public SimpleAgent build(final AgentConfig config, final AgentContext agentContext) {
+    final AgentBuilder builder = getBuilder(config, agentContext);
     return new SimpleAgent(builder);
   }
 
-  protected AgentBuilder getBuilder(final AgentConfig config) {
+  protected AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
     final LangChain4JLLMModel model = modelProvider.get(config.getAgentId(), config.getModel());
-    final List<BaseTool> tools = toolRegistry.loadTools(config.getAgentId(), config.getModel().getTools());
+    final BaseSessionService sessionService = resolveSessionService(agentContext, config);
+    final AgentContext resolvedContext = sessionService == null
+        ? agentContext
+        : new AgentContext(config, sessionService);
+    final List<BaseTool> tools = toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
     final AgentBuilder agentBuilder = new AgentBuilder();
     agentBuilder.protocolInstructions(model.getProtocol())
         .toolInstructions(ToolUtils.buildToolMessage(tools)).globalInstruction(config.getModel().getSystemPrompt())
         .disallowTransferToParent(false).disallowTransferToPeers(false).name(config.getAgentId()).model(model);
     return agentBuilder;
+  }
+
+  private BaseSessionService resolveSessionService(final AgentContext agentContext, final AgentConfig config) {
+    if (agentContext != null && agentContext.sessionService() != null) {
+      return agentContext.sessionService();
+    }
+    if (config == null) {
+      return null;
+    }
+    return sessionServiceProvider.get(config.getSessionStore());
   }
 
   @Override

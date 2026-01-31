@@ -1,11 +1,12 @@
 package com.agentengine.engine.api.builders;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.AgentContext;
 import com.google.adk.agents.LlmAgent;
 
 public interface AgentBuilder<C extends AgentConfig, A extends LlmAgent> {
 
-  A build(C agentConfig);
+  A build(C agentConfig, AgentContext agentContext);
 
   String type();
 }

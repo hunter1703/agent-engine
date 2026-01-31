@@ -47,9 +47,9 @@ Or use the root shortcut:
 
 Endpoints:
 
-- `POST /agent/invoke` with `{ "type": "INVOKE_AGENT", "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
+- `POST /agent/invoke` with `{ "type": "INVOKE_AGENT", "agentId": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
   - Use `type: "BUILD_PROMPT"` to return the assembled prompt.
-- `POST /agent/events` with `{ "agentName": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for SSE event stream
+- `POST /agent/events` with `{ "agentId": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for SSE event stream
 
 Runtime settings:
 

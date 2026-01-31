@@ -1,5 +1,6 @@
 package com.agentengine.engine.tools;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
 import com.google.adk.tools.BaseTool;
 
@@ -17,7 +18,7 @@ public class BlankToolProvider implements ToolProvider {
   }
 
   @Override
-  public BaseTool create(final Map<String, Object> toolConfig) {
+  public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     return null;
   }
 }

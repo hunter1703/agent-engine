@@ -1,5 +1,6 @@
 package com.agentengine.plugins.shellagent.tools;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
@@ -18,7 +19,7 @@ public final class ShellCommandToolProvider implements ToolProvider {
   }
 
   @Override
-  public BaseTool create(final Map<String, Object> toolConfig) {
+  public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     final Long timeoutSeconds = parseTimeoutSeconds(toolConfig);
     final Duration timeout = Duration.ofSeconds(timeoutSeconds == null ? 30 : timeoutSeconds);
     return FunctionTool.create(new ShellCommandTool(timeout), "runCommand");

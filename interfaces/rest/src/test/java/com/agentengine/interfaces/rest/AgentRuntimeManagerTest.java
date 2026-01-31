@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Paths;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
@@ -34,7 +36,7 @@ class AgentRuntimeManagerTest {
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
-    when(agentProvider.get(agentConfig)).thenReturn(engine);
+    when(agentProvider.get(eq(agentConfig), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
@@ -43,7 +45,7 @@ class AgentRuntimeManagerTest {
     final AgentRuntime resolved = service.getOrStartRuntime("agent", "config.json");
 
     assertThat(resolved.agent()).isSameAs(engine);
-    verify(agentProvider).get(agentConfig);
+    verify(agentProvider).get(any(AgentConfig.class), any(AgentContext.class));
   }
 
   @Test
@@ -56,7 +58,7 @@ class AgentRuntimeManagerTest {
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configRepository.loadAgentConfig("agent")).thenReturn(config);
-    when(agentProvider.get(config)).thenReturn(engine);
+    when(agentProvider.get(eq(config), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(config.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
@@ -78,7 +80,7 @@ class AgentRuntimeManagerTest {
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
-    when(agentProvider.get(agentConfig)).thenReturn(engine);
+    when(agentProvider.get(eq(agentConfig), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
@@ -88,7 +90,7 @@ class AgentRuntimeManagerTest {
     final AgentRuntime second = service.getOrStartRuntime("agent", "config.json");
 
     assertThat(first).isSameAs(second);
-    verify(agentProvider).get(agentConfig);
+    verify(agentProvider).get(any(AgentConfig.class), any(AgentContext.class));
   }
 
   @Test

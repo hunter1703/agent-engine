@@ -1,5 +1,6 @@
 package com.agentengine.plugins.echoagent.tools;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ToolProvider;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.google.adk.tools.BaseTool;
@@ -19,7 +20,7 @@ public final class EchoToolProvider implements ToolProvider {
   }
 
   @Override
-  public BaseTool create(final Map<String, Object> toolConfig) {
+  public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     final String prefix = CollectionUtils.getStringValueFromMap(toolConfig, "prefix");
     return FunctionTool.create(new EchoTool(prefix), "echo");
   }

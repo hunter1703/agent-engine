@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest.services;
 
 import static java.lang.StringTemplate.STR;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
@@ -72,8 +73,9 @@ public class AgentRuntimeManager {
   }
 
   private AgentRuntime createRuntime(final AgentConfig agentConfig) {
-    final LlmAgent agent = agentProvider.get(agentConfig);
     final BaseSessionService sessionService = sessionServiceProvider.get(agentConfig.getSessionStore());
+    final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
+    final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
     final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getAgentId()).sessionService(sessionService)
         .build();
     return new AgentRuntime(agent, runner, sessionService, agentConfig.getAgentId());

@@ -1,6 +1,7 @@
 package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.google.adk.agents.LlmAgent;
@@ -25,10 +26,10 @@ public class AgentProvider {
     this.defaultAgentBuilder = simpleAgentBuilder;
   }
 
-  public <C extends AgentConfig, A extends LlmAgent> A get(final C config) {
+  public <C extends AgentConfig, A extends LlmAgent> A get(final C config, final AgentContext agentContext) {
     // noinspection unchecked
     final AgentBuilder<C, A> builder = (AgentBuilder<C, A>) typeVsBuilder.getOrDefault(config.getType(),
         defaultAgentBuilder);
-    return builder.build(config);
+    return builder.build(config, agentContext);
   }
 }

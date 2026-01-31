@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.builders.AgentBuilder;
@@ -26,18 +27,18 @@ class AgentProviderTest {
     final Instance<AgentBuilder<?, ?>> instance = (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.<AgentBuilder<?, ?>>of(named, other));
     final SimpleAgentBuilder fallback = mock(SimpleAgentBuilder.class);
-    when(fallback.build(any())).then(invocation -> fallbackAgent);
+    when(fallback.build(any(), any())).then(invocation -> fallbackAgent);
 
     final AgentProvider factory = new AgentProvider(instance, fallback);
 
     final AgentConfig config = new AgentConfig();
     config.setType("alpha");
-    final LlmAgent agent = factory.get(config);
+    final LlmAgent agent = factory.get(config, new AgentContext(config, null));
     assertThat(agent).isNotNull();
 
     final AgentConfig missing = new AgentConfig();
     missing.setType("missing");
-    final LlmAgent missingAgent = factory.get(missing);
+    final LlmAgent missingAgent = factory.get(missing, new AgentContext(missing, null));
     assertThat(missingAgent).isSameAs(fallbackAgent);
   }
 
@@ -49,7 +50,7 @@ class AgentProviderTest {
     }
 
     @Override
-    public LlmAgent build(final AgentConfig agentConfig) {
+    public LlmAgent build(final AgentConfig agentConfig, final AgentContext agentContext) {
       return mock(LlmAgent.class);
     }
 

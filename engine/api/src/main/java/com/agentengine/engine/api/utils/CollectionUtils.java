@@ -57,6 +57,25 @@ public final class CollectionUtils {
     return (String) map.get(key);
   }
 
+  public static String getStringValueFromMapSafe(final Map<String, Object> map, final String key) {
+    if (CollectionUtils.isEmpty(map)) {
+      return null;
+    }
+    final Object value = map.get(key);
+    return value == null ? null : value.toString();
+  }
+
+  public static <T> T getValueFromMap(final Map<String, Object> map, final String key, final Class<T> type) {
+    if (CollectionUtils.isEmpty(map) || type == null) {
+      return null;
+    }
+    final Object value = map.get(key);
+    if (type.isInstance(value)) {
+      return type.cast(value);
+    }
+    return null;
+  }
+
   public static <T> T getFirst(final Collection<T> collection) {
     if (CollectionUtils.isEmpty(collection)) {
       return null;
@@ -95,6 +114,18 @@ public final class CollectionUtils {
       return null;
     }
     return (Map<K, V>) map.get(key);
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> List<T> getListFromMap(final Map<String, Object> map, final String key) {
+    if (CollectionUtils.isEmpty(map)) {
+      return List.of();
+    }
+    final Object value = map.get(key);
+    if (value instanceof List<?> list) {
+      return (List<T>) list;
+    }
+    return List.of();
   }
 
   public static boolean isEmpty(final Map<?, ?> map) {
