@@ -4,7 +4,6 @@ import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.google.adk.sessions.BaseSessionService;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

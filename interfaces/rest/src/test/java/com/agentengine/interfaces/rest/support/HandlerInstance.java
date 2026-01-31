@@ -37,7 +37,7 @@ public final class HandlerInstance implements Instance<AgentRequestHandler<?>> {
   }
 
   @Override
-  public void destroy(final AgentRequestHandler instance) {
+  public void destroy(final AgentRequestHandler<?> instance) {
     // No-op for tests
   }
 

@@ -2,13 +2,17 @@ package com.agentengine.interfaces.rest.services;
 
 import static java.lang.StringTemplate.STR;
 
-import com.agentengine.engine.api.utils.HashUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
+import com.agentengine.engine.api.utils.HashUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.agent.AgentProvider;
+import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.google.adk.agents.LlmAgent;
+import com.google.adk.runner.Runner;
+import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Singleton;
 import java.nio.file.Paths;
 import java.util.Map;
@@ -18,22 +22,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Singleton
-public class AgentManager {
-  private static final Logger LOG = LoggerFactory.getLogger(AgentManager.class);
+public class AgentRuntimeManager {
+  private static final Logger LOG = LoggerFactory.getLogger(AgentRuntimeManager.class);
+  public static final String DEFAULT_USER_ID = "default";
 
   private final AgentProvider agentProvider;
   private final ConfigLoader configLoader;
   private final ConfigRepository configRepository;
-  private final Map<String, Agent> engines = new ConcurrentHashMap<>();
+  private final SessionServiceProvider sessionServiceProvider;
+  private final Map<String, AgentRuntime> runtimes = new ConcurrentHashMap<>();
 
-  public AgentManager(final AgentProvider agentProvider, final ConfigLoader configLoader,
-      final ConfigRepository configRepository) {
+  public AgentRuntimeManager(final AgentProvider agentProvider, final ConfigLoader configLoader,
+      final ConfigRepository configRepository, final SessionServiceProvider sessionServiceProvider) {
     this.agentProvider = agentProvider;
     this.configLoader = configLoader;
     this.configRepository = configRepository;
+    this.sessionServiceProvider = sessionServiceProvider;
   }
 
-  public Agent getOrStartEngine(final String agentId, final String configPath) {
+  public AgentRuntime getOrStartRuntime(final String agentId, final String configPath) {
     if (StringUtils.isBlank(agentId)) {
       LOG.warn("Agent ID validation failed - agent_id=\"\" config_path=\"{}\"", configPath);
       throw new IllegalArgumentException("agentId is required");
@@ -52,14 +59,24 @@ public class AgentManager {
     agentConfig.validate();
     final String key = HashUtils.HMACSHA256_Base64(STR."\{agentId}|\{JsonUtils.toStableJson(agentConfig)}");
 
-    Agent agent = engines.computeIfAbsent(key, k -> {
-      LOG.info("Creating new agent instance - agent_id={} config_hash={} operation=agent.create", agentId, key.substring(0, Math.min(8, key.length())));
-      LOG.debug("Creating new agent instance - agent_id={} config_name=\"{}\" config_hash={}", agentId, agentConfig.getAgentId(), key.substring(0, Math.min(8, key.length())));
-      return agentProvider.get(agentConfig);
+    AgentRuntime runtime = runtimes.computeIfAbsent(key, k -> {
+      final String prefix = key.substring(0, Math.min(8, key.length()));
+      LOG.info("Creating new agent runtime - agent_id={} config_hash={} operation=agent.create", agentId, prefix);
+      LOG.debug("Creating new agent runtime - agent_id={} config_name=\"{}\" config_hash={}", agentId,
+          agentConfig.getAgentId(), prefix);
+      return createRuntime(agentConfig);
     });
 
-    LOG.debug("Agent engine retrieved - agent_id={} cached={}", agentId, engines.containsKey(key));
-    return agent;
+    LOG.debug("Agent runtime retrieved - agent_id={} cached={}", agentId, runtimes.containsKey(key));
+    return runtime;
+  }
+
+  private AgentRuntime createRuntime(final AgentConfig agentConfig) {
+    final LlmAgent agent = agentProvider.get(agentConfig);
+    final BaseSessionService sessionService = sessionServiceProvider.get(agentConfig.getSessionStore());
+    final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getAgentId()).sessionService(sessionService)
+        .build();
+    return new AgentRuntime(agent, runner, sessionService, agentConfig.getAgentId());
   }
 
   private AgentConfig resolveAgentConfig(final String agentId, final String configPath) {

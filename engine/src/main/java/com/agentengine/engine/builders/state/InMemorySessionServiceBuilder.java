@@ -8,7 +8,9 @@ import jakarta.inject.Singleton;
 import static com.agentengine.engine.api.beans.config.SessionServiceConfig.SessionServiceType.MEMORY;
 
 @Singleton
-public class InMemorySessionServiceBuilder implements SessionServiceBuilder<InMemorySessionServiceConfig, InMemorySessionService> {
+public class InMemorySessionServiceBuilder
+    implements
+      SessionServiceBuilder<InMemorySessionServiceConfig, InMemorySessionService> {
 
   @Override
   public InMemorySessionService build(final InMemorySessionServiceConfig sessionStoreConfig) {

@@ -9,11 +9,11 @@ import java.util.function.UnaryOperator;
 public class BaseContextManager implements ContextManager {
   private final UnaryOperator<List<Content>> promptBuilder;
 
-    public BaseContextManager(UnaryOperator<List<Content>> promptBuilder) {
-        this.promptBuilder = promptBuilder;
-    }
+  public BaseContextManager(UnaryOperator<List<Content>> promptBuilder) {
+    this.promptBuilder = promptBuilder;
+  }
 
-    @Override
+  @Override
   public UnaryOperator<List<Content>> getPromptBuilder() {
     return promptBuilder;
   }

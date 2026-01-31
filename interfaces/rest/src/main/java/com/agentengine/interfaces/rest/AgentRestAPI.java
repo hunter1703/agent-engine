@@ -1,14 +1,16 @@
 package com.agentengine.interfaces.rest;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
-import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agui.core.event.BaseEvent;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
+import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
@@ -51,7 +53,7 @@ public class AgentRestAPI {
   @Path("/invoke")
   @Operation(summary = "Invoke an agent", description = "Invoke the agent or build its prompt.")
   @APIResponse(responseCode = "200", description = "Invoke response or prompt response", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(oneOf = {
-      InvokeResponse.class, PromptResponse.class})))
+      InvokeResponse.class, PromptResponse.class })))
   public AgentResponse invoke(final AgentRequest request) {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();
@@ -63,6 +65,7 @@ public class AgentRestAPI {
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+      MDC.put("session_id", effectiveRequest.getSessionId());
       AgentResponse response = (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType()))
           .handle(effectiveRequest);
 
@@ -100,6 +103,7 @@ public class AgentRestAPI {
 
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+      MDC.put("session_id", effectiveRequest.getSessionId());
       Multi<BaseEvent> response = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT)
           .handle(effectiveRequest);
 

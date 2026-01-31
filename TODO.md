@@ -4,4 +4,4 @@
 - remove trivial tests
 - add integration tests
 - Add static imports
-- add handler abstraction for plan updates in Hybrid Agent
+- com.agentengine.engine.builders.agent.AgentBuilder.model -> user super only

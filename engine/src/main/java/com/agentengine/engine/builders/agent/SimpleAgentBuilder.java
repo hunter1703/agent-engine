@@ -9,7 +9,6 @@ import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.tools.ToolUtils;
 import com.google.adk.tools.BaseTool;
-import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -20,27 +19,31 @@ import java.util.List;
 @Named("simpleAgentBuilder")
 public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, SimpleAgent> {
 
-    @Inject
-    public SimpleAgentBuilder(ModelProvider modelProvider, SessionServiceProvider sessionServiceProvider,
-                              ToolRegistry toolRegistry, ContextManagerProvider contextManagerProvider) {
-        super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry);
-    }
+  @Inject
+  public SimpleAgentBuilder(ModelProvider modelProvider, SessionServiceProvider sessionServiceProvider,
+      ToolRegistry toolRegistry, ContextManagerProvider contextManagerProvider) {
+    super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry);
+  }
 
-    @Override
-    public SimpleAgent build(AgentConfig config) {
-        final AgentBuilder builder = getBuilder(config);
-        return new SimpleAgent(builder);
-    }
+  @Override
+  public SimpleAgent build(AgentConfig config) {
+    final AgentBuilder builder = getBuilder(config);
+    return new SimpleAgent(builder);
+  }
 
-    protected AgentBuilder getBuilder(final AgentConfig config) {
-        final LangChain4JLLMModel model = modelProvider.get(config.getAgentId(), config.getModel());
-        final List<BaseTool> tools = toolRegistry.loadTools(config.getAgentId(), config.getModel().getTools());
-        return (AgentBuilder) new AgentBuilder().model(model).protocolInstructions(model.getProtocol()).toolInstructions(ToolUtils.buildToolMessage(tools)).globalInstruction(config.getModel().getSystemPrompt()).planning(true);
-    }
+  protected AgentBuilder getBuilder(final AgentConfig config) {
+    final LangChain4JLLMModel model = modelProvider.get(config.getAgentId(), config.getModel());
+    final List<BaseTool> tools = toolRegistry.loadTools(config.getAgentId(), config.getModel().getTools());
+    final AgentBuilder agentBuilder = new AgentBuilder();
+    agentBuilder.protocolInstructions(model.getProtocol())
+        .toolInstructions(ToolUtils.buildToolMessage(tools)).globalInstruction(config.getModel().getSystemPrompt())
+        .disallowTransferToParent(false).disallowTransferToPeers(false).name(config.getAgentId()).model(model);
+    return agentBuilder;
+  }
 
-    @Override
-    public String type() {
-        return AgentConfig.AgentType.DEFAULT.name().toLowerCase();
-    }
+  @Override
+  public String type() {
+    return AgentConfig.AgentType.DEFAULT.name().toLowerCase();
+  }
 
 }

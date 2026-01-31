@@ -1,18 +1,18 @@
 package com.agentengine.engine.api.beans.session;
 
 public enum PlanStatus {
-  PENDING, IN_PROGRESS, COMPLETED;
+    TODO("todo"),
+    IN_PROGRESS("in_progress"),
+    DONE("done"),
+    ABANDONED("abandoned");
 
-  public static PlanStatus fromString(final String value) {
-    if (value == null || value.isBlank()) {
-      return PENDING;
+    private final String value;
+
+    PlanStatus(String value) {
+        this.value = value;
     }
-    final String normalized = value.trim().toUpperCase().replace('-', '_').replace(' ', '_');
-    for (PlanStatus status : values()) {
-      if (status.name().equals(normalized)) {
-        return status;
-      }
+
+    public String getValue() {
+        return value;
     }
-    return PENDING;
-  }
 }

@@ -1,6 +1,5 @@
 package com.agentengine.engine.builders.agent;
 
-
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.builders.AgentBuilder;
@@ -19,7 +18,8 @@ public class AgentProvider {
   private final SimpleAgentBuilder defaultAgentBuilder;
 
   @Inject
-  public AgentProvider(final Instance<AgentBuilder<?, ?>> allBuilders, @Named("simpleAgentBuilder") final SimpleAgentBuilder simpleAgentBuilder) {
+  public AgentProvider(final Instance<AgentBuilder<?, ?>> allBuilders,
+      @Named("simpleAgentBuilder") final SimpleAgentBuilder simpleAgentBuilder) {
     typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), AgentBuilder::type,
         Function.identity());
     this.defaultAgentBuilder = simpleAgentBuilder;
@@ -28,7 +28,7 @@ public class AgentProvider {
   public <C extends AgentConfig, A extends LlmAgent> A get(final C config) {
     // noinspection unchecked
     final AgentBuilder<C, A> builder = (AgentBuilder<C, A>) typeVsBuilder.getOrDefault(config.getType(),
-            defaultAgentBuilder);
+        defaultAgentBuilder);
     return builder.build(config);
   }
 }

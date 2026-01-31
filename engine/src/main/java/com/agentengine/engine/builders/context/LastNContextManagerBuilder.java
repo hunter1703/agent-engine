@@ -8,7 +8,7 @@ import jakarta.inject.Singleton;
 @Singleton
 public class LastNContextManagerBuilder
     implements
-        ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
+      ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
 
   @Override
   public LastNContextManager build(final LastNContextManagerConfig contextConfig) {

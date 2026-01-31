@@ -1,50 +1,38 @@
 package com.agentengine.engine.builders.agent;
 
-import static java.lang.StringTemplate.STR;
-
 import com.agentengine.engine.agents.SimpleAgent;
-import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.google.adk.agents.LlmAgent;
 
 public class AgentBuilder extends LlmAgent.Builder {
-    private String protocolInstructions;
-    private String toolInstructions;
-    private LangChain4JLLMModel model;
+  private String protocolInstructions;
+  private String toolInstructions;
+  private String globalInstruction;
 
-    public AgentBuilder protocolInstructions(final String protocolInstructions) {
-        this.protocolInstructions = protocolInstructions;
-        return this;
-    }
+  public AgentBuilder protocolInstructions(final String protocolInstructions) {
+    this.protocolInstructions = protocolInstructions;
+    return this;
+  }
 
-    public AgentBuilder toolInstructions(final String toolInstructions) {
-        this.toolInstructions = toolInstructions;
-        return this;
-    }
+  public AgentBuilder toolInstructions(final String toolInstructions) {
+    this.toolInstructions = toolInstructions;
+    return this;
+  }
 
-    public LlmAgent.Builder reWriteInstructions() {
-        return super.instruction(STR."""
-                # PROTOCOL YOU MUST FOLLOW
-                \{protocolInstructions}
+  public AgentBuilder globalInstruction(final String globalInstruction) {
+    this.globalInstruction = globalInstruction;
+    return this;
+  }
 
-                ---
+  public LlmAgent.Builder reWriteInstructions() {
+    return super.instruction(
+        "# GLOBAL INSTRUCTION\n" + globalInstruction + "\n\n# PROTOCOL YOU MUST FOLLOW\n" + protocolInstructions
+            + "\n\n---\n\n# TOOLS\n" + toolInstructions);
+  }
 
-                # TOOLS
-                \{toolInstructions}
-                """);
-    }
-
-    public AgentBuilder model(final LangChain4JLLMModel model) {
-        this.model = model;
-        return this;
-    }
-
-    public LangChain4JLLMModel getModel() {
-        return model;
-    }
-
-    @Override
-    public SimpleAgent build() {
-        return new SimpleAgent(this) {
-        };
-    }
+  @Override
+  public SimpleAgent build() {
+    validate();
+    return new SimpleAgent(this) {
+    };
+  }
 }

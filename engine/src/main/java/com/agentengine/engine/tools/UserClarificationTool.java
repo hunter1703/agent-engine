@@ -12,8 +12,7 @@ public final class UserClarificationTool {
 
   @Schema(name = "user_clarification", description = "Request clarification from the user.")
   public static Map<String, Object> clarifyFromUser(
-      @Schema(name = "question", description = "Clarifying question to present to the user")
-      final String question) {
+      @Schema(name = "question", description = "Clarifying question to present to the user") final String question) {
     return Map.of("clarification", question);
   }
 }

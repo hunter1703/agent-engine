@@ -21,10 +21,10 @@ class ConfigLoaderTest {
   void loadConfigReadsJsonAndValidates() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(configPath,
-        "{" + "\"type\":\"hybrid\"," + "\"agentId\":\"agent\"," +
-            "\"model\":{\"modelId\":\"reasoner\",\"systemPrompt\":\"system\"}," +
-            "\"routerModel\":{\"modelId\":\"router\",\"systemPrompt\":\"system\"}," +
-            "\"planningModel\":{\"modelId\":\"planner\",\"systemPrompt\":\"system\"}" + "}");
+        "{" + "\"type\":\"hybrid\"," + "\"agentId\":\"agent\","
+            + "\"model\":{\"modelId\":\"reasoner\",\"systemPrompt\":\"system\"},"
+            + "\"routerModel\":{\"modelId\":\"router\",\"systemPrompt\":\"system\"},"
+            + "\"planningModel\":{\"modelId\":\"planner\",\"systemPrompt\":\"system\"}" + "}");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 

@@ -29,8 +29,7 @@ class ModelConfigTest {
     final ModelConfig config = new ModelConfig();
     config.setModel("test");
 
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("type");
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("type");
   }
 
   @Test
@@ -38,7 +37,6 @@ class ModelConfigTest {
     final ModelConfig config = new ModelConfig();
     config.setType("OPEN_AI");
 
-    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("model");
+    assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("model");
   }
 }

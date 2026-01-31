@@ -19,15 +19,16 @@ public class SessionServiceProvider {
 
   @Inject
   public SessionServiceProvider(final Instance<SessionServiceBuilder<?, ?>> allBuilders,
-                                final InMemorySessionServiceBuilder inMemorySessionServiceBuilder) {
+      final InMemorySessionServiceBuilder inMemorySessionServiceBuilder) {
     this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), SessionServiceBuilder::type,
         Function.identity());
     this.defaultBuilder = inMemorySessionServiceBuilder;
   }
 
   public <C extends SessionServiceConfig, S extends BaseSessionService> S get(final C config) {
-    //noinspection unchecked
-    final SessionServiceBuilder<C, S> builder = (SessionServiceBuilder<C, S>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
+    // noinspection unchecked
+    final SessionServiceBuilder<C, S> builder = (SessionServiceBuilder<C, S>) typeVsBuilder
+        .getOrDefault(config.getType(), defaultBuilder);
     return builder.build(config);
   }
 }

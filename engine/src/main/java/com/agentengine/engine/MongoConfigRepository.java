@@ -92,4 +92,5 @@ public final class MongoConfigRepository implements ConfigRepository {
     return MongoClientSettings.builder().applicationName("agent-engine").applyConnectionString(connectionString)
         .codecRegistry(codecRegistry).build();
   }
+
 }

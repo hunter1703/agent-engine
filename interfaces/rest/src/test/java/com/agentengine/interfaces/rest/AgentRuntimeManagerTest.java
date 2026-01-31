@@ -14,29 +14,35 @@ import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;
-import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.builders.agent.AgentProvider;
-import com.agentengine.interfaces.rest.services.AgentManager;
+import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
+import com.agentengine.interfaces.rest.services.AgentRuntime;
+import com.google.adk.agents.LlmAgent;
+import com.google.adk.sessions.InMemorySessionService;
 import org.junit.jupiter.api.Test;
 
-class AgentManagerTest {
+class AgentRuntimeManagerTest {
 
   @Test
   void resolveEngineUsesProvidedNameAndConfigPath() {
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final ConfigLoader configLoader = mock(ConfigLoader.class);
     final ConfigRepository configRepository = mock(ConfigRepository.class);
-    final Agent engine = mock(Agent.class);
+    final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig agentConfig = buildValidAgentConfig();
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
     when(agentProvider.get(agentConfig)).thenReturn(engine);
+    when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
-    final AgentManager service = new AgentManager(agentProvider, configLoader, configRepository);
+    final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
+        sessionServiceProvider);
 
-    final Agent resolved = service.getOrStartEngine("agent", "config.json");
+    final AgentRuntime resolved = service.getOrStartRuntime("agent", "config.json");
 
-    assertThat(resolved).isSameAs(engine);
+    assertThat(resolved.agent()).isSameAs(engine);
     verify(agentProvider).get(agentConfig);
   }
 
@@ -45,17 +51,20 @@ class AgentManagerTest {
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final ConfigLoader configLoader = mock(ConfigLoader.class);
     final ConfigRepository configRepository = mock(ConfigRepository.class);
-    final Agent engine = mock(Agent.class);
+    final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig config = buildValidAgentConfig();
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configRepository.loadAgentConfig("agent")).thenReturn(config);
     when(agentProvider.get(config)).thenReturn(engine);
+    when(sessionServiceProvider.get(config.getSessionStore())).thenReturn(new InMemorySessionService());
 
-    final AgentManager service = new AgentManager(agentProvider, configLoader, configRepository);
+    final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
+        sessionServiceProvider);
 
-    final Agent resolved = service.getOrStartEngine("agent", null);
+    final AgentRuntime resolved = service.getOrStartRuntime("agent", null);
 
-    assertThat(resolved).isSameAs(engine);
+    assertThat(resolved.agent()).isSameAs(engine);
     verify(configLoader, never()).loadConfig(any());
   }
 
@@ -64,16 +73,19 @@ class AgentManagerTest {
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final ConfigLoader configLoader = mock(ConfigLoader.class);
     final ConfigRepository configRepository = mock(ConfigRepository.class);
-    final Agent engine = mock(Agent.class);
+    final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig agentConfig = buildValidAgentConfig();
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
 
     when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(agentConfig);
     when(agentProvider.get(agentConfig)).thenReturn(engine);
+    when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
-    final AgentManager service = new AgentManager(agentProvider, configLoader, configRepository);
+    final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
+        sessionServiceProvider);
 
-    final Agent first = service.getOrStartEngine("agent", "config.json");
-    final Agent second = service.getOrStartEngine("agent", "config.json");
+    final AgentRuntime first = service.getOrStartRuntime("agent", "config.json");
+    final AgentRuntime second = service.getOrStartRuntime("agent", "config.json");
 
     assertThat(first).isSameAs(second);
     verify(agentProvider).get(agentConfig);
@@ -81,10 +93,10 @@ class AgentManagerTest {
 
   @Test
   void resolveEngineRejectsMissingAgentId() {
-    final AgentManager service = new AgentManager(mock(AgentProvider.class), mock(ConfigLoader.class),
-        mock(ConfigRepository.class));
+    final AgentRuntimeManager service = new AgentRuntimeManager(mock(AgentProvider.class), mock(ConfigLoader.class),
+        mock(ConfigRepository.class), mock(SessionServiceProvider.class));
 
-    assertThatThrownBy(() -> service.getOrStartEngine(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> service.getOrStartRuntime(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentId");
   }
 
@@ -96,24 +108,24 @@ class AgentManagerTest {
 
     when(configLoader.loadConfig(Paths.get("config.json"))).thenReturn(null);
 
-    final AgentManager service = new AgentManager(agentProvider, configLoader, configRepository);
+    final AgentRuntimeManager service = new AgentRuntimeManager(agentProvider, configLoader, configRepository,
+        mock(SessionServiceProvider.class));
 
-    assertThatThrownBy(() -> service.getOrStartEngine("agent", "config.json"))
+    assertThatThrownBy(() -> service.getOrStartRuntime("agent", "config.json"))
         .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("agentId");
   }
 
   private static AgentConfig buildValidAgentConfig() {
-    final HybridAgentConfig config = new HybridAgentConfig();
+    final AgentConfig config = new AgentConfig();
     config.setAgentId("agent");
     config.setModel(model("reasoner.json"));
-    config.setRouterModel(model("router.json"));
-    config.setPlanningModel(model("planner.json"));
     return config;
   }
 
   private static AgentModelConfig model(final String id) {
     final AgentModelConfig config = new AgentModelConfig();
     config.setModelId(id);
+    config.setSystemPrompt("system");
     return config;
   }
 }

@@ -8,7 +8,9 @@ import java.util.Optional;
 
 public class SimpleFlow extends SingleFlow {
 
-    public SimpleFlow(int maxSteps, List<RequestProcessor> requestProcessors, List<ResponseProcessor> responseProcessors) {
-        super(CollectionUtils.append(REQUEST_PROCESSORS, requestProcessors), CollectionUtils.append(responseProcessors, RESPONSE_PROCESSORS), Optional.of(maxSteps));
-    }
+  public SimpleFlow(int maxSteps, List<RequestProcessor> requestProcessors,
+      List<ResponseProcessor> responseProcessors) {
+    super(CollectionUtils.append(REQUEST_PROCESSORS, requestProcessors),
+        CollectionUtils.append(responseProcessors, RESPONSE_PROCESSORS), Optional.of(maxSteps));
+  }
 }

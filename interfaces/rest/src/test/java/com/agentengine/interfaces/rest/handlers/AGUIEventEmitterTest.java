@@ -7,6 +7,10 @@ import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
 import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.type.EventType;
+import com.google.adk.events.Event;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionResponse;
+import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,13 +21,13 @@ class AGUIEventEmitterTest {
   @Test
   void emitsRunLifecycleAndFinalAnswerResult() {
     List<BaseEvent> events = new ArrayList<>();
-    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", "hello", events::add);
+    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", events::add);
 
-    emitter.onRunStarted("thread-1", "run-1");
-    emitter.onTextMessageStart("thread-1", "msg-1", "assistant");
-    emitter.onTextMessageDelta("thread-1", "msg-1", "done");
-    emitter.onTextMessageEnd("thread-1", "msg-1");
-    emitter.onRunFinished("thread-1", "run-1");
+    Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
+        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
+
+    emitter.onEvent(responseEvent);
+    emitter.onComplete();
 
     RunStartedEvent started = (RunStartedEvent) events.getFirst();
     assertThat(started.getType()).isEqualTo(EventType.RUN_STARTED);
@@ -31,7 +35,7 @@ class AGUIEventEmitterTest {
     assertThat(started.getRunId()).isEqualTo("run-1");
     assertThat(started.getRawEvent()).isEqualTo(Map.of("input", Map.of("message", "hello")));
 
-    RunFinishedEvent finished = (RunFinishedEvent) events.stream().filter(event -> event instanceof RunFinishedEvent)
+    RunFinishedEvent finished = (RunFinishedEvent) events.stream().filter(item -> item instanceof RunFinishedEvent)
         .map(RunFinishedEvent.class::cast).findFirst().orElseThrow();
     assertThat(finished.getType()).isEqualTo(EventType.RUN_FINISHED);
     assertThat(finished.getResult()).isEqualTo("done");
@@ -40,15 +44,22 @@ class AGUIEventEmitterTest {
   @Test
   void emitsToolCallResultWithRole() {
     List<BaseEvent> events = new ArrayList<>();
-    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", "hello", events::add);
+    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", events::add);
 
-    emitter.onToolCallResult("thread-1", "call-1", "ok");
+    Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
+        .content(Content.builder().role("model").parts(Part.builder()
+            .functionResponse(
+                FunctionResponse.builder().id("call-1").name("echo").response(Map.of("output", "ok")).build())
+            .build()).build())
+        .build();
 
-    assertThat(events).hasSize(1);
-    ToolCallResultEvent event = (ToolCallResultEvent) events.getFirst();
-    assertThat(event.getType()).isEqualTo(EventType.TOOL_CALL_RESULT);
-    assertThat(event.getToolCallId()).isEqualTo("call-1");
-    assertThat(event.getContent()).isEqualTo("ok");
-    assertThat(event.getRole()).isNotNull();
+    emitter.onEvent(responseEvent);
+
+    assertThat(events).hasSize(2);
+    ToolCallResultEvent resultEvent = (ToolCallResultEvent) events.get(1);
+    assertThat(resultEvent.getType()).isEqualTo(EventType.TOOL_CALL_RESULT);
+    assertThat(resultEvent.getToolCallId()).isEqualTo("call-1");
+    assertThat(resultEvent.getContent()).isEqualTo("ok");
+    assertThat(resultEvent.getRole()).isNotNull();
   }
 }

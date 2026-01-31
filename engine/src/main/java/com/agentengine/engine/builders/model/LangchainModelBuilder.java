@@ -1,23 +1,23 @@
 package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.engine.api.ContextManager;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.*;
-import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
-import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.utils.Parser;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import jakarta.inject.Singleton;
 
 import java.util.ArrayList;
@@ -51,7 +51,13 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    return buildChatModel(modelConfig, toolCallingEnabled, toolCallingSupported);
+    final ChatModels models = buildChatModels(modelConfig);
+    final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
+        .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported)
+        .parseThoughtsFromText(!modelConfig.isThoughtsSupported()).areThoughtsEnabled(modelConfig.isThoughtsEnabled())
+        .withThoughtsStartTag(modelConfig.getThoughtsStartTag()).withThoughtsEndTag(modelConfig.getThoughtsEndTag());
+    return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
+        buildProtocolMessage(modelConfig));
   }
 
   @Override
@@ -59,22 +65,23 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return AgentModelConfig.AgentType.LANGCHAIN.name().toLowerCase();
   }
 
-  private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig,
-      final boolean toolCallingEnabled, final boolean supportsToolCalling) {
+  private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {
+  }
+
+  private static ChatModels buildChatModels(final ModelConfig modelConfig) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
-    final ChatModel chatModel = switch (provider) {
-      case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
+    return switch (provider) {
+      case ModelConfig.Provider.OLLAMA -> new ChatModels(buildOllama(modelConfig, responseFormat),
+          buildOllamaStreaming(modelConfig, responseFormat), responseFormat);
       case ModelConfig.Provider.LLAMA_CPP -> {
         LlamaCppServerUtils.ensureRunning(modelConfig);
-        yield buildOpenAI(modelConfig, responseFormat);
+        yield new ChatModels(buildOpenAI(modelConfig, responseFormat),
+            buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
       }
-      case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
+      case ModelConfig.Provider.OPEN_AI -> new ChatModels(buildOpenAI(modelConfig, responseFormat),
+          buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
     };
-    final Parser parser = Parser.create().withResponseFormat(responseFormat.type())
-            .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!supportsToolCalling).parseThoughtsFromText(!modelConfig.isThoughtsSupported())
-            .areThoughtsEnabled(modelConfig.isThoughtsEnabled()).withThoughtsStartTag(modelConfig.getThoughtsStartTag()).withThoughtsEndTag(modelConfig.getThoughtsEndTag());
-    return new LangChain4JLLMModel(chatModel, parser, buildProtocolMessage(modelConfig));
   }
 
   private static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
@@ -87,6 +94,22 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   private static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
+        .temperature(config.getTemperature()).topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format)
+        .build();
+  }
+
+  private static StreamingChatModel buildOllamaStreaming(final ModelConfig config,
+      final ResponseFormat responseFormat) {
+    return OllamaStreamingChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
+        .temperature(config.getTemperature()).topK(config.getTopK()).topP(config.getTopP())
+        .repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
+        .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
+  }
+
+  private static StreamingChatModel buildOpenAIStreaming(final ModelConfig config,
+      final ResponseFormat responseFormat) {
+    final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
+    return OpenAiStreamingChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
         .temperature(config.getTemperature()).topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format)
         .build();
   }

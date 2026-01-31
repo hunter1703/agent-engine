@@ -99,8 +99,11 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     if (parsed == null) {
       return content;
     }
-    final List<Part> toolCallParts = CollectionUtils.nullSafeList(toolCallingEnabled ? (parseToolCallsFromText ? getToolCallParts(parsed) : getToolCallParts(content)) : List.of());
-    final List<Part> otherParts = content.parts().orElse(Collections.emptyList()).stream().filter(part -> part.functionCall().orElse(null) == null).toList();
+    final List<Part> toolCallParts = CollectionUtils.nullSafeList(toolCallingEnabled
+        ? (parseToolCallsFromText ? getToolCallParts(parsed) : getToolCallParts(content))
+        : List.of());
+    final List<Part> otherParts = content.parts().orElse(Collections.emptyList()).stream()
+        .filter(part -> part.functionCall().orElse(null) == null).toList();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.addAll(otherParts);
     if (parseThoughtsFromText) {
@@ -111,7 +114,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   @NotNull
   private static List<Part> getToolCallParts(final Content content) {
-    return content.parts().orElse(Collections.emptyList()).stream().filter(part -> part.functionCall().orElse(null) != null).toList();
+    return content.parts().orElse(Collections.emptyList()).stream()
+        .filter(part -> part.functionCall().orElse(null) != null).toList();
   }
 
   private Content parseTextContent(Content content) {
@@ -136,7 +140,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   }
 
   private static Part buildToolCallPart(final ToolCall toolCall) {
-    return Part.builder().functionCall(FunctionCall.builder().id(toolCall.id()).name(toolCall.name()).args(toolCall.args())).build();
+    return Part.builder()
+        .functionCall(FunctionCall.builder().id(toolCall.id()).name(toolCall.name()).args(toolCall.args())).build();
   }
 
   private String getThoughts(String content) {
@@ -244,9 +249,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
     final LlmResponse.Builder builder = response.toBuilder();
     if (!isPartial && turnCompleted) {
-        response.content().ifPresent(content -> {
-          builder.content(parse(content));
-        });
+      response.content().ifPresent(content -> {
+        builder.content(parse(content));
+      });
     }
 
     return Single.just(ResponseProcessingResult.create(builder.build(), List.of(), Optional.empty()));
@@ -284,7 +289,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         parts.addAll(buildTextFormatContent(regularParts, thoughtsParts, toolCallParts));
       }
 
-      contents.add(content.toBuilder().parts(parts).build());
+      if (!parts.isEmpty()) {
+        contents.add(content.toBuilder().parts(parts).build());
+      }
 
       final List<Part> parsedResponseParts = new ArrayList<>();
       if (CollectionUtils.isNotEmpty(toolResponseParts)) {
@@ -293,28 +300,27 @@ public class Parser implements RequestProcessor, ResponseProcessor {
           if (response == null) {
             continue;
           }
-          String responseText = String.format(
-                  "Tool Response [%s]: %s",
-                  response.name().orElse("unknown"),
-                  response.response()
-          );
+          String responseText = String.format("Tool Response [%s]: %s", response.name().orElse("unknown"),
+              response.response());
           parsedResponseParts.add(Part.builder().text(responseText).build());
         }
       }
 
-      contents.add(Content.builder().role("user").parts(parsedResponseParts).build());
+      if (!parsedResponseParts.isEmpty()) {
+        contents.add(Content.builder().role("user").parts(parsedResponseParts).build());
+      }
     }
 
     return Single.just(RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
   }
 
-  private List<Part> buildJsonFormatContent(List<Part> regularParts, List<Part> thoughtsParts, List<Part> toolCallParts) {
+  private List<Part> buildJsonFormatContent(List<Part> regularParts, List<Part> thoughtsParts,
+      List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
-    if (CollectionUtils.isNotEmpty(regularParts) ||
-            CollectionUtils.isNotEmpty(thoughtsParts) ||
-            CollectionUtils.isNotEmpty(toolCallParts)) {
+    if (CollectionUtils.isNotEmpty(regularParts) || CollectionUtils.isNotEmpty(thoughtsParts)
+        || CollectionUtils.isNotEmpty(toolCallParts)) {
 
       Map<String, Object> jsonMap = new LinkedHashMap<>();
 
@@ -361,7 +367,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     return result;
   }
 
-  private List<Part> buildTextFormatContent(List<Part> regularParts, List<Part> thoughtsParts, List<Part> toolCallParts) {
+  private List<Part> buildTextFormatContent(List<Part> regularParts, List<Part> thoughtsParts,
+      List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
@@ -394,12 +401,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
           continue;
         }
         String argsJson = JsonUtils.toJson(call.args());
-        String toolCallText = String.format(
-                "\n{'id': '%s', 'name': '%s', 'args': %s}",
-                call.id().orElse(""),
-                call.name().orElse(""),
-                argsJson
-        );
+        String toolCallText = String.format("\n{'id': '%s', 'name': '%s', 'args': %s}", call.id().orElse(""),
+            call.name().orElse(""), argsJson);
         textBuilder.append(toolCallText);
       }
     }

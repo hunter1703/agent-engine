@@ -13,8 +13,8 @@ class BaseContextManagerTest {
 
   @Test
   void returnsConfiguredPromptBuilder() {
-    final UnaryOperator<List<Content>> builder = contents -> List.of(
-        Content.builder().role("user").parts(Part.builder().text("trimmed").build()).build());
+    final UnaryOperator<List<Content>> builder = contents -> List
+        .of(Content.builder().role("user").parts(Part.builder().text("trimmed").build()).build());
     final BaseContextManager contextManager = new BaseContextManager(builder);
 
     assertThat(contextManager.getPromptBuilder()).isSameAs(builder);

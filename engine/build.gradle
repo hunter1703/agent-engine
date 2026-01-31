@@ -5,12 +5,11 @@ plugins {
 }
 
 dependencies {
-    implementation(enforcedPlatform(libs.quarkus.bom))
-    implementation platform(libs.quarkus.langchain4j.bom)
-    implementation platform(libs.langchain4j.bom)
-    implementation libs.quarkus.langchain4j.core
-    implementation libs.slf4j.api
     api project(':engine:api')
+
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation platform(libs.langchain4j.bom)
+    implementation libs.slf4j.api
     implementation libs.langchain4j.core
     implementation libs.langchain4j.open.ai
     implementation libs.langchain4j.ollama
