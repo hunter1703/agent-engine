@@ -2,11 +2,13 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.beans.session.PlanItem;
+import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.beans.session.PlanUpdate;
-import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.api.beans.session.ToolCall;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
+import com.google.genai.types.Part;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -15,9 +17,11 @@ class AgentUtilsTest {
 
   @Test
   void getRepairMessageFlagsMixedFinalAndPlan() {
-    ToolCall planCall = new ToolCall("plan-1", "update_plan",
-        Map.of("plan", List.of(Map.of("step", "step", "status", "pending"))));
-    Message response = new Message(Role.ASSISTANT, "done", null, List.of(planCall));
+    Content response = Content.builder().role("model").parts(
+        Part.builder().text("done").build(),
+        Part.builder().functionCall(FunctionCall.builder().id("plan-1").name("update_plan")
+            .args(Map.of("plan", List.of(Map.of("step", "step", "status", "pending")))).build()).build())
+        .build();
 
     String repairMessage = AgentUtils.getRepairMessageIfInvalid(response);
 

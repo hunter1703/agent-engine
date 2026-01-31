@@ -4,6 +4,8 @@
 
 package com.agentengine.engine.utils;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
@@ -16,7 +18,6 @@ import com.google.genai.types.Part;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.text.html.Option;
 import java.util.*;
 import java.util.stream.Collectors;
 

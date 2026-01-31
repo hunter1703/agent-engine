@@ -1,5 +1,7 @@
 package com.agentengine.engine.tools;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.api.ToolProvider;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;

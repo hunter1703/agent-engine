@@ -21,8 +21,10 @@ class ConfigLoaderTest {
   void loadConfigReadsJsonAndValidates() throws Exception {
     Path configPath = tempDir.resolve("agent.json");
     Files.writeString(configPath,
-        "{" + "\"type\":\"hybrid\"," + "\"agentId\":\"agent\"," + "\"model\":{\"modelId\":\"reasoner\"},"
-            + "\"routerModel\":{\"modelId\":\"router\"}," + "\"planningModel\":{\"modelId\":\"planner\"}" + "}");
+        "{" + "\"type\":\"hybrid\"," + "\"agentId\":\"agent\"," +
+            "\"model\":{\"modelId\":\"reasoner\",\"systemPrompt\":\"system\"}," +
+            "\"routerModel\":{\"modelId\":\"router\",\"systemPrompt\":\"system\"}," +
+            "\"planningModel\":{\"modelId\":\"planner\",\"systemPrompt\":\"system\"}" + "}");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 
@@ -33,7 +35,7 @@ class ConfigLoaderTest {
   void loadConfigReadsYamlConfig() throws Exception {
     Path configPath = tempDir.resolve("agent.yml");
     Files.writeString(configPath,
-        "type: hybrid\nagentId: agent\nmodel:\n  modelId: reasoner\nrouterModel:\n  modelId: router\nplanningModel:\n  modelId: planner\n");
+        "type: hybrid\nagentId: agent\nmodel:\n  modelId: reasoner\n  systemPrompt: system\nrouterModel:\n  modelId: router\n  systemPrompt: system\nplanningModel:\n  modelId: planner\n  systemPrompt: system\n");
 
     AgentConfig config = new ConfigLoaderImpl().loadConfig(configPath);
 
@@ -49,26 +51,23 @@ class ConfigLoaderTest {
           "agentId": "agent",
           "model": {
             "modelId": "reasoner",
+            "systemPrompt": "system",
             "contextManagerConfig": {
-              "type": "last_n",
-              "systemPrompt": "system",
-              "messageStore": {
-                "type": "memory"
-              }
+              "type": "last_n"
             }
           },
           "routerModel": {
             "modelId": "router",
+            "systemPrompt": "router",
             "contextManagerConfig": {
-              "type": "last_n",
-              "systemPrompt": "router"
+              "type": "last_n"
             }
           },
           "planningModel": {
             "modelId": "planner",
+            "systemPrompt": "planner",
             "contextManagerConfig": {
-              "type": "last_n",
-              "systemPrompt": "planner"
+              "type": "last_n"
             }
           },
           "sessionStore": {

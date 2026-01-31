@@ -43,16 +43,16 @@ public final class JsonUtils {
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {
-    try {
-      return JSON.parseObject(Files.newInputStream(path), clazz);
+    try (InputStream stream = Files.newInputStream(path)) {
+      return JSON.parseObject(stream, clazz);
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }
 
   public static <T> T fromFile(final Path path, final TypeReference<T> typeReference) {
-    try {
-      return JSON.parseObject(Files.newInputStream(path), typeReference.getType());
+    try (InputStream stream = Files.newInputStream(path)) {
+      return JSON.parseObject(stream, typeReference.getType());
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }

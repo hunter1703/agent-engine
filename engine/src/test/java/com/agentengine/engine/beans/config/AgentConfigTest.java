@@ -35,6 +35,7 @@ class AgentConfigTest {
   private static AgentModelConfig model(final String id) {
     AgentModelConfig config = new AgentModelConfig();
     config.setModelId(id);
+    config.setSystemPrompt("system");
     return config;
   }
 }

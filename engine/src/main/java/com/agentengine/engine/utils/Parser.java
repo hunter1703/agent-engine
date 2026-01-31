@@ -1,5 +1,6 @@
 package com.agentengine.engine.utils;
 
+import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.utils.CollectionUtils;

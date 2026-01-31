@@ -3,6 +3,7 @@ package com.agentengine.engine.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.ToolsConfig;
+import com.google.adk.tools.BaseTool;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -17,13 +18,14 @@ class ToolRegistryTest {
     toolsConfig.setEnabled(List.of("ALL"));
     toolsConfig.setConfigs(toolConfigs);
 
-    List<Tool> tools = registry.loadTools("test-agent", toolsConfig);
+    List<BaseTool> tools = registry.loadTools("test-agent", toolsConfig);
 
     assertThat(tools).hasSize(1);
-    assertThat(tools.getFirst().execute(Map.of("value", "fix"))).isEqualTo("pre-fix");
+    Map<String, Object> result = tools.getFirst().runAsync(Map.of("value", "fix"), null).blockingGet();
+    assertThat(result).containsEntry("output", "pre-fix");
 
     toolsConfig.setEnabled(List.of("other"));
-    List<Tool> filtered = registry.loadTools("test-agent", toolsConfig);
+    List<BaseTool> filtered = registry.loadTools("test-agent", toolsConfig);
 
     assertThat(filtered).isEmpty();
   }

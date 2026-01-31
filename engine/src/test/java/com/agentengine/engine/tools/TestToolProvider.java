@@ -1,6 +1,9 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.ToolProvider;
+import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.ToolContext;
+import io.reactivex.rxjava3.core.Single;
 
 import java.util.Map;
 
@@ -16,22 +19,13 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public Tool create(final Map<String, Object> toolConfig) {
-    return new Tool() {
+  public BaseTool create(final Map<String, Object> toolConfig) {
+    return new BaseTool("fake", "test tool") {
       @Override
-      public String name() {
-        return "fake";
-      }
-
-      @Override
-      public String description() {
-        return "test tool";
-      }
-
-      @Override
-      public String execute(final Map<String, Object> args) {
-        Object prefix = toolConfig == null ? null : toolConfig.get("prefix");
-        return (prefix == null ? "" : prefix.toString()) + args.getOrDefault("value", "");
+      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
+        final Object prefix = toolConfig == null ? null : toolConfig.get("prefix");
+        final String output = (prefix == null ? "" : prefix.toString()) + args.getOrDefault("value", "");
+        return Single.just(Map.of("output", output));
       }
     };
   }

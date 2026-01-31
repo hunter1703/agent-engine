@@ -27,8 +27,8 @@ public final class YamlUtils {
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {
-    try {
-      return OBJECT_MAPPER.readValue(Files.newInputStream(path), clazz);
+    try (var stream = Files.newInputStream(path)) {
+      return OBJECT_MAPPER.readValue(stream, clazz);
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }

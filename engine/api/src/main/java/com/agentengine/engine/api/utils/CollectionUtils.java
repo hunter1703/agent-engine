@@ -38,14 +38,14 @@ public final class CollectionUtils {
 
   public static <T> Set<T> nullSafeMutableSet(final Collection<T> collection) {
     if (CollectionUtils.isEmpty(collection)) {
-      return Set.of();
+      return new HashSet<>();
     }
     return new HashSet<>(CollectionUtils.nullSafeList(collection));
   }
 
   public static <T> List<T> nullSafeMutableList(final Collection<T> collection) {
     if (CollectionUtils.isEmpty(collection)) {
-      return List.of();
+      return new ArrayList<>();
     }
     return new ArrayList<>(collection);
   }
@@ -69,6 +69,9 @@ public final class CollectionUtils {
       return null;
     }
     final Object value = map.get(key);
+    if (value == null) {
+      return null;
+    }
     return switch (value) {
       case Number number -> number.longValue();
       default -> Long.parseLong(value.toString());

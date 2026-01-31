@@ -5,7 +5,6 @@ import static java.lang.StringTemplate.STR;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.FunctionDeclaration;
-import com.google.genai.types.Tool;
 
 import java.util.List;
 import java.util.logging.Logger;

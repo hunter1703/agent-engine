@@ -1,5 +1,6 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.engine.api.utils.StringUtils;
 import java.util.List;
 
 public class ModelConfig implements Config {
@@ -213,5 +214,15 @@ public class ModelConfig implements Config {
 
   public void setServerWorkdir(final String serverWorkdir) {
     this.serverWorkdir = serverWorkdir;
+  }
+
+  @Override
+  public void validate() {
+    if (StringUtils.isBlank(type)) {
+      throw new IllegalArgumentException("type is required");
+    }
+    if (StringUtils.isBlank(model)) {
+      throw new IllegalArgumentException("model is required");
+    }
   }
 }

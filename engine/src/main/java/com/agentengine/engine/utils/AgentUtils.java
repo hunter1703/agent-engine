@@ -1,5 +1,7 @@
 package com.agentengine.engine.utils;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
@@ -9,6 +11,8 @@ import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.beans.session.PlanUpdate;
 import com.alibaba.fastjson2.TypeReference;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 import java.util.ArrayList;
@@ -33,26 +37,38 @@ public final class AgentUtils {
   private AgentUtils() {
   }
 
-  public static String getRepairMessageIfInvalid(final Message message) {
-    final String content = message.getContent();
-    final List<ToolCall> toolCalls = CollectionUtils.nullSafeList(message.getToolCalls());
-    final String thoughts = message.getThoughts();
+  public static String getRepairMessageIfInvalid(final Content content) {
+    if (content == null) {
+      return null;
+    }
+    final String finalAnswer = content.text();
+    final List<FunctionCall> toolCalls = content.parts().orElse(List.of()).stream()
+        .flatMap(part -> part.functionCall().stream())
+        .toList();
+    final String thoughts = content.parts().orElse(List.of()).stream()
+        .filter(part -> part.thought().orElse(false))
+        .map(part -> part.text().orElse(null))
+        .filter(StringUtils::isNotBlank)
+        .findFirst()
+        .orElse(null);
 
-    final boolean finalAnswerAndToolCallsPresent = StringUtils.isNotBlank(content)
+    final boolean finalAnswerAndToolCallsPresent = StringUtils.isNotBlank(finalAnswer)
         && CollectionUtils.isNotEmpty(toolCalls);
-    final boolean emptyResponse = StringUtils.isBlank(content) && StringUtils.isBlank(thoughts)
+    final boolean emptyResponse = StringUtils.isBlank(finalAnswer) && StringUtils.isBlank(thoughts)
         && CollectionUtils.isEmpty(toolCalls);
     boolean missingToolCallId = false;
     boolean missingToolCallName = false;
     boolean duplicateToolCallId = false;
     final java.util.Set<String> seenIds = new java.util.HashSet<>();
-    for (ToolCall call : toolCalls) {
-      if (StringUtils.isBlank(call.id())) {
+    for (FunctionCall call : toolCalls) {
+      final String id = call.id().orElse(null);
+      final String name = call.name().orElse(null);
+      if (StringUtils.isBlank(id)) {
         missingToolCallId = true;
-      } else if (!seenIds.add(call.id())) {
+      } else if (!seenIds.add(id)) {
         duplicateToolCallId = true;
       }
-      if (StringUtils.isBlank(call.name())) {
+      if (StringUtils.isBlank(name)) {
         missingToolCallName = true;
       }
     }

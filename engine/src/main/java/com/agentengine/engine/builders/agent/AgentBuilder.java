@@ -1,9 +1,10 @@
 package com.agentengine.engine.builders.agent;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.google.adk.agents.LlmAgent;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 public class AgentBuilder extends LlmAgent.Builder {
     private String protocolInstructions;

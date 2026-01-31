@@ -1,5 +1,7 @@
 package com.agentengine.engine.model;
 
+import static java.lang.StringTemplate.STR;
+
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;

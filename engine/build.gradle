@@ -36,10 +36,3 @@ tasks.jacocoTestReport {
 tasks.test {
     finalizedBy tasks.jacocoTestReport
 }
-
-tasks.register('validateModelConfig', JavaExec) {
-    group = 'verification'
-    description = 'Validate a model config JSON/YAML file.'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.agentengine.engine.model.ModelConfigValidator'
-}
