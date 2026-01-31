@@ -10,14 +10,12 @@ dependencies {
     implementation platform(libs.langchain4j.bom)
     implementation libs.quarkus.langchain4j.core
     implementation libs.slf4j.api
-    implementation project(':engine:api')
-    implementation libs.fastjson2
+    api project(':engine:api')
     implementation libs.langchain4j.core
     implementation libs.langchain4j.open.ai
     implementation libs.langchain4j.ollama
     implementation libs.quarkus.mongodb.client
-    implementation libs.google.adk.core
-    implementation 'com.google.adk:google-adk-langchain4j:0.5.0'
+    implementation libs.google.adk.langchain4j
     implementation libs.vertx.json.schema
 
     testImplementation libs.quarkus.junit5

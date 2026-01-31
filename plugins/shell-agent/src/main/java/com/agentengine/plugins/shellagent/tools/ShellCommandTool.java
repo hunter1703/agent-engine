@@ -1,7 +1,6 @@
 package com.agentengine.plugins.shellagent.tools;
 
-import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.api.Tool;
+import com.google.adk.tools.Annotations.Schema;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -12,7 +11,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-public final class ShellCommandTool implements Tool {
+public final class ShellCommandTool {
   private static final Pattern BLOCKED = Pattern.compile("(^|[\\s;|&()])(/bin/)?rm(\\s|$)");
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private final Duration timeout;
@@ -21,19 +20,9 @@ public final class ShellCommandTool implements Tool {
     this.timeout = timeout == null ? Duration.ofMinutes(30) : timeout;
   }
 
-  @Override
-  public String name() {
-    return "run_cmd";
-  }
-
-  @Override
-  public String description() {
-    return "Execute ONE shell command using `bash -lc`. Command must be single-line; no heredocs; avoid rm.";
-  }
-
-  @Override
-  public String execute(final Map<String, Object> args) {
-    final String command = args == null ? null : String.valueOf(args.get("command"));
+  @Schema(name = "run_cmd", description = "Execute ONE shell command using `bash -lc`. Command must be single-line; no heredocs; avoid rm.")
+  public Map<String, Object> runCommand(
+      @Schema(name = "command", description = "The shell command to execute") final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");
     }
@@ -49,36 +38,19 @@ public final class ShellCommandTool implements Tool {
           process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
       String output = readAll(process);
       output = truncate(output.trim());
+      final String result;
       if (!finished) {
         process.destroyForcibly();
-        return "(timeout)\n" + output;
+        result = "(timeout)\n" + output;
+      } else {
+        final int exit = process.exitValue();
+        result = exit == 0 ? output : "(exit=" + exit + ")\n" + output;
       }
-      int exit = process.exitValue();
-      if (exit == 0) {
-        return output;
-      }
-      return "(exit=" + exit + ")\n" + output;
+      return Map.of("output", result);
     } catch (IOException | InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new RuntimeException(e.getMessage(), e);
     }
-  }
-
-  @Override
-  public Map<String, Object> parametersSchema() {
-    //noinspection unchecked
-    return JsonUtils.fromJson("""
-            {
-              "type": "object",
-              "properties": {
-                  "command": {
-                  "type": "string",
-                  "description": "The shell command to execute"
-                  }
-              },
-              "required": ["command"]
-            }
-            """, Map.class);
   }
 
   private String readAll(Process process) throws IOException {

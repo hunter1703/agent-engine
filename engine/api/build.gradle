@@ -3,14 +3,13 @@ plugins {
 }
 
 dependencies {
-    implementation libs.fastjson2
-    implementation libs.jackson.annotations
-    implementation libs.mongodb.bson
+    api libs.fastjson2
+    api libs.mongodb.bson
+    api libs.google.adk.core
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml
     implementation libs.jinjava
-    implementation libs.google.adk.core
-    implementation 'com.google.adk:google-adk-langchain4j:0.5.0'
+    implementation libs.slf4j.api
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

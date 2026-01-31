@@ -12,7 +12,6 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 public abstract class BaseJavaConventionsPlugin {
 
     protected void configureCommonFunctionality(Project project) {
-        project.getPluginManager().apply("java");
         project.getPluginManager().apply("com.diffplug.spotless");
         project.getPluginManager().apply("org.kordamp.gradle.jandex");
 

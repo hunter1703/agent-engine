@@ -1,6 +1,7 @@
 package com.agentengine.engine.tools;
 
 import com.google.adk.tools.FunctionTool;
+import com.google.adk.tools.Annotations.Schema;
 import java.util.Map;
 
 public final class UserClarificationTool {
@@ -9,7 +10,10 @@ public final class UserClarificationTool {
   private UserClarificationTool() {
   }
 
-  public static Map<String, Object> clarifyFromUser(final String question) {
+  @Schema(name = "user_clarification", description = "Request clarification from the user.")
+  public static Map<String, Object> clarifyFromUser(
+      @Schema(name = "question", description = "Clarifying question to present to the user")
+      final String question) {
     return Map.of("clarification", question);
   }
 }

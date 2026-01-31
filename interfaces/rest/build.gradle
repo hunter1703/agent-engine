@@ -3,10 +3,6 @@ plugins {
     alias(libs.plugins.quarkus)
 }
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation platform(libs.quarkus.langchain4j.bom)
@@ -14,7 +10,6 @@ dependencies {
     implementation libs.logstash.logback.encoder
     implementation libs.slf4j.api
     implementation project(':engine')
-    implementation project(':engine:api')
     implementation project(':interfaces:common')
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi

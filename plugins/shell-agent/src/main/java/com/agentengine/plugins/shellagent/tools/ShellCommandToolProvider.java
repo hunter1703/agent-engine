@@ -1,7 +1,8 @@
 package com.agentengine.plugins.shellagent.tools;
 
-import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.ToolProvider;
+import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.FunctionTool;
 import java.time.Duration;
 import java.util.Map;
 
@@ -17,10 +18,10 @@ public final class ShellCommandToolProvider implements ToolProvider {
   }
 
   @Override
-  public Tool create(final Map<String, Object> toolConfig) {
+  public BaseTool create(final Map<String, Object> toolConfig) {
     final Long timeoutSeconds = parseTimeoutSeconds(toolConfig);
     final Duration timeout = Duration.ofSeconds(timeoutSeconds == null ? 30 : timeoutSeconds);
-    return new ShellCommandTool(timeout);
+    return FunctionTool.create(new ShellCommandTool(timeout), "runCommand");
   }
 
   private static Long parseTimeoutSeconds(final Map<String, Object> toolConfig) {

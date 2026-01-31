@@ -1,52 +1,23 @@
 package com.agentengine.plugins.echoagent.tools;
 
-import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.api.Tool;
+import com.agentengine.engine.api.utils.StringUtils;
+import com.google.adk.tools.Annotations.Schema;
 import java.util.Map;
 
-public final class EchoTool implements Tool {
-  @Override
-  public String name() {
-    return "echo";
+public final class EchoTool {
+  private final String defaultPrefix;
+
+  public EchoTool(final String defaultPrefix) {
+    this.defaultPrefix = defaultPrefix;
   }
 
-  @Override
-  public String description() {
-    return "Echoes input text with an optional prefix.";
-  }
-
-  @Override
-  public String execute(final Map<String, Object> args) {
-    Object prefix = args == null ? null : args.get("prefix");
-    Object text = args == null ? null : args.get("text");
-    return (prefix == null ? "" : prefix.toString()) + (text == null ? "" : text.toString());
-  }
-
-  @Override
-  public Map<String, Object> parametersSchema() {
-    //noinspection unchecked
-    return JsonUtils.fromJson("""
-            {
-                "type": "object",
-                "properties":
-                {
-                    "text":
-                    {
-                        "type": "string",
-                        "description": "The text to echo"
-                    },
-                    "prefix":
-                    {
-                        "type": "string",
-                        "description": "An prefix to prepend to the text. There must be at least 3 characters"
-                    }
-                },
-                "required":
-                [
-                    "text",
-                    "prefix"
-                ]
-            }
-            """, Map.class);
+  @Schema(name = "echo", description = "Echoes input text with an optional prefix.")
+  public Map<String, Object> echo(
+      @Schema(name = "text", description = "The text to echo") final String text,
+      @Schema(name = "prefix", description = "Optional prefix to prepend", optional = true) final String prefix) {
+    final String resolvedPrefix = StringUtils.isNotBlank(prefix) ? prefix : defaultPrefix;
+    final String resolvedText = text == null ? "" : text;
+    final String combined = (resolvedPrefix == null ? "" : resolvedPrefix) + resolvedText;
+    return Map.of("output", combined);
   }
 }

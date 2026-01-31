@@ -2,7 +2,7 @@
 quarkus = "3.23.0"
 quarkus-langchain4j = "0.26.1"
 langchain4j = "1.0.0-beta2"
-google-adk = "0.3.0"
+google-adk = "0.5.0"
 jackson = "2.17.1"
 assertj = "3.26.3"
 junit = "5.10.3"
@@ -18,6 +18,7 @@ quarkus-langchain4j-bom = { group = "io.quarkiverse.langchain4j", name = "quarku
 langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version.ref = "langchain4j" }
 
 google-adk-core = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
+google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
 # Quarkus & LangChain4j Core
 quarkus-langchain4j-core = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-core" }
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
