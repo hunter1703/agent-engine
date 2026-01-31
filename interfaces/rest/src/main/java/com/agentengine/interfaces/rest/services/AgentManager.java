@@ -5,7 +5,6 @@ import static java.lang.StringTemplate.STR;
 import com.agentengine.engine.api.utils.HashUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ConfigLoader;

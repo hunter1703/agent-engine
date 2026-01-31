@@ -6,8 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.ResponseFormatType;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.context.BaseContextManager;
 import com.agentengine.engine.state.InMemoryMessageStore;
 import dev.langchain4j.data.message.AiMessage;

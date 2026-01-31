@@ -10,7 +10,7 @@ public class AgentConfig implements Config {
   private String type;
   private String agentId;
   private AgentModelConfig model;
-  private SessionStoreConfig sessionStore = new InMemorySessionStoreConfig();
+  private SessionServiceConfig sessionStore = new InMemorySessionServiceConfig();
 
   public AgentConfig() {
     this.type = AgentType.DEFAULT.name().toLowerCase();
@@ -45,11 +45,11 @@ public class AgentConfig implements Config {
     this.model = model;
   }
 
-  public SessionStoreConfig getSessionStore() {
+  public SessionServiceConfig getSessionStore() {
     return sessionStore;
   }
 
-  public void setSessionStore(final SessionStoreConfig sessionStore) {
+  public void setSessionStore(final SessionServiceConfig sessionStore) {
     this.sessionStore = sessionStore;
   }
 

@@ -5,9 +5,9 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeName = "memory")
 @BsonDiscriminator(value = "memory")
-public class InMemorySessionStoreConfig extends SessionStoreConfig {
+public class InMemorySessionServiceConfig extends SessionServiceConfig {
 
-  public InMemorySessionStoreConfig() {
-    super(SessionStoreType.MEMORY);
+  public InMemorySessionServiceConfig() {
+    super(SessionServiceType.MEMORY);
   }
 }

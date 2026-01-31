@@ -1,10 +1,10 @@
 package com.agentengine.engine.builders.model;
 
-import com.agentengine.engine.api.LLMModel;
-import com.agentengine.engine.api.MessageStore;
+import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.google.adk.sessions.BaseSessionService;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -25,19 +25,9 @@ public class ModelProvider {
     this.defaultBuilder = langchainModelBuilder;
   }
 
-  public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config) {
+  public <C extends AgentModelConfig, L extends LangChain4JLLMModel> L get(final String agentId, final C config) {
     // noinspection unchecked
     final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
     return builder.build(agentId, config);
-  }
-
-  public <C extends AgentModelConfig, L extends LLMModel> L get(final String agentId, final C config,
-      final MessageStore messageStore) {
-    if (messageStore == null) {
-      return get(agentId, config);
-    }
-    // noinspection unchecked
-    final ModelBuilder<L> builder = (ModelBuilder<L>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
-    return builder.build(agentId, config, messageStore);
   }
 }

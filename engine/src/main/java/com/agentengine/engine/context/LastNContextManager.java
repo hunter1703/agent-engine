@@ -1,36 +1,39 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.engine.api.MessageStore;
-import com.agentengine.engine.api.beans.session.Message;
-import com.agentengine.engine.api.Tool;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public final class LastNContextManager extends BaseContextManager {
-  private final int keepLast;
 
-  public LastNContextManager(final String role, final MessageStore messageStore, final String systemMessage,
-      final String protocolMessage, final List<Tool> tools, final int keepLast) {
-    super(role, messageStore, systemMessage, protocolMessage, tools);
-    this.keepLast = Math.max(1, keepLast);
-  }
+    public LastNContextManager(final int keepLast) {
+        super(contents -> {
+            final List<Content> recent = new ArrayList<>();
 
-  @Override
-  public List<Message> buildPrompt(final String sessionId) {
-    final List<Message> messages = messageStore.getMessages(sessionId, role);
-    return super.buildPrompt(selectRecentMessages(messages));
-  }
-
-  private List<Message> selectRecentMessages(final List<Message> messages) {
-    final List<Message> recent = new ArrayList<>();
-    int count = 0;
-    for (int i = messages.size() - 1; i >= 0; i--) {
-      final Message message = messages.get(i);
-      recent.add(message);
-      if (++count == keepLast) {
-        break;
-      }
+            int remaining = keepLast * 3;
+            for (final Content content : contents.reversed()) {
+                if (remaining == 0) {
+                    break;
+                }
+                final String text = content.text();
+                if (text == null) {
+                    continue;
+                }
+                final int actualLength = text.length();
+                final int length = Math.min(remaining, actualLength);
+                remaining -= length;
+                if (length > 0) {
+                    final String trimmed = text.substring(actualLength - length, actualLength);
+                    recent.add(Content.builder().parts(Part.builder().text(trimmed).build()).build());
+                }
+                if (remaining == 0) {
+                    recent.add(Content.builder().parts(Part.builder().text("Following is the trimmed conversation").build()).build());
+                    break;
+                }
+            }
+            return recent.reversed();
+        });
     }
-    return recent.reversed();
-  }
 }

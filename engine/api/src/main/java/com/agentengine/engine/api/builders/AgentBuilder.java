@@ -1,9 +1,9 @@
 package com.agentengine.engine.api.builders;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.google.adk.agents.LlmAgent;
 
-public interface AgentBuilder<C extends AgentConfig, A extends Agent> {
+public interface AgentBuilder<C extends AgentConfig, A extends LlmAgent> {
 
   A build(C agentConfig);
 

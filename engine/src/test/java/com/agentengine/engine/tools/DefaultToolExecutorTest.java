@@ -3,7 +3,6 @@ package com.agentengine.engine.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.AgentListener;
-import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.beans.session.ToolExecution;
 import java.util.HashMap;

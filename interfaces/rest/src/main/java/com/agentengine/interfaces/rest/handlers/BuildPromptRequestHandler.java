@@ -5,7 +5,6 @@ import com.agentengine.interfaces.rest.dto.MessageDto;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 import java.util.List;

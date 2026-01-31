@@ -8,6 +8,20 @@ public final class CollectionUtils {
   private CollectionUtils() {
   }
 
+  public static <T> Set<T> union(final Collection<T> one, final Collection<T> two) {
+    final Set<T> setOne = CollectionUtils.nullSafeMutableSet(one);
+    final Set<T> setTwo = CollectionUtils.nullSafeMutableSet(two);
+    setOne.addAll(setTwo);
+    return setOne;
+  }
+
+  public static <T> List<T> append(List<T> one, final List<T> toAppend) {
+    final List<T> newList = new ArrayList<>();
+    newList.addAll(CollectionUtils.nullSafeList(one));
+    newList.addAll(CollectionUtils.nullSafeList(toAppend));
+    return newList;
+  }
+
   public static <K, V> Map<K, V> nullSafeMap(final Map<K, V> map) {
     if (map == null) {
       return Collections.emptyMap();
@@ -20,6 +34,13 @@ public final class CollectionUtils {
       return List.of();
     }
     return List.copyOf(collection);
+  }
+
+  public static <T> Set<T> nullSafeMutableSet(final Collection<T> collection) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return Set.of();
+    }
+    return new HashSet<>(CollectionUtils.nullSafeList(collection));
   }
 
   public static <T> List<T> nullSafeMutableList(final Collection<T> collection) {

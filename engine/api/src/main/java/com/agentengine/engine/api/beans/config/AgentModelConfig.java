@@ -10,6 +10,7 @@ public class AgentModelConfig implements Config {
   private String modelId;
   // unique role of the model within the agent
   private String role;
+  private String systemPrompt;
   private String type;
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
   private ToolsConfig tools = new ToolsConfig();
@@ -32,6 +33,14 @@ public class AgentModelConfig implements Config {
 
   public void setRole(final String role) {
     this.role = role;
+  }
+
+  public String getSystemPrompt() {
+    return systemPrompt;
+  }
+
+  public void setSystemPrompt(final String systemPrompt) {
+    this.systemPrompt = systemPrompt;
   }
 
   @Override
@@ -63,6 +72,9 @@ public class AgentModelConfig implements Config {
   public void validate() {
     if (StringUtils.isBlank(modelId)) {
       throw new IllegalArgumentException("engine.reasoningModelId is required");
+    }
+    if (StringUtils.isBlank(systemPrompt)) {
+      throw new IllegalArgumentException("systemPrompt is required");
     }
     tools.validate();
   }

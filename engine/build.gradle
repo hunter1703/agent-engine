@@ -16,11 +16,13 @@ dependencies {
     implementation libs.langchain4j.open.ai
     implementation libs.langchain4j.ollama
     implementation libs.quarkus.mongodb.client
+    implementation libs.google.adk.core
+    implementation 'com.google.adk:google-adk-langchain4j:0.5.0'
+    implementation libs.vertx.json.schema
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
     testImplementation libs.mockito.core
-    implementation libs.vertx.json.schema
 }
 
 tasks.jacocoTestReport {

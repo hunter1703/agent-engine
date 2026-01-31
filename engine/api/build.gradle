@@ -9,6 +9,8 @@ dependencies {
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml
     implementation libs.jinjava
+    implementation libs.google.adk.core
+    implementation 'com.google.adk:google-adk-langchain4j:0.5.0'
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

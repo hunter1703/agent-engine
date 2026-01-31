@@ -1,37 +1,18 @@
 package com.agentengine.engine.builders.context;
 
-import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.*;
-import com.agentengine.engine.builders.messagestore.MessageStoreProvider;
+import com.agentengine.engine.api.builders.ContextManagerBuilder;
 import com.agentengine.engine.context.LastNContextManager;
-import com.agentengine.engine.api.Tool;
 import jakarta.inject.Singleton;
-
-import java.util.List;
 
 @Singleton
 public class LastNContextManagerBuilder
-    extends
-      AbstractContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
-
-  public LastNContextManagerBuilder(final MessageStoreProvider messageStoreProvider) {
-    super(messageStoreProvider);
-  }
+    implements
+        ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
 
   @Override
-  public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig,
-      final String protocolMessage, final List<Tool> tools) {
-    return build(role, contextConfig, protocolMessage, tools, null);
-  }
-
-  @Override
-  public LastNContextManager build(final String role, final LastNContextManagerConfig contextConfig,
-      final String protocolMessage, final List<Tool> tools, final MessageStore messageStore) {
-    final MessageStore resolved = messageStore == null
-        ? messageStoreProvider.get(contextConfig.getMessageStore())
-        : messageStore;
-    return new LastNContextManager(role, resolved, contextConfig.getSystemPrompt(), protocolMessage, tools,
-        contextConfig.getKeepLast());
+  public LastNContextManager build(final LastNContextManagerConfig contextConfig) {
+    return new LastNContextManager(contextConfig.getKeepLast());
   }
 
   @Override

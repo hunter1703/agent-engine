@@ -1,11 +1,11 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.api.ToolProvider;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.plugins.PluginLoader;
+import com.google.adk.tools.BaseTool;
 import jakarta.inject.Singleton;
 
 import java.util.*;
@@ -15,11 +15,11 @@ import java.util.logging.Logger;
 public final class ToolRegistry {
   private static final Logger LOGGER = Logger.getLogger(ToolRegistry.class.getName());
 
-  public List<Tool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
+  public List<BaseTool> loadTools(final String agentId, final ToolsConfig toolsConfig) {
         if (toolsConfig == null) {
             return Collections.emptyList();
         }
-        final List<Tool> tools = new ArrayList<>();
+        final List<BaseTool> tools = new ArrayList<>();
         final ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
         final ClassLoader pluginLoader = PluginLoader.getClassLoader();
         final Set<String> seenProviders = new HashSet<>();
@@ -45,7 +45,7 @@ public final class ToolRegistry {
                 continue;
             }
             final Map<String, Object> toolConfig = toolConfigs == null ? null : toolConfigs.get(toolName);
-            final Tool tool = provider.create(toolConfig);
+            final BaseTool tool = provider.create(toolConfig);
             if (tool == null) {
                 continue;
             }

@@ -15,8 +15,6 @@ import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import com.agentengine.interfaces.rest.support.HandlerInstance;

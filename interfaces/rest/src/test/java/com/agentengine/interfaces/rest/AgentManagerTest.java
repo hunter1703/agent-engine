@@ -10,7 +10,6 @@ import static org.mockito.Mockito.when;
 
 import java.nio.file.Paths;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;

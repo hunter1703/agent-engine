@@ -4,18 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.HybridAgent;
 import com.agentengine.engine.agents.PlanningAgent;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.LLMModel;
 import com.agentengine.engine.api.MessageStoreMark;
-import com.agentengine.engine.api.ResponseFormatType;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.engine.api.beans.session.Role;
 import com.agentengine.engine.context.BaseContextManager;
 import com.agentengine.engine.state.InMemoryMessageStore;
-import com.agentengine.engine.state.InMemorySessionStore;
-import com.agentengine.engine.tools.DefaultToolExecutor;
-import com.agentengine.engine.tools.ToolExecutor;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;

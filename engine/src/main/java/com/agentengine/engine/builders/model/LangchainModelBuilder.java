@@ -2,7 +2,6 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.MessageStore;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
@@ -10,18 +9,16 @@ import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
-import com.agentengine.engine.api.Tool;
 import com.agentengine.engine.tools.ToolRegistry;
+import com.agentengine.engine.utils.Parser;
 import com.alibaba.fastjson2.TypeReference;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.*;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import jakarta.inject.Singleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,41 +41,17 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   }
 
   private final ConfigRepository configRepository;
-  private final ContextManagerProvider contextManagerProvider;
-  private final ToolRegistry toolRegistry;
-  private static final Logger LOG = LoggerFactory.getLogger(LangChain4JLLMModel.class);
 
-  public LangchainModelBuilder(final ConfigRepository configRepository,
-      final ContextManagerProvider contextManagerProvider, final ToolRegistry toolRegistry) {
+  public LangchainModelBuilder(final ConfigRepository configRepository) {
     this.configRepository = configRepository;
-    this.contextManagerProvider = contextManagerProvider;
-    this.toolRegistry = toolRegistry;
   }
 
   @Override
   public LangChain4JLLMModel build(final String agentId, final AgentModelConfig agentModelConfig) {
-    return build(agentId, agentModelConfig, null);
-  }
-
-  @Override
-  public LangChain4JLLMModel build(final String agentId, final AgentModelConfig agentModelConfig,
-      final MessageStore messageStore) {
     final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
-    final String protocolMessage = buildProtocolMessage(modelConfig);
-    final List<Tool> tools = CollectionUtils
-        .nullSafeMutableList(toolRegistry.loadTools(agentId, agentModelConfig.getTools()));
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    final List<Tool> promptTools = !toolCallingEnabled || toolCallingSupported
-        ? List.of()
-        : CollectionUtils.nullSafeMutableList(tools);
-    final ContextManager contextManager = messageStore == null
-        ? contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
-            protocolMessage, promptTools)
-        : contextManagerProvider.get(agentModelConfig.getRole(), agentModelConfig.getContextManagerConfig(),
-            protocolMessage, promptTools, messageStore);
-    return buildChatModel(modelConfig, contextManager,
-        toolCallingEnabled ? CollectionUtils.nullSafeMutableList(tools) : List.of(), toolCallingSupported);
+    return buildChatModel(modelConfig, toolCallingEnabled, toolCallingSupported);
   }
 
   @Override
@@ -86,11 +59,11 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return AgentModelConfig.AgentType.LANGCHAIN.name().toLowerCase();
   }
 
-  private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig, final ContextManager contextManager,
-      final List<Tool> tools, final boolean supportsToolCalling) {
+  private static LangChain4JLLMModel buildChatModel(final ModelConfig modelConfig,
+      final boolean toolCallingEnabled, final boolean supportsToolCalling) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
     final ResponseFormat responseFormat = getResponseFormat(modelConfig);
-    final ChatLanguageModel chatLanguageModel = switch (provider) {
+    final ChatModel chatModel = switch (provider) {
       case ModelConfig.Provider.OLLAMA -> buildOllama(modelConfig, responseFormat);
       case ModelConfig.Provider.LLAMA_CPP -> {
         LlamaCppServerUtils.ensureRunning(modelConfig);
@@ -98,19 +71,20 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       }
       case ModelConfig.Provider.OPEN_AI -> buildOpenAI(modelConfig, responseFormat);
     };
-    return new LangChain4JLLMModel(chatLanguageModel, responseFormat, modelConfig.isThoughtsEnabled(),
-        modelConfig.getThoughtsStartTag(), modelConfig.getThoughtsEndTag(), contextManager, tools,
-        !supportsToolCalling);
+    final Parser parser = Parser.create().withResponseFormat(responseFormat.type())
+            .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!supportsToolCalling).parseThoughtsFromText(!modelConfig.isThoughtsSupported())
+            .areThoughtsEnabled(modelConfig.isThoughtsEnabled()).withThoughtsStartTag(modelConfig.getThoughtsStartTag()).withThoughtsEndTag(modelConfig.getThoughtsEndTag());
+    return new LangChain4JLLMModel(chatModel, parser, buildProtocolMessage(modelConfig));
   }
 
-  private static ChatLanguageModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+  private static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
     return OllamaChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
         .temperature(config.getTemperature()).topK(config.getTopK()).topP(config.getTopP())
         .repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
         .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
   }
 
-  private static ChatLanguageModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
+  private static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl())
         .temperature(config.getTemperature()).topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format)

@@ -4,8 +4,6 @@ import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import jakarta.inject.Singleton;
 

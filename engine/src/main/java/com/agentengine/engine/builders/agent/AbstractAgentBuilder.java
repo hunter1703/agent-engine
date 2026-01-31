@@ -1,32 +1,27 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
+import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.builders.sessionstore.SessionStoreProvider;
-import com.agentengine.engine.tools.DefaultToolExecutor;
-import com.agentengine.engine.api.Tool;
-import com.agentengine.engine.tools.ToolExecutor;
+import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.tools.ToolRegistry;
+import com.google.adk.agents.LlmAgent;
 
 import java.util.List;
 
-public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends Agent> implements AgentBuilder<C, A> {
+public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent> implements AgentBuilder<C, A> {
   protected final ModelProvider modelProvider;
-  protected final SessionStoreProvider sessionStoreProvider;
+  protected final SessionServiceProvider sessionServiceProvider;
+  protected final ContextManagerProvider contextManagerProvider;
   protected final ToolRegistry toolRegistry;
 
-  protected AbstractAgentBuilder(ModelProvider modelProvider, SessionStoreProvider sessionStoreProvider,
-      ToolRegistry toolRegistry) {
+  protected AbstractAgentBuilder(ModelProvider modelProvider, SessionServiceProvider sessionServiceProvider, ContextManagerProvider contextManagerProvider,
+                                 ToolRegistry toolRegistry) {
     this.modelProvider = modelProvider;
-    this.sessionStoreProvider = sessionStoreProvider;
-    this.toolRegistry = toolRegistry;
-  }
-
-  protected ToolExecutor getDefaultToolExecutor(final String agentId, final ToolsConfig toolsConfig) {
-    final List<Tool> tools = toolRegistry.loadTools(agentId, toolsConfig);
-    return new DefaultToolExecutor(tools);
+    this.sessionServiceProvider = sessionServiceProvider;
+      this.contextManagerProvider = contextManagerProvider;
+      this.toolRegistry = toolRegistry;
   }
 }

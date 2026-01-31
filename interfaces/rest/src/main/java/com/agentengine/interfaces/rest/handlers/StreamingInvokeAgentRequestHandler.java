@@ -2,13 +2,10 @@ package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.services.AgentManager;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Singleton;
-
-import com.agentengine.engine.api.Agent;
 
 @Singleton
 public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHandler<Multi<BaseEvent>> {

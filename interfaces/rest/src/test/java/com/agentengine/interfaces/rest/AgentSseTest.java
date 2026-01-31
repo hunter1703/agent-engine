@@ -9,9 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.AgentListener;
-import com.agentengine.engine.api.beans.session.Message;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;

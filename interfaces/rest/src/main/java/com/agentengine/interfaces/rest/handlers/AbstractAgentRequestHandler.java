@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.api.AgentRequest;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.interfaces.rest.services.AgentManager;
 
 import org.slf4j.Logger;

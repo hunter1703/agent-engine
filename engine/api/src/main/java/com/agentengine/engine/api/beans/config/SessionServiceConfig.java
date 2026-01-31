@@ -3,14 +3,13 @@ package com.agentengine.engine.api.beans.config;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeKey = "type", seeAlso = {InMemorySessionStoreConfig.class})
+@JSONType(typeKey = "type", seeAlso = {InMemorySessionServiceConfig.class})
 @BsonDiscriminator(key = "type")
-public abstract class SessionStoreConfig implements Config {
-
+public abstract class SessionServiceConfig implements Config {
   private String type;
 
-  protected SessionStoreConfig(final SessionStoreType sessionStoreType) {
-    this.type = sessionStoreType.name().toLowerCase();
+  protected SessionServiceConfig(final SessionServiceType sessionServiceType) {
+    this.type = sessionServiceType.name().toLowerCase();
   }
 
   @Override
@@ -22,7 +21,7 @@ public abstract class SessionStoreConfig implements Config {
     this.type = type;
   }
 
-  public enum SessionStoreType {
+  public enum SessionServiceType {
     MEMORY
   }
 }

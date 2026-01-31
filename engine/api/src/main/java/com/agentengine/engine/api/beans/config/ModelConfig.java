@@ -36,6 +36,7 @@ public class ModelConfig implements Config {
 
   private boolean toolCallingEnabled = true;
   private boolean toolCallingSupported;
+  private boolean thoughtsSupported;
 
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
 
@@ -174,11 +175,19 @@ public class ModelConfig implements Config {
     this.toolCallingSupported = toolCallingSupported;
   }
 
-  public ContextManagerConfig getContextConfig() {
+  public boolean isThoughtsSupported() {
+    return thoughtsSupported;
+  }
+
+  public void setThoughtsSupported(final boolean thoughtsSupported) {
+    this.thoughtsSupported = thoughtsSupported;
+  }
+
+  public ContextManagerConfig getContextManagerConfig() {
     return contextManagerConfig;
   }
 
-  public void setContextConfig(final ContextManagerConfig contextManagerConfig) {
+  public void setContextManagerConfig(final ContextManagerConfig contextManagerConfig) {
     this.contextManagerConfig = contextManagerConfig;
   }
 

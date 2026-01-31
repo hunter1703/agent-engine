@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.HybridAgent;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.HybridAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;

@@ -1,48 +1,27 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.Tool;
-import com.agentengine.engine.api.beans.ToolContext;
 import com.agentengine.engine.api.beans.ToolResult;
 import com.agentengine.engine.api.utils.JsonUtils;
+import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.ExitLoopTool;
+import com.google.adk.tools.FunctionTool;
+import com.google.adk.tools.ToolContext;
+import com.google.genai.types.FunctionDeclaration;
+import com.google.genai.types.Tool;
+import io.reactivex.rxjava3.core.Single;
 import io.vertx.json.schema.common.dsl.Schemas;
 import io.vertx.json.schema.common.dsl.StringSchemaBuilder;
 import jakarta.inject.Singleton;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-@Singleton
-public final class UserClarificationTool implements Tool {
-  public static final String NAME = "user_clarification";
-  @Override
-  public String name() {
-    return NAME;
-  }
+public final class UserClarificationTool {
+  public static final FunctionTool INSTANCE = FunctionTool.create(UserClarificationTool.class, "clarifyFromUser");
 
-  @Override
-  public String description() {
-    return "Request additional input from the user when required.";
-  }
-
-  @Override
-  public String execute(final Map<String, Object> args) {
-    Map<String, Object> payload = new HashMap<>();
-    if (args != null) {
-      payload.putAll(args);
-    }
-    return JsonUtils.toJson(payload);
-  }
-
-  @Override
-  public Map<String, Object> parametersSchema() {
-    final StringSchemaBuilder questionSchema = Schemas.stringSchema().withKeyword("description",
-        "The question to ask the user for clarification");
-    // noinspection unchecked
-    return Schemas.objectSchema().requiredProperty("question", questionSchema).toJson().mapTo(Map.class);
-  }
-
-  @Override
-  public ToolResult executeWithContext(final ToolContext context, final Map<String, Object> args) {
-    return ToolResult.clarification(execute(args));
+  public static Map<String, Object> clarifyFromUser(final String question) {
+    return Map.of("clarification", question);
   }
 }

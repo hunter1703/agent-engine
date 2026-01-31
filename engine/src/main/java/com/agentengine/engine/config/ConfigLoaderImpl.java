@@ -1,4 +1,4 @@
-package com.agentengine.engine.beans.config;
+package com.agentengine.engine.config;
 
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.YamlUtils;

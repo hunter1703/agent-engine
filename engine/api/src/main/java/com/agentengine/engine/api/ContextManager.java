@@ -1,16 +1,12 @@
 package com.agentengine.engine.api;
 
-import com.agentengine.engine.api.beans.session.Message;
+
+import com.google.genai.types.Content;
 
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 public interface ContextManager {
 
-  List<Message> buildPrompt(String sessionId);
-
-  String appendMessage(String sessionId, String runId, Message message);
-
-  MessageStoreMark mark(String sessionId);
-
-  void reset(String sessionId, MessageStoreMark mark);
+  UnaryOperator<List<Content>> getPromptBuilder();
 }
