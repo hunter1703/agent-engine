@@ -1,13 +1,17 @@
 package com.agentengine.engine.api.utils;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONPath;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.TypeReference;
+import com.alibaba.fastjson2.filter.PropertyFilter;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 
 public final class JsonUtils {
   private JsonUtils() {
@@ -59,7 +63,22 @@ public final class JsonUtils {
   }
 
   public static String toJson(final Object value) {
-    return JSON.toJSONString(value);
+    return JSON.toJSONString(value, (PropertyFilter) (_, _, v) -> {
+      if (v == null) {
+        return false;
+      }
+      if (v instanceof Optional<?> optional) {
+        return optional.isPresent();
+      }
+      return true;
+    });
+  }
+
+  public static void removeValue(Object jsonObject, String key) {
+    if (jsonObject == null) {
+      return;
+    }
+    JSONPath.of(key).remove(jsonObject);
   }
 
   public static String toStableJson(final Object value) {

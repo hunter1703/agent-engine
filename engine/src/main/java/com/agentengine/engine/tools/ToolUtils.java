@@ -1,6 +1,7 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.utils.SchemaUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.FunctionDeclaration;
 import org.slf4j.Logger;
@@ -30,13 +31,26 @@ public final class ToolUtils {
       if (tool.description() != null && !tool.description().isBlank()) {
         line += STR." - \{tool.description()}";
       }
+      final FunctionDeclaration declaration = tool.declaration().orElse(FunctionDeclaration.builder().build());
       builder.append(line).append("\n\t-").append("tool args schema - ")
-          .append(
-              JsonUtils.toJson(tool.declaration().orElse(FunctionDeclaration.builder().build()).parametersJsonSchema()))
+          .append(renderSchema(declaration))
           .append("\n");
     }
     builder.append("</AVAILABLE_TOOLS>");
     return builder.toString();
+  }
+
+  private static String renderSchema(final FunctionDeclaration declaration) {
+    if (declaration == null) {
+      return SchemaUtils.toJsonSchema(null);
+    }
+    if (declaration.parameters().isPresent()) {
+      return SchemaUtils.toJsonSchema(declaration.parameters().orElse(null));
+    }
+    if (declaration.parametersJsonSchema().isPresent()) {
+      return JsonUtils.toJson(declaration.parametersJsonSchema().orElse(null));
+    }
+    return SchemaUtils.toJsonSchema(null);
   }
 
   public static void logToolInstructions(final String agentId, final String toolInstructions) {

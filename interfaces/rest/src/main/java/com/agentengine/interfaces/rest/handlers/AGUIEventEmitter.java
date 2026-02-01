@@ -4,6 +4,7 @@ import static com.google.adk.sessions.State.REMOVED;
 import static com.google.adk.sessions.State.TEMP_PREFIX;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.ExceptionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agui.core.event.*;
@@ -81,7 +82,7 @@ public final class AGUIEventEmitter {
       runId = "unknown";
     }
     final RunErrorEvent event = new RunErrorEvent();
-    event.setError(throwable == null ? null : throwable.getMessage());
+    event.setError(ExceptionUtils.getErrorMessage(throwable));
     emit(event);
   }
 
