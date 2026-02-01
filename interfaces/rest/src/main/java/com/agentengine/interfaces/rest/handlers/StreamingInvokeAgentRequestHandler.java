@@ -46,7 +46,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
           .set(runtime.runner().runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId, messageContent, runConfig)
               .subscribe(eventEmitter::onEvent, error -> {
                 eventEmitter.onError(error);
-                emitter.fail(error);
+                emitter.complete();
               }, () -> {
                 eventEmitter.onComplete();
                 emitter.complete();

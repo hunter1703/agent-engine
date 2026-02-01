@@ -36,7 +36,8 @@ class LangChain4JLLMModelTest {
 
     final Parser parser = Parser.create();
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol");
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
+        false);
 
     assertThat(model.getProtocol()).isEqualTo("protocol");
 
@@ -67,7 +68,7 @@ class LangChain4JLLMModelTest {
     }).when(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
 
     final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, Parser.create(),
-        "protocol");
+        "protocol", true, false);
     final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
         .build();
     final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();

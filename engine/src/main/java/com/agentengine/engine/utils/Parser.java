@@ -30,6 +30,8 @@ import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
 
 public class Parser implements RequestProcessor, ResponseProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
+  private static final boolean TOOL_DEBUG = Boolean.getBoolean("agent.engine.tool.debug")
+      || Boolean.parseBoolean(System.getenv("AGENT_ENGINE_TOOL_DEBUG"));
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
   private static final String THOUGHTS_KEY = "thoughts";
   private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
@@ -124,8 +126,11 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     final String thoughts = getThoughts(text);
     List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
     if (toolCallingEnabled && parseToolCallsFromText) {
-      final List<ToolCall> toolCalls = parseToolCalls(processedText);
+      final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
       toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
+      if (TOOL_DEBUG && !toolCalls.isEmpty()) {
+        LOG.info("Parsed tool calls from text: {}", toolCalls);
+      }
     }
 
     final String finalAnswer = processedText == null ? "" : processedText.trim();
@@ -198,13 +203,14 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       if (nameValue == null) {
         continue;
       }
+      final String toolName = nameValue.toString();
       final Object argsValue = map.get("args");
       @SuppressWarnings("unchecked")
       final Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap
           ? (Map<String, Object>) argsMap
           : Map.of();
       final Object idValue = map.get("id");
-      calls.add(new ToolCall(idValue == null ? null : idValue.toString(), nameValue.toString(), args));
+      calls.add(new ToolCall(idValue == null ? null : idValue.toString(), toolName, args));
     }
     return calls;
   }
@@ -228,11 +234,17 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         LOG.warn("Failed to parse tool call arguments: {}", argsStr, e);
         args = Map.of();
       }
-
       toolCalls.add(new ToolCall(id, name, args));
     }
 
     return toolCalls.isEmpty() ? List.of() : toolCalls;
+  }
+
+  private static List<ToolCall> dedupeToolCalls(final List<ToolCall> toolCalls) {
+    if (CollectionUtils.isEmpty(toolCalls)) {
+      return List.of();
+    }
+    return new ArrayList<>(new LinkedHashSet<>(toolCalls));
   }
 
   private String stripThoughtBlock(final String text) {

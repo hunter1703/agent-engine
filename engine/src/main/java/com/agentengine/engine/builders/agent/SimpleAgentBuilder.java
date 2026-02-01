@@ -1,6 +1,7 @@
 package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.api.AgentContext;
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.agents.SimpleAgent;
@@ -40,10 +41,15 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
         ? agentContext
         : new AgentContext(config, sessionService);
     final List<BaseTool> tools = toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
+    final String toolInstructions = ToolUtils.buildToolMessage(tools);
+    ToolUtils.logToolInstructions(config.getAgentId(), toolInstructions);
     final AgentBuilder agentBuilder = new AgentBuilder();
-    agentBuilder.protocolInstructions(model.getProtocol()).toolInstructions(ToolUtils.buildToolMessage(tools))
+    agentBuilder.protocolInstructions(model.getProtocol()).toolInstructions(toolInstructions)
         .globalInstruction(config.getModel().getSystemPrompt()).disallowTransferToParent(false)
         .disallowTransferToPeers(false).name(config.getAgentId()).model(model);
+    if (CollectionUtils.isNotEmpty(tools) && model.isToolCallingEnabled() && !model.isParseToolCallsFromText()) {
+      agentBuilder.tools(tools);
+    }
     return agentBuilder;
   }
 
