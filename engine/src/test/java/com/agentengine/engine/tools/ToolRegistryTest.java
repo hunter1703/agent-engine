@@ -1,6 +1,7 @@
 package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,7 +11,9 @@ import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
+import com.google.adk.tools.ToolContext;
 import com.google.adk.sessions.InMemorySessionService;
+import io.reactivex.rxjava3.core.Single;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
@@ -25,12 +28,13 @@ class ToolRegistryTest {
     ToolProvider provider = mock(ToolProvider.class);
     when(provider.agentId()).thenReturn("test-agent");
     when(provider.toolName()).thenReturn("fake");
-    BaseTool fakeTool = FunctionTool.create(new Object() {
-      public Map<String, Object> run(Map<String, Object> args) {
-        return Map.of("output", "pre-" + args.get("value"));
+    BaseTool fakeTool = new BaseTool("fake", "test tool") {
+      @Override
+      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
+        return Single.just(Map.of("output", "pre-" + args.get("value")));
       }
-    }, "run");
-    when(provider.create(org.mockito.ArgumentMatchers.any(AgentContext.class), anyMap())).thenReturn(fakeTool);
+    };
+    when(provider.create(any(AgentContext.class), anyMap())).thenReturn(fakeTool);
 
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
@@ -49,8 +53,7 @@ class ToolRegistryTest {
 
     assertThat(tools).isNotEmpty();
     BaseTool tool = tools.stream().filter(t -> t.name().equals("fake")).findFirst().orElseThrow();
-    Map<String, Object> result = (Map<String, Object>) tool.runAsync(Map.of("value", "fix"), null)
-        .blockingGet();
+    Map<String, Object> result = (Map<String, Object>) tool.runAsync(Map.of("value", "fix"), null).blockingGet();
     assertThat(result).containsEntry("output", "pre-fix");
 
     toolsConfig.setEnabled(List.of("other"));
@@ -66,8 +69,7 @@ class ToolRegistryTest {
     ToolProvider otherProvider = buildProvider("other_tool");
 
     Instance<ToolProvider> providers = mock(Instance.class);
-    when(providers.iterator())
-        .thenReturn(List.of(createPlanProvider, finishPlanProvider, otherProvider).iterator());
+    when(providers.iterator()).thenReturn(List.of(createPlanProvider, finishPlanProvider, otherProvider).iterator());
     when(providers.stream()).thenReturn(Stream.of(createPlanProvider, finishPlanProvider, otherProvider));
 
     ToolRegistry registry = new ToolRegistry(providers);
@@ -97,7 +99,7 @@ class ToolRegistryTest {
   }
 
   private static Map<String, Object> anyMap() {
-    return org.mockito.ArgumentMatchers.anyMap();
+    return any();
   }
 
   private static ToolProvider buildProvider(final String toolName) {
@@ -109,7 +111,7 @@ class ToolRegistryTest {
         return Map.of("status", "ok");
       }
     }, "run");
-    when(provider.create(org.mockito.ArgumentMatchers.any(AgentContext.class), anyMap())).thenReturn(tool);
+    when(provider.create(any(AgentContext.class), anyMap())).thenReturn(tool);
     return provider;
   }
 }

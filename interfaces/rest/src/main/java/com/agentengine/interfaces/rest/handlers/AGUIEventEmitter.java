@@ -1,14 +1,17 @@
 package com.agentengine.interfaces.rest.handlers;
 
+import static com.google.adk.sessions.State.REMOVED;
+import static com.google.adk.sessions.State.TEMP_PREFIX;
+
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agui.core.event.*;
 import com.agui.core.message.AssistantMessage;
 import com.agui.core.message.BaseMessage;
+import com.agui.core.message.Role;
 import com.agui.core.message.SystemMessage;
 import com.agui.core.message.UserMessage;
-import com.agui.core.message.Role;
 import com.agui.core.state.State;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
@@ -298,11 +301,11 @@ public final class AGUIEventEmitter {
     }
     for (Map.Entry<String, Object> entry : stateDelta.entrySet()) {
       final String key = entry.getKey();
-      if (StringUtils.isBlank(key) || key.startsWith(com.google.adk.sessions.State.TEMP_PREFIX)) {
+      if (StringUtils.isBlank(key) || key.startsWith(TEMP_PREFIX)) {
         continue;
       }
       final Object value = entry.getValue();
-      if (value == com.google.adk.sessions.State.REMOVED) {
+      if (value == REMOVED) {
         stateSnapshot.remove(key);
       } else {
         stateSnapshot.put(key, value);

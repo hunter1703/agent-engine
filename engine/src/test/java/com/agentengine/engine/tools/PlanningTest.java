@@ -55,12 +55,8 @@ class PlanningTest {
   }
 
   private static Session buildSession(final String sessionId) {
-    return Session.builder(sessionId)
-        .appName("agent")
-        .userId("default")
-        .state(new ConcurrentHashMap<>())
-        .events(new ArrayList<>())
-        .build();
+    return Session.builder(sessionId).appName("agent").userId("default").state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>()).build();
   }
 
   private static ToolContext buildToolContext(final Session session) {

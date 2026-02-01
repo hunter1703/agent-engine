@@ -24,9 +24,7 @@ public class AgentBuilder extends LlmAgent.Builder {
   }
 
   public LlmAgent.Builder reWriteInstructions() {
-    return super.instruction(
-        "# GLOBAL INSTRUCTION\n" + globalInstruction + "\n\n# PROTOCOL YOU MUST FOLLOW\n" + protocolInstructions
-            + "\n\n---\n\n# TOOLS\n" + toolInstructions);
+    return super.instruction(STR."# GLOBAL INSTRUCTION\n\{globalInstruction}\n\n# PROTOCOL YOU MUST FOLLOW\n\{protocolInstructions}\n\n---\n\n# TOOLS\n\{toolInstructions}");
   }
 
   @Override

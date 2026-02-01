@@ -53,7 +53,7 @@ public class AgentRestAPI {
   @Path("/invoke")
   @Operation(summary = "Invoke an agent", description = "Invoke the agent or build its prompt.")
   @APIResponse(responseCode = "200", description = "Invoke response or prompt response", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(oneOf = {
-      InvokeResponse.class, PromptResponse.class })))
+      InvokeResponse.class, PromptResponse.class})))
   public AgentResponse invoke(final AgentRequest request) {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();

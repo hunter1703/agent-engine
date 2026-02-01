@@ -41,9 +41,9 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
         : new AgentContext(config, sessionService);
     final List<BaseTool> tools = toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
     final AgentBuilder agentBuilder = new AgentBuilder();
-    agentBuilder.protocolInstructions(model.getProtocol())
-        .toolInstructions(ToolUtils.buildToolMessage(tools)).globalInstruction(config.getModel().getSystemPrompt())
-        .disallowTransferToParent(false).disallowTransferToPeers(false).name(config.getAgentId()).model(model);
+    agentBuilder.protocolInstructions(model.getProtocol()).toolInstructions(ToolUtils.buildToolMessage(tools))
+        .globalInstruction(config.getModel().getSystemPrompt()).disallowTransferToParent(false)
+        .disallowTransferToPeers(false).name(config.getAgentId()).model(model);
     return agentBuilder;
   }
 

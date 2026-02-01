@@ -5,7 +5,7 @@ import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeKey = "type", seeAlsoDefault = AgentConfig.class)
-@BsonDiscriminator(key = "type")
+@BsonDiscriminator(key = "type", value = "default")
 public class AgentConfig implements Config {
   private String type;
   private String agentId;

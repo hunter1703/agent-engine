@@ -18,13 +18,8 @@ public final class ToolRegistry {
 
   private static final String ALL_TOOLS = "ALL";
   private static final String PLANNING_TOOL_KEY = "planning";
-  private static final List<String> PLANNING_TOOL_NAMES = List.of(
-      "create_plan",
-      "update_plan_info",
-      "revise_current_plan",
-      "update_subtask_state",
-      "finish_plan",
-      "view_current_plan");
+  private static final List<String> PLANNING_TOOL_NAMES = List.of("create_plan", "update_plan_info",
+      "revise_current_plan", "update_subtask_state", "finish_plan", "view_current_plan");
 
   private final List<ToolProvider> providers;
 

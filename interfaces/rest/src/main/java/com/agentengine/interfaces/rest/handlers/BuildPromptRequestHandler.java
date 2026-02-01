@@ -10,6 +10,7 @@ import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agentengine.interfaces.rest.services.AgentRuntime;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.ListEventsResponse;
+import com.google.genai.types.Content;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Objects;
@@ -41,7 +42,7 @@ public class BuildPromptRequestHandler extends AbstractAgentRequestHandler<Agent
     if (event == null) {
       return null;
     }
-    final String content = event.content().map(com.google.genai.types.Content::text).orElse(null);
+    final String content = event.content().map(Content::text).orElse(null);
     if (StringUtils.isBlank(content)) {
       return null;
     }

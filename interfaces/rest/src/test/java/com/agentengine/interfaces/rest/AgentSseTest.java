@@ -60,12 +60,9 @@ class AgentSseTest {
     assertThat(stream).isNotNull();
     final var events = stream.collect().asList().await().indefinitely();
 
-    assertThat(events).hasSize(5);
-    assertThat(events.getFirst().getType()).isEqualTo(EventType.RUN_STARTED);
-    assertThat(events.get(1).getType()).isEqualTo(EventType.TEXT_MESSAGE_START);
-    assertThat(events.get(2).getType()).isEqualTo(EventType.TEXT_MESSAGE_CONTENT);
-    assertThat(events.get(3).getType()).isEqualTo(EventType.TEXT_MESSAGE_END);
-    assertThat(events.get(4).getType()).isEqualTo(EventType.RUN_FINISHED);
+    assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,
+        EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_CHUNK,
+        EventType.TEXT_MESSAGE_END, EventType.MESSAGES_SNAPSHOT, EventType.STEP_FINISHED, EventType.RUN_FINISHED);
   }
 
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentRuntimeManager service) {

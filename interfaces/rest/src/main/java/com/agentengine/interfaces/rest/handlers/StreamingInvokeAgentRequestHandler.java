@@ -42,15 +42,15 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
           disposable.dispose();
         }
       });
-      subscriptionRef.set(runtime.runner()
-          .runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId, messageContent, runConfig)
-          .subscribe(eventEmitter::onEvent, error -> {
-            eventEmitter.onError(error);
-            emitter.fail(error);
-          }, () -> {
-            eventEmitter.onComplete();
-            emitter.complete();
-          }));
+      subscriptionRef
+          .set(runtime.runner().runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId, messageContent, runConfig)
+              .subscribe(eventEmitter::onEvent, error -> {
+                eventEmitter.onError(error);
+                emitter.fail(error);
+              }, () -> {
+                eventEmitter.onComplete();
+                emitter.complete();
+              }));
     });
   }
 }

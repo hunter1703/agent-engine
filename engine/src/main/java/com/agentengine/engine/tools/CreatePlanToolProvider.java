@@ -9,15 +9,15 @@ import java.util.Map;
 
 @Singleton
 public final class CreatePlanToolProvider implements ToolProvider {
-    @Override
-    public String agentId() {
-        return "ALL";
-    }
+  @Override
+  public String agentId() {
+    return "ALL";
+  }
 
-    @Override
-    public String toolName() {
-        return "create_plan";
-    }
+  @Override
+  public String toolName() {
+    return "create_plan";
+  }
 
   @Override
   public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {

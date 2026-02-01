@@ -9,15 +9,15 @@ import java.util.Map;
 
 @Singleton
 public final class UpdateTaskToolProvider implements ToolProvider {
-    @Override
-    public String agentId() {
-        return "ALL";
-    }
+  @Override
+  public String agentId() {
+    return "ALL";
+  }
 
-    @Override
-    public String toolName() {
-        return "update_subtask_state";
-    }
+  @Override
+  public String toolName() {
+    return "update_subtask_state";
+  }
 
   @Override
   public BaseTool create(final AgentContext agentContext, final Map<String, Object> config) {

@@ -41,12 +41,12 @@ public final class PlanningUtils {
     final List<PlanNode> planNodes = collectPlanNodes(plan);
     appendProgressSummary(builder, planNodes);
 
-    appendPlanSection(builder, "CURRENT FOCUS", filterByStatus(planNodes, PlanStatus.IN_PROGRESS),
-        MAX_SECTION_ITEMS, true, false);
-    appendPlanSection(builder, "NEXT ITEMS", filterByStatus(planNodes, PlanStatus.TODO),
-        MAX_SECTION_ITEMS, true, false);
-    appendPlanSection(builder, "RECENT COMPLETED", filterByStatus(planNodes, PlanStatus.DONE),
-        MAX_SECTION_ITEMS, false, true);
+    appendPlanSection(builder, "CURRENT FOCUS", filterByStatus(planNodes, PlanStatus.IN_PROGRESS), MAX_SECTION_ITEMS,
+        true, false);
+    appendPlanSection(builder, "NEXT ITEMS", filterByStatus(planNodes, PlanStatus.TODO), MAX_SECTION_ITEMS, true,
+        false);
+    appendPlanSection(builder, "RECENT COMPLETED", filterByStatus(planNodes, PlanStatus.DONE), MAX_SECTION_ITEMS, false,
+        true);
 
     builder.append("Plan Tree (compact):\n");
     appendPlanTree(builder, plan, 0);
@@ -63,17 +63,8 @@ public final class PlanningUtils {
     final int inProgress = countByStatus(planNodes, PlanStatus.IN_PROGRESS);
     final int todo = countByStatus(planNodes, PlanStatus.TODO);
     final int abandoned = countByStatus(planNodes, PlanStatus.ABANDONED);
-    builder.append("Progress: ")
-        .append(completed)
-        .append("/")
-        .append(total)
-        .append(" done, ")
-        .append(inProgress)
-        .append(" in progress, ")
-        .append(todo)
-        .append(" todo, ")
-        .append(abandoned)
-        .append(" abandoned\n");
+    builder.append("Progress: ").append(completed).append("/").append(total).append(" done, ").append(inProgress)
+        .append(" in progress, ").append(todo).append(" todo, ").append(abandoned).append(" abandoned\n");
   }
 
   private static int countByStatus(final List<PlanNode> planNodes, final PlanStatus status) {
@@ -86,9 +77,8 @@ public final class PlanningUtils {
     return count;
   }
 
-  private static void appendPlanSection(final StringBuilder builder, final String title,
-      final List<PlanNode> items, final int maxItems, final boolean includeExpected,
-      final boolean includeOutcome) {
+  private static void appendPlanSection(final StringBuilder builder, final String title, final List<PlanNode> items,
+      final int maxItems, final boolean includeExpected, final boolean includeOutcome) {
     if (CollectionUtils.isEmpty(items)) {
       return;
     }
@@ -119,10 +109,7 @@ public final class PlanningUtils {
     if (plan == null) {
       return;
     }
-    builder.append("  ".repeat(Math.max(0, depth)))
-        .append("- ")
-        .append(planLabel(plan))
-        .append("\n");
+    builder.append("  ".repeat(Math.max(0, depth))).append("- ").append(planLabel(plan)).append("\n");
     for (Plan subtask : CollectionUtils.nullSafeList(plan.getSubtasks())) {
       appendPlanTree(builder, subtask, depth + 1);
     }
