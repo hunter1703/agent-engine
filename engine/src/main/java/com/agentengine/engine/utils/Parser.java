@@ -122,12 +122,13 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   private Content parseTextContent(Content content) {
     final String text = content.text();
-    final String processedText = stripThoughtBlock(text);
+    String processedText = stripThoughtBlock(text);
     final String thoughts = getThoughts(text);
     List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
       toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
+      processedText = stripToolCallsBlock(processedText);
       if (TOOL_DEBUG && !toolCalls.isEmpty()) {
         LOG.info("Parsed tool calls from text: {}", toolCalls);
       }
@@ -253,6 +254,13 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         }
         return text.replaceAll(STR."\{Pattern.quote(thoughtsStartTag)}.*?\{Pattern.quote(thoughtsEndTag)}", "").trim();
     }
+
+  private String stripToolCallsBlock(final String text) {
+    if (StringUtils.isBlank(text) || !toolCallingEnabled || !parseToolCallsFromText) {
+      return text;
+    }
+    return TOOL_CALL_PATTERN.matcher(text).replaceAll("").trim();
+  }
 
   @Override
   public Single<ResponseProcessingResult> processResponse(final InvocationContext context, final LlmResponse response) {
