@@ -1,6 +1,7 @@
 package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.agents.SimpleAgent;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.agents.LlmAgent;
 
 public class AgentBuilder extends LlmAgent.Builder {
@@ -24,7 +25,21 @@ public class AgentBuilder extends LlmAgent.Builder {
   }
 
   public LlmAgent.Builder reWriteInstructions() {
-    return super.instruction(STR."# GLOBAL INSTRUCTION\n\{globalInstruction}\n\n# PROTOCOL YOU MUST FOLLOW\n\{protocolInstructions}\n\n---\n\n# TOOLS\n\{toolInstructions}");
+    final String fullToolInstructions = StringUtils.isNotBlank(toolInstructions) ? STR."# TOOLS\n\{toolInstructions}" : "";
+    return super.instruction(STR."""
+    # YOUR MANDATE:
+    \{globalInstruction}
+
+    ---
+
+    # PROTOCOL YOU MUST FOLLOW:
+    \{protocolInstructions}
+
+    ---
+
+    \{fullToolInstructions}
+    """
+    );
   }
 
   @Override

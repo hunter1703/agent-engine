@@ -15,14 +15,10 @@ class SchemaUtilsTest {
 
   @Test
   void convertsObjectSchemaWithProperties() {
-    final Schema schema = Schema.builder()
-        .type(Type.Known.OBJECT)
-        .description("User payload")
-        .properties(Map.of(
-            "name", Schema.builder().type(Type.Known.STRING).description("User name").build(),
-            "age", Schema.builder().type(Type.Known.INTEGER).minimum(18D).build()))
-        .required(List.of("name"))
-        .build();
+    final Schema schema = Schema.builder().type(Type.Known.OBJECT).description("User payload")
+        .properties(Map.of("name", Schema.builder().type(Type.Known.STRING).description("User name").build(), "age",
+            Schema.builder().type(Type.Known.INTEGER).minimum(18D).build()))
+        .required(List.of("name")).build();
 
     final SchemaBuilder<?, ?> builder = SchemaUtils.toVertxSchema(schema);
     final JsonObject json = builder.toJson();
@@ -41,19 +37,14 @@ class SchemaUtilsTest {
   @Test
   void addsNullableToAnyOfSchemas() {
     final Schema schema = Schema.builder()
-        .anyOf(
-            Schema.builder().type(Type.Known.STRING),
-            Schema.builder().type(Type.Known.INTEGER))
-        .nullable(true)
+        .anyOf(Schema.builder().type(Type.Known.STRING), Schema.builder().type(Type.Known.INTEGER)).nullable(true)
         .build();
 
     final JsonObject json = SchemaUtils.toVertxSchema(schema).toJson();
     final JsonArray anyOf = json.getJsonArray("anyOf");
 
     assertThat(anyOf).hasSize(3);
-    assertThat(anyOf.stream()
-        .map(entry -> ((JsonObject) entry).getString("type"))
-        .toList())
-        .contains("string", "integer", "null");
+    assertThat(anyOf.stream().map(entry -> ((JsonObject) entry).getString("type")).toList()).contains("string",
+        "integer", "null");
   }
 }

@@ -4,16 +4,10 @@ import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.utils.SchemaUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.FunctionDeclaration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public final class ToolUtils {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ToolUtils.class);
-  private static final boolean TOOL_DEBUG = Boolean.getBoolean("agent.engine.tool.debug")
-      || Boolean.parseBoolean(System.getenv("AGENT_ENGINE_TOOL_DEBUG"));
 
   private ToolUtils() {
   }
@@ -51,17 +45,5 @@ public final class ToolUtils {
       return JsonUtils.toJson(declaration.parametersJsonSchema().orElse(null));
     }
     return SchemaUtils.toJsonSchema(null);
-  }
-
-  public static void logToolInstructions(final String agentId, final String toolInstructions) {
-    if (!TOOL_DEBUG) {
-      return;
-    }
-    final String resolvedAgentId = agentId == null ? "unknown" : agentId;
-    if (toolInstructions == null || toolInstructions.isBlank()) {
-      LOG.info("No tool instructions for agent {}", resolvedAgentId);
-      return;
-    }
-    LOG.info("Tool instructions for agent {}:\n{}", resolvedAgentId, toolInstructions);
   }
 }

@@ -1,0 +1,116 @@
+package com.agentengine.engine.builders.agent;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.agentengine.engine.agents.SimpleAgent;
+import com.agentengine.engine.api.AgentContext;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.engine.builders.context.ContextManagerProvider;
+import com.agentengine.engine.builders.model.ModelProvider;
+import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.engine.model.LangChain4JLLMModel;
+import com.agentengine.engine.tools.ToolRegistry;
+import com.agentengine.engine.utils.Parser;
+import com.google.adk.agents.Instruction;
+import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.ToolContext;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import io.reactivex.rxjava3.core.Single;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class SimpleAgentBuilderTest {
+
+  @Test
+  void includesToolInstructionsWhenParsingFromText() {
+    final ModelProvider modelProvider = mock(ModelProvider.class);
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final ToolRegistry toolRegistry = mock(ToolRegistry.class);
+    final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
+
+    final ChatModel chatModel = mock(ChatModel.class);
+    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
+    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
+        true);
+
+    final BaseTool tool = new BaseTool("run_cmd", "run command") {
+      @Override
+      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
+        return Single.just(Map.of("status", "ok"));
+      }
+    };
+
+    when(modelProvider.get(eq("agent-id"), any())).thenReturn(model);
+    when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
+    when(sessionServiceProvider.get(any())).thenReturn(null);
+
+    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
+        contextManagerProvider);
+
+    final AgentModelConfig modelConfig = new AgentModelConfig();
+    modelConfig.setModelId("model-id");
+    modelConfig.setSystemPrompt("prompt");
+
+    final AgentConfig config = new AgentConfig();
+    config.setAgentId("agent-id");
+    config.setModel(modelConfig);
+
+    final SimpleAgent agent = builder.build(config, new AgentContext(config, null));
+
+    assertThat(agent.tools()).extracting(BaseTool::name).contains("run_cmd");
+    assertThat(agent.instruction()).isInstanceOf(Instruction.Static.class);
+    final String instructions = ((Instruction.Static) agent.instruction()).instruction();
+    assertThat(instructions).contains("run_cmd");
+  }
+
+  @Test
+  void registersToolsWhenNativeToolCalling() {
+    final ModelProvider modelProvider = mock(ModelProvider.class);
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final ToolRegistry toolRegistry = mock(ToolRegistry.class);
+    final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
+
+    final ChatModel chatModel = mock(ChatModel.class);
+    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
+    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
+        false);
+
+    final BaseTool tool = new BaseTool("run_cmd", "run command") {
+      @Override
+      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
+        return Single.just(Map.of("status", "ok"));
+      }
+    };
+
+    when(modelProvider.get(eq("agent-id"), any())).thenReturn(model);
+    when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
+    when(sessionServiceProvider.get(any())).thenReturn(null);
+
+    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
+        contextManagerProvider);
+
+    final AgentModelConfig modelConfig = new AgentModelConfig();
+    modelConfig.setModelId("model-id");
+    modelConfig.setSystemPrompt("prompt");
+
+    final AgentConfig config = new AgentConfig();
+    config.setAgentId("agent-id");
+    config.setModel(modelConfig);
+
+    final SimpleAgent agent = builder.build(config, new AgentContext(config, null));
+
+    assertThat(agent.tools()).extracting(BaseTool::name).contains("run_cmd");
+    assertThat(agent.instruction()).isInstanceOf(Instruction.Static.class);
+    final String instructions = ((Instruction.Static) agent.instruction()).instruction();
+    assertThat(instructions).doesNotContain("run_cmd");
+  }
+}

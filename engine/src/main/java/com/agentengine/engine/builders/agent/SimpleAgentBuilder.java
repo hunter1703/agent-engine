@@ -40,16 +40,22 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     final AgentContext resolvedContext = sessionService == null
         ? agentContext
         : new AgentContext(config, sessionService);
-    final List<BaseTool> tools = toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
-    final String toolInstructions = ToolUtils.buildToolMessage(tools);
-    ToolUtils.logToolInstructions(config.getAgentId(), toolInstructions);
+    final boolean toolCallingEnabled = model.isToolCallingEnabled();
+    final boolean parseToolCallsFromText = model.isParseToolCallsFromText();
+    String toolInstructions = "";
     final AgentBuilder agentBuilder = new AgentBuilder();
-    agentBuilder.protocolInstructions(model.getProtocol()).toolInstructions(toolInstructions)
+    if (toolCallingEnabled) {
+      final List<BaseTool> tools = toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
+      if (parseToolCallsFromText) {
+        toolInstructions = ToolUtils.buildToolMessage(tools);
+      }
+      if (CollectionUtils.isNotEmpty(tools)) {
+        agentBuilder.tools(tools);
+      }
+    }
+    agentBuilder.toolInstructions(toolInstructions).protocolInstructions(model.getProtocol())
         .globalInstruction(config.getModel().getSystemPrompt()).disallowTransferToParent(false)
         .disallowTransferToPeers(false).name(config.getAgentId()).model(model);
-    if (CollectionUtils.isNotEmpty(tools) && model.isToolCallingEnabled() && !model.isParseToolCallsFromText()) {
-      agentBuilder.tools(tools);
-    }
     return agentBuilder;
   }
 

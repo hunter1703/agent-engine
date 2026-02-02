@@ -30,8 +30,6 @@ import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
 
 public class Parser implements RequestProcessor, ResponseProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
-  private static final boolean TOOL_DEBUG = Boolean.getBoolean("agent.engine.tool.debug")
-      || Boolean.parseBoolean(System.getenv("AGENT_ENGINE_TOOL_DEBUG"));
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
   private static final String THOUGHTS_KEY = "thoughts";
   private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
@@ -129,9 +127,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
       toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
       processedText = stripToolCallsBlock(processedText);
-      if (TOOL_DEBUG && !toolCalls.isEmpty()) {
-        LOG.info("Parsed tool calls from text: {}", toolCalls);
-      }
     }
 
     final String finalAnswer = processedText == null ? "" : processedText.trim();

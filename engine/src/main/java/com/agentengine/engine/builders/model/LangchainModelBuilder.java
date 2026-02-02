@@ -7,7 +7,6 @@ import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.LlamaCppServerUtils;
-import com.agentengine.engine.model.NullSafeChatModels;
 import com.agentengine.engine.utils.Parser;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.ChatModel;
@@ -53,13 +52,11 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
     final ChatModels models = buildChatModels(modelConfig);
-    final ChatModel safeChatModel = NullSafeChatModels.wrap(models.chatModel());
-    final StreamingChatModel safeStreamingChatModel = NullSafeChatModels.wrap(models.streamingChatModel());
     final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
         .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported)
         .parseThoughtsFromText(!modelConfig.isThoughtsSupported()).areThoughtsEnabled(modelConfig.isThoughtsEnabled())
         .withThoughtsStartTag(modelConfig.getThoughtsStartTag()).withThoughtsEndTag(modelConfig.getThoughtsEndTag());
-    return new LangChain4JLLMModel(safeChatModel, safeStreamingChatModel, parser,
+    return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
         buildProtocolMessage(modelConfig, toolCallingEnabled, toolCallingSupported), toolCallingEnabled,
         !toolCallingSupported);
   }

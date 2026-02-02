@@ -1,5 +1,6 @@
 package com.agentengine.engine.model;
 
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.utils.FinalAnswerAndToolCorrection;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -42,13 +43,14 @@ public class LangChain4JLLMModel extends LangChain4j {
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
+    final LlmRequest requestForModel = stripToolsFromModelRequest(llmRequest);
     if (!stream) {
-      return super.generateContent(llmRequest, false).map(LangChain4JLLMModel::markTurnComplete);
+      return super.generateContent(requestForModel, false).map(LangChain4JLLMModel::markTurnComplete);
     }
     if (!toolCallingEnabled || !parseToolCallsFromText) {
-      return super.generateContent(llmRequest, true);
+      return super.generateContent(requestForModel, true);
     }
-    return super.generateContent(llmRequest, false).map(LangChain4JLLMModel::markTurnComplete);
+    return super.generateContent(requestForModel, false).map(LangChain4JLLMModel::markTurnComplete);
   }
 
   public boolean isToolCallingEnabled() {
@@ -64,5 +66,16 @@ public class LangChain4JLLMModel extends LangChain4j {
       return null;
     }
     return response.toBuilder().turnComplete(true).build();
+  }
+
+  private LlmRequest stripToolsFromModelRequest(final LlmRequest llmRequest) {
+    if (llmRequest == null || CollectionUtils.isEmpty(llmRequest.tools()) || (toolCallingEnabled && !parseToolCallsFromText)) {
+      return llmRequest;
+    }
+    final LlmRequest.Builder builder = LlmRequest.builder().contents(llmRequest.contents())
+        .liveConnectConfig(llmRequest.liveConnectConfig());
+    llmRequest.model().ifPresent(builder::model);
+    llmRequest.config().ifPresent(builder::config);
+    return builder.build();
   }
 }
