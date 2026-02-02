@@ -55,6 +55,17 @@ public final class MongoConfigRepository implements ConfigRepository {
     return findDocument(MODEL_COLLECTION, modelId, ModelConfig.class);
   }
 
+  @Override
+  public List<String> listAgentConfigs() {
+    try {
+      MongoCollection<Document> collection = mongoClient.getDatabase("AGENT_ENGINE").getCollection(AGENT_COLLECTION);
+      return collection.find().map(doc -> doc.getString("_id")).into(new java.util.ArrayList<>());
+    } catch (Exception ex) {
+      LOGGER.log(Level.WARNING, "Failed to list agent configs from MongoDB", ex);
+      return new java.util.ArrayList<>(); // Return empty list on error
+    }
+  }
+
   private <T> T findDocument(final String collectionName, final String id, final Class<T> clazz) {
     try {
       MongoCollection<Document> collection = mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName);

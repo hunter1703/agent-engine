@@ -4,9 +4,12 @@ import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.interfaces.rest.config.ResponsesApiConfig;
+import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.interfaces.rest.dto.PromptResponse;
+import com.agentengine.interfaces.rest.models.ListModelsResponse;
+import com.agentengine.interfaces.rest.models.ModelInfo;
 import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
@@ -24,6 +27,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.WebApplicationException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
@@ -40,7 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-@Path("/agent")
+@Path("/")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RunOnVirtualThread
@@ -51,13 +57,16 @@ public class AgentRestAPI {
   private final ResponsesApiMapper responsesApiMapper;
   private final ResponsesApiConfig responsesApiConfig;
 
+  private final ConfigRepository configRepository;
+
   @Inject
   public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ResponsesApiMapper responsesApiMapper,
-      ResponsesApiConfig responsesApiConfig) {
+      ResponsesApiConfig responsesApiConfig, ConfigRepository configRepository) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
     this.responsesApiMapper = responsesApiMapper;
     this.responsesApiConfig = responsesApiConfig;
+    this.configRepository = configRepository;
   }
 
   @POST
@@ -134,7 +143,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("v1/responses")
+  @Path("responses")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
@@ -202,20 +211,68 @@ public class AgentRestAPI {
   }
 
   private AgentRequest convertResponsesApiRequestToAgentRequest(ResponsesApiRequest responsesRequest) {
-    final StringBuilder messageBuilder = new StringBuilder();
-    for (final ResponsesApiRequest.Message message : responsesRequest.getMessages()) {
-      if (message != null && message.getContent() != null) {
-        messageBuilder.append(message.getContent()).append("\n");
+    // Concatenate all messages in the conversation
+    StringBuilder messageBuilder = new StringBuilder();
+    if (responsesRequest.getMessages() != null) {
+      for (ResponsesApiRequest.Message messageObj : responsesRequest.getMessages()) {
+        if (messageObj != null && messageObj.getContent() != null) {
+          messageBuilder.append(messageObj.getContent()).append("\n");
+        }
       }
     }
     String message = messageBuilder.toString();
 
+    // Create an AgentRequest with values from the Responses API request
     AgentRequest agentRequest = new AgentRequest();
     agentRequest.setType("STREAMING_INVOKE_AGENT");
-    agentRequest.setAgentId(responsesRequest.getModel());
-    agentRequest.setSessionId(responsesRequest.getThreadId());
+
+    // Map the model from Responses API to agentId in Agent Engine
+    String agentId = responsesRequest.getModel();
+    if (agentId == null || agentId.trim().isEmpty()) {
+      // Default to shell_agent if no model is specified
+      agentId = "shell_agent";
+    }
+    agentRequest.setAgentId(agentId);
+
+    agentRequest.setSessionId(responsesRequest.getThreadId()); // Use thread_id from request
     agentRequest.setMessage(message);
 
     return agentRequest;
+  }
+
+  @GET
+  @Path("/v1/models")
+  @Operation(summary = "List available models", description = "Returns a list of available models in OpenAI-compatible format.")
+  @APIResponse(responseCode = "200", description = "List of available models", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListModelsResponse.class)))
+  public ListModelsResponse listModels() {
+    List<ModelInfo> models = new ArrayList<>();
+
+    // Add dynamic agents from the config repository
+    List<String> agentIds = configRepository.listAgentConfigs();
+    for (String agentId : agentIds) {
+      models.add(new ModelInfo(agentId, "agent-engine"));
+    }
+
+    return new ListModelsResponse(models);
+  }
+
+  @GET
+  @Path("/v1/models/{model}")
+  @Operation(summary = "Retrieve a specific model", description = "Retrieves information about a specific model in OpenAI-compatible format.")
+  @APIResponse(responseCode = "200", description = "Information about the requested model", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ModelInfo.class)))
+  @APIResponse(responseCode = "404", description = "Model not found")
+  public ModelInfo retrieveModel(@PathParam("model") String model) {
+    // Check if it's an agent config
+    try {
+      // Try to load the agent config to see if it exists
+      if (configRepository.loadAgentConfig(model) != null) {
+        return new ModelInfo(model, "agent-engine");
+      }
+    } catch (Exception e) {
+      // If there's an error loading the config, the model doesn't exist
+    }
+
+    // Model not found
+    throw new WebApplicationException("Model not found: " + model, 404);
   }
 }
