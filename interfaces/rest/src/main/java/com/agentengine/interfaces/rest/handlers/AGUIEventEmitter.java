@@ -169,12 +169,18 @@ public final class AGUIEventEmitter {
   }
 
   private void answer(final String text, final boolean partial) {
-    startAnswer();
-    emitMessage(currentTextMessageId, text, partial);
-    if (!partial) {
+    // Only emit text message events if there's actual content
+    if (StringUtils.isNotBlank(text)) {
+      startAnswer();
+      emitMessage(currentTextMessageId, text, partial);
+      if (!partial) {
+        finalAnswer = text;
+      }
+      finishAnswer(partial);
+    } else if (!partial) {
+      // If there's no content, but we're not partial, we still need to update the final answer
       finalAnswer = text;
     }
-    finishAnswer(partial);
   }
 
   private void startAnswer() {
@@ -239,6 +245,7 @@ public final class AGUIEventEmitter {
   }
 
   private void emitFunctionResponses(final Event event) {
+    final Set<String> processedIds = new HashSet<>();
     final List<FunctionResponse> responses = CollectionUtils.nullSafeMutableList(event.functionResponses());
     event.content().ifPresent(content -> {
       content.parts().orElse(List.of()).stream().filter(part -> part.functionResponse().isPresent()).forEach(part -> {
@@ -248,11 +255,16 @@ public final class AGUIEventEmitter {
     });
     for (final FunctionResponse response : CollectionUtils.nullSafeList(responses)) {
       final String toolCallId = response.id().orElseThrow();
+      if (processedIds.contains(toolCallId)) {
+          continue;
+      }
+
       final Map<String, Object> payload = response.response().orElse(Map.of());
 
       toolResult(toolCallId, payload);
 
       pendingToolCalls.remove(toolCallId);
+      processedIds.add(toolCallId);
     }
   }
 
