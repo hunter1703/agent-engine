@@ -50,7 +50,7 @@ class AgentSseTest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), mock(ResponsesApiMapper.class));
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), mock(ResponsesApiMapper.class), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");

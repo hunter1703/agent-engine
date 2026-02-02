@@ -15,6 +15,7 @@ import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
 import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agentengine.interfaces.rest.services.AgentRuntime;
@@ -51,7 +52,7 @@ class AgentRestAPITest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper());
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -79,7 +80,7 @@ class AgentRestAPITest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.empty());
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper());
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -111,7 +112,7 @@ class AgentRestAPITest {
     when(sessionService.listEvents(anyString(), anyString(), anyString()))
         .thenReturn(Single.just(ListEventsResponse.builder().events(List.of(systemEvent, userEvent)).build()));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper());
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");

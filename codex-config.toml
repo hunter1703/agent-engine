@@ -1,0 +1,25 @@
+[model_providers.agent-engine]
+name = "Agent Engine"
+base_url = "http://localhost:8080"
+
+[models."agent-engine-model"]
+name = "Agent Engine Model"
+provider = "agent-engine"
+# Set context window size if known
+# context_window = 128000
+
+# Optional: Configure specific behavior for the Agent Engine
+[models."agent-engine-model".responses]
+# Enable response streaming
+stream = true
+# Set response timeout if needed
+timeout_seconds = 300
+
+# Optional: Set up a profile for the Agent Engine integration
+[profiles.agent-engine-integration]
+model = "agent-engine-model"
+# approval_policy = "on-request"
+# sandbox_mode = "workspace-write"
+# model_reasoning_effort = "medium"
+
+# To use this profile, run: codex --profile agent-engine-integration

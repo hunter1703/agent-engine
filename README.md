@@ -50,6 +50,7 @@ Endpoints:
 - `POST /agent/invoke` with `{ "type": "INVOKE_AGENT", "agentId": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }`
   - Use `type: "BUILD_PROMPT"` to return the assembled prompt.
 - `POST /agent/events` with `{ "agentId": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for SSE event stream
+- `POST /agent/responses` with `{ "agentId": "...", "agentConfigPath": "...", "sessionId": "...", "message": "..." }` for Codex CLI compatible SSE event stream
 
 Runtime settings:
 
