@@ -172,7 +172,7 @@ public final class AGUIEventEmitter {
     startAnswer();
     emitMessage(currentTextMessageId, text, partial);
     if (!partial) {
-        finalAnswer = text;
+      finalAnswer = text;
     }
     finishAnswer(partial);
   }
