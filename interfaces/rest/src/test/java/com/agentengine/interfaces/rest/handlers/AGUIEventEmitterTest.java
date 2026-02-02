@@ -60,7 +60,7 @@ class AGUIEventEmitterTest {
         .map(ToolCallResultEvent.class::cast).findFirst().orElseThrow();
     assertThat(resultEvent.getType()).isEqualTo(EventType.TOOL_CALL_RESULT);
     assertThat(resultEvent.getToolCallId()).isEqualTo("call-1");
-    assertThat(resultEvent.getContent()).isEqualTo("ok");
+    assertThat(resultEvent.getContent()).isEqualTo("{\"output\":\"ok\"}");
     assertThat(resultEvent.getRole()).isNotNull();
   }
 }

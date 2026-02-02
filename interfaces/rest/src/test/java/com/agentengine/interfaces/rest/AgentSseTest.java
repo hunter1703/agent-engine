@@ -61,7 +61,7 @@ class AgentSseTest {
     final var events = stream.collect().asList().await().indefinitely();
 
     assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,
-        EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_CHUNK,
+        EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT,
         EventType.TEXT_MESSAGE_END, EventType.STEP_FINISHED, EventType.RUN_FINISHED);
   }
 
