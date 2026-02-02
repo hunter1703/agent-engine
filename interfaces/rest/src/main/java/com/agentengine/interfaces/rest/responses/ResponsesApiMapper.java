@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest.responses;
 
 import com.agui.core.event.*;
-import com.agentengine.interfaces.rest.config.ResponsesApiConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.logging.Log;
@@ -31,13 +30,6 @@ public class ResponsesApiMapper {
   // Track output indices for proper sequencing
   private final Map<String, Integer> outputIndices = new ConcurrentHashMap<>();
   private volatile int globalOutputIndex = 0;
-
-  // Configuration for Responses API
-  private ResponsesApiConfig config;
-
-  public void setConfig(ResponsesApiConfig config) {
-    this.config = config;
-  }
 
   public ResponsesApiEvent mapEvent(BaseEvent baseEvent) {
     if (baseEvent instanceof RunStartedEvent) {
@@ -87,9 +79,8 @@ public class ResponsesApiMapper {
     data.put("object", "response");
     data.put("created", System.currentTimeMillis() / 1000); // Unix timestamp
 
-    // Add model info based on configuration
-    String model = config != null ? config.defaultModel() : "gpt-4-compatible";
-    data.put("model", model);
+    // Add default model info
+    data.put("model", "gpt-4-compatible");
 
     return new ResponsesApiEvent("response.created", toJson(data));
   }
@@ -100,14 +91,12 @@ public class ResponsesApiMapper {
     data.put("status", "completed");
     data.put("object", "response");
 
-    // Conditionally add usage statistics based on configuration
-    if (config != null && config.includeTokenUsage()) {
-      Map<String, Object> usage = new HashMap<>();
-      usage.put("input_tokens", 0);
-      usage.put("output_tokens", 0);
-      usage.put("total_tokens", 0);
-      data.put("usage", usage);
-    }
+    // Add usage statistics
+    Map<String, Object> usage = new HashMap<>();
+    usage.put("input_tokens", 0);
+    usage.put("output_tokens", 0);
+    usage.put("total_tokens", 0);
+    data.put("usage", usage);
 
     return new ResponsesApiEvent("response.done", toJson(data));
   }
@@ -120,10 +109,6 @@ public class ResponsesApiMapper {
   }
 
   private ResponsesApiEvent createReasoningAddedEvent(ThinkingStartEvent event) {
-    if (config != null && !config.includeReasoning()) {
-      return new ResponsesApiEvent("response.in_progress", "{}");
-    }
-
     String itemId = "rs_" + UUID.randomUUID().toString().replace("-", "");
     int outputIndex = getNextOutputIndex();
 
@@ -144,10 +129,6 @@ public class ResponsesApiMapper {
   }
 
   private ResponsesApiEvent createReasoningDoneEvent(ThinkingEndEvent event) {
-    if (config != null && !config.includeReasoning()) {
-      return new ResponsesApiEvent("response.in_progress", "{}");
-    }
-
     // For now, return an empty done event for reasoning
     // In a real implementation, we'd have the final reasoning text
     Map<String, Object> data = new HashMap<>();

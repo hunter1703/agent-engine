@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest;
 import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.utils.LoggingUtils;
-import com.agentengine.interfaces.rest.config.ResponsesApiConfig;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
@@ -55,17 +54,14 @@ public class AgentRestAPI {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
   private final ResponsesApiMapper responsesApiMapper;
-  private final ResponsesApiConfig responsesApiConfig;
-
   private final ConfigRepository configRepository;
 
   @Inject
   public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ResponsesApiMapper responsesApiMapper,
-      ResponsesApiConfig responsesApiConfig, ConfigRepository configRepository) {
+      ConfigRepository configRepository) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
     this.responsesApiMapper = responsesApiMapper;
-    this.responsesApiConfig = responsesApiConfig;
     this.configRepository = configRepository;
   }
 
@@ -143,7 +139,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("responses")
+  @Path("/v1/responses")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
@@ -161,11 +157,6 @@ public class AgentRestAPI {
         traceId, agentRequest.getAgentConfigPath(),
         agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
 
-    if (!responsesApiConfig.enabled()) {
-      LOG.warn("Responses API is disabled via configuration");
-      throw new WebApplicationException("Responses API is disabled", 503);
-    }
-
     try {
       final AgentRequest effectiveRequest = agentRequest.withSessionId(getOrCreateSession(agentRequest.getSessionId()));
       MDC.put("session_id", effectiveRequest.getSessionId());
@@ -176,9 +167,6 @@ public class AgentRestAPI {
 
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           agentRequest.getAgentId(), agentRequest.getSessionId());
-
-      // Configure the mapper with the API configuration
-      responsesApiMapper.setConfig(responsesApiConfig);
 
       return baseEventStream.onItem().transform(responsesApiMapper::mapEvent);
 
