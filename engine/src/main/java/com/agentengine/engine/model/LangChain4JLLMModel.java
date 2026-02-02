@@ -69,7 +69,8 @@ public class LangChain4JLLMModel extends LangChain4j {
   }
 
   private LlmRequest stripToolsFromModelRequest(final LlmRequest llmRequest) {
-    if (llmRequest == null || CollectionUtils.isEmpty(llmRequest.tools()) || (toolCallingEnabled && !parseToolCallsFromText)) {
+    if (llmRequest == null || CollectionUtils.isEmpty(llmRequest.tools())
+        || (toolCallingEnabled && !parseToolCallsFromText)) {
       return llmRequest;
     }
     final LlmRequest.Builder builder = LlmRequest.builder().contents(llmRequest.contents())

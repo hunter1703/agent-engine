@@ -75,8 +75,7 @@ class LangChain4JLLMModelTest {
         true);
 
     final Schema parameters = Schema.builder().type(Type.Known.OBJECT)
-        .properties(Map.of("command", Schema.builder().type(Type.Known.STRING).build()))
-        .required(List.of("command"))
+        .properties(Map.of("command", Schema.builder().type(Type.Known.STRING).build())).required(List.of("command"))
         .build();
     final FunctionDeclaration declaration = FunctionDeclaration.builder().name("run_cmd").description("Run command")
         .parameters(parameters).build();
@@ -88,8 +87,7 @@ class LangChain4JLLMModelTest {
     };
 
     final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
-        .appendTools(List.of(tool))
-        .build();
+        .appendTools(List.of(tool)).build();
 
     model.generateContent(request, false).blockingFirst();
 
