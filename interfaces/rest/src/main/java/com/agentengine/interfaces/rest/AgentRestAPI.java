@@ -145,16 +145,14 @@ public class AgentRestAPI {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
       MDC.put("session_id", effectiveRequest.getSessionId());
 
-      //noinspection unchecked
-      Multi<BaseEvent> baseEventStream = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+      // noinspection unchecked
+      Multi<BaseEvent> baseEventStream = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT)
+          .handle(effectiveRequest);
 
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           request.getAgentId(), request.getSessionId());
 
-      return baseEventStream
-          .onItem().transform(baseEvent -> {
-              return responsesApiMapper.mapEvent(baseEvent);
-          });
+      return baseEventStream.onItem().transform(responsesApiMapper::mapEvent);
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
@@ -164,7 +162,6 @@ public class AgentRestAPI {
       MDC.clear();
     }
   }
-
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
     final AgentRequestHandler<?> handler = handlers.get(requestType);

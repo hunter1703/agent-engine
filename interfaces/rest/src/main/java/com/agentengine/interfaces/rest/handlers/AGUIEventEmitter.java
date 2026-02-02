@@ -178,7 +178,8 @@ public final class AGUIEventEmitter {
       }
       finishAnswer(partial);
     } else if (!partial) {
-      // If there's no content, but we're not partial, we still need to update the final answer
+      // If there's no content, but we're not partial, we still need to update the
+      // final answer
       finalAnswer = text;
     }
   }
@@ -256,7 +257,7 @@ public final class AGUIEventEmitter {
     for (final FunctionResponse response : CollectionUtils.nullSafeList(responses)) {
       final String toolCallId = response.id().orElseThrow();
       if (processedIds.contains(toolCallId)) {
-          continue;
+        continue;
       }
 
       final Map<String, Object> payload = response.response().orElse(Map.of());

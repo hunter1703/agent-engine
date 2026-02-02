@@ -13,6 +13,7 @@ import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
 import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agentengine.interfaces.rest.services.AgentRuntime;
 import com.agui.core.event.BaseEvent;
@@ -49,7 +50,7 @@ class AgentSseTest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service));
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), mock(ResponsesApiMapper.class));
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
