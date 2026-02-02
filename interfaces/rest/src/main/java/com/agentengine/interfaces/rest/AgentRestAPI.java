@@ -134,7 +134,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/responses")
+  @Path("v1/responses")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
