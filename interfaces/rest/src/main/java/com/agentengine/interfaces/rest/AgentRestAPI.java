@@ -10,6 +10,8 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
+import com.agentengine.interfaces.rest.responses.ResponsesApiEvent;
+import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -42,11 +44,13 @@ import org.slf4j.MDC;
 public class AgentRestAPI {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
+  private final ResponsesApiMapper responsesApiMapper;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ResponsesApiMapper responsesApiMapper) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
+    this.responsesApiMapper = responsesApiMapper;
   }
 
   @POST
@@ -121,6 +125,46 @@ public class AgentRestAPI {
       MDC.clear();
     }
   }
+
+  @POST
+  @Path("/responses")
+  @Produces(MediaType.SERVER_SENT_EVENTS)
+  @RestStreamElementType(MediaType.APPLICATION_JSON)
+  @Blocking
+  @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
+  @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
+  public Multi<ResponsesApiEvent> responses(final AgentRequest request) {
+    String traceId = LoggingUtils.getOrCreateTraceId();
+
+    LOG.info("Agent responses streaming started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
+        request.getSessionId());
+    LOG.debug("Agent responses streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
+        traceId, request.getAgentConfigPath(), request.getMessage() != null ? request.getMessage().length() : 0);
+
+    try {
+      final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
+      MDC.put("session_id", effectiveRequest.getSessionId());
+
+      //noinspection unchecked
+      Multi<BaseEvent> baseEventStream = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT).handle(effectiveRequest);
+
+      LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
+          request.getAgentId(), request.getSessionId());
+
+      return baseEventStream
+          .onItem().transform(baseEvent -> {
+              return responsesApiMapper.mapEvent(baseEvent);
+          });
+
+    } catch (Exception e) {
+      LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
+          traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
+      throw e;
+    } finally {
+      MDC.clear();
+    }
+  }
+
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
     final AgentRequestHandler<?> handler = handlers.get(requestType);
