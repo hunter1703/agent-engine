@@ -21,384 +21,285 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
 import java.util.function.Consumer;
 
 public final class AGUIEventEmitter {
-  private final String threadId;
-  private final Consumer<? super BaseEvent> eventConsumer;
-  private final Map<String, String> toolCallNames = new LinkedHashMap<>();
-  private final List<BaseMessage> messageSnapshot = new ArrayList<>();
-  private final Map<String, Object> stateSnapshot = new LinkedHashMap<>();
-  private String finalAnswer;
-  private String finalThoughts;
-  private String runId;
-  private int messageCounter;
-  private int stepCounter;
-  private boolean stepOpen;
-  private String currentStepName;
-  private String currentTextMessageId;
-  private String currentTextRole;
-  private StringBuilder currentTextContent;
-  private String currentThoughtMessageId;
-  private StringBuilder thoughtMessage;
-  private boolean thinkingOpen;
+    private static final Logger LOGGER = LoggerFactory.getLogger(AGUIEventEmitter.class);
+    private final String threadId;
+    private final Consumer<? super BaseEvent> eventConsumer;
+    private String runId;
+    private String currentStepName;
+    private String currentTextMessageId;
+    private boolean thinkingStarted;
+    private final Set<String> pendingToolCalls = new HashSet<>();
 
-  public AGUIEventEmitter(final String threadId, final Consumer<? super BaseEvent> eventConsumer) {
-    this.threadId = threadId;
-    this.eventConsumer = eventConsumer;
-  }
+    public AGUIEventEmitter(final String threadId, final Consumer<? super BaseEvent> eventConsumer) {
+        this.threadId = threadId;
+        this.eventConsumer = eventConsumer;
+    }
 
-  public void onEvent(final Event event) {
-    if (event == null) {
-      return;
-    }
-    if (runId == null) {
-      runId = event.invocationId();
-      emitRunStarted(runId);
-    }
-    emitStepStartedIfNeeded(event);
-    Functions.populateClientFunctionCallId(event);
-    emitTextParts(event);
-    emitFunctionCalls(event.functionCalls());
-    emitFunctionResponses(event.functionResponses());
-    emitStateEvents(event);
-    emitStepFinishedIfNeeded(event);
-  }
-
-  public void onComplete() {
-    if (runId == null) {
-      return;
-    }
-    emitRunFinished(runId);
-  }
-
-  public void onError(final Throwable throwable) {
-    if (runId == null) {
-      runId = "unknown";
-    }
-    final RunErrorEvent event = new RunErrorEvent();
-    event.setError(ExceptionUtils.getErrorMessage(throwable));
-    emit(event);
-  }
-
-  public String getFinalAnswer() {
-    return finalAnswer;
-  }
-
-  public String getFinalThoughts() {
-    return finalThoughts;
-  }
-
-  private void emitRunStarted(final String runId) {
-    final RunStartedEvent event = new RunStartedEvent();
-    event.setThreadId(threadId);
-    event.setRunId(runId);
-    emit(event);
-  }
-
-  private void emitRunFinished(final String runId) {
-    final RunFinishedEvent event = new RunFinishedEvent();
-    event.setThreadId(threadId);
-    event.setRunId(runId);
-    if (finalAnswer != null) {
-      event.setResult(finalAnswer);
-    }
-    emit(event);
-  }
-
-  private void emitTextParts(final Event event) {
-    final Content content = event.content().orElse(null);
-    if (content == null) {
-      return;
-    }
-    final boolean partial = event.partial().orElse(false);
-    final String role = roleFor(event.author());
-    final List<Part> parts = content.parts().orElse(List.of());
-    for (final Part part : parts) {
-      final String text = part.text().orElse(null);
-      if (StringUtils.isBlank(text)) {
-        continue;
-      }
-      if (part.thought().orElse(false)) {
-        emitThinkingText(role, text);
-      } else {
-        emitText(role, text);
-      }
-    }
-    if (!partial) {
-      finishTextMessage();
-      finishThinkingMessage();
-    }
-  }
-
-  private void emitText(final String role, final String text) {
-    final String messageId = ensureTextMessage(role);
-    final TextMessageContentEvent event = new TextMessageContentEvent();
-    event.setMessageId(messageId);
-    event.setDelta(text);
-    emit(event);
-    final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
-    chunkEvent.setMessageId(messageId);
-    chunkEvent.setRole(role);
-    chunkEvent.setDelta(text);
-    emit(chunkEvent);
-    if (currentTextContent != null) {
-      currentTextContent.append(text);
-    }
-  }
-
-  private void emitThinkingText(final String role, final String text) {
-    final String messageId = ensureThinkingMessage(role);
-    final ThinkingTextMessageContentEvent event = new ThinkingTextMessageContentEvent();
-    event.setRawEvent(Map.of("messageId", messageId, "delta", text));
-    emit(event);
-    thoughtMessage.append(text);
-  }
-
-  private String ensureTextMessage(final String role) {
-    if (currentTextMessageId == null || !Objects.equals(currentTextRole, role)) {
-      finishTextMessage();
-      currentTextMessageId = "msg-" + (++messageCounter);
-      currentTextRole = role;
-      final TextMessageStartEvent event = new TextMessageStartEvent();
-      event.setMessageId(currentTextMessageId);
-      event.setRole(role);
-      emit(event);
-      currentTextContent = new StringBuilder();
-    }
-    return currentTextMessageId;
-  }
-
-  private String ensureThinkingMessage(final String role) {
-    if (currentThoughtMessageId == null) {
-      currentThoughtMessageId = "think-" + (++messageCounter);
-      if (!thinkingOpen) {
-        emit(new ThinkingStartEvent());
-        thinkingOpen = true;
-      }
-      final ThinkingTextMessageStartEvent event = new ThinkingTextMessageStartEvent();
-      event.setRawEvent(Map.of("messageId", currentThoughtMessageId, "role", role));
-      emit(event);
-      thoughtMessage = new StringBuilder();
-    }
-    return currentThoughtMessageId;
-  }
-
-  private void finishTextMessage() {
-    if (currentTextMessageId == null) {
-      return;
-    }
-    final TextMessageEndEvent event = new TextMessageEndEvent();
-    event.setMessageId(currentTextMessageId);
-    emit(event);
-    final String content = currentTextContent == null ? "" : currentTextContent.toString();
-    if ("assistant".equalsIgnoreCase(currentTextRole)) {
-      finalAnswer = content;
-    }
-    if (StringUtils.isNotBlank(currentTextRole)) {
-      messageSnapshot.add(buildMessage(currentTextMessageId, currentTextRole, content));
-      emitMessagesSnapshot();
-    }
-    currentTextContent = null;
-    currentTextMessageId = null;
-    currentTextRole = null;
-  }
-
-  private void finishThinkingMessage() {
-    if (currentThoughtMessageId == null) {
-      return;
-    }
-    final ThinkingTextMessageEndEvent event = new ThinkingTextMessageEndEvent();
-    event.setRawEvent(Map.of("messageId", currentThoughtMessageId));
-    emit(event);
-    if (thoughtMessage != null && thoughtMessage.length() > 0) {
-      finalThoughts = thoughtMessage.toString();
-    }
-    thoughtMessage = null;
-    currentThoughtMessageId = null;
-    if (thinkingOpen) {
-      emit(new ThinkingEndEvent());
-      thinkingOpen = false;
-    }
-  }
-
-  private void emitFunctionCalls(final List<FunctionCall> calls) {
-    for (final FunctionCall call : calls) {
-      final String toolCallId = call.id().orElse("call-" + (++messageCounter));
-      final String name = call.name().orElse("");
-      toolCallNames.put(toolCallId, name);
-      final ToolCallStartEvent start = new ToolCallStartEvent();
-      start.setToolCallId(toolCallId);
-      start.setToolCallName(name);
-      if (currentTextMessageId != null) {
-        start.setParentMessageId(currentTextMessageId);
-      }
-      emit(start);
-
-      final Map<String, Object> args = call.args().orElse(Map.of());
-      if (!args.isEmpty()) {
-        final ToolCallArgsEvent argsEvent = new ToolCallArgsEvent();
-        argsEvent.setToolCallId(toolCallId);
-        argsEvent.setDelta(JsonUtils.toJson(args));
-        emit(argsEvent);
-        final ToolCallChunkEvent chunkEvent = new ToolCallChunkEvent();
-        chunkEvent.setToolCallId(toolCallId);
-        chunkEvent.setToolCallName(name);
-        if (currentTextMessageId != null) {
-          chunkEvent.setParentMessageId(currentTextMessageId);
+    public void onComplete() {
+        if (runId == null) {
+            return;
         }
-        chunkEvent.setDelta(JsonUtils.toJson(args));
-        emit(chunkEvent);
-      }
+        emitRunFinished(runId);
+    }
 
-      final ToolCallEndEvent end = new ToolCallEndEvent();
-      end.setToolCallId(toolCallId);
-      emit(end);
+    private void emitRunFinished(final String runId) {
+        final RunFinishedEvent event = new RunFinishedEvent();
+        event.setThreadId(threadId);
+        event.setRunId(runId);
+        emit(event);
     }
-  }
 
-  private void emitFunctionResponses(final List<FunctionResponse> responses) {
-    for (final FunctionResponse response : responses) {
-      final String toolCallId = response.id().orElse("call-" + (++messageCounter));
-      final Map<String, Object> payload = response.response().orElse(Map.of());
-      final Object output = payload.get("output");
-      final String content = output == null ? JsonUtils.toJson(payload) : output.toString();
-      final ToolCallResultEvent event = new ToolCallResultEvent();
-      event.setToolCallId(toolCallId);
-      event.setMessageId(toolCallId);
-      event.setRole(Role.tool);
-      event.setContent(content);
-      emit(event);
+    public void onError(final Throwable throwable) {
+        if (runId == null) {
+            runId = "unknown";
+        }
+        final RunErrorEvent event = new RunErrorEvent();
+        event.setError(ExceptionUtils.getErrorMessage(throwable));
+        emit(event);
     }
-  }
 
-  private void emitStateEvents(final Event event) {
-    if (event == null) {
-      return;
-    }
-    final EventActions actions = event.actions();
-    if (actions == null || CollectionUtils.isEmpty(actions.stateDelta())) {
-      return;
-    }
-    final Map<String, Object> stateDelta = actions.stateDelta();
-    applyStateDelta(stateDelta);
-    final StateDeltaEvent deltaEvent = new StateDeltaEvent();
-    deltaEvent.setRawEvent(stateDelta);
-    emit(deltaEvent);
+    public void onEvent(final Event event) {
+        if (isEmptyEvent(event)) {
+            LOGGER.info("Skipping empty event: {}", event.id());
+            return;
+        }
+        Functions.populateClientFunctionCallId(event);
 
-    final StateSnapshotEvent snapshotEvent = new StateSnapshotEvent();
-    snapshotEvent.setState(new State(new LinkedHashMap<>(stateSnapshot)));
-    emit(snapshotEvent);
-  }
+        startRun(event);
+        startStep();
+        emitText(event);
+        emitFunctionCalls(event.functionCalls());
+        emitFunctionResponses(event.functionResponses());
+        finishStep(event);
+    }
 
-  private void applyStateDelta(final Map<String, Object> stateDelta) {
-    if (CollectionUtils.isEmpty(stateDelta)) {
-      return;
+    private void startRun(final Event event) {
+        if (hasRunStarted()) {
+            LOGGER.warn("A run is already started with id: {}", runId);
+            return;
+        }
+        runId = event.invocationId();
+        final RunStartedEvent runStartedEvent = new RunStartedEvent();
+        runStartedEvent.setThreadId(threadId);
+        runStartedEvent.setRunId(runId);
+        emit(runStartedEvent);
     }
-    for (Map.Entry<String, Object> entry : stateDelta.entrySet()) {
-      final String key = entry.getKey();
-      if (StringUtils.isBlank(key) || key.startsWith(TEMP_PREFIX)) {
-        continue;
-      }
-      final Object value = entry.getValue();
-      if (value == REMOVED) {
-        stateSnapshot.remove(key);
-      } else {
-        stateSnapshot.put(key, value);
-      }
-    }
-  }
 
-  private void emit(final BaseEvent event) {
-    if (eventConsumer == null) {
-      return;
+    private boolean hasRunStarted() {
+        return StringUtils.isNotBlank(runId);
     }
-    event.setTimestamp(System.currentTimeMillis());
-    eventConsumer.accept(event);
-  }
 
-  private static String roleFor(final String author) {
-    if (author == null) {
-      return "assistant";
-    }
-    if ("user".equalsIgnoreCase(author)) {
-      return "user";
-    }
-    return "assistant";
-  }
+    private void emitText(final Event event) {
+        final Content content = event.content().orElse(null);
+        if (content == null) {
+            return;
+        }
+        final boolean partial = event.partial().orElse(false);
+        final List<Part> parts = content.parts().orElse(List.of());
+        final StringBuilder answerBuilder = new StringBuilder();
+        final StringBuilder thoughtBuilder = new StringBuilder();
+        for (final Part part : parts) {
+            final String text = part.text().orElse(null);
+            if (StringUtils.isBlank(text)) {
+                continue;
+            }
+            if (part.thought().orElse(false)) {
+                thoughtBuilder.append(text);
+            } else {
+                answerBuilder.append(text);
+            }
+        }
 
-  private void emitStepStartedIfNeeded(final Event event) {
-    if (!isStepEvent(event)) {
-      return;
+        thinking(thoughtBuilder.toString(), partial);
+        answer(answerBuilder.toString(), partial);
     }
-    if (!stepOpen) {
-      currentStepName = "step-" + (++stepCounter);
-      final StepStartedEvent stepEvent = new StepStartedEvent();
-      stepEvent.setStepName(currentStepName);
-      emit(stepEvent);
-      stepOpen = true;
-    }
-  }
 
-  private void emitStepFinishedIfNeeded(final Event event) {
-    if (!stepOpen || !isStepEvent(event)) {
-      return;
+    private void thinking(final String text, final boolean partial) {
+        startThinking();
+        emitMessage(null, text, partial);
+        finishThinking(partial);
     }
-    final boolean partial = event.partial().orElse(false);
-    if (partial) {
-      return;
-    }
-    final StepFinishedEvent stepEvent = new StepFinishedEvent();
-    stepEvent.setStepName(currentStepName);
-    emit(stepEvent);
-    stepOpen = false;
-    currentStepName = null;
-  }
 
-  private boolean isStepEvent(final Event event) {
-    if (event == null) {
-      return false;
+    private void startThinking() {
+        if (thinkingStarted) {
+            return;
+        }
+        emit(new ThinkingStartEvent());
+        thinkingStarted = true;
     }
-    if (CollectionUtils.isNotEmpty(event.functionCalls())) {
-      return true;
+
+    private void emitMessage(final String messageId, final String text, final boolean partial) {
+        if (partial) {
+            final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
+            chunkEvent.setMessageId(messageId);
+            chunkEvent.setDelta(text);
+            chunkEvent.setRole("assistant");
+            emit(chunkEvent);
+        } else {
+            final TextMessageContentEvent event = new TextMessageContentEvent();
+            event.setMessageId(messageId);
+            event.setDelta(text);
+            emit(event);
+        }
     }
-    final Content content = event.content().orElse(null);
-    if (content == null) {
-      return false;
+
+    private void finishThinking(final boolean partial) {
+        if (partial || !thinkingStarted) {
+            return;
+        }
+        emit(new ThinkingEndEvent());
+        thinkingStarted = false;
     }
-    for (Part part : content.parts().orElse(List.of())) {
-      if (StringUtils.isNotBlank(part.text().orElse(null))) {
+
+    private void answer(final String text, final boolean partial) {
+        startAnswer();
+        emitMessage(currentTextMessageId, text, partial);
+        finishAnswer(partial);
+    }
+
+    private void startAnswer() {
+        if (hasAnswerStarted()) {
+            return;
+        }
+        currentTextMessageId = STR."msg-\{UUID.randomUUID().toString()}";
+        final TextMessageStartEvent event = new TextMessageStartEvent();
+        event.setMessageId(currentTextMessageId);
+        event.setRole("assistant");
+        emit(event);
+    }
+
+    private boolean hasAnswerStarted() {
+        return StringUtils.isNotBlank(currentTextMessageId);
+    }
+
+    private void finishAnswer(final boolean partial) {
+        if (partial || !hasAnswerStarted()) {
+            return;
+        }
+        final TextMessageEndEvent event = new TextMessageEndEvent();
+        event.setMessageId(currentTextMessageId);
+        emit(event);
+        currentTextMessageId = null;
+    }
+
+    private void emitFunctionCalls(final List<FunctionCall> calls) {
+        for (final FunctionCall call : CollectionUtils.nullSafeList(calls)) {
+            final String toolCallId = call.id().orElseThrow();
+            final String name = call.name().orElse("tool");
+
+            pendingToolCalls.add(toolCallId);
+
+            startToolCall(toolCallId, name);
+            toolCall(call, toolCallId);
+            finishToolCall(toolCallId);
+        }
+    }
+
+    private void finishToolCall(final String toolCallId) {
+        final ToolCallEndEvent end = new ToolCallEndEvent();
+        end.setToolCallId(toolCallId);
+        emit(end);
+    }
+
+    private void toolCall(final FunctionCall call, final String toolCallId) {
+        final Map<String, Object> args = call.args().orElse(Map.of());
+        if (CollectionUtils.isNotEmpty(args)) {
+            final ToolCallArgsEvent argsEvent = new ToolCallArgsEvent();
+            argsEvent.setToolCallId(toolCallId);
+            argsEvent.setDelta(JsonUtils.toJson(args));
+            emit(argsEvent);
+        }
+    }
+
+    private void startToolCall(final String toolCallId, final String toolCallName) {
+        final ToolCallStartEvent start = new ToolCallStartEvent();
+        start.setToolCallId(toolCallId);
+        start.setToolCallName(toolCallName);
+        emit(start);
+    }
+
+    private void emitFunctionResponses(final List<FunctionResponse> responses) {
+        for (final FunctionResponse response : CollectionUtils.nullSafeList(responses)) {
+            final String toolCallId = response.id().orElseThrow();
+            final Map<String, Object> payload = response.response().orElse(Map.of());
+
+            toolResult(toolCallId, payload);
+
+            pendingToolCalls.remove(toolCallId);
+        }
+    }
+
+    private void toolResult(final String toolCallId, final Map<String, Object> payload) {
+        final ToolCallResultEvent event = new ToolCallResultEvent();
+        event.setToolCallId(toolCallId);
+        event.setMessageId(toolCallId);
+        event.setRole(Role.tool);
+        event.setContent(JsonUtils.toJson(payload));
+        emit(event);
+    }
+
+    private void emit(final BaseEvent event) {
+        if (eventConsumer == null) {
+            return;
+        }
+        event.setTimestamp(System.currentTimeMillis());
+        eventConsumer.accept(event);
+    }
+
+    private void startStep() {
+        if (hasStepStarted()) {
+            return;
+        }
+        currentStepName = STR."step-\{UUID.randomUUID().toString()}";
+        final StepStartedEvent stepEvent = new StepStartedEvent();
+        stepEvent.setStepName(currentStepName);
+        emit(stepEvent);
+    }
+
+    private boolean hasStepStarted() {
+        return StringUtils.isNotBlank(currentStepName);
+    }
+
+    private void finishStep(final Event event) {
+        if (!hasStepStarted() || CollectionUtils.isNotEmpty(pendingToolCalls) || event.partial().orElse(false)) {
+            return;
+        }
+        final Content content = event.content().orElse(null);
+        boolean stepFinished = true;
+        if (content != null) {
+            stepFinished = content.parts().orElse(List.of()).stream().anyMatch(part -> !part.thought().orElse(false));
+        }
+        if (stepFinished) {
+            final StepFinishedEvent stepEvent = new StepFinishedEvent();
+            stepEvent.setStepName(currentStepName);
+            emit(stepEvent);
+            currentStepName = null;
+        }
+    }
+
+    private static boolean isEmptyEvent(final Event event) {
+        if (event == null) {
+            return true;
+        }
+        if (CollectionUtils.isNotEmpty(event.functionCalls())) {
+            return false;
+        }
+        final Content content = event.content().orElse(null);
+        if (content == null) {
+            return true;
+        }
+        for (Part part : content.parts().orElse(List.of())) {
+            if (StringUtils.isNotBlank(part.text().orElse(null))) {
+                return false;
+            }
+        }
         return true;
-      }
     }
-    return false;
-  }
-
-  private void emitMessagesSnapshot() {
-    if (messageSnapshot.isEmpty()) {
-      return;
-    }
-    final MessagesSnapshotEvent event = new MessagesSnapshotEvent();
-    event.setMessages(new ArrayList<>(messageSnapshot));
-    emit(event);
-  }
-
-  private static BaseMessage buildMessage(final String messageId, final String role, final String content) {
-    final BaseMessage message;
-    if ("user".equalsIgnoreCase(role)) {
-      message = new UserMessage();
-    } else if ("assistant".equalsIgnoreCase(role)) {
-      message = new AssistantMessage();
-    } else {
-      message = new SystemMessage();
-    }
-    message.setId(messageId);
-    message.setContent(content);
-    return message;
-  }
 }
