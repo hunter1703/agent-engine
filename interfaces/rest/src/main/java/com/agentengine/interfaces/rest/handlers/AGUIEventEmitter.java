@@ -34,6 +34,7 @@ public final class AGUIEventEmitter {
   private String runId;
   private String currentStepName;
   private String currentTextMessageId;
+  private String finalAnswer;
   private boolean thinkingStarted;
   private final Set<String> pendingToolCalls = new HashSet<>();
 
@@ -49,10 +50,17 @@ public final class AGUIEventEmitter {
     emitRunFinished(runId);
   }
 
+  public String getFinalAnswer() {
+    return finalAnswer;
+  }
+
   private void emitRunFinished(final String runId) {
     final RunFinishedEvent event = new RunFinishedEvent();
     event.setThreadId(threadId);
     event.setRunId(runId);
+    if (finalAnswer != null) {
+      event.setResult(finalAnswer);
+    }
     emit(event);
   }
 
@@ -76,7 +84,7 @@ public final class AGUIEventEmitter {
     startStep();
     emitText(event);
     emitFunctionCalls(event.functionCalls());
-    emitFunctionResponses(event.functionResponses());
+    emitFunctionResponses(event);
     finishStep(event);
   }
 
@@ -122,9 +130,11 @@ public final class AGUIEventEmitter {
   }
 
   private void thinking(final String text, final boolean partial) {
-    startThinking();
-    emitMessage(null, text, partial);
-    finishThinking(partial);
+    if (StringUtils.isNotBlank(text)) {
+      startThinking();
+      emitMessage(null, text, partial);
+      finishThinking(partial);
+    }
   }
 
   private void startThinking() {
@@ -161,6 +171,9 @@ public final class AGUIEventEmitter {
   private void answer(final String text, final boolean partial) {
     startAnswer();
     emitMessage(currentTextMessageId, text, partial);
+    if (!partial) {
+        finalAnswer = text;
+    }
     finishAnswer(partial);
   }
 
@@ -225,7 +238,14 @@ public final class AGUIEventEmitter {
     emit(start);
   }
 
-  private void emitFunctionResponses(final List<FunctionResponse> responses) {
+  private void emitFunctionResponses(final Event event) {
+    final List<FunctionResponse> responses = CollectionUtils.nullSafeMutableList(event.functionResponses());
+    event.content().ifPresent(content -> {
+      content.parts().orElse(List.of()).stream().filter(part -> part.functionResponse().isPresent()).forEach(part -> {
+        final FunctionResponse functionResponse = part.functionResponse().orElseThrow();
+        responses.add(functionResponse);
+      });
+    });
     for (final FunctionResponse response : CollectionUtils.nullSafeList(responses)) {
       final String toolCallId = response.id().orElseThrow();
       final Map<String, Object> payload = response.response().orElse(Map.of());
@@ -297,6 +317,9 @@ public final class AGUIEventEmitter {
     }
     for (Part part : content.parts().orElse(List.of())) {
       if (StringUtils.isNotBlank(part.text().orElse(null))) {
+        return false;
+      }
+      if (part.functionResponse().isPresent()) {
         return false;
       }
     }
