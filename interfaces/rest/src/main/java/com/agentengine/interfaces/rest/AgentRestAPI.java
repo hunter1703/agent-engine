@@ -146,10 +146,11 @@ public class AgentRestAPI {
     // Convert the ResponsesApiRequest to an AgentRequest for internal processing
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
 
-    LOG.info("Agent responses streaming started - trace_id={} agent_id={} session_id={}", traceId, agentRequest.getAgentId(),
-        agentRequest.getSessionId());
+    LOG.info("Agent responses streaming started - trace_id={} agent_id={} session_id={}", traceId,
+        agentRequest.getAgentId(), agentRequest.getSessionId());
     LOG.debug("Agent responses streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
-        traceId, agentRequest.getAgentConfigPath(), agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
+        traceId, agentRequest.getAgentConfigPath(),
+        agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
 
     if (!responsesApiConfig.enabled()) {
       LOG.warn("Responses API is disabled via configuration");
@@ -203,9 +204,9 @@ public class AgentRestAPI {
   private AgentRequest convertResponsesApiRequestToAgentRequest(ResponsesApiRequest responsesRequest) {
     final StringBuilder messageBuilder = new StringBuilder();
     for (final ResponsesApiRequest.Message message : responsesRequest.getMessages()) {
-        if (message != null && message.getContent() != null) {
-            messageBuilder.append(message.getContent()).append("\n");
-        }
+      if (message != null && message.getContent() != null) {
+        messageBuilder.append(message.getContent()).append("\n");
+      }
     }
     String message = messageBuilder.toString();
 
