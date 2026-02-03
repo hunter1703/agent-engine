@@ -31,9 +31,9 @@ public class ResponsesApiMapper {
   private final Map<String, Integer> outputIndices = new ConcurrentHashMap<>();
   private volatile int globalOutputIndex = 0;
 
-  public ResponsesApiEvent mapEvent(BaseEvent baseEvent) {
+  public ResponsesApiEvent mapEvent(BaseEvent baseEvent, String model) {
     if (baseEvent instanceof RunStartedEvent) {
-      return createResponseCreatedEvent((RunStartedEvent) baseEvent);
+      return createResponseCreatedEvent(model);
     } else if (baseEvent instanceof RunFinishedEvent) {
       return createResponseCompletedEvent((RunFinishedEvent) baseEvent);
     } else if (baseEvent instanceof RunErrorEvent) {
@@ -72,15 +72,14 @@ public class ResponsesApiMapper {
     return new ResponsesApiEvent("response.in_progress", "{}");
   }
 
-  private ResponsesApiEvent createResponseCreatedEvent(RunStartedEvent event) {
+  private ResponsesApiEvent createResponseCreatedEvent(final String model) {
     Map<String, Object> data = new HashMap<>();
-    data.put("id", "resp_" + UUID.randomUUID().toString().replace("-", ""));
+    data.put("id", STR."resp_\{UUID.randomUUID().toString().replace("-", "")}");
     data.put("status", "created");
     data.put("object", "response");
     data.put("created", System.currentTimeMillis() / 1000); // Unix timestamp
 
-    // Add default model info
-    data.put("model", "gpt-4-compatible");
+    data.put("model", model);
 
     return new ResponsesApiEvent("response.created", toJson(data));
   }

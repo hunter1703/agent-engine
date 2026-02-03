@@ -169,7 +169,8 @@ public class AgentRestAPI {
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           agentRequest.getAgentId(), agentRequest.getSessionId());
 
-      return baseEventStream.onItem().transform(responsesApiMapper::mapEvent);
+      return baseEventStream.onItem()
+          .transform(event -> responsesApiMapper.mapEvent(event, effectiveRequest.getAgentId()));
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
