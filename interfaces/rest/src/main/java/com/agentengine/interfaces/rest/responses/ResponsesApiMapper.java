@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.responses;
 import com.agui.core.event.*;
 import com.agentengine.interfaces.rest.responses.dtos.*;
 import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +14,6 @@ import java.util.UUID;
 /**
  * Maps AGUI events to Responses API format for Codex CLI compatibility
  */
-@ApplicationScoped
 public class ResponsesApiMapper {
 
   // Track ongoing operations for proper event sequencing
@@ -32,10 +30,20 @@ public class ResponsesApiMapper {
   private final Map<String, Integer> contentIndices = new ConcurrentHashMap<>();
   // Track summary indices for reasoning summaries
   private final Map<String, Integer> summaryIndices = new ConcurrentHashMap<>();
+  // Store the response ID for this request
+  private final String responseId;
+  // Track ongoing text messages to properly stream content
+  private final Map<String, Integer> ongoingTextMessages = new ConcurrentHashMap<>();
+  // Track accumulated content for output items
+  private final Map<Integer, StringBuilder> outputItemContent = new ConcurrentHashMap<>();
 
-  private volatile int globalOutputIndex = 0;
-  private volatile int globalContentIndex = 0;
-  private volatile int globalSummaryIndex = 0;
+  private int globalOutputIndex = 0;
+  private int globalContentIndex = 0;
+  private int globalSummaryIndex = 0;
+
+  public ResponsesApiMapper() {
+    this.responseId = "resp_" + UUID.randomUUID().toString().replace("-", "");
+  }
 
   public BaseEventData mapEvent(BaseEvent baseEvent, String model) {
     if (baseEvent instanceof RunStartedEvent) {
@@ -87,11 +95,10 @@ public class ResponsesApiMapper {
   }
 
   private ResponseCreatedEventData createResponseCreatedEvent(final String model) {
-    String id = "resp_" + UUID.randomUUID().toString().replace("-", "");
     long created = System.currentTimeMillis() / 1000; // Unix timestamp
 
     Map<String, Object> responseData = new HashMap<>();
-    responseData.put("id", id);
+    responseData.put("id", responseId);
     responseData.put("model", model);
     responseData.put("status", "in_progress"); // According to schema, should be in_progress initially
     responseData.put("object", "response");
@@ -101,8 +108,6 @@ public class ResponsesApiMapper {
   }
 
   private ResponseCompletedEventData createResponseCompletedEvent(RunFinishedEvent event) {
-    String id = "resp_" + UUID.randomUUID().toString().replace("-", "");
-
     Map<String, Object> usageData = new HashMap<>();
     usageData.put("total_tokens", 0);
     usageData.put("output_tokens", 0);
@@ -118,16 +123,14 @@ public class ResponsesApiMapper {
     usageData.put("output_tokens_details", outputTokensDetails);
 
     Map<String, Object> responseData = new HashMap<>();
-    responseData.put("id", id);
+    responseData.put("id", responseId);
     responseData.put("usage", usageData);
     responseData.put("output", new ArrayList<>()); // Empty output array for now
 
     return new ResponseCompletedEventData(responseData);
   }
 
-  private ResponseDoneEventData createResponseDoneEvent() {
-    String id = "resp_" + UUID.randomUUID().toString().replace("-", "");
-
+  public ResponseDoneEventData createResponseDoneEvent() {
     Map<String, Object> usageData = new HashMap<>();
     usageData.put("total_tokens", 0);
     usageData.put("output_tokens", 0);
@@ -143,7 +146,7 @@ public class ResponsesApiMapper {
     usageData.put("output_tokens_details", outputTokensDetails);
 
     Map<String, Object> responseData = new HashMap<>();
-    responseData.put("id", id);
+    responseData.put("id", responseId);
     responseData.put("status", "completed");
     responseData.put("object", "response");
     responseData.put("usage", usageData);
@@ -152,7 +155,6 @@ public class ResponsesApiMapper {
   }
 
   private ResponseFailedEventData createResponseFailedEvent(RunErrorEvent event) {
-    String id = "resp_" + UUID.randomUUID().toString().replace("-", "");
     long createdAt = System.currentTimeMillis() / 1000; // Unix timestamp
 
     Map<String, Object> errorData = new HashMap<>();
@@ -162,7 +164,7 @@ public class ResponsesApiMapper {
                                                 // message)
 
     Map<String, Object> responseData = new HashMap<>();
-    responseData.put("id", id);
+    responseData.put("id", responseId);
     responseData.put("object", "response");
     responseData.put("created_at", createdAt);
     responseData.put("status", "failed");
@@ -262,63 +264,93 @@ public class ResponsesApiMapper {
   }
 
   private ResponseOutputItemAddedEventData createTextMessageAddedEvent(TextMessageStartEvent event) {
+    String messageId = event.getMessageId();
     int outputIndex = getNextOutputIndex();
+
+    // Store the output index for this message ID
+    ongoingTextMessages.put(messageId, outputIndex);
+
+    // Initialize content accumulation for this output index
+    outputItemContent.put(outputIndex, new StringBuilder());
 
     Map<String, Object> item = new HashMap<>();
     item.put("type", "message");
     item.put("role", "assistant"); // Assuming assistant role for responses
-    item.put("content", new ArrayList<>()); // Initially empty content array
+    item.put("content", List.of(Map.of("type", "output_text", "text", ""))); // Initial empty content
 
     return new ResponseOutputItemAddedEventData(item, outputIndex);
   }
 
   private ResponseOutputTextDeltaEventData createTextDeltaEvent(TextMessageChunkEvent event) {
-    String itemId = event.getMessageId();
+    String messageId = event.getMessageId();
 
-    Integer outputIndex = outputIndices.get(itemId);
+    // Get the output index for this message
+    Integer outputIndex = ongoingTextMessages.get(messageId);
     if (outputIndex == null) {
+      // If we don't have an ongoing message, create a new one
       outputIndex = getNextOutputIndex();
-      outputIndices.put(itemId, outputIndex);
+      ongoingTextMessages.put(messageId, outputIndex);
+      outputItemContent.put(outputIndex, new StringBuilder());
+    }
+
+    // Append the delta to the accumulated content
+    StringBuilder contentBuilder = outputItemContent.get(outputIndex);
+    if (contentBuilder != null) {
+      contentBuilder.append(event.getDelta());
     }
 
     return new ResponseOutputTextDeltaEventData(event.getDelta(), outputIndex);
   }
 
   private ResponseOutputItemDoneEventData createTextMessageDoneEvent(TextMessageEndEvent event) {
-    String itemId = event.getMessageId();
+    String messageId = event.getMessageId();
 
-    // Find the output index for this item
-    Integer outputIndex = outputIndices.get(itemId);
+    // Find the output index for this message
+    Integer outputIndex = ongoingTextMessages.get(messageId);
     if (outputIndex == null) {
       outputIndex = getNextOutputIndex();
     }
 
+    // Get the accumulated content for this output index
+    StringBuilder contentBuilder = outputItemContent.get(outputIndex);
+    String accumulatedContent = contentBuilder != null ? contentBuilder.toString() : "";
+
+    // Create the completed item with the accumulated content
     Map<String, Object> item = new HashMap<>();
     item.put("type", "message");
     item.put("role", "assistant");
-    item.put("content", new ArrayList<>()); // Content would be built from deltas
+    item.put("content", List.of(Map.of("type", "output_text", "text", accumulatedContent)));
+
+    // Clean up the tracking maps
+    ongoingTextMessages.remove(messageId);
+    outputItemContent.remove(outputIndex);
 
     return new ResponseOutputItemDoneEventData(item, outputIndex);
   }
 
-  private ResponseOutputItemAddedEventData createTextContentEvent(TextMessageContentEvent event) {
-    String itemId = event.getMessageId();
-    int outputIndex = getNextOutputIndex();
+  private ResponseOutputTextDeltaEventData createTextContentEvent(TextMessageContentEvent event) {
+    String messageId = event.getMessageId();
+    int outputIndex;
 
-    // Create a message item with content
-    Map<String, Object> contentItem = new HashMap<>();
-    contentItem.put("type", "output_text");
-    contentItem.put("text", event.getDelta());
+    // Check if this message is already being tracked
+    Integer existingOutputIndex = ongoingTextMessages.get(messageId);
+    if (existingOutputIndex != null) {
+      outputIndex = existingOutputIndex;
+    } else {
+      // If not tracked, create a new entry
+      outputIndex = getNextOutputIndex();
+      ongoingTextMessages.put(messageId, outputIndex);
+      outputItemContent.put(outputIndex, new StringBuilder());
+    }
 
-    List<Map<String, Object>> contentList = new ArrayList<>();
-    contentList.add(contentItem);
+    // Append the content to the accumulated content
+    StringBuilder contentBuilder = outputItemContent.get(outputIndex);
+    if (contentBuilder != null) {
+      contentBuilder.append(event.getDelta());
+    }
 
-    Map<String, Object> item = new HashMap<>();
-    item.put("type", "message");
-    item.put("role", "assistant");
-    item.put("content", contentList);
-
-    return new ResponseOutputItemAddedEventData(item, outputIndex);
+    // Return a delta event since this is content being added to an ongoing message
+    return new ResponseOutputTextDeltaEventData(event.getDelta(), outputIndex);
   }
 
   private ResponseInProgressEventData createResponseInProgressEvent(StepStartedEvent event) {

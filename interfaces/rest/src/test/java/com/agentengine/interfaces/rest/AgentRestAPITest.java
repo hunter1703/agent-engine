@@ -52,7 +52,7 @@ class AgentRestAPITest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -80,7 +80,7 @@ class AgentRestAPITest {
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
         .thenReturn(Flowable.empty());
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -112,7 +112,7 @@ class AgentRestAPITest {
     when(sessionService.listEvents(anyString(), anyString(), anyString()))
         .thenReturn(Single.just(ListEventsResponse.builder().events(List.of(systemEvent, userEvent)).build()));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), new ResponsesApiMapper(), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");

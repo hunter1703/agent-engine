@@ -53,15 +53,12 @@ import org.slf4j.MDC;
 public class AgentRestAPI {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
-  private final ResponsesApiMapper responsesApiMapper;
   private final ConfigRepository configRepository;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ResponsesApiMapper responsesApiMapper,
-      ConfigRepository configRepository) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ConfigRepository configRepository) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
-    this.responsesApiMapper = responsesApiMapper;
     this.configRepository = configRepository;
   }
 
@@ -168,9 +165,13 @@ public class AgentRestAPI {
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           agentRequest.getAgentId(), agentRequest.getSessionId());
 
-      return baseEventStream.onItem().transform(event -> {
-        return JsonUtils.toMap(responsesApiMapper.mapEvent(event, effectiveRequest.getAgentId()));
-      });
+      // Create a new mapper instance for this request to maintain state isolation
+      ResponsesApiMapper requestMapper = new ResponsesApiMapper();
+
+      return Multi.createBy().concatenating().streams(
+          baseEventStream.onItem()
+              .transform(event -> JsonUtils.toMap(requestMapper.mapEvent(event, effectiveRequest.getAgentId()))),
+          Multi.createFrom().item(JsonUtils.toMap(requestMapper.createResponseDoneEvent())));
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",

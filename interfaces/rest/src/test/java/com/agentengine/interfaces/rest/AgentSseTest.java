@@ -73,7 +73,7 @@ class AgentSseTest {
           return Flowable.empty(); // Complete the flowable
         })));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), mock(ResponsesApiMapper.class), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");

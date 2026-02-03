@@ -123,7 +123,7 @@ public final class AGUIEventEmitter {
   private void thinking(final String text, final boolean partial) {
     if (StringUtils.isNotBlank(text)) {
       startThinking();
-      emitMessage(null, text, partial);
+      emitMessage(STR."think-\{UUID.randomUUID()}", text, partial);
       finishThinking(partial);
     }
   }
