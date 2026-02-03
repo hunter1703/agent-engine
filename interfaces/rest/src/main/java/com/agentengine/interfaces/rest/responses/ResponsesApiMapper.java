@@ -36,6 +36,9 @@ public class ResponsesApiMapper {
   private final Map<String, Integer> ongoingTextMessages = new ConcurrentHashMap<>();
   // Track accumulated content for output items
   private final Map<Integer, StringBuilder> outputItemContent = new ConcurrentHashMap<>();
+  // Track output indices for tool calls to ensure added/done events have same
+  // index
+  private final Map<String, Integer> toolCallOutputIndices = new ConcurrentHashMap<>();
 
   private int globalOutputIndex = 0;
   private int globalContentIndex = 0;
@@ -49,10 +52,6 @@ public class ResponsesApiMapper {
     if (baseEvent instanceof RunStartedEvent) {
       return createResponseCreatedEvent(model);
     } else if (baseEvent instanceof RunFinishedEvent) {
-      // After completed, we should also send the done event to signal stream
-      // completion
-      // For now, returning just completed event - the caller should handle sending
-      // done
       return createResponseCompletedEvent((RunFinishedEvent) baseEvent);
     } else if (baseEvent instanceof RunErrorEvent) {
       return createResponseFailedEvent((RunErrorEvent) baseEvent);
@@ -71,10 +70,9 @@ public class ResponsesApiMapper {
       }
       return createToolCallDoneEvent(toolEndEvent);
     } else if (baseEvent instanceof final ToolCallArgsEvent argsEvent) {
-      if (isUpdatePlanCall(argsEvent.getToolCallId())) {
-        return createUpdatePlanArgsEvent(argsEvent);
-      }
-      return createToolCallArgsEvent(argsEvent);
+      String callId = argsEvent.getToolCallId();
+      toolCallArguments.computeIfAbsent(callId, _ -> new StringBuilder()).append(argsEvent.getDelta());
+      return new SkipEvent();
     } else if (baseEvent instanceof ToolCallResultEvent) {
       return createToolCallResultEvent((ToolCallResultEvent) baseEvent);
     } else if (baseEvent instanceof TextMessageStartEvent) {
@@ -196,36 +194,22 @@ public class ResponsesApiMapper {
     String toolName = event.getToolCallName();
     int outputIndex = getNextOutputIndex();
 
-    // Initialize the arguments accumulator
     toolCallArguments.put(callId, new StringBuilder());
     toolCallNames.put(callId, toolName);
+    toolCallOutputIndices.put(callId, outputIndex);
 
     Map<String, Object> item = new HashMap<>();
     item.put("type", "function_call");
     item.put("id", callId);
     item.put("name", toolName);
-    item.put("arguments", "{}"); // Initially empty
+    item.put("arguments", "{}");
 
     return new ResponseOutputItemAddedEventData(item, outputIndex);
-  }
-
-  private ResponseOutputTextDeltaEventData createToolCallArgsEvent(ToolCallArgsEvent event) {
-    String callId = event.getToolCallId();
-
-    // Accumulate the arguments for this tool call
-    StringBuilder sb = toolCallArguments.computeIfAbsent(callId, k -> new StringBuilder());
-    sb.append(event.getDelta());
-
-    int outputIndex = toolCallNames.containsKey(callId) ? getNextOutputIndex() : 0;
-
-    // Return a text delta event for the arguments
-    return new ResponseOutputTextDeltaEventData(event.getDelta(), outputIndex);
   }
 
   private ResponseOutputItemDoneEventData createToolCallDoneEvent(ToolCallEndEvent event) {
     String callId = event.getToolCallId();
 
-    // Get the accumulated arguments
     StringBuilder sb = toolCallArguments.get(callId);
     String arguments = sb != null ? sb.toString() : "{}";
 
@@ -241,12 +225,16 @@ public class ResponsesApiMapper {
     item.put("name", toolName);
     item.put("arguments", arguments);
 
-    // Find the output index for this call
-    int outputIndex = toolCallNames.containsKey(callId) ? getNextOutputIndex() : 0;
+    // Get the output index for this call (same as the added event)
+    Integer outputIndex = toolCallOutputIndices.get(callId);
+    if (outputIndex == null) {
+      outputIndex = 0;
+    }
 
     // Clean up the tracking maps
     toolCallArguments.remove(callId);
     toolCallNames.remove(callId);
+    toolCallOutputIndices.remove(callId);
 
     return new ResponseOutputItemDoneEventData(item, outputIndex);
   }
@@ -382,6 +370,7 @@ public class ResponsesApiMapper {
     updatePlanCalls.put(callId, true);
     toolCallArguments.put(callId, new StringBuilder());
     toolCallNames.put(callId, "update_plan");
+    toolCallOutputIndices.put(callId, outputIndex); // Store the output index for this tool call
 
     Map<String, Object> item = new HashMap<>();
     item.put("type", "function_call");
@@ -390,18 +379,6 @@ public class ResponsesApiMapper {
     item.put("arguments", "{}"); // Initially empty
 
     return new ResponseOutputItemAddedEventData(item, outputIndex);
-  }
-
-  private ResponseOutputTextDeltaEventData createUpdatePlanArgsEvent(ToolCallArgsEvent event) {
-    String callId = event.getToolCallId();
-
-    StringBuilder sb = toolCallArguments.computeIfAbsent(callId, _ -> new StringBuilder());
-    sb.append(event.getDelta());
-
-    int outputIndex = toolCallNames.containsKey(callId) ? getNextOutputIndex() : 0;
-
-    // Return a text delta event for the arguments
-    return new ResponseOutputTextDeltaEventData(event.getDelta(), outputIndex);
   }
 
   private ResponseOutputItemDoneEventData createUpdatePlanDoneEvent(ToolCallEndEvent event) {
@@ -417,13 +394,17 @@ public class ResponsesApiMapper {
     item.put("name", "update_plan");
     item.put("arguments", arguments);
 
-    // Find the output index for this call
-    int outputIndex = toolCallNames.containsKey(callId) ? getNextOutputIndex() : 0;
+    // Get the output index for this call (same as the added event)
+    Integer outputIndex = toolCallOutputIndices.get(callId);
+    if (outputIndex == null) {
+      outputIndex = 0;
+    }
 
     // Clean up the tracking maps
     updatePlanCalls.remove(callId);
     toolCallArguments.remove(callId);
     toolCallNames.remove(callId);
+    toolCallOutputIndices.remove(callId);
 
     return new ResponseOutputItemDoneEventData(item, outputIndex);
   }

@@ -16,6 +16,7 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
+import com.agentengine.interfaces.rest.responses.dtos.BaseEventData;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -26,12 +27,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.WebApplicationException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import java.util.Arrays;
-import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -168,9 +165,11 @@ public class AgentRestAPI {
       // Create a new mapper instance for this request to maintain state isolation
       ResponsesApiMapper requestMapper = new ResponsesApiMapper();
 
-      return Multi.createBy().concatenating().streams(
-          baseEventStream.onItem()
-              .transform(event -> JsonUtils.toMap(requestMapper.mapEvent(event, effectiveRequest.getAgentId()))),
+      return Multi.createBy().concatenating().streams(baseEventStream.select().where(event -> {
+        BaseEventData mappedEvent = requestMapper.mapEvent(event, effectiveRequest.getAgentId());
+        return mappedEvent != null && !mappedEvent.getType().equals("skip_event"); // Only include non-null, non-skip
+                                                                                   // events
+      }).map(event -> JsonUtils.toMap(requestMapper.mapEvent(event, effectiveRequest.getAgentId()))),
           Multi.createFrom().item(JsonUtils.toMap(requestMapper.createResponseDoneEvent())));
 
     } catch (Exception e) {
