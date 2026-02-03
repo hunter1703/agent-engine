@@ -228,8 +228,10 @@ public class ResponsesApiMapper {
   }
 
   private ResponsesApiEvent createTextMessageAddedEvent(TextMessageStartEvent event) {
-    // For TextMessageStartEvent, we don't emit an output_item.added event immediately
-    // Instead, we wait for the content to arrive in TextMessageContentEvent or TextMessageChunkEvent
+    // For TextMessageStartEvent, we don't emit an output_item.added event
+    // immediately
+    // Instead, we wait for the content to arrive in TextMessageContentEvent or
+    // TextMessageChunkEvent
     // Just return an in-progress event to acknowledge receipt
     Map<String, Object> data = new HashMap<>();
     data.put("status", "in_progress");

@@ -1,21 +1,12 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import static com.google.adk.sessions.State.REMOVED;
-import static com.google.adk.sessions.State.TEMP_PREFIX;
-
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.ExceptionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agui.core.event.*;
-import com.agui.core.message.AssistantMessage;
-import com.agui.core.message.BaseMessage;
 import com.agui.core.message.Role;
-import com.agui.core.message.SystemMessage;
-import com.agui.core.message.UserMessage;
-import com.agui.core.state.State;
 import com.google.adk.events.Event;
-import com.google.adk.events.EventActions;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
