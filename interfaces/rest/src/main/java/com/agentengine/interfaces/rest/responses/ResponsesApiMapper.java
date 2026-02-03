@@ -65,6 +65,8 @@ public class ResponsesApiMapper {
       return createTextMessageDoneEvent((TextMessageEndEvent) baseEvent);
     } else if (baseEvent instanceof TextMessageChunkEvent) {
       return createTextDeltaEvent((TextMessageChunkEvent) baseEvent);
+    } else if (baseEvent instanceof TextMessageContentEvent) {
+      return createTextContentEvent((TextMessageContentEvent) baseEvent);
     } else if (baseEvent instanceof StepStartedEvent) {
       return createResponseInProgressEvent((StepStartedEvent) baseEvent);
     }
@@ -226,19 +228,13 @@ public class ResponsesApiMapper {
   }
 
   private ResponsesApiEvent createTextMessageAddedEvent(TextMessageStartEvent event) {
-    String messageId = event.getMessageId();
-    int outputIndex = getNextOutputIndex();
-
-    Map<String, Object> item = new HashMap<>();
-    item.put("id", messageId);
-    item.put("type", "text");
-    item.put("text", "");
-
+    // For TextMessageStartEvent, we don't emit an output_item.added event immediately
+    // Instead, we wait for the content to arrive in TextMessageContentEvent or TextMessageChunkEvent
+    // Just return an in-progress event to acknowledge receipt
     Map<String, Object> data = new HashMap<>();
-    data.put("output_index", outputIndex);
-    data.put("item", item);
+    data.put("status", "in_progress");
 
-    return new ResponsesApiEvent("response.output_item.added", toJson(data));
+    return new ResponsesApiEvent("response.in_progress", toJson(data));
   }
 
   private ResponsesApiEvent createTextDeltaEvent(TextMessageChunkEvent event) {
@@ -277,6 +273,22 @@ public class ResponsesApiMapper {
     data.put("item", item);
 
     return new ResponsesApiEvent("response.output_item.done", toJson(data));
+  }
+
+  private ResponsesApiEvent createTextContentEvent(TextMessageContentEvent event) {
+    String itemId = event.getMessageId();
+    int outputIndex = getNextOutputIndex();
+
+    Map<String, Object> item = new HashMap<>();
+    item.put("id", itemId);
+    item.put("type", "text");
+    item.put("text", event.getDelta()); // Use the delta as the text content
+
+    Map<String, Object> data = new HashMap<>();
+    data.put("output_index", outputIndex);
+    data.put("item", item);
+
+    return new ResponsesApiEvent("response.output_item.added", toJson(data));
   }
 
   private ResponsesApiEvent createResponseInProgressEvent(StepStartedEvent event) {
