@@ -46,6 +46,14 @@ public final class JsonUtils {
     }.getType());
   }
 
+  public static Map<String, Object> toMap(final Object obj) {
+    if (obj == null) {
+      return null;
+    }
+    // noinspection unchecked
+    return (Map<String, Object>) JSON.toJSON(obj);
+  }
+
   public static <T> T fromFile(final Path path, final Class<T> clazz) {
     try (InputStream stream = Files.newInputStream(path)) {
       return JSON.parseObject(stream, clazz);

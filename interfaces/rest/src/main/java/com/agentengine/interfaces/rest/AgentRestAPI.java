@@ -15,7 +15,6 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.responses.ResponsesApiEvent;
 import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.Blocking;
@@ -146,7 +145,7 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
   @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Multi<ResponsesApiEvent> responses(final Map<String, Object> map) {
+  public Multi<Map<String, Object>> responses(final Map<String, Object> map) {
     final ResponsesApiRequest request = JsonUtils.fromMap(map, ResponsesApiRequest.class);
     String traceId = LoggingUtils.getOrCreateTraceId();
 
@@ -169,8 +168,9 @@ public class AgentRestAPI {
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           agentRequest.getAgentId(), agentRequest.getSessionId());
 
-      return baseEventStream.onItem()
-          .transform(event -> responsesApiMapper.mapEvent(event, effectiveRequest.getAgentId()));
+      return baseEventStream.onItem().transform(event -> {
+        return JsonUtils.toMap(responsesApiMapper.mapEvent(event, effectiveRequest.getAgentId()));
+      });
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
