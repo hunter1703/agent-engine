@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import static java.lang.StringTemplate.STR;
 
+import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
@@ -145,14 +146,14 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
   @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Multi<ResponsesApiEvent> responses(final ResponsesApiRequest request) {
+  public Multi<ResponsesApiEvent> responses(final Map<String, Object> map) {
+    final ResponsesApiRequest request = JsonUtils.fromMap(map, ResponsesApiRequest.class);
     String traceId = LoggingUtils.getOrCreateTraceId();
 
     // Convert the ResponsesApiRequest to an AgentRequest for internal processing
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
 
-    LOG.info("Agent responses streaming started - trace_id={} agent_id={} session_id={}", traceId,
-        agentRequest.getAgentId(), agentRequest.getSessionId());
+    LOG.info("Agent responses streaming started - trace_id={} request_map={}", traceId, JsonUtils.toJson(map));
     LOG.debug("Agent responses streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
         traceId, agentRequest.getAgentConfigPath(),
         agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
@@ -199,16 +200,8 @@ public class AgentRestAPI {
   }
 
   private AgentRequest convertResponsesApiRequestToAgentRequest(ResponsesApiRequest responsesRequest) {
-    // Concatenate all messages in the conversation
-    StringBuilder messageBuilder = new StringBuilder();
-    if (responsesRequest.getMessages() != null) {
-      for (ResponsesApiRequest.Message messageObj : responsesRequest.getMessages()) {
-        if (messageObj != null && messageObj.getContent() != null) {
-          messageBuilder.append(messageObj.getContent()).append("\n");
-        }
-      }
-    }
-    String message = messageBuilder.toString();
+    // Extract the message content from the input array
+    String message = extractMessageFromInput(responsesRequest.getInput());
 
     // Create an AgentRequest with values from the Responses API request
     AgentRequest agentRequest = new AgentRequest();
@@ -221,11 +214,42 @@ public class AgentRestAPI {
       agentId = "shell_agent";
     }
     agentRequest.setAgentId(agentId);
-
-    agentRequest.setSessionId(responsesRequest.getThreadId()); // Use thread_id from request
+    agentRequest.setSessionId(getOrCreateSession(null));
     agentRequest.setMessage(message);
 
     return agentRequest;
+  }
+
+  private String extractMessageFromInput(List<ResponsesApiRequest.InputMessage> input) {
+    if (input == null || input.isEmpty()) {
+      return "";
+    }
+
+    // Look for the latest user message in the input array
+    for (int i = input.size() - 1; i >= 0; i--) {
+      ResponsesApiRequest.InputMessage inputMessage = input.get(i);
+      if ("message".equals(inputMessage.getType()) && "user".equals(inputMessage.getRole())) {
+        List<ResponsesApiRequest.ContentPart> contentParts = inputMessage.getContent();
+        if (contentParts != null) {
+          StringBuilder messageBuilder = new StringBuilder();
+
+          for (ResponsesApiRequest.ContentPart contentPart : contentParts) {
+            if ("input_text".equals(contentPart.getType()) && contentPart.getText() != null) {
+              messageBuilder.append(contentPart.getText()).append("\n");
+            }
+          }
+
+          // Return the content of the latest user message
+          String message = messageBuilder.toString().trim();
+          if (!message.isEmpty()) {
+            return message;
+          }
+        }
+      }
+    }
+
+    // If no user message is found, return empty string
+    return "";
   }
 
   @GET

@@ -45,10 +45,33 @@ class AgentSseTest {
         .thenReturn(new AgentRuntime(null, runner, sessionService, "agent"));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
+
+    // Create an event that contains content to trigger all expected events
     Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).build();
+        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false) // Explicitly
+                                                                                                                     // set
+                                                                                                                     // partial
+                                                                                                                     // to
+                                                                                                                     // false
+                                                                                                                     // to
+                                                                                                                     // ensure
+                                                                                                                     // completion
+                                                                                                                     // events
+                                                                                                                     // are
+                                                                                                                     // triggered
+        .build();
+
+    // Mock the runner to return the event in a Flowable and ensure completion
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
-        .thenReturn(Flowable.just(event));
+        .thenAnswer(invocation -> Flowable.just(event).concatWith(Flowable.defer(() -> {
+          // Add a small delay to ensure async processing completes
+          try {
+            Thread.sleep(10); // Small delay to allow async processing
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          return Flowable.empty(); // Complete the flowable
+        })));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), mock(ResponsesApiMapper.class), null);
     AgentRequest request = new AgentRequest();
@@ -59,6 +82,8 @@ class AgentSseTest {
     request.setType(RequestType.STREAMING_INVOKE_AGENT.name());
     Multi<BaseEvent> stream = resource.events(request);
     assertThat(stream).isNotNull();
+
+    // Wait for the events to be collected
     final var events = stream.collect().asList().await().indefinitely();
 
     assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,

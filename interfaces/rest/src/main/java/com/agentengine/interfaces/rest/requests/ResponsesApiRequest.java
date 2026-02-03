@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest.requests;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Request class specifically shaped for the Responses API specification
@@ -9,31 +8,16 @@ import java.util.Map;
  */
 public class ResponsesApiRequest {
 
-  @JsonProperty("model")
   private String model;
-
-  @JsonProperty("messages")
-  private Message[] messages;
-
-  @JsonProperty("thread_id")
-  private String threadId;
-
-  @JsonProperty("run_id")
-  private String runId;
-
-  @JsonProperty("instructions")
-  private String instructions;
-
-  @JsonProperty("metadata")
-  private Map<String, Object> metadata;
+  private List<InputMessage> input;
 
   // Constructors
   public ResponsesApiRequest() {
   }
 
-  public ResponsesApiRequest(String model, Message[] messages) {
+  public ResponsesApiRequest(String model, List<InputMessage> input) {
     this.model = model;
-    this.messages = messages;
+    this.input = input;
   }
 
   // Getters and setters
@@ -45,62 +29,37 @@ public class ResponsesApiRequest {
     this.model = model;
   }
 
-  public Message[] getMessages() {
-    return messages;
+  public List<InputMessage> getInput() {
+    return input;
   }
 
-  public void setMessages(Message[] messages) {
-    this.messages = messages;
-  }
-
-  public String getThreadId() {
-    return threadId;
-  }
-
-  public void setThreadId(String threadId) {
-    this.threadId = threadId;
-  }
-
-  public String getRunId() {
-    return runId;
-  }
-
-  public void setRunId(String runId) {
-    this.runId = runId;
-  }
-
-  public String getInstructions() {
-    return instructions;
-  }
-
-  public void setInstructions(String instructions) {
-    this.instructions = instructions;
-  }
-
-  public Map<String, Object> getMetadata() {
-    return metadata;
-  }
-
-  public void setMetadata(Map<String, Object> metadata) {
-    this.metadata = metadata;
+  public void setInput(List<InputMessage> input) {
+    this.input = input;
   }
 
   /**
-   * Inner class representing a message in the conversation
+   * Inner class representing a message in the input array
    */
-  public static class Message {
-    @JsonProperty("role")
+  public static class InputMessage {
+    private String type;
     private String role;
+    private List<ContentPart> content;
 
-    @JsonProperty("content")
-    private String content;
-
-    public Message() {
+    public InputMessage() {
     }
 
-    public Message(String role, String content) {
+    public InputMessage(String type, String role, List<ContentPart> content) {
+      this.type = type;
       this.role = role;
       this.content = content;
+    }
+
+    public String getType() {
+      return type;
+    }
+
+    public void setType(String type) {
+      this.type = type;
     }
 
     public String getRole() {
@@ -111,12 +70,44 @@ public class ResponsesApiRequest {
       this.role = role;
     }
 
-    public String getContent() {
+    public List<ContentPart> getContent() {
       return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(List<ContentPart> content) {
       this.content = content;
+    }
+  }
+
+  /**
+   * Inner class representing a content part
+   */
+  public static class ContentPart {
+    private String type;
+    private String text;
+
+    public ContentPart() {
+    }
+
+    public ContentPart(String type, String text) {
+      this.type = type;
+      this.text = text;
+    }
+
+    public String getType() {
+      return type;
+    }
+
+    public void setType(String type) {
+      this.type = type;
+    }
+
+    public String getText() {
+      return text;
+    }
+
+    public void setText(String text) {
+      this.text = text;
     }
   }
 }
