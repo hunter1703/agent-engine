@@ -139,7 +139,7 @@ class AgentRestAPITest {
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler, responsesHandler));
   }
 }

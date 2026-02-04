@@ -28,6 +28,8 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.smallrye.mutiny.Multi;
+import org.reactivestreams.Publisher;
+
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
@@ -80,11 +82,46 @@ class AgentSseTest {
     request.setSessionId("session");
     request.setMessage("hello");
     request.setType(RequestType.STREAM_AGUI_EVENTS.name());
-    Multi<BaseEvent> stream = resource.events(request);
-    assertThat(stream).isNotNull();
+    var publisher = resource.events(request);
+    assertThat(publisher).isNotNull();
 
-    // Wait for the events to be collected
-    final var events = stream.collect().asList().await().indefinitely();
+    // Collect events directly from the publisher using the reactive streams approach
+    final var events = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+        final var collectedEvents = new java.util.ArrayList<BaseEvent>();
+        final var latch = new java.util.concurrent.CountDownLatch(1);
+
+        publisher.subscribe(
+            new org.reactivestreams.Subscriber<BaseEvent>() {
+                @Override
+                public void onSubscribe(org.reactivestreams.Subscription s) {
+                    s.request(Long.MAX_VALUE); // Request all events
+                }
+
+                @Override
+                public void onNext(BaseEvent event) {
+                    collectedEvents.add(event);
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    latch.countDown();
+                }
+
+                @Override
+                public void onComplete() {
+                    latch.countDown();
+                }
+            }
+        );
+
+        try {
+            latch.await(5, java.util.concurrent.TimeUnit.SECONDS); // Wait up to 5 seconds for completion
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        return collectedEvents;
+    }).join();
 
     assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,
         EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_END,
@@ -95,7 +132,7 @@ class AgentSseTest {
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler, responsesHandler));
   }
 }
