@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest.responses;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.interfaces.rest.handlers.ResponsesMapper;
+import com.agentengine.interfaces.rest.handlers.ResponsesEventMapper;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agentengine.interfaces.rest.responses.dtos.CreatedEventData;
 import com.agentengine.interfaces.rest.responses.dtos.DoneEventData;
@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class ResponsesMapperTest {
+class ResponsesEventMapperTest {
 
   @Test
   void mapsEventsAndAppendsDoneEvent() {
@@ -44,7 +44,7 @@ class ResponsesMapperTest {
     final RunFinishedEvent runFinished = new RunFinishedEvent();
     runFinished.setRunId("run-1");
 
-    final ResponsesMapper mapper = new ResponsesMapper("fallback-agent");
+    final ResponsesEventMapper mapper = new ResponsesEventMapper("fallback-agent");
     final List<BaseResponsesEventData> responses = Flowable.just(runStarted, stepStarted, chunkEvent, contentEvent,
             endEvent, runFinished)
         .concatMap(mapper::map)
@@ -84,7 +84,7 @@ class ResponsesMapperTest {
     resultEvent.setToolCallId("call-1");
     resultEvent.setContent("{\"result\":\"ok\"}");
 
-    final ResponsesMapper mapper = new ResponsesMapper(null);
+    final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
     final List<BaseResponsesEventData> responses = Flowable.just(startEvent, argsEvent, endEvent, resultEvent)
         .concatMap(mapper::map)
         .toList()

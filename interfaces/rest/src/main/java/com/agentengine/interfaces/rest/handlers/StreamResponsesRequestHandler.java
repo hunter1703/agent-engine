@@ -36,7 +36,7 @@ public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<F
     final Flowable<Event> events = runtime.runner().runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId,
         messageContent, runConfig);
     final AGUIEventMapper aguiMapper = new AGUIEventMapper(sessionId, request.getAgentId());
-    final ResponsesMapper responsesMapper = new ResponsesMapper(request.getAgentId());
+    final ResponsesEventMapper responsesEventMapper = new ResponsesEventMapper(request.getAgentId());
 
     final Flowable<BaseEvent> aguiEvents = events
         .concatMap(aguiMapper::map)
@@ -44,8 +44,8 @@ public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<F
         .onErrorResumeNext(aguiMapper::onError);
 
     return aguiEvents
-        .concatMap(responsesMapper::map)
-        .concatWith(Flowable.defer(responsesMapper::onComplete))
-        .onErrorResumeNext(responsesMapper::onError);
+        .concatMap(responsesEventMapper::map)
+        .concatWith(Flowable.defer(responsesEventMapper::onComplete))
+        .onErrorResumeNext(responsesEventMapper::onError);
   }
 }

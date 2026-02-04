@@ -12,10 +12,10 @@ import java.util.UUID;
 /**
  * Maps AGUI events to Responses API format for Codex CLI compatibility
  */
-public final class ResponsesMapper implements EventMapper<BaseEvent, BaseResponsesEventData> {
+public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseResponsesEventData> {
   private final MapperState state;
 
-  public ResponsesMapper(final String agentId) {
+  public ResponsesEventMapper(final String agentId) {
     this.state = new MapperState(agentId);
   }
 
