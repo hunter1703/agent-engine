@@ -5,12 +5,12 @@ import com.alibaba.fastjson2.annotation.JSONField;
 /**
  * Event data for response.reasoning_text.delta event
  */
-public class ResponseReasoningTextDeltaEventData extends BaseEventData {
+public class ReasoningTextDeltaEventData extends BaseResponsesEventData {
   private final String delta;
   @JSONField(name = "content_index")
   private final Integer contentIndex;
 
-  public ResponseReasoningTextDeltaEventData(String delta, int contentIndex) {
+  public ReasoningTextDeltaEventData(String delta, int contentIndex) {
     super("response.reasoning_text.delta");
     this.delta = delta;
     this.contentIndex = contentIndex;

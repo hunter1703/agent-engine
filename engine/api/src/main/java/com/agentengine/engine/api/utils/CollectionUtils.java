@@ -50,11 +50,26 @@ public final class CollectionUtils {
     return new ArrayList<>(collection);
   }
 
+  public static <K, V> Map<K, V> nullSafeMutableMap(final Map<K, V> map) {
+    if (CollectionUtils.isEmpty(map)) {
+      return new HashMap<>();
+    }
+    return new HashMap<>(map);
+  }
+
   public static String getStringValueFromMap(final Map<String, Object> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
     return (String) map.get(key);
+  }
+
+  public static <T> T getValueFromMap(final Map<String, Object> map, final String key) {
+    if (CollectionUtils.isEmpty(map)) {
+      return null;
+    }
+    //noinspection unchecked
+    return (T) map.get(key);
   }
 
   public static String getStringValueFromMapSafe(final Map<String, Object> map, final String key) {

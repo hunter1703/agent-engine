@@ -1,17 +1,16 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
 import java.util.Map;
-import com.alibaba.fastjson2.annotation.JSONField;
 
 /**
  * Event data for response.completed event
  */
-public class ResponseCompletedEventData extends BaseEventData {
+public class CompletedEventData extends BaseResponsesEventData {
   private final Map<String, Object> response;
 
-  public ResponseCompletedEventData(Map<String, Object> response) {
+  public CompletedEventData(String id) {
     super("response.completed");
-    this.response = response;
+    this.response = Map.of("id", id);
   }
 
   public Map<String, Object> getResponse() {

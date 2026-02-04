@@ -16,7 +16,7 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
-import com.agentengine.interfaces.rest.responses.dtos.BaseEventData;
+import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -165,8 +165,9 @@ public class AgentRestAPI {
       // Create a new mapper instance for this request to maintain state isolation
       ResponsesApiMapper requestMapper = new ResponsesApiMapper();
 
+      Multi.createFrom().emitter()
       return Multi.createBy().concatenating().streams(baseEventStream.select().where(event -> {
-        BaseEventData mappedEvent = requestMapper.mapEvent(event, effectiveRequest.getAgentId());
+        BaseResponsesEventData mappedEvent = requestMapper.mapEvent(event, effectiveRequest.getAgentId());
         return mappedEvent != null && !mappedEvent.getType().equals("skip_event"); // Only include non-null, non-skip
                                                                                    // events
       }).map(event -> JsonUtils.toMap(requestMapper.mapEvent(event, effectiveRequest.getAgentId()))),

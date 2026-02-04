@@ -6,12 +6,12 @@ import com.alibaba.fastjson2.annotation.JSONField;
 /**
  * Event data for response.output_item.done event
  */
-public class ResponseOutputItemDoneEventData extends BaseEventData {
+public class OutputItemDoneEventData extends BaseResponsesEventData {
   private final Map<String, Object> item;
   @JSONField(name = "output_index")
   private final Integer outputIndex;
 
-  public ResponseOutputItemDoneEventData(Map<String, Object> item, int outputIndex) {
+  public OutputItemDoneEventData(Map<String, Object> item, int outputIndex) {
     super("response.output_item.done");
     this.item = item;
     this.outputIndex = outputIndex;

@@ -1,14 +1,12 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import com.alibaba.fastjson2.annotation.JSONField;
-
 /**
  * Base class for all response event data types
  */
-public abstract class BaseEventData {
+public abstract class BaseResponsesEventData {
   protected final String type;
 
-  public BaseEventData(String type) {
+  public BaseResponsesEventData(String type) {
     this.type = type;
   }
 

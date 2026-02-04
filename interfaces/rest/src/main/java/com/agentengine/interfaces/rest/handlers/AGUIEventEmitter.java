@@ -22,6 +22,7 @@ public final class AGUIEventEmitter {
   private static final Logger LOGGER = LoggerFactory.getLogger(AGUIEventEmitter.class);
   private final String threadId;
   private final Consumer<? super BaseEvent> eventConsumer;
+  private final String agentId;
   private String runId;
   private String currentStepName;
   private String currentTextMessageId;
@@ -29,9 +30,10 @@ public final class AGUIEventEmitter {
   private boolean thinkingStarted;
   private final Set<String> pendingToolCalls = new HashSet<>();
 
-  public AGUIEventEmitter(final String threadId, final Consumer<? super BaseEvent> eventConsumer) {
+  public AGUIEventEmitter(final String threadId, final Consumer<? super BaseEvent> eventConsumer, String agentId) {
     this.threadId = threadId;
     this.eventConsumer = eventConsumer;
+      this.agentId = agentId;
   }
 
   public void onComplete() {
@@ -274,6 +276,10 @@ public final class AGUIEventEmitter {
       return;
     }
     event.setTimestamp(System.currentTimeMillis());
+    final Map<String, Object> eventMap = JsonUtils.toMap(event);
+    final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap(eventMap);
+    rawEvent.put("agentId", agentId);
+    event.setRawEvent(rawEvent);
     eventConsumer.accept(event);
   }
 

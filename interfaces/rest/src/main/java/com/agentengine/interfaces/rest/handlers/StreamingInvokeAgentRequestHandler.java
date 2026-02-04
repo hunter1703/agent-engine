@@ -34,7 +34,7 @@ public class StreamingInvokeAgentRequestHandler extends AbstractAgentRequestHand
     final Content messageContent = Content.fromParts(Part.builder().text(message).build());
     final RunConfig runConfig = RunConfig.builder().setStreamingMode(StreamingMode.SSE).build();
     return Multi.createFrom().emitter(emitter -> {
-      final AGUIEventEmitter eventEmitter = new AGUIEventEmitter(sessionId, emitter::emit);
+      final AGUIEventEmitter eventEmitter = new AGUIEventEmitter(sessionId, emitter::emit, request.getAgentId());
       final AtomicReference<Disposable> subscriptionRef = new AtomicReference<>();
       emitter.onTermination(() -> {
         final Disposable disposable = subscriptionRef.get();
