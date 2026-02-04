@@ -15,9 +15,9 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
-import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agui.core.event.BaseEvent;
+import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
+import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Multi;
@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.WebApplicationException;
+import com.agentengine.interfaces.rest.utils.FlowAdapters;
 
 import java.util.*;
 
@@ -42,7 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-@Path("/")
+@Path("/v1")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RunOnVirtualThread
@@ -76,8 +77,8 @@ public class AgentRestAPI {
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
       MDC.put("session_id", effectiveRequest.getSessionId());
-      AgentResponse response = (AgentResponse) handlerFor(RequestType.valueOf(effectiveRequest.getType()))
-          .handle(effectiveRequest);
+      final AgentRequestHandler<AgentResponse> handler = handlerFor(RequestType.valueOf(effectiveRequest.getType()));
+      AgentResponse response = handler.handle(effectiveRequest);
 
       LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success", traceId,
           request.getAgentId(), request.getSessionId());
@@ -101,7 +102,6 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  @SuppressWarnings("unchecked")
   public Multi<BaseEvent> events(final AgentRequest request) {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();
@@ -114,15 +114,15 @@ public class AgentRestAPI {
     try {
       final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
       MDC.put("session_id", effectiveRequest.getSessionId());
-      Multi<BaseEvent> response = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT)
-          .handle(effectiveRequest);
+      final AgentRequestHandler<Flowable<BaseEvent>> handler = handlerFor(RequestType.STREAM_AGUI_EVENTS);
+      Flowable<BaseEvent> response = handler.handle(effectiveRequest);
 
       LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           request.getAgentId(), request.getSessionId());
       LOG.debug("Agent events streaming response details - trace_id={} response_type=\"{}\"", traceId,
           response != null ? response.getClass().getSimpleName() : "null");
 
-      return response;
+      return Multi.createFrom().publisher(FlowAdapters.toFlowPublisher(response));
     } catch (Exception e) {
       LOG.error("Agent events streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
           traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
@@ -133,7 +133,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/v1/responses")
+  @Path("/responses")
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
@@ -143,7 +143,6 @@ public class AgentRestAPI {
     final ResponsesApiRequest request = JsonUtils.fromMap(map, ResponsesApiRequest.class);
     String traceId = LoggingUtils.getOrCreateTraceId();
 
-    // Convert the ResponsesApiRequest to an AgentRequest for internal processing
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
 
     LOG.info("Agent responses streaming started - trace_id={} request_map={}", traceId, JsonUtils.toJson(map));
@@ -155,23 +154,14 @@ public class AgentRestAPI {
       final AgentRequest effectiveRequest = agentRequest.withSessionId(getOrCreateSession(agentRequest.getSessionId()));
       MDC.put("session_id", effectiveRequest.getSessionId());
 
-      // noinspection unchecked
-      Multi<BaseEvent> baseEventStream = (Multi<BaseEvent>) handlerFor(RequestType.STREAMING_INVOKE_AGENT)
-          .handle(effectiveRequest);
+      final AgentRequestHandler<Flowable<BaseResponsesEventData>> handler = handlerFor(RequestType.STREAM_RESPONSES);
+      Flowable<BaseResponsesEventData> responseStream = handler.handle(effectiveRequest);
 
       LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
           agentRequest.getAgentId(), agentRequest.getSessionId());
 
-      // Create a new mapper instance for this request to maintain state isolation
-      ResponsesApiMapper requestMapper = new ResponsesApiMapper();
-
-      Multi.createFrom().emitter()
-      return Multi.createBy().concatenating().streams(baseEventStream.select().where(event -> {
-        BaseResponsesEventData mappedEvent = requestMapper.mapEvent(event, effectiveRequest.getAgentId());
-        return mappedEvent != null && !mappedEvent.getType().equals("skip_event"); // Only include non-null, non-skip
-                                                                                   // events
-      }).map(event -> JsonUtils.toMap(requestMapper.mapEvent(event, effectiveRequest.getAgentId()))),
-          Multi.createFrom().item(JsonUtils.toMap(requestMapper.createResponseDoneEvent())));
+      final Flowable<Map<String, Object>> responseEvents = responseStream.map(JsonUtils::toMap);
+      return Multi.createFrom().publisher(FlowAdapters.toFlowPublisher(responseEvents));
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
@@ -182,14 +172,15 @@ public class AgentRestAPI {
     }
   }
 
-  private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
+  private <T> AgentRequestHandler<T> handlerFor(final RequestType requestType) {
     final AgentRequestHandler<?> handler = handlers.get(requestType);
     if (handler == null) {
       String errorMsg = STR."No handler registered for request type: \{requestType}";
       LOG.error("Handler lookup failed - request_type={} error=\"{}\"", requestType, errorMsg);
       throw new IllegalArgumentException(errorMsg);
     }
-    return handler;
+    //noinspection unchecked
+    return (AgentRequestHandler<T>) handler;
   }
 
   private static String getOrCreateSession(final String sessionId) {
@@ -207,7 +198,7 @@ public class AgentRestAPI {
 
     // Create an AgentRequest with values from the Responses API request
     AgentRequest agentRequest = new AgentRequest();
-    agentRequest.setType("STREAMING_INVOKE_AGENT");
+    agentRequest.setType(RequestType.STREAM_RESPONSES.name());
 
     // Map the model from Responses API to agentId in Agent Engine
     String agentId = responsesRequest.getModel();

@@ -12,11 +12,10 @@ import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
-import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
+import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
+import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
-import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
 import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agentengine.interfaces.rest.services.AgentRuntime;
 import com.google.adk.events.Event;
@@ -139,7 +138,8 @@ class AgentRestAPITest {
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentRuntimeManager service) {
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    final StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
-    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler));
+    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service);
+    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler, responsesHandler));
   }
 }

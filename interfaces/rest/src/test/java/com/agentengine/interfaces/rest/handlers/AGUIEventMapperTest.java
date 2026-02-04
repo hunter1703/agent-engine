@@ -11,30 +11,32 @@ import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import java.util.ArrayList;
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class AGUIEventEmitterTest {
+class AGUIEventMapperTest {
 
   @Test
   void emitsRunLifecycleAndFinalAnswerResult() {
-    List<BaseEvent> events = new ArrayList<>();
-    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", events::add);
-
     Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
         .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
 
-    emitter.onEvent(responseEvent);
-    emitter.onComplete();
+    AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    List<BaseEvent> events = Flowable.just(responseEvent)
+        .map(mapper::map)
+        .concatMap(eventStream -> eventStream)
+        .concatWith(Flowable.defer(mapper::onComplete))
+        .toList()
+        .blockingGet();
 
     RunStartedEvent started = events.stream().filter(item -> item instanceof RunStartedEvent)
         .map(RunStartedEvent.class::cast).findFirst().orElseThrow();
     assertThat(started.getType()).isEqualTo(EventType.RUN_STARTED);
     assertThat(started.getThreadId()).isEqualTo("thread-1");
     assertThat(started.getRunId()).isEqualTo("run-1");
-    assertThat(started.getRawEvent()).isNull();
+    assertThat(started.getRawEvent()).isNotNull();
 
     RunFinishedEvent finished = events.stream().filter(item -> item instanceof RunFinishedEvent)
         .map(RunFinishedEvent.class::cast).findFirst().orElseThrow();
@@ -44,9 +46,6 @@ class AGUIEventEmitterTest {
 
   @Test
   void emitsToolCallResultWithRole() {
-    List<BaseEvent> events = new ArrayList<>();
-    AGUIEventEmitter emitter = new AGUIEventEmitter("thread-1", events::add);
-
     Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
         .content(Content.builder().role("model").parts(Part.builder()
             .functionResponse(
@@ -54,7 +53,12 @@ class AGUIEventEmitterTest {
             .build()).build())
         .build();
 
-    emitter.onEvent(responseEvent);
+    AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    List<BaseEvent> events = Flowable.just(responseEvent)
+        .map(mapper::map)
+        .concatMap(eventStream -> eventStream)
+        .toList()
+        .blockingGet();
 
     ToolCallResultEvent resultEvent = events.stream().filter(item -> item instanceof ToolCallResultEvent)
         .map(ToolCallResultEvent.class::cast).findFirst().orElseThrow();

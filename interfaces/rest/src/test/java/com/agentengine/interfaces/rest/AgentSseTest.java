@@ -12,8 +12,8 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
-import com.agentengine.interfaces.rest.handlers.StreamingInvokeAgentRequestHandler;
-import com.agentengine.interfaces.rest.responses.ResponsesApiMapper;
+import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
+import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
 import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agentengine.interfaces.rest.services.AgentRuntime;
 import com.agui.core.event.BaseEvent;
@@ -79,7 +79,7 @@ class AgentSseTest {
     request.setAgentConfigPath("config.json");
     request.setSessionId("session");
     request.setMessage("hello");
-    request.setType(RequestType.STREAMING_INVOKE_AGENT.name());
+    request.setType(RequestType.STREAM_AGUI_EVENTS.name());
     Multi<BaseEvent> stream = resource.events(request);
     assertThat(stream).isNotNull();
 
@@ -94,7 +94,8 @@ class AgentSseTest {
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentRuntimeManager service) {
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
     final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    final StreamingInvokeAgentRequestHandler streamingHandler = new StreamingInvokeAgentRequestHandler(service);
-    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler));
+    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service);
+    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler, responsesHandler));
   }
 }
