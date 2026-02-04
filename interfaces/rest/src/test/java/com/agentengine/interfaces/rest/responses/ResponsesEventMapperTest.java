@@ -6,6 +6,7 @@ import com.agentengine.interfaces.rest.handlers.ResponsesEventMapper;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agentengine.interfaces.rest.responses.dtos.CreatedEventData;
 import com.agentengine.interfaces.rest.responses.dtos.DoneEventData;
+import com.agentengine.interfaces.rest.responses.dtos.OutputItemAddedEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultEventData;
 import com.agui.core.event.RunFinishedEvent;
@@ -14,6 +15,9 @@ import com.agui.core.event.StepStartedEvent;
 import com.agui.core.event.TextMessageChunkEvent;
 import com.agui.core.event.TextMessageContentEvent;
 import com.agui.core.event.TextMessageEndEvent;
+import com.agui.core.event.TextMessageStartEvent;
+import com.agui.core.event.ThinkingEndEvent;
+import com.agui.core.event.ThinkingStartEvent;
 import com.agui.core.event.ToolCallArgsEvent;
 import com.agui.core.event.ToolCallEndEvent;
 import com.agui.core.event.ToolCallResultEvent;
@@ -33,6 +37,8 @@ class ResponsesEventMapperTest {
 
     final StepStartedEvent stepStarted = new StepStartedEvent();
 
+    final TextMessageStartEvent startEvent = new TextMessageStartEvent();
+
     final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
     chunkEvent.setDelta("Hello");
 
@@ -46,12 +52,13 @@ class ResponsesEventMapperTest {
 
     final ResponsesEventMapper mapper = new ResponsesEventMapper("fallback-agent");
     final List<BaseResponsesEventData> responses = Flowable
-        .just(runStarted, stepStarted, chunkEvent, contentEvent, endEvent, runFinished).concatMap(mapper::map)
+        .just(runStarted, stepStarted, startEvent, chunkEvent, contentEvent, endEvent, runFinished)
+        .concatMap(mapper::map)
         .concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
 
     assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.created",
-        "response.in_progress", "response.output_text.delta", "response.output_item.done", "response.completed",
-        "response.done");
+        "response.in_progress", "response.output_item.added", "response.output_text.delta", "response.output_item.done",
+        "response.completed", "response.done");
 
     final CreatedEventData createdEventData = (CreatedEventData) responses.get(0);
     assertThat(createdEventData.getResponse()).containsEntry("model", "agent-1");
@@ -81,12 +88,41 @@ class ResponsesEventMapperTest {
     final List<BaseResponsesEventData> responses = Flowable.just(startEvent, argsEvent, endEvent, resultEvent)
         .concatMap(mapper::map).toList().blockingGet();
 
-    final ToolCallEventData toolCallEventData = (ToolCallEventData) responses.get(0);
+    final OutputItemAddedEventData toolCallAddedEventData = (OutputItemAddedEventData) responses.get(0);
+    assertThat(toolCallAddedEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments", "");
+
+    final ToolCallEventData toolCallEventData = (ToolCallEventData) responses.get(1);
     assertThat(toolCallEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments",
         "{\"city\":\"SF\"}");
 
-    final ToolCallResultEventData toolCallResultEventData = (ToolCallResultEventData) responses.get(1);
+    final ToolCallResultEventData toolCallResultEventData = (ToolCallResultEventData) responses.get(2);
     assertThat(toolCallResultEventData.getItem()).containsEntry("call_id", "call-1").containsEntry("output",
         "{\"result\":\"ok\"}");
+  }
+
+  @Test
+  void mapsThinkingEventsToReasoningSummary() {
+    final ThinkingStartEvent thinkingStartEvent = new ThinkingStartEvent();
+
+    final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
+    chunkEvent.setDelta("Think about it");
+
+    final ThinkingEndEvent thinkingEndEvent = new ThinkingEndEvent();
+
+    final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
+    final List<BaseResponsesEventData> responses = Flowable
+        .just(thinkingStartEvent, chunkEvent, thinkingEndEvent)
+        .concatMap(mapper::map)
+        .toList()
+        .blockingGet();
+
+    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.output_item.added",
+        "response.reasoning_summary_part.added", "response.reasoning_summary_text.delta", "response.output_item.done");
+
+    final OutputItemAddedEventData reasoningAdded = (OutputItemAddedEventData) responses.get(0);
+    assertThat(reasoningAdded.getItem()).containsEntry("type", "reasoning");
+
+    final BaseResponsesEventData reasoningDone = responses.get(3);
+    assertThat(reasoningDone.getType()).isEqualTo("response.output_item.done");
   }
 }

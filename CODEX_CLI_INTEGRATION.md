@@ -110,11 +110,18 @@ Make sure your agent is properly configured in the `configs/agents/` directory. 
 The Responses API implementation maps internal AGUI events to the Codex-compatible format:
 
 - `RunStartedEvent` → `response.created`
-- `RunFinishedEvent` → `response.done`
+- `StepStartedEvent` → `response.in_progress`
+- `ThinkingStartEvent` → `response.output_item.added` (reasoning) + `response.reasoning_summary_part.added`
+- `ThinkingEndEvent` → `response.output_item.done` (reasoning)
+- `TextMessageStartEvent` → `response.output_item.added` (message)
+- `TextMessageChunkEvent` → `response.output_text.delta`
+- `TextMessageContentEvent`/`TextMessageEndEvent` → `response.output_item.done` (message)
 - `ToolCallStartEvent` → `response.output_item.added` (with type `function_call`)
-- `ToolCallArgsEvent` → `response.function_call_arguments.delta`
 - `ToolCallEndEvent` → `response.output_item.done`
-- `TextMessageChunkEvent` → `response.text.delta`
+- `ToolCallResultEvent` → `response.output_item.added` (with type `function_call_output`)
+- `RunFinishedEvent` → `response.completed`
+- Mapper completion → `response.done`
 - `RunErrorEvent` → `response.failed`
 
-The implementation handles proper sequencing of output items and tracks tool call arguments as they stream in.
+The implementation handles proper sequencing of output items and aggregates tool call arguments before emitting the
+final `function_call` item.

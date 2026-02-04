@@ -112,16 +112,29 @@ tasks.register('setupMongoOptimized') {
     }
 }
 
-// Optimized deployEngine task with conditional execution
+// Create a task that runs prerequisites and then starts quarkusDev
 tasks.register('deployEngine') {
-    doFirst {
-        println "Starting optimized deployment..."
-    }
+    dependsOn 'setupMongoOptimized', 'preparePluginsOptimized', ':interfaces:rest:classes'
     finalizedBy ':interfaces:rest:quarkusDev'
 
+    doFirst {
+        println "Starting optimized deployment..."
+        println "Ensuring prerequisites are ready..."
+    }
+
     doLast {
-        println "Deployment complete. Application is running on port ${restPort}"
-        println "Press Ctrl+C to stop."
+        println "Prerequisites ready. Starting application server..."
+    }
+}
+
+// Make sure quarkusDev runs after all prerequisites
+project(':interfaces:rest') {
+    tasks.matching { it.name == 'quarkusDev' }.configureEach {
+        // Temporarily remove port check for deployEngine to ensure it runs
+        // onlyIf { !isPortInUse(restPort) }
+        mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
+        mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
+        mustRunAfter(tasks.named('classes'))  // Changed from 'build' to 'classes'
     }
 }
 
@@ -216,11 +229,13 @@ tasks.deployEngine {
     dependsOn 'setupMongoOptimized'
     dependsOn 'preparePluginsOptimized'
     dependsOn ':interfaces:rest:classes'  // Only compile classes, skip tests and Spotless
+    finalizedBy ':interfaces:rest:quarkusDev'
 }
 
 project(':interfaces:rest') {
     tasks.matching { it.name == 'quarkusDev' }.configureEach {
-        onlyIf { !isPortInUse(restPort) }
+        // Temporarily remove port check for deployEngine to ensure it runs
+        // onlyIf { !isPortInUse(restPort) }
         mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
         mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
         mustRunAfter(tasks.named('classes'))  // Changed from 'build' to 'classes'
