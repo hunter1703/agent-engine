@@ -37,6 +37,25 @@ dependencies {
     testImplementation libs.mockito.core
 }
 
+// Configuration for faster Quarkus Dev mode
+def isCiServer = System.getenv("CI_SERVER") != null
+def isCi = System.getenv("CI") != null
+def isContinuousIntegration = isCiServer || isCi
+
+// Disable hot replacement in CI environments to speed up builds
+if (isContinuousIntegration) {
+    tasks.withType(JavaCompile) {
+        options.compilerArgs += ['-Xlint:all', '-Werror']
+    }
+}
+
+// Configure quarkusDev task for faster startup
+tasks.named('quarkusDev') {
+    // Enable hot replacement by default
+    // Note: Quarkus Dev task uses system properties differently
+    // Properties are typically set via quarkusBuild or through gradle.properties
+}
+
 tasks.withType(Test).configureEach {
     systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
 }

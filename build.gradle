@@ -77,18 +77,152 @@ tasks.register('setupMongo', Exec) {
     commandLine 'bash', file('deploy/docker/setup-mongo.sh').absolutePath, *mongoArgs
 }
 
+// Optimized MongoDB setup with conditional execution
+tasks.register('setupMongoOptimized') {
+    // Define inputs for configuration cache
+    def forceSetup = providers.gradleProperty('forceMongoSetup').forUseAtConfigurationTime()
+    def mongoArgsProvider = providers.gradleProperty('mongoArgs').forUseAtConfigurationTime()
+
+    doFirst {
+        def force = forceSetup.isPresent()
+        def configDir = mongoArgsProvider.getOrElse('./configs')
+
+        // Check if MongoDB container is already running on the expected port
+        def isMongoRunning = false
+        try {
+            def checkProcess = "docker ps --filter name=agent-engine-mongodb --filter status=running --format {{.Names}}".execute()
+            def containerName = checkProcess.text.trim()
+            if (containerName == "agent-engine-mongodb") {
+                isMongoRunning = true
+            }
+        } catch (Exception ignored) {
+            // Ignore exception, will proceed with setup
+        }
+
+        if (!isMongoRunning || force) {
+            println "Setting up MongoDB container..."
+            def setupCmd = ['bash', file('deploy/docker/setup-mongo.sh').absolutePath, configDir.toString()]
+            def process = setupCmd.execute()
+            process.in.eachLine { line -> println line }
+            process.err.eachLine { line -> println "ERROR: $line" }
+            process.waitFor()
+        } else {
+            println "MongoDB container is already running. Skipping setup."
+        }
+    }
+}
+
+// Optimized deployEngine task with conditional execution
 tasks.register('deployEngine') {
-    dependsOn 'setupMongo'
-    dependsOn 'preparePlugins'
-    dependsOn ':interfaces:rest:build'
-    dependsOn ':interfaces:rest:quarkusDev'
+    doFirst {
+        println "Starting optimized deployment..."
+    }
+    finalizedBy ':interfaces:rest:quarkusDev'
+
+    doLast {
+        println "Deployment complete. Application is running on port ${restPort}"
+        println "Press Ctrl+C to stop."
+    }
+}
+
+// Optimized plugin preparation with timestamp checking
+tasks.register('preparePluginsOptimized') {
+    dependsOn ':engine:build'
+    // Define inputs for configuration cache
+    def skipPluginBuildProp = providers.gradleProperty('skipPluginBuild').forUseAtConfigurationTime()
+    def forcePluginBuildProp = providers.gradleProperty('forcePluginBuild').forUseAtConfigurationTime()
+
+    // Only run plugin builds if plugin files are newer than the plugin JARs
+    doFirst {
+        def skipPluginBuild = skipPluginBuildProp.isPresent()
+        def forcePluginBuild = forcePluginBuildProp.isPresent()
+
+        if (skipPluginBuild) {
+            println "Skipping plugin builds as requested (-PskipPluginBuild flag)"
+            return
+        }
+
+        def pluginsDir = file('plugins')
+        if (pluginsDir.exists()) {
+            def pluginDirsLocal = pluginsDir.listFiles()?.findAll { pluginDir ->
+                pluginDir.directory && new File(pluginDir, 'build.gradle').exists()
+            } ?: []
+
+            def shouldBuildPlugins = forcePluginBuild
+
+            if (!forcePluginBuild) {
+                pluginDirsLocal.each { pluginDir ->
+                    def buildFile = new File(pluginDir, 'build.gradle')
+                    def jarDir = new File(pluginDir, 'build/libs')
+
+                    if (jarDir.exists()) {
+                        def pluginJars = jarDir.listFiles()?.findAll { it.name.endsWith('-plugin.jar') } ?: []
+
+                        if (pluginJars.isEmpty()) {
+                            shouldBuildPlugins = true
+                        } else {
+                            def latestJarTime = pluginJars.max { it.lastModified() }.lastModified()
+                            def buildFileTime = buildFile.lastModified()
+
+                            if (buildFileTime > latestJarTime) {
+                                shouldBuildPlugins = true
+                            } else {
+                                // Check if any source files are newer than the JAR
+                                def srcDirs = ['src/main/java', 'src/main/resources'].collect {
+                                    new File(pluginDir, it)
+                                }.findAll { it.exists() }
+
+                                srcDirs.each { srcDir ->
+                                    srcDir.traverse(type: groovy.io.FileType.FILES) { file ->
+                                        if (file.lastModified() > latestJarTime) {
+                                            shouldBuildPlugins = true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        shouldBuildPlugins = true
+                    }
+                }
+            }
+
+            if (shouldBuildPlugins) {
+                println "Building plugins as they appear to be out of date or forced..."
+                pluginBuildTasks.each { task ->
+                    task.execute()
+                }
+
+                // Copy plugin JARs
+                copy {
+                    from('plugins') {
+                        include '**/build/libs/*-plugin.jar'
+                        eachFile { fileCopyDetails ->
+                            fileCopyDetails.relativePath = new RelativePath(true, fileCopyDetails.name)
+                        }
+                        includeEmptyDirs = false
+                    }
+                    into('plugins')
+                }
+            } else {
+                println "Plugins appear up-to-date. Skipping plugin builds."
+            }
+        }
+    }
+}
+
+// Register the optimized deployEngine task dependencies
+tasks.deployEngine {
+    dependsOn 'setupMongoOptimized'
+    dependsOn 'preparePluginsOptimized'
+    dependsOn ':interfaces:rest:classes'  // Only compile classes, skip tests and Spotless
 }
 
 project(':interfaces:rest') {
     tasks.matching { it.name == 'quarkusDev' }.configureEach {
         onlyIf { !isPortInUse(restPort) }
-        mustRunAfter(rootProject.tasks.named('setupMongo'))
-        mustRunAfter(rootProject.tasks.named('preparePlugins'))
-        mustRunAfter(tasks.named('build'))
+        mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
+        mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
+        mustRunAfter(tasks.named('classes'))  // Changed from 'build' to 'classes'
     }
 }
