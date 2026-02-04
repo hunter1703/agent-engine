@@ -1,7 +1,5 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
-
 import java.util.HashMap;
 import java.util.Map;
 

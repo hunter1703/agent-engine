@@ -24,6 +24,7 @@ public abstract class BaseJavaConventionsPlugin {
         project.getExtensions().configure(SpotlessExtension.class, spotless -> {
             spotless.java(java -> {
                 java.eclipse().configFile(project.getRootProject().file("config/spotless/eclipse.xml").getAbsolutePath());
+                java.removeUnusedImports();
             });
 
             spotless.format("misc", misc -> {

@@ -45,19 +45,12 @@ class ResponsesEventMapperTest {
     runFinished.setRunId("run-1");
 
     final ResponsesEventMapper mapper = new ResponsesEventMapper("fallback-agent");
-    final List<BaseResponsesEventData> responses = Flowable.just(runStarted, stepStarted, chunkEvent, contentEvent,
-            endEvent, runFinished)
-        .concatMap(mapper::map)
-        .concatWith(Flowable.defer(mapper::onComplete))
-        .toList()
-        .blockingGet();
+    final List<BaseResponsesEventData> responses = Flowable
+        .just(runStarted, stepStarted, chunkEvent, contentEvent, endEvent, runFinished).concatMap(mapper::map)
+        .concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
 
-    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly(
-        "response.created",
-        "response.in_progress",
-        "response.output_text.delta",
-        "response.output_item.done",
-        "response.completed",
+    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.created",
+        "response.in_progress", "response.output_text.delta", "response.output_item.done", "response.completed",
         "response.done");
 
     final CreatedEventData createdEventData = (CreatedEventData) responses.get(0);
@@ -86,16 +79,14 @@ class ResponsesEventMapperTest {
 
     final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
     final List<BaseResponsesEventData> responses = Flowable.just(startEvent, argsEvent, endEvent, resultEvent)
-        .concatMap(mapper::map)
-        .toList()
-        .blockingGet();
+        .concatMap(mapper::map).toList().blockingGet();
 
     final ToolCallEventData toolCallEventData = (ToolCallEventData) responses.get(0);
-    assertThat(toolCallEventData.getItem()).containsEntry("name", "weather")
-        .containsEntry("arguments", "{\"city\":\"SF\"}");
+    assertThat(toolCallEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments",
+        "{\"city\":\"SF\"}");
 
     final ToolCallResultEventData toolCallResultEventData = (ToolCallResultEventData) responses.get(1);
-    assertThat(toolCallResultEventData.getItem()).containsEntry("call_id", "call-1")
-        .containsEntry("output", "{\"result\":\"ok\"}");
+    assertThat(toolCallResultEventData.getItem()).containsEntry("call_id", "call-1").containsEntry("output",
+        "{\"result\":\"ok\"}");
   }
 }

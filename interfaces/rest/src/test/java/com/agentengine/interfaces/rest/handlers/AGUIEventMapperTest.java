@@ -24,12 +24,8 @@ class AGUIEventMapperTest {
         .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
 
     AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
-    List<BaseEvent> events = Flowable.just(responseEvent)
-        .map(mapper::map)
-        .concatMap(eventStream -> eventStream)
-        .concatWith(Flowable.defer(mapper::onComplete))
-        .toList()
-        .blockingGet();
+    List<BaseEvent> events = Flowable.just(responseEvent).map(mapper::map).concatMap(eventStream -> eventStream)
+        .concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
 
     RunStartedEvent started = events.stream().filter(item -> item instanceof RunStartedEvent)
         .map(RunStartedEvent.class::cast).findFirst().orElseThrow();
@@ -54,11 +50,8 @@ class AGUIEventMapperTest {
         .build();
 
     AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
-    List<BaseEvent> events = Flowable.just(responseEvent)
-        .map(mapper::map)
-        .concatMap(eventStream -> eventStream)
-        .toList()
-        .blockingGet();
+    List<BaseEvent> events = Flowable.just(responseEvent).map(mapper::map).concatMap(eventStream -> eventStream)
+        .toList().blockingGet();
 
     ToolCallResultEvent resultEvent = events.stream().filter(item -> item instanceof ToolCallResultEvent)
         .map(ToolCallResultEvent.class::cast).findFirst().orElseThrow();

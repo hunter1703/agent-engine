@@ -52,14 +52,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       return Flowable.empty();
     }
     Functions.populateClientFunctionCallId(event);
-    return Flowable.just(new EventContext(event, Flowable.empty()))
-            .compose(mapRunStartStage())
-            .compose(mapStepStartStage())
-            .compose(mapTextStage())
-            .compose(mapFunctionCallsStage())
-            .compose(mapFunctionResponsesStage())
-            .compose(mapStepFinishStage())
-            .concatMap(EventContext::mappedEvents);
+    return Flowable.just(new EventContext(event, Flowable.empty())).compose(mapRunStartStage())
+        .compose(mapStepStartStage()).compose(mapTextStage()).compose(mapFunctionCallsStage())
+        .compose(mapFunctionResponsesStage()).compose(mapStepFinishStage()).concatMap(EventContext::mappedEvents);
   }
 
   public Flowable<BaseEvent> onComplete() {
@@ -139,8 +134,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       }
     }
 
-    return Flowable.concatArray(
-        mapThinking(thoughtBuilder.toString(), partial),
+    return Flowable.concatArray(mapThinking(thoughtBuilder.toString(), partial),
         mapAnswer(answerBuilder.toString(), partial));
   }
 
@@ -189,9 +183,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       if (!partial) {
         state.finalAnswer = text;
       }
-      return Flowable.concatArray(
-          mapAnswerStart(),
-          mapMessage(state.currentTextMessageId, text, partial),
+      return Flowable.concatArray(mapAnswerStart(), mapMessage(state.currentTextMessageId, text, partial),
           mapAnswerEnd(partial));
     }
     if (!partial) {
@@ -226,18 +218,15 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapFunctionCalls(final List<FunctionCall> calls) {
-    return Flowable.fromIterable(CollectionUtils.nullSafeList(calls))
-        .concatMap(call -> {
-          final String toolCallId = call.id().orElseThrow();
-          final String name = call.name().orElse("tool");
+    return Flowable.fromIterable(CollectionUtils.nullSafeList(calls)).concatMap(call -> {
+      final String toolCallId = call.id().orElseThrow();
+      final String name = call.name().orElse("tool");
 
-          state.pendingToolCalls.add(toolCallId);
+      state.pendingToolCalls.add(toolCallId);
 
-          return Flowable.concatArray(
-              mapToolCallStart(toolCallId, name),
-              mapToolCallArgs(call, toolCallId),
-              mapToolCallEnd(toolCallId));
-        });
+      return Flowable.concatArray(mapToolCallStart(toolCallId, name), mapToolCallArgs(call, toolCallId),
+          mapToolCallEnd(toolCallId));
+    });
   }
 
   private Flowable<BaseEvent> mapToolCallEnd(final String toolCallId) {
@@ -266,17 +255,16 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   private Flowable<BaseEvent> mapFunctionResponses(final Event event) {
     final Set<String> processedIds = new HashSet<>();
-    return functionResponses(event)
-        .concatMap(response -> {
-          final String toolCallId = response.id().orElseThrow();
-          if (processedIds.contains(toolCallId)) {
-            return Flowable.empty();
-          }
-          final Map<String, Object> payload = response.response().orElse(Map.of());
-          state.pendingToolCalls.remove(toolCallId);
-          processedIds.add(toolCallId);
-          return Flowable.just(decorateEvent(buildToolResult(toolCallId, payload)));
-        });
+    return functionResponses(event).concatMap(response -> {
+      final String toolCallId = response.id().orElseThrow();
+      if (processedIds.contains(toolCallId)) {
+        return Flowable.empty();
+      }
+      final Map<String, Object> payload = response.response().orElse(Map.of());
+      state.pendingToolCalls.remove(toolCallId);
+      processedIds.add(toolCallId);
+      return Flowable.just(decorateEvent(buildToolResult(toolCallId, payload)));
+    });
   }
 
   private Flowable<FunctionResponse> functionResponses(final Event event) {
@@ -284,7 +272,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final Content content = event.content().orElse(null);
     if (content != null) {
       for (final Part part : content.parts().orElse(List.of())) {
-          part.functionResponse().ifPresent(functionResponses::add);
+        part.functionResponse().ifPresent(functionResponses::add);
       }
     }
     return Flowable.fromIterable(functionResponses);

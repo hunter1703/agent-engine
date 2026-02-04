@@ -124,8 +124,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
   }
 
   private BaseResponsesEventData mapToolCallStart(final ToolCallStartEvent toolCallStartEvent) {
-    state.toolCallDetails.put(toolCallStartEvent.getToolCallId(), new ToolCallDetails(
-        toolCallStartEvent.getToolCallName(), new StringBuilder(), state.toolCallIndex++));
+    state.toolCallDetails.put(toolCallStartEvent.getToolCallId(),
+        new ToolCallDetails(toolCallStartEvent.getToolCallName(), new StringBuilder(), state.toolCallIndex++));
     return null;
   }
 
@@ -213,7 +213,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     if (event == null) {
       return null;
     }
-    //noinspection unchecked
+    // noinspection unchecked
     final Map<String, Object> rawEvent = (Map<String, Object>) event.getRawEvent();
     return CollectionUtils.getValueFromMap(rawEvent, key);
   }

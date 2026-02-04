@@ -68,7 +68,7 @@ public final class CollectionUtils {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
-    //noinspection unchecked
+    // noinspection unchecked
     return (T) map.get(key);
   }
 

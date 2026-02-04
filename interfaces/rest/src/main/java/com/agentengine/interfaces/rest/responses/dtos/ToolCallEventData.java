@@ -1,8 +1,5 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import com.alibaba.fastjson2.annotation.JSONField;
-
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -11,11 +8,6 @@ import java.util.Map;
 public class ToolCallEventData extends OutputItemDoneEventData {
 
   public ToolCallEventData(String id, String name, String args, int index) {
-    super(Map.of(
-            "type", "function_call",
-            "id", id,
-            "name", name,
-            "arguments", args
-    ), index);
+    super(Map.of("type", "function_call", "id", id, "name", name, "arguments", args), index);
   }
 }

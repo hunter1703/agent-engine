@@ -35,9 +35,7 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
     final Flowable<Event> events = runtime.runner().runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId,
         messageContent, runConfig);
     final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, request.getAgentId());
-    return events
-        .concatMap(mapper::map)
-        .concatWith(Flowable.defer(mapper::onComplete))
+    return events.concatMap(mapper::map).concatWith(Flowable.defer(mapper::onComplete))
         .onErrorResumeNext(mapper::onError);
   }
 }
