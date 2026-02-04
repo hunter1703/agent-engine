@@ -20,13 +20,12 @@ import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import io.smallrye.mutiny.Multi;
+import org.reactivestreams.Publisher;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.WebApplicationException;
-import com.agentengine.interfaces.rest.utils.FlowAdapters;
 
 import java.util.*;
 
@@ -102,7 +101,7 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
   @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Multi<BaseEvent> events(final AgentRequest request) {
+  public Publisher<BaseEvent> events(final AgentRequest request) {
     // Generate or retrieve trace ID for this request
     String traceId = LoggingUtils.getOrCreateTraceId();
 
@@ -122,7 +121,7 @@ public class AgentRestAPI {
       LOG.debug("Agent events streaming response details - trace_id={} response_type=\"{}\"", traceId,
           response != null ? response.getClass().getSimpleName() : "null");
 
-      return Multi.createFrom().publisher(FlowAdapters.toFlowPublisher(response));
+      return response;
     } catch (Exception e) {
       LOG.error("Agent events streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
           traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
@@ -139,7 +138,7 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
   @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Multi<Map<String, Object>> responses(final Map<String, Object> map) {
+  public Publisher<Map<String, Object>> responses(final Map<String, Object> map) {
     final ResponsesApiRequest request = JsonUtils.fromMap(map, ResponsesApiRequest.class);
     String traceId = LoggingUtils.getOrCreateTraceId();
 
@@ -161,7 +160,7 @@ public class AgentRestAPI {
           agentRequest.getAgentId(), agentRequest.getSessionId());
 
       final Flowable<Map<String, Object>> responseEvents = responseStream.map(JsonUtils::toMap);
-      return Multi.createFrom().publisher(FlowAdapters.toFlowPublisher(responseEvents));
+      return responseEvents;
 
     } catch (Exception e) {
       LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
