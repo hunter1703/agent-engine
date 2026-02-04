@@ -2,9 +2,6 @@ package com.agentengine.interfaces.rest.responses.dtos;
 
 import java.util.Map;
 
-/**
- * Event data for response.output_item.done event
- */
 public class ToolCallEventData extends OutputItemDoneEventData {
 
   public ToolCallEventData(String id, String name, String args, int index) {

@@ -1,9 +1,5 @@
 package com.agentengine.engine.api;
 
-/**
- * Request to invoke an agent. For immutable semantics, use
- * {@link #withSessionId(String)} to create modified copies.
- */
 public class AgentRequest {
   private String type;
   private String agentId;
@@ -23,9 +19,6 @@ public class AgentRequest {
     this.message = message;
   }
 
-  /**
-   * Creates a copy of this request with the specified session ID.
-   */
   public AgentRequest withSessionId(final String sessionId) {
     return new AgentRequest(this.type, this.agentId, this.agentConfigPath, sessionId, this.message);
   }

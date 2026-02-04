@@ -2,9 +2,6 @@ package com.agentengine.interfaces.rest.responses.dtos;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 
-/**
- * Event data for response.output_text.delta event
- */
 public class OutputTextDeltaEventData extends BaseResponsesEventData {
   private final String delta;
   @JSONField(name = "output_index")

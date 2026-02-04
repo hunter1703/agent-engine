@@ -3,9 +3,6 @@ package com.agentengine.interfaces.rest.responses.dtos;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Event data for response.output_item.done event
- */
 public class MessageCompletedEventData extends OutputItemDoneEventData {
 
   public MessageCompletedEventData(String message, int outputIndex) {

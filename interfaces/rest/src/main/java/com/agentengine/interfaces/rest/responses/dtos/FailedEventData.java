@@ -3,9 +3,6 @@ package com.agentengine.interfaces.rest.responses.dtos;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Event data for response.failed event
- */
 public class FailedEventData extends BaseResponsesEventData {
   private final Map<String, Object> response;
 

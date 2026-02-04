@@ -2,16 +2,11 @@ package com.agentengine.interfaces.rest.requests;
 
 import java.util.List;
 
-/**
- * Request class specifically shaped for the Responses API specification
- * Compatible with Codex CLI expectations
- */
 public class ResponsesApiRequest {
 
   private String model;
   private List<InputMessage> input;
 
-  // Constructors
   public ResponsesApiRequest() {
   }
 
@@ -20,7 +15,6 @@ public class ResponsesApiRequest {
     this.input = input;
   }
 
-  // Getters and setters
   public String getModel() {
     return model;
   }
@@ -37,9 +31,6 @@ public class ResponsesApiRequest {
     this.input = input;
   }
 
-  /**
-   * Inner class representing a message in the input array
-   */
   public static class InputMessage {
     private String type;
     private String role;
@@ -79,9 +70,6 @@ public class ResponsesApiRequest {
     }
   }
 
-  /**
-   * Inner class representing a content part
-   */
   public static class ContentPart {
     private String type;
     private String text;
