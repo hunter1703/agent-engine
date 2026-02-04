@@ -17,35 +17,23 @@ import jakarta.inject.Singleton;
 @Singleton
 public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<Flowable<BaseResponsesEventData>> {
 
-  public StreamResponsesRequestHandler(final AgentRuntimeManager agentManager) {
-    super(agentManager);
-  }
+    private final StreamAguiEventsRequestHandler eventsRequestHandler;
 
-  @Override
-  public RequestType requestType() {
-    return RequestType.STREAM_RESPONSES;
-  }
+    public StreamResponsesRequestHandler(final AgentRuntimeManager agentManager, StreamAguiEventsRequestHandler eventsRequestHandler) {
+        super(agentManager);
+        this.eventsRequestHandler = eventsRequestHandler;
+    }
 
-  @Override
-  public Flowable<BaseResponsesEventData> handle(final AgentRequest request) {
-    final AgentRuntime runtime = getOrCreateRuntime(request);
-    final String sessionId = ensureSession(runtime, request.getSessionId());
-    final String message = request.getMessage();
-    final Content messageContent = Content.fromParts(Part.builder().text(message).build());
-    final RunConfig runConfig = RunConfig.builder().setStreamingMode(StreamingMode.SSE).build();
-    final Flowable<Event> events = runtime.runner().runAsync(AgentRuntimeManager.DEFAULT_USER_ID, sessionId,
-        messageContent, runConfig);
-    final AGUIEventMapper aguiMapper = new AGUIEventMapper(sessionId, request.getAgentId());
-    final ResponsesEventMapper responsesEventMapper = new ResponsesEventMapper(request.getAgentId());
+    @Override
+    public RequestType requestType() {
+        return RequestType.STREAM_RESPONSES;
+    }
 
-    final Flowable<BaseEvent> aguiEvents = events
-        .concatMap(aguiMapper::map)
-        .concatWith(Flowable.defer(aguiMapper::onComplete))
-        .onErrorResumeNext(aguiMapper::onError);
-
-    return aguiEvents
-        .concatMap(responsesEventMapper::map)
-        .concatWith(Flowable.defer(responsesEventMapper::onComplete))
-        .onErrorResumeNext(responsesEventMapper::onError);
-  }
+    @Override
+    public Flowable<BaseResponsesEventData> handle(final AgentRequest request) {
+        final ResponsesEventMapper responsesEventMapper = new ResponsesEventMapper(request.getAgentId());
+        return eventsRequestHandler.handle(request).concatMap(responsesEventMapper::map)
+                .concatWith(Flowable.defer(responsesEventMapper::onComplete))
+                .onErrorResumeNext(responsesEventMapper::onError);
+    }
 }
