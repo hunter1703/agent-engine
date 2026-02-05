@@ -245,7 +245,7 @@ public class AgentRestAPI {
   }
 
   @GET
-  @Path("/v1/models")
+  @Path("/models")
   @Operation(summary = "List available models", description = "Returns a list of available models in OpenAI-compatible format.")
   @APIResponse(responseCode = "200", description = "List of available models", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListModelsResponse.class)))
   public ListModelsResponse listModels() {
@@ -261,7 +261,7 @@ public class AgentRestAPI {
   }
 
   @GET
-  @Path("/v1/models/{model}")
+  @Path("/models/{model}")
   @Operation(summary = "Retrieve a specific model", description = "Retrieves information about a specific model in OpenAI-compatible format.")
   @APIResponse(responseCode = "200", description = "Information about the requested model", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ModelInfo.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
