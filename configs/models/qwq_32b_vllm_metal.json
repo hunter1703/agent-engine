@@ -1,7 +1,7 @@
 {
   "model": "mlx-community/QwQ-32B-8bit",
   "type": "OPEN_AI_COMPATIBLE",
-  "baseUrl": "http://127.0.0.1:8091/v1",
+  "baseUrl": "http://127.0.0.1:17005/v1",
   "serverCommand": "vllm-metal",
   "serverArgs": [
     "--model",
@@ -9,11 +9,12 @@
     "--host",
     "127.0.0.1",
     "--port",
-    "8091"
+    "17005"
   ],
   "temperature": 0.6,
   "topK": 40,
   "topP": 0.95,
   "repeatPenalty": 1,
-  "toolCallingEnabled": true
+  "toolCallingEnabled": true,
+  "toolCallingSupported": true
 }

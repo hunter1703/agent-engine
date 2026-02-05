@@ -11,7 +11,8 @@ only.
 
 ## Optional Fields
 - `baseUrl`: backend base URL
-- `toolCallingEnabled`: enable native tool calling (if supported by provider)
+- `toolCallingEnabled`: enable native tool calling (defaults to false)
+- `toolCallingSupported`: provider supports native tool calling (defaults to false)
 - `temperature`, `topK`, `topP`, `repeatPenalty`
 - `numPredict`: maximum tokens to generate
 - `maxContextLength`: context window size

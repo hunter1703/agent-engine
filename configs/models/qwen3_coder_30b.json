@@ -1,8 +1,0 @@
-{
-  "model": "qwen3-coder:30b",
-  "type": "OLLAMA",
-  "temperature": 0.2,
-  "topK": 40,
-  "topP": 0.95,
-  "repeatPenalty": 1
-}
