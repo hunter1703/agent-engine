@@ -27,16 +27,11 @@ import java.util.Map;
 
 @Singleton
 public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> {
-  private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS;
-  private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
+  private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
 
   static {
-    DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS = JsonUtils
-        .fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/with_thoughts.json"), new TypeReference<>() {
-        });
-
-    DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS = JsonUtils
-        .fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/without_thoughts.json"), new TypeReference<>() {
+    DEFAULT_JSON_RESPONSE_FORMAT = JsonUtils
+        .fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json"), new TypeReference<>() {
         });
   }
 
@@ -53,9 +48,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
     final ChatModels models = buildChatModels(modelConfig);
     final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
-        .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported)
-        .parseThoughtsFromText(!modelConfig.isThoughtsSupported()).areThoughtsEnabled(modelConfig.isThoughtsEnabled())
-        .withThoughtsStartTag(modelConfig.getThoughtsStartTag()).withThoughtsEndTag(modelConfig.getThoughtsEndTag());
+        .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported);
     return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
         buildProtocolMessage(modelConfig, toolCallingEnabled, toolCallingSupported), toolCallingEnabled,
         !toolCallingSupported);
@@ -115,11 +108,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
 
   protected static ResponseFormat getResponseFormat(final ModelConfig config) {
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
-      Map<String, Object> responseJsonSchema = config.isThoughtsEnabled()
-          ? DEFAULT_JSON_RESPONSE_FORMAT_WITH_THOUGHTS
-          : DEFAULT_JSON_RESPONSE_FORMAT_WITHOUT_THOUGHTS;
-      return new ResponseFormat.Builder().type(ResponseFormatType.JSON).jsonSchema(toJsonSchema(responseJsonSchema))
-          .build();
+      return new ResponseFormat.Builder().type(ResponseFormatType.JSON)
+          .jsonSchema(toJsonSchema(DEFAULT_JSON_RESPONSE_FORMAT)).build();
     } else {
       return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
     }
@@ -342,9 +332,6 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
       final boolean toolCallingSupported) {
     final String templateName = resolveReasoningProtocolTemplate(config.getResponseFormat());
     final Map<String, Object> context = new HashMap<>();
-    context.put("thoughtsEnabled", config.isThoughtsEnabled());
-    context.put("thoughtsStartTag", config.getThoughtsStartTag());
-    context.put("thoughtsEndTag", config.getThoughtsEndTag());
     context.put("toolCallingAllowed", toolCallingEnabled);
     context.put("parseToolCallsFromText", !toolCallingSupported);
     if ("json".equalsIgnoreCase(config.getResponseFormat())) {
@@ -365,9 +352,6 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     if (!"json".equalsIgnoreCase(config.getResponseFormat())) {
       return "";
     }
-    String path = config.isThoughtsEnabled()
-        ? "/schemas/shared/with_thoughts.json"
-        : "/schemas/shared/without_thoughts.json";
-    return ResourceUtils.loadResourceAsString(path);
+    return ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json");
   }
 }

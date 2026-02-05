@@ -12,7 +12,6 @@
     "17001"
   ],
   "responseFormat": "json",
-  "thoughtsEnabled": true,
   "temperature": 0.2,
   "numPredict": 120,
   "topK": 20,

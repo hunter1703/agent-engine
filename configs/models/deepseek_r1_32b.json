@@ -11,7 +11,6 @@
     "--port",
     "17003"
   ],
-  "thoughtsEnabled": false,
   "temperature": 0.6,
   "topK": 40,
   "topP": 0.95,

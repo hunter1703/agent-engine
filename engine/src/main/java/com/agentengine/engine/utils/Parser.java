@@ -1,7 +1,5 @@
 package com.agentengine.engine.utils;
 
-import static java.lang.StringTemplate.STR;
-
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
@@ -31,17 +29,12 @@ import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
 public class Parser implements RequestProcessor, ResponseProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
-  private static final String THOUGHTS_KEY = "thoughts";
   private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
       "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*\\}",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
   private boolean toolCallingEnabled = false;
   private boolean parseToolCallsFromText = true;
-  private boolean parseThoughtsFromText = true;
-  private boolean thoughtsEnabled = false;
-  private String thoughtsStartTag = null;
-  private String thoughtsEndTag = null;
 
   public static Parser create() {
     return new Parser();
@@ -59,26 +52,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   public Parser parseToolCallsFromText(boolean parseToolCallsFromText) {
     this.parseToolCallsFromText = parseToolCallsFromText;
-    return this;
-  }
-
-  public Parser parseThoughtsFromText(boolean parseThoughtsFromText) {
-    this.parseThoughtsFromText = parseThoughtsFromText;
-    return this;
-  }
-
-  public Parser areThoughtsEnabled(boolean thoughtsEnabled) {
-    this.thoughtsEnabled = thoughtsEnabled;
-    return this;
-  }
-
-  public Parser withThoughtsStartTag(String thoughtsStartTag) {
-    this.thoughtsStartTag = thoughtsStartTag;
-    return this;
-  }
-
-  public Parser withThoughtsEndTag(String thoughtsEndTag) {
-    this.thoughtsEndTag = thoughtsEndTag;
     return this;
   }
 
@@ -106,9 +79,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         .filter(part -> part.functionCall().orElse(null) == null).toList();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.addAll(otherParts);
-    if (parseThoughtsFromText) {
-      allParts.addAll(parsed.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false)).toList());
-    }
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
 
@@ -120,8 +90,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   private Content parseTextContent(Content content) {
     final String text = content.text();
-    String processedText = stripThoughtBlock(text);
-    final String thoughts = getThoughts(text);
+    String processedText = text;
     List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
@@ -132,11 +101,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     final String finalAnswer = processedText == null ? "" : processedText.trim();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.add(Part.builder().text(finalAnswer).build());
-    if (parseThoughtsFromText && StringUtils.isNotBlank(thoughts)) {
-      allParts.add(Part.builder().text(thoughts).thought(true).build());
-    } else if (!parseThoughtsFromText) {
-      allParts.addAll(content.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false)).toList());
-    }
+    allParts.addAll(content.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false)).toList());
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
 
@@ -145,25 +110,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         .functionCall(FunctionCall.builder().id(toolCall.id()).name(toolCall.name()).args(toolCall.args())).build();
   }
 
-  private String getThoughts(String content) {
-        if (StringUtils.isBlank(content)
-                || !thoughtsEnabled || !parseThoughtsFromText
-                || StringUtils.isBlank(thoughtsStartTag)
-                || StringUtils.isBlank(thoughtsEndTag)) {
-            return null;
-        }
-        final Pattern thoughtPattern =
-                Pattern.compile(
-                        STR."\{Pattern.quote(thoughtsStartTag)}(.*?)\{Pattern.quote(thoughtsEndTag)}",
-                        Pattern.DOTALL);
-        final Matcher matcher = thoughtPattern.matcher(content);
-        if (!matcher.find()) {
-            return null;
-        }
-        final String thoughts = matcher.group(1);
-        return thoughts == null ? null : thoughts.trim();
-    }
-
   private Content buildContentFromJsonText(final Content content) {
     final String text = content.text();
     final Map<String, Object> payload = parseJsonPayload(text);
@@ -171,16 +117,13 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       return null;
     }
     final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, FINAL_ANSWER_KEY);
-    final String thoughts = thoughtsEnabled ? CollectionUtils.getStringValueFromMap(payload, THOUGHTS_KEY) : null;
     final List<ToolCall> toolCalls = toolCallingEnabled && parseToolCallsFromText
         ? parseToolCallsFromJsonMap(payload)
         : List.of();
     final Part finalAnswerPart = Part.builder().text(finalAnswer).build();
-    final Part thoughtsPart = Part.builder().text(thoughts).thought(true).build();
     final List<Part> toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
     final List<Part> allParts = new ArrayList<>();
     allParts.add(finalAnswerPart);
-    allParts.add(thoughtsPart);
     allParts.addAll(toolCallParts);
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
@@ -243,13 +186,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     return new ArrayList<>(new LinkedHashSet<>(toolCalls));
   }
 
-  private String stripThoughtBlock(final String text) {
-        if (StringUtils.isBlank(text) || !thoughtsEnabled || !parseThoughtsFromText) {
-            return text;
-        }
-        return text.replaceAll(STR."\{Pattern.quote(thoughtsStartTag)}.*?\{Pattern.quote(thoughtsEndTag)}", "").trim();
-    }
-
   private String stripToolCallsBlock(final String text) {
     if (StringUtils.isBlank(text) || !toolCallingEnabled || !parseToolCallsFromText) {
       return text;
@@ -278,7 +214,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
     for (final Content content : CollectionUtils.nullSafeList(request.contents())) {
       List<Part> parts = new ArrayList<>();
-      final List<Part> thoughtsParts = new ArrayList<>();
       final List<Part> toolCallParts = new ArrayList<>();
       final List<Part> toolResponseParts = new ArrayList<>();
       final List<Part> regularParts = new ArrayList<>();
@@ -291,17 +226,15 @@ public class Parser implements RequestProcessor, ResponseProcessor {
           toolResponseParts.add(part);
         } else if (functionCall != null && functionCall.isPresent() && toolCallingEnabled && parseToolCallsFromText) {
           toolCallParts.add(part);
-        } else if (part.thought().orElse(false) && thoughtsEnabled && parseThoughtsFromText) {
-          thoughtsParts.add(part);
-        } else {
+        } else if (!part.thought().orElse(false)) {
           regularParts.add(part);
         }
       }
 
       if (responseFormat == ResponseFormatType.JSON) {
-        parts.addAll(buildJsonFormatContent(regularParts, thoughtsParts, toolCallParts));
+        parts.addAll(buildJsonFormatContent(regularParts, toolCallParts));
       } else {
-        parts.addAll(buildTextFormatContent(regularParts, thoughtsParts, toolCallParts));
+        parts.addAll(buildTextFormatContent(regularParts, toolCallParts));
       }
 
       if (!parts.isEmpty()) {
@@ -329,13 +262,11 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     return Single.just(RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
   }
 
-  private List<Part> buildJsonFormatContent(List<Part> regularParts, List<Part> thoughtsParts,
-      List<Part> toolCallParts) {
+  private List<Part> buildJsonFormatContent(List<Part> regularParts, List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
-    if (CollectionUtils.isNotEmpty(regularParts) || CollectionUtils.isNotEmpty(thoughtsParts)
-        || CollectionUtils.isNotEmpty(toolCallParts)) {
+    if (CollectionUtils.isNotEmpty(regularParts) || CollectionUtils.isNotEmpty(toolCallParts)) {
 
       Map<String, Object> jsonMap = new LinkedHashMap<>();
 
@@ -347,16 +278,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
           }
         }
         jsonMap.put(FINAL_ANSWER_KEY, answerBuilder.toString().trim());
-      }
-
-      if (CollectionUtils.isNotEmpty(thoughtsParts)) {
-        StringBuilder thoughtsBuilder = new StringBuilder();
-        for (Part part : thoughtsParts) {
-          if (part.text().isPresent()) {
-            thoughtsBuilder.append(part.text().get()).append("\n");
-          }
-        }
-        jsonMap.put(THOUGHTS_KEY, thoughtsBuilder.toString().trim());
       }
 
       if (CollectionUtils.isNotEmpty(toolCallParts)) {
@@ -382,23 +303,11 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     return result;
   }
 
-  private List<Part> buildTextFormatContent(List<Part> regularParts, List<Part> thoughtsParts,
-      List<Part> toolCallParts) {
+  private List<Part> buildTextFormatContent(List<Part> regularParts, List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
     StringBuilder textBuilder = new StringBuilder();
-
-    // Add thoughts at the beginning
-    if (CollectionUtils.isNotEmpty(thoughtsParts) && thoughtsEnabled) {
-      textBuilder.append(thoughtsStartTag).append("\n");
-      for (Part part : thoughtsParts) {
-        if (part.text().isPresent()) {
-          textBuilder.append(part.text().get()).append("\n");
-        }
-      }
-      textBuilder.append(thoughtsEndTag).append("\n\n");
-    }
 
     // Add regular text parts
     if (CollectionUtils.isNotEmpty(regularParts)) {

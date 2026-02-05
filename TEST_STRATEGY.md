@@ -24,7 +24,7 @@
 
 ## Key Risks & Focus Areas
 
-- Parsing correctness (tool request extraction, JSON payload handling, thought blocks).
+- Parsing correctness (tool request extraction, JSON payload handling).
 - Error handling (invalid configs, invalid tool requests, malformed JSON).
 - Session consistency (IDs assigned, tool executions recorded).
 - Tool orchestration boundaries (missing tool calls, retry limits).

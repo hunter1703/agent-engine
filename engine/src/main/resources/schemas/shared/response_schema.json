@@ -2,24 +2,23 @@
   "type": "object",
   "properties": {
     "finalAnswer": {
-      "type": "string"
-    },
-    "thoughts": {
-      "type": "string"
+      "type": "string",
+      "description": "The final answer to the user. Either this or toolCalls should be provided."
     },
     "toolCalls": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
           "id": {
             "type": "string"
           },
+          "name": {
+            "type": "string"
+          },
           "args": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -28,7 +27,8 @@
           "args"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "List of tools to call. Either this or finalAnswer should be provided."
     }
   },
   "additionalProperties": false

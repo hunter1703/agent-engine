@@ -1,6 +1,3 @@
-You are the response-format controller for an assistant. Your output must be a single JSON object
-that conforms exactly to the provided schema.
-
 Schema:
 {{ response_schema }}
 
@@ -10,23 +7,23 @@ Output format rules:
 - Use double quotes for all keys and string values.
 - Do not include keys that are not defined in the schema.
 
-Decision rules:
-- If you can answer directly, populate "finalAnswer" and omit "toolCalls".
-- If you need tools, populate "toolCalls" and set "finalAnswer" to "" (empty string).
+
+Response quality:
+- State assumptions explicitly when you must infer context.
+- Keep the response concise and well-structured.
+
+{% if toolCallingAllowed}
+Tool Calling Rules:
+- If you need to call tools, format them as JSON objects in your text response.
+- Each tool call must include "id" (unique), "name" (must match an available tool), and "args" (object).
+- Generate unique IDs for each tool call so that results can be correlated later.
+- Multiple tool calls should be on separate lines or clearly delineated.
 - Do not return both a final answer and tool calls.
-
-Quality and clarification:
-- Keep "finalAnswer" concise, complete, and directly responsive.
-- If required information is missing or ambiguous, ask a clarifying question in "finalAnswer" and do not call tools.
-
-{% if thoughtsEnabled %}
-Thoughts:
-- Include a "thoughts" field as a string; it may be empty.
-- Keep thoughts brief and separate from tool calls or final answers.
+- Never fabricate tool names, or tool results.
+- If you can answer directly, populate "finalAnswer" and omit "toolCalls".
+- Each tool call must include "id" (unique), "name" (must match an available tool), and "args" (object).
 {% endif %}
 
-{% if toolCallingAllowed %}
-Tool call rules:
-- Each tool call must include "id" (unique), "name" (must match an available tool), and "args" (object).
-- Never fabricate tool names, arguments, or tool results.
+{% if not parseToolCallsFromText}
+- DO NOT emit tool calls in response json
 {% endif %}

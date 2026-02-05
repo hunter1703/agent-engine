@@ -29,15 +29,8 @@ public class ModelConfig implements Config {
 
   private String responseFormat;
 
-  private String thoughtsStartTag;
-
-  private String thoughtsEndTag;
-
-  private boolean thoughtsEnabled;
-
   private boolean toolCallingEnabled = true;
   private boolean toolCallingSupported;
-  private boolean thoughtsSupported;
 
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
 
@@ -128,36 +121,12 @@ public class ModelConfig implements Config {
     this.stopTokens = stopTokens;
   }
 
-  public String getThoughtsStartTag() {
-    return thoughtsStartTag;
-  }
-
-  public void setThoughtsStartTag(final String thoughtsStartTag) {
-    this.thoughtsStartTag = thoughtsStartTag;
-  }
-
-  public String getThoughtsEndTag() {
-    return thoughtsEndTag;
-  }
-
-  public void setThoughtsEndTag(final String thoughtsEndTag) {
-    this.thoughtsEndTag = thoughtsEndTag;
-  }
-
   public String getResponseFormat() {
     return responseFormat;
   }
 
   public void setResponseFormat(final String responseFormat) {
     this.responseFormat = responseFormat;
-  }
-
-  public boolean isThoughtsEnabled() {
-    return thoughtsEnabled;
-  }
-
-  public void setThoughtsEnabled(final boolean thoughtsEnabled) {
-    this.thoughtsEnabled = thoughtsEnabled;
   }
 
   public boolean isToolCallingEnabled() {
@@ -174,14 +143,6 @@ public class ModelConfig implements Config {
 
   public void setToolCallingSupported(final boolean toolCallingSupported) {
     this.toolCallingSupported = toolCallingSupported;
-  }
-
-  public boolean isThoughtsSupported() {
-    return thoughtsSupported;
-  }
-
-  public void setThoughtsSupported(final boolean thoughtsSupported) {
-    this.thoughtsSupported = thoughtsSupported;
   }
 
   public ContextManagerConfig getContextManagerConfig() {

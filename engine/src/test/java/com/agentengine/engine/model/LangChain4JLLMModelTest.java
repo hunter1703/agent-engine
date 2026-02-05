@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,6 +95,29 @@ class LangChain4JLLMModelTest {
     final ArgumentCaptor<ChatRequest> captor = ArgumentCaptor.forClass(ChatRequest.class);
     verify(chatModel).chat(captor.capture());
     assertThat(captor.getValue().toolSpecifications()).isEmpty();
+  }
+
+  @Test
+  void doesNotStreamWhenParsingToolCallsFromText() {
+    final ChatModel chatModel = mock(ChatModel.class);
+    final ChatRequestParameters params = mock(ChatRequestParameters.class);
+    when(chatModel.defaultRequestParameters()).thenReturn(params);
+    when(params.modelName()).thenReturn("test-model");
+    when(chatModel.chat(any(ChatRequest.class)))
+        .thenReturn(ChatResponse.builder().aiMessage(new AiMessage("ok")).build());
+
+    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
+    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
+        true);
+
+    final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
+        .build();
+
+    model.generateContent(request, true).blockingFirst();
+
+    verify(chatModel).chat(any(ChatRequest.class));
+    verify(streamingChatModel, never()).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
   }
 
   @Test

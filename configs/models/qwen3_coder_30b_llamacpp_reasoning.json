@@ -2,7 +2,6 @@
   "model": "qwen3-coder-30b",
   "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17001/v1",
-  "thoughtsEnabled": false,
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m",
