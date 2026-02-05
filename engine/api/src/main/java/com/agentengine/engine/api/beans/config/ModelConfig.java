@@ -6,7 +6,7 @@ import java.util.List;
 public class ModelConfig implements Config {
 
   public enum Provider {
-    OLLAMA, LLAMA_CPP, OPEN_AI
+    OLLAMA, OPEN_AI_COMPATIBLE
   }
 
   private String baseUrl;

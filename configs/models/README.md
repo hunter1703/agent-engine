@@ -6,7 +6,7 @@ only.
 
 
 ## Required Fields
-- `type`: one of `OLLAMA`, `LLAMA_CPP`, `OPEN_AI`
+- `type`: one of `OLLAMA`, `OPEN_AI_COMPATIBLE`
 - `model`: model name or identifier
 
 ## Optional Fields
@@ -20,7 +20,7 @@ only.
 - `maxContextLength`: context window size
 - `stopTokens`: list of stop strings
 - `contextManagerConfig`: optional context config object with `type`
-- `serverCommand`: llama.cpp server command to launch (LLAMA_CPP)
+- `serverCommand`: OpenAI-compatible server command to launch (OPEN_AI_COMPATIBLE)
 - `serverArgs`: list of server arguments
 - `serverWorkdir`: working directory for the server process
 
@@ -34,10 +34,10 @@ only.
 }
 ```
 
-## LLAMA_CPP Auto-Start
+## OPEN_AI_COMPATIBLE Auto-Start
 ```json
 {
-  "type": "LLAMA_CPP",
+  "type": "OPEN_AI_COMPATIBLE",
   "model": "qwq-32b",
   "baseUrl": "http://127.0.0.1:17004/v1",
   "serverCommand": "/path/to/llama-server",

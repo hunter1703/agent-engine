@@ -1,6 +1,6 @@
 {
   "model": "qwen2.5-0.5b-instruct-q5_k_m",
-  "type": "LLAMA_CPP",
+  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17000/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": ["-m", "/Users/rhp/Projects/local-agent/llamacpp_models/qwen2.5-0.5b-instruct-q5_k_m.gguf", "--host", "127.0.0.1", "--port", "17000"],

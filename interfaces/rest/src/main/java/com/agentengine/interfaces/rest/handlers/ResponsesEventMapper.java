@@ -42,6 +42,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       case RunFinishedEvent runFinishedEvent -> mapRunFinished(runFinishedEvent);
       case RunErrorEvent runErrorEvent -> mapRunError(runErrorEvent);
       case StepStartedEvent _ -> mapStepStarted();
+      case StepFinishedEvent _ -> Flowable.empty();
       case ThinkingStartEvent _ -> mapThinkingStart();
       case ThinkingEndEvent _ -> mapThinkingEnd();
       case TextMessageStartEvent _ -> mapTextMessageStart();

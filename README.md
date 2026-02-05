@@ -177,7 +177,7 @@ curl -N -X POST http://localhost:8080/agent/events \
 
 - Agent configs use the Java schema (`engine` holds `systemPrompt` + model keys; `context` holds `summarizerModel`).
 - Model configs are loaded by ID from MongoDB (imported from `configs/models`).
-- LLAMA_CPP configs can auto-start `llama-server` when `serverCommand` is provided.
+- OPEN_AI_COMPATIBLE configs can auto-start `llama-server` when `serverCommand` is provided.
 - Tools are discovered via Java ServiceLoader entries under `META-INF/services`.
 - Prompt templates live in `engine/src/main/resources/prompts` and render via Jinjava.
 - Agent listener output is delivered through `onTextMessageStart/Delta/End` events rather than a separate final-answer hook.

@@ -1,0 +1,23 @@
+{
+  "model": "mlx-community/QwQ-32B-8bit",
+  "type": "OPEN_AI_COMPATIBLE",
+  "baseUrl": "http://127.0.0.1:8091/v1",
+  "serverCommand": "vllm-metal",
+  "serverArgs": [
+    "--model",
+    "mlx-community/QwQ-32B-8bit",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8091"
+  ],
+  "thoughtsEnabled": true,
+  "thoughtsStartTag": "<think>",
+  "thoughtsEndTag": "</think>",
+  "temperature": 0.6,
+  "topK": 40,
+  "topP": 0.95,
+  "repeatPenalty": 1,
+  "responseFormat": "text",
+  "toolCallingEnabled": true
+}

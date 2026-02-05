@@ -12,7 +12,7 @@ class ModelConfigTest {
   void loadConfigReadsTypeField() {
     final String json = """
         {
-          "type": "LLAMA_CPP",
+          "type": "OPEN_AI_COMPATIBLE",
           "model": "test",
           "responseFormat": "text"
         }
@@ -20,7 +20,7 @@ class ModelConfigTest {
 
     final ModelConfig config = JsonUtils.fromJson(json, ModelConfig.class);
 
-    assertThat(config.getType()).isEqualTo("LLAMA_CPP");
+    assertThat(config.getType()).isEqualTo("OPEN_AI_COMPATIBLE");
     assertThat(config.getModel()).isEqualTo("test");
   }
 
@@ -35,7 +35,7 @@ class ModelConfigTest {
   @Test
   void validateRequiresModel() {
     final ModelConfig config = new ModelConfig();
-    config.setType("OPEN_AI");
+    config.setType("OPEN_AI_COMPATIBLE");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("model");
   }

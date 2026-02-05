@@ -1,6 +1,6 @@
 {
   "model": "qwen3-coder-30b",
-  "type": "LLAMA_CPP",
+  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17001/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
@@ -12,7 +12,7 @@
     "17001"
   ],
   "responseFormat": "json",
-  "thoughtsEnabled": false,
+  "thoughtsEnabled": true,
   "temperature": 0.2,
   "numPredict": 120,
   "topK": 20,

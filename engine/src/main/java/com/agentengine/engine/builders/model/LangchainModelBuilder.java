@@ -6,7 +6,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.model.LangChain4JLLMModel;
-import com.agentengine.engine.model.LlamaCppServerUtils;
+import com.agentengine.engine.model.ModelServerUtils;
 import com.agentengine.engine.utils.Parser;
 import com.alibaba.fastjson2.TypeReference;
 import dev.langchain4j.model.chat.ChatModel;
@@ -75,13 +75,11 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return switch (provider) {
       case ModelConfig.Provider.OLLAMA -> new ChatModels(buildOllama(modelConfig, responseFormat),
           buildOllamaStreaming(modelConfig, responseFormat), responseFormat);
-      case ModelConfig.Provider.LLAMA_CPP -> {
-        LlamaCppServerUtils.ensureRunning(modelConfig);
+      case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
+        ModelServerUtils.ensureRunning(modelConfig);
         yield new ChatModels(buildOpenAI(modelConfig, responseFormat),
             buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
       }
-      case ModelConfig.Provider.OPEN_AI -> new ChatModels(buildOpenAI(modelConfig, responseFormat),
-          buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
     };
   }
 

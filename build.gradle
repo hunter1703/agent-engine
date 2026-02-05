@@ -77,9 +77,7 @@ tasks.register('setupMongo', Exec) {
     commandLine 'bash', file('deploy/docker/setup-mongo.sh').absolutePath, *mongoArgs
 }
 
-// Optimized MongoDB setup with conditional execution
 tasks.register('setupMongoOptimized') {
-    // Define inputs for configuration cache
     def forceSetup = providers.gradleProperty('forceMongoSetup').forUseAtConfigurationTime()
     def mongoArgsProvider = providers.gradleProperty('mongoArgs').forUseAtConfigurationTime()
 
@@ -87,7 +85,6 @@ tasks.register('setupMongoOptimized') {
         def force = forceSetup.isPresent()
         def configDir = mongoArgsProvider.getOrElse('./configs')
 
-        // Check if MongoDB container is already running on the expected port
         def isMongoRunning = false
         try {
             def checkProcess = "docker ps --filter name=agent-engine-mongodb --filter status=running --format {{.Names}}".execute()
@@ -96,7 +93,6 @@ tasks.register('setupMongoOptimized') {
                 isMongoRunning = true
             }
         } catch (Exception ignored) {
-            // Ignore exception, will proceed with setup
         }
 
         if (!isMongoRunning || force) {
@@ -107,12 +103,19 @@ tasks.register('setupMongoOptimized') {
             process.err.eachLine { line -> println "ERROR: $line" }
             process.waitFor()
         } else {
-            println "MongoDB container is already running. Skipping setup."
+            println "MongoDB container is already running. Refreshing config upserts..."
+
+            def setupCmd = ['bash', file('deploy/docker/setup-mongo.sh').absolutePath, configDir.toString()]
+            def process = setupCmd.execute()
+            process.in.eachLine { line -> println line }
+            process.err.eachLine { line -> println "ERROR: $line" }
+            process.waitFor()
+
+            println "Config upserts completed."
         }
     }
 }
 
-// Create a task that runs prerequisites and then starts quarkusDev
 tasks.register('deployEngine') {
     dependsOn 'setupMongoOptimized', 'preparePluginsOptimized', ':interfaces:rest:classes'
     finalizedBy ':interfaces:rest:quarkusDev'
@@ -127,25 +130,19 @@ tasks.register('deployEngine') {
     }
 }
 
-// Make sure quarkusDev runs after all prerequisites
 project(':interfaces:rest') {
     tasks.matching { it.name == 'quarkusDev' }.configureEach {
-        // Temporarily remove port check for deployEngine to ensure it runs
-        // onlyIf { !isPortInUse(restPort) }
         mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
         mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
-        mustRunAfter(tasks.named('classes'))  // Changed from 'build' to 'classes'
+        mustRunAfter(tasks.named('classes'))
     }
 }
 
-// Optimized plugin preparation with timestamp checking
 tasks.register('preparePluginsOptimized') {
     dependsOn ':engine:build'
-    // Define inputs for configuration cache
     def skipPluginBuildProp = providers.gradleProperty('skipPluginBuild').forUseAtConfigurationTime()
     def forcePluginBuildProp = providers.gradleProperty('forcePluginBuild').forUseAtConfigurationTime()
 
-    // Only run plugin builds if plugin files are newer than the plugin JARs
     doFirst {
         def skipPluginBuild = skipPluginBuildProp.isPresent()
         def forcePluginBuild = forcePluginBuildProp.isPresent()
@@ -180,7 +177,6 @@ tasks.register('preparePluginsOptimized') {
                             if (buildFileTime > latestJarTime) {
                                 shouldBuildPlugins = true
                             } else {
-                                // Check if any source files are newer than the JAR
                                 def srcDirs = ['src/main/java', 'src/main/resources'].collect {
                                     new File(pluginDir, it)
                                 }.findAll { it.exists() }
@@ -206,7 +202,6 @@ tasks.register('preparePluginsOptimized') {
                     task.execute()
                 }
 
-                // Copy plugin JARs
                 copy {
                     from('plugins') {
                         include '**/build/libs/*-plugin.jar'
@@ -224,20 +219,17 @@ tasks.register('preparePluginsOptimized') {
     }
 }
 
-// Register the optimized deployEngine task dependencies
 tasks.deployEngine {
     dependsOn 'setupMongoOptimized'
     dependsOn 'preparePluginsOptimized'
-    dependsOn ':interfaces:rest:classes'  // Only compile classes, skip tests and Spotless
+    dependsOn ':interfaces:rest:classes'
     finalizedBy ':interfaces:rest:quarkusDev'
 }
 
 project(':interfaces:rest') {
     tasks.matching { it.name == 'quarkusDev' }.configureEach {
-        // Temporarily remove port check for deployEngine to ensure it runs
-        // onlyIf { !isPortInUse(restPort) }
         mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
         mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
-        mustRunAfter(tasks.named('classes'))  // Changed from 'build' to 'classes'
+        mustRunAfter(tasks.named('classes'))
     }
 }

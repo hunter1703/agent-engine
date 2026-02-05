@@ -51,26 +51,44 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOGGER.info("Skipping empty event: {}", eventId);
       return Flowable.empty();
     }
+
+    // Log the raw event for debugging
+    LOGGER.debug("Processing raw event: {}", event);
+    logRawEventDetails(event);  // Detailed logging for debugging
     Functions.populateClientFunctionCallId(event);
-    return Flowable.just(new EventContext(event, Flowable.empty())).compose(mapRunStartStage())
-        .compose(mapStepStartStage()).compose(mapTextStage()).compose(mapFunctionCallsStage())
-        .compose(mapFunctionResponsesStage()).compose(mapStepFinishStage()).concatMap(EventContext::mappedEvents);
+    return Flowable.just(new EventContext(event, Flowable.empty()))
+        .compose(mapRunStartStage())
+        .compose(mapStepStartStage())
+        .compose(mapTextStage())
+        .compose(mapFunctionCallsStage())
+        .compose(mapFunctionResponsesStage())
+        .compose(mapStepFinishStage())
+        .concatMap(EventContext::mappedEvents)
+        .doOnNext(mappedEvent -> {
+          // Log mapped events for debugging
+          LOGGER.debug("Mapped event: {}", mappedEvent);
+        });
   }
 
   public Flowable<BaseEvent> onComplete() {
     if (state.runId == null) {
       return Flowable.empty();
     }
-    return Flowable.just(decorateEvent(buildRunFinished(state.runId)));
+    final BaseEvent decoratedEvent = decorateEvent(buildRunFinished(state.runId));
+    LOGGER.debug("Mapped completion event: {}", decoratedEvent);
+    return Flowable.just(decoratedEvent);
   }
 
   public Flowable<BaseEvent> onError(final Throwable throwable) {
     if (state.runId == null) {
       state.runId = "unknown";
     }
+    LOGGER.error("Error occurred in event processing:", throwable);
     final RunErrorEvent event = new RunErrorEvent();
     event.setError(ExceptionUtils.getErrorMessage(throwable));
-    return Flowable.just(decorateEvent(event));
+    final BaseEvent decoratedEvent = decorateEvent(event);
+    LOGGER.debug("Mapped error event: {}", decoratedEvent);
+    return Flowable.just(decoratedEvent);
   }
 
   private FlowableTransformer<EventContext, EventContext> mapRunStartStage() {
@@ -293,6 +311,10 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap(eventMap);
     rawEvent.put("agentId", state.agentId);
     event.setRawEvent(rawEvent);
+
+    // Log for debugging purposes
+    LOGGER.debug("Decorated event with raw data: {}", event);
+
     return event;
   }
 
@@ -358,6 +380,27 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       }
     }
     return true;
+  }
+
+  // Helper method to log raw event details for debugging
+  private void logRawEventDetails(final Event event) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Raw Event Details:");
+      LOGGER.debug("  ID: {}", event.id());
+      LOGGER.debug("  Invocation ID: {}", event.invocationId());
+      LOGGER.debug("  Partial: {}", event.partial().orElse(false));
+      LOGGER.debug("  Function Calls Count: {}", event.functionCalls().size());
+      event.content().ifPresent(content -> {
+        LOGGER.debug("  Content Parts Count: {}", content.parts().map(List::size).orElse(0));
+        content.parts().ifPresent(parts -> {
+          for (int i = 0; i < parts.size(); i++) {
+            final Part part = parts.get(i);
+            LOGGER.debug("    Part {}: {}", i, part);
+          }
+        });
+      });
+      LOGGER.debug("  Function Responses Count: {}", event.functionResponses().size());
+    }
   }
 
   private record EventContext(Event event, Flowable<BaseEvent> mappedEvents) {

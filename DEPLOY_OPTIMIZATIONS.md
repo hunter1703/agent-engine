@@ -58,5 +58,6 @@ These optimizations should significantly reduce the time it takes to start the d
 3. Leveraging Gradle's performance features
 4. Optimizing Quarkus startup configuration
 5. Skipping tests and code formatting checks during deployment (Spotless, etc.)
+6. Preserving configuration upserts to MongoDB while optimizing the overall process
 
 Note: You may see configuration cache warnings during deployment, but these do not affect the functionality of the deployment. The deployment will complete successfully with all optimizations applied.
