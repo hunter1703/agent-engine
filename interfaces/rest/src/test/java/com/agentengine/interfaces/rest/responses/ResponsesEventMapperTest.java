@@ -53,8 +53,7 @@ class ResponsesEventMapperTest {
     final ResponsesEventMapper mapper = new ResponsesEventMapper("fallback-agent");
     final List<BaseResponsesEventData> responses = Flowable
         .just(runStarted, stepStarted, startEvent, chunkEvent, contentEvent, endEvent, runFinished)
-        .concatMap(mapper::map)
-        .concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
+        .concatMap(mapper::map).concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
 
     assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.created",
         "response.in_progress", "response.output_item.added", "response.output_text.delta", "response.output_item.done",
@@ -110,11 +109,8 @@ class ResponsesEventMapperTest {
     final ThinkingEndEvent thinkingEndEvent = new ThinkingEndEvent();
 
     final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
-    final List<BaseResponsesEventData> responses = Flowable
-        .just(thinkingStartEvent, chunkEvent, thinkingEndEvent)
-        .concatMap(mapper::map)
-        .toList()
-        .blockingGet();
+    final List<BaseResponsesEventData> responses = Flowable.just(thinkingStartEvent, chunkEvent, thinkingEndEvent)
+        .concatMap(mapper::map).toList().blockingGet();
 
     assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.output_item.added",
         "response.reasoning_summary_part.added", "response.reasoning_summary_text.delta", "response.output_item.done");

@@ -54,16 +54,11 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
     // Log the raw event for debugging
     LOGGER.debug("Processing raw event: {}", event);
-    logRawEventDetails(event);  // Detailed logging for debugging
+    logRawEventDetails(event); // Detailed logging for debugging
     Functions.populateClientFunctionCallId(event);
-    return Flowable.just(new EventContext(event, Flowable.empty()))
-        .compose(mapRunStartStage())
-        .compose(mapStepStartStage())
-        .compose(mapTextStage())
-        .compose(mapFunctionCallsStage())
-        .compose(mapFunctionResponsesStage())
-        .compose(mapStepFinishStage())
-        .concatMap(EventContext::mappedEvents)
+    return Flowable.just(new EventContext(event, Flowable.empty())).compose(mapRunStartStage())
+        .compose(mapStepStartStage()).compose(mapTextStage()).compose(mapFunctionCallsStage())
+        .compose(mapFunctionResponsesStage()).compose(mapStepFinishStage()).concatMap(EventContext::mappedEvents)
         .doOnNext(mappedEvent -> {
           // Log mapped events for debugging
           LOGGER.debug("Mapped event: {}", mappedEvent);

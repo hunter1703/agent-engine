@@ -27,8 +27,6 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
-import io.smallrye.mutiny.Multi;
-import org.reactivestreams.Publisher;
 
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
@@ -85,42 +83,41 @@ class AgentSseTest {
     var publisher = resource.events(request);
     assertThat(publisher).isNotNull();
 
-    // Collect events directly from the publisher using the reactive streams approach
+    // Collect events directly from the publisher using the reactive streams
+    // approach
     final var events = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-        final var collectedEvents = new java.util.ArrayList<BaseEvent>();
-        final var latch = new java.util.concurrent.CountDownLatch(1);
+      final var collectedEvents = new java.util.ArrayList<BaseEvent>();
+      final var latch = new java.util.concurrent.CountDownLatch(1);
 
-        publisher.subscribe(
-            new org.reactivestreams.Subscriber<BaseEvent>() {
-                @Override
-                public void onSubscribe(org.reactivestreams.Subscription s) {
-                    s.request(Long.MAX_VALUE); // Request all events
-                }
-
-                @Override
-                public void onNext(BaseEvent event) {
-                    collectedEvents.add(event);
-                }
-
-                @Override
-                public void onError(Throwable t) {
-                    latch.countDown();
-                }
-
-                @Override
-                public void onComplete() {
-                    latch.countDown();
-                }
-            }
-        );
-
-        try {
-            latch.await(5, java.util.concurrent.TimeUnit.SECONDS); // Wait up to 5 seconds for completion
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+      publisher.subscribe(new org.reactivestreams.Subscriber<BaseEvent>() {
+        @Override
+        public void onSubscribe(org.reactivestreams.Subscription s) {
+          s.request(Long.MAX_VALUE); // Request all events
         }
 
-        return collectedEvents;
+        @Override
+        public void onNext(BaseEvent event) {
+          collectedEvents.add(event);
+        }
+
+        @Override
+        public void onError(Throwable t) {
+          latch.countDown();
+        }
+
+        @Override
+        public void onComplete() {
+          latch.countDown();
+        }
+      });
+
+      try {
+        latch.await(5, java.util.concurrent.TimeUnit.SECONDS); // Wait up to 5 seconds for completion
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
+      return collectedEvents;
     }).join();
 
     assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,

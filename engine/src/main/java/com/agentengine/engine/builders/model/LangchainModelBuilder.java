@@ -50,8 +50,8 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
         .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported);
     return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
-        buildProtocolMessage(models.responseFormat().type(), toolCallingEnabled, toolCallingSupported), toolCallingEnabled,
-        !toolCallingSupported);
+        buildProtocolMessage(models.responseFormat().type(), toolCallingEnabled, toolCallingSupported),
+        toolCallingEnabled, !toolCallingSupported);
   }
 
   @Override

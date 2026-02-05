@@ -29,7 +29,6 @@ public class ModelConfig implements Config {
 
   private String responseFormat;
 
-
   private boolean toolCallingEnabled = false;
   private boolean toolCallingSupported;
 
@@ -129,7 +128,6 @@ public class ModelConfig implements Config {
   public void setResponseFormat(final String responseFormat) {
     this.responseFormat = responseFormat;
   }
-
 
   public boolean isToolCallingEnabled() {
     return toolCallingEnabled;

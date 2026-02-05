@@ -122,9 +122,9 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     }
     final BaseResponsesEventData messageStart = beginMessageItem();
     appendMessage(delta);
-    final BaseResponsesEventData deltaEvent =
-        state.activeMessageOutputIndex != null ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
-            : null;
+    final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
+        ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
+        : null;
     return fromEvents(messageStart, deltaEvent);
   }
 
@@ -144,9 +144,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     final int outputIndex = nextOutputIndex();
     state.toolCallDetails.put(toolCallStartEvent.getToolCallId(),
         new ToolCallDetails(toolCallStartEvent.getToolCallName(), new StringBuilder(), outputIndex));
-    return toFlowable(
-        new ToolCallAddedEventData(toolCallStartEvent.getToolCallId(), toolCallStartEvent.getToolCallName(),
-            outputIndex));
+    return toFlowable(new ToolCallAddedEventData(toolCallStartEvent.getToolCallId(),
+        toolCallStartEvent.getToolCallName(), outputIndex));
   }
 
   private Flowable<BaseResponsesEventData> mapToolCallArgs(final ToolCallArgsEvent toolCallArgsEvent) {
@@ -276,8 +275,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       return null;
     }
     final String summary = state.reasoningBuffer != null ? state.reasoningBuffer.toString() : "";
-    final BaseResponsesEventData completed =
-        new ReasoningDoneEventData(summary, state.activeReasoningOutputIndex);
+    final BaseResponsesEventData completed = new ReasoningDoneEventData(summary, state.activeReasoningOutputIndex);
     state.activeReasoningOutputIndex = null;
     state.reasoningBuffer = null;
     return completed;
