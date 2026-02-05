@@ -42,13 +42,13 @@ final def pluginBuildTasks = pluginDirs.collect { pluginDir ->
         .collect { it.capitalize() }
         .join('')
     tasks.register("buildPlugin${suffix}", Exec) {
-        dependsOn ':engine:build'
-        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'build'
+        dependsOn ':engine:assemble'
+        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'assemble'
     }
 }
 
 tasks.register('preparePlugins', Copy) {
-    dependsOn ':engine:build'
+    dependsOn ':engine:assemble'
     dependsOn pluginBuildTasks
     from('plugins') {
         include '**/build/libs/*-plugin.jar'
@@ -139,7 +139,7 @@ project(':interfaces:rest') {
 }
 
 tasks.register('preparePluginsOptimized') {
-    dependsOn ':engine:build'
+    dependsOn ':engine:assemble'
     def skipPluginBuildProp = providers.gradleProperty('skipPluginBuild').forUseAtConfigurationTime()
     def forcePluginBuildProp = providers.gradleProperty('forcePluginBuild').forUseAtConfigurationTime()
 

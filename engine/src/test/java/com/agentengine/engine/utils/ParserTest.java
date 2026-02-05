@@ -14,7 +14,7 @@ class ParserTest {
   void keepsThoughtTagsInPlainTextResponses() {
     final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT);
     final String response = "<think>internal</think> answer";
-    final Content content = Content.builder().parts(List.of(Part.builder().text(response).build())).build();
+    final Content content = Content.fromParts(Part.fromText(response));
 
     final Content parsed = parser.parse(content);
     final List<Part> parts = parsed.parts().orElse(List.of());

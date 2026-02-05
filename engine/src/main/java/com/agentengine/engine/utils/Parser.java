@@ -84,13 +84,13 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   @NotNull
   private static List<Part> getToolCallParts(final Content content) {
-    return content.parts().orElse(Collections.emptyList()).stream()
+    final List<Part> parts = content.parts().isPresent() ? content.parts().orElse(Collections.emptyList()) : Collections.emptyList();
+    return parts.stream()
         .filter(part -> part.functionCall().orElse(null) != null).toList();
   }
 
   private Content parseTextContent(Content content) {
-    final String text = content.text();
-    String processedText = text;
+      String processedText = content.text();
     List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
@@ -101,7 +101,10 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     final String finalAnswer = processedText == null ? "" : processedText.trim();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.add(Part.builder().text(finalAnswer).build());
-    allParts.addAll(content.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false)).toList());
+
+    final List<Part> contentParts = content.parts().isPresent() ? content.parts().orElse(List.of()) : List.of();
+    allParts.addAll(contentParts.stream().filter(part -> part.thought().orElse(false)).toList());
+
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
 
