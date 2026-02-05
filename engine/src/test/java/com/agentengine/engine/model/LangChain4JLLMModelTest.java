@@ -144,4 +144,29 @@ class LangChain4JLLMModelTest {
     assertThat(responses).isNotEmpty();
     verify(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
   }
+
+  @Test
+  void streamsWhenToolCallingDisabled() {
+    final ChatModel chatModel = mock(ChatModel.class);
+    final ChatRequestParameters params = mock(ChatRequestParameters.class);
+    when(chatModel.defaultRequestParameters()).thenReturn(params);
+    when(params.modelName()).thenReturn("test-model");
+
+    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
+    doAnswer(invocation -> {
+      final StreamingChatResponseHandler handler = invocation.getArgument(1);
+      handler.onPartialResponse("partial");
+      handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage("done")).build());
+      return null;
+    }).when(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, Parser.create(),
+        "protocol", false, true);
+    final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
+        .build();
+    final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();
+
+    assertThat(responses).isNotEmpty();
+    verify(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+  }
 }

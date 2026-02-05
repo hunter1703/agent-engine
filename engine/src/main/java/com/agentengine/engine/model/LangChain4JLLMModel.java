@@ -44,7 +44,7 @@ public class LangChain4JLLMModel extends LangChain4j {
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final LlmRequest requestForModel = stripToolsFromModelRequest(llmRequest);
-    if (!stream || parseToolCallsFromText) {
+    if (!stream || (toolCallingEnabled && parseToolCallsFromText)) {
       return super.generateContent(requestForModel, false).map(LangChain4JLLMModel::markTurnComplete);
     }
     return super.generateContent(requestForModel, true);
