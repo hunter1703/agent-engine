@@ -84,13 +84,14 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   @NotNull
   private static List<Part> getToolCallParts(final Content content) {
-    final List<Part> parts = content.parts().isPresent() ? content.parts().orElse(Collections.emptyList()) : Collections.emptyList();
-    return parts.stream()
-        .filter(part -> part.functionCall().orElse(null) != null).toList();
+    final List<Part> parts = content.parts().isPresent()
+        ? content.parts().orElse(Collections.emptyList())
+        : Collections.emptyList();
+    return parts.stream().filter(part -> part.functionCall().orElse(null) != null).toList();
   }
 
   private Content parseTextContent(Content content) {
-      String processedText = content.text();
+    String processedText = content.text();
     List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
