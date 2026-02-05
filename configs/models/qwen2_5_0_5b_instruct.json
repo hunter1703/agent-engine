@@ -8,6 +8,5 @@
   "topK": 40,
   "topP": 0.9,
   "repeatPenalty": 1,
-  "responseFormat": "text",
   "toolCallingEnabled": true
 }

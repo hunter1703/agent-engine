@@ -15,6 +15,5 @@
   "topK": 40,
   "topP": 0.95,
   "repeatPenalty": 1,
-  "responseFormat": "text",
   "toolCallingEnabled": true
 }

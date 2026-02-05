@@ -13,8 +13,7 @@ class ModelConfigTest {
     final String json = """
         {
           "type": "OPEN_AI_COMPATIBLE",
-          "model": "test",
-          "responseFormat": "text"
+          "model": "test"
         }
         """;
 

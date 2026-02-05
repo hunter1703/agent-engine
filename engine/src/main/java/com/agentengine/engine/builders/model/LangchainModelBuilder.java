@@ -50,7 +50,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
         .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported);
     return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
-        buildProtocolMessage(modelConfig, toolCallingEnabled, toolCallingSupported), toolCallingEnabled,
+        buildProtocolMessage(models.responseFormat().type(), toolCallingEnabled, toolCallingSupported), toolCallingEnabled,
         !toolCallingSupported);
   }
 
@@ -107,12 +107,20 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
   }
 
   protected static ResponseFormat getResponseFormat(final ModelConfig config) {
-    if ("json".equalsIgnoreCase(config.getResponseFormat())) {
+    final ResponseFormatType responseFormatType = resolveResponseFormatType(config);
+    if (responseFormatType == ResponseFormatType.JSON) {
       return new ResponseFormat.Builder().type(ResponseFormatType.JSON)
           .jsonSchema(toJsonSchema(DEFAULT_JSON_RESPONSE_FORMAT)).build();
-    } else {
-      return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
     }
+    return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
+  }
+
+  private static ResponseFormatType resolveResponseFormatType(final ModelConfig config) {
+    if (StringUtils.isNotBlank(config.getResponseFormat())) {
+      return "json".equalsIgnoreCase(config.getResponseFormat()) ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
+    }
+    final boolean parseToolCallsFromText = config.isToolCallingEnabled() && !config.isToolCallingSupported();
+    return parseToolCallsFromText ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
   }
 
   protected static JsonSchema toJsonSchema(final Map<String, Object> jsonSchemaMap) {
@@ -328,28 +336,28 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return strings;
   }
 
-  private static String buildProtocolMessage(final ModelConfig config, final boolean toolCallingEnabled,
-      final boolean toolCallingSupported) {
-    final String templateName = resolveReasoningProtocolTemplate(config.getResponseFormat());
+  private static String buildProtocolMessage(final ResponseFormatType responseFormatType,
+      final boolean toolCallingEnabled, final boolean toolCallingSupported) {
+    final String templateName = resolveProtocolTemplate(responseFormatType);
     final Map<String, Object> context = new HashMap<>();
     context.put("toolCallingAllowed", toolCallingEnabled);
     context.put("parseToolCallsFromText", !toolCallingSupported);
-    if ("json".equalsIgnoreCase(config.getResponseFormat())) {
-      context.put("response_schema", loadReasonerSchema(config));
+    if (responseFormatType == ResponseFormatType.JSON) {
+      context.put("response_schema", loadReasonerSchema(responseFormatType));
     }
     return TemplateUtils.renderTemplateForName(templateName, context);
   }
 
-  private static String resolveReasoningProtocolTemplate(final String responseFormat) {
-    if ("json".equalsIgnoreCase(responseFormat)) {
+  private static String resolveProtocolTemplate(final ResponseFormatType responseFormatType) {
+    if (responseFormatType == ResponseFormatType.JSON) {
       return "shared/protocol/json.txt";
     } else {
       return "shared/protocol/text.txt";
     }
   }
 
-  private static String loadReasonerSchema(final ModelConfig config) {
-    if (!"json".equalsIgnoreCase(config.getResponseFormat())) {
+  private static String loadReasonerSchema(final ResponseFormatType responseFormatType) {
+    if (responseFormatType != ResponseFormatType.JSON) {
       return "";
     }
     return ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json");
