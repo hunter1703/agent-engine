@@ -24,6 +24,21 @@ class ModelConfigTest {
   }
 
   @Test
+  void loadConfigReadsGeminiApiKey() {
+    final String json = """
+        {
+          "type": "GEMINI",
+          "model": "gemini-2.0-flash",
+          "apiKey": "secret"
+        }
+        """;
+
+    final ModelConfig config = JsonUtils.fromJson(json, ModelConfig.class);
+
+    assertThat(config.getApiKey()).isEqualTo("secret");
+  }
+
+  @Test
   void validateRequiresType() {
     final ModelConfig config = new ModelConfig();
     config.setModel("test");

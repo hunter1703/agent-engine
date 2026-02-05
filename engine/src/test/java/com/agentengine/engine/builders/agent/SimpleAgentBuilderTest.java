@@ -13,14 +13,17 @@ import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.model.LangChain4JLLMModel;
+import com.agentengine.engine.model.DelegatingLLMModel;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.agents.Instruction;
+import com.google.adk.models.BaseLlm;
+import com.google.adk.models.BaseLlmConnection;
+import com.google.adk.models.LlmRequest;
+import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.StreamingChatModel;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +38,8 @@ class SimpleAgentBuilderTest {
     final ToolRegistry toolRegistry = mock(ToolRegistry.class);
     final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
 
-    final ChatModel chatModel = mock(ChatModel.class);
-    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
-        true);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, true);
 
     final BaseTool tool = new BaseTool("run_cmd", "run command") {
       @Override
@@ -78,11 +78,8 @@ class SimpleAgentBuilderTest {
     final ToolRegistry toolRegistry = mock(ToolRegistry.class);
     final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
 
-    final ChatModel chatModel = mock(ChatModel.class);
-    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
-        false);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, false);
 
     final BaseTool tool = new BaseTool("run_cmd", "run command") {
       @Override
@@ -112,5 +109,21 @@ class SimpleAgentBuilderTest {
     assertThat(agent.instruction()).isInstanceOf(Instruction.Static.class);
     final String instructions = ((Instruction.Static) agent.instruction()).instruction();
     assertThat(instructions).doesNotContain("run_cmd");
+  }
+
+  private static final class StubLlm extends BaseLlm {
+    private StubLlm() {
+      super("test-model");
+    }
+
+    @Override
+    public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
+      return Flowable.empty();
+    }
+
+    @Override
+    public BaseLlmConnection connect(final LlmRequest llmRequest) {
+      return null;
+    }
   }
 }

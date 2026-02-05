@@ -3,13 +3,14 @@ package com.agentengine.engine.builders.agent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
-import com.agentengine.engine.model.LangChain4JLLMModel;
+import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.tools.ToolUtils;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Inject;
@@ -35,13 +36,16 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
   }
 
   protected AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
-    final LangChain4JLLMModel model = modelProvider.get(config.getAgentId(), config.getModel());
+    final BaseLlm model = modelProvider.get(config.getAgentId(), config.getModel());
+    if (!(model instanceof AbstractLLM agentModel)) {
+      throw new IllegalStateException("Model builder did not return an AbstractLLM instance.");
+    }
     final BaseSessionService sessionService = resolveSessionService(agentContext, config);
     final AgentContext resolvedContext = sessionService == null
         ? agentContext
         : new AgentContext(config, sessionService);
-    final boolean toolCallingEnabled = model.isToolCallingEnabled();
-    final boolean parseToolCallsFromText = model.isParseToolCallsFromText();
+    final boolean toolCallingEnabled = agentModel.isToolCallingEnabled();
+    final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
     String toolInstructions = "";
     final AgentBuilder agentBuilder = new AgentBuilder();
     if (toolCallingEnabled) {
@@ -53,7 +57,7 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
         agentBuilder.tools(tools);
       }
     }
-    agentBuilder.toolInstructions(toolInstructions).protocolInstructions(model.getProtocol())
+    agentBuilder.toolInstructions(toolInstructions).protocolInstructions(agentModel.getProtocol())
         .globalInstruction(config.getModel().getSystemPrompt()).disallowTransferToParent(false)
         .disallowTransferToPeers(false).name(config.getAgentId()).model(model);
     return agentBuilder;

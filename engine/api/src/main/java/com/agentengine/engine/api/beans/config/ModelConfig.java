@@ -6,7 +6,7 @@ import java.util.List;
 public class ModelConfig implements Config {
 
   public enum Provider {
-    OLLAMA, OPEN_AI_COMPATIBLE
+    OLLAMA, OPEN_AI_COMPATIBLE, GEMINI
   }
 
   private String baseUrl;
@@ -28,6 +28,8 @@ public class ModelConfig implements Config {
   private List<String> stopTokens;
 
   private String responseFormat;
+
+  private String apiKey;
 
   private boolean toolCallingEnabled = false;
   private boolean toolCallingSupported;
@@ -127,6 +129,14 @@ public class ModelConfig implements Config {
 
   public void setResponseFormat(final String responseFormat) {
     this.responseFormat = responseFormat;
+  }
+
+  public String getApiKey() {
+    return apiKey;
+  }
+
+  public void setApiKey(final String apiKey) {
+    this.apiKey = apiKey;
   }
 
   public boolean isToolCallingEnabled() {

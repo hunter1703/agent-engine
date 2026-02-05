@@ -15,7 +15,8 @@ class LangchainModelBuilderTest {
     config.setToolCallingEnabled(true);
     config.setToolCallingSupported(false);
 
-    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(config);
+    final ResponseFormatType responseFormatType = DelegatingModelBuilder.resolveResponseFormatType(config);
+    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
     assertThat(format.type()).isEqualTo(ResponseFormatType.JSON);
   }
@@ -26,7 +27,8 @@ class LangchainModelBuilderTest {
     config.setToolCallingEnabled(true);
     config.setToolCallingSupported(true);
 
-    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(config);
+    final ResponseFormatType responseFormatType = DelegatingModelBuilder.resolveResponseFormatType(config);
+    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
     assertThat(format.type()).isEqualTo(ResponseFormatType.TEXT);
   }
@@ -37,7 +39,8 @@ class LangchainModelBuilderTest {
     config.setToolCallingEnabled(false);
     config.setToolCallingSupported(false);
 
-    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(config);
+    final ResponseFormatType responseFormatType = DelegatingModelBuilder.resolveResponseFormatType(config);
+    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
     assertThat(format.type()).isEqualTo(ResponseFormatType.TEXT);
   }
@@ -49,7 +52,8 @@ class LangchainModelBuilderTest {
     config.setToolCallingEnabled(false);
     config.setToolCallingSupported(true);
 
-    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(config);
+    final ResponseFormatType responseFormatType = DelegatingModelBuilder.resolveResponseFormatType(config);
+    final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
     assertThat(format.type()).isEqualTo(ResponseFormatType.JSON);
   }

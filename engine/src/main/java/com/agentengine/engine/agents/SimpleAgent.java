@@ -2,10 +2,12 @@ package com.agentengine.engine.agents;
 
 import com.agentengine.engine.agents.flows.SimpleFlow;
 import com.agentengine.engine.builders.agent.AgentBuilder;
-import com.agentengine.engine.model.LangChain4JLLMModel;
+import com.agentengine.engine.model.AbstractLLM;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.flows.llmflows.BaseLlmFlow;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.models.Model;
+import java.util.List;
 
 public class SimpleAgent extends LlmAgent {
 
@@ -15,11 +17,11 @@ public class SimpleAgent extends LlmAgent {
 
   @Override
   protected BaseLlmFlow determineLlmFlow() {
-    LangChain4JLLMModel model = (LangChain4JLLMModel) model().orElse(Model.builder().build()).model().orElse(null);
-    if (model == null) {
+    final AbstractLLM agentModel = (AbstractLLM) model().orElse(Model.builder().build()).model().orElse(null);
+    if (agentModel == null) {
       return null;
     }
-    return new SimpleFlow(maxSteps().orElse(10), model.getRequestProcessors(), model.getResponseProcessors());
+    return new SimpleFlow(maxSteps().orElse(10), agentModel.getRequestProcessors(), agentModel.getResponseProcessors());
   }
 
 }

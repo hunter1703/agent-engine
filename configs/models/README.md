@@ -6,7 +6,7 @@ only.
 
 
 ## Required Fields
-- `type`: one of `OLLAMA`, `OPEN_AI_COMPATIBLE`
+- `type`: one of `OLLAMA`, `OPEN_AI_COMPATIBLE`, `GEMINI`
 - `model`: model name or identifier
 
 ## Optional Fields
@@ -19,6 +19,7 @@ only.
 - `stopTokens`: list of stop strings
 - `contextManagerConfig`: optional context config object with `type`
 - `serverCommand`: OpenAI-compatible server command to launch (OPEN_AI_COMPATIBLE)
+- `apiKey`: Gemini API key (GEMINI)
 - `serverArgs`: list of server arguments
 - `serverWorkdir`: working directory for the server process
 
@@ -39,6 +40,17 @@ only.
   "baseUrl": "http://127.0.0.1:17004/v1",
   "serverCommand": "/path/to/llama-server",
   "serverArgs": ["-m", "/path/to/qwq-32b.gguf", "--host", "127.0.0.1", "--port", "17004"]
+}
+```
+
+## GEMINI Example
+```json
+{
+  "type": "GEMINI",
+  "model": "gemini-2.0-flash",
+  "apiKey": "YOUR_API_KEY",
+  "toolCallingEnabled": true,
+  "toolCallingSupported": true
 }
 ```
 

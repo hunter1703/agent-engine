@@ -14,6 +14,7 @@ import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
+import com.google.adk.models.langchain4j.LangChain4j;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionDeclaration;
@@ -33,7 +34,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-class LangChain4JLLMModelTest {
+class DelegatingLLMModelTest {
 
   @Test
   void exposesProtocolAndProcessors() {
@@ -44,8 +45,8 @@ class LangChain4JLLMModelTest {
 
     final Parser parser = Parser.create();
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
-        false);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new LangChain4j(chatModel, streamingChatModel,
+        "test-model"), parser, "protocol", true, false);
 
     assertThat(model.getProtocol()).isEqualTo("protocol");
 
@@ -72,8 +73,8 @@ class LangChain4JLLMModelTest {
         .thenReturn(ChatResponse.builder().aiMessage(new AiMessage("ok")).build());
 
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
-        true);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new LangChain4j(chatModel, streamingChatModel,
+        "test-model"), parser, "protocol", true, true);
 
     final Schema parameters = Schema.builder().type(Type.Known.OBJECT)
         .properties(Map.of("command", Schema.builder().type(Type.Known.STRING).build())).required(List.of("command"))
@@ -108,8 +109,8 @@ class LangChain4JLLMModelTest {
 
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, parser, "protocol", true,
-        true);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new LangChain4j(chatModel, streamingChatModel,
+        "test-model"), parser, "protocol", true, true);
 
     final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
         .build();
@@ -135,8 +136,8 @@ class LangChain4JLLMModelTest {
       return null;
     }).when(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
 
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, Parser.create(),
-        "protocol", true, false);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new LangChain4j(chatModel, streamingChatModel,
+        "test-model"), Parser.create(), "protocol", true, false);
     final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
         .build();
     final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();
@@ -160,8 +161,8 @@ class LangChain4JLLMModelTest {
       return null;
     }).when(streamingChatModel).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
 
-    final LangChain4JLLMModel model = new LangChain4JLLMModel(chatModel, streamingChatModel, Parser.create(),
-        "protocol", false, true);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new LangChain4j(chatModel, streamingChatModel,
+        "test-model"), Parser.create(), "protocol", false, true);
     final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("hello"))))
         .build();
     final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();

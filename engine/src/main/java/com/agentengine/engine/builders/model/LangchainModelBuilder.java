@@ -3,12 +3,10 @@ package com.agentengine.engine.builders.model;
 import com.agentengine.engine.api.ConfigRepository;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.*;
-import com.agentengine.engine.model.LangChain4JLLMModel;
 import com.agentengine.engine.model.ModelServerUtils;
-import com.agentengine.engine.utils.Parser;
 import com.alibaba.fastjson2.TypeReference;
+import com.google.adk.models.langchain4j.LangChain4j;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -26,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> {
+public class LangchainModelBuilder extends DelegatingModelBuilder<LangChain4j> {
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
 
   static {
@@ -35,36 +33,28 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
         });
   }
 
-  private final ConfigRepository configRepository;
-
   public LangchainModelBuilder(final ConfigRepository configRepository) {
-    this.configRepository = configRepository;
+    super(configRepository);
   }
 
   @Override
-  public LangChain4JLLMModel build(final String agentId, final AgentModelConfig agentModelConfig) {
-    final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
-    final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
-    final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    final ChatModels models = buildChatModels(modelConfig);
-    final Parser parser = Parser.create().withResponseFormat(models.responseFormat().type())
-        .toolCallingEnabled(toolCallingEnabled).parseToolCallsFromText(!toolCallingSupported);
-    return new LangChain4JLLMModel(models.chatModel(), models.streamingChatModel(), parser,
-        buildProtocolMessage(models.responseFormat().type(), toolCallingEnabled, toolCallingSupported),
-        toolCallingEnabled, !toolCallingSupported);
+  protected LangChain4j buildDelegate(final ModelConfig modelConfig) {
+    final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
+    final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
+    final ChatModels models = buildChatModels(modelConfig, responseFormat);
+    return new LangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
   }
 
   @Override
   public String type() {
-    return AgentModelConfig.AgentType.LANGCHAIN.name().toLowerCase();
+    return AgentModelConfig.ModelType.LANGCHAIN.name().toLowerCase();
   }
 
   private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {
   }
 
-  private static ChatModels buildChatModels(final ModelConfig modelConfig) {
+  private static ChatModels buildChatModels(final ModelConfig modelConfig, final ResponseFormat responseFormat) {
     final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
-    final ResponseFormat responseFormat = getResponseFormat(modelConfig);
     return switch (provider) {
       case ModelConfig.Provider.OLLAMA -> new ChatModels(buildOllama(modelConfig, responseFormat),
           buildOllamaStreaming(modelConfig, responseFormat), responseFormat);
@@ -73,6 +63,7 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
         yield new ChatModels(buildOpenAI(modelConfig, responseFormat),
             buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
       }
+      default -> throw new IllegalArgumentException(STR."Unsupported model provider: \{provider}");
     };
   }
 
@@ -106,21 +97,12 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
         .build();
   }
 
-  protected static ResponseFormat getResponseFormat(final ModelConfig config) {
-    final ResponseFormatType responseFormatType = resolveResponseFormatType(config);
+  protected static ResponseFormat getResponseFormat(final ResponseFormatType responseFormatType) {
     if (responseFormatType == ResponseFormatType.JSON) {
       return new ResponseFormat.Builder().type(ResponseFormatType.JSON)
           .jsonSchema(toJsonSchema(DEFAULT_JSON_RESPONSE_FORMAT)).build();
     }
     return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
-  }
-
-  private static ResponseFormatType resolveResponseFormatType(final ModelConfig config) {
-    if (StringUtils.isNotBlank(config.getResponseFormat())) {
-      return "json".equalsIgnoreCase(config.getResponseFormat()) ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
-    }
-    final boolean parseToolCallsFromText = config.isToolCallingEnabled() && !config.isToolCallingSupported();
-    return parseToolCallsFromText ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
   }
 
   protected static JsonSchema toJsonSchema(final Map<String, Object> jsonSchemaMap) {
@@ -336,30 +318,4 @@ public class LangchainModelBuilder implements ModelBuilder<LangChain4JLLMModel> 
     return strings;
   }
 
-  private static String buildProtocolMessage(final ResponseFormatType responseFormatType,
-      final boolean toolCallingEnabled, final boolean toolCallingSupported) {
-    final String templateName = resolveProtocolTemplate(responseFormatType);
-    final Map<String, Object> context = new HashMap<>();
-    context.put("toolCallingAllowed", toolCallingEnabled);
-    context.put("parseToolCallsFromText", !toolCallingSupported);
-    if (responseFormatType == ResponseFormatType.JSON) {
-      context.put("response_schema", loadReasonerSchema(responseFormatType));
-    }
-    return TemplateUtils.renderTemplateForName(templateName, context);
-  }
-
-  private static String resolveProtocolTemplate(final ResponseFormatType responseFormatType) {
-    if (responseFormatType == ResponseFormatType.JSON) {
-      return "shared/protocol/json.txt";
-    } else {
-      return "shared/protocol/text.txt";
-    }
-  }
-
-  private static String loadReasonerSchema(final ResponseFormatType responseFormatType) {
-    if (responseFormatType != ResponseFormatType.JSON) {
-      return "";
-    }
-    return ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json");
-  }
 }

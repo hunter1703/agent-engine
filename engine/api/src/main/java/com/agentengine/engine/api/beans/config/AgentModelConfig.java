@@ -16,7 +16,7 @@ public class AgentModelConfig implements Config {
   private ToolsConfig tools = new ToolsConfig();
 
   public AgentModelConfig() {
-    this.type = AgentType.LANGCHAIN.name().toLowerCase();
+    this.type = ModelType.LANGCHAIN.name().toLowerCase();
   }
 
   public String getModelId() {
@@ -79,8 +79,9 @@ public class AgentModelConfig implements Config {
     tools.validate();
   }
 
-  public enum AgentType {
-    LANGCHAIN
+  public enum ModelType {
+    LANGCHAIN,
+    GEMINI
   }
 
 }
