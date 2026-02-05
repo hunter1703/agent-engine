@@ -23,8 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Singleton
-public class LangchainModelBuilder extends DelegatingModelBuilder<LangChain4j> {
+public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangChain4j> {
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
 
   static {
@@ -33,21 +32,12 @@ public class LangchainModelBuilder extends DelegatingModelBuilder<LangChain4j> {
         });
   }
 
-  public LangchainModelBuilder(final ConfigRepository configRepository) {
-    super(configRepository);
-  }
-
   @Override
   protected LangChain4j buildDelegate(final ModelConfig modelConfig) {
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
     final ChatModels models = buildChatModels(modelConfig, responseFormat);
     return new LangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
-  }
-
-  @Override
-  public String type() {
-    return AgentModelConfig.ModelType.LANGCHAIN.name().toLowerCase();
   }
 
   private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {

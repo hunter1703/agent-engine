@@ -1,0 +1,20 @@
+{
+  "type": "default",
+  "agentId": "simple_agent",
+  "model": {
+    "type": "gemini",
+    "modelId": "gemini_3_flash_preview",
+    "role": "reasoning",
+    "systemPrompt": "You are a helpful assistant. Provide concise answers and ask clarifying questions when needed.",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "keepLast": 8
+    },
+    "tools": {
+      "enabled": []
+    }
+  },
+  "sessionStore": {
+    "type": "memory"
+  }
+}

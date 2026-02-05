@@ -2,22 +2,14 @@ package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
 import com.alibaba.fastjson2.annotation.JSONType;
-import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType
-@BsonDiscriminator(key = "type")
 public class AgentModelConfig implements Config {
   private String modelId;
   // unique role of the model within the agent
   private String role;
   private String systemPrompt;
-  private String type;
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
   private ToolsConfig tools = new ToolsConfig();
-
-  public AgentModelConfig() {
-    this.type = ModelType.LANGCHAIN.name().toLowerCase();
-  }
 
   public String getModelId() {
     return modelId;
@@ -45,11 +37,7 @@ public class AgentModelConfig implements Config {
 
   @Override
   public String getType() {
-    return type;
-  }
-
-  public void setType(final String type) {
-    this.type = type;
+    return null;
   }
 
   public ContextManagerConfig getContextManagerConfig() {
@@ -78,10 +66,4 @@ public class AgentModelConfig implements Config {
     }
     tools.validate();
   }
-
-  public enum ModelType {
-    LANGCHAIN,
-    GEMINI
-  }
-
 }

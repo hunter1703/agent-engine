@@ -15,15 +15,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class DelegatingModelBuilder<T extends BaseLlm> implements ModelBuilder<DelegatingLLMModel> {
-  private final ConfigRepository configRepository;
-
-  protected DelegatingModelBuilder(final ConfigRepository configRepository) {
-    this.configRepository = configRepository;
-  }
 
   @Override
-  public final DelegatingLLMModel build(final String agentId, final AgentModelConfig agentModelConfig) {
-    final ModelConfig modelConfig = configRepository.loadModelConfig(agentModelConfig.getModelId());
+  public final DelegatingLLMModel build(final String agentId, final AgentModelConfig agentModelConfig, final ModelConfig modelConfig) {
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
     final boolean parseToolCallsFromText = !toolCallingSupported;

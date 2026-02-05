@@ -11,13 +11,9 @@ import jakarta.inject.Singleton;
 @Singleton
 public class GeminiModelBuilder extends DelegatingModelBuilder<Gemini> {
 
-  public GeminiModelBuilder(final ConfigRepository configRepository) {
-    super(configRepository);
-  }
-
   @Override
   public String type() {
-    return AgentModelConfig.ModelType.GEMINI.name().toLowerCase();
+    return ModelConfig.Provider.GEMINI.name().toLowerCase();
   }
 
   @Override
