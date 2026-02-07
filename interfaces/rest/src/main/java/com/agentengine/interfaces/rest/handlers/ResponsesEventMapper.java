@@ -26,7 +26,14 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
   }
 
   public Flowable<BaseResponsesEventData> onComplete() {
-    return Flowable.defer(this::doneEvent);
+    final BaseResponsesEventData completed = finishMessageItem();
+    return Flowable.defer(() -> {
+      if (completed != null) {
+        return Flowable.concatArray(Flowable.just(completed), doneEvent());
+      } else {
+        return doneEvent();
+      }
+    });
   }
 
   public Flowable<BaseResponsesEventData> onError(final Throwable throwable) {
@@ -105,13 +112,15 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
 
   private Flowable<BaseResponsesEventData> mapTextMessageStart() {
     state.thinkingStarted = false;
+    if (state.activeMessageOutputIndex != null) {
+      return Flowable.empty();
+    }
     return toFlowable(beginMessageItem());
   }
 
   private Flowable<BaseResponsesEventData> mapTextMessageEnd() {
     state.thinkingStarted = false;
-    final BaseResponsesEventData completed = finishMessageItem();
-    return toFlowable(completed);
+    return Flowable.empty();
   }
 
   private Flowable<BaseResponsesEventData> mapTextChunk(final TextMessageChunkEvent textMessageChunkEvent) {
@@ -120,7 +129,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       appendReasoning(delta);
       return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
     }
-    final BaseResponsesEventData messageStart = beginMessageItem();
+    final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
     appendMessage(delta);
     final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
         ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
@@ -134,10 +143,12 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       appendReasoning(delta);
       return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
     }
-    final BaseResponsesEventData messageStart = beginMessageItem();
-    resetMessage(delta);
-    final BaseResponsesEventData completed = finishMessageItem();
-    return fromEvents(messageStart, completed);
+    final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
+    appendMessage(delta);
+    final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
+        ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
+        : null;
+    return fromEvents(messageStart, deltaEvent);
   }
 
   private Flowable<BaseResponsesEventData> mapToolCallStart(final ToolCallStartEvent toolCallStartEvent) {
@@ -228,14 +239,6 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     if (state.messageBuffer == null) {
       state.messageBuffer = new StringBuilder();
     }
-    state.messageBuffer.append(delta);
-  }
-
-  private void resetMessage(final String delta) {
-    if (state.messageBuffer == null) {
-      state.messageBuffer = new StringBuilder();
-    }
-    state.messageBuffer.setLength(0);
     state.messageBuffer.append(delta);
   }
 

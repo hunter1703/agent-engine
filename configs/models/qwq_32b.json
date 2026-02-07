@@ -14,5 +14,7 @@
   "temperature": 0.6,
   "topK": 40,
   "topP": 0.95,
-  "repeatPenalty": 1
+  "repeatPenalty": 1,
+  "toolCallingEnabled": true,
+  "toolCallingSupported": true
 }
