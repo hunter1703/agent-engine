@@ -5,6 +5,7 @@ import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.model.ModelServerUtils;
+import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
 import dev.langchain4j.model.chat.ChatModel;
@@ -37,7 +38,7 @@ public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangC
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
     final ChatModels models = buildChatModels(modelConfig, responseFormat);
-    return new LangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
+    return new NormalizedLangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
   }
 
   private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {
