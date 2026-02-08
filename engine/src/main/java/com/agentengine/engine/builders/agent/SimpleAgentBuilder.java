@@ -3,6 +3,7 @@ package com.agentengine.engine.builders.agent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
+import com.agentengine.engine.builders.state.ToolAwareSessionService;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.beans.config.AgentConfig;
@@ -70,7 +71,7 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     if (config == null) {
       return null;
     }
-    return sessionServiceProvider.get(config.getSessionStore());
+    return new ToolAwareSessionService(sessionServiceProvider.get(config.getSessionStore()));
   }
 
   @Override

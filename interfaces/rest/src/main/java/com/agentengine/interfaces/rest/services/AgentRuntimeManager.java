@@ -11,6 +11,7 @@ import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.engine.builders.state.ToolAwareSessionService;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
@@ -73,7 +74,8 @@ public class AgentRuntimeManager {
   }
 
   private AgentRuntime createRuntime(final AgentConfig agentConfig) {
-    final BaseSessionService sessionService = sessionServiceProvider.get(agentConfig.getSessionStore());
+    final BaseSessionService sessionService =
+        new ToolAwareSessionService(sessionServiceProvider.get(agentConfig.getSessionStore()));
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
     final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
     final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getAgentId()).sessionService(sessionService)

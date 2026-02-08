@@ -328,21 +328,30 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapStepFinish(final Event event) {
-    if (!hasStepStarted() || CollectionUtils.isNotEmpty(state.pendingToolCalls) || event.partial().orElse(false)) {
-      return Flowable.empty();
-    }
-    final Content content = event.content().orElse(null);
-    boolean stepFinished = true;
-    if (content != null) {
-      stepFinished = content.parts().orElse(List.of()).stream().anyMatch(part -> !part.thought().orElse(false));
-    }
-    if (!stepFinished) {
-      return Flowable.empty();
-    }
-    final StepFinishedEvent stepEvent = new StepFinishedEvent();
-    stepEvent.setStepName(state.currentStepName);
-    state.currentStepName = null;
-    return Flowable.just(decorateEvent(stepEvent));
+    return Flowable.defer(() -> {
+      if (!hasStepStarted() || CollectionUtils.isNotEmpty(state.pendingToolCalls) || event.partial().orElse(false)) {
+        return Flowable.empty();
+      }
+      final Content content = event.content().orElse(null);
+      if (content == null || content.parts().isEmpty() || content.parts().orElse(List.of()).isEmpty()) {
+        return Flowable.empty();
+      }
+      final List<Part> parts = content.parts().orElse(List.of());
+      final boolean hasToolParts = parts.stream()
+          .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+      if (hasToolParts) {
+        return Flowable.empty();
+      }
+      final boolean stepFinished =
+          parts.stream().anyMatch(part -> !part.thought().orElse(false));
+      if (!stepFinished) {
+        return Flowable.empty();
+      }
+      final StepFinishedEvent stepEvent = new StepFinishedEvent();
+      stepEvent.setStepName(state.currentStepName);
+      state.currentStepName = null;
+      return Flowable.just(decorateEvent(stepEvent));
+    });
   }
 
   private RunFinishedEvent buildRunFinished(final String runId) {
