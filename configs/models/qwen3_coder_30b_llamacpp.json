@@ -16,13 +16,7 @@
   "topK": 20,
   "topP": 0.8,
   "repeatPenalty": 1.08,
-  "maxContextLength": 8192,
-  "stopTokens": [
-    "<｜begin▁of▁sentence｜>",
-    "<｜end▁of▁sentence｜>",
-    "<｜User｜>",
-    "<｜Assistant｜>",
-    "<tool_call>",
-    "</tool_call>"
-  ]
+  "toolCallingEnabled": true,
+  "toolCallingSupported": true,
+  "maxContextLength": 8192
 }
