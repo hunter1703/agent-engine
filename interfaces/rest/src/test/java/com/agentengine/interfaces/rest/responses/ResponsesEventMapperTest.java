@@ -7,6 +7,7 @@ import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agentengine.interfaces.rest.responses.dtos.CreatedEventData;
 import com.agentengine.interfaces.rest.responses.dtos.DoneEventData;
 import com.agentengine.interfaces.rest.responses.dtos.OutputItemAddedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.OutputItemDoneEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultEventData;
 import com.agui.core.event.RunFinishedEvent;
@@ -56,14 +57,22 @@ class ResponsesEventMapperTest {
         .concatMap(mapper::map).concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
 
     assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.created",
-        "response.in_progress", "response.output_item.added", "response.output_text.delta", "response.output_item.done",
-        "response.completed", "response.done");
+        "response.in_progress", "response.output_item.added", "response.output_text.delta", "response.completed",
+        "response.output_item.done", "response.done");
 
     final CreatedEventData createdEventData = (CreatedEventData) responses.get(0);
     assertThat(createdEventData.getResponse()).containsEntry("model", "agent-1");
 
     final DoneEventData doneEventData = (DoneEventData) responses.get(responses.size() - 1);
     assertThat(doneEventData.getResponse()).containsEntry("status", "completed");
+
+    final OutputItemAddedEventData messageAdded = (OutputItemAddedEventData) responses.get(2);
+    final OutputItemDoneEventData messageDone = (OutputItemDoneEventData) responses.get(5);
+    assertThat(messageAdded.getItem()).containsEntry("type", "message");
+    assertThat(messageDone.getItem()).containsEntry("type", "message");
+    assertThat(messageDone.getItem()).containsEntry("role", "assistant");
+    assertThat(messageDone.getItem()).containsEntry("content",
+        List.of(Map.of("type", "output_text", "text", "Hello")));
   }
 
   @Test
@@ -97,6 +106,34 @@ class ResponsesEventMapperTest {
     final ToolCallResultEventData toolCallResultEventData = (ToolCallResultEventData) responses.get(2);
     assertThat(toolCallResultEventData.getItem()).containsEntry("call_id", "call-1").containsEntry("output",
         "{\"result\":\"ok\"}");
+  }
+
+  @Test
+  void closesMessageBeforeToolCall() {
+    final TextMessageStartEvent startEvent = new TextMessageStartEvent();
+
+    final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
+    chunkEvent.setDelta("Hello");
+
+    final ToolCallStartEvent toolCallStartEvent = new ToolCallStartEvent();
+    toolCallStartEvent.setToolCallId("call-1");
+    toolCallStartEvent.setToolCallName("weather");
+
+    final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
+    final List<BaseResponsesEventData> responses = Flowable.just(startEvent, chunkEvent, toolCallStartEvent)
+        .concatMap(mapper::map).toList().blockingGet();
+
+    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly(
+        "response.output_item.added",
+        "response.output_text.delta",
+        "response.output_item.done",
+        "response.output_item.added");
+
+    final OutputItemDoneEventData messageDone = (OutputItemDoneEventData) responses.get(2);
+    assertThat(messageDone.getItem()).containsEntry("type", "message");
+    assertThat(messageDone.getItem()).containsEntry("role", "assistant");
+    assertThat(messageDone.getItem()).containsEntry("content",
+        List.of(Map.of("type", "output_text", "text", "Hello")));
   }
 
   @Test

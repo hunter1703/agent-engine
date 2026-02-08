@@ -130,6 +130,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
     }
     final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
+    state.messageHasChunks = true;
     appendMessage(delta);
     final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
         ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
@@ -143,6 +144,10 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       appendReasoning(delta);
       return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
     }
+    if (state.messageHasChunks) {
+      state.messageBuffer = new StringBuilder(delta);
+      return Flowable.empty();
+    }
     final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
     appendMessage(delta);
     final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
@@ -152,11 +157,13 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
   }
 
   private Flowable<BaseResponsesEventData> mapToolCallStart(final ToolCallStartEvent toolCallStartEvent) {
+    final BaseResponsesEventData messageDone = finishMessageItem();
     final int outputIndex = nextOutputIndex();
     state.toolCallDetails.put(toolCallStartEvent.getToolCallId(),
         new ToolCallDetails(toolCallStartEvent.getToolCallName(), new StringBuilder(), outputIndex));
-    return toFlowable(new ToolCallAddedEventData(toolCallStartEvent.getToolCallId(),
-        toolCallStartEvent.getToolCallName(), outputIndex));
+    final BaseResponsesEventData toolCallAdded = new ToolCallAddedEventData(toolCallStartEvent.getToolCallId(),
+        toolCallStartEvent.getToolCallName(), outputIndex);
+    return fromEvents(messageDone, toolCallAdded);
   }
 
   private Flowable<BaseResponsesEventData> mapToolCallArgs(final ToolCallArgsEvent toolCallArgsEvent) {
@@ -232,6 +239,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     state.activeMessageOutputIndex = nextOutputIndex();
     state.messageBuffer = new StringBuilder();
     state.messageCompleted = false;
+    state.messageHasChunks = false;
     return new MessageStartedEventData(state.activeMessageOutputIndex);
   }
 
@@ -247,6 +255,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       state.activeMessageOutputIndex = null;
       state.messageBuffer = null;
       state.messageCompleted = false;
+      state.messageHasChunks = false;
       return null;
     }
     final String text = state.messageBuffer != null ? state.messageBuffer.toString() : "";
@@ -254,6 +263,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     state.activeMessageOutputIndex = null;
     state.messageBuffer = null;
     state.messageCompleted = true;
+    state.messageHasChunks = false;
     return completed;
   }
 
@@ -327,6 +337,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     private StringBuilder messageBuffer;
     private StringBuilder reasoningBuffer;
     private boolean messageCompleted;
+    private boolean messageHasChunks;
 
     private MapperState(final String agentId) {
       this.agentId = agentId;
