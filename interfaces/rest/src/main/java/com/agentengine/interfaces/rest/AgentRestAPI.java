@@ -141,7 +141,6 @@ public class AgentRestAPI {
   public Publisher<Map<String, Object>> responses(final ResponsesApiRequest request) {
     String traceId = LoggingUtils.getOrCreateTraceId();
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
-
     LOG.debug("Agent responses streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
         traceId, agentRequest.getAgentConfigPath(),
         agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
@@ -203,7 +202,7 @@ public class AgentRestAPI {
       agentId = "shell_agent";
     }
     agentRequest.setAgentId(agentId);
-    agentRequest.setSessionId(getOrCreateSession(null));
+    agentRequest.setSessionId(getOrCreateSession(responsesRequest.getSessionId()));
     agentRequest.setMessage(message);
 
     return agentRequest;

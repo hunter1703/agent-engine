@@ -1,11 +1,15 @@
 package com.agentengine.interfaces.rest.requests;
 
+import com.alibaba.fastjson2.annotation.JSONField;
+
 import java.util.List;
 
 public class ResponsesApiRequest {
 
   private String model;
   private List<InputMessage> input;
+  @JSONField(alternateNames = "prompt_cache_key")
+  private String sessionId;
 
   public ResponsesApiRequest() {
   }
@@ -29,6 +33,14 @@ public class ResponsesApiRequest {
 
   public void setInput(List<InputMessage> input) {
     this.input = input;
+  }
+
+  public String getSessionId() {
+    return sessionId;
+  }
+
+  public void setSessionId(final String sessionId) {
+    this.sessionId = sessionId;
   }
 
   public static class InputMessage {
