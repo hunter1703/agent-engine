@@ -22,6 +22,9 @@ agent.responses-api.include-token-usage=false
 
 # Include reasoning/analysis steps in responses (default: true)
 agent.responses-api.include-reasoning=true
+
+# Include tool call events in responses (default: false)
+agent.responses-api.include-tool-events=false
 ```
 
 ## Using with Codex CLI
@@ -116,9 +119,9 @@ The Responses API implementation maps internal AGUI events to the Codex-compatib
 - `TextMessageStartEvent` → `response.output_item.added` (message)
 - `TextMessageChunkEvent` → `response.output_text.delta`
 - `TextMessageContentEvent`/`TextMessageEndEvent` → `response.output_item.done` (message)
-- `ToolCallStartEvent` → `response.output_item.added` (with type `function_call`)
-- `ToolCallEndEvent` → `response.output_item.done`
-- `ToolCallResultEvent` → `response.output_item.added` (with type `function_call_output`)
+- `ToolCallStartEvent` → `response.output_item.added` (with type `function_call`, when tool events enabled)
+- `ToolCallEndEvent` → `response.output_item.done` (when tool events enabled)
+- `ToolCallResultEvent` → `response.output_item.added` (with type `function_call_output`, when tool events enabled)
 - `RunFinishedEvent` → `response.completed`
 - Mapper completion → `response.done`
 - `RunErrorEvent` → `response.failed`

@@ -97,7 +97,8 @@ class ResponsesEventMapperTest {
         .concatMap(mapper::map).toList().blockingGet();
 
     final OutputItemAddedEventData toolCallAddedEventData = (OutputItemAddedEventData) responses.get(0);
-    assertThat(toolCallAddedEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments", "");
+    assertThat(toolCallAddedEventData.getItem()).containsEntry("name", "weather")
+        .containsEntry("arguments", "").containsEntry("call_id", "call-1");
 
     final ToolCallEventData toolCallEventData = (ToolCallEventData) responses.get(1);
     assertThat(toolCallEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments",
@@ -105,6 +106,10 @@ class ResponsesEventMapperTest {
 
     final ToolCallResultEventData toolCallResultEventData = (ToolCallResultEventData) responses.get(2);
     assertThat(toolCallResultEventData.getItem()).containsEntry("call_id", "call-1").containsEntry("output",
+        "{\"result\":\"ok\"}");
+
+    final OutputItemDoneEventData toolCallResultDoneEventData = (OutputItemDoneEventData) responses.get(3);
+    assertThat(toolCallResultDoneEventData.getItem()).containsEntry("call_id", "call-1").containsEntry("output",
         "{\"result\":\"ok\"}");
   }
 

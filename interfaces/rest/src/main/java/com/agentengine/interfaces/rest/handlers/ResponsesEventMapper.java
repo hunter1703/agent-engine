@@ -199,7 +199,10 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     }
     state.toolCallDetails.remove(toolCallId);
     final int outputIndex = nextOutputIndex();
-    return toFlowable(new ToolCallResultEventData(toolCallId, toolCallResultEvent.getContent(), outputIndex));
+    final String output = toolCallResultEvent.getContent();
+    final BaseResponsesEventData outputAdded = new ToolCallResultEventData(toolCallId, output, outputIndex);
+    final BaseResponsesEventData outputDone = new ToolCallResultDoneEventData(toolCallId, output, outputIndex);
+    return fromEvents(outputAdded, outputDone);
   }
 
   private Flowable<BaseResponsesEventData> doneEvent() {

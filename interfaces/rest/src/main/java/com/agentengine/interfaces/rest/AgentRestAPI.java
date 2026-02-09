@@ -138,12 +138,11 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
   @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
-  public Publisher<Map<String, Object>> responses(final ResponsesApiRequest request) {
+  public Publisher<Map<String, Object>> responses(final Map<String, Object> requestMap) {
     String traceId = LoggingUtils.getOrCreateTraceId();
+    final ResponsesApiRequest request = JsonUtils.fromMap(requestMap, ResponsesApiRequest.class);
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
-    LOG.debug("Agent responses streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
-        traceId, agentRequest.getAgentConfigPath(),
-        agentRequest.getMessage() != null ? agentRequest.getMessage().length() : 0);
+    LOG.error("Agent responses streaming request details - trace_id={}, requestMap={}", traceId, JsonUtils.toJson(requestMap));
 
     try {
       final AgentRequest effectiveRequest = agentRequest.withSessionId(getOrCreateSession(agentRequest.getSessionId()));

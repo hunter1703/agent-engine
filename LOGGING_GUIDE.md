@@ -92,7 +92,7 @@ LOG.info("Processing request - trace_id={} ...", traceId, ...);
 The logging configuration is defined in `logback.xml` and outputs structured JSON logs with all MDC fields included.
 
 ### Development Configuration
-To enable DEBUG level logging locally, set the log level in your `application.properties`:
+The REST module defaults to `ERROR` level logging. To enable DEBUG level logging locally, set the log level in your `application.properties`:
 ```properties
 quarkus.log.level=DEBUG
 ```

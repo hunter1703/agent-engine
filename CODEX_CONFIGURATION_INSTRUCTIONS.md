@@ -79,5 +79,6 @@ model_reasoning_effort = "medium"
 
 - The Agent Engine must be running and accessible at the specified base_url
 - The `/agent/responses` endpoint is automatically configured for Codex CLI compatibility
+- To suppress tool call output in Codex, set `agent.responses-api.include-tool-events=false` in the Agent Engine config
 - All configuration options can be adjusted based on your specific requirements
 - If you're running the Agent Engine on a different port or host, update the base_url accordingly
