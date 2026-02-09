@@ -1,53 +1,56 @@
 package com.agentengine.interfaces.rest;
 
-import static java.lang.StringTemplate.STR;
-
-import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.utils.LoggingUtils;
-import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.interfaces.rest.dto.AgentResponse;
-import com.agentengine.interfaces.rest.dto.InvokeResponse;
-import com.agentengine.interfaces.rest.dto.PromptResponse;
-import com.agentengine.interfaces.rest.models.ListModelsResponse;
-import com.agentengine.interfaces.rest.models.ModelInfo;
-import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.ConfigRepository;
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agui.core.event.BaseEvent;
+import com.agentengine.interfaces.rest.models.AgentInfo;
+import com.agentengine.interfaces.rest.models.ListAgentsResponse;
+import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
+import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
+import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import org.reactivestreams.Publisher;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
-
-import java.util.*;
-
+import jakarta.ws.rs.core.MediaType;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import org.jboss.resteasy.reactive.RestStreamElementType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.logging.MDC;
+import org.jboss.resteasy.reactive.RestStreamElementType;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 @Path("/v1")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
+@Tag(name = "Agent", description = "Agent Management and Execution APIs")
 @RunOnVirtualThread
-@Tag(name = "Agent")
 public class AgentRestAPI {
+
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
   private final ConfigRepository configRepository;
@@ -61,37 +64,15 @@ public class AgentRestAPI {
 
   @POST
   @Path("/invoke")
-  @Operation(summary = "Invoke an agent", description = "Invoke the agent or build its prompt.")
-  @APIResponse(responseCode = "200", description = "Invoke response or prompt response", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(oneOf = {
-      InvokeResponse.class, PromptResponse.class})))
+  @Operation(summary = "Invoke an agent", description = "Synchronously invoke the agent and get the final response.")
+  @APIResponse(responseCode = "200", description = "Final response from the agent")
   public AgentResponse invoke(final AgentRequest request) {
-    // Generate or retrieve trace ID for this request
-    String traceId = LoggingUtils.getOrCreateTraceId();
+    LOG.debug("Agent invocation request - agent_id={} session_id={}", request.getAgentId(), request.getSessionId());
 
-    LOG.info("Agent invocation started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
-        request.getSessionId());
-    LOG.debug("Agent invocation request details - trace_id={} agent_config_path=\"{}\" message_length={}", traceId,
-        request.getAgentConfigPath(), request.getMessage() != null ? request.getMessage().length() : 0);
-
-    try {
-      final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-      MDC.put("session_id", effectiveRequest.getSessionId());
-      final AgentRequestHandler<AgentResponse> handler = handlerFor(RequestType.valueOf(effectiveRequest.getType()));
-      AgentResponse response = handler.handle(effectiveRequest);
-
-      LOG.info("Agent invocation completed - trace_id={} agent_id={} session_id={} outcome=success", traceId,
-          request.getAgentId(), request.getSessionId());
-      LOG.debug("Agent invocation response details - trace_id={} response_type=\"{}\"", traceId,
-          response != null ? response.getClass().getSimpleName() : "null");
-
-      return response;
-    } catch (Exception e) {
-      LOG.error("Agent invocation failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"", traceId,
-          request.getAgentId(), request.getSessionId(), e.getMessage(), e);
-      throw e;
-    } finally {
-      MDC.clear();
-    }
+    final RequestType requestType = RequestType.valueOf(request.getType());
+    @SuppressWarnings("unchecked")
+    final AgentRequestHandler<AgentResponse> handler = (AgentRequestHandler<AgentResponse>) handlerFor(requestType);
+    return handler.handle(request);
   }
 
   @POST
@@ -99,36 +80,16 @@ public class AgentRestAPI {
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
-  @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events.")
-  @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
+  @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events in AG-UI format.")
+  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format")
   public Publisher<BaseEvent> events(final AgentRequest request) {
-    // Generate or retrieve trace ID for this request
-    String traceId = LoggingUtils.getOrCreateTraceId();
-
-    LOG.info("Agent events streaming started - trace_id={} agent_id={} session_id={}", traceId, request.getAgentId(),
+    LOG.debug("Agent events streaming request - agent_id={} session_id={}", request.getAgentId(),
         request.getSessionId());
-    LOG.debug("Agent events streaming request details - trace_id={} agent_config_path=\"{}\" message_length={}",
-        traceId, request.getAgentConfigPath(), request.getMessage() != null ? request.getMessage().length() : 0);
 
-    try {
-      final AgentRequest effectiveRequest = request.withSessionId(getOrCreateSession(request.getSessionId()));
-      MDC.put("session_id", effectiveRequest.getSessionId());
-      final AgentRequestHandler<Flowable<BaseEvent>> handler = handlerFor(RequestType.STREAM_AGUI_EVENTS);
-      Flowable<BaseEvent> response = handler.handle(effectiveRequest);
-
-      LOG.info("Agent events streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
-          request.getAgentId(), request.getSessionId());
-      LOG.debug("Agent events streaming response details - trace_id={} response_type=\"{}\"", traceId,
-          response != null ? response.getClass().getSimpleName() : "null");
-
-      return response;
-    } catch (Exception e) {
-      LOG.error("Agent events streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
-          traceId, request.getAgentId(), request.getSessionId(), e.getMessage(), e);
-      throw e;
-    } finally {
-      MDC.clear();
-    }
+    @SuppressWarnings("unchecked")
+    final AgentRequestHandler<Flowable<BaseEvent>> handler = (AgentRequestHandler<Flowable<BaseEvent>>) handlerFor(
+        RequestType.STREAM_AGUI_EVENTS);
+    return handler.handle(request);
   }
 
   @POST
@@ -136,142 +97,122 @@ public class AgentRestAPI {
   @Produces(MediaType.SERVER_SENT_EVENTS)
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
-  @Operation(summary = "Stream agent responses in Responses API format", description = "Invoke the agent and stream events in Responses API format compatible with Codex CLI.")
-  @APIResponse(responseCode = "200", description = "SSE event stream in Responses API format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS))
+  @Operation(summary = "Stream agent responses", description = "Invoke the agent and stream events in Responses API format.")
+  @APIResponse(responseCode = "200", description = "SSE event stream")
   public Publisher<Map<String, Object>> responses(final Map<String, Object> requestMap) {
-    String traceId = LoggingUtils.getOrCreateTraceId();
+    LOG.debug("Agent responses streaming request - requestMap={}", JsonUtils.toJson(requestMap));
+
     final ResponsesApiRequest request = JsonUtils.fromMap(requestMap, ResponsesApiRequest.class);
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
-    LOG.error("Agent responses streaming request details - trace_id={}, requestMap={}", traceId, JsonUtils.toJson(requestMap));
 
-    try {
-      final AgentRequest effectiveRequest = agentRequest.withSessionId(getOrCreateSession(agentRequest.getSessionId()));
-      MDC.put("session_id", effectiveRequest.getSessionId());
+    @SuppressWarnings("unchecked")
+    final AgentRequestHandler<Flowable<BaseResponsesEventData>> handler = (AgentRequestHandler<Flowable<BaseResponsesEventData>>) handlerFor(
+        RequestType.STREAM_RESPONSES);
+    Flowable<BaseResponsesEventData> responseStream = handler.handle(agentRequest);
 
-      final AgentRequestHandler<Flowable<BaseResponsesEventData>> handler = handlerFor(RequestType.STREAM_RESPONSES);
-      Flowable<BaseResponsesEventData> responseStream = handler.handle(effectiveRequest);
-
-      LOG.info("Agent responses streaming initiated - trace_id={} agent_id={} session_id={}", traceId,
-          agentRequest.getAgentId(), agentRequest.getSessionId());
-
-      final Flowable<Map<String, Object>> responseEvents = responseStream.map(JsonUtils::toMap);
-      return responseEvents;
-
-    } catch (Exception e) {
-      LOG.error("Agent responses streaming failed - trace_id={} agent_id={} session_id={} outcome=failure error=\"{}\"",
-          traceId, agentRequest.getAgentId(), agentRequest.getSessionId(), e.getMessage(), e);
-      throw e;
-    } finally {
-      MDC.clear();
-    }
-  }
-
-  private <T> AgentRequestHandler<T> handlerFor(final RequestType requestType) {
-    final AgentRequestHandler<?> handler = handlers.get(requestType);
-    if (handler == null) {
-      String errorMsg = STR."No handler registered for request type: \{requestType}";
-      LOG.error("Handler lookup failed - request_type={} error=\"{}\"", requestType, errorMsg);
-      throw new IllegalArgumentException(errorMsg);
-    }
-    //noinspection unchecked
-    return (AgentRequestHandler<T>) handler;
-  }
-
-  private static String getOrCreateSession(final String sessionId) {
-    if (StringUtils.isNotBlank(sessionId)) {
-      return sessionId;
-    }
-    String newSessionId = UUID.randomUUID().toString();
-    LOG.debug("New session created - session_id={}", newSessionId);
-    return newSessionId;
-  }
-
-  private AgentRequest convertResponsesApiRequestToAgentRequest(ResponsesApiRequest responsesRequest) {
-    // Extract the message content from the input array
-    String message = extractMessageFromInput(responsesRequest.getInput());
-
-    // Create an AgentRequest with values from the Responses API request
-    AgentRequest agentRequest = new AgentRequest();
-    agentRequest.setType(RequestType.STREAM_RESPONSES.name());
-
-    // Map the model from Responses API to agentId in Agent Engine
-    String agentId = responsesRequest.getModel();
-    if (agentId == null || agentId.trim().isEmpty()) {
-      // Default to shell_agent if no model is specified
-      agentId = "shell_agent";
-    }
-    agentRequest.setAgentId(agentId);
-    agentRequest.setSessionId(getOrCreateSession(responsesRequest.getSessionId()));
-    agentRequest.setMessage(message);
-
-    return agentRequest;
-  }
-
-  private String extractMessageFromInput(List<ResponsesApiRequest.InputMessage> input) {
-    if (input == null || input.isEmpty()) {
-      return "";
-    }
-
-    // Look for the latest user message in the input array
-    for (int i = input.size() - 1; i >= 0; i--) {
-      ResponsesApiRequest.InputMessage inputMessage = input.get(i);
-      if ("message".equals(inputMessage.getType()) && "user".equals(inputMessage.getRole())) {
-        List<ResponsesApiRequest.ContentPart> contentParts = inputMessage.getContent();
-        if (contentParts != null) {
-          StringBuilder messageBuilder = new StringBuilder();
-
-          for (ResponsesApiRequest.ContentPart contentPart : contentParts) {
-            if ("input_text".equals(contentPart.getType()) && contentPart.getText() != null) {
-              messageBuilder.append(contentPart.getText()).append("\n");
-            }
-          }
-
-          // Return the content of the latest user message
-          String message = messageBuilder.toString().trim();
-          if (!message.isEmpty()) {
-            return message;
-          }
-        }
-      }
-    }
-
-    // If no user message is found, return empty string
-    return "";
+    return responseStream.map(JsonUtils::toMap);
   }
 
   @GET
-  @Path("/models")
-  @Operation(summary = "List available models", description = "Returns a list of available models in OpenAI-compatible format.")
-  @APIResponse(responseCode = "200", description = "List of available models", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListModelsResponse.class)))
-  public ListModelsResponse listModels() {
-    List<ModelInfo> models = new ArrayList<>();
+  @Path("/agents")
+  @Operation(summary = "List available agents", description = "Returns a list of available agents")
+  @APIResponse(responseCode = "200", description = "List of available models", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListAgentsResponse.class)))
+  public ListAgentsResponse listModels() {
+    List<AgentInfo> models = new ArrayList<>();
 
     // Add dynamic agents from the config repository
     List<String> agentIds = configRepository.listAgentConfigs();
     for (String agentId : agentIds) {
-      models.add(new ModelInfo(agentId, "agent-engine"));
+      models.add(new AgentInfo(agentId, "agent-engine"));
     }
 
-    return new ListModelsResponse(models);
+    return new ListAgentsResponse(models);
   }
 
   @GET
-  @Path("/models/{model}")
-  @Operation(summary = "Retrieve a specific model", description = "Retrieves information about a specific model in OpenAI-compatible format.")
-  @APIResponse(responseCode = "200", description = "Information about the requested model", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ModelInfo.class)))
+  @Path("/models/{agent}")
+  @Operation(summary = "Retrieve a specific agent", description = "Retrieves information about a specific agent.")
+  @APIResponse(responseCode = "200", description = "Information about the requested model", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentInfo.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
-  public ModelInfo retrieveModel(@PathParam("model") String model) {
-    // Check if it's an agent config
+  public AgentInfo retrieveModel(@PathParam("agent") String agent) {
     try {
-      // Try to load the agent config to see if it exists
-      if (configRepository.loadAgentConfig(model) != null) {
-        return new ModelInfo(model, "agent-engine");
+      if (configRepository.loadAgentConfig(agent) != null) {
+        return new AgentInfo(agent, "agent-engine");
       }
     } catch (Exception e) {
-      // If there's an error loading the config, the model doesn't exist
     }
 
-    // Model not found
-    throw new WebApplicationException("Model not found: " + model, 404);
+    throw new WebApplicationException("Agent not found: " + agent, 404);
+  }
+
+  @GET
+  @Path("/agents")
+  @Operation(summary = "List available agents", description = "Returns a list of available agents for the Agent Console.")
+  @APIResponse(responseCode = "200", description = "List of available agents", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListAgentsResponse.class)))
+  public ListAgentsResponse listAgents() {
+    List<AgentInfo> agents = new ArrayList<>();
+
+    List<String> agentIds = configRepository.listAgentConfigs();
+    for (String agentId : agentIds) {
+      AgentInfo info = new AgentInfo();
+      info.setId(agentId);
+      info.setOwnedBy("agent-engine");
+      agents.add(info);
+    }
+
+    return new ListAgentsResponse(agents);
+  }
+
+  @GET
+  @Path("/agents/{agentId}")
+  @Operation(summary = "Retrieve a specific agent", description = "Retrieves information about a specific agent for the Agent Console.")
+  @APIResponse(responseCode = "200", description = "Information about the requested agent", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentInfo.class)))
+  @APIResponse(responseCode = "404", description = "Agent not found")
+  public AgentInfo retrieveAgent(@PathParam("agentId") String agentId) {
+    try {
+      if (configRepository.loadAgentConfig(agentId) != null) {
+        AgentInfo info = new AgentInfo();
+        info.setId(agentId);
+        info.setOwnedBy("agent-engine");
+        return info;
+      }
+    } catch (Exception e) {
+    }
+
+    throw new WebApplicationException("Agent not found: " + agentId, 404);
+  }
+
+  private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
+    final AgentRequestHandler<?> handler = handlers.get(requestType);
+    if (handler == null) {
+      String errorMsg = "No handler registered for request type: " + requestType;
+      LOG.error("Handler lookup failed - request_type={} error=\"{}\"", requestType, errorMsg);
+      throw new WebApplicationException(errorMsg, 400);
+    }
+    return handler;
+  }
+
+  private AgentRequest convertResponsesApiRequestToAgentRequest(final ResponsesApiRequest request) {
+    AgentRequest agentRequest = new AgentRequest();
+    agentRequest.setAgentId(request.getModel());
+    agentRequest.setSessionId(
+        StringUtils.isBlank(request.getSessionId()) ? UUID.randomUUID().toString() : request.getSessionId());
+    agentRequest.setType(RequestType.STREAM_RESPONSES.name());
+
+    if (request.getInput() != null && !request.getInput().isEmpty()) {
+      StringBuilder message = new StringBuilder();
+      for (ResponsesApiRequest.InputMessage inputMsg : request.getInput()) {
+        if (inputMsg.getContent() != null) {
+          for (ResponsesApiRequest.ContentPart part : inputMsg.getContent()) {
+            if ("text".equals(part.getType()) || "input_text".equals(part.getType())) {
+              message.append(part.getText()).append("\n");
+            }
+          }
+        }
+      }
+      agentRequest.setMessage(message.toString().trim());
+    }
+
+    return agentRequest;
   }
 }
