@@ -27,7 +27,8 @@ public final class NormalizedLangChain4j extends LangChain4j {
   private static Flowable<LlmResponse> normalize(final Flowable<LlmResponse> responses) {
     return Flowable.defer(() -> {
       final ResponseState state = new ResponseState();
-      return responses.concatMap(response -> mapResponse(response, state)).concatWith(Flowable.defer(() -> finalizeStream(state)));
+      return responses.concatMap(response -> mapResponse(response, state))
+          .concatWith(Flowable.defer(() -> finalizeStream(state)));
     });
   }
 
@@ -36,10 +37,7 @@ public final class NormalizedLangChain4j extends LangChain4j {
   }
 
   private static LlmResponse markFinal(final LlmResponse response, final String fullText) {
-    return response.toBuilder()
-        .content(Content.fromParts(Part.fromText(fullText)))
-        .partial(false)
-        .turnComplete(true)
+    return response.toBuilder().content(Content.fromParts(Part.fromText(fullText))).partial(false).turnComplete(true)
         .build();
   }
 
@@ -77,7 +75,8 @@ public final class NormalizedLangChain4j extends LangChain4j {
     }
     // null if no content or non-text content part is present
     final String delta = extractTextDelta(response);
-    // if current response has function calls, return as is i.e. consider it as "complete" and no need to add partial information
+    // if current response has function calls, return as is i.e. consider it as
+    // "complete" and no need to add partial information
     if (delta == null) {
       return Flowable.just(response);
     }

@@ -2,7 +2,6 @@ package com.agentengine.engine.builders.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -48,7 +47,7 @@ class SimpleAgentBuilderTest {
       }
     };
 
-    when(modelProvider.get(eq("agent-id"), any())).thenReturn(model);
+    when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
 
@@ -88,7 +87,7 @@ class SimpleAgentBuilderTest {
       }
     };
 
-    when(modelProvider.get(eq("agent-id"), any())).thenReturn(model);
+    when(modelProvider.get(any())).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
 

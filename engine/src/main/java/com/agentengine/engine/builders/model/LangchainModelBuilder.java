@@ -1,7 +1,5 @@
 package com.agentengine.engine.builders.model;
 
-import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.model.ModelServerUtils;
@@ -17,7 +15,6 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import jakarta.inject.Singleton;
 
 import java.util.ArrayList;
 import java.util.HashMap;

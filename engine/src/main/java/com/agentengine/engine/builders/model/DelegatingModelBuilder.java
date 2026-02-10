@@ -1,7 +1,5 @@
 package com.agentengine.engine.builders.model;
 
-import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.ResourceUtils;
@@ -17,7 +15,7 @@ import java.util.Map;
 public abstract class DelegatingModelBuilder<T extends BaseLlm> implements ModelBuilder<DelegatingLLMModel> {
 
   @Override
-  public final DelegatingLLMModel build(final String agentId, final AgentModelConfig agentModelConfig, final ModelConfig modelConfig) {
+  public final DelegatingLLMModel build(final ModelConfig modelConfig) {
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
     final boolean parseToolCallsFromText = !toolCallingSupported;

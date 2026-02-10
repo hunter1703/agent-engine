@@ -1,7 +1,6 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
-import com.alibaba.fastjson2.annotation.JSONType;
 
 public class AgentModelConfig implements Config {
   private String modelId;

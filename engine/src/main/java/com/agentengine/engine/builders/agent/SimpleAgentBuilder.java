@@ -37,7 +37,7 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
   }
 
   protected AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
-    final BaseLlm model = modelProvider.get(config.getAgentId(), config.getModel());
+    final BaseLlm model = modelProvider.get(config.getModel());
     if (!(model instanceof AbstractLLM agentModel)) {
       throw new IllegalStateException("Model builder did not return an AbstractLLM instance.");
     }

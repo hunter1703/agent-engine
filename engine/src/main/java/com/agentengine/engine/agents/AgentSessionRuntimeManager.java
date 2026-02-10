@@ -1,0 +1,89 @@
+package com.agentengine.engine.agents;
+
+import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
+import static java.lang.StringTemplate.STR;
+
+import com.agentengine.engine.api.AgentContext;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.builders.agent.AgentProvider;
+import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.engine.builders.state.ToolAwareSessionService;
+import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.engine.repository.SessionRepository;
+import com.google.adk.agents.LlmAgent;
+import com.google.adk.runner.Runner;
+import com.google.adk.sessions.BaseSessionService;
+import jakarta.inject.Singleton;
+
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Singleton
+public class AgentSessionRuntimeManager {
+  private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRuntimeManager.class);
+  public static final String DEFAULT_USER_ID = "default";
+
+  private final AgentRepository agentRepository;
+  private final AgentProvider agentProvider;
+  private final SessionServiceProvider sessionServiceProvider;
+  private final SessionRepository sessionRepository;
+  private final ConcurrentMap<String, AgentSessionRuntime> runtimes = new ConcurrentHashMap<>();
+
+  public AgentSessionRuntimeManager(AgentRepository agentRepository, final AgentProvider agentProvider,
+      final SessionServiceProvider sessionServiceProvider, SessionRepository sessionRepository) {
+    this.agentRepository = agentRepository;
+    this.agentProvider = agentProvider;
+    this.sessionServiceProvider = sessionServiceProvider;
+    this.sessionRepository = sessionRepository;
+  }
+
+  public AgentSessionRuntime getOrStartRuntime(String agentId, String sessionId) {
+        final AgentSession session = StringUtils.isNotBlank(sessionId) ? sessionRepository.findById(sessionId).orElse(null) : null;
+        final AgentConfig agentConfig = getAgentConfig(agentId, session);
+        if (agentConfig == null) {
+            String errorMsg = STR."agentId \"\{agentId}\" has no resolved config";
+            LOG.error("Agent configuration resolution failed - agent_id={} error=\"{}\"",
+                    agentId, errorMsg);
+            throw new IllegalArgumentException(errorMsg);
+        }
+        agentConfig.validate();
+        final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+        return runtimes.computeIfAbsent(resolvedSessionId, _ -> createRuntime(resolvedSessionId, agentConfig, session == null));
+    }
+
+  private AgentSessionRuntime createRuntime(final String sessionId, final AgentConfig agentConfig,
+      final boolean createSession) {
+    final BaseSessionService sessionService = new ToolAwareSessionService(
+        sessionServiceProvider.get(agentConfig.getSessionStore()));
+    final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
+    final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
+    final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getAgentId()).sessionService(sessionService)
+        .build();
+
+    if (createSession) {
+      sessionService.createSession("APP", DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
+    }
+    return new AgentSessionRuntime(sessionId, runner);
+  }
+
+  private AgentConfig getAgentConfig(final String agentId, final AgentSession session) {
+    if (session != null) {
+      return agentRepository.findById(session.getAgentId()).orElse(null);
+    }
+    return _getConfig(agentId);
+  }
+
+  private AgentConfig _getConfig(final String agentId) {
+    if (StringUtils.isBlank(agentId)) {
+      throw new IllegalArgumentException("agentId cannot be blank");
+    } else {
+      return agentRepository.findById(agentId).orElse(null);
+    }
+  }
+}

@@ -7,15 +7,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.agents.AgentSessionRuntimeManager;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.agents.AgentRunner;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.handlers.BuildPromptRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
-import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
-import com.agentengine.interfaces.rest.services.AgentRuntime;
+import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.type.EventType;
 import com.google.adk.events.Event;
@@ -37,12 +37,12 @@ class AgentSseTest {
 
   @Test
   void eventsStreamEmitsListenerEvents() {
-    AgentRuntimeManager service = mock(AgentRuntimeManager.class);
+    AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
 
     when(service.getOrStartRuntime(eq("agent"), eq("config.json")))
-        .thenReturn(new AgentRuntime(null, runner, sessionService, "agent"));
+        .thenReturn(new AgentSessionRuntime("session", runner));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
 
@@ -125,11 +125,11 @@ class AgentSseTest {
         EventType.STEP_FINISHED, EventType.RUN_FINISHED);
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentRuntimeManager service) {
-    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service);
-    final BuildPromptRequestHandler buildPromptHandler = new BuildPromptRequestHandler(service);
-    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler);
-    return new HandlerInstance(List.of(invokeHandler, buildPromptHandler, streamingHandler, responsesHandler));
+  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
+    final AgentRunner agentRunner = mock(AgentRunner.class);
+    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
+    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler, agentRunner);
+    return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 }

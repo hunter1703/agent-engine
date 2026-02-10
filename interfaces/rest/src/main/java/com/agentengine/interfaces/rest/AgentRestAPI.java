@@ -2,17 +2,16 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.ConfigRepository;
+import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.utils.LoggingUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.models.AgentInfo;
 import com.agentengine.interfaces.rest.models.ListAgentsResponse;
 import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
-import com.agentengine.interfaces.rest.services.AgentRuntimeManager;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.Blocking;
@@ -20,16 +19,20 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,7 +41,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.logging.MDC;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -53,13 +55,13 @@ public class AgentRestAPI {
 
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
-  private final ConfigRepository configRepository;
+  private final AgentRepository agentRepository;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, ConfigRepository configRepository) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentRepository agentRepository) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
-    this.configRepository = configRepository;
+      this.agentRepository = agentRepository;
   }
 
   @POST
@@ -113,41 +115,41 @@ public class AgentRestAPI {
     return responseStream.map(JsonUtils::toMap);
   }
 
-  @GET
-  @Path("/agents")
-  @Operation(summary = "List available agents", description = "Returns a list of available agents for the Agent Console.")
-  @APIResponse(responseCode = "200", description = "List of available agents", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListAgentsResponse.class)))
-  public ListAgentsResponse listAgents() {
-    List<AgentInfo> agents = new ArrayList<>();
-
-    List<String> agentIds = configRepository.listAgentConfigs();
-    for (String agentId : agentIds) {
-      AgentInfo info = new AgentInfo();
-      info.setId(agentId);
-      info.setOwnedBy("agent-engine");
-      agents.add(info);
+  @POST
+  @Path("/agent")
+  @Operation(summary = "Create an agent", description = "Creates a new agent configuration.")
+  @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = AgentConfig.class)))
+  @APIResponse(responseCode = "409", description = "Agent already exists")
+  public AgentConfig createAgent(final AgentConfig agentConfig) {
+    if (agentConfig == null || StringUtils.isBlank(agentConfig.getAgentId())) {
+      throw new WebApplicationException("Agent ID is required", 400);
     }
-
-    return new ListAgentsResponse(agents);
+    agentConfig.validate();
+    agentRepository.save(agentConfig);
+    return agentConfig;
   }
 
-  @GET
+  @PUT
   @Path("/agent/{agentId}")
-  @Operation(summary = "Retrieve a specific agent", description = "Retrieves information about a specific agent for the Agent Console.")
-  @APIResponse(responseCode = "200", description = "Information about the requested agent", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentInfo.class)))
+  @Operation(summary = "Update an agent", description = "Updates an existing agent configuration.")
+  @APIResponse(responseCode = "200", description = "Agent updated", content = @Content(schema = @Schema(implementation = AgentConfig.class)))
   @APIResponse(responseCode = "404", description = "Agent not found")
-  public AgentInfo retrieveAgent(@PathParam("agentId") String agentId) {
-    try {
-      if (configRepository.loadAgentConfig(agentId) != null) {
-        AgentInfo info = new AgentInfo();
-        info.setId(agentId);
-        info.setOwnedBy("agent-engine");
-        return info;
-      }
-    } catch (Exception e) {
+  public AgentConfig updateAgent(@PathParam("agentId") final String agentId, final AgentConfig agentConfig) {
+    if (agentConfig == null || StringUtils.isBlank(agentId)) {
+      throw new WebApplicationException("Agent config is required", 400);
     }
+    agentConfig.setAgentId(agentId);
+    agentConfig.validate();
+    return agentRepository.save(agentConfig);
+  }
 
-    throw new WebApplicationException("Agent not found: " + agentId, 404);
+  @DELETE
+  @Path("/agent/{agentId}")
+  @Operation(summary = "Delete an agent", description = "Deletes an existing agent configuration.")
+  @APIResponse(responseCode = "204", description = "Agent deleted")
+  @APIResponse(responseCode = "404", description = "Agent not found")
+  public boolean deleteAgent(@PathParam("agentId") final String agentId) {
+    return agentRepository.deleteById(agentId);
   }
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {

@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest.models;
 
+import com.agentengine.engine.api.beans.config.AgentConfig;
 import java.time.Instant;
 
 public class AgentInfo {
@@ -8,6 +9,7 @@ public class AgentInfo {
     private String object = "agent";
     private long created;
     private String ownedBy;
+    private String name;
     private String description;
 
     public AgentInfo() {
@@ -53,11 +55,29 @@ public class AgentInfo {
         this.ownedBy = ownedBy;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getDescription() {
         return description;
     }
 
     public void setDescription(final String description) {
         this.description = description;
+    }
+    
+    public static AgentInfo fromAgentConfig(AgentConfig agentConfig) {
+        AgentInfo info = new AgentInfo();
+        info.setId(agentConfig.getAgentId());
+        info.setName(agentConfig.getName() != null ? agentConfig.getName() : agentConfig.getAgentId());
+        info.setDescription(agentConfig.getDescription());
+        info.setOwnedBy("agent-engine");
+        info.setCreated(java.time.Instant.now().getEpochSecond());
+        return info;
     }
 }

@@ -9,29 +9,39 @@ The REST module exposes HTTP endpoints and SSE events for the agent runtime.
 
 ## Protocol
 The REST API accepts the shared `AgentRequest` JSON shape in request bodies. Use `type` to
-switch between invoking the agent or building a prompt for `POST /agent/invoke`.
+switch between invoking the agent or building a prompt for `POST /v1/invoke`.
 
 ### Request Format
 Fields:
-- `agentName`: required; selects the agent builder (and config ID if Mongo is enabled).
+- `agentId`: required; selects the agent builder (and config ID if Mongo is enabled).
 - `agentConfigPath`: optional path to agent config JSON/YAML.
 - `sessionId`: optional session identifier; if omitted, one is generated.
 - `message`: required for invoke and events.
-- `type`: required for `/agent/invoke`; use `INVOKE_AGENT` or `BUILD_PROMPT`.
+- `type`: required for `/v1/invoke`; use `INVOKE_AGENT` or `BUILD_PROMPT`.
 
 ### Endpoints
-- `POST /agent/invoke`: run the agent for a single turn (`INVOKE_AGENT`) or build prompt (`BUILD_PROMPT`).
+- `POST /v1/invoke`: run the agent for a single turn (`INVOKE_AGENT`) or build prompt (`BUILD_PROMPT`).
   - Invoke response: `{ "sessionId": "...", "finalAnswer": "...", "thoughts": "..." }`.
   - Build prompt response: `{ "sessionId": "...", "messages": [ { "role": "system", "content": "..." } ] }`.
-- `POST /agent/events`: SSE stream of engine events.
-  - Request body: `agentName`, `agentConfigPath`, `sessionId`, `message`.
+- `POST /v1/events`: SSE stream of engine events.
+  - Request body: `agentId`, `agentConfigPath`, `sessionId`, `message`.
+- `POST /v1/responses`: SSE stream of responses API events.
+- `GET /v1/agents`: list agent configurations.
+- `GET /v1/agents/{agentId}`: retrieve agent configuration.
+- `POST /v1/agents`: create an agent configuration.
+- `PUT /v1/agents/{agentId}`: update an agent configuration.
+- `DELETE /v1/agents/{agentId}`: delete an agent configuration.
+- `GET /v1/agents/{agentId}/sessions`: list sessions for an agent (supports `pageSize`, `pageToken`, `userId`).
+- `GET /v1/agents/{agentId}/sessions/{sessionId}`: get session details and paginated events.
+- `POST /v1/catalog/search`: resource catalog search API (supports agents, sessions, and other resource types).
+- `GET /v1/catalog/{resourceType}/{id}`: resource catalog retrieval API.
 
 ### Examples
 Invoke:
 ```json
 {
   "type": "INVOKE_AGENT",
-  "agentName": "shell_agent",
+  "agentId": "shell_agent",
   "agentConfigPath": "configs/agents/shell_agent.json",
   "message": "List files"
 }
@@ -41,7 +51,7 @@ Build prompt:
 ```json
 {
   "type": "BUILD_PROMPT",
-  "agentName": "shell_agent",
+  "agentId": "shell_agent",
   "agentConfigPath": "configs/agents/shell_agent.json",
   "sessionId": "<existing-session-id>"
 }
@@ -50,7 +60,7 @@ Build prompt:
 Events:
 ```json
 {
-  "agentName": "shell_agent",
+  "agentId": "shell_agent",
   "sessionId": "<session-id>",
   "message": "List files"
 }

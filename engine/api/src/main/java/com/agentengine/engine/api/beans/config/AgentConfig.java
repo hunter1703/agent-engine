@@ -9,6 +9,9 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 public class AgentConfig implements Config {
   private String type;
   private String agentId;
+  private String name;
+  private String description;
+  private String avatar;
   private AgentModelConfig model;
   private SessionServiceConfig sessionStore = new InMemorySessionServiceConfig();
 
@@ -26,6 +29,30 @@ public class AgentConfig implements Config {
 
   public void setAgentId(final String agentId) {
     this.agentId = agentId;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(final String name) {
+    this.name = name;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(final String description) {
+    this.description = description;
+  }
+
+  public String getAvatar() {
+    return avatar;
+  }
+
+  public void setAvatar(final String avatar) {
+    this.avatar = avatar;
   }
 
   @Override

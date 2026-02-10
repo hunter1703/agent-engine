@@ -1,11 +1,7 @@
 package com.agentengine.engine.builders.model;
 
-import com.agentengine.engine.api.ConfigRepository;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.models.Gemini;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import jakarta.inject.Singleton;
 
 @Singleton

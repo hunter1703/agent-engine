@@ -14,8 +14,8 @@ public abstract class AbstractLLM extends BaseLlm {
   private final boolean toolCallingEnabled;
   private final boolean parseToolCallsFromText;
 
-  protected AbstractLLM(final String model, final Parser parser, final String protocol, final boolean toolCallingEnabled,
-      final boolean parseToolCallsFromText) {
+  protected AbstractLLM(final String model, final Parser parser, final String protocol,
+      final boolean toolCallingEnabled, final boolean parseToolCallsFromText) {
     super(model);
     this.parser = Objects.requireNonNull(parser, "parser cannot be null");
     this.protocol = Objects.requireNonNull(protocol, "protocol cannot be null");
