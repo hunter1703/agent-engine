@@ -63,17 +63,11 @@ public class ToolAwareSessionService implements BaseSessionService {
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
-    if (event == null) {
-      return Single.just(null);
-    }
     final Event decoratedEvent = decorateToolEvent(event);
     return delegate.appendEvent(session, decoratedEvent).map(ignored -> event);
   }
 
   private static Event decorateToolEvent(final Event event) {
-    if (event == null) {
-      return null;
-    }
     final Content content = event.content().orElse(null);
     if (content == null) {
       return event;
