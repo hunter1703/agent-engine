@@ -115,38 +115,6 @@ public class AgentRestAPI {
 
   @GET
   @Path("/agents")
-  @Operation(summary = "List available agents", description = "Returns a list of available agents")
-  @APIResponse(responseCode = "200", description = "List of available models", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListAgentsResponse.class)))
-  public ListAgentsResponse listModels() {
-    List<AgentInfo> models = new ArrayList<>();
-
-    // Add dynamic agents from the config repository
-    List<String> agentIds = configRepository.listAgentConfigs();
-    for (String agentId : agentIds) {
-      models.add(new AgentInfo(agentId, "agent-engine"));
-    }
-
-    return new ListAgentsResponse(models);
-  }
-
-  @GET
-  @Path("/models/{agent}")
-  @Operation(summary = "Retrieve a specific agent", description = "Retrieves information about a specific agent.")
-  @APIResponse(responseCode = "200", description = "Information about the requested model", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentInfo.class)))
-  @APIResponse(responseCode = "404", description = "Model not found")
-  public AgentInfo retrieveModel(@PathParam("agent") String agent) {
-    try {
-      if (configRepository.loadAgentConfig(agent) != null) {
-        return new AgentInfo(agent, "agent-engine");
-      }
-    } catch (Exception e) {
-    }
-
-    throw new WebApplicationException("Agent not found: " + agent, 404);
-  }
-
-  @GET
-  @Path("/agents")
   @Operation(summary = "List available agents", description = "Returns a list of available agents for the Agent Console.")
   @APIResponse(responseCode = "200", description = "List of available agents", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = ListAgentsResponse.class)))
   public ListAgentsResponse listAgents() {
@@ -164,7 +132,7 @@ public class AgentRestAPI {
   }
 
   @GET
-  @Path("/agents/{agentId}")
+  @Path("/agent/{agentId}")
   @Operation(summary = "Retrieve a specific agent", description = "Retrieves information about a specific agent for the Agent Console.")
   @APIResponse(responseCode = "200", description = "Information about the requested agent", content = @org.eclipse.microprofile.openapi.annotations.media.Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentInfo.class)))
   @APIResponse(responseCode = "404", description = "Agent not found")
