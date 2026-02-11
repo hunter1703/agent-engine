@@ -13,9 +13,4 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   public ModelRepository(MongoClientSupport mongoClientSupport) {
     super(mongoClientSupport, "Model", ModelConfig.class);
   }
-
-  @Override
-  protected String getId(ModelConfig entity) {
-    return entity.getModel();
-  }
 }

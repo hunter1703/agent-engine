@@ -7,7 +7,7 @@ import com.google.adk.sessions.BaseSessionService;
 public record AgentContext(AgentConfig agentConfig, BaseSessionService sessionService) {
 
   public String agentId() {
-    return agentConfig == null ? null : agentConfig.getAgentId();
+    return agentConfig == null ? null : agentConfig.getId();
   }
 
   public AgentModelConfig modelConfig() {

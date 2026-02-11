@@ -1,5 +1,6 @@
 package com.agentengine.engine.repository;
 
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -17,10 +18,12 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
 import dev.langchain4j.agent.tool.P;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
+import org.bson.BsonObjectId;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +40,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * @param <T>
  *          the entity type
  */
-public abstract class AbstractMongoRepository<T> implements Repository<T> {
+public abstract class AbstractMongoRepository<T extends BaseEntity> implements Repository<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoRepository.class);
 
@@ -52,23 +55,10 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
     this.entityClass = entityClass;
   }
 
-  protected String getIdField() {
-    return "_id";
-  }
-
-  /**
-   * Extract the ID from an entity
-   *
-   * @param entity
-   *          the entity
-   * @return the ID
-   */
-  protected abstract String getId(T entity);
-
   @Override
   public Optional<T> findById(String id) {
     try {
-      T document = getCollection().find(Filters.eq(getIdField(), id)).first();
+      T document = getCollection().find(Filters.eq("_id", id)).first();
       if (document != null) {
         return Optional.of(document);
       }
@@ -82,8 +72,11 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public T save(T entity) {
     try {
+      if (StringUtils.isBlank(entity.getId())) {
+        entity.setId(new ObjectId().toHexString());
+      }
       ReplaceOptions options = new ReplaceOptions().upsert(true);
-      getCollection().replaceOne(Filters.eq(getIdField(), getId(entity)), entity, options);
+      getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
       return entity;
     } catch (Exception e) {
       LOG.error("Error saving entity: {}", entity, e);
@@ -94,7 +87,7 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public boolean deleteById(String id) {
     try {
-      DeleteResult result = getCollection().deleteOne(Filters.eq(getIdField(), id));
+      DeleteResult result = getCollection().deleteOne(Filters.eq("_id", id));
       return result.getDeletedCount() > 0;
     } catch (Exception e) {
       LOG.error("Error deleting entity by ID: {}", id, e);

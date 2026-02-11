@@ -1,14 +1,15 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+import org.bson.codecs.pojo.annotations.BsonId;
 
 @JSONType(typeKey = "type", seeAlsoDefault = AgentConfig.class)
 @BsonDiscriminator(key = "type", value = "default")
-public class AgentConfig implements Config {
+public class AgentConfig extends BaseEntity implements Config {
   private String type;
-  private String agentId;
   private String name;
   private String description;
   private String avatar;
@@ -21,14 +22,6 @@ public class AgentConfig implements Config {
 
   public AgentConfig(AgentType agentType) {
     this.type = agentType.name().toLowerCase();
-  }
-
-  public String getAgentId() {
-    return agentId;
-  }
-
-  public void setAgentId(final String agentId) {
-    this.agentId = agentId;
   }
 
   public String getName() {
@@ -82,9 +75,6 @@ public class AgentConfig implements Config {
 
   @Override
   public void validate() {
-    if (StringUtils.isBlank(agentId)) {
-      throw new IllegalArgumentException("name is required");
-    }
     if (model == null) {
       throw new IllegalArgumentException("model is required");
     }

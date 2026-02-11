@@ -1,5 +1,6 @@
 package com.agentengine.engine.repository;
 
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
 
@@ -12,7 +13,7 @@ import java.util.Optional;
  * @param <T>
  *          the entity type
  */
-public interface Repository<T> {
+public interface Repository<T extends BaseEntity> {
 
   /**
    * Find an entity by its ID

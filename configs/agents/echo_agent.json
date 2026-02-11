@@ -1,6 +1,6 @@
 {
   "type": "default",
-  "agentId": "echo_agent",
+  "id": "echo_agent",
   "model": {
     "modelId": "qwen3_coder_30b_llamacpp",
     "role": "reasoning",

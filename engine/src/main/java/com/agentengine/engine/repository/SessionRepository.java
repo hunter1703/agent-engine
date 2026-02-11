@@ -16,11 +16,6 @@ public class SessionRepository extends AbstractMongoRepository<AgentSession> {
     super(mongoClientSupport, "Session", AgentSession.class);
   }
 
-  @Override
-  protected String getId(AgentSession entity) {
-    return entity.getId();
-  }
-
   public void updateTitle(String id, String title) {
     getCollection().findOneAndUpdate(Filters.eq("_id", id), Updates.set(AgentSession.FIELD_TITLE, title));
   }

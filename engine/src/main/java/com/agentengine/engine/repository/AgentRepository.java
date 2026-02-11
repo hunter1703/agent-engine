@@ -13,9 +13,4 @@ public class AgentRepository extends AbstractMongoRepository<AgentConfig> {
   public AgentRepository(MongoClientSupport mongoClientSupport) {
     super(mongoClientSupport, "Agent", AgentConfig.class);
   }
-
-  @Override
-  protected String getId(AgentConfig entity) {
-    return entity.getAgentId();
-  }
 }

@@ -1,14 +1,16 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import java.util.List;
+import org.bson.codecs.pojo.annotations.BsonId;
 
-public class ModelConfig implements Config {
+public class ModelConfig extends BaseEntity implements Config {
 
   public enum Provider {
     OLLAMA, OPEN_AI_COMPATIBLE, GEMINI
   }
-
+  
   private String baseUrl;
 
   private String type;
