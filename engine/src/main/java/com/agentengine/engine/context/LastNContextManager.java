@@ -6,10 +6,16 @@ import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class LastNContextManager extends BaseContextManager {
+  private static final Logger LOG = LoggerFactory.getLogger(LastNContextManager.class);
 
   public LastNContextManager(final int keepLast) {
     super(contents -> {
+      LOG.debug("Processing context with {} total contents, keeping last {} entries", contents.size(), keepLast);
+      
       final List<Content> recent = new ArrayList<>();
 
       int remaining = keepLast * 3;
@@ -18,6 +24,8 @@ public final class LastNContextManager extends BaseContextManager {
           break;
         }
         final String text = content.text();
+        LOG.debug("Processing content: text='{}', remaining={}", text, remaining);
+        
         if (text == null) {
           continue;
         }
@@ -27,13 +35,16 @@ public final class LastNContextManager extends BaseContextManager {
         if (length > 0) {
           final String trimmed = text.substring(actualLength - length, actualLength);
           recent.add(Content.builder().parts(Part.builder().text(trimmed).build()).build());
+          LOG.debug("Added trimmed content: '{}'", trimmed);
         }
         if (remaining == 0) {
           recent.add(
               Content.builder().parts(Part.builder().text("Following is the trimmed conversation").build()).build());
+          LOG.debug("Reached limit, adding trim indicator");
           break;
         }
       }
+      LOG.debug("Returning {} recent contents", recent.size());
       return recent.reversed();
     });
   }

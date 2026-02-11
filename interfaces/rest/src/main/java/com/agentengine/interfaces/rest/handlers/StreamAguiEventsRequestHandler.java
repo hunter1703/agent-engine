@@ -12,9 +12,12 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<Flowable<BaseEvent>> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StreamAguiEventsRequestHandler.class);
 
   @Inject
   public StreamAguiEventsRequestHandler(final AgentSessionRuntimeManager agentManager, final AgentRunner agentRunner) {
@@ -30,7 +33,15 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
   public Flowable<BaseEvent> handle(final AgentRequest request) {
     final AgentSessionRuntime runtime = getOrCreateRuntime(request);
     final AGUIEventMapper mapper = new AGUIEventMapper(runtime.sessionId(), request.getAgentId());
-    return agentRunner.runStreaming(runtime, request.getMessage()).concatMap(mapper::map).concatWith(Flowable.defer(mapper::onComplete))
+    return agentRunner.runStreaming(runtime, request.getMessage()).concatMap(event -> {
+      try {
+        return mapper.map(event);
+      } catch (Exception e) {
+        LOGGER.error("Error mapping event to AGUI event - session_id={} agent_id={} event={} error=\"{}\"",
+                runtime.sessionId(), request.getAgentId(), event, e.getMessage(), e);
+        return Flowable.error(e);
+      }
+            }).concatWith(Flowable.defer(mapper::onComplete))
         .onErrorResumeNext(mapper::onError);
   }
 }

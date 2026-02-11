@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.agentengine.engine.agents.AgentSessionRuntimeManager.DEFAULT_USER_ID;
+import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_APP;
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 
 @Singleton
@@ -48,7 +48,7 @@ public class AgentRunner {
 
   private Action updateTitle(final Runner runner, final String sessionId) {
     return () -> {
-      final Session session = Objects.requireNonNull(runner.sessionService().getSession("APP", DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
+      final Session session = Objects.requireNonNull(runner.sessionService().getSession(DEFAULT_APP, DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
       sessionTitleGenerator.generateTitle(session.events()).ifPresent(title -> {
         sessionRepository.updateTitle(sessionId, title);
       });

@@ -2,6 +2,7 @@ package com.agentengine.engine.api.beans.session;
 
 public class AgentSession {
   public static final String DEFAULT_USER_ID = "default";
+  public static final String DEFAULT_APP = "default";
   public static final String FIELD_TITLE = "title";
 
   private String id;

@@ -11,11 +11,13 @@ import static com.agentengine.engine.api.beans.config.SessionServiceConfig.Sessi
 @Singleton
 public class InMemorySessionServiceBuilder
     implements
-      SessionServiceBuilder<InMemorySessionServiceConfig, SharedInMemorySessionService> {
+      SessionServiceBuilder<InMemorySessionServiceConfig, InMemorySessionService> {
+
+  private static final InMemorySessionService SHARED_INSTANCE = new InMemorySessionService();
 
   @Override
-  public SharedInMemorySessionService build(final InMemorySessionServiceConfig sessionStoreConfig) {
-    return new SharedInMemorySessionService();
+  public InMemorySessionService build(final InMemorySessionServiceConfig sessionStoreConfig) {
+    return SHARED_INSTANCE;
   }
 
   @Override
