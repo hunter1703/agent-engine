@@ -45,6 +45,12 @@ public final class LastNContextManager extends BaseContextManager {
         }
       }
       LOG.debug("Returning {} recent contents", recent.size());
+      if (LOG.isDebugEnabled()) {
+        for (int i = 0; i < recent.size(); i++) {
+          Content c = recent.get(i);
+          LOG.debug("Final context content[{}] - text='{}'", i, c.text());
+        }
+      }
       return recent.reversed();
     });
   }

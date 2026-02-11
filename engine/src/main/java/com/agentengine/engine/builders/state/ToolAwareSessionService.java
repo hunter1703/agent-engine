@@ -69,10 +69,14 @@ public class ToolAwareSessionService implements BaseSessionService {
   public Single<Event> appendEvent(final Session session, final Event event) {
     LOG.debug("Appending event to session - event_id={}, author={}, content={}", 
               event.id(), event.author(), event.content().map(Content::text).orElse("null"));
+    LOG.debug("Event parts: {}", event.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+    
     final Event decoratedEvent = decorateToolEvent(event);
     LOG.debug("Decorated event - event_id={}, author={}, content={}", 
               decoratedEvent.id(), decoratedEvent.author(), 
               decoratedEvent.content().map(Content::text).orElse("null"));
+    LOG.debug("Decorated event parts: {}", decoratedEvent.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+              
     return delegate.appendEvent(session, decoratedEvent).map(ignored -> event);
   }
 
@@ -84,14 +88,21 @@ public class ToolAwareSessionService implements BaseSessionService {
       return event;
     }
     final List<Part> parts = content.parts().orElse(List.of());
+    LOG.debug("Event has {} parts", parts.size());
     if (parts.isEmpty()) {
       LOG.debug("Event has no parts, returning as-is");
       return event;
     }
+    LOG.debug("First part: {}", parts.getFirst());
     if (parts.getFirst().text().filter(StringUtils::isNotBlank).isPresent()) {
       LOG.debug("First part has text content, returning as-is");
       return event;
     }
+
+    boolean hasFunctionCall = parts.stream().anyMatch(p -> p.functionCall().isPresent());
+    boolean hasFunctionResponse = parts.stream().anyMatch(p -> p.functionResponse().isPresent());
+    LOG.debug("Event has functionCall: {}, functionResponse: {}", hasFunctionCall, hasFunctionResponse);
+    
     final String toolText = buildToolText(parts);
     LOG.debug("Built tool text: '{}'", toolText);
     if (StringUtils.isBlank(toolText)) {
@@ -110,6 +121,7 @@ public class ToolAwareSessionService implements BaseSessionService {
     LOG.debug("Building tool text from {} parts", parts.size());
     final StringBuilder builder = new StringBuilder();
     for (final Part part : parts) {
+      LOG.debug("Processing part: {}", part);
       part.functionCall().ifPresent(call -> {
         String formattedCall = formatToolCall(call);
         LOG.debug("Found function call: {}", formattedCall);
@@ -129,7 +141,7 @@ public class ToolAwareSessionService implements BaseSessionService {
   private static String formatToolCall(final FunctionCall call) {
     final String name = call.name().orElse("tool");
     final String args = JsonUtils.toJson(call.args().orElse(Map.of()));
-    String result = "Tool call: " + name + " " + args;
+    String result = STR."Tool call: \{name} \{args}";
     LOG.debug("Formatted tool call: {}", result);
     return result;
   }
@@ -137,7 +149,7 @@ public class ToolAwareSessionService implements BaseSessionService {
   private static String formatToolResponse(final FunctionResponse response) {
     final String name = response.name().orElse("tool");
     final String payload = JsonUtils.toJson(response.response().orElse(Map.of()));
-    String result = "Tool result: " + name + " " + payload;
+    String result = STR."Tool result: \{name} \{payload}";
     LOG.debug("Formatted tool response: {}", result);
     return result;
   }

@@ -4,10 +4,10 @@
   "model": {
     "modelId": "qwen3_coder_30b_llamacpp",
     "role": "reasoning",
-    "systemPrompt": "You are an echo-only assistant. For every user request, you must call the echo tool with the exact user input as the 'text' argument. Respond in JSON format with a 'toolCalls' array containing the echo tool call. Do not provide any other text or explanation.",
+    "systemPrompt": "You are an echo-only assistant.",
     "contextManagerConfig": {
       "type": "last_n",
-      "keepLast": 6
+      "keepLast": 100
     },
     "tools": {
       "enabled": ["echo"],
