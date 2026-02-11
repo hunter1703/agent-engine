@@ -1,10 +1,11 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.beans.NamedEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import java.util.List;
 
-public class ModelConfig extends BaseEntity implements Config {
+public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
     OLLAMA, OPEN_AI_COMPATIBLE, GEMINI
@@ -14,7 +15,6 @@ public class ModelConfig extends BaseEntity implements Config {
 
   private String type;
   private String model;
-  private String name;
   private Double temperature;
 
   private Integer topK;
@@ -67,14 +67,6 @@ public class ModelConfig extends BaseEntity implements Config {
 
   public void setModel(final String model) {
     this.model = model;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(final String name) {
-    this.name = name;
   }
 
   public Double getTemperature() {
@@ -202,7 +194,7 @@ public class ModelConfig extends BaseEntity implements Config {
     if (StringUtils.isBlank(type)) {
       throw new IllegalArgumentException("type is required");
     }
-    if (StringUtils.isBlank(name)) {
+    if (StringUtils.isBlank(getName())) {
       throw new IllegalArgumentException("name is required");
     }
   }

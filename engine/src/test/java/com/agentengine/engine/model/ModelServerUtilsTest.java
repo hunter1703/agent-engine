@@ -1,70 +1,67 @@
 package com.agentengine.engine.model;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.sun.net.httpserver.HttpServer;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.URI;
 import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
 
 class ModelServerUtilsTest {
 
-  @Test
-  void ensureRunningWaitsForReadyWhenReachable() throws IOException {
-    HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext("/v1/models", exchange -> {
-      exchange.sendResponseHeaders(404, -1);
-      exchange.close();
-    });
-    server.start();
-    try {
-      ModelConfig config = new ModelConfig();
-      config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
-      config.setBaseUrl("http://localhost:" + server.getAddress().getPort());
-      config.setModel("llama");
+    @Test
+    void generateServerConfig_setsCorrectValuesForOpenAiCompatible() {
+        ModelConfig config = new ModelConfig();
+        config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
+        config.setModel("test-model-path");
 
-      ModelServerUtils.ensureRunning(config);
-    } finally {
-      server.stop(0);
+        boolean result = ModelServerUtils.generateServerConfig(config);
+
+        assertTrue(result);
+        assertNotNull(config.getBaseUrl());
+        assertTrue(config.getBaseUrl().startsWith("http://127.0.0.1:"));
+        assertTrue(config.getBaseUrl().endsWith("/v1"));
+        
+        assertEquals("/opt/homebrew/bin/llama-server", config.getServerCommand());
+        
+        assertNotNull(config.getServerArgs());
+        assertTrue(config.getServerArgs().contains("-m"));
+        assertTrue(config.getServerArgs().contains("test-model-path"));
+        assertTrue(config.getServerArgs().contains("--host"));
+        assertTrue(config.getServerArgs().contains("127.0.0.1"));
+        assertTrue(config.getServerArgs().contains("--port"));
+        
+        // Extract the port from the base URL
+        String baseUrl = config.getBaseUrl();
+        String portStr = baseUrl.replace("http://127.0.0.1:", "").replace("/v1", "");
+        int port = Integer.parseInt(portStr);
+        assertTrue(port > 18000);
+        
+        // Check that the port in server args matches the one in the base URL
+        List<String> serverArgs = config.getServerArgs();
+        int portIndex = serverArgs.indexOf("--port");
+        if (portIndex != -1 && portIndex + 1 < serverArgs.size()) {
+            int serverPort = Integer.parseInt(serverArgs.get(portIndex + 1));
+            assertEquals(port, serverPort);
+        }
     }
-  }
 
-  @Test
-  void resolveAddressDefaultsPort() {
-    ModelServerUtils.ServerAddress address = ModelServerUtils.resolveAddress("http://localhost");
+    @Test
+    void generateServerConfig_returnsFalseForNonOpenAiCompatible() {
+        ModelConfig config = new ModelConfig();
+        config.setType(ModelConfig.Provider.OLLAMA.name());
 
-    assertThat(address).isNotNull();
-    assertThat(address.port()).isEqualTo(80);
-  }
+        boolean result = ModelServerUtils.generateServerConfig(config);
 
-  @Test
-  void resolveAddressDefaultsHttpsPort() {
-    ModelServerUtils.ServerAddress address = ModelServerUtils.resolveAddress("https://example.com");
+        assertFalse(result);
+        assertNull(config.getBaseUrl());
+        assertNull(config.getServerCommand());
+        assertNull(config.getServerArgs());
+    }
 
-    assertThat(address).isNotNull();
-    assertThat(address.port()).isEqualTo(443);
-  }
+    @Test
+    void generateServerConfig_handlesNullModelConfig() {
+        boolean result = ModelServerUtils.generateServerConfig(null);
 
-  @Test
-  void resolveAddressRejectsInvalidUrl() {
-    assertThat(ModelServerUtils.resolveAddress("http://bad host")).isNull();
-  }
-
-  @Test
-  void buildModelsEndpointNormalizesPath() {
-    URI endpoint = ModelServerUtils.buildModelsEndpoint("http://localhost:8080/api/");
-
-    assertThat(endpoint).isNotNull();
-    assertThat(endpoint.getPath()).isEqualTo("/api/models");
-  }
-
-  @Test
-  void buildModelsEndpointDefaultsToV1() {
-    URI endpoint = ModelServerUtils.buildModelsEndpoint("http://localhost:8080");
-
-    assertThat(endpoint).isNotNull();
-    assertThat(endpoint.getPath()).isEqualTo("/v1/models");
-  }
+        assertFalse(result);
+    }
 }

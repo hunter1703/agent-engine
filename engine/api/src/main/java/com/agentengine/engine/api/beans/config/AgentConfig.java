@@ -1,14 +1,14 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.beans.NamedEntity;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JSONType(typeKey = "type", seeAlsoDefault = AgentConfig.class)
 @BsonDiscriminator(key = "type", value = "default")
-public class AgentConfig extends BaseEntity implements Config {
+public class AgentConfig extends NamedEntity implements Config {
   private String type;
-  private String name;
   private String description;
   private String avatar;
   private AgentModelConfig model;
@@ -20,14 +20,6 @@ public class AgentConfig extends BaseEntity implements Config {
 
   public AgentConfig(AgentType agentType) {
     this.type = agentType.name().toLowerCase();
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(final String name) {
-    this.name = name;
   }
 
   public String getDescription() {

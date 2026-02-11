@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest.catalog;
 
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.utils.PaginatedResult;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -40,15 +41,33 @@ public class ResourceCatalogAPI {
   }
 
   @POST
-    @Path("/catalog/search")
-    @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
+    @Path("/catalog/list")
+    @Operation(summary = "List resources", description = "List resources of a specific type based on provided criteria.")
     @APIResponse(responseCode = "200", description = "List of resources",
         content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
-    public PaginatedResult<Object> searchResources(AssetRequest request) {
+    public PaginatedResult<NameIdEntity> listResources(AssetRequest request) {
         if (request == null || request.getAssetType() == null) {
             throw new WebApplicationException("Resource type is required", 400);
         }
         
+        NamedAssetHandler<?> handler = (NamedAssetHandler<?>) assetHandlers.get(request.getAssetType());
+        if (handler == null) {
+            throw new WebApplicationException(STR."Unsupported resource type: \{request.getAssetType()}", 400);
+        }
+
+      return handler.listAssets(request);
+    }
+
+    @POST
+    @Path("/catalog/search")
+    @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
+    @APIResponse(responseCode = "200", description = "List of resources",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
+    public PaginatedResult<Object> searchResources(AssetRequest request) {
+        if (request == null || request.getAssetType() == null) {
+            throw new WebApplicationException("Resource type is required", 400);
+        }
+
         AssetHandler<?> handler = assetHandlers.get(request.getAssetType());
         if (handler == null) {
             throw new WebApplicationException(STR."Unsupported resource type: \{request.getAssetType()}", 400);
@@ -64,9 +83,8 @@ public class ResourceCatalogAPI {
     @APIResponse(responseCode = "200", description = "Resource details",
         content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Object.class)))
     @APIResponse(responseCode = "404", description = "Resource not found")
-    public <T> T getResource(@PathParam("resourceType") String resourceType,
-                          @PathParam("id") String id,
-                          @QueryParam("projection") String projection) {
+    public <T extends BaseEntity> T getResource(@PathParam("resourceType") String resourceType,
+                                                @PathParam("id") String id) {
         if (resourceType == null || id == null) {
             throw new WebApplicationException("Resource type and ID are required", 400);
         }

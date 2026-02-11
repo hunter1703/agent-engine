@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -29,8 +30,125 @@ public final class ModelServerUtils {
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
   private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+  
+  // Constants for server configuration generation
+  private static final Random RANDOM = new Random();
+  private static final int MIN_PORT = 18000;
+  private static final int MAX_PORT = 65535;
 
   private ModelServerUtils() {
+  }
+
+  /**
+   * Generates server configuration for OPEN_AI_COMPATIBLE models.
+   *
+   * @param modelConfig The model configuration to update
+   * @return true if configuration was generated, false otherwise
+   */
+  public static boolean generateServerConfig(ModelConfig modelConfig) {
+    if (modelConfig == null) {
+      return false;
+    }
+
+    // Only generate for OPEN_AI_COMPATIBLE models
+    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().equalsIgnoreCase(modelConfig.getType())) {
+      return false;
+    }
+
+    // Generate a random port greater than 18000
+    int port = generateRandomPort();
+
+    // Set the base URL
+    String baseUrl = "http://127.0.0.1:" + port + "/v1";
+    modelConfig.setBaseUrl(baseUrl);
+
+    // Set the server command to always be llama-server
+    modelConfig.setServerCommand(getLlamaServerCommand());
+
+    // Build server args from the model property
+    List<String> serverArgs = buildServerArgs(modelConfig.getModel());
+    // Update the port in the server args to match the generated port
+    updatePortInServerArgs(serverArgs, port);
+    modelConfig.setServerArgs(serverArgs);
+
+    return true;
+  }
+
+  /**
+   * Generates a random port number greater than 18000.
+   *
+   * @return A random port number between MIN_PORT and MAX_PORT
+   */
+  private static int generateRandomPort() {
+    // Generate a random port between MIN_PORT and MAX_PORT
+    return RANDOM.nextInt((MAX_PORT - MIN_PORT) + 1) + MIN_PORT;
+  }
+
+  /**
+   * Gets the llama server command based on the operating system.
+   *
+   * @return The llama server command
+   */
+  private static String getLlamaServerCommand() {
+    // Determine the OS and return the appropriate command
+    String osName = System.getProperty("os.name").toLowerCase();
+
+    if (osName.contains("mac")) {
+      // On macOS, typically installed via Homebrew
+      return "/opt/homebrew/bin/llama-server";
+    } else if (osName.contains("win")) {
+      // On Windows, could be llama-server.exe in various locations
+      return "llama-server.exe";
+    } else {
+      // On Linux, could be in various locations
+      return "/usr/bin/llama-server";
+    }
+  }
+
+  /**
+   * Builds server arguments from the model path.
+   *
+   * @param model The model path
+   * @return A list of server arguments
+   */
+  private static List<String> buildServerArgs(String model) {
+    List<String> args = new ArrayList<>();
+
+    // Add the model argument
+    if (StringUtils.isNotBlank(model)) {
+      args.add("-m");
+      args.add(model);
+    }
+
+    // Add host and port arguments
+    args.add("--host");
+    args.add("127.0.0.1");
+
+    // Add port argument with placeholder that will be updated later
+    args.add("--port");
+    args.add("0"); // Placeholder, will be updated with the actual port
+
+    return args;
+  }
+
+  /**
+   * Updates the port argument in the server args to match the generated port.
+   *
+   * @param serverArgs The server arguments list
+   * @param port The port to set
+   */
+  public static void updatePortInServerArgs(List<String> serverArgs, int port) {
+    if (serverArgs == null) {
+      return;
+    }
+
+    // Find the --port argument and update its value
+    for (int i = 0; i < serverArgs.size(); i++) {
+      if ("--port".equals(serverArgs.get(i)) && i + 1 < serverArgs.size()) {
+        serverArgs.set(i + 1, String.valueOf(port));
+        break;
+      }
+    }
   }
 
   public static void ensureRunning(final ModelConfig config) {

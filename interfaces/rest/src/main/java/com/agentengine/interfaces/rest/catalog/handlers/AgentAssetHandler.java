@@ -5,6 +5,7 @@ import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
+import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -12,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
-public class AgentAssetHandler implements AssetHandler<AgentConfig> {
+public class AgentAssetHandler extends NamedAssetHandler<AgentConfig> {
 
   private static final String ASSET_TYPE = "agent";
 
