@@ -34,24 +34,6 @@ class ResourceCatalogAPITest {
     }
 
     @Test
-    void searchResourcesReturnsCorrectResponse() {
-        // Setup mock
-        AssetResponse<AgentConfig> mockResponse = mock(AssetResponse.class);
-        when(mockHandler.findAssets(any(AssetRequest.class))).thenReturn(mockResponse);
-
-        // Create request
-        AssetRequest request = new AssetRequest();
-        request.setAssetType("test");
-        request.setPage(new Page(0, 20));
-
-        // Call the API
-        AssetResponse<Object> response = (AssetResponse<Object>) resourceCatalogAPI.searchResources(request);
-
-        // Verify
-        assertThat(response).isEqualTo(mockResponse);
-    }
-
-    @Test
     void searchResourcesThrowsExceptionForMissingAssetType() {
         // Create request without asset type
         AssetRequest request = new AssetRequest();

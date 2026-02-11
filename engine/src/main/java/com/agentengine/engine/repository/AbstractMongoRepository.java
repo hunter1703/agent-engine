@@ -8,6 +8,7 @@ import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -67,10 +68,9 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public Optional<T> findById(String id) {
     try {
-      MongoCollection<Document> collection = getCollection();
-      Document document = collection.find(Filters.eq(getIdField(), id)).first();
+      T document = getCollection().find(Filters.eq(getIdField(), id)).first();
       if (document != null) {
-        return Optional.of(fromDocument(document));
+        return Optional.of(document);
       }
       return Optional.empty();
     } catch (Exception e) {
@@ -82,17 +82,8 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public T save(T entity) {
     try {
-      MongoCollection<Document> collection = getCollection();
-      Document document = toDocument(entity);
-      String id = getId(entity);
-
-      // If ID field is not set in the document, add it
-      if (!document.containsKey(getIdField()) && id != null) {
-        document.put(getIdField(), id);
-      }
-
       ReplaceOptions options = new ReplaceOptions().upsert(true);
-      collection.replaceOne(Filters.eq(getIdField(), id), document, options);
+      getCollection().replaceOne(Filters.eq(getIdField(), getId(entity)), entity, options);
       return entity;
     } catch (Exception e) {
       LOG.error("Error saving entity: {}", entity, e);
@@ -103,12 +94,11 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public boolean deleteById(String id) {
     try {
-      MongoCollection<Document> collection = getCollection();
-      DeleteResult result = collection.deleteOne(Filters.eq(getIdField(), id));
+      DeleteResult result = getCollection().deleteOne(Filters.eq(getIdField(), id));
       return result.getDeletedCount() > 0;
     } catch (Exception e) {
       LOG.error("Error deleting entity by ID: {}", id, e);
-      throw new RuntimeException("Error deleting entity by ID: " + id, e);
+      throw new RuntimeException(STR."Error deleting entity by ID: \{id}", e);
     }
   }
 
@@ -118,8 +108,9 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
       Page page = query == null ? null : query.getPage();
       page = page == null ? new Page() : page;
       List<T> entities = new ArrayList<>();
-      for (Document document : getCollection().find().skip(page.getOffset()).limit(page.getLimit())) {
-        entities.add(fromDocument(document));
+      final FindIterable<T> iter = getCollection().find(entityClass).skip(page.getOffset()).limit(page.getLimit());
+      for (T document : iter) {
+        entities.add(document);
       }
       return PaginatedResult.create(entities, page);
     } catch (Exception e) {
@@ -130,45 +121,15 @@ public abstract class AbstractMongoRepository<T> implements Repository<T> {
   @Override
   public long count() {
     try {
-      MongoCollection<Document> collection = getCollection();
+      MongoCollection<T> collection = getCollection();
       return collection.countDocuments();
     } catch (Exception e) {
       LOG.error("Error counting entities", e);
       throw new RuntimeException("Error counting entities", e);
     }
   }
-
-  /**
-   * Convert an entity to a MongoDB Document
-   *
-   * @param entity
-   *          the entity
-   * @return the document representation
-   */
-  protected Document toDocument(T entity) {
-    String json = JsonUtils.toJson(entity);
-    return Document.parse(json);
-  }
-
-  /**
-   * Convert a MongoDB Document to an entity
-   *
-   * @param document
-   *          the document
-   * @return the entity
-   */
-  protected T fromDocument(Document document) {
-    String json = document.toJson();
-    return JsonUtils.fromJson(json, entityClass);
-  }
-
-  /**
-   * Get the collection for this repository
-   *
-   * @return the MongoDB collection
-   */
-  protected MongoCollection<Document> getCollection() {
-    return mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName);
+  protected MongoCollection<T> getCollection() {
+    return mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName, entityClass);
   }
 
   private MongoClient createClient(MongoClientSupport mongoClientSupport) {
