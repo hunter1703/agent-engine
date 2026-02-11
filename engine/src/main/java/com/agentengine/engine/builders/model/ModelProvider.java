@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 @Singleton
@@ -30,7 +31,7 @@ public class ModelProvider {
   }
 
   public BaseLlm get(final AgentModelConfig config) {
-    final ModelConfig modelConfig = modelRepository.findById(config.getModelId()).orElse(null);
+    final ModelConfig modelConfig = Objects.requireNonNull(modelRepository.findById(config.getModelId()).orElse(null));
     final ModelBuilder<? extends BaseLlm> builder = typeVsBuilder.getOrDefault(modelConfig.getType().toLowerCase(),
         defaultBuilder);
     return builder.build(modelConfig);

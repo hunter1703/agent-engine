@@ -1,5 +1,7 @@
 {
+  "id": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M",
   "model": "DeepSeek-R1-Distill-Qwen-14B-Q4_K_M",
+  "name": "DeepSeek R1 Distill Qwen 14B",
   "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17002/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",

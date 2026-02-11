@@ -1,5 +1,7 @@
 {
+  "id": "qwen2.5-1.5b-instruct-q5_k_m",
   "model": "qwen2.5-1.5b-instruct-q5_k_m",
+  "name": "Qwen2.5 1.5B Instruct",
   "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17000/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",

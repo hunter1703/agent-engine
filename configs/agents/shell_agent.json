@@ -1,13 +1,14 @@
 {
   "type": "default",
   "id": "shell_agent",
+  "name": "Shell Agent",
   "model": {
     "modelId": "qwen3_coder_30b_llamacpp",
     "role": "reasoning",
     "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
     "contextManagerConfig": {
       "type": "last_n",
-      "keepLast": 10
+      "keepLast": 100
     },
     "tools": {
       "enabled": ["run_cmd"],

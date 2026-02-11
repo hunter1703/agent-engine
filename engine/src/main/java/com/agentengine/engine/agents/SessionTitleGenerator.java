@@ -2,8 +2,10 @@ package com.agentengine.engine.agents;
 
 import static java.lang.StringTemplate.STR;
 
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.model.OpenAIModelBuilder;
 import com.agentengine.engine.utils.SessionUtils;
 import com.google.adk.events.Event;
@@ -28,11 +30,12 @@ public final class SessionTitleGenerator {
 
   private final BaseLlm titleGeneratorModel;
 
-  public SessionTitleGenerator(OpenAIModelBuilder openAIModelBuilder) {
-    final ModelConfig modelConfig = new ModelConfig();
-    modelConfig.setModel("qwen2.5-1.5b-instruct-q5_k_m");
-    modelConfig.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
-    this.titleGeneratorModel = openAIModelBuilder.build(modelConfig);
+  public SessionTitleGenerator(ModelProvider modelProvider) {
+    final AgentModelConfig agentModelConfig = new AgentModelConfig();
+    agentModelConfig.setRole("system");
+    agentModelConfig.setSystemPrompt("You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
+    agentModelConfig.setModelId("qwen2.5-1.5b-instruct-q5_k_m");
+    this.titleGeneratorModel = modelProvider.get(agentModelConfig);
   }
 
   public Optional<String> generateTitle(final List<Event> events) {

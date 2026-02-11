@@ -1,5 +1,7 @@
 {
+  "id": "qwq-32b",
   "model": "qwq-32b",
+  "name": "QwQ 32B",
   "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://127.0.0.1:17004/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
