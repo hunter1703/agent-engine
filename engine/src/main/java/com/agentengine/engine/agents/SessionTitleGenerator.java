@@ -31,6 +31,7 @@ public final class SessionTitleGenerator {
   public SessionTitleGenerator(OpenAIModelBuilder openAIModelBuilder) {
     final ModelConfig modelConfig = new ModelConfig();
     modelConfig.setModel("qwen2.5-1.5b-instruct-q5_k_m");
+    modelConfig.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
     this.titleGeneratorModel = openAIModelBuilder.build(modelConfig);
   }
 

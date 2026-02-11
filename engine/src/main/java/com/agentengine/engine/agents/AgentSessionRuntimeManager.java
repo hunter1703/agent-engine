@@ -1,5 +1,6 @@
 package com.agentengine.engine.agents;
 
+import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
 import static java.lang.StringTemplate.STR;
 
@@ -17,6 +18,7 @@ import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Singleton;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -27,7 +29,6 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class AgentSessionRuntimeManager {
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRuntimeManager.class);
-  public static final String DEFAULT_USER_ID = "default";
 
   private final AgentRepository agentRepository;
   private final AgentProvider agentProvider;
@@ -61,14 +62,18 @@ public class AgentSessionRuntimeManager {
       final boolean createSession) {
     final BaseSessionService sessionService = new ToolAwareSessionService(
         sessionServiceProvider.get(agentConfig.getSessionStore()));
+
+    if (createSession) {
+      LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getAgentId(), sessionId);
+      sessionService.createSession("APP", DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
+      sessionRepository.save(new AgentSession(sessionId, agentConfig.getAgentId(), "New Session"));
+    }
+    
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
     final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
     final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getAgentId()).sessionService(sessionService)
         .build();
 
-    if (createSession) {
-      sessionService.createSession("APP", DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
-    }
     return new AgentSessionRuntime(sessionId, runner);
   }
 

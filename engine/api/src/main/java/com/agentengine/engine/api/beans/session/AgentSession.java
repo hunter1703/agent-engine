@@ -1,6 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
 public class AgentSession {
+  public static final String DEFAULT_USER_ID = "default";
   public static final String FIELD_TITLE = "title";
 
   private String id;
@@ -13,12 +14,12 @@ public class AgentSession {
   public AgentSession() {
   }
 
-  public AgentSession(String id, String agentId, String userId, long createdAt, long updatedAt, String title) {
+  public AgentSession(String id, String agentId, String title) {
     this.id = id;
     this.agentId = agentId;
-    this.userId = userId;
-    this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
+    this.userId = DEFAULT_USER_ID;
+    this.createdAt = System.currentTimeMillis();
+    this.updatedAt = System.currentTimeMillis();
     this.title = title;
   }
 
