@@ -129,7 +129,8 @@ class AgentSseTest {
     final AgentRunner agentRunner = mock(AgentRunner.class);
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler, agentRunner);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,
+        agentRunner);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 }

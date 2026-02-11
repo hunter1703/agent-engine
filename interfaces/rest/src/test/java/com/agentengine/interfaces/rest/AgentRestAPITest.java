@@ -10,7 +10,6 @@ import com.agentengine.engine.agents.AgentRunner;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
-import com.agentengine.interfaces.rest.dto.PromptResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
@@ -25,17 +24,14 @@ import com.google.adk.events.Event;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
-import com.google.adk.sessions.ListEventsResponse;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
-import io.reactivex.rxjava3.core.Single;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
-import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -47,8 +43,7 @@ class AgentRestAPITest {
     AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "config.json"))
-        .thenReturn(new AgentSessionRuntime("session", runner));
+    when(service.getOrStartRuntime("agent", "config.json")).thenReturn(new AgentSessionRuntime("session", runner));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
     Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
@@ -77,8 +72,7 @@ class AgentRestAPITest {
     AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "config.json"))
-        .thenReturn(new AgentSessionRuntime("session", runner));
+    when(service.getOrStartRuntime("agent", "config.json")).thenReturn(new AgentSessionRuntime("session", runner));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
@@ -100,7 +94,6 @@ class AgentRestAPITest {
     assertThat(invokeResponse.finalAnswer()).isNull();
   }
 
-
   @Test
   void resourceRunsOnVirtualThread() {
     assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
@@ -113,26 +106,28 @@ class AgentRestAPITest {
     when(configRepository.findById("agent")).thenReturn(Optional.empty()); // Return empty when not found
     when(configRepository.save(config)).thenReturn(config);
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)), configRepository);
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
+        configRepository);
 
     final AgentConfig response = resource.createAgent(config);
 
     assertThat(response).isInstanceOf(AgentConfig.class);
     final AgentConfig created = response;
-    assertThat(created.getAgentId()).isEqualTo("agent");
+    assertThat(created.getId()).isEqualTo("agent");
   }
 
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
     final AgentRunner agentRunner = mock(AgentRunner.class);
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler, agentRunner);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,
+        agentRunner);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 
   private static AgentConfig buildValidAgentConfig() {
     final AgentConfig config = new AgentConfig();
-    config.setAgentId("agent");
+    config.setId("agent");
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model");
     modelConfig.setSystemPrompt("system");

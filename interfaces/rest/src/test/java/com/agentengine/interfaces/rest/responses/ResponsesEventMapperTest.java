@@ -71,8 +71,7 @@ class ResponsesEventMapperTest {
     assertThat(messageAdded.getItem()).containsEntry("type", "message");
     assertThat(messageDone.getItem()).containsEntry("type", "message");
     assertThat(messageDone.getItem()).containsEntry("role", "assistant");
-    assertThat(messageDone.getItem()).containsEntry("content",
-        List.of(Map.of("type", "output_text", "text", "Hello")));
+    assertThat(messageDone.getItem()).containsEntry("content", List.of(Map.of("type", "output_text", "text", "Hello")));
   }
 
   @Test
@@ -97,8 +96,8 @@ class ResponsesEventMapperTest {
         .concatMap(mapper::map).toList().blockingGet();
 
     final OutputItemAddedEventData toolCallAddedEventData = (OutputItemAddedEventData) responses.get(0);
-    assertThat(toolCallAddedEventData.getItem()).containsEntry("name", "weather")
-        .containsEntry("arguments", "").containsEntry("call_id", "call-1");
+    assertThat(toolCallAddedEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments", "")
+        .containsEntry("call_id", "call-1");
 
     final ToolCallEventData toolCallEventData = (ToolCallEventData) responses.get(1);
     assertThat(toolCallEventData.getItem()).containsEntry("name", "weather").containsEntry("arguments",
@@ -128,17 +127,13 @@ class ResponsesEventMapperTest {
     final List<BaseResponsesEventData> responses = Flowable.just(startEvent, chunkEvent, toolCallStartEvent)
         .concatMap(mapper::map).toList().blockingGet();
 
-    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly(
-        "response.output_item.added",
-        "response.output_text.delta",
-        "response.output_item.done",
-        "response.output_item.added");
+    assertThat(responses).extracting(BaseResponsesEventData::getType).containsExactly("response.output_item.added",
+        "response.output_text.delta", "response.output_item.done", "response.output_item.added");
 
     final OutputItemDoneEventData messageDone = (OutputItemDoneEventData) responses.get(2);
     assertThat(messageDone.getItem()).containsEntry("type", "message");
     assertThat(messageDone.getItem()).containsEntry("role", "assistant");
-    assertThat(messageDone.getItem()).containsEntry("content",
-        List.of(Map.of("type", "output_text", "text", "Hello")));
+    assertThat(messageDone.getItem()).containsEntry("content", List.of(Map.of("type", "output_text", "text", "Hello")));
   }
 
   @Test

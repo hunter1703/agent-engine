@@ -4,7 +4,6 @@ import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
 
-import java.util.List;
 import java.util.Optional;
 
 /**

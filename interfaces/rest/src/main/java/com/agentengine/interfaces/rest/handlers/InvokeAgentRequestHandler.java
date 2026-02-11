@@ -34,7 +34,8 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
 
     try {
       final AgentSessionRuntime runtime = getOrCreateRuntime(request);
-      final AgentRunResult result = AgentRunResult.fromEvents(agentRunner.run(runtime, request.getMessage()).toList().blockingGet());
+      final AgentRunResult result = AgentRunResult
+          .fromEvents(agentRunner.run(runtime, request.getMessage()).toList().blockingGet());
       LOG.info(
           "Agent invocation handler completed - agent_id={} session_id={} operation=agent.invoke.complete outcome=success",
           request.getAgentId(), request.getSessionId());

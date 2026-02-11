@@ -48,7 +48,8 @@ public class AgentRunner {
 
   private Action updateTitle(final Runner runner, final String sessionId) {
     return () -> {
-      final Session session = Objects.requireNonNull(runner.sessionService().getSession(DEFAULT_APP, DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
+      final Session session = Objects.requireNonNull(
+          runner.sessionService().getSession(DEFAULT_APP, DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
       sessionTitleGenerator.generateTitle(session.events()).ifPresent(title -> {
         sessionRepository.updateTitle(sessionId, title);
       });

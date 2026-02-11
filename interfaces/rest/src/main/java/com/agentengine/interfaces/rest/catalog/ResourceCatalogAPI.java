@@ -30,16 +30,16 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 @Tag(name = "Catalog", description = "Resource catalog APIs")
 @RunOnVirtualThread
 public class ResourceCatalogAPI {
-    
-    private final Map<String, AssetHandler<?>> assetHandlers;
-    
-    @Inject
-    public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
-        this.assetHandlers = handlers.stream()
-            .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
-    }
-    
-    @POST
+
+  private final Map<String, AssetHandler<?>> assetHandlers;
+
+  @Inject
+  public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
+    this.assetHandlers = handlers.stream()
+        .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
+  }
+
+  @POST
     @Path("/catalog/search")
     @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
     @APIResponse(responseCode = "200", description = "List of resources",
@@ -57,8 +57,8 @@ public class ResourceCatalogAPI {
         //noinspection unchecked
         return (PaginatedResult<Object>) handler.findAssets(request);
     }
-    
-    @GET
+
+  @GET
     @Path("/catalog/{resourceType}/{id}")
     @Operation(summary = "Get resource by ID", description = "Retrieves a specific resource by its ID.")
     @APIResponse(responseCode = "200", description = "Resource details",

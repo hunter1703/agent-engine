@@ -2,7 +2,6 @@ package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.Page;
 import com.agentengine.engine.utils.PaginatedResult;
@@ -16,10 +15,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
-import dev.langchain4j.agent.tool.P;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
-import org.bson.BsonObjectId;
-import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;

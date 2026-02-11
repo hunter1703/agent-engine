@@ -18,7 +18,7 @@ class AgentConfigTest {
   @Test
   void validateRequiresNameAndModels() {
     AgentConfig config = new AgentConfig();
-    config.setAgentId("agent");
+    config.setId("agent");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class);
 

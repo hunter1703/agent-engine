@@ -15,7 +15,7 @@ public final class LastNContextManager extends BaseContextManager {
   public LastNContextManager(final int keepLast) {
     super(contents -> {
       LOG.debug("Processing context with {} total contents, keeping last {} entries", contents.size(), keepLast);
-      
+
       final List<Content> recent = new ArrayList<>();
 
       int remaining = keepLast * 3;
@@ -25,7 +25,7 @@ public final class LastNContextManager extends BaseContextManager {
         }
         final String text = content.text();
         LOG.debug("Processing content: text='{}', remaining={}", text, remaining);
-        
+
         if (text == null) {
           continue;
         }

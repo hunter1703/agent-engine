@@ -8,8 +8,6 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.models.AgentInfo;
-import com.agentengine.interfaces.rest.models.ListAgentsResponse;
 import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agui.core.event.BaseEvent;
@@ -20,19 +18,15 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.MediaType;
-import java.util.ArrayList;
-import java.util.List;
+
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,7 +55,7 @@ public class AgentRestAPI {
   public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentRepository agentRepository) {
     this.handlers = handlers.stream()
         .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
-      this.agentRepository = agentRepository;
+    this.agentRepository = agentRepository;
   }
 
   @POST
@@ -121,7 +115,7 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = AgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
   public AgentConfig createAgent(final AgentConfig agentConfig) {
-    if (agentConfig == null || StringUtils.isBlank(agentConfig.getAgentId())) {
+    if (agentConfig == null || StringUtils.isBlank(agentConfig.getId())) {
       throw new WebApplicationException("Agent ID is required", 400);
     }
     agentConfig.validate();
@@ -138,7 +132,7 @@ public class AgentRestAPI {
     if (agentConfig == null || StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent config is required", 400);
     }
-    agentConfig.setAgentId(agentId);
+    agentConfig.setId(agentId);
     agentConfig.validate();
     return agentRepository.save(agentConfig);
   }

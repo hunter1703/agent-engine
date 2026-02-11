@@ -4,9 +4,6 @@ import com.agentengine.engine.agents.AgentRunner;
 import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agentengine.engine.agents.AgentSessionRuntimeManager;
 import com.agentengine.engine.api.AgentRequest;
-import com.agentengine.engine.api.utils.StringUtils;
-
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +16,7 @@ public abstract class AbstractAgentRequestHandler<T> implements AgentRequestHand
 
   public AbstractAgentRequestHandler(AgentSessionRuntimeManager agentManager, AgentRunner agentRunner) {
     this.agentManager = agentManager;
-      this.agentRunner = agentRunner;
+    this.agentRunner = agentRunner;
   }
 
   protected AgentSessionRuntime getOrCreateRuntime(final AgentRequest request) {

@@ -47,7 +47,7 @@ class ToolRegistryTest {
     toolsConfig.setConfigs(toolConfigs);
 
     AgentConfig config = new AgentConfig();
-    config.setAgentId("test-agent");
+    config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
     List<BaseTool> tools = registry.loadTools(context, toolsConfig);
 
@@ -77,7 +77,7 @@ class ToolRegistryTest {
     toolsConfig.setEnabled(List.of("planning"));
 
     AgentConfig config = new AgentConfig();
-    config.setAgentId("test-agent");
+    config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
     List<BaseTool> tools = registry.loadTools(context, toolsConfig);
 
@@ -92,7 +92,7 @@ class ToolRegistryTest {
 
     ToolRegistry registry = new ToolRegistry(providers);
     AgentConfig config = new AgentConfig();
-    config.setAgentId("other-agent");
+    config.setId("other-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
     assertThat(registry.loadTools(context, new ToolsConfig())).isEmpty();
     assertThat(registry.loadTools(context, null)).isEmpty();

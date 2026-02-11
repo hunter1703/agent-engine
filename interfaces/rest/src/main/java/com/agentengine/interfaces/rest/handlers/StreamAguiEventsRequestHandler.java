@@ -6,9 +6,6 @@ import com.agentengine.engine.agents.AgentSessionRuntimeManager;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agui.core.event.BaseEvent;
-import com.google.adk.events.Event;
-import com.google.genai.types.Content;
-import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -38,10 +35,9 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
         return mapper.map(event);
       } catch (Exception e) {
         LOGGER.error("Error mapping event to AGUI event - session_id={} agent_id={} event={} error=\"{}\"",
-                runtime.sessionId(), request.getAgentId(), event, e.getMessage(), e);
+            runtime.sessionId(), request.getAgentId(), event, e.getMessage(), e);
         return Flowable.error(e);
       }
-            }).concatWith(Flowable.defer(mapper::onComplete))
-        .onErrorResumeNext(mapper::onError);
+    }).concatWith(Flowable.defer(mapper::onComplete)).onErrorResumeNext(mapper::onError);
   }
 }

@@ -5,11 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.nio.file.Paths;
 import java.util.Optional;
 
 import com.agentengine.engine.agents.AgentSessionRuntimeManager;
@@ -37,7 +35,7 @@ class AgentSessionRuntimeManagerTest {
     when(agentProvider.get(eq(agentConfig), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
-    final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider, 
+    final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
         sessionServiceProvider, null);
 
     final AgentSessionRuntime resolved = service.getOrStartRuntime("agent", "config.json");
@@ -64,7 +62,8 @@ class AgentSessionRuntimeManagerTest {
     final AgentSessionRuntime resolved = service.getOrStartRuntime("agent", null);
 
     assertThat(resolved.sessionId()).isNotBlank(); // Verify that a session ID is returned
-    // Note: ConfigLoader is no longer used in the constructor, so we can't verify it's never called
+    // Note: ConfigLoader is no longer used in the constructor, so we can't verify
+    // it's never called
   }
 
   @Test
@@ -90,8 +89,8 @@ class AgentSessionRuntimeManagerTest {
 
   @Test
   void resolveEngineRejectsMissingAgentId() {
-    final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(mock(AgentRepository.class), mock(AgentProvider.class),
-        mock(SessionServiceProvider.class), null);
+    final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(mock(AgentRepository.class),
+        mock(AgentProvider.class), mock(SessionServiceProvider.class), null);
 
     assertThatThrownBy(() -> service.getOrStartRuntime(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentId");
@@ -107,13 +106,13 @@ class AgentSessionRuntimeManagerTest {
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
         mock(SessionServiceProvider.class), null);
 
-    assertThatThrownBy(() -> service.getOrStartRuntime("agent", null))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("agentId");
+    assertThatThrownBy(() -> service.getOrStartRuntime("agent", null)).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("agentId");
   }
 
   private static AgentConfig buildValidAgentConfig() {
     final AgentConfig config = new AgentConfig();
-    config.setAgentId("agent");
+    config.setId("agent");
     config.setModel(model("reasoner.json"));
     return config;
   }

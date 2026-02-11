@@ -7,14 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.SessionTitleGenerator;
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.builders.model.OpenAIModelBuilder;
 import com.agentengine.engine.model.DelegatingLLMModel;
-import com.agentengine.engine.repository.AgentRepository;
 import com.google.adk.events.Event;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -35,14 +31,12 @@ class SessionTitleGeneratorTest {
     final DelegatingLLMModel model = mock(DelegatingLLMModel.class);
     when(modelBuilder.build(modelConfig)).thenReturn(model);
     final LlmResponse response = LlmResponse.builder()
-        .content(Content.builder().role("model").parts(Part.builder().text("\"Title\"").build()).build())
-        .build();
+        .content(Content.builder().role("model").parts(Part.builder().text("\"Title\"").build()).build()).build();
     when(model.generateContent(any(LlmRequest.class), eq(false))).thenReturn(Flowable.just(response));
 
     final SessionTitleGenerator generator = new SessionTitleGenerator(modelBuilder);
     final Event event = Event.builder().id("event-1").author("user")
-        .content(Content.builder().role("user").parts(Part.builder().text("hello").build()).build())
-        .build();
+        .content(Content.builder().role("user").parts(Part.builder().text("hello").build()).build()).build();
 
     final Optional<String> title = generator.generateTitle(List.of(event));
 

@@ -19,7 +19,6 @@ import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Singleton;
 
-import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -65,15 +64,14 @@ public class AgentSessionRuntimeManager {
         sessionServiceProvider.get(agentConfig.getSessionStore()));
 
     if (createSession) {
-      LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getAgentId(), sessionId);
+      LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
       sessionService.createSession(DEFAULT_APP, DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
-      sessionRepository.save(new AgentSession(sessionId, agentConfig.getAgentId(), "New Session"));
+      sessionRepository.save(new AgentSession(sessionId, agentConfig.getId(), "New Session"));
     }
-    
+
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
     final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
-    final Runner runner = Runner.builder().agent(agent).appName(DEFAULT_APP).sessionService(sessionService)
-        .build();
+    final Runner runner = Runner.builder().agent(agent).appName(DEFAULT_APP).sessionService(sessionService).build();
 
     return new AgentSessionRuntime(sessionId, runner);
   }

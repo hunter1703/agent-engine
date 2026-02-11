@@ -59,7 +59,7 @@ class SimpleAgentBuilderTest {
     modelConfig.setSystemPrompt("prompt");
 
     final AgentConfig config = new AgentConfig();
-    config.setAgentId("agent-id");
+    config.setId("agent-id");
     config.setModel(modelConfig);
 
     final SimpleAgent agent = builder.build(config, new AgentContext(config, null));
@@ -99,7 +99,7 @@ class SimpleAgentBuilderTest {
     modelConfig.setSystemPrompt("prompt");
 
     final AgentConfig config = new AgentConfig();
-    config.setAgentId("agent-id");
+    config.setId("agent-id");
     config.setModel(modelConfig);
 
     final SimpleAgent agent = builder.build(config, new AgentContext(config, null));

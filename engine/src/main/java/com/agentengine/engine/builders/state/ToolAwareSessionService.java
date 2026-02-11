@@ -67,16 +67,17 @@ public class ToolAwareSessionService implements BaseSessionService {
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
-    LOG.debug("Appending event to session - event_id={}, author={}, content={}", 
-              event.id(), event.author(), event.content().map(Content::text).orElse("null"));
-    LOG.debug("Event parts: {}", event.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
-    
+    LOG.debug("Appending event to session - event_id={}, author={}, content={}", event.id(), event.author(),
+        event.content().map(Content::text).orElse("null"));
+    LOG.debug("Event parts: {}",
+        event.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+
     final Event decoratedEvent = decorateToolEvent(event);
-    LOG.debug("Decorated event - event_id={}, author={}, content={}", 
-              decoratedEvent.id(), decoratedEvent.author(), 
-              decoratedEvent.content().map(Content::text).orElse("null"));
-    LOG.debug("Decorated event parts: {}", decoratedEvent.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
-              
+    LOG.debug("Decorated event - event_id={}, author={}, content={}", decoratedEvent.id(), decoratedEvent.author(),
+        decoratedEvent.content().map(Content::text).orElse("null"));
+    LOG.debug("Decorated event parts: {}",
+        decoratedEvent.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+
     return delegate.appendEvent(session, decoratedEvent).map(ignored -> event);
   }
 
@@ -102,7 +103,7 @@ public class ToolAwareSessionService implements BaseSessionService {
     boolean hasFunctionCall = parts.stream().anyMatch(p -> p.functionCall().isPresent());
     boolean hasFunctionResponse = parts.stream().anyMatch(p -> p.functionResponse().isPresent());
     LOG.debug("Event has functionCall: {}, functionResponse: {}", hasFunctionCall, hasFunctionResponse);
-    
+
     final String toolText = buildToolText(parts);
     LOG.debug("Built tool text: '{}'", toolText);
     if (StringUtils.isBlank(toolText)) {

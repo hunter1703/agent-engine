@@ -16,7 +16,7 @@ public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<F
 
   @Inject
   public StreamResponsesRequestHandler(final AgentSessionRuntimeManager agentManager,
-                                       StreamAguiEventsRequestHandler eventsRequestHandler, AgentRunner agentRunner) {
+      StreamAguiEventsRequestHandler eventsRequestHandler, AgentRunner agentRunner) {
     super(agentManager, agentRunner);
     this.eventsRequestHandler = eventsRequestHandler;
   }

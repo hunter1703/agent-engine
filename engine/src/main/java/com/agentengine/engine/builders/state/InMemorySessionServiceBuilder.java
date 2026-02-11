@@ -2,7 +2,6 @@ package com.agentengine.engine.builders.state;
 
 import com.agentengine.engine.api.beans.config.InMemorySessionServiceConfig;
 import com.agentengine.engine.api.builders.SessionServiceBuilder;
-import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.InMemorySessionService;
 import jakarta.inject.Singleton;
 
