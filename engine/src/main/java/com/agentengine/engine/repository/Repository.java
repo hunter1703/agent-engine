@@ -23,6 +23,10 @@ public interface Repository<T extends BaseEntity> {
    */
   Optional<T> findById(String id);
 
+  T insert(T entity);
+
+  T update(String id, T entity);
+
   /**
    * Save an entity. If the entity already exists, it will be updated.
    *

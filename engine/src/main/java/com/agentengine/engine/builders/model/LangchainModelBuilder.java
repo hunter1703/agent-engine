@@ -2,7 +2,7 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.*;
-import com.agentengine.engine.model.ModelServerUtils;
+import com.agentengine.engine.model.ModelUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
@@ -47,7 +47,7 @@ public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangC
       case ModelConfig.Provider.OLLAMA -> new ChatModels(buildOllama(modelConfig, responseFormat),
           buildOllamaStreaming(modelConfig, responseFormat), responseFormat);
       case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
-        ModelServerUtils.ensureRunning(modelConfig);
+        ModelUtils.ensureRunning(modelConfig);
         yield new ChatModels(buildOpenAI(modelConfig, responseFormat),
             buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
       }

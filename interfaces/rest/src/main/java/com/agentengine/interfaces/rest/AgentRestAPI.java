@@ -119,7 +119,7 @@ public class AgentRestAPI {
       throw new WebApplicationException("Agent ID is required", 400);
     }
     agentConfig.validate();
-    agentRepository.save(agentConfig);
+    agentRepository.insert(agentConfig);
     return agentConfig;
   }
 
@@ -132,9 +132,8 @@ public class AgentRestAPI {
     if (agentConfig == null || StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent config is required", 400);
     }
-    agentConfig.setId(agentId);
     agentConfig.validate();
-    return agentRepository.save(agentConfig);
+    return agentRepository.update(agentId, agentConfig);
   }
 
   @DELETE

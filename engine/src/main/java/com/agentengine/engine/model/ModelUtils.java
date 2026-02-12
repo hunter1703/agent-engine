@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class ModelServerUtils {
-  private static final Logger LOGGER = Logger.getLogger(ModelServerUtils.class.getName());
+public final class ModelUtils {
+  private static final Logger LOGGER = Logger.getLogger(ModelUtils.class.getName());
   private static final Duration READY_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration READY_POLL_INTERVAL = Duration.ofMillis(500);
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
@@ -36,7 +36,7 @@ public final class ModelServerUtils {
   private static final int MIN_PORT = 18000;
   private static final int MAX_PORT = 65535;
 
-  private ModelServerUtils() {
+  private ModelUtils() {
   }
 
   /**
@@ -59,7 +59,7 @@ public final class ModelServerUtils {
     int port = generateRandomPort();
 
     // Set the base URL
-    String baseUrl = "http://127.0.0.1:" + port + "/v1";
+    String baseUrl = STR."http://127.0.0.1:\{port}/v1";
     modelConfig.setBaseUrl(baseUrl);
 
     // Set the server command to always be llama-server

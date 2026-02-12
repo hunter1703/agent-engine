@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
-class ModelServerUtilsTest {
+class ModelUtilsTest {
 
     @Test
     void generateServerConfig_setsCorrectValuesForOpenAiCompatible() {
@@ -14,7 +14,7 @@ class ModelServerUtilsTest {
         config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
         config.setModel("test-model-path");
 
-        boolean result = ModelServerUtils.generateServerConfig(config);
+        boolean result = ModelUtils.generateServerConfig(config);
 
         assertTrue(result);
         assertNotNull(config.getBaseUrl());
@@ -50,7 +50,7 @@ class ModelServerUtilsTest {
         ModelConfig config = new ModelConfig();
         config.setType(ModelConfig.Provider.OLLAMA.name());
 
-        boolean result = ModelServerUtils.generateServerConfig(config);
+        boolean result = ModelUtils.generateServerConfig(config);
 
         assertFalse(result);
         assertNull(config.getBaseUrl());
@@ -60,7 +60,7 @@ class ModelServerUtilsTest {
 
     @Test
     void generateServerConfig_handlesNullModelConfig() {
-        boolean result = ModelServerUtils.generateServerConfig(null);
+        boolean result = ModelUtils.generateServerConfig(null);
 
         assertFalse(result);
     }

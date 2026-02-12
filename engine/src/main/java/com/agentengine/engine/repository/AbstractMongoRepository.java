@@ -20,6 +20,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.types.ObjectId;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,12 +67,41 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   }
 
   @Override
-  public T save(T entity) {
+  public T insert(T entity) {
     try {
       if (StringUtils.isBlank(entity.getId())) {
         entity.setId(new ObjectId().toHexString());
       }
-      ReplaceOptions options = new ReplaceOptions().upsert(true);
+      getCollection().insertOne(entity);
+      return entity;
+    } catch (Exception e) {
+      LOG.error("Error saving entity: {}", entity, e);
+      throw new RuntimeException("Error saving entity", e);
+    }
+  }
+
+  @Override
+  public T update(String id, T entity) {
+    return _update(id, entity, false);
+  }
+
+  @Override
+  public T save(T entity) {
+    try {
+      if (StringUtils.isBlank(entity.getId())) {
+        return insert(entity);
+      }
+      return _update(entity.getId(), entity, true);
+    } catch (Exception e) {
+      LOG.error("Error saving entity: {}", entity, e);
+      throw new RuntimeException("Error saving entity", e);
+    }
+  }
+
+  private T _update(final String id, final T entity, final boolean upsert) {
+    try {
+      entity.setId(id);
+      ReplaceOptions options = new ReplaceOptions().upsert(upsert);
       getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
       return entity;
     } catch (Exception e) {

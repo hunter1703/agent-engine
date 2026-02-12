@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.model.ModelServerUtils;
+import com.agentengine.engine.model.ModelUtils;
 import com.agentengine.engine.repository.ModelRepository;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
@@ -17,7 +17,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 
-import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -62,16 +61,7 @@ public class ModelRestAPI {
       throw new WebApplicationException("Model ID is required", 400);
     }
     modelConfig.validate();
-
-    // Check if model already exists
-    if (modelRepository.findById(modelConfig.getId()).isPresent()) {
-      throw new WebApplicationException("Model already exists", 409);
-    }
-
-    // Generate server configuration for OPEN_AI_COMPATIBLE models
-    ModelServerUtils.generateServerConfig(modelConfig);
-
-    modelRepository.save(modelConfig);
+    modelRepository.insert(modelConfig);
     return modelConfig;
   }
 
@@ -84,31 +74,8 @@ public class ModelRestAPI {
     if (modelConfig == null || StringUtils.isBlank(modelId)) {
       throw new WebApplicationException("Model config is required", 400);
     }
-
-    // Ensure the ID in the path matches the ID in the payload
-    if (!modelId.equals(modelConfig.getId())) {
-      throw new WebApplicationException("Model ID in path does not match ID in request body", 400);
-    }
-
     modelConfig.validate();
-
-    // Check if model exists
-    if (modelRepository.findById(modelId).isEmpty()) {
-      throw new WebApplicationException("Model not found", 404);
-    }
-
-    // Do NOT regenerate server configuration on update - preserve existing values
-    // Get the existing model to preserve server configuration if it's an OPEN_AI_COMPATIBLE model
-    ModelConfig existingModel = modelRepository.findById(modelId).orElse(null);
-    if (existingModel != null && 
-        ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().equalsIgnoreCase(existingModel.getType())) {
-      // Preserve the existing server configuration
-      modelConfig.setBaseUrl(existingModel.getBaseUrl());
-      modelConfig.setServerCommand(existingModel.getServerCommand());
-      modelConfig.setServerArgs(existingModel.getServerArgs());
-    }
-
-    return modelRepository.save(modelConfig);
+    return modelRepository.update(modelId, modelConfig);
   }
 
   @DELETE
