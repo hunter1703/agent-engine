@@ -95,10 +95,7 @@ public class AgentRestAPI {
   @Blocking
   @Operation(summary = "Stream agent responses", description = "Invoke the agent and stream events in Responses API format.")
   @APIResponse(responseCode = "200", description = "SSE event stream")
-  public Publisher<Map<String, Object>> responses(final Map<String, Object> requestMap) {
-    LOG.debug("Agent responses streaming request - requestMap={}", JsonUtils.toJson(requestMap));
-
-    final ResponsesApiRequest request = JsonUtils.fromMap(requestMap, ResponsesApiRequest.class);
+  public Publisher<Map<String, Object>> responses(final ResponsesApiRequest request) {
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
 
     @SuppressWarnings("unchecked")

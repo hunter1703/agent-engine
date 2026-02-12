@@ -34,7 +34,7 @@ public final class SessionTitleGenerator {
     final AgentModelConfig agentModelConfig = new AgentModelConfig();
     agentModelConfig.setRole("system");
     agentModelConfig.setSystemPrompt("You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
-    agentModelConfig.setModelId("qwen2.5-1.5b-instruct-q5_k_m");
+    agentModelConfig.setModelId("qwen2_5_1_5b_instruct");
     this.titleGeneratorModel = modelProvider.get(agentModelConfig);
   }
 

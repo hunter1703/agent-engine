@@ -31,6 +31,13 @@ public final class JsonUtils {
     return JSON.parseObject(json, clazz);
   }
 
+  public static <T> T fromStream(final InputStream inputStream, final Class<T> clazz) {
+    if (inputStream == null) {
+      return null;
+    }
+    return JSON.parseObject(inputStream, clazz);
+  }
+
   public static <T> T fromJson(final String json, final TypeReference<T> typeReference) {
     if (json == null || json.isBlank()) {
       return null;
