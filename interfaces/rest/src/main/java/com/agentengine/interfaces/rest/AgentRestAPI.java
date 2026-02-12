@@ -112,12 +112,11 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = AgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
   public AgentConfig createAgent(final AgentConfig agentConfig) {
-    if (agentConfig == null || StringUtils.isBlank(agentConfig.getId())) {
-      throw new WebApplicationException("Agent ID is required", 400);
+    if (agentConfig == null) {
+      throw new WebApplicationException("Agent config is required", 400);
     }
     agentConfig.validate();
-    agentRepository.insert(agentConfig);
-    return agentConfig;
+    return agentRepository.insert(agentConfig);
   }
 
   @PUT

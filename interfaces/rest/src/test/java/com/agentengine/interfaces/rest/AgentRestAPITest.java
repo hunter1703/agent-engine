@@ -33,8 +33,8 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.stubbing.Answer;
 
 class AgentRestAPITest {
 
@@ -103,8 +103,7 @@ class AgentRestAPITest {
   void createAgentStoresConfig() {
     final AgentRepository configRepository = mock(AgentRepository.class);
     final AgentConfig config = buildValidAgentConfig();
-    when(configRepository.findById("agent")).thenReturn(Optional.empty()); // Return empty when not found
-    when(configRepository.save(config)).thenReturn(config);
+    when(configRepository.insert(config)).thenReturn(config);
 
     final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
         configRepository);
@@ -114,6 +113,21 @@ class AgentRestAPITest {
     assertThat(response).isInstanceOf(AgentConfig.class);
     final AgentConfig created = response;
     assertThat(created.getId()).isEqualTo("agent");
+  }
+
+  @Test
+  void createAgentGeneratesIdWhenMissing() {
+    final AgentRepository configRepository = mock(AgentRepository.class);
+    final AgentConfig config = buildValidAgentConfig();
+    config.setId(null);
+    when(configRepository.insert(any(AgentConfig.class))).thenAnswer(assignId("generated-id"));
+
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
+        configRepository);
+
+    final AgentConfig response = resource.createAgent(config);
+
+    assertThat(response.getId()).isEqualTo("generated-id");
   }
 
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
@@ -133,5 +147,15 @@ class AgentRestAPITest {
     modelConfig.setSystemPrompt("system");
     config.setModel(modelConfig);
     return config;
+  }
+
+  private static Answer<AgentConfig> assignId(final String id) {
+    return invocation -> {
+      final AgentConfig config = invocation.getArgument(0);
+      if (config.getId() == null) {
+        config.setId(id);
+      }
+      return config;
+    };
   }
 }
