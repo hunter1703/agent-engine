@@ -98,6 +98,22 @@ class ToolRegistryTest {
     assertThat(registry.loadTools(context, null)).isEmpty();
   }
 
+  @Test
+  void loadToolsSkipsWhenNoEnabledTools() {
+    ToolProvider provider = buildProvider("fake");
+    Instance<ToolProvider> providers = mock(Instance.class);
+    when(providers.iterator()).thenReturn(List.of(provider).iterator());
+    when(providers.stream()).thenReturn(Stream.of(provider));
+
+    ToolRegistry registry = new ToolRegistry(providers);
+    AgentConfig config = new AgentConfig();
+    config.setId("test-agent");
+    AgentContext context = new AgentContext(config, new InMemorySessionService());
+    ToolsConfig toolsConfig = new ToolsConfig();
+
+    assertThat(registry.loadTools(context, toolsConfig)).isEmpty();
+  }
+
   private static Map<String, Object> anyMap() {
     return any();
   }

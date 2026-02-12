@@ -72,10 +72,11 @@ public final class ToolRegistry {
   }
 
   private static Set<String> resolveEnabledTools(final ToolsConfig toolsConfig) {
-    final List<String> enabledTools = CollectionUtils.isEmpty(toolsConfig.getEnabled())
-        ? List.of(ALL_TOOLS)
-        : toolsConfig.getEnabled();
+    final List<String> enabledTools = CollectionUtils.nullSafeList(toolsConfig.getEnabled());
     final Set<String> resolved = new LinkedHashSet<>(enabledTools);
+    if (resolved.isEmpty() && CollectionUtils.isEmpty(toolsConfig.getStandardTools())) {
+      return resolved;
+    }
     if (hasPlanningGroup(resolved) || hasPlanningGroup(toolsConfig.getStandardTools())) {
       resolved.addAll(PLANNING_TOOL_NAMES);
     }
