@@ -55,7 +55,7 @@ Endpoints:
 Runtime settings:
 
 - `PLUGIN_DIR` (env or system property) points to a directory of plugin JARs (default `plugins`)
-- `MONGODB_CONNECTION_STRING` is read from the environment (default `mongodb://localhost:27002`)
+- `MONGODB_CONNECTION_STRING` is read from the environment (default ``mongodb://localhost:27002``)
 - `sessionStore.type: mongodb` persists session state/events in Mongo (`SessionState`, plus `_app_state`/`_user_state`)
 
 ## Testing

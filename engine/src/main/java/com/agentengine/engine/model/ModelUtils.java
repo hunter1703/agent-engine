@@ -40,12 +40,12 @@ public final class ModelUtils {
   }
 
   /**
-   * Generates server configuration for OPEN_AI_COMPATIBLE models.
+   * Generates server configuration for OPEN_AI_COMPATIBLE models when no explicit server settings exist.
    *
    * @param modelConfig The model configuration to update
    * @return true if configuration was generated, false otherwise
    */
-  public static boolean generateServerConfig(ModelConfig modelConfig) {
+  public static boolean generateServerConfig(final ModelConfig modelConfig) {
     if (modelConfig == null) {
       return false;
     }
@@ -55,18 +55,24 @@ public final class ModelUtils {
       return false;
     }
 
+    if (StringUtils.isNotBlank(modelConfig.getBaseUrl())
+        || StringUtils.isNotBlank(modelConfig.getServerCommand())
+        || CollectionUtils.isNotEmpty(modelConfig.getServerArgs())) {
+      return false;
+    }
+
     // Generate a random port greater than 18000
-    int port = generateRandomPort();
+    final int port = generateRandomPort();
 
     // Set the base URL
-    String baseUrl = STR."http://127.0.0.1:\{port}/v1";
+    final String baseUrl = STR."http://127.0.0.1:\{port}/v1";
     modelConfig.setBaseUrl(baseUrl);
 
     // Set the server command to always be llama-server
     modelConfig.setServerCommand(getLlamaServerCommand());
 
     // Build server args from the model property
-    List<String> serverArgs = buildServerArgs(modelConfig.getModel());
+    final List<String> serverArgs = buildServerArgs(modelConfig.getModel());
     // Update the port in the server args to match the generated port
     updatePortInServerArgs(serverArgs, port);
     modelConfig.setServerArgs(serverArgs);

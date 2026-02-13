@@ -35,9 +35,6 @@ public class ModelConfig extends NamedEntity implements Config {
 
   private boolean toolCallingEnabled = false;
   private boolean toolCallingSupported;
-
-  private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
-
   private String serverCommand;
 
   private List<String> serverArgs;
@@ -155,14 +152,6 @@ public class ModelConfig extends NamedEntity implements Config {
 
   public void setToolCallingSupported(final boolean toolCallingSupported) {
     this.toolCallingSupported = toolCallingSupported;
-  }
-
-  public ContextManagerConfig getContextManagerConfig() {
-    return contextManagerConfig;
-  }
-
-  public void setContextManagerConfig(final ContextManagerConfig contextManagerConfig) {
-    this.contextManagerConfig = contextManagerConfig;
   }
 
   public String getServerCommand() {

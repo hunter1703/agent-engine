@@ -64,4 +64,21 @@ class ModelUtilsTest {
 
         assertFalse(result);
     }
+
+    @Test
+    void generateServerConfig_doesNotOverrideExplicitServerConfig() {
+        final ModelConfig config = new ModelConfig();
+        config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
+        config.setModel("qwen2.5-1.5b-instruct");
+        config.setBaseUrl("http://127.0.0.1:19000/v1");
+        config.setServerCommand("/custom/llama-server");
+        config.setServerArgs(List.of("--host", "127.0.0.1", "--port", "19000"));
+
+        final boolean result = ModelUtils.generateServerConfig(config);
+
+        assertFalse(result);
+        assertEquals("http://127.0.0.1:19000/v1", config.getBaseUrl());
+        assertEquals("/custom/llama-server", config.getServerCommand());
+        assertEquals(List.of("--host", "127.0.0.1", "--port", "19000"), config.getServerArgs());
+    }
 }

@@ -33,6 +33,9 @@ only.
 ```
 
 ## OPEN_AI_COMPATIBLE Auto-Start
+Auto-generated server settings are only applied when `baseUrl`, `serverCommand`, and `serverArgs`
+are omitted from the model configuration.
+
 ```json
 {
   "type": "OPEN_AI_COMPATIBLE",
