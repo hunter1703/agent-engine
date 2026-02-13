@@ -10,6 +10,7 @@ mockito = "5.11.0"
 ag-ui = "0.0.1"
 ok-http = "4.12.0"
 langchain4j-plugin = "1.8.0"
+microprofile-openapi = "3.1.1"
 
 [libraries]
 # BOMs
@@ -55,6 +56,7 @@ fastjson2 = { group = "com.alibaba.fastjson2", name = "fastjson2", version = "2.
 jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
 mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
+microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = "microprofile-openapi-api", version.ref = "microprofile-openapi" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

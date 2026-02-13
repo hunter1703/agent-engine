@@ -7,6 +7,16 @@ The REST module exposes HTTP endpoints and SSE events for the agent runtime.
 ./gradlew :interfaces:rest:quarkusDev
 ```
 
+## OpenAPI
+Generate the spec files with:
+```bash
+./gradlew :interfaces:rest:quarkusBuild
+```
+
+The schemas are written to `interfaces/rest/build/openapi/agent-engine.json` and
+`interfaces/rest/build/openapi/agent-engine.yaml`. When running in dev mode, the spec is
+also available at `http://localhost:8080/q/openapi` (append `?format=yaml` for YAML).
+
 ## Protocol
 The REST API accepts the shared `AgentRequest` JSON shape in request bodies. Use `type` to
 switch between invoking the agent or building a prompt for `POST /v1/invoke`.

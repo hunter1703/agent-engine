@@ -2,7 +2,10 @@ package com.agentengine.interfaces.rest.responses.dtos;
 
 import java.util.Map;
 import com.alibaba.fastjson2.annotation.JSONField;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+@Schema(oneOf = {MessageStartedEventData.class, ToolCallAddedEventData.class, ToolCallResultEventData.class,
+    ReasoningAddedEventData.class})
 public class OutputItemAddedEventData extends BaseResponsesEventData {
   private final Map<String, Object> item;
   @JSONField(name = "output_index")

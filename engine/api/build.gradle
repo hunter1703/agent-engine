@@ -6,6 +6,7 @@ dependencies {
     api libs.fastjson2
     api libs.mongodb.bson
     api libs.google.adk.core
+    api libs.microprofile.openapi.api
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml
     implementation libs.jinjava
