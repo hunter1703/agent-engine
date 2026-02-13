@@ -33,22 +33,17 @@ if [[ -z "$port" || "$port" == "$MONGODB_CONNECTION_STRING" ]]; then
   port=27002
 fi
 
-image="agent-engine-mongodb"
 container="agent-engine-mongodb"
 
 if [[ "$force" == "true" ]]; then
   docker rm -f "$container" >/dev/null 2>&1 || true
 fi
 
-if [[ "$force" == "true" ]] || ! docker image inspect "$image" >/dev/null 2>&1; then
-  docker build -t "$image" -f "$(dirname "$0")/Dockerfile.mongodb" "$(dirname "$0")"
-fi
-
 if ! docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
   if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
     docker start "$container" >/dev/null
   else
-    docker run -d --name "$container" -p "${port}:27017" "$image" >/dev/null
+    docker run -d --name "$container" -p "${port}:27017" mongo:latest >/dev/null
   fi
 fi
 
