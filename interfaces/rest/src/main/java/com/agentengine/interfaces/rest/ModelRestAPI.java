@@ -57,9 +57,6 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "201", description = "Model created", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
   public ModelConfig createModel(final ModelConfig modelConfig) {
-    if (modelConfig == null || StringUtils.isBlank(modelConfig.getId())) {
-      throw new WebApplicationException("Model ID is required", 400);
-    }
     modelConfig.validate();
     modelRepository.insert(modelConfig);
     return modelConfig;
