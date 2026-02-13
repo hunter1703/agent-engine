@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONPath;
 import com.alibaba.fastjson2.JSONWriter;
 import com.alibaba.fastjson2.TypeReference;
 import com.alibaba.fastjson2.filter.PropertyFilter;
+import com.google.adk.JsonBaseModel;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,6 +60,22 @@ public final class JsonUtils {
     }
     // noinspection unchecked
     return (Map<String, Object>) JSON.toJSON(obj);
+  }
+
+  public static Map<String, Object> toJacksonMap(final Object obj) {
+    if (obj == null) {
+      return null;
+    }
+    return JsonBaseModel.getMapper().convertValue(obj,
+            new com.fasterxml.jackson.core.type.TypeReference<>() {
+            });
+  }
+
+  public static <T> T fromJacksonMap(final Map<String, Object> map, final Class<T> clazz) {
+    if (map == null) {
+      return null;
+    }
+    return JsonBaseModel.getMapper().convertValue(map, clazz);
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {

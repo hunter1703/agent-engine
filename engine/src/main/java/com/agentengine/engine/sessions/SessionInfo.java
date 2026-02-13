@@ -2,26 +2,24 @@ package com.agentengine.engine.sessions;
 
 import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.JsonUtils;
-import com.google.adk.JsonBaseModel;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.time.Instant;
-import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
 import org.bson.codecs.pojo.annotations.BsonId;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@BsonDiscriminator(value = "session_info")
 public class SessionInfo extends BaseEntity {
+    private static final Logger LOG = LoggerFactory.getLogger(SessionInfo.class);
+
     private String appName;
     private String userId;
     private Map<String, Object> state = new HashMap<>();
@@ -39,7 +37,7 @@ public class SessionInfo extends BaseEntity {
         this.events = session.events() == null
                 ? new ArrayList<>()
                 : session.events().stream()
-                .map(JsonUtils::toMap)
+                .map(JsonUtils::toJacksonMap)
                 .toList();
         this.lastUpdateTime = session.lastUpdateTime().toEpochMilli();
     }
@@ -55,7 +53,11 @@ public class SessionInfo extends BaseEntity {
                 if (eventMap == null) {
                     continue;
                 }
-                sessionEvents.add(JsonUtils.fromMap(eventMap, Event.class));
+                try {
+                    sessionEvents.add(JsonUtils.fromJacksonMap(eventMap, Event.class));
+                } catch (IllegalArgumentException ex) {
+                    LOG.debug("Skipping invalid event payload", ex);
+                }
             }
         }
         final Session.Builder builder = Session.builder(getId())
@@ -107,8 +109,8 @@ public class SessionInfo extends BaseEntity {
         this.events = events;
     }
 
-    public double getLastUpdateTime() {
-        return lastUpdateTime == null ? 0.0 : lastUpdateTime;
+    public Long getLastUpdateTime() {
+        return lastUpdateTime;
     }
 
     public void setLastUpdateTime(final Long lastUpdateTime) {
