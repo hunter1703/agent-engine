@@ -1,47 +1,40 @@
 package com.agentengine.engine.sessions;
 
 import com.agentengine.engine.api.utils.StringUtils;
-import com.google.adk.JsonBaseModel;
+import com.agentengine.engine.repository.AbstractMongoRepository;
+import com.agentengine.engine.utils.Query;
 import com.google.adk.events.Event;
-import com.google.adk.events.EventActions;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.GetSessionConfig;
 import com.google.adk.sessions.ListEventsResponse;
 import com.google.adk.sessions.ListSessionsResponse;
 import com.google.adk.sessions.Session;
-import com.google.adk.sessions.State;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
+import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class MongoSessionService implements BaseSessionService {
+public final class MongoSessionService extends AbstractMongoRepository<SessionInfo> implements BaseSessionService {
   private static final Logger LOG = LoggerFactory.getLogger(MongoSessionService.class);
-  private final MongoCollection<Session> sessionCollection;
 
-  public MongoSessionService(final MongoClient mongoClient, final String database, final String collection) {
-    Objects.requireNonNull(mongoClient, "mongoClient cannot be null");
-    this.sessionCollection = mongoClient.getDatabase(database).getCollection(collection, Session.class);
+  public MongoSessionService(final MongoClientSupport clientSupport) {
+    super(clientSupport, "Session", SessionInfo.class);
   }
 
   @Override
@@ -57,17 +50,18 @@ public final class MongoSessionService implements BaseSessionService {
         .events(new ArrayList<>())
         .lastUpdateTime(Instant.now())
         .build();
-    persistSession(session);
+    save(new SessionInfo(session));
     return Single.just(session);
   }
 
   @Override
   public Maybe<Session> getSession(final String appName, final String userId, final String sessionId,
       final Optional<GetSessionConfig> config) {
-    final Session session = sessionCollection.find(Filters.eq("_id", sessionId), Session.class).first();
-    if (session == null) {
+    final SessionInfo sessionInfo = findById(sessionId).orElse(null);
+    if (sessionInfo == null) {
       return Maybe.empty();
     }
+    final Session session = sessionInfo.toSession();
     final List<Event> events = filterEvents(session.events(), config.orElse(null));
     final Session.Builder builder = Session.builder(session.id())
         .appName(session.appName())
@@ -81,21 +75,22 @@ public final class MongoSessionService implements BaseSessionService {
   @Override
   public Single<ListSessionsResponse> listSessions(final String appName, final String userId) {
     final List<Session> sessions = new ArrayList<>();
-    sessionCollection.find(Filters.and(Filters.eq("appName", appName), Filters.eq("userId", userId)), Session.class)
-        .forEach(stored -> {
+    findByQuery(new Query().withFilter(Filters.and(Filters.eq("appName", appName), Filters.eq("userId", userId))))
+        .getItems().forEach(sessionInfo -> {
+          final Session stored = sessionInfo.toSession();
           sessions.add(Session.builder(stored.id())
-              .appName(stored.appName())
-              .userId(stored.userId())
-              .lastUpdateTime(stored.lastUpdateTime())
-              .build());
+                  .appName(stored.appName())
+                  .userId(stored.userId())
+                  .lastUpdateTime(stored.lastUpdateTime())
+                  .build());
         });
     return Single.just(ListSessionsResponse.builder().sessions(sessions).build());
   }
 
   @Override
   public Completable deleteSession(final String appName, final String userId, final String sessionId) {
-    final DeleteResult result = sessionCollection.deleteOne(Filters.eq("_id", sessionId));
-    if (result.getDeletedCount() == 0) {
+    final boolean deleted = deleteById(sessionId);
+    if (!deleted) {
       LOG.debug("Session delete did not match any document - session_id={}", sessionId);
     }
     return Completable.complete();
@@ -103,12 +98,11 @@ public final class MongoSessionService implements BaseSessionService {
 
   @Override
   public Single<ListEventsResponse> listEvents(final String appName, final String userId, final String sessionId) {
-    final Session session = sessionCollection.find(Filters.eq("_id", sessionId), Session.class).first();
-    if (session == null) {
+    final SessionInfo sessionInfo = findById(sessionId).orElse(null);
+    if (sessionInfo == null) {
       return Single.just(ListEventsResponse.builder().build());
     }
-    final List<Event> events = session.events();
-    return Single.just(ListEventsResponse.builder().events(events).build());
+    return Single.just(ListEventsResponse.builder().events(sessionInfo.toSession().events()).build());
   }
 
   @Override
@@ -117,13 +111,9 @@ public final class MongoSessionService implements BaseSessionService {
         .doOnSuccess(_ -> {
           if (!event.partial().orElse(false)) {
             session.lastUpdateTime(Instant.ofEpochMilli(event.timestamp()));
-            persistSession(session);
+            save(new SessionInfo(session));
           }
         });
-  }
-
-  private void persistSession(final Session session) {
-    sessionCollection.replaceOne(Filters.eq("_id", session.id()), session, new ReplaceOptions().upsert(true));
   }
 
   private static List<Event> filterEvents(final List<Event> events, final GetSessionConfig config) {

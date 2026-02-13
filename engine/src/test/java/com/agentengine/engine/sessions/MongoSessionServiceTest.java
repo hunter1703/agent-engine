@@ -10,13 +10,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.bson.Document;
 import org.junit.jupiter.api.Test;
 
 class MongoSessionServiceTest {
 
   @Test
-  void roundTripDocumentPreservesSessionFields() {
+  void roundTripInfoPreservesSessionFields() {
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
     state.put("region", "us-west");
     final Event event = Event.builder()
@@ -33,8 +32,8 @@ class MongoSessionServiceTest {
         .lastUpdateTime(Instant.ofEpochSecond(42))
         .build();
 
-    final Document document = MongoSessionService.toDocument(session);
-    final Session restored = MongoSessionService.fromDocument(document);
+    final SessionInfo info = new SessionInfo(session);
+    final Session restored = info.toSession();
 
     assertThat(restored.id()).isEqualTo("session-1");
     assertThat(restored.appName()).isEqualTo("app");

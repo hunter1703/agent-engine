@@ -23,8 +23,7 @@ public class MongoSessionServiceBuilder
 
   @Override
   public MongoSessionService build(final MongoSessionServiceConfig config) {
-    final MongoClient mongoClient = MongoClientFactory.createClient(mongoClientSupport, config.getConnectionString());
-    return new MongoSessionService(mongoClient, config.getDatabase(), config.getCollection());
+    return new MongoSessionService(mongoClientSupport);
   }
 
   @Override

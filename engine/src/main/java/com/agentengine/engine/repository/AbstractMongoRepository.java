@@ -117,7 +117,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       Page page = query == null ? null : query.getPage();
       page = page == null ? new Page() : page;
       List<T> entities = new ArrayList<>();
-      final FindIterable<T> iter = getCollection().find(entityClass).skip(page.getOffset()).limit(page.getLimit());
+      final FindIterable<T> iter = query != null && query.getFilter() != null
+          ? getCollection().find(query.getFilter(), entityClass).skip(page.getOffset()).limit(page.getLimit())
+          : getCollection().find(entityClass).skip(page.getOffset()).limit(page.getLimit());
       for (T document : iter) {
         entities.add(document);
       }

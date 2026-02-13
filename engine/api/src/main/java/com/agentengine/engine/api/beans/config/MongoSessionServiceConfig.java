@@ -7,12 +7,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "mongodb")
 public class MongoSessionServiceConfig extends SessionServiceConfig {
 
-  public static final String DEFAULT_DATABASE = "AGENT_ENGINE";
-  public static final String DEFAULT_COLLECTION = "Session";
-
   private String connectionString;
-  private String database = DEFAULT_DATABASE;
-  private String collection = DEFAULT_COLLECTION;
 
   public MongoSessionServiceConfig() {
     super(SessionServiceType.MONGODB);
@@ -24,21 +19,5 @@ public class MongoSessionServiceConfig extends SessionServiceConfig {
 
   public void setConnectionString(final String connectionString) {
     this.connectionString = connectionString;
-  }
-
-  public String getDatabase() {
-    return database;
-  }
-
-  public void setDatabase(final String database) {
-    this.database = database;
-  }
-
-  public String getCollection() {
-    return collection;
-  }
-
-  public void setCollection(final String collection) {
-    this.collection = collection;
   }
 }
