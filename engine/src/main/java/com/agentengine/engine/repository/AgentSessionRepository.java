@@ -10,10 +10,10 @@ import jakarta.inject.Singleton;
  * Repository for managing Session entities
  */
 @Singleton
-public class SessionRepository extends AbstractMongoRepository<AgentSession> {
+public class AgentSessionRepository extends AbstractMongoRepository<AgentSession> {
 
-  public SessionRepository(MongoClientSupport mongoClientSupport) {
-    super(mongoClientSupport, "Session", AgentSession.class);
+  public AgentSessionRepository(MongoClientSupport mongoClientSupport) {
+    super(mongoClientSupport, "AgentSession", AgentSession.class);
   }
 
   public void updateTitle(String id, String title) {

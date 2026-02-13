@@ -13,7 +13,7 @@ import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.builders.state.ToolAwareSessionService;
 import com.agentengine.engine.repository.AgentRepository;
-import com.agentengine.engine.repository.SessionRepository;
+import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
@@ -33,19 +33,19 @@ public class AgentSessionRuntimeManager {
   private final AgentRepository agentRepository;
   private final AgentProvider agentProvider;
   private final SessionServiceProvider sessionServiceProvider;
-  private final SessionRepository sessionRepository;
+  private final AgentSessionRepository agentSessionRepository;
   private final ConcurrentMap<String, AgentSessionRuntime> runtimes = new ConcurrentHashMap<>();
 
   public AgentSessionRuntimeManager(AgentRepository agentRepository, final AgentProvider agentProvider,
-      final SessionServiceProvider sessionServiceProvider, SessionRepository sessionRepository) {
+      final SessionServiceProvider sessionServiceProvider, AgentSessionRepository agentSessionRepository) {
     this.agentRepository = agentRepository;
     this.agentProvider = agentProvider;
     this.sessionServiceProvider = sessionServiceProvider;
-    this.sessionRepository = sessionRepository;
+    this.agentSessionRepository = agentSessionRepository;
   }
 
   public AgentSessionRuntime getOrStartRuntime(String agentId, String sessionId) {
-        final AgentSession session = StringUtils.isNotBlank(sessionId) ? sessionRepository.findById(sessionId).orElse(null) : null;
+        final AgentSession session = StringUtils.isNotBlank(sessionId) ? agentSessionRepository.findById(sessionId).orElse(null) : null;
         final AgentConfig agentConfig = getAgentConfig(agentId, session);
         if (agentConfig == null) {
             String errorMsg = STR."agentId \"\{agentId}\" has no resolved config";
@@ -66,7 +66,7 @@ public class AgentSessionRuntimeManager {
     if (createSession) {
       LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
       sessionService.createSession(DEFAULT_APP, DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
-      sessionRepository.save(new AgentSession(sessionId, agentConfig.getId(), "New Session"));
+      agentSessionRepository.save(new AgentSession(sessionId, agentConfig.getId(), "New Session"));
     }
 
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);

@@ -12,7 +12,7 @@ public class AgentConfig extends NamedEntity implements Config {
   private String description;
   private String avatar;
   private AgentModelConfig model;
-  private SessionServiceConfig sessionStore = new InMemorySessionServiceConfig();
+  private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
 
   public AgentConfig() {
     this.type = AgentType.DEFAULT.name().toLowerCase();

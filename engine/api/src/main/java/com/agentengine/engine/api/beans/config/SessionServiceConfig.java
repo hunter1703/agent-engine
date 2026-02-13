@@ -3,7 +3,7 @@ package com.agentengine.engine.api.beans.config;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeKey = "type", seeAlso = {InMemorySessionServiceConfig.class})
+@JSONType(typeKey = "type", seeAlso = {InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class})
 @BsonDiscriminator(key = "type")
 public abstract class SessionServiceConfig implements Config {
   private String type;
@@ -22,6 +22,7 @@ public abstract class SessionServiceConfig implements Config {
   }
 
   public enum SessionServiceType {
-    MEMORY
+    MEMORY,
+    MONGODB
   }
 }

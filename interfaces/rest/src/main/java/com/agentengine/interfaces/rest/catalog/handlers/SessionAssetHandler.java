@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.repository.SessionRepository;
+import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
@@ -16,11 +16,11 @@ public class SessionAssetHandler implements AssetHandler<AgentSession> {
 
   private static final String ASSET_TYPE = "session";
 
-  private final SessionRepository sessionRepository;
+  private final AgentSessionRepository agentSessionRepository;
 
   @Inject
-  public SessionAssetHandler(SessionRepository sessionRepository) {
-    this.sessionRepository = sessionRepository;
+  public SessionAssetHandler(AgentSessionRepository agentSessionRepository) {
+    this.agentSessionRepository = agentSessionRepository;
   }
 
   @Override
@@ -30,7 +30,7 @@ public class SessionAssetHandler implements AssetHandler<AgentSession> {
 
   @Override
   public PaginatedResult<AgentSession> findAssets(AssetRequest request) {
-    return sessionRepository.findByQuery(request.getQuery());
+    return agentSessionRepository.findByQuery(request.getQuery());
   }
 
   @Override
@@ -41,7 +41,7 @@ public class SessionAssetHandler implements AssetHandler<AgentSession> {
     }
 
     for (String key : request.getKeys()) {
-      sessionRepository.findById(key).ifPresent(value -> result.put(key, value));
+      agentSessionRepository.findById(key).ifPresent(value -> result.put(key, value));
     }
 
     return result;

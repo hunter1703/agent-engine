@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.repository.SessionRepository;
+import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
@@ -22,11 +22,11 @@ import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER
 @Singleton
 public class AgentRunner {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRunner.class);
-  private final SessionRepository sessionRepository;
+  private final AgentSessionRepository agentSessionRepository;
   private final SessionTitleGenerator sessionTitleGenerator;
 
-  public AgentRunner(SessionRepository sessionRepository, SessionTitleGenerator sessionTitleGenerator) {
-    this.sessionRepository = sessionRepository;
+  public AgentRunner(AgentSessionRepository agentSessionRepository, SessionTitleGenerator sessionTitleGenerator) {
+    this.agentSessionRepository = agentSessionRepository;
     this.sessionTitleGenerator = sessionTitleGenerator;
   }
 
@@ -51,7 +51,7 @@ public class AgentRunner {
       final Session session = Objects.requireNonNull(
           runner.sessionService().getSession(DEFAULT_APP, DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
       sessionTitleGenerator.generateTitle(session.events()).ifPresent(title -> {
-        sessionRepository.updateTitle(sessionId, title);
+        agentSessionRepository.updateTitle(sessionId, title);
       });
     };
   }

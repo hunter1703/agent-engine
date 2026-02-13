@@ -1,24 +1,17 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.Page;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
-import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.ClassModel;
-import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.types.ObjectId;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -27,9 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
  * Abstract MongoDB repository implementation providing generic CRUD operations
@@ -152,30 +142,6 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   }
 
   private MongoClient createClient(MongoClientSupport mongoClientSupport) {
-    final String fromEnv = System.getenv("MONGODB_CONNECTION_STRING");
-    final String connectionValue = StringUtils.isNotBlank(fromEnv) ? fromEnv : "mongodb://localhost:27002";
-    return MongoClients.create(buildClientSettings(connectionValue, getBsonDiscriminators(mongoClientSupport)));
-  }
-
-  private List<String> getBsonDiscriminators(MongoClientSupport mongoClientSupport) {
-    return CollectionUtils.nullSafeList(mongoClientSupport.getBsonDiscriminators());
-  }
-
-  static MongoClientSettings buildClientSettings(final String connectionValue, final List<String> bsonDiscriminators) {
-    final ConnectionString connectionString = new ConnectionString(connectionValue);
-    PojoCodecProvider.Builder pojoCodecProviderBuilder = PojoCodecProvider.builder().automatic(true);
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-    for (String discriminator : CollectionUtils.nullSafeList(bsonDiscriminators)) {
-      try {
-        pojoCodecProviderBuilder.register(
-            ClassModel.builder(Class.forName(discriminator, true, classLoader)).enableDiscriminator(true).build());
-      } catch (ClassNotFoundException ex) {
-        // Ignore
-      }
-    }
-    CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-        fromProviders(pojoCodecProviderBuilder.build()));
-    return MongoClientSettings.builder().applicationName("agent-engine").applyConnectionString(connectionString)
-        .codecRegistry(codecRegistry).build();
+    return MongoClientFactory.createClient(mongoClientSupport, null);
   }
 }

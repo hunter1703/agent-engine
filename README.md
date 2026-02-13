@@ -56,6 +56,7 @@ Runtime settings:
 
 - `PLUGIN_DIR` (env or system property) points to a directory of plugin JARs (default `plugins`)
 - `MONGODB_CONNECTION_STRING` is read from the environment (default `mongodb://localhost:27002`)
+- `sessionStore.type: mongodb` persists session state/events in Mongo (`SessionState`, plus `_app_state`/`_user_state`)
 
 ## Testing
 
@@ -84,7 +85,7 @@ cd plugins/shell-agent
 Or use the helper script:
 
 ```bash
-./scripts/build-plugin.sh shell-agent
+./deploy/scripts/build-plugin.sh shell-agent
 ```
 
 Build the echo plugin:
@@ -135,8 +136,8 @@ MONGODB_CONNECTION_STRING=mongodb://localhost:27002 ./gradlew deployEngine
 ### Convenience script
 
 ```bash
-./scripts/run-rest-dev.sh
-./scripts/run-rest-dev.sh --force ./configs
+./deploy/scripts/run-rest-dev.sh
+./deploy/scripts/run-rest-dev.sh --force ./configs
 ```
 
 If you need a non-default MongoDB connection string, set:
@@ -162,8 +163,7 @@ curl -N -X POST http://localhost:8080/agent/events \
 
 ### Details
 
-- The setup script builds a Mongo image from `deploy/docker/Dockerfile.mongodb` only if missing
-  (use `--force` to rebuild) and starts a container named `agent-engine-mongodb`.
+- The setup script starts a container named `agent-engine-mongodb`.
 - Configs are imported from `<configs>/agents` and `<configs>/models` into `Agent` and `Model`
   collections under the `AGENT_ENGINE` database (setup script uses `CONFIG_DB_NAME`).
 - `_id` is the config filename without extension; this is the ID used everywhere.
