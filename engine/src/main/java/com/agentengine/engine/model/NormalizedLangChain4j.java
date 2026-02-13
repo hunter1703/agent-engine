@@ -32,13 +32,46 @@ public final class NormalizedLangChain4j extends LangChain4j {
     });
   }
 
-  private static LlmResponse markPartial(final LlmResponse response) {
-    return response.toBuilder().partial(true).turnComplete(false).build();
+  private static Flowable<LlmResponse> mapResponse(LlmResponse response, final ResponseState responseState) {
+    response = ensureModelRole(response);
+    if (response == null) {
+      return Flowable.empty();
+    }
+    if (hasToolParts(response)) {
+      responseState.fullText.setLength(0);
+      responseState.lastTextResponse = null;
+      return Flowable.just(response);
+    }
+    // null if no content or non-text content part is present
+    final String delta = extractTextDelta(response);
+    // if current response has function calls, return as is i.e. consider it as
+    // "complete" and no need to add partial information
+    if (delta == null) {
+      return Flowable.just(response);
+    }
+    responseState.fullText.append(delta);
+    responseState.lastTextResponse = response;
+    return Flowable.just(markPartial(response));
   }
 
-  private static LlmResponse markFinal(final LlmResponse response, final String fullText) {
-    return response.toBuilder().content(Content.fromParts(Part.fromText(fullText))).partial(false).turnComplete(true)
-        .build();
+  private static LlmResponse ensureModelRole(final LlmResponse response) {
+    if (response == null) {
+      return null;
+    }
+    final Content content = response.content().orElse(null);
+    if (content == null) {
+      return response;
+    }
+    if (content.role().filter("model"::equalsIgnoreCase).isPresent()) {
+      return response;
+    }
+    // In the streaming path (LangChain4j), partial chunks are created with Content.fromParts(...), which defaults the role to "user"
+    final Content updatedContent = content.toBuilder().role("model").build();
+    return response.toBuilder().content(updatedContent).build();
+  }
+
+  private static LlmResponse markPartial(final LlmResponse response) {
+    return response.toBuilder().partial(true).turnComplete(false).build();
   }
 
   private static String extractTextDelta(final LlmResponse response) {
@@ -64,32 +97,17 @@ public final class NormalizedLangChain4j extends LangChain4j {
     return StringUtils.isBlank(combined) ? null : combined;
   }
 
-  private static Flowable<LlmResponse> mapResponse(final LlmResponse response, final ResponseState responseState) {
-    if (response == null) {
-      return Flowable.empty();
-    }
-    if (hasToolParts(response)) {
-      responseState.fullText.setLength(0);
-      responseState.lastTextResponse = null;
-      return Flowable.just(response);
-    }
-    // null if no content or non-text content part is present
-    final String delta = extractTextDelta(response);
-    // if current response has function calls, return as is i.e. consider it as
-    // "complete" and no need to add partial information
-    if (delta == null) {
-      return Flowable.just(response);
-    }
-    responseState.fullText.append(delta);
-    responseState.lastTextResponse = response;
-    return Flowable.just(markPartial(response));
-  }
-
   private static Flowable<LlmResponse> finalizeStream(final ResponseState responseState) {
     if (responseState.fullText.isEmpty()) {
       return Flowable.empty();
     }
     return Flowable.just(markFinal(responseState.lastTextResponse, responseState.fullText.toString()));
+  }
+
+  private static LlmResponse markFinal(final LlmResponse response, final String fullText) {
+    final Content content = Content.builder().role("model").parts(Part.fromText(fullText)).build();
+    return response.toBuilder().content(content).partial(false).turnComplete(true)
+            .build();
   }
 
   private static boolean hasToolParts(final LlmResponse response) {
