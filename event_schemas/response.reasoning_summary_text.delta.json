@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Response Reasoning Summary Text Delta Event Schema",
+  "description": "Schema for the response.reasoning_summary_text.delta event in the Codex Responses API",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "response.reasoning_summary_text.delta"
+    },
+    "delta": {
+      "type": "string",
+      "description": "The reasoning summary text delta"
+    },
+    "summary_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index of the summary in the sequence"
+    }
+  },
+  "required": ["type", "delta", "summary_index"],
+  "examples": [
+    {
+      "type": "response.reasoning_summary_text.delta",
+      "delta": "The user asked for help with a coding task.",
+      "summary_index": 0
+    }
+  ]
+}

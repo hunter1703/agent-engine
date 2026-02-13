@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Response Completed Event Schema",
+  "description": "Schema for the response.completed event in the Codex Responses API",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "response.completed"
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the response"
+        },
+        "usage": {
+          "type": "object",
+          "properties": {
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of input tokens used"
+            },
+            "input_tokens_details": {
+              "type": "object",
+              "properties": {
+                "cached_tokens": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Number of cached input tokens"
+                }
+              },
+              "required": ["cached_tokens"]
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of output tokens generated"
+            },
+            "output_tokens_details": {
+              "type": "object",
+              "properties": {
+                "reasoning_tokens": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Number of reasoning tokens"
+                }
+              },
+              "required": ["reasoning_tokens"]
+            },
+            "total_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of tokens used"
+            }
+          },
+          "required": ["input_tokens", "output_tokens", "total_tokens"],
+          "examples": [
+            {
+              "input_tokens": 10,
+              "input_tokens_details": {
+                "cached_tokens": 5
+              },
+              "output_tokens": 20,
+              "output_tokens_details": {
+                "reasoning_tokens": 15
+              },
+              "total_tokens": 30
+            }
+          ]
+        },
+        "output": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "message"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["user", "assistant", "system"]
+                  },
+                  "content": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "input_text"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "input_image"
+                            },
+                            "image": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "image"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "output_text"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "const": "image"
+                            },
+                            "image": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["type", "image"]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": ["type", "role", "content"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "function_call"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "arguments": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "id", "name", "arguments"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "function_call_output"
+                  },
+                  "call_id": {
+                    "type": "string"
+                  },
+                  "output": {
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "call_id", "output"]
+              }
+            ]
+          }
+        }
+      },
+      "required": ["id"],
+      "examples": [
+        {
+          "id": "resp_ghi789",
+          "usage": {
+            "input_tokens": 10,
+            "input_tokens_details": {
+              "cached_tokens": 5
+            },
+            "output_tokens": 20,
+            "output_tokens_details": {
+              "reasoning_tokens": 15
+            },
+            "total_tokens": 30
+          },
+          "output": [
+            {
+              "type": "message",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "output_text",
+                  "text": "Hello! How can I assist you today?"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "required": ["type", "response"],
+  "examples": [
+    {
+      "type": "response.completed",
+      "response": {
+        "id": "resp_ghi789",
+        "usage": {
+          "input_tokens": 10,
+          "input_tokens_details": {
+            "cached_tokens": 5
+          },
+          "output_tokens": 20,
+          "output_tokens_details": {
+            "reasoning_tokens": 15
+          },
+          "total_tokens": 30
+        },
+        "output": [
+          {
+            "type": "message",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "output_text",
+                "text": "Hello! How can I assist you today?"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

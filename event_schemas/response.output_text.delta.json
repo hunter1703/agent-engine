@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Response Output Text Delta Event Schema",
+  "description": "Schema for the response.output_text.delta event in the Codex Responses API",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "response.output_text.delta"
+    },
+    "delta": {
+      "type": "string",
+      "description": "The text delta to append to the output"
+    },
+    "output_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index of the output item in the sequence"
+    }
+  },
+  "required": ["type", "delta"],
+  "examples": [
+    {
+      "type": "response.output_text.delta",
+      "delta": "Hello!",
+      "output_index": 0
+    }
+  ]
+}
