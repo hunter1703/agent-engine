@@ -1,185 +1,230 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Agent Configuration",
-  "description": "Settings for configuring an AI agent.",
-  "type": "object",
-  "required": [
-    "id",
-    "name",
-    "type",
-    "model"
-  ],
-  "properties": {
-    "id": {
-      "type": "string",
-      "description": "Unique identifier for the agent.",
-      "help": "A unique identifier for this agent. This ID is used to reference the agent throughout the system."
-    },
-    "name": {
-      "type": "string",
-      "description": "Display name for the agent.",
-      "help": "A human-readable name for the agent, used for display and easy identification."
-    },
-    "description": {
-      "type": "string",
-      "description": "Description of the agent's purpose and capabilities.",
-      "help": "A comprehensive description of the agent's role, what tasks it can perform, and its general operational scope. This helps users understand the agent's functionality."
-    },
-    "type": {
-      "type": "string",
-      "description": "Agent type (e.g., DEFAULT).",
-      "enum": ["DEFAULT"],
-      "default": "DEFAULT",
-      "help": "The type of the agent. This field determines the core behavior and capabilities of the agent, such as how it processes requests or interacts with users. 'DEFAULT' represents a general-purpose agent."
-    },
-    "model": {
-      "$ref": "#/$defs/AgentModelConfig",
-      "description": "Language model configuration for the agent.",
-      "help": "Specifies the configuration for the language model that powers this agent. This includes details like the model ID, system prompt, and context management strategy."
-    },
-    "sessionStore": {
-      "$ref": "#/$defs/SessionServiceConfig",
-      "description": "Session storage configuration for the agent.",
-      "help": "The configuration for the session management system or mechanism used by the agent to store and retrieve conversational state and history. This enables the agent to maintain context across multiple interactions.",
-      "default": { "type": "mongodb" }
-    }
-  },
-  "$defs": {
-    "SessionServiceConfig": {
-      "type": "object",
-      "title": "Session Service Configuration",
-      "description": "Configuration options for storing conversation sessions.",
-      "discriminator": {
-        "propertyName": "type",
-        "mapping": {
-          "memory": "#/$defs/InMemorySessionServiceConfig",
-          "mongodb": "#/$defs/MongoSessionServiceConfig"
-        }
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Agent Configuration",
+    "type": "object",
+    "required": [
+      "id",
+      "name",
+      "type",
+      "model"
+    ],
+    "properties": {
+      "id": {
+        "type": "string",
+        "help": "A unique identifier for this agent. This ID is used to reference the agent throughout the system."
       },
-      "oneOf": [
-        { "$ref": "#/$defs/InMemorySessionServiceConfig" },
-        { "$ref": "#/$defs/MongoSessionServiceConfig" }
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Session storage type.",
-          "enum": ["memory", "mongodb"],
-          "help": "Specifies the type of session service to use. 'memory' stores sessions in memory, 'mongodb' stores sessions in MongoDB."
-        }
+      "name": {
+        "type": "string",
+        "help": "A human-readable name for the agent, used for display and easy identification."
       },
-      "required": ["type"]
-    },
-    "InMemorySessionServiceConfig": {
-      "type": "object",
-      "title": "In-Memory Session Configuration",
-      "description": "Configuration for storing sessions in memory.",
-      "allOf": [{ "$ref": "#/$defs/SessionServiceConfig" }],
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "memory",
-          "description": "In-memory session storage.",
-          "help": "Indicates that the session service uses in-memory storage."
-        }
+      "description": {
+        "type": "string",
+        "help": "A comprehensive description of the agent's role, what tasks it can perform, and its general operational scope. This helps users understand the agent's functionality."
       },
-      "required": ["type"]
-    },
-    "MongoSessionServiceConfig": {
-      "type": "object",
-      "title": "MongoDB Session Configuration",
-      "description": "Configuration for storing sessions in MongoDB.",
-      "allOf": [{ "$ref": "#/$defs/SessionServiceConfig" }],
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "mongodb",
-          "description": "MongoDB session storage.",
-          "help": "Indicates that the session service uses MongoDB for storage."
-        },
-        "connectionString": {
-          "type": "string",
-          "description": "MongoDB connection string for session storage.",
-          "help": "Connection string for connecting to the MongoDB instance used for session storage."
-        }
+      "type": {
+        "type": "string",
+        "enum": [
+          "DEFAULT"
+        ],
+        "default": "DEFAULT",
+        "help": "The type of the agent. This field determines the core behavior and capabilities of the agent, such as how it processes requests or interacts with users. 'DEFAULT' represents a general-purpose agent."
       },
-      "required": ["type"]
-    },
-    "AgentModelConfig": {
-      "type": "object",
-      "title": "Agent Model Configuration",
-      "description": "Configuration for the language model used by the agent.",
-      "required": [
-        "modelId"
-      ],
-      "properties": {
-        "modelId": {
-          "type": "string",
-          "description": "ID of the model configuration to use.",
-          "help": "The unique identifier of the specific ModelConfig that this agent should utilize for all its language model functionalities, such as generating responses or understanding queries."
-        },
-        "systemPrompt": {
-          "type": "string",
-          "description": "Initial prompt for the model conversation.",
-          "help": "An initial, guiding prompt or instruction set provided to the model at the very beginning of a conversation. This helps to establish the model's persona, define its task, or set specific behavioral constraints."
-        },
-        "role": {
-          "type": "string",
-          "description": "Agent's role in conversation (e.g., system, user, assistant).",
-          "help": "Defines the conversational role of the agent within a multi-turn dialogue. This influences how the agent interprets incoming messages and how it should format its own responses (e.g., 'system' for initial instructions, 'user' for user input, 'assistant' for AI responses)."
-        },
-        "contextManagerConfig": {
-          "$ref": "#/$defs/ContextManagerConfig",
-          "description": "Configuration for managing conversation context.",
-          "help": "Configuration for how the agent's model manages its conversation context.",
-          "default": { "type": "LAST_N", "keepLast": 24 }
+      "model": {
+        "$ref": "#/$defs/AgentModelConfig",
+        "help": "Specifies the configuration for the language model that powers this agent. This includes details like the model ID, system prompt, and context management strategy."
+      },
+      "sessionStore": {
+        "$ref": "#/$defs/SessionServiceConfig",
+        "help": "The configuration for the session management system or mechanism used by the agent to store and retrieve conversational state and history. This enables the agent to maintain context across multiple interactions.",
+        "default": {
+          "type": "mongodb"
         }
       }
     },
-    "ContextManagerConfig": {
-      "type": "object",
-      "title": "Context Manager Configuration",
-      "description": "Configuration for managing conversation context.",
-      "discriminator": {
-        "propertyName": "type",
-        "mapping": {
-          "LAST_N": "#/$defs/LastNContextManagerConfig"
-        }
-      },
-      "oneOf": [
-        { "$ref": "#/$defs/LastNContextManagerConfig" }
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Context management strategy.",
-          "enum": ["LAST_N"],
-          "help": "Specifies the strategy for managing conversation history. 'LAST_N' keeps only the most recent messages."
-        }
-      },
-      "required": ["type"]
-    },
-    "LastNContextManagerConfig": {
-      "type": "object",
-      "title": "Recent Messages Context Configuration",
-      "description": "Configuration for keeping the last N messages in context.",
-      "allOf": [{ "$ref": "#/$defs/ContextManagerConfig" }],
-      "properties": {
-        "type": {
-          "type": "string",
-          "const": "LAST_N",
-          "description": "Keep last N messages context manager.",
-          "help": "This context manager type retains a fixed number of the most recent conversation turns."
+    "$defs": {
+      "SessionServiceConfig": {
+        "type": "object",
+        "title": "Session Service Configuration",
+        "description": "Configuration options for storing conversation sessions.",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "memory": "#/$defs/InMemorySessionServiceConfig",
+            "mongodb": "#/$defs/MongoSessionServiceConfig"
+          }
         },
-        "keepLast": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 24,
-          "description": "Number of recent messages to keep in context.",
-          "help": "The maximum number of recent messages to include in the context for subsequent model interactions."
+        "oneOf": [
+          {
+            "$ref": "#/$defs/InMemorySessionServiceConfig"
+          },
+          {
+            "$ref": "#/$defs/MongoSessionServiceConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Session storage type.",
+            "enum": [
+              "memory",
+              "mongodb"
+            ],
+            "help": "Specifies the type of session service to use. 'memory' stores sessions in memory, 'mongodb' stores sessions in MongoDB."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "InMemorySessionServiceConfig": {
+        "type": "object",
+        "title": "In-Memory Session Configuration",
+        "description": "Configuration for storing sessions in memory.",
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionServiceConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "memory",
+            "description": "In-memory session storage.",
+            "help": "Indicates that the session service uses in-memory storage."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "MongoSessionServiceConfig": {
+        "type": "object",
+        "title": "MongoDB Session Configuration",
+        "description": "Configuration for storing sessions in MongoDB.",
+        "allOf": [
+          {
+            "$ref": "#/$defs/SessionServiceConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "mongodb",
+            "description": "MongoDB session storage.",
+            "help": "Indicates that the session service uses MongoDB for storage."
+          },
+          "connectionString": {
+            "type": "string",
+            "description": "MongoDB connection string for session storage.",
+            "help": "Connection string for connecting to the MongoDB instance used for session storage."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "AgentModelConfig": {
+        "type": "object",
+        "title": "Agent Model Configuration",
+        "required": [
+          "modelId"
+        ],
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "help": "The unique identifier of the specific ModelConfig that this agent should utilize for all its language model functionalities, such as generating responses or understanding queries."
+          },
+          "systemPrompt": {
+            "type": "string",
+            "help": "An initial, guiding prompt or instruction set provided to the model at the very beginning of a conversation. This helps to establish the model's persona, define its task, or set specific behavioral constraints."
+          },
+          "role": {
+            "type": "string",
+            "help": "Defines the conversational role of the agent within a multi-turn dialogue. This influences how the agent interprets incoming messages and how it should format its own responses (e.g., 'system' for initial instructions, 'user' for user input, 'assistant' for AI responses)."
+          },
+          "contextManagerConfig": {
+            "$ref": "#/$defs/ContextManagerConfig",
+            "help": "Configuration for how the agent's model manages its conversation context.",
+            "default": {
+              "type": "LAST_N",
+              "keepLast": 24
+            }
+          }
         }
       },
-      "required": ["type", "keepLast"]
+      "ContextManagerConfig": {
+        "type": "object",
+        "title": "Context Manager Configuration",
+        "description": "Configuration for managing conversation context.",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "LAST_N": "#/$defs/LastNContextManagerConfig"
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/LastNContextManagerConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Context management strategy.",
+            "enum": [
+              "LAST_N"
+            ],
+            "help": "Specifies the strategy for managing conversation history. 'LAST_N' keeps only the most recent messages."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "LastNContextManagerConfig": {
+        "type": "object",
+        "title": "Recent Messages Context Configuration",
+        "description": "Configuration for keeping the last N messages in context.",
+        "allOf": [
+          {
+            "$ref": "#/$defs/ContextManagerConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LAST_N",
+            "description": "Keep last N messages context manager.",
+            "help": "This context manager type retains a fixed number of the most recent conversation turns."
+          },
+          "keepLast": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 24,
+            "description": "Number of recent messages to keep in context.",
+            "help": "The maximum number of recent messages to include in the context for subsequent model interactions."
+          }
+        },
+        "required": [
+          "type",
+          "keepLast"
+        ]
+      }
+    }
+  },
+  "layout": {
+    "model": {
+      "modelId": {
+        "widget": "LOOKUP",
+        "lookupRequest": {
+          "url": "/catalog/list",
+          "method": "POST",
+          "body": {
+            "assetType": "model"
+          }
+        }
+      }
     }
   }
 }
