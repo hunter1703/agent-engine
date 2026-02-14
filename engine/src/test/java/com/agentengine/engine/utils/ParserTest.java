@@ -23,4 +23,19 @@ class ParserTest {
     assertThat(parts.getFirst().text()).contains(response);
     assertThat(parts).noneMatch(part -> part.thought().orElse(false));
   }
+
+  @Test
+  void stripsToolCallTagsWhenToolCallingEnabled() {
+    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT)
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(false);
+    final Content content = Content.fromParts(Part.fromText("Answer <tool_call>"));
+
+    final Content parsed = parser.parse(content);
+    final List<Part> parts = parsed.parts().orElse(List.of());
+
+    assertThat(parts).hasSize(1);
+    assertThat(parts.getFirst().text().orElse(""))
+        .isEqualTo("Answer");
+  }
 }

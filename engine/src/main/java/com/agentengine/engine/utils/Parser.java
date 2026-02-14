@@ -32,6 +32,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
       "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*\\}",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern TOOL_CALL_TAG_PATTERN = Pattern.compile("<\\/?tool_call\\s*/?>",
+      Pattern.CASE_INSENSITIVE);
   private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
   private boolean toolCallingEnabled = false;
   private boolean parseToolCallsFromText = true;
@@ -98,6 +100,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
       processedText = stripToolCallsBlock(processedText);
     }
+    processedText = stripToolCallTags(processedText);
 
     final String finalAnswer = processedText == null ? "" : processedText.trim();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
@@ -195,6 +198,13 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       return text;
     }
     return TOOL_CALL_PATTERN.matcher(text).replaceAll("").trim();
+  }
+
+  private String stripToolCallTags(final String text) {
+    if (StringUtils.isBlank(text) || !toolCallingEnabled) {
+      return text;
+    }
+    return TOOL_CALL_TAG_PATTERN.matcher(text).replaceAll("").trim();
   }
 
   @Override
