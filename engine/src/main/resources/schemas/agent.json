@@ -30,10 +30,10 @@
         "type": "string",
         "title": "Agent Type",
         "enum": [
-          "DEFAULT"
+          "default"
         ],
-        "default": "DEFAULT",
-        "description": "Agent implementation type. Currently only `DEFAULT`."
+        "default": "default",
+        "description": "Agent implementation type. Currently only `default`."
       },
       "model": {
         "$ref": "#/$defs/AgentModelConfig",

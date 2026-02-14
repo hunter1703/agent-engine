@@ -22,6 +22,10 @@ public final class CollectionUtils {
     return newList;
   }
 
+  public static <T> List<T> append(List<T> one, final T toAppend) {
+    return append(one, List.of(toAppend));
+  }
+
   public static <K, V> Map<K, V> nullSafeMap(final Map<K, V> map) {
     if (map == null) {
       return Collections.emptyMap();

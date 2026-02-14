@@ -20,5 +20,6 @@
   "repeatPenalty": 1.08,
   "toolCallingEnabled": true,
   "toolCallingSupported": true,
-  "maxContextLength": 8192
+  "maxContextLength": 8192,
+  "stopTokens": ["<tool_call>"]
 }
