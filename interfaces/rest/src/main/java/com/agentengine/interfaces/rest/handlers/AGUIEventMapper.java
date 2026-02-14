@@ -76,6 +76,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
     final RunErrorEvent errorEvent = new RunErrorEvent();
     errorEvent.setError(ExceptionUtils.getErrorMessage(throwable));
+    errorEvent.setRawEvent(Map.of("exception", ExceptionUtils.getStackstrace(throwable)));
     final BaseEvent decoratedEvent = decorateEvent(errorEvent);
     LOG.debug("Generated output event in onError - event={}", JsonUtils.toJson(decoratedEvent));
     return Flowable.just(decoratedEvent);

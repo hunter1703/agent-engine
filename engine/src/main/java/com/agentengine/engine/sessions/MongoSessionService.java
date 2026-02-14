@@ -67,7 +67,8 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
         .appName(session.appName())
         .userId(session.userId())
         .state(session.state())
-        .events(events)
+            // events need to be mutable so that later on the adk framework can modify, particularly when appending new events (com.google.adk.sessions.BaseSessionService.appendEvent)
+        .events(new ArrayList<>(events))
         .lastUpdateTime(session.lastUpdateTime());
     return Maybe.just(builder.build());
   }

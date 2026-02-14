@@ -18,4 +18,16 @@ public final class ExceptionUtils {
     }
     return message;
   }
+
+  public static String getStackstrace(final Throwable throwable) {
+    if (throwable == null) {
+      return null;
+    }
+    StringBuilder sb = new StringBuilder();
+    sb.append(throwable).append("\n");
+    for (StackTraceElement element : throwable.getStackTrace()) {
+      sb.append("\tat ").append(element.toString()).append("\n");
+    }
+    return sb.toString();
+  }
 }
