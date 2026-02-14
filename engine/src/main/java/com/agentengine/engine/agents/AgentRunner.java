@@ -39,10 +39,13 @@ public class AgentRunner {
   }
 
   public Flowable<Event> runStreaming(final AgentSessionRuntime runtime, String text) {
+    LOG.debug("runStreaming - session_id={} text=\"{}\"", runtime.sessionId(), text);
     final RunConfig runConfig = RunConfig.builder().setStreamingMode(RunConfig.StreamingMode.SSE).build();
     final Runner runner = runtime.runner();
     final String sessionId = runtime.sessionId();
     return runner.runAsync(DEFAULT_USER_ID, sessionId, buildFromText(text), runConfig)
+        .doOnNext(event -> LOG.debug("runStreaming event - session_id={} event={}", sessionId, event))
+        .doOnComplete(() -> LOG.debug("runStreaming complete - session_id={}", sessionId))
         .doOnComplete(updateTitle(runner, sessionId));
   }
 

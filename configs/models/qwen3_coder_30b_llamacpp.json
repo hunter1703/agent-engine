@@ -21,5 +21,5 @@
   "toolCallingEnabled": true,
   "toolCallingSupported": true,
   "maxContextLength": 8192,
-  "stopTokens": ["<tool_call>"]
+  "stopTokens": []
 }

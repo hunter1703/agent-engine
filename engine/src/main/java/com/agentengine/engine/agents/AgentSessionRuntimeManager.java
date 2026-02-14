@@ -11,7 +11,6 @@ import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.builders.state.ToolAwareSessionService;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
@@ -60,8 +59,7 @@ public class AgentSessionRuntimeManager {
 
   private AgentSessionRuntime createRuntime(final String sessionId, final AgentConfig agentConfig,
       final boolean createSession) {
-    final BaseSessionService sessionService = new ToolAwareSessionService(
-        sessionServiceProvider.get(agentConfig.getSessionStore()));
+    final BaseSessionService sessionService = sessionServiceProvider.get(agentConfig.getSessionStore());
 
     if (createSession) {
       LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);

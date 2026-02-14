@@ -26,7 +26,7 @@ public class AgentBuilder extends LlmAgent.Builder {
 
   public LlmAgent.Builder reWriteInstructions() {
     final String fullToolInstructions = StringUtils.isNotBlank(toolInstructions) ? STR."# TOOLS\n\{toolInstructions}" : "";
-    return super.instruction(STR."""
+    this.instruction(STR."""
     # YOUR MANDATE:
     \{globalInstruction}
 
@@ -40,6 +40,7 @@ public class AgentBuilder extends LlmAgent.Builder {
     \{fullToolInstructions}
     """
     );
+    return this;
   }
 
   @Override
