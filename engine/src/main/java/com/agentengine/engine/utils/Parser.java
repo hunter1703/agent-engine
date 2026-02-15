@@ -84,7 +84,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
 
-  @NotNull
   private static List<Part> getToolCallParts(final Content content) {
     final List<Part> parts = content.parts().isPresent()
         ? content.parts().orElse(Collections.emptyList())
@@ -225,7 +224,6 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   @Override
   public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
     final List<Content> contents = new ArrayList<>();
-
     for (final Content content : CollectionUtils.nullSafeList(request.contents())) {
       List<Part> parts = new ArrayList<>();
       final List<Part> toolCallParts = new ArrayList<>();
@@ -236,9 +234,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         final Optional<FunctionResponse> functionResponse = part.functionResponse();
         final Optional<FunctionCall> functionCall = part.functionCall();
 
-        if (functionResponse != null && functionResponse.isPresent() && toolCallingEnabled && parseToolCallsFromText) {
+        if (functionResponse != null && functionResponse.isPresent() && toolCallingEnabled) {
           toolResponseParts.add(part);
-        } else if (functionCall != null && functionCall.isPresent() && toolCallingEnabled && parseToolCallsFromText) {
+        } else if (functionCall != null && functionCall.isPresent() && toolCallingEnabled) {
           toolCallParts.add(part);
         } else if (!part.thought().orElse(false)) {
           regularParts.add(part);
@@ -246,93 +244,100 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       }
 
       if (responseFormat == ResponseFormatType.JSON) {
-        parts.addAll(buildJsonFormatContent(regularParts, toolCallParts));
+        parts.addAll(buildJsonFormatParts(regularParts, toolCallParts));
       } else {
-        parts.addAll(buildTextFormatContent(regularParts, toolCallParts));
+        parts.addAll(buildTextFormatParts(regularParts, toolCallParts));
       }
 
       if (!parts.isEmpty()) {
         contents.add(content.toBuilder().parts(parts).build());
       }
 
-      final List<Part> parsedResponseParts = new ArrayList<>();
-      if (CollectionUtils.isNotEmpty(toolResponseParts)) {
-        for (Part part : toolResponseParts) {
-          FunctionResponse response = part.functionResponse().orElse(null);
-          if (response == null) {
-            continue;
-          }
-          String responseText = String.format("Tool Response [%s]: %s", response.name().orElse("unknown"),
-              response.response());
-          parsedResponseParts.add(Part.builder().text(responseText).build());
-        }
-      }
-
-      if (!parsedResponseParts.isEmpty()) {
-        contents.add(Content.builder().role("user").parts(parsedResponseParts).build());
+      final List<Part> responseParts = getResponseParts(toolResponseParts);
+      if (CollectionUtils.isNotEmpty(responseParts)) {
+        contents.add(Content.builder().role("user").parts(responseParts).build());
       }
     }
 
     return Single.just(RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
   }
 
-  private List<Part> buildJsonFormatContent(List<Part> regularParts, List<Part> toolCallParts) {
+  private List<Part> getResponseParts(final List<Part> toolResponseParts) {
+    if (!parseToolCallsFromText) {
+      return toolResponseParts;
+    }
+    final List<Part> parsedResponseParts = new ArrayList<>();
+    for (Part part : toolResponseParts) {
+      FunctionResponse response = part.functionResponse().orElse(null);
+      if (response == null) {
+        continue;
+      }
+      String responseText = String.format("Tool Response [%s]: %s", response.name().orElse("unknown"),
+              response.response());
+      parsedResponseParts.add(Part.builder().text(responseText).build());
+    }
+    return parsedResponseParts;
+  }
+
+  private List<Part> buildJsonFormatParts(List<Part> regularParts, List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
-    if (CollectionUtils.isNotEmpty(regularParts) || CollectionUtils.isNotEmpty(toolCallParts)) {
+    Map<String, Object> jsonMap = new LinkedHashMap<>();
 
-      Map<String, Object> jsonMap = new LinkedHashMap<>();
-
-      if (CollectionUtils.isNotEmpty(regularParts)) {
-        StringBuilder answerBuilder = new StringBuilder();
-        for (Part part : regularParts) {
-          if (part.text().isPresent()) {
-            answerBuilder.append(part.text().get()).append(" ");
-          }
-        }
-        jsonMap.put(FINAL_ANSWER_KEY, answerBuilder.toString().trim());
+    StringBuilder answerBuilder = new StringBuilder();
+    for (Part part : regularParts) {
+      if (part.text().isPresent()) {
+        answerBuilder.append(part.text().get()).append(" ");
       }
+    }
+    final String answer = answerBuilder.toString().trim();
+    if (StringUtils.isNotBlank(answer)) {
+      jsonMap.put(FINAL_ANSWER_KEY, answer);
+    }
 
-      if (CollectionUtils.isNotEmpty(toolCallParts)) {
-        List<Map<String, Object>> toolCallsList = new ArrayList<>();
-        for (Part part : toolCallParts) {
-          FunctionCall call = part.functionCall().orElse(null);
-          if (call == null) {
-            continue;
-          }
-          Map<String, Object> toolCallMap = new LinkedHashMap<>();
-          call.id().ifPresent(id -> toolCallMap.put("id", id));
-          call.name().ifPresent(name -> toolCallMap.put("name", name));
-          toolCallMap.put("args", call.args());
-          toolCallsList.add(toolCallMap);
+    if (parseToolCallsFromText) {
+      List<Map<String, Object>> toolCallsList = new ArrayList<>();
+      for (Part part : toolCallParts) {
+        FunctionCall call = part.functionCall().orElse(null);
+        if (call == null) {
+          continue;
         }
+        Map<String, Object> toolCallMap = new LinkedHashMap<>();
+        call.id().ifPresent(id -> toolCallMap.put("id", id));
+        call.name().ifPresent(name -> toolCallMap.put("name", name));
+        toolCallMap.put("args", call.args());
+        toolCallsList.add(toolCallMap);
+      }
+      if (!toolCallsList.isEmpty()) {
         jsonMap.put("toolCalls", toolCallsList);
       }
+    }
 
+    if (!jsonMap.isEmpty()) {
       String jsonText = JsonUtils.toJson(jsonMap);
       result.add(Part.builder().text(jsonText).build());
     }
 
+    if (!parseToolCallsFromText) {
+      result.addAll(toolCallParts);
+    }
     return result;
   }
 
-  private List<Part> buildTextFormatContent(List<Part> regularParts, List<Part> toolCallParts) {
+  private List<Part> buildTextFormatParts(List<Part> regularParts, List<Part> toolCallParts) {
 
     List<Part> result = new ArrayList<>();
 
     StringBuilder textBuilder = new StringBuilder();
 
-    // Add regular text parts
-    if (CollectionUtils.isNotEmpty(regularParts)) {
-      for (Part part : regularParts) {
-        if (part.text().isPresent()) {
-          textBuilder.append(part.text().get()).append(" ");
-        }
+    for (Part part : regularParts) {
+      if (part.text().isPresent()) {
+        textBuilder.append(part.text().get()).append(" ");
       }
     }
 
-    if (CollectionUtils.isNotEmpty(toolCallParts) && toolCallingEnabled) {
+    if (parseToolCallsFromText) {
       for (Part part : toolCallParts) {
         FunctionCall call = part.functionCall().orElse(null);
         if (call == null) {
@@ -340,7 +345,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         }
         String argsJson = JsonUtils.toJson(call.args());
         String toolCallText = String.format("\n{'id': '%s', 'name': '%s', 'args': %s}", call.id().orElse(""),
-            call.name().orElse(""), argsJson);
+                call.name().orElse(""), argsJson);
         textBuilder.append(toolCallText);
       }
     }
@@ -350,6 +355,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       result.add(Part.builder().text(finalText).build());
     }
 
+    if (!parseToolCallsFromText) {
+      result.addAll(toolCallParts);
+    }
     return result;
   }
 }
