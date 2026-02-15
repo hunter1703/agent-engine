@@ -40,7 +40,7 @@ public final class ModelUtils {
   }
 
   /**
-   * Generates server configuration for OPEN_AI_COMPATIBLE models when no explicit server settings exist.
+   * Generates server configuration for open_ai_compatible models when no explicit server settings exist.
    *
    * @param modelConfig The model configuration to update
    * @return true if configuration was generated, false otherwise
@@ -50,8 +50,8 @@ public final class ModelUtils {
       return false;
     }
 
-    // Only generate for OPEN_AI_COMPATIBLE models
-    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().equalsIgnoreCase(modelConfig.getType())) {
+    // Only generate for open_ai_compatible models
+    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(modelConfig.getType())) {
       return false;
     }
 
@@ -164,7 +164,7 @@ public final class ModelUtils {
     if (config == null) {
       return;
     }
-    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().equalsIgnoreCase(config.getType())) {
+    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(config.getType())) {
       return;
     }
     final ServerAddress address = resolveAddress(config.getBaseUrl());
@@ -176,8 +176,7 @@ public final class ModelUtils {
       return;
     }
     if (StringUtils.isBlank(config.getServerCommand())) {
-      LOGGER.warning(
-          "OPEN_AI_COMPATIBLE server unavailable and no serverCommand configured for model: " + config.getModel());
+      LOGGER.warning(STR."\{ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()} server unavailable and no serverCommand configured for model: \{config.getModel()}");
       return;
     }
     ManagedServer server = SERVERS.compute(address.baseUrl(), (key, existing) -> {
@@ -271,7 +270,7 @@ public final class ModelUtils {
         return;
       }
     }
-    LOGGER.warning(STR."OPEN_AI_COMPATIBLE server did not report ready within timeout for \{address.baseUrl()}");
+    LOGGER.warning(STR."\{ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()} server did not report ready within timeout for \{address.baseUrl()}");
   }
 
   static URI buildModelsEndpoint(final String baseUrl) {

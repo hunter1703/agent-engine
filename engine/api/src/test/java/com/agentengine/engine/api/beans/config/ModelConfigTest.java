@@ -12,14 +12,14 @@ class ModelConfigTest {
   void loadConfigReadsTypeField() {
     final String json = """
         {
-          "type": "OPEN_AI_COMPATIBLE",
+          "type": "open_ai_compatible",
           "model": "test"
         }
         """;
 
     final ModelConfig config = JsonUtils.fromJson(json, ModelConfig.class);
 
-    assertThat(config.getType()).isEqualTo("OPEN_AI_COMPATIBLE");
+    assertThat(config.getType()).isEqualTo("open_ai_compatible");
     assertThat(config.getModel()).isEqualTo("test");
   }
 
@@ -27,7 +27,7 @@ class ModelConfigTest {
   void loadConfigReadsGeminiApiKey() {
     final String json = """
         {
-          "type": "GEMINI",
+          "type": "gemini",
           "model": "gemini-2.0-flash",
           "apiKey": "secret"
         }
@@ -36,6 +36,15 @@ class ModelConfigTest {
     final ModelConfig config = JsonUtils.fromJson(json, ModelConfig.class);
 
     assertThat(config.getApiKey()).isEqualTo("secret");
+  }
+
+  @Test
+  void setTypeNormalizesToLowerCase() {
+    final ModelConfig config = new ModelConfig();
+
+    config.setType("OPEN_AI_COMPATIBLE");
+
+    assertThat(config.getType()).isEqualTo("open_ai_compatible");
   }
 
   @Test
@@ -49,7 +58,7 @@ class ModelConfigTest {
   @Test
   void validateRequiresModel() {
     final ModelConfig config = new ModelConfig();
-    config.setType("OPEN_AI_COMPATIBLE");
+    config.setType("open_ai_compatible");
 
     assertThatThrownBy(config::validate).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("model");
   }

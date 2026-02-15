@@ -2,7 +2,7 @@
   "id": "mlx-community/QwQ-32B-8bit",
   "model": "mlx-community/QwQ-32B-8bit",
   "name": "QwQ 32B VLLM Metal",
-  "type": "OPEN_AI_COMPATIBLE",
+  "type": "open_ai_compatible",
   "baseUrl": "http://127.0.0.1:17005/v1",
   "serverCommand": "vllm-metal",
   "serverArgs": [

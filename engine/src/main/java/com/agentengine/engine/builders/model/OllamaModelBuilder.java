@@ -8,6 +8,6 @@ import jakarta.inject.Singleton;
 public class OllamaModelBuilder extends LangchainModelBuilder {
   @Override
   public String type() {
-    return ModelConfig.Provider.OLLAMA.name().toLowerCase();
+    return ModelConfig.Provider.OLLAMA.type();
   }
 }

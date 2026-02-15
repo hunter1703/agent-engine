@@ -24,9 +24,9 @@
         "type": "string",
         "title": "Provider Type",
         "enum": [
-          "OLLAMA",
-          "OPEN_AI_COMPATIBLE",
-          "GEMINI"
+          "ollama",
+          "open_ai_compatible",
+          "gemini"
         ],
         "description": "Provider backend type for this model configuration."
       },
@@ -46,17 +46,10 @@
         "description": "Sampling temperature that controls randomness.",
         "help": "Common values range from `0.2` (focused) to `1.0` (creative)."
       },
-      "maxContextLength": {
-        "type": "integer",
-        "minimum": 1,
-        "default": 2048,
-        "title": "Max Context Length",
-        "description": "Maximum context window size in tokens; older messages are trimmed."
-      },
       "numPredict": {
         "type": "integer",
         "minimum": 1,
-        "title": "Max Generated Tokens",
+        "title": "Max Tokens to Generate",
         "description": "Maximum tokens to generate per response.",
         "help": "Leave unset to use the provider default."
       },
@@ -119,7 +112,7 @@
         "if": {
           "properties": {
             "type": {
-              "const": "GEMINI"
+              "const": "gemini"
             }
           }
         },
@@ -139,7 +132,7 @@
         "if": {
           "properties": {
             "type": {
-              "const": "OPEN_AI_COMPATIBLE"
+              "const": "open_ai_compatible"
             }
           }
         },
@@ -173,7 +166,7 @@
         "if": {
           "properties": {
             "type": {
-              "const": "OLLAMA"
+              "const": "ollama"
             }
           }
         },

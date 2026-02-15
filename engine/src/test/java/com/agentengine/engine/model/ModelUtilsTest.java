@@ -11,7 +11,7 @@ class ModelUtilsTest {
   @Test
   void generateServerConfig_setsCorrectValuesForOpenAiCompatible() {
     ModelConfig config = new ModelConfig();
-    config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
+    config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.type());
     config.setModel("test-model-path");
 
     boolean result = ModelUtils.generateServerConfig(config);
@@ -48,7 +48,7 @@ class ModelUtilsTest {
   @Test
   void generateServerConfig_returnsFalseForNonOpenAiCompatible() {
     ModelConfig config = new ModelConfig();
-    config.setType(ModelConfig.Provider.OLLAMA.name());
+    config.setType(ModelConfig.Provider.OLLAMA.type());
 
     boolean result = ModelUtils.generateServerConfig(config);
 
@@ -68,7 +68,7 @@ class ModelUtilsTest {
   @Test
   void generateServerConfig_doesNotOverrideExplicitServerConfig() {
     final ModelConfig config = new ModelConfig();
-    config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.name());
+    config.setType(ModelConfig.Provider.OPEN_AI_COMPATIBLE.type());
     config.setModel("qwen2.5-1.5b-instruct");
     config.setBaseUrl("http://127.0.0.1:19000/v1");
     config.setServerCommand("/custom/llama-server");

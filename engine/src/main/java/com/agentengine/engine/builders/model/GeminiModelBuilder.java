@@ -9,7 +9,7 @@ public class GeminiModelBuilder extends DelegatingModelBuilder<Gemini> {
 
   @Override
   public String type() {
-    return ModelConfig.Provider.GEMINI.name().toLowerCase();
+    return ModelConfig.Provider.GEMINI.type();
   }
 
   @Override

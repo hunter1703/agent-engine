@@ -12,7 +12,7 @@ class GeminiModelBuilderTest {
   @Test
   void buildsGeminiModelWithToolCallingConfig() {
     final ModelConfig modelConfig = new ModelConfig();
-    modelConfig.setType(ModelConfig.Provider.GEMINI.name());
+    modelConfig.setType(ModelConfig.Provider.GEMINI.type());
     modelConfig.setModel("gemini-2.0-flash");
     modelConfig.setApiKey("test-key");
     modelConfig.setToolCallingEnabled(true);

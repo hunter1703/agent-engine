@@ -2,7 +2,7 @@
   "id": "deepseek-r1-32b",
   "model": "deepseek-r1-32b",
   "name": "DeepSeek R1 32B",
-  "type": "OPEN_AI_COMPATIBLE",
+  "type": "open_ai_compatible",
   "baseUrl": "http://127.0.0.1:17003/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [

@@ -6,7 +6,7 @@ only.
 
 
 ## Required Fields
-- `type`: one of `OLLAMA`, `OPEN_AI_COMPATIBLE`, `GEMINI`
+- `type`: one of `ollama`, `open_ai_compatible`, `gemini`
 - `model`: model name or identifier
 
 ## Optional Fields
@@ -19,27 +19,27 @@ only.
 - `stopTokens`: list of stop strings
 - `instructions`: model-level guidance appended to system instructions
 - `contextManagerConfig`: optional context config object with `type`
-- `serverCommand`: OpenAI-compatible server command to launch (OPEN_AI_COMPATIBLE)
-- `apiKey`: Gemini API key (GEMINI)
+- `serverCommand`: OpenAI-compatible server command to launch (open_ai_compatible)
+- `apiKey`: Gemini API key (gemini)
 - `serverArgs`: list of server arguments
 - `serverWorkdir`: working directory for the server process
 
 ## Example
 ```json
 {
-  "type": "OLLAMA",
+  "type": "ollama",
   "model": "qwen3-coder:30b",
   "temperature": 0.2
 }
 ```
 
-## OPEN_AI_COMPATIBLE Auto-Start
+## open_ai_compatible Auto-Start
 Auto-generated server settings are only applied when `baseUrl`, `serverCommand`, and `serverArgs`
 are omitted from the model configuration.
 
 ```json
 {
-  "type": "OPEN_AI_COMPATIBLE",
+  "type": "open_ai_compatible",
   "model": "qwq-32b",
   "baseUrl": "http://127.0.0.1:17004/v1",
   "serverCommand": "/path/to/llama-server",
@@ -47,10 +47,10 @@ are omitted from the model configuration.
 }
 ```
 
-## GEMINI Example
+## gemini Example
 ```json
 {
-  "type": "GEMINI",
+  "type": "gemini",
   "model": "gemini-2.0-flash",
   "apiKey": "YOUR_API_KEY",
   "toolCallingEnabled": true,

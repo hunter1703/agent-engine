@@ -7,6 +7,6 @@ import jakarta.inject.Singleton;
 public class OpenAIModelBuilder extends LangchainModelBuilder {
   @Override
   public String type() {
-    return ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().toLowerCase();
+    return ModelConfig.Provider.OPEN_AI_COMPATIBLE.type();
   }
 }

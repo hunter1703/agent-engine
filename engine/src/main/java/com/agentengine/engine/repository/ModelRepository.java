@@ -24,7 +24,7 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   @Override
   public ModelConfig update(String id, ModelConfig update) {
     final ModelConfig existingModel = findById(id).orElseThrow();
-    if (ModelConfig.Provider.OPEN_AI_COMPATIBLE.name().equalsIgnoreCase(existingModel.getType())) {
+    if (ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(existingModel.getType())) {
       update.setBaseUrl(existingModel.getBaseUrl());
       update.setServerCommand(existingModel.getServerCommand());
       update.setServerArgs(existingModel.getServerArgs());

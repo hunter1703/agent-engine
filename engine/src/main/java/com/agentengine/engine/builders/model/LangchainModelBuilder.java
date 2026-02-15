@@ -42,7 +42,7 @@ public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangC
   }
 
   private static ChatModels buildChatModels(final ModelConfig modelConfig, final ResponseFormat responseFormat) {
-    final ModelConfig.Provider provider = ModelConfig.Provider.valueOf(modelConfig.getType());
+    final ModelConfig.Provider provider = ModelConfig.Provider.fromType(modelConfig.getType());
     return switch (provider) {
       case ModelConfig.Provider.OLLAMA -> new ChatModels(buildOllama(modelConfig, responseFormat),
           buildOllamaStreaming(modelConfig, responseFormat), responseFormat);

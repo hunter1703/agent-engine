@@ -3,11 +3,41 @@ package com.agentengine.engine.api.beans.config;
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import java.util.List;
+import java.util.Locale;
 
 public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
-    OLLAMA, OPEN_AI_COMPATIBLE, GEMINI
+    OLLAMA("ollama"),
+    OPEN_AI_COMPATIBLE("open_ai_compatible"),
+    GEMINI("gemini");
+
+    private final String type;
+
+    Provider(final String type) {
+      this.type = type;
+    }
+
+    public String type() {
+      return type;
+    }
+
+    public boolean matches(final String value) {
+      return type.equals(normalizeType(value));
+    }
+
+    public static Provider fromType(final String value) {
+      final String normalized = normalizeType(value);
+      if (StringUtils.isBlank(normalized)) {
+        throw new IllegalArgumentException("type is required");
+      }
+      for (final Provider provider : values()) {
+        if (provider.type.equals(normalized)) {
+          return provider;
+        }
+      }
+      throw new IllegalArgumentException("Unsupported model provider: " + value);
+    }
   }
 
   private String baseUrl;
@@ -24,7 +54,7 @@ public class ModelConfig extends NamedEntity implements Config {
 
   private Integer numPredict;
 
-  private int maxContextLength;
+  private Integer maxContextLength;
 
   private List<String> stopTokens;
 
@@ -55,7 +85,7 @@ public class ModelConfig extends NamedEntity implements Config {
   }
 
   public void setType(final String type) {
-    this.type = type;
+    this.type = normalizeType(type);
   }
 
   public String getModel() {
@@ -106,11 +136,11 @@ public class ModelConfig extends NamedEntity implements Config {
     this.numPredict = numPredict;
   }
 
-  public int getMaxContextLength() {
+  public Integer getMaxContextLength() {
     return maxContextLength;
   }
 
-  public void setMaxContextLength(final int maxContextLength) {
+  public void setMaxContextLength(final Integer maxContextLength) {
     this.maxContextLength = maxContextLength;
   }
 
@@ -191,11 +221,19 @@ public class ModelConfig extends NamedEntity implements Config {
     if (StringUtils.isBlank(type)) {
       throw new IllegalArgumentException("type is required");
     }
+    Provider.fromType(type);
     if (StringUtils.isBlank(model)) {
       throw new IllegalArgumentException("model is required");
     }
     if (StringUtils.isBlank(getName())) {
       throw new IllegalArgumentException("name is required");
     }
+  }
+
+  private static String normalizeType(final String type) {
+    if (type == null) {
+      return null;
+    }
+    return type.trim().toLowerCase(Locale.ROOT);
   }
 }
