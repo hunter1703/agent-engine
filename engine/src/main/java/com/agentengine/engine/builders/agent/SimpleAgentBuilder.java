@@ -69,10 +69,19 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     }
     final String globalInstruction = buildGlobalInstruction(config.getModel().getSystemPrompt(),
         modelConfig.getInstructions());
+    final String agentName = resolveAgentName(config);
     agentBuilder.toolInstructions(toolInstructions).protocolInstructions(agentModel.getProtocol())
         .globalInstruction(globalInstruction).disallowTransferToParent(false).disallowTransferToPeers(false)
-        .name(config.getName()).model(model);
+        .name(agentName).model(model);
     return agentBuilder;
+  }
+
+  private static String resolveAgentName(final AgentConfig config) {
+    if (config == null) {
+      return "agent";
+    }
+    final String candidate = StringUtils.isBlank(config.getName()) ? config.getId() : config.getName();
+    return StringUtils.isBlank(candidate) ? "agent" : candidate;
   }
 
   private static String buildGlobalInstruction(final String systemPrompt, final String modelInstructions) {
@@ -82,7 +91,7 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     if (StringUtils.isBlank(systemPrompt)) {
       return modelInstructions;
     }
-    return STR."\{systemPrompt}\n\n# FOLLOW:\n\{modelInstructions}";
+    return STR."\{systemPrompt}\n\n# FOLLOW\n\{modelInstructions}";
   }
 
   private BaseSessionService resolveSessionService(final AgentContext agentContext, final AgentConfig config) {

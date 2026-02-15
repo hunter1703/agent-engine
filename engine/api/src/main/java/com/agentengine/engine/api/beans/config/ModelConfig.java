@@ -191,6 +191,9 @@ public class ModelConfig extends NamedEntity implements Config {
     if (StringUtils.isBlank(type)) {
       throw new IllegalArgumentException("type is required");
     }
+    if (StringUtils.isBlank(model)) {
+      throw new IllegalArgumentException("model is required");
+    }
     if (StringUtils.isBlank(getName())) {
       throw new IllegalArgumentException("name is required");
     }

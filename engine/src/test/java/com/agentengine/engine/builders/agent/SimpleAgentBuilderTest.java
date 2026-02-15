@@ -150,7 +150,7 @@ class SimpleAgentBuilderTest {
 
     final String instructions = ((Instruction.Static) agent.instruction()).instruction();
     assertThat(instructions).contains("prompt");
-    assertThat(instructions).contains("MODEL GUIDANCE");
+    assertThat(instructions).contains("FOLLOW");
     assertThat(instructions).contains("Prefer concise answers.");
   }
 

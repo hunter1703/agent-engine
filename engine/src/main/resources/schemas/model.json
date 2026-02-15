@@ -6,7 +6,8 @@
     "required": [
       "id",
       "name",
-      "type"
+      "type",
+      "model"
     ],
     "properties": {
       "id": {
