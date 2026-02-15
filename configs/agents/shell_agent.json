@@ -8,18 +8,15 @@
     "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
     "contextManagerConfig": {
       "type": "last_n",
-      "keepLast": 100
+      "keepLast": 10000
     },
     "tools": {
       "enabled": ["run_cmd"],
       "configs": {
         "run_cmd": {
-          "timeout_seconds": 30
+          "timeout_seconds": 3000
         }
       }
     }
-  },
-  "sessionStore": {
-    "type": "memory"
   }
 }

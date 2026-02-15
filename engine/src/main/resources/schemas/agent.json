@@ -40,14 +40,6 @@
         "title": "Model Configuration",
         "description": "Language model configuration for this agent.",
         "help": "Set `modelId` to an entry from `model.json`."
-      },
-      "sessionStore": {
-        "$ref": "#/$defs/SessionServiceConfig",
-        "title": "Session Store",
-        "description": "Session storage configuration for conversation history.",
-        "default": {
-          "type": "mongodb"
-        }
       }
     },
     "$defs": {
@@ -75,8 +67,8 @@
             "type": "string",
             "title": "Session Store Type",
             "description": "Session storage type.",
+            "default": "mongodb",
             "enum": [
-              "memory",
               "mongodb"
             ],
             "help": "Use `memory` for ephemeral sessions or `mongodb` for persistence."

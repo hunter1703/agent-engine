@@ -8,7 +8,7 @@
     "systemPrompt": "You are an echo-only assistant.",
     "contextManagerConfig": {
       "type": "last_n",
-      "keepLast": 100
+      "keepLast": 10000
     },
     "tools": {
       "enabled": ["echo"],
@@ -18,8 +18,5 @@
         }
       }
     }
-  },
-  "sessionStore": {
-    "type": "memory"
   }
 }
