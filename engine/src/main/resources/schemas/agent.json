@@ -191,7 +191,7 @@
       "LastNContextManagerConfig": {
         "type": "object",
         "title": "Recent Messages Context Configuration",
-        "description": "Configuration for keeping the last N messages in context.",
+        "description": "Configuration for keeping the last N tokens in context.",
         "allOf": [
           {
             "$ref": "#/$defs/ContextManagerConfig"
@@ -207,7 +207,7 @@
           "keepLast": {
             "type": "integer",
             "minimum": 1,
-            "default": 24,
+            "default": 1024,
             "title": "Messages to Keep",
             "description": "Number of recent messages to keep in context."
           }
