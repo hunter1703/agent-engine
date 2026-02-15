@@ -25,7 +25,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
-
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -53,8 +52,8 @@ public class AgentRestAPI {
 
   @Inject
   public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentRepository agentRepository) {
-    this.handlers = handlers.stream()
-        .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
+    this.handlers = handlers != null ? handlers.stream()
+        .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity())) : null;
     this.agentRepository = agentRepository;
   }
 

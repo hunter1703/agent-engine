@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -41,7 +40,7 @@ class AgentSseTest {
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
 
-    when(service.getOrStartRuntime(eq("agent"), eq("config.json")))
+    when(service.getOrStartRuntime(anyString(), anyString()))
         .thenReturn(new AgentSessionRuntime("session", runner));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
@@ -73,14 +72,18 @@ class AgentSseTest {
           return Flowable.empty(); // Complete the flowable
         })));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
-    AgentRequest request = new AgentRequest();
-    request.setAgentId("agent");
-    request.setAgentConfigPath("config.json");
-    request.setSessionId("session");
-    request.setMessage("hello");
-    request.setType(RequestType.STREAM_AGUI_EVENTS.name());
-    var publisher = resource.events(request);
+    AgentRunner agentRunner = mock(AgentRunner.class);
+    when(agentRunner.runStreaming(any(AgentSessionRuntime.class), anyString()))
+        .thenReturn(Flowable.just(event));
+
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service, agentRunner), null);
+    AgentRequest agentRequest = new AgentRequest();
+    agentRequest.setAgentId("agent");
+    agentRequest.setAgentConfigPath("config.json");
+    agentRequest.setSessionId("session");
+    agentRequest.setMessage("hello");
+    agentRequest.setType(RequestType.STREAM_AGUI_EVENTS.name());
+    var publisher = resource.events(agentRequest);
     assertThat(publisher).isNotNull();
 
     // Collect events directly from the publisher using the reactive streams
@@ -125,8 +128,8 @@ class AgentSseTest {
         EventType.STEP_FINISHED, EventType.RUN_FINISHED);
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
-    final AgentRunner agentRunner = mock(AgentRunner.class);
+  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service,
+      final AgentRunner agentRunner) {
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
     final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,

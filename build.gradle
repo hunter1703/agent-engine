@@ -198,8 +198,10 @@ tasks.register('preparePluginsOptimized') {
 
             if (shouldBuildPlugins) {
                 println "Building plugins as they appear to be out of date or forced..."
-                pluginBuildTasks.each { task ->
-                    task.execute()
+                pluginDirsLocal.each { pluginDir ->
+                    exec {
+                        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'assemble'
+                    }
                 }
 
                 copy {
