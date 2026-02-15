@@ -70,8 +70,8 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     final String globalInstruction = buildGlobalInstruction(config.getModel().getSystemPrompt(),
         modelConfig.getInstructions());
     agentBuilder.toolInstructions(toolInstructions).protocolInstructions(agentModel.getProtocol())
-        .globalInstruction(globalInstruction).disallowTransferToParent(false)
-        .disallowTransferToPeers(false).name(config.getName()).model(model);
+        .globalInstruction(globalInstruction).disallowTransferToParent(false).disallowTransferToPeers(false)
+        .name(config.getName()).model(model);
     return agentBuilder;
   }
 

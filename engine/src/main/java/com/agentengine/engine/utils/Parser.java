@@ -16,7 +16,6 @@ import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import io.reactivex.rxjava3.core.Single;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -273,7 +272,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         continue;
       }
       String responseText = String.format("Tool Response [%s]: %s", response.name().orElse("unknown"),
-              response.response());
+          response.response());
       parsedResponseParts.add(Part.builder().text(responseText).build());
     }
     return parsedResponseParts;
@@ -345,7 +344,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
         }
         String argsJson = JsonUtils.toJson(call.args());
         String toolCallText = String.format("\n{'id': '%s', 'name': '%s', 'args': %s}", call.id().orElse(""),
-                call.name().orElse(""), argsJson);
+            call.name().orElse(""), argsJson);
         textBuilder.append(toolCallText);
       }
     }

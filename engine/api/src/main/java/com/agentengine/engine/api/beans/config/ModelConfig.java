@@ -1,6 +1,5 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import java.util.List;

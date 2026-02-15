@@ -24,8 +24,9 @@ public class SimpleFlow extends SingleFlow {
 
   public SimpleFlow(final int maxSteps, final List<RequestProcessor> requestProcessors,
       final List<ResponseProcessor> responseProcessors) {
-    super(CollectionUtils.append(DEFAULT_PROCESSORS,
-        CollectionUtils.append(requestProcessors, LoggingRequestProcessor.INSTANCE)),
+    super(
+        CollectionUtils.append(DEFAULT_PROCESSORS,
+            CollectionUtils.append(requestProcessors, LoggingRequestProcessor.INSTANCE)),
         CollectionUtils.append(responseProcessors, RESPONSE_PROCESSORS), Optional.of(maxSteps));
   }
 

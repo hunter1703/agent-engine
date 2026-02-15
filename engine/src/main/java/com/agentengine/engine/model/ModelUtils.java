@@ -30,7 +30,7 @@ public final class ModelUtils {
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
   private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
-  
+
   // Constants for server configuration generation
   private static final Random RANDOM = new Random();
   private static final int MIN_PORT = 18000;
@@ -114,7 +114,8 @@ public final class ModelUtils {
   /**
    * Builds server arguments from the model path.
    *
-   * @param model The model path
+   * @param model
+   *          The model path
    * @return A list of server arguments
    */
   private static List<String> buildServerArgs(String model) {
@@ -140,8 +141,10 @@ public final class ModelUtils {
   /**
    * Updates the port argument in the server args to match the generated port.
    *
-   * @param serverArgs The server arguments list
-   * @param port The port to set
+   * @param serverArgs
+   *          The server arguments list
+   * @param port
+   *          The port to set
    */
   public static void updatePortInServerArgs(List<String> serverArgs, int port) {
     if (serverArgs == null) {

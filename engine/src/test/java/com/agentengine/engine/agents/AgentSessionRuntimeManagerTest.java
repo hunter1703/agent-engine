@@ -44,8 +44,8 @@ class AgentSessionRuntimeManagerTest {
     final LlmAgent agent = mock(LlmAgent.class);
     when(agentProvider.get(any(), any())).thenReturn(agent);
 
-    final AgentSessionRuntimeManager manager =
-        new AgentSessionRuntimeManager(agentRepository, agentProvider, sessionServiceProvider, agentSessionRepository);
+    final AgentSessionRuntimeManager manager = new AgentSessionRuntimeManager(agentRepository, agentProvider,
+        sessionServiceProvider, agentSessionRepository);
 
     final AgentSessionRuntime runtime = manager.getOrStartRuntime("agent-id", "session-id");
 

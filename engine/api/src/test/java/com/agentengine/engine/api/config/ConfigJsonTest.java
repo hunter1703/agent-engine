@@ -31,16 +31,12 @@ class ConfigJsonTest {
 
     final List<Path> configFiles;
     try (Stream<Path> files = Files.list(configDir)) {
-      configFiles = files
-          .filter(path -> path.toString().endsWith(".json"))
-          .sorted()
-          .toList();
+      configFiles = files.filter(path -> path.toString().endsWith(".json")).sorted().toList();
     }
 
     assertThat(configFiles).isNotEmpty();
     for (final Path configFile : configFiles) {
-      assertThatCode(() -> MAPPER.readTree(configFile.toFile()))
-          .as("config file %s", configFile)
+      assertThatCode(() -> MAPPER.readTree(configFile.toFile())).as("config file %s", configFile)
           .doesNotThrowAnyException();
     }
   }

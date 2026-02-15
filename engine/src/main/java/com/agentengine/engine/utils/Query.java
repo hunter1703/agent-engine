@@ -3,7 +3,7 @@ package com.agentengine.engine.utils;
 import org.bson.conversions.Bson;
 
 public class Query {
-  //TODO: make this a java bean
+  // TODO: make this a java bean
   private Bson filter;
   private Page page;
 

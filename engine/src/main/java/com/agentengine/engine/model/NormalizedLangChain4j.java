@@ -107,8 +107,7 @@ public final class NormalizedLangChain4j extends LangChain4j {
 
   private static LlmResponse markFinal(final LlmResponse response, final String fullText) {
     final Content content = Content.builder().role("model").parts(Part.fromText(fullText)).build();
-    return response.toBuilder().content(content).partial(false).turnComplete(true)
-        .build();
+    return response.toBuilder().content(content).partial(false).turnComplete(true).build();
   }
 
   private static boolean hasToolParts(final LlmResponse response) {

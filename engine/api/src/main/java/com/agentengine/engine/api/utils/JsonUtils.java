@@ -66,9 +66,8 @@ public final class JsonUtils {
     if (obj == null) {
       return null;
     }
-    return JsonBaseModel.getMapper().convertValue(obj,
-            new com.fasterxml.jackson.core.type.TypeReference<>() {
-            });
+    return JsonBaseModel.getMapper().convertValue(obj, new com.fasterxml.jackson.core.type.TypeReference<>() {
+    });
   }
 
   public static <T> T fromJacksonMap(final Map<String, Object> map, final Class<T> clazz) {

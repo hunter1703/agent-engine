@@ -3,10 +3,8 @@ package com.agentengine.engine.agents;
 import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
-import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.builders.model.OpenAIModelBuilder;
 import com.agentengine.engine.utils.SessionUtils;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
@@ -33,7 +31,8 @@ public final class SessionTitleGenerator {
   public SessionTitleGenerator(ModelProvider modelProvider) {
     final AgentModelConfig agentModelConfig = new AgentModelConfig();
     agentModelConfig.setRole("system");
-    agentModelConfig.setSystemPrompt("You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
+    agentModelConfig.setSystemPrompt(
+        "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
     agentModelConfig.setModelId("qwen2_5_1_5b_instruct");
     this.titleGeneratorModel = modelProvider.get(agentModelConfig);
   }

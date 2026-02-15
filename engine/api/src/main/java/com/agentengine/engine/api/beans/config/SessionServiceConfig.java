@@ -5,14 +5,10 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@Schema(
-    oneOf = {InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class},
-    discriminatorProperty = "type",
-    discriminatorMapping = {
+@Schema(oneOf = {InMemorySessionServiceConfig.class,
+    MongoSessionServiceConfig.class}, discriminatorProperty = "type", discriminatorMapping = {
         @DiscriminatorMapping(value = "memory", schema = InMemorySessionServiceConfig.class),
-        @DiscriminatorMapping(value = "mongodb", schema = MongoSessionServiceConfig.class)
-    }
-)
+        @DiscriminatorMapping(value = "mongodb", schema = MongoSessionServiceConfig.class)})
 @JSONType(typeKey = "type", seeAlso = {InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class})
 @BsonDiscriminator(key = "type")
 public abstract class SessionServiceConfig implements Config {
@@ -32,7 +28,6 @@ public abstract class SessionServiceConfig implements Config {
   }
 
   public enum SessionServiceType {
-    MEMORY,
-    MONGODB
+    MEMORY, MONGODB
   }
 }

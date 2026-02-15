@@ -16,9 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Singleton
 public class ResourceService {
-    private final Map<String, String> resourceCache = new ConcurrentHashMap<>();
+  private final Map<String, String> resourceCache = new ConcurrentHashMap<>();
 
-    /**
+  /**
      * Retrieves a resource by its type with caching enabled.
      *
      * @param resourceType the type of resource to retrieve
@@ -48,16 +48,18 @@ public class ResourceService {
             return resourceContent;
         }
     }
-    
-    /**
-     * Convenience method to get JSON resources.
-     *
-     * @param resourceType the type of resource to retrieve
-     * @return the resource content as a string
-     * @throws IOException if there's an error reading the resource
-     */
-    public Map<String, Object> getJsonResource(String resourceType) throws IOException {
-        return JsonUtils.fromJson(getResource(resourceType, "json"), new TypeReference<>() {
-        });
-    }
+
+  /**
+   * Convenience method to get JSON resources.
+   *
+   * @param resourceType
+   *          the type of resource to retrieve
+   * @return the resource content as a string
+   * @throws IOException
+   *           if there's an error reading the resource
+   */
+  public Map<String, Object> getJsonResource(String resourceType) throws IOException {
+    return JsonUtils.fromJson(getResource(resourceType, "json"), new TypeReference<>() {
+    });
+  }
 }

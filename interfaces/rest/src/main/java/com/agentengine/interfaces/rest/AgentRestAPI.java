@@ -61,8 +61,7 @@ public class AgentRestAPI {
   @POST
   @Path("/invoke")
   @Operation(summary = "Invoke an agent", description = "Synchronously invoke the agent and get the final response.")
-  @APIResponse(responseCode = "200", description = "Final response from the agent",
-      content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentResponse.class)))
+  @APIResponse(responseCode = "200", description = "Final response from the agent", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = AgentResponse.class)))
   public AgentResponse invoke(final AgentRequest request) {
     LOG.debug("Agent invocation request - agent_id={} session_id={}", request.getAgentId(), request.getSessionId());
 
@@ -78,8 +77,7 @@ public class AgentRestAPI {
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
   @Operation(summary = "Stream agent events", description = "Invoke the agent and stream events in AG-UI format.")
-  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format",
-      content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
+  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
   public Publisher<BaseEvent> events(final AgentRequest request) {
     LOG.debug("Agent events streaming request - agent_id={} session_id={}", request.getAgentId(),
         request.getSessionId());
@@ -96,9 +94,7 @@ public class AgentRestAPI {
   @RestStreamElementType(MediaType.APPLICATION_JSON)
   @Blocking
   @Operation(summary = "Stream agent responses", description = "Invoke the agent and stream events in Responses API format.")
-  @APIResponse(responseCode = "200", description = "SSE event stream",
-      content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS,
-          schema = @Schema(implementation = BaseResponsesEventData.class)))
+  @APIResponse(responseCode = "200", description = "SSE event stream", content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseResponsesEventData.class)))
   public Publisher<Map<String, Object>> responses(final ResponsesApiRequest request) {
     AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
 

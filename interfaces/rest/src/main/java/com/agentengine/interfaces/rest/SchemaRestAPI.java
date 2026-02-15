@@ -9,15 +9,14 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.Map;
 
 @Path("/schemas")
 public class SchemaRestAPI {
 
-    @Inject
-    ResourceService resourceService;
+  @Inject
+  ResourceService resourceService;
 
-    @GET
+  @GET
     @Path("/{assetType}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSchema(@PathParam("assetType") String assetType) {

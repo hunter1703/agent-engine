@@ -22,9 +22,7 @@ class NormalizedLangChain4jTest {
     final ChatModel chatModel = new StubChatModel();
     final StreamingChatModel streamingChatModel = new StubStreamingChatModel();
     final NormalizedLangChain4j model = new NormalizedLangChain4j(chatModel, streamingChatModel, "test-model");
-    final LlmRequest request = LlmRequest.builder()
-        .contents(List.of(Content.fromParts(Part.fromText("Hi"))))
-        .build();
+    final LlmRequest request = LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("Hi")))).build();
 
     final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();
 

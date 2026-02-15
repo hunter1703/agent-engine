@@ -6,21 +6,10 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 /**
  * Base class for all response event data types
  */
-@Schema(
-    oneOf = {
-        CreatedEventData.class,
-        InProgressEventData.class,
-        OutputTextDeltaEventData.class,
-        OutputItemAddedEventData.class,
-        OutputItemDoneEventData.class,
-        ReasoningSummaryPartAddedEventData.class,
-        ReasoningSummaryTextDeltaEventData.class,
-        DoneEventData.class,
-        CompletedEventData.class,
-        FailedEventData.class
-    },
-    discriminatorProperty = "type",
-    discriminatorMapping = {
+@Schema(oneOf = {CreatedEventData.class, InProgressEventData.class, OutputTextDeltaEventData.class,
+    OutputItemAddedEventData.class, OutputItemDoneEventData.class, ReasoningSummaryPartAddedEventData.class,
+    ReasoningSummaryTextDeltaEventData.class, DoneEventData.class, CompletedEventData.class,
+    FailedEventData.class}, discriminatorProperty = "type", discriminatorMapping = {
         @DiscriminatorMapping(value = "response.created", schema = CreatedEventData.class),
         @DiscriminatorMapping(value = "response.in_progress", schema = InProgressEventData.class),
         @DiscriminatorMapping(value = "response.output_text.delta", schema = OutputTextDeltaEventData.class),
@@ -30,9 +19,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
         @DiscriminatorMapping(value = "response.reasoning_summary_text.delta", schema = ReasoningSummaryTextDeltaEventData.class),
         @DiscriminatorMapping(value = "response.done", schema = DoneEventData.class),
         @DiscriminatorMapping(value = "response.completed", schema = CompletedEventData.class),
-        @DiscriminatorMapping(value = "response.failed", schema = FailedEventData.class)
-    }
-)
+        @DiscriminatorMapping(value = "response.failed", schema = FailedEventData.class)})
 public abstract class BaseResponsesEventData {
   protected final String type;
 

@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.model.ModelUtils;
 import com.agentengine.engine.repository.ModelRepository;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
@@ -46,9 +45,8 @@ public class ModelRestAPI {
     if (StringUtils.isBlank(modelId)) {
       throw new WebApplicationException("Model ID is required", 400);
     }
-    
-    return modelRepository.findById(modelId)
-        .orElseThrow(() -> new WebApplicationException("Model not found", 404));
+
+    return modelRepository.findById(modelId).orElseThrow(() -> new WebApplicationException("Model not found", 404));
   }
 
   @POST
@@ -84,7 +82,7 @@ public class ModelRestAPI {
     if (StringUtils.isBlank(modelId)) {
       throw new WebApplicationException("Model ID is required", 400);
     }
-    
+
     if (!modelRepository.deleteById(modelId)) {
       throw new WebApplicationException("Model not found", 404);
     }

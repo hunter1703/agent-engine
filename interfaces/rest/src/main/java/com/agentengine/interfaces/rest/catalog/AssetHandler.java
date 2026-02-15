@@ -1,8 +1,6 @@
 package com.agentengine.interfaces.rest.catalog;
 
 import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.utils.Page;
 import com.agentengine.engine.utils.PaginatedResult;
 
 import java.util.Map;

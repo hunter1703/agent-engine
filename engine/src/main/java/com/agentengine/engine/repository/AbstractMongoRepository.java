@@ -13,7 +13,6 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.DeleteResult;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import org.bson.types.ObjectId;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

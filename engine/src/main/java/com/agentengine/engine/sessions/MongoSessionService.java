@@ -9,11 +9,7 @@ import com.google.adk.sessions.GetSessionConfig;
 import com.google.adk.sessions.ListEventsResponse;
 import com.google.adk.sessions.ListSessionsResponse;
 import com.google.adk.sessions.Session;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.result.DeleteResult;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
@@ -21,7 +17,6 @@ import io.reactivex.rxjava3.core.Single;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,15 +36,11 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
   public Single<Session> createSession(final String appName, final String userId,
       final ConcurrentMap<String, Object> state, final String sessionId) {
     final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
-    final ConcurrentMap<String, Object> initialState =
-        state == null ? new ConcurrentHashMap<>() : new ConcurrentHashMap<>(state);
-    final Session session = Session.builder(resolvedSessionId)
-        .appName(appName)
-        .userId(userId)
-        .state(initialState)
-        .events(new ArrayList<>())
-        .lastUpdateTime(Instant.now())
-        .build();
+    final ConcurrentMap<String, Object> initialState = state == null
+        ? new ConcurrentHashMap<>()
+        : new ConcurrentHashMap<>(state);
+    final Session session = Session.builder(resolvedSessionId).appName(appName).userId(userId).state(initialState)
+        .events(new ArrayList<>()).lastUpdateTime(Instant.now()).build();
     save(new SessionInfo(session));
     return Single.just(session);
   }
@@ -63,13 +54,12 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
     }
     final Session session = sessionInfo.toSession();
     final List<Event> events = filterEvents(session.events(), config.orElse(null));
-    final Session.Builder builder = Session.builder(session.id())
-        .appName(session.appName())
-        .userId(session.userId())
+    final Session.Builder builder = Session.builder(session.id()).appName(session.appName()).userId(session.userId())
         .state(session.state())
-            // events need to be mutable so that later on the adk framework can modify, particularly when appending new events (com.google.adk.sessions.BaseSessionService.appendEvent)
-        .events(new ArrayList<>(events))
-        .lastUpdateTime(session.lastUpdateTime());
+        // events need to be mutable so that later on the adk framework can modify,
+        // particularly when appending new events
+        // (com.google.adk.sessions.BaseSessionService.appendEvent)
+        .events(new ArrayList<>(events)).lastUpdateTime(session.lastUpdateTime());
     return Maybe.just(builder.build());
   }
 
@@ -79,11 +69,8 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
     findByQuery(new Query().withFilter(Filters.and(Filters.eq("appName", appName), Filters.eq("userId", userId))))
         .getItems().forEach(sessionInfo -> {
           final Session stored = sessionInfo.toSession();
-          sessions.add(Session.builder(stored.id())
-                  .appName(stored.appName())
-                  .userId(stored.userId())
-                  .lastUpdateTime(stored.lastUpdateTime())
-                  .build());
+          sessions.add(Session.builder(stored.id()).appName(stored.appName()).userId(stored.userId())
+              .lastUpdateTime(stored.lastUpdateTime()).build());
         });
     return Single.just(ListSessionsResponse.builder().sessions(sessions).build());
   }
@@ -108,13 +95,12 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
-    return BaseSessionService.super.appendEvent(session, event)
-        .doOnSuccess(_ -> {
-          if (!event.partial().orElse(false)) {
-            session.lastUpdateTime(Instant.ofEpochMilli(event.timestamp()));
-            save(new SessionInfo(session));
-          }
-        });
+    return BaseSessionService.super.appendEvent(session, event).doOnSuccess(_ -> {
+      if (!event.partial().orElse(false)) {
+        session.lastUpdateTime(Instant.ofEpochMilli(event.timestamp()));
+        save(new SessionInfo(session));
+      }
+    });
   }
 
   private static List<Event> filterEvents(final List<Event> events, final GetSessionConfig config) {
@@ -134,8 +120,7 @@ public final class MongoSessionService extends AbstractMongoRepository<SessionIn
     }
     if (config.afterTimestamp().isPresent()) {
       final Instant threshold = config.afterTimestamp().get();
-      return result.stream()
-          .filter(event -> !Instant.ofEpochMilli(event.timestamp()).isBefore(threshold))
+      return result.stream().filter(event -> !Instant.ofEpochMilli(event.timestamp()).isBefore(threshold))
           .collect(Collectors.toList());
     }
     return result;

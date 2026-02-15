@@ -39,21 +39,12 @@ class SimpleFlowTest {
 
   private static Session buildSession() {
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
-    return Session.builder("session-1")
-        .appName("app")
-        .userId("user")
-        .state(state)
-        .events(new ArrayList<>())
-        .build();
+    return Session.builder("session-1").appName("app").userId("user").state(state).events(new ArrayList<>()).build();
   }
 
   private static InvocationContext buildContext(final LlmAgent agent, final Session session) {
-    return InvocationContext.builder()
-        .agent(agent)
-        .session(session)
-        .sessionService(new InMemorySessionService())
-        .artifactService(new InMemoryArtifactService())
-        .build();
+    return InvocationContext.builder().agent(agent).session(session).sessionService(new InMemorySessionService())
+        .artifactService(new InMemoryArtifactService()).build();
   }
 
   private static final class StubLlm extends BaseLlm {

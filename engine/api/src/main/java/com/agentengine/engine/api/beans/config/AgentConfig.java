@@ -1,6 +1,5 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.alibaba.fastjson2.annotation.JSONType;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;

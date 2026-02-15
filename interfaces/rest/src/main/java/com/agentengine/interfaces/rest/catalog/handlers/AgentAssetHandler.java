@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.catalog.handlers;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.utils.PaginatedResult;
-import com.agentengine.interfaces.rest.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;

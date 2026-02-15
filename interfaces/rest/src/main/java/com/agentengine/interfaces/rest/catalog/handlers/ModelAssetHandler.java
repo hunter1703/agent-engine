@@ -2,11 +2,8 @@ package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.repository.ModelRepository;
-import com.agentengine.engine.utils.Page;
 import com.agentengine.engine.utils.PaginatedResult;
-import com.agentengine.interfaces.rest.catalog.AssetHandler;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
-import com.agentengine.interfaces.rest.catalog.NameIdEntity;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;

@@ -18,18 +18,18 @@ import java.lang.reflect.Type;
 @RegisterForReflection
 public class Fastjson2MessageBodyWriter implements MessageBodyWriter<Object> {
 
-    @Override
-    public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-        return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE) ||
-               mediaType.isCompatible(MediaType.valueOf("application/*+json"));
-    }
+  @Override
+  public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+    return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE)
+        || mediaType.isCompatible(MediaType.valueOf("application/*+json"));
+  }
 
-    @Override
-    public long getSize(Object o, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-        return -1;
-    }
+  @Override
+  public long getSize(Object o, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+    return -1;
+  }
 
-    @Override
+  @Override
     public void writeTo(Object o, Class<?> type, Type genericType, Annotation[] annotations,
                        MediaType mediaType, MultivaluedMap<String, Object> httpHeaders,
                        OutputStream entityStream) {
