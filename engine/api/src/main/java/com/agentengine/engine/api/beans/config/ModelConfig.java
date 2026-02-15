@@ -40,6 +40,7 @@ public class ModelConfig extends NamedEntity implements Config {
   private List<String> serverArgs;
 
   private String serverWorkdir;
+  private String instructions;
 
   public String getBaseUrl() {
     return baseUrl;
@@ -176,6 +177,14 @@ public class ModelConfig extends NamedEntity implements Config {
 
   public void setServerWorkdir(final String serverWorkdir) {
     this.serverWorkdir = serverWorkdir;
+  }
+
+  public String getInstructions() {
+    return instructions;
+  }
+
+  public void setInstructions(final String instructions) {
+    this.instructions = instructions;
   }
 
   @Override

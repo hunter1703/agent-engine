@@ -17,6 +17,7 @@ only.
 - `numPredict`: maximum tokens to generate
 - `maxContextLength`: context window size
 - `stopTokens`: list of stop strings
+- `instructions`: model-level guidance appended to system instructions
 - `contextManagerConfig`: optional context config object with `type`
 - `serverCommand`: OpenAI-compatible server command to launch (OPEN_AI_COMPATIBLE)
 - `apiKey`: Gemini API key (GEMINI)

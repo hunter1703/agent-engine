@@ -9,10 +9,12 @@ import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.model.DelegatingLLMModel;
+import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.agents.Instruction;
@@ -26,6 +28,7 @@ import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class SimpleAgentBuilderTest {
@@ -36,6 +39,7 @@ class SimpleAgentBuilderTest {
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
     final ToolRegistry toolRegistry = mock(ToolRegistry.class);
     final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
+    final ModelRepository modelRepository = mock(ModelRepository.class);
 
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
     final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, true);
@@ -50,9 +54,10 @@ class SimpleAgentBuilderTest {
     when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
+    when(modelRepository.findById(any())).thenReturn(Optional.of(new ModelConfig()));
 
     final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
-        contextManagerProvider);
+        contextManagerProvider, modelRepository);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -76,6 +81,7 @@ class SimpleAgentBuilderTest {
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
     final ToolRegistry toolRegistry = mock(ToolRegistry.class);
     final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
+    final ModelRepository modelRepository = mock(ModelRepository.class);
 
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
     final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, false);
@@ -90,9 +96,10 @@ class SimpleAgentBuilderTest {
     when(modelProvider.get(any())).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
+    when(modelRepository.findById(any())).thenReturn(Optional.of(new ModelConfig()));
 
     final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
-        contextManagerProvider);
+        contextManagerProvider, modelRepository);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -108,6 +115,43 @@ class SimpleAgentBuilderTest {
     assertThat(agent.instruction()).isInstanceOf(Instruction.Static.class);
     final String instructions = ((Instruction.Static) agent.instruction()).instruction();
     assertThat(instructions).doesNotContain("run_cmd");
+  }
+
+  @Test
+  void appendsModelInstructionsToSystemPrompt() {
+    final ModelProvider modelProvider = mock(ModelProvider.class);
+    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final ToolRegistry toolRegistry = mock(ToolRegistry.class);
+    final ContextManagerProvider contextManagerProvider = mock(ContextManagerProvider.class);
+    final ModelRepository modelRepository = mock(ModelRepository.class);
+
+    final Parser parser = Parser.create().toolCallingEnabled(false).parseToolCallsFromText(false);
+    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", false, false);
+
+    final ModelConfig modelConfig = new ModelConfig();
+    modelConfig.setInstructions("Prefer concise answers.");
+
+    when(modelProvider.get(any())).thenReturn(model);
+    when(sessionServiceProvider.get(any())).thenReturn(null);
+    when(modelRepository.findById(any())).thenReturn(Optional.of(modelConfig));
+
+    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
+        contextManagerProvider, modelRepository);
+
+    final AgentModelConfig modelDefinition = new AgentModelConfig();
+    modelDefinition.setModelId("model-id");
+    modelDefinition.setSystemPrompt("prompt");
+
+    final AgentConfig config = new AgentConfig();
+    config.setId("agent-id");
+    config.setModel(modelDefinition);
+
+    final SimpleAgent agent = builder.build(config, new AgentContext(config, null));
+
+    final String instructions = ((Instruction.Static) agent.instruction()).instruction();
+    assertThat(instructions).contains("prompt");
+    assertThat(instructions).contains("MODEL GUIDANCE");
+    assertThat(instructions).contains("Prefer concise answers.");
   }
 
   private static final class StubLlm extends BaseLlm {

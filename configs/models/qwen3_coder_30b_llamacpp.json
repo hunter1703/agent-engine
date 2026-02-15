@@ -6,20 +6,17 @@
   "baseUrl": "http://127.0.0.1:17001/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
-    "-m",
-    "/Users/rhp/Projects/local-agent/llamacpp_models/qwen3-coder-30b.gguf",
-    "--host",
-    "127.0.0.1",
-    "--port",
-    "17001"
+    "-m", "/Users/rhp/Projects/local-agent/llamacpp_models/qwen3-coder-30b.gguf",
+    "--host", "127.0.0.1",
+    "--port", "17001"
   ],
   "temperature": 0.2,
   "numPredict": 120,
   "topK": 20,
   "topP": 0.8,
-  "repeatPenalty": 1.08,
+  "repeatPenalty": 1.0,
   "toolCallingEnabled": true,
   "toolCallingSupported": true,
   "maxContextLength": 8192,
-  "stopTokens": []
+  "instructions": "Use native tool calling only; never emit <tool_call> or </tool_call> in normal text. If those tags are part of the user content or need to be shown literally, wrap them in formatting (e.g., code blocks or quoted strings). Avoid repeating or restating previously emitted text; continue from the last token without re-sending the full sentence."
 }

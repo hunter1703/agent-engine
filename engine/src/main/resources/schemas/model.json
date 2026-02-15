@@ -89,6 +89,12 @@
         "description": "Tokens that stop generation when emitted.",
         "help": "[\"</s>\"]"
       },
+      "instructions": {
+        "type": "string",
+        "title": "Model Instructions",
+        "description": "Additional model-level guidance appended to system instructions.",
+        "help": "Use for model-specific behavioral guidance."
+      },
       "responseFormat": {
         "type": "string",
         "title": "Response Format",
