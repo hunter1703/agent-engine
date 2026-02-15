@@ -118,10 +118,10 @@ Run the build tooling tests:
 
 ## Deployment
 
-Systemd service template:
+Docker deployment:
 
-- `deploy/agent-engine.service`
-- Deployment guide: `deploy/README.md`
+- `deploy/docker/Dockerfile`
+- `deploy/docker/README.md`
 
 ## MongoDB Config Store
 
