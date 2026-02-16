@@ -14,9 +14,7 @@ public final class MongoUtils {
 
   public static Bson toBsonUpdate(final Update update) {
     Objects.requireNonNull(update, "update");
-    final List<Bson> updates = update.operations().stream()
-        .map(MongoUtils::toBsonOperation)
-        .toList();
+    final List<Bson> updates = update.operations().stream().map(MongoUtils::toBsonOperation).toList();
     return Updates.combine(updates);
   }
 

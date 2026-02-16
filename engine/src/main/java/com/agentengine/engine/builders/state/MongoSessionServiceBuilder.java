@@ -4,7 +4,6 @@ import com.agentengine.engine.api.beans.config.MongoSessionServiceConfig;
 import com.agentengine.engine.api.beans.config.SessionServiceConfig.SessionServiceType;
 import com.agentengine.engine.api.builders.SessionServiceBuilder;
 import com.agentengine.engine.repository.AgentSessionRepository;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 
 @Singleton

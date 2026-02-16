@@ -35,9 +35,8 @@ public class SessionInfo extends BaseEntity {
     sessionInfo.setAppName(session.appName());
     sessionInfo.setUserId(session.userId());
     sessionInfo.setState(session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
-    sessionInfo.setEvents(session.events() == null
-            ? new ArrayList<>()
-            : session.events().stream().map(JsonUtils::toJacksonMap).toList());
+    sessionInfo.setEvents(
+        session.events() == null ? new ArrayList<>() : session.events().stream().map(JsonUtils::toJacksonMap).toList());
     sessionInfo.setLastUpdateTime(session.lastUpdateTime().toEpochMilli());
     return sessionInfo;
   }

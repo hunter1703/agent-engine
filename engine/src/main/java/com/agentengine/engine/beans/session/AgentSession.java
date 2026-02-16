@@ -4,8 +4,6 @@ import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.sessions.SessionInfo;
 import com.google.adk.sessions.Session;
 
-import java.util.Map;
-
 public class AgentSession extends BaseEntity {
   public static final String DEFAULT_USER_ID = "default";
   public static final String DEFAULT_APP = "default";

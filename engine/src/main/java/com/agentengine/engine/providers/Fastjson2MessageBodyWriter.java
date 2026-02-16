@@ -14,7 +14,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 @Provider
-@Produces({ MediaType.APPLICATION_JSON, "application/*+json" })
+@Produces({MediaType.APPLICATION_JSON, "application/*+json"})
 @RegisterForReflection
 public class Fastjson2MessageBodyWriter implements MessageBodyWriter<Object> {
 

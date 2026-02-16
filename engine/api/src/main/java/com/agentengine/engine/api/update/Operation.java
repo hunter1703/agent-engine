@@ -1,7 +1,5 @@
 package com.agentengine.engine.api.update;
 
-import java.util.Objects;
-
 public record Operation(String field, OperationType type, Object value) {
 
   public static Operation set(final String field, final Object value) {

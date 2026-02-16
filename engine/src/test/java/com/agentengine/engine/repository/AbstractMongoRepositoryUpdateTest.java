@@ -33,10 +33,7 @@ class AbstractMongoRepositoryUpdateTest {
         .thenReturn(updated);
     final TestRepository repository = new TestRepository(collection);
 
-    final Update update = new Update(List.of(
-        Operation.set("name", "value"),
-        Operation.unset("age")
-    ));
+    final Update update = new Update(List.of(Operation.set("name", "value"), Operation.unset("age")));
 
     final TestEntity result = repository.update("id", update);
 
@@ -44,15 +41,13 @@ class AbstractMongoRepositoryUpdateTest {
 
     final ArgumentCaptor<Bson> filterCaptor = ArgumentCaptor.forClass(Bson.class);
     final ArgumentCaptor<Bson> updateCaptor = ArgumentCaptor.forClass(Bson.class);
-    final ArgumentCaptor<FindOneAndUpdateOptions> optionsCaptor = ArgumentCaptor.forClass(FindOneAndUpdateOptions.class);
+    final ArgumentCaptor<FindOneAndUpdateOptions> optionsCaptor = ArgumentCaptor
+        .forClass(FindOneAndUpdateOptions.class);
 
     verify(collection).findOneAndUpdate(filterCaptor.capture(), updateCaptor.capture(), optionsCaptor.capture());
 
     final Bson expectedFilter = Filters.eq("_id", "id");
-    final Bson expectedUpdate = Updates.combine(
-        Updates.set("name", "value"),
-        Updates.unset("age")
-    );
+    final Bson expectedUpdate = Updates.combine(Updates.set("name", "value"), Updates.unset("age"));
 
     assertThat(toDocument(filterCaptor.getValue())).isEqualTo(toDocument(expectedFilter));
     assertThat(toDocument(updateCaptor.getValue())).isEqualTo(toDocument(expectedUpdate));
