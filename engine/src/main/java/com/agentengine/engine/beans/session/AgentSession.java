@@ -35,6 +35,15 @@ public class AgentSession extends BaseEntity {
     this.sessionInfo = other.sessionInfo;
   }
 
+  public AgentSession(final String id, final String agentId, final String title) {
+    setId(id);
+    setCreatedTime(System.currentTimeMillis());
+    setUpdatedTime(System.currentTimeMillis());
+    this.agentId = agentId;
+    this.userId = DEFAULT_USER_ID;
+    this.title = title;
+  }
+
   public String getAgentId() {
     return agentId;
   }

@@ -7,12 +7,11 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.beans.session.AgentSession;
-import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
-import com.agentengine.interfaces.rest.catalog.SessionAsset;
+import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
@@ -33,7 +32,6 @@ class SessionAssetHandlerTest {
   void getAssetsByIdsIncludesAguiEventsWhenRequested() {
     final AgentSessionRepository sessionRepository = mock(AgentSessionRepository.class);
     final AgentRepository agentRepository = mock(AgentRepository.class);
-    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
     final BaseSessionService sessionService = mock(BaseSessionService.class);
 
     final AgentSession session = new AgentSession();
@@ -51,21 +49,19 @@ class SessionAssetHandlerTest {
 
     when(sessionRepository.findById("session-1")).thenReturn(Optional.of(session));
     when(agentRepository.findById("agent-1")).thenReturn(Optional.of(agentConfig));
-    when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(sessionService);
     when(sessionService.listEvents(AgentSession.DEFAULT_APP, AgentSession.DEFAULT_USER_ID, "session-1"))
         .thenReturn(Single.just(eventsResponse));
 
-    final SessionAssetHandler handler = new SessionAssetHandler(sessionRepository, agentRepository,
-        sessionServiceProvider);
+    final SessionAssetHandler handler = new SessionAssetHandler(sessionRepository);
     final AssetRequest request = new AssetRequest();
     request.setKeys(List.of("session-1"));
     request.setOptions(Map.of("includeEvents", true));
 
-    final Map<String, AgentSession> results = handler.getAssetsByIds(request);
-    final AgentSession asset = results.get("session-1");
+    final Map<String, AgentSessionDTO> results = handler.getAssetsByIds(request);
+    final AgentSessionDTO asset = results.get("session-1");
 
-    assertThat(asset).isInstanceOf(SessionAsset.class);
-    final List<BaseEvent> events = ((SessionAsset) asset).getEvents();
+    assertThat(asset).isInstanceOf(AgentSessionDTO.class);
+    final List<BaseEvent> events = asset.getEvents();
     assertThat(events).isNotEmpty();
     assertThat(events).anyMatch(event -> event instanceof RunStartedEvent);
     final RunFinishedEvent finishedEvent = events.stream().filter(RunFinishedEvent.class::isInstance)
@@ -77,7 +73,6 @@ class SessionAssetHandlerTest {
   void findAssetsIncludesAguiEventsWhenRequested() {
     final AgentSessionRepository sessionRepository = mock(AgentSessionRepository.class);
     final AgentRepository agentRepository = mock(AgentRepository.class);
-    final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
     final BaseSessionService sessionService = mock(BaseSessionService.class);
 
     final AgentSession session = new AgentSession();
@@ -98,19 +93,17 @@ class SessionAssetHandlerTest {
 
     when(sessionRepository.findByQuery(any())).thenReturn(paginatedResult);
     when(agentRepository.findById("agent-2")).thenReturn(Optional.of(agentConfig));
-    when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(sessionService);
     when(sessionService.listEvents(AgentSession.DEFAULT_APP, AgentSession.DEFAULT_USER_ID, "session-2"))
         .thenReturn(Single.just(eventsResponse));
 
-    final SessionAssetHandler handler = new SessionAssetHandler(sessionRepository, agentRepository,
-        sessionServiceProvider);
+    final SessionAssetHandler handler = new SessionAssetHandler(sessionRepository);
     final AssetRequest request = new AssetRequest();
     request.setOptions(Map.of("includeEvents", true));
 
-    final PaginatedResult<AgentSession> result = handler.findAssets(request);
-    final AgentSession asset = result.getItems().getFirst();
+    final PaginatedResult<AgentSessionDTO> result = handler.findAssets(request);
+    final AgentSessionDTO asset = result.getItems().getFirst();
 
-    assertThat(asset).isInstanceOf(SessionAsset.class);
-    assertThat(((SessionAsset) asset).getEvents()).isNotEmpty();
+    assertThat(asset).isInstanceOf(AgentSessionDTO.class);
+    assertThat(asset.getEvents()).isNotEmpty();
   }
 }

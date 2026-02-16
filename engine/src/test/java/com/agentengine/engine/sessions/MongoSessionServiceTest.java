@@ -23,7 +23,7 @@ class MongoSessionServiceTest {
     final Session session = Session.builder("session-1").appName("app").userId("user").state(state)
         .events(List.of(event)).lastUpdateTime(Instant.ofEpochSecond(42)).build();
 
-    final SessionInfo info = new SessionInfo(session);
+    final SessionInfo info = SessionInfo.fromSession(session);
     final Session restored = info.toSession();
 
     assertThat(restored.id()).isEqualTo("session-1");
