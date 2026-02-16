@@ -11,8 +11,11 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.UriInfo;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -31,13 +34,13 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 @RunOnVirtualThread
 public class ResourceCatalogAPI {
 
-  private final Map<String, AssetHandler<?>> assetHandlers;
+    private final Map<String, AssetHandler<?>> assetHandlers;
 
-  @Inject
-  public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
-    this.assetHandlers = handlers.stream()
-        .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
-  }
+    @Inject
+    public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
+        this.assetHandlers = handlers.stream()
+                .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
+    }
 
   @POST
     @Path("/catalog/list")
@@ -83,7 +86,8 @@ public class ResourceCatalogAPI {
         content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Object.class)))
     @APIResponse(responseCode = "404", description = "Resource not found")
     public <T extends BaseEntity> T getResource(@PathParam("resourceType") String resourceType,
-                                                @PathParam("id") String id) {
+                                                @PathParam("id") String id,
+                                                @Context UriInfo uriInfo) {
         if (resourceType == null || id == null) {
             throw new WebApplicationException("Resource type and ID are required", 400);
         }
@@ -97,6 +101,17 @@ public class ResourceCatalogAPI {
         AssetRequest request = new AssetRequest();
         request.setAssetType(resourceType);
         request.setKeys(List.of(id)); // Pass the ID as a key in the request
+
+        // Map query parameters to options
+        Map<String, Object> options = new HashMap<>();
+        if (uriInfo != null && uriInfo.getQueryParameters() != null) {
+          uriInfo.getQueryParameters().forEach((key, values) -> {
+            if (values != null && !values.isEmpty()) {
+              options.put(key, values.get(0));
+            }
+          });
+        }
+        request.setOptions(options);
 
         final Map<String, T> assetsByIds = handler.getAssetsByIds(request);
         T resource = assetsByIds.get(id);
