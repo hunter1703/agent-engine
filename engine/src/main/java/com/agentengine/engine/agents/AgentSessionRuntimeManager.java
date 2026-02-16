@@ -1,13 +1,13 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_APP;
-import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
+import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_APP;
+import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
 import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.beans.session.AgentSession;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;

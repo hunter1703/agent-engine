@@ -3,23 +3,23 @@ package com.agentengine.engine.builders.state;
 import com.agentengine.engine.api.beans.config.MongoSessionServiceConfig;
 import com.agentengine.engine.api.beans.config.SessionServiceConfig.SessionServiceType;
 import com.agentengine.engine.api.builders.SessionServiceBuilder;
-import com.agentengine.engine.sessions.MongoSessionService;
+import com.agentengine.engine.repository.AgentSessionRepository;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class MongoSessionServiceBuilder
     implements
-      SessionServiceBuilder<MongoSessionServiceConfig, MongoSessionService> {
-  private final MongoClientSupport mongoClientSupport;
+      SessionServiceBuilder<MongoSessionServiceConfig, AgentSessionRepository> {
+  private final AgentSessionRepository sessionRepository;
 
-  public MongoSessionServiceBuilder(final MongoClientSupport mongoClientSupport) {
-    this.mongoClientSupport = mongoClientSupport;
+  public MongoSessionServiceBuilder(final AgentSessionRepository sessionRepository) {
+    this.sessionRepository = sessionRepository;
   }
 
   @Override
-  public MongoSessionService build(final MongoSessionServiceConfig config) {
-    return new MongoSessionService(mongoClientSupport);
+  public AgentSessionRepository build(final MongoSessionServiceConfig config) {
+    return sessionRepository;
   }
 
   @Override

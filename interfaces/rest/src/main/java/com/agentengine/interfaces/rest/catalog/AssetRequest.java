@@ -3,12 +3,15 @@ package com.agentengine.interfaces.rest.catalog;
 import com.agentengine.engine.utils.Query;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class AssetRequest {
 
   private String assetType;
   private List<String> keys;
   private Query query;
+  private Map<String, Object> options;
 
   public AssetRequest() {
   }
@@ -41,5 +44,13 @@ public class AssetRequest {
 
   public void setQuery(final Query query) {
     this.query = query;
+  }
+
+  public Map<String, Object> getOptions() {
+    return options;
+  }
+
+  public void setOptions(final Map<String, Object> options) {
+    this.options = options;
   }
 }

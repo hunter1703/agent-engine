@@ -1,7 +1,9 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.utils.MongoUtils;
 import com.agentengine.engine.utils.Page;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
@@ -9,9 +11,12 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +77,18 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   @Override
   public T update(String id, T entity) {
     return _update(id, entity, false);
+  }
+
+  @Override
+  public T update(String id, Update update) {
+    try {
+      final Bson updateOperation = MongoUtils.toBsonUpdate(update);
+      final FindOneAndUpdateOptions options = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
+      return getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
+    } catch (Exception e) {
+      LOG.error("Error updating entity: {}", id, e);
+      throw new RuntimeException("Error updating entity: " + id, e);
+    }
   }
 
   @Override

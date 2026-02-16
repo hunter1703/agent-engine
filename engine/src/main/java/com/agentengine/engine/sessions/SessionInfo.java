@@ -29,17 +29,18 @@ public class SessionInfo extends BaseEntity {
   public SessionInfo() {
   }
 
-  public SessionInfo(final Session session) {
-    setId(session.id());
-    this.appName = session.appName();
-    this.userId = session.userId();
-    this.state = session.state() == null ? new HashMap<>() : new HashMap<>(session.state());
-    this.events = session.events() == null
-        ? new ArrayList<>()
-        : session.events().stream().map(JsonUtils::toJacksonMap).toList();
-    this.lastUpdateTime = session.lastUpdateTime().toEpochMilli();
+  public static SessionInfo fromSession(final Session session) {
+    final SessionInfo sessionInfo = new SessionInfo();
+    sessionInfo.setId(session.id());
+    sessionInfo.setAppName(session.appName());
+    sessionInfo.setUserId(session.userId());
+    sessionInfo.setState(session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
+    sessionInfo.setEvents(session.events() == null
+            ? new ArrayList<>()
+            : session.events().stream().map(JsonUtils::toJacksonMap).toList());
+    sessionInfo.setLastUpdateTime(session.lastUpdateTime().toEpochMilli());
+    return sessionInfo;
   }
-
   public Session toSession() {
     final ConcurrentMap<String, Object> sessionState = new ConcurrentHashMap<>();
     if (state != null) {

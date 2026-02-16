@@ -46,6 +46,9 @@ Fields:
 - `POST /v1/catalog/search`: resource catalog search API (supports agents, sessions, and other resource types).
 - `GET /v1/catalog/{resourceType}/{id}`: resource catalog retrieval API.
 
+For catalog queries targeting the `session` asset type, pass `options.includeEvents=true` in the
+request body to include AG-UI event payloads in each session result.
+
 ### Examples
 Invoke:
 ```json

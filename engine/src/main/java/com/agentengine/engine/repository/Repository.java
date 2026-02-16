@@ -1,6 +1,7 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.engine.utils.Query;
 
@@ -26,6 +27,17 @@ public interface Repository<T extends BaseEntity> {
   T insert(T entity);
 
   T update(String id, T entity);
+
+  /**
+   * Apply a partial update to an entity.
+   *
+   * @param id
+   *          the entity ID
+   * @param update
+   *          the update operations
+   * @return the updated entity
+   */
+  T update(String id, Update update);
 
   /**
    * Save an entity. If the entity already exists, it will be updated.
