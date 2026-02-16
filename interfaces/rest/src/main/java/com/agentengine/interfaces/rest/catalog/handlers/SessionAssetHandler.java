@@ -26,7 +26,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 @Singleton
-public class SessionAssetHandler implements AssetHandler<AgentSession> {
+public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
 
   private static final String ASSET_TYPE = "session";
   private static final String INCLUDE_EVENTS_OPTION = "includeEvents";
@@ -44,19 +44,18 @@ public class SessionAssetHandler implements AssetHandler<AgentSession> {
   }
 
   @Override
-  public PaginatedResult<AgentSession> findAssets(final AssetRequest request) {
+  public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
     final PaginatedResult<AgentSession> result = agentSessionRepository.findByQuery(request.getQuery());
-    Stream<AgentSession> stream = CollectionUtils.nullSafeList(result.getItems()).stream();
-    if (shouldIncludeEvents(request)) {
-      stream = stream.map(this::attachEvents);
-    }
-    result.setItems(stream.peek(session -> session.setSessionInfo(null)).toList());
-    return result;
+    return result.transform(session -> {
+      final AgentSessionDTO dto = shouldIncludeEvents(request) ? attachEvents(session) : new AgentSessionDTO(session, List.of());
+      dto.setSessionInfo(null);
+      return dto;
+    });
   }
 
   @Override
-  public Map<String, AgentSession> getAssetsByIds(final AssetRequest request) {
-    final Map<String, AgentSession> result = new HashMap<>();
+  public Map<String, AgentSessionDTO> getAssetsByIds(final AssetRequest request) {
+    final Map<String, AgentSessionDTO> result = new HashMap<>();
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return result;
     }
@@ -64,7 +63,7 @@ public class SessionAssetHandler implements AssetHandler<AgentSession> {
     final boolean includeEvents = shouldIncludeEvents(request);
     for (final String key : request.getKeys()) {
       agentSessionRepository.findById(key)
-          .map(session -> includeEvents ? attachEvents(session) : session)
+          .map(session -> includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of()))
           .ifPresent(value -> result.put(key, value));
     }
 

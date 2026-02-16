@@ -5,6 +5,7 @@ import com.agentengine.engine.api.utils.JsonUtils;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.function.Function;
 
 public class PaginatedResult<T> {
   private List<T> items;
@@ -53,6 +54,15 @@ public class PaginatedResult<T> {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
       result.setNextCursor(Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
     }
+    return result;
+  }
+
+  public <S> PaginatedResult<S> transform(Function<T, S> transformer) {
+    PaginatedResult<S> result = new PaginatedResult<>();
+    result.setItems(CollectionUtils.nullSafeList(this.items).stream().map(transformer).toList());
+    result.setNextCursor(this.nextCursor);
+    result.setTotal(this.total);
+    result.setHasMore(this.hasMore);
     return result;
   }
 
