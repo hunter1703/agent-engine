@@ -34,13 +34,13 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 @RunOnVirtualThread
 public class ResourceCatalogAPI {
 
-    private final Map<String, AssetHandler<?>> assetHandlers;
+  private final Map<String, AssetHandler<?>> assetHandlers;
 
-    @Inject
-    public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
-        this.assetHandlers = handlers.stream()
-                .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
-    }
+  @Inject
+  public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
+    this.assetHandlers = handlers.stream()
+        .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
+  }
 
   @POST
     @Path("/catalog/list")
@@ -100,9 +100,9 @@ public class ResourceCatalogAPI {
         
         AssetRequest request = new AssetRequest();
         request.setAssetType(resourceType);
-        request.setKeys(List.of(id)); // Pass the ID as a key in the request
+        request.setKeys(List.of(id));
 
-        // Map query parameters to options
+
         Map<String, Object> options = new HashMap<>();
         if (uriInfo != null && uriInfo.getQueryParameters() != null) {
           uriInfo.getQueryParameters().forEach((key, values) -> {

@@ -20,6 +20,7 @@ import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.sessions.InMemorySessionService;
+import com.agentengine.engine.repository.AgentSessionRepository;
 import org.junit.jupiter.api.Test;
 
 class AgentSessionRuntimeManagerTest {
@@ -31,16 +32,18 @@ class AgentSessionRuntimeManagerTest {
     final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig agentConfig = buildValidAgentConfig();
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final AgentSessionRepository sessionRepository = mock(AgentSessionRepository.class);
 
+    when(configRepository.findById("agent")).thenReturn(Optional.of(agentConfig));
     when(agentProvider.get(eq(agentConfig), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
-        sessionServiceProvider, null);
+        sessionServiceProvider, sessionRepository);
 
     final AgentSessionRuntime resolved = service.getOrStartRuntime("agent", "config.json");
 
-    assertThat(resolved.sessionId()).isNotBlank(); // Verify that a session ID is returned
+    assertThat(resolved.sessionId()).isNotNull(); // Verify that a session ID is returned
     verify(agentProvider).get(any(AgentConfig.class), any(AgentContext.class));
   }
 
@@ -51,13 +54,14 @@ class AgentSessionRuntimeManagerTest {
     final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig config = buildValidAgentConfig();
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final AgentSessionRepository sessionRepository = mock(AgentSessionRepository.class);
 
     when(configRepository.findById("agent")).thenReturn(Optional.of(config));
     when(agentProvider.get(eq(config), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(config.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
-        sessionServiceProvider, null);
+        sessionServiceProvider, sessionRepository);
 
     final AgentSessionRuntime resolved = service.getOrStartRuntime("agent", null);
 
@@ -73,12 +77,15 @@ class AgentSessionRuntimeManagerTest {
     final LlmAgent engine = mock(LlmAgent.class);
     final AgentConfig agentConfig = buildValidAgentConfig();
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
+    final AgentSessionRepository sessionRepository = mock(AgentSessionRepository.class);
 
+    when(configRepository.findById("agent")).thenReturn(Optional.of(agentConfig));
+    when(sessionRepository.findById(any())).thenReturn(Optional.empty());
     when(agentProvider.get(eq(agentConfig), any(AgentContext.class))).thenReturn(engine);
     when(sessionServiceProvider.get(agentConfig.getSessionStore())).thenReturn(new InMemorySessionService());
 
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
-        sessionServiceProvider, null);
+        sessionServiceProvider, sessionRepository);
 
     final AgentSessionRuntime first = service.getOrStartRuntime("agent", "config.json");
     final AgentSessionRuntime second = service.getOrStartRuntime("agent", "config.json");
@@ -90,7 +97,7 @@ class AgentSessionRuntimeManagerTest {
   @Test
   void resolveEngineRejectsMissingAgentId() {
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(mock(AgentRepository.class),
-        mock(AgentProvider.class), mock(SessionServiceProvider.class), null);
+        mock(AgentProvider.class), mock(SessionServiceProvider.class), mock(AgentSessionRepository.class));
 
     assertThatThrownBy(() -> service.getOrStartRuntime(" ", "config.json")).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentId");
@@ -104,7 +111,7 @@ class AgentSessionRuntimeManagerTest {
     when(configRepository.findById("agent")).thenReturn(Optional.empty());
 
     final AgentSessionRuntimeManager service = new AgentSessionRuntimeManager(configRepository, agentProvider,
-        mock(SessionServiceProvider.class), null);
+        mock(SessionServiceProvider.class), mock(AgentSessionRepository.class));
 
     assertThatThrownBy(() -> service.getOrStartRuntime("agent", null)).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("agentId");

@@ -16,6 +16,7 @@ dependencies {
     implementation libs.quarkus.mongodb.client
     implementation libs.google.adk.langchain4j
     implementation libs.vertx.json.schema
+    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core

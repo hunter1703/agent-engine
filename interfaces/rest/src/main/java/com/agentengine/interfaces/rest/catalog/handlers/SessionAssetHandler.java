@@ -1,11 +1,7 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.beans.session.AgentSession;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetHandler;
@@ -14,7 +10,6 @@ import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.handlers.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
 import com.google.adk.events.Event;
-import com.google.adk.sessions.BaseSessionService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -22,8 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 @Singleton
 public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
@@ -47,7 +40,9 @@ public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
     final PaginatedResult<AgentSession> result = agentSessionRepository.findByQuery(request.getQuery());
     return result.transform(session -> {
-      final AgentSessionDTO dto = shouldIncludeEvents(request) ? attachEvents(session) : new AgentSessionDTO(session, List.of());
+      final AgentSessionDTO dto = shouldIncludeEvents(request)
+          ? attachEvents(session)
+          : new AgentSessionDTO(session, List.of());
       dto.setSessionInfo(null);
       return dto;
     });
@@ -74,7 +69,8 @@ public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
     if (session == null) {
       return null;
     }
-    final List<BaseEvent> events = mapAguiEvents(session.getAgentId(), session.getId(), session.getSessionInfo().toSession().events());
+    final List<BaseEvent> events = mapAguiEvents(session.getAgentId(), session.getId(),
+        session.getSessionInfo().toSession().events());
     return new AgentSessionDTO(session, events);
   }
 

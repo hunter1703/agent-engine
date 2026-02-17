@@ -7,6 +7,8 @@ dependencies {
     api libs.mongodb.bson
     api libs.google.adk.core
     api libs.microprofile.openapi.api
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation 'jakarta.validation:jakarta.validation-api'
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml
     implementation libs.jinjava

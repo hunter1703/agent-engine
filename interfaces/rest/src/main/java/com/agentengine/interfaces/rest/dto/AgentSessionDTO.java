@@ -6,20 +6,21 @@ import com.agui.core.event.BaseEvent;
 import java.util.List;
 
 public class AgentSessionDTO extends AgentSession {
-    private List<BaseEvent> events;
+  private List<BaseEvent> events;
 
-    public AgentSessionDTO(){}
+  public AgentSessionDTO() {
+  }
 
-    public AgentSessionDTO(final AgentSession session, final List<BaseEvent> events) {
-        super(session);
-        this.events = events;
-    }
+  public AgentSessionDTO(final AgentSession session, final List<BaseEvent> events) {
+    super(session);
+    this.events = events;
+  }
 
-    public List<BaseEvent> getEvents() {
-        return events;
-    }
+  public List<BaseEvent> getEvents() {
+    return events;
+  }
 
-    public void setEvents(final List<BaseEvent> events) {
-        this.events = events;
-    }
+  public void setEvents(final List<BaseEvent> events) {
+    this.events = events;
+  }
 }

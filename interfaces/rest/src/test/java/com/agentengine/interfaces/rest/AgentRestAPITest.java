@@ -43,7 +43,8 @@ class AgentRestAPITest {
     AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "config.json")).thenReturn(new AgentSessionRuntime("session", runner));
+    when(service.getOrStartRuntime("agent", "session")).thenReturn(new AgentSessionRuntime("session", runner));
+    when(runner.sessionService()).thenReturn(sessionService);
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
     Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
@@ -72,7 +73,8 @@ class AgentRestAPITest {
     AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "config.json")).thenReturn(new AgentSessionRuntime("session", runner));
+    when(service.getOrStartRuntime("agent", "session")).thenReturn(new AgentSessionRuntime("session", runner));
+    when(runner.sessionService()).thenReturn(sessionService);
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
     when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
@@ -95,8 +97,9 @@ class AgentRestAPITest {
   }
 
   @Test
-  void resourceRunsOnVirtualThread() {
-    assertThat(AgentRestAPI.class.isAnnotationPresent(RunOnVirtualThread.class)).isTrue();
+  void invokeRunsOnVirtualThread() throws NoSuchMethodException {
+    assertThat(AgentRestAPI.class.getMethod("invoke", AgentRequest.class).isAnnotationPresent(RunOnVirtualThread.class))
+        .isTrue();
   }
 
   @Test
@@ -131,7 +134,13 @@ class AgentRestAPITest {
   }
 
   private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
-    final AgentRunner agentRunner = mock(AgentRunner.class);
+    com.agentengine.engine.repository.AgentSessionRepository sessionRepo = mock(
+        com.agentengine.engine.repository.AgentSessionRepository.class);
+    when(sessionRepo.findById(anyString())).thenReturn(java.util.Optional.empty());
+    com.agentengine.engine.agents.SessionTitleGenerator titleGen = mock(
+        com.agentengine.engine.agents.SessionTitleGenerator.class);
+    final AgentRunner agentRunner = new AgentRunner(sessionRepo, titleGen);
+
     final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
     final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,

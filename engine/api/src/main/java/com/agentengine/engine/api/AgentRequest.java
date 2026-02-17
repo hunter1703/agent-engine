@@ -1,10 +1,19 @@
 package com.agentengine.engine.api;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class AgentRequest {
+  @NotBlank(message = "types is required")
   private String type;
+
+  @NotBlank(message = "agentId is required")
   private String agentId;
   private String agentConfigPath;
+
+  @NotBlank(message = "sessionId is required")
   private String sessionId;
+
+  @NotBlank(message = "message is required")
   private String message;
 
   public AgentRequest() {

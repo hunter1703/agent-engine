@@ -7,6 +7,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
+import java.util.UUID;
+
 @Provider
 public class AgentExceptionMapper implements ExceptionMapper<AgentException> {
 
@@ -16,7 +18,8 @@ public class AgentExceptionMapper implements ExceptionMapper<AgentException> {
     if (exception instanceof ConfigurationException) {
       status = 400;
     }
-    return Response.status(status)
-        .entity(new ErrorResponse(exception.getMessage(), exception.getClass().getSimpleName())).build();
+    String traceId = UUID.randomUUID().toString();
+    return Response.status(status).entity(new ErrorResponse(String.valueOf(status), exception.getMessage(), traceId))
+        .build();
   }
 }

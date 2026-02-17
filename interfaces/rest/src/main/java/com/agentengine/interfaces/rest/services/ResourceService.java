@@ -29,7 +29,6 @@ public class ResourceService {
     public String getResource(String resourceType, String extension) throws IOException {
         String cacheKey = STR."\{resourceType.toLowerCase()}.\{extension}";
         
-        // Check if resource is already in cache
         String cachedResource = resourceCache.get(cacheKey);
         if (cachedResource != null) {
             return cachedResource;

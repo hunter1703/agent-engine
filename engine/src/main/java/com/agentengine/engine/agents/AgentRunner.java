@@ -1,23 +1,27 @@
 package com.agentengine.engine.agents;
 
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
-import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.functions.Action;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.eclipse.microprofile.faulttolerance.Retry;
+import org.eclipse.microprofile.faulttolerance.Timeout;
 
 import java.util.Objects;
 import java.util.Optional;
 
 import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_APP;
 import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_USER_ID;
+import static com.google.adk.agents.RunConfig.StreamingMode.SSE;
+import static com.google.genai.types.Part.fromText;
 
 @Singleton
 public class AgentRunner {
@@ -30,6 +34,8 @@ public class AgentRunner {
     this.sessionTitleGenerator = sessionTitleGenerator;
   }
 
+  @Timeout(5000)
+  @Retry(maxRetries = 2)
   public Flowable<Event> run(final AgentSessionRuntime runtime, String text) {
     final RunConfig runConfig = RunConfig.builder().build();
     final Runner runner = runtime.runner();
@@ -38,13 +44,16 @@ public class AgentRunner {
         .doOnComplete(updateTitle(runner, sessionId));
   }
 
+  @Timeout(5000)
+  @Retry(maxRetries = 2)
   public Flowable<Event> runStreaming(final AgentSessionRuntime runtime, String text) {
-    LOG.debug("runStreaming - session_id={} text=\"{}\"", runtime.sessionId(), text);
-    final RunConfig runConfig = RunConfig.builder().setStreamingMode(RunConfig.StreamingMode.SSE).build();
+    LOG.debug("runStreaming - session_id={} text=\"{}\"", runtime.sessionId(), StringUtils.substring(text, 0, 50));
+    final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();
     final Runner runner = runtime.runner();
     final String sessionId = runtime.sessionId();
     return runner.runAsync(DEFAULT_USER_ID, sessionId, buildFromText(text), runConfig)
-        .doOnNext(event -> LOG.debug("runStreaming event - session_id={} event={}", sessionId, event))
+        .doOnNext(event -> LOG.debug("runStreaming event - session_id={} eventType={}", sessionId,
+            event.getClass().getSimpleName()))
         .doOnComplete(() -> LOG.debug("runStreaming complete - session_id={}", sessionId))
         .doOnComplete(updateTitle(runner, sessionId));
   }
@@ -60,6 +69,6 @@ public class AgentRunner {
   }
 
   private static Content buildFromText(final String text) {
-    return Content.fromParts(Part.fromText(text));
+    return Content.fromParts(fromText(text));
   }
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -27,8 +28,11 @@ public final class MongoClientFactory {
   }
 
   private static String resolveConnectionString() {
-    final String fromEnv = System.getenv("MONGODB_CONNECTION_STRING");
-    return StringUtils.isNotBlank(fromEnv) ? fromEnv : DEFAULT_CONNECTION;
+    return ConfigProvider.getConfig().getOptionalValue("quarkus.mongodb.connection-string", String.class)
+        .orElseGet(() -> {
+          final String fromEnv = System.getenv("MONGODB_CONNECTION_STRING");
+          return StringUtils.isNotBlank(fromEnv) ? fromEnv : DEFAULT_CONNECTION;
+        });
   }
 
   private static List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {

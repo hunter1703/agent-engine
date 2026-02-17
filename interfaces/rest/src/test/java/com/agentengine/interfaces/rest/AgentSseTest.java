@@ -40,8 +40,7 @@ class AgentSseTest {
     Runner runner = mock(Runner.class);
     BaseSessionService sessionService = mock(BaseSessionService.class);
 
-    when(service.getOrStartRuntime(anyString(), anyString()))
-        .thenReturn(new AgentSessionRuntime("session", runner));
+    when(service.getOrStartRuntime(anyString(), anyString())).thenReturn(new AgentSessionRuntime("session", runner));
     when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
         .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
 
@@ -73,8 +72,7 @@ class AgentSseTest {
         })));
 
     AgentRunner agentRunner = mock(AgentRunner.class);
-    when(agentRunner.runStreaming(any(AgentSessionRuntime.class), anyString()))
-        .thenReturn(Flowable.just(event));
+    when(agentRunner.runStreaming(any(AgentSessionRuntime.class), anyString())).thenReturn(Flowable.just(event));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(service, agentRunner), null);
     AgentRequest agentRequest = new AgentRequest();

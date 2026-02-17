@@ -34,17 +34,22 @@ class SessionAssetHandlerTest {
     final AgentRepository agentRepository = mock(AgentRepository.class);
     final BaseSessionService sessionService = mock(BaseSessionService.class);
 
+    final Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
+        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
+
     final AgentSession session = new AgentSession();
     session.setId("session-1");
     session.setAgentId("agent-1");
     session.setUserId("user-1");
     session.setTitle("Session");
 
+    final com.google.adk.sessions.Session sessionModel = com.google.adk.sessions.Session.builder("session-1")
+        .appName("app").userId("user-1").events(List.of(responseEvent)).build();
+    session.setSessionInfo(com.agentengine.engine.sessions.SessionInfo.fromSession(sessionModel));
+
     final AgentConfig agentConfig = new AgentConfig();
     agentConfig.setId("agent-1");
 
-    final Event responseEvent = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
     final ListEventsResponse eventsResponse = ListEventsResponse.builder().events(List.of(responseEvent)).build();
 
     when(sessionRepository.findById("session-1")).thenReturn(Optional.of(session));
@@ -75,17 +80,22 @@ class SessionAssetHandlerTest {
     final AgentRepository agentRepository = mock(AgentRepository.class);
     final BaseSessionService sessionService = mock(BaseSessionService.class);
 
+    final Event responseEvent = Event.builder().id("event-2").invocationId("run-2").author("model")
+        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
+
     final AgentSession session = new AgentSession();
     session.setId("session-2");
     session.setAgentId("agent-2");
     session.setUserId("user-2");
     session.setTitle("Session");
 
+    final com.google.adk.sessions.Session sessionModel2 = com.google.adk.sessions.Session.builder("session-2")
+        .appName("app").userId("user-2").events(List.of(responseEvent)).build();
+    session.setSessionInfo(com.agentengine.engine.sessions.SessionInfo.fromSession(sessionModel2));
+
     final AgentConfig agentConfig = new AgentConfig();
     agentConfig.setId("agent-2");
 
-    final Event responseEvent = Event.builder().id("event-2").invocationId("run-2").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
     final ListEventsResponse eventsResponse = ListEventsResponse.builder().events(List.of(responseEvent)).build();
 
     final PaginatedResult<AgentSession> paginatedResult = new PaginatedResult<>();

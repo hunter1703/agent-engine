@@ -69,7 +69,7 @@ class ResourceCatalogAPITest {
     when(mockHandler.getAssetsByIds(any(AssetRequest.class))).thenReturn(mockResultMap);
 
     // Call the API
-    Object result = resourceCatalogAPI.getResource("test", "key");
+    Object result = resourceCatalogAPI.getResource("test", "key", null);
 
     // Verify
     assertThat(result).isEqualTo(mockAsset);
@@ -79,7 +79,7 @@ class ResourceCatalogAPITest {
   void getResourceThrowsExceptionForUnsupportedAssetType() {
     // Verify exception is thrown
     try {
-      resourceCatalogAPI.getResource("unsupported", "key");
+      resourceCatalogAPI.getResource("unsupported", "key", null);
     } catch (WebApplicationException e) {
       assertThat(e.getResponse().getStatus()).isEqualTo(400);
       assertThat(e.getMessage()).contains("Unsupported resource type");

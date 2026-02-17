@@ -23,13 +23,13 @@ public class Planning {
       @Schema(name = "name", description = "Name of the plan") String name,
       @Schema(name = "description", description = "What this plan accomplishes") String description,
       @Schema(name = "expected_outcome", description = "Expected result when the plan is complete") String expectedOutcome,
-      @Schema(name = "subtasks", description = "List of subtasks, each with 'name', 'description', 'expected_outcome', and optionally nested 'subtasks'") List<Map<String, Object>> subtasksArgs) {
+      @Schema(name = "subtasks", description = "List of subtasks, each with 'name', 'description', 'expected_outcome', and optionally nested 'subtasks'") List<Map<String, Object>> subtasksList) {
 
     if (toolContext == null) {
       return Map.of("error", "toolContext is required");
     }
 
-    List<Plan> subtaskPlans = toPlans(subtasksArgs);
+    List<Plan> subtaskPlans = toPlans(subtasksList);
     Plan currentPlan = new Plan(name, description, expectedOutcome, subtaskPlans);
     if (StringUtils.isNotBlank(planId)) {
       currentPlan.setId(planId);
@@ -40,25 +40,25 @@ public class Planning {
     return Map.of("status", "success", "plan_id", currentPlan.getId(), "subtask_count", subtaskPlans.size());
   }
 
-  private static List<Plan> toPlans(final List<Map<String, Object>> planArgs) {
-    List<Map<String, Object>> planItemsArgs = CollectionUtils.nullSafeMutableList(planArgs);
-    List<Plan> planItems = new ArrayList<>();
-    for (Map<String, Object> planArgsItem : planItemsArgs) {
-      String name = CollectionUtils.getStringValueFromMapSafe(planArgsItem, "name");
-      String description = CollectionUtils.getStringValueFromMapSafe(planArgsItem, "description");
-      String expectedOutcome = CollectionUtils.getStringValueFromMapSafe(planArgsItem, "expected_outcome");
-      Plan planItem = new Plan(name, description, expectedOutcome);
-      final String planId = resolvePlanId(planArgsItem);
+  private static List<Plan> toPlans(final List<Map<String, Object>> subtasksList) {
+    List<Map<String, Object>> safeSubtasksList = CollectionUtils.nullSafeMutableList(subtasksList);
+    List<Plan> subtasks = new ArrayList<>();
+    for (Map<String, Object> subtaskProps : safeSubtasksList) {
+      String name = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "name");
+      String description = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "description");
+      String expectedOutcome = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "expected_outcome");
+      Plan subtask = new Plan(name, description, expectedOutcome);
+      final String planId = resolvePlanId(subtaskProps);
       if (StringUtils.isNotBlank(planId)) {
-        planItem.setId(planId);
+        subtask.setId(planId);
       }
-      final List<Map<String, Object>> subtaskArgs = CollectionUtils.getListFromMap(planArgsItem, "subtasks");
-      if (CollectionUtils.isNotEmpty(subtaskArgs)) {
-        planItem.setSubtasks(toPlans(subtaskArgs));
+      final List<Map<String, Object>> nestedSubtasks = CollectionUtils.getListFromMap(subtaskProps, "subtasks");
+      if (CollectionUtils.isNotEmpty(nestedSubtasks)) {
+        subtask.setSubtasks(toPlans(nestedSubtasks));
       }
-      planItems.add(planItem);
+      subtasks.add(subtask);
     }
-    return planItems;
+    return subtasks;
   }
 
   private static String resolvePlanId(final Map<String, Object> planArgsItem) {
@@ -138,7 +138,6 @@ public class Planning {
       PlanStatus status = PlanStatus.valueOf(statusStr.toUpperCase());
       targetPlan.setStatus(status);
 
-      // If marking as DONE and outcome provided, set it
       if (status == PlanStatus.DONE && outcome != null && !outcome.isBlank()) {
         targetPlan.setOutcome(outcome);
       }
