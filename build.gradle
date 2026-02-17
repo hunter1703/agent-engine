@@ -24,214 +24,27 @@ tasks.register('build') {
     dependsOn coreModules.collect { module -> "${module}:build" }
 }
 
+tasks.register('buildPlugins') {
+    dependsOn ':engine:api:assemble'
+    doLast {
+        file('plugins').listFiles()?.each { pluginDir ->
+            if (pluginDir.directory && new File(pluginDir, 'build.gradle').exists()) {
+                println "Building plugin: ${pluginDir.name}"
+                exec {
+                    workingDir pluginDir
+                    commandLine '../../gradlew', 'clean', 'assemble'
+                }
+                copy {
+                    from "${pluginDir}/build/libs"
+                    into "plugins"
+                    include "*-plugin.jar"
+                }
+            }
+        }
+    }
+}
+
 tasks.register('test') {
     dependsOn coreModules.collect { module -> "${module}:test" }
 }
 
-final def pluginDirs = file('plugins').listFiles()?.findAll { pluginDir ->
-    pluginDir.directory && new File(pluginDir, 'build.gradle').exists()
-} ?: []
-
-final def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-final def gradleWrapper = new File(rootDir, isWindows ? 'gradlew.bat' : 'gradlew').absolutePath
-
-final def pluginBuildTasks = pluginDirs.collect { pluginDir ->
-    final def suffix = pluginDir.name
-        .split('[^A-Za-z0-9]+')
-        .findAll { it }
-        .collect { it.capitalize() }
-        .join('')
-    tasks.register("buildPlugin${suffix}", Exec) {
-        dependsOn ':engine:assemble'
-        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'assemble'
-    }
-}
-
-tasks.register('preparePlugins', Copy) {
-    dependsOn ':engine:assemble'
-    dependsOn pluginBuildTasks
-    from('plugins') {
-        include '**/build/libs/*-plugin.jar'
-        eachFile { fileCopyDetails ->
-            fileCopyDetails.relativePath = new RelativePath(true, fileCopyDetails.name)
-        }
-        includeEmptyDirs = false
-    }
-    into('plugins')
-}
-
-final def mongoArgs = (findProperty('mongoArgs') ?: './configs').toString().split('\s+')
-final def restPort = (System.getenv('QUARKUS_HTTP_PORT') ?: '8080') as int
-
-final def isPortInUse = { int port ->
-    try {
-        Socket socket = new Socket('127.0.0.1', port)
-        socket.close()
-        return true
-    } catch (IOException ignored) {
-        return false
-    }
-}
-
-tasks.register('setupMongo', Exec) {
-    commandLine 'bash', file('deploy/docker/setup-mongo.sh').absolutePath, *mongoArgs
-}
-
-tasks.register('setupMongoOptimized') {
-    def forceSetup = providers.gradleProperty('forceMongoSetup').forUseAtConfigurationTime()
-    def mongoArgsProvider = providers.gradleProperty('mongoArgs').forUseAtConfigurationTime()
-
-    doFirst {
-        def force = forceSetup.isPresent()
-        def configDir = mongoArgsProvider.getOrElse('./configs')
-
-        def isMongoRunning = false
-        try {
-            def checkProcess = "docker ps --filter name=agent-engine-mongodb --filter status=running --format {{.Names}}".execute()
-            def containerName = checkProcess.text.trim()
-            if (containerName == "agent-engine-mongodb") {
-                isMongoRunning = true
-            }
-        } catch (Exception ignored) {
-        }
-
-        if (!isMongoRunning || force) {
-            println "Setting up MongoDB container..."
-            def setupCmd = ['bash', file('deploy/docker/setup-mongo.sh').absolutePath, configDir.toString()]
-            def process = setupCmd.execute()
-            process.in.eachLine { line -> println line }
-            process.err.eachLine { line -> println "ERROR: $line" }
-            process.waitFor()
-        } else {
-            println "MongoDB container is already running. Refreshing config upserts..."
-
-            def setupCmd = ['bash', file('deploy/docker/setup-mongo.sh').absolutePath, configDir.toString()]
-            def process = setupCmd.execute()
-            process.in.eachLine { line -> println line }
-            process.err.eachLine { line -> println "ERROR: $line" }
-            process.waitFor()
-
-            println "Config upserts completed."
-        }
-    }
-}
-
-tasks.register('deployEngine') {
-    dependsOn 'setupMongoOptimized', 'preparePluginsOptimized', ':interfaces:rest:classes'
-    finalizedBy ':interfaces:rest:quarkusDev'
-
-    doFirst {
-        println "Starting optimized deployment..."
-        println "Ensuring prerequisites are ready..."
-    }
-
-    doLast {
-        println "Prerequisites ready. Starting application server..."
-    }
-}
-
-project(':interfaces:rest') {
-    tasks.matching { it.name == 'quarkusDev' }.configureEach {
-        mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
-        mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
-        mustRunAfter(tasks.named('classes'))
-    }
-}
-
-tasks.register('preparePluginsOptimized') {
-    dependsOn ':engine:assemble'
-    def skipPluginBuildProp = providers.gradleProperty('skipPluginBuild').forUseAtConfigurationTime()
-    def forcePluginBuildProp = providers.gradleProperty('forcePluginBuild').forUseAtConfigurationTime()
-
-    doFirst {
-        def skipPluginBuild = skipPluginBuildProp.isPresent()
-        def forcePluginBuild = forcePluginBuildProp.isPresent()
-
-        if (skipPluginBuild) {
-            println "Skipping plugin builds as requested (-PskipPluginBuild flag)"
-            return
-        }
-
-        def pluginsDir = file('plugins')
-        if (pluginsDir.exists()) {
-            def pluginDirsLocal = pluginsDir.listFiles()?.findAll { pluginDir ->
-                pluginDir.directory && new File(pluginDir, 'build.gradle').exists()
-            } ?: []
-
-            def shouldBuildPlugins = forcePluginBuild
-
-            if (!forcePluginBuild) {
-                pluginDirsLocal.each { pluginDir ->
-                    def buildFile = new File(pluginDir, 'build.gradle')
-                    def jarDir = new File(pluginDir, 'build/libs')
-
-                    if (jarDir.exists()) {
-                        def pluginJars = jarDir.listFiles()?.findAll { it.name.endsWith('-plugin.jar') } ?: []
-
-                        if (pluginJars.isEmpty()) {
-                            shouldBuildPlugins = true
-                        } else {
-                            def latestJarTime = pluginJars.max { it.lastModified() }.lastModified()
-                            def buildFileTime = buildFile.lastModified()
-
-                            if (buildFileTime > latestJarTime) {
-                                shouldBuildPlugins = true
-                            } else {
-                                def srcDirs = ['src/main/java', 'src/main/resources'].collect {
-                                    new File(pluginDir, it)
-                                }.findAll { it.exists() }
-
-                                srcDirs.each { srcDir ->
-                                    srcDir.traverse(type: groovy.io.FileType.FILES) { file ->
-                                        if (file.lastModified() > latestJarTime) {
-                                            shouldBuildPlugins = true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        shouldBuildPlugins = true
-                    }
-                }
-            }
-
-            if (shouldBuildPlugins) {
-                println "Building plugins as they appear to be out of date or forced..."
-                pluginDirsLocal.each { pluginDir ->
-                    exec {
-                        commandLine gradleWrapper, '-p', pluginDir.absolutePath, 'clean', 'assemble'
-                    }
-                }
-
-                copy {
-                    from('plugins') {
-                        include '**/build/libs/*-plugin.jar'
-                        eachFile { fileCopyDetails ->
-                            fileCopyDetails.relativePath = new RelativePath(true, fileCopyDetails.name)
-                        }
-                        includeEmptyDirs = false
-                    }
-                    into('plugins')
-                }
-            } else {
-                println "Plugins appear up-to-date. Skipping plugin builds."
-            }
-        }
-    }
-}
-
-tasks.deployEngine {
-    dependsOn 'setupMongoOptimized'
-    dependsOn 'preparePluginsOptimized'
-    dependsOn ':interfaces:rest:classes'
-    finalizedBy ':interfaces:rest:quarkusDev'
-}
-
-project(':interfaces:rest') {
-    tasks.matching { it.name == 'quarkusDev' }.configureEach {
-        mustRunAfter(rootProject.tasks.named('setupMongoOptimized'))
-        mustRunAfter(rootProject.tasks.named('preparePluginsOptimized'))
-        mustRunAfter(tasks.named('classes'))
-    }
-}

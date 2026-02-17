@@ -1,6 +1,9 @@
 plugins {
-    id 'java'
+    id 'java-library'
 }
+
+group = 'com.agentengine'
+version = '1.0.0'
 
 repositories {
     mavenCentral()

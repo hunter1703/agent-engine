@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  agent-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - QUARKUS_MONGODB_CONNECTION_STRING=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    networks:
+      - agent-network
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27027:27017" # Exposed for local debugging on non-standard port
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
