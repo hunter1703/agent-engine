@@ -2,7 +2,6 @@ package com.agentengine.engine.mongo;
 
 import com.agentengine.engine.api.query.Filter;
 import com.agentengine.engine.api.query.Operator;
-import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.mongodb.client.model.Filters;
 import org.bson.Document;
@@ -11,7 +10,6 @@ import org.bson.conversions.Bson;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public final class MongoQueryAdapter {
 
@@ -29,6 +27,7 @@ public final class MongoQueryAdapter {
             return switch (filter.getOp()) {
                 case AND -> Filters.and(subFilters.toArray(new Bson[0]));
                 case OR -> Filters.or(subFilters.toArray(new Bson[0]));
+                case NOT -> Filters.not(Objects.requireNonNull(CollectionUtils.getFirst(subFilters)));
                 default -> throw new IllegalArgumentException(STR."Unsupported compound operator: \{filter.getOp()}");
             };
         } else {
