@@ -1,10 +1,15 @@
 package com.agentengine.engine.agents;
 
+import static com.agentengine.engine.model.TitleConfig.TYPE;
 import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
+import com.agentengine.engine.model.InfraConfig;
+import com.agentengine.engine.model.TitleConfig;
+import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.engine.utils.LazyLoader;
 import com.agentengine.engine.utils.SessionUtils;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
@@ -14,6 +19,7 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.inject.Singleton;
@@ -25,16 +31,18 @@ public final class SessionTitleGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(SessionTitleGenerator.class);
   private static final int MAX_EVENTS = 30;
   private static final int MAX_TITLE_LENGTH = 80;
+  private final LazyLoader<BaseLlm> titleGeneratorModelLoader;
 
-  private final BaseLlm titleGeneratorModel;
-
-  public SessionTitleGenerator(ModelProvider modelProvider) {
-    final AgentModelConfig agentModelConfig = new AgentModelConfig();
-    agentModelConfig.setRole("system");
-    agentModelConfig.setSystemPrompt(
-        "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
-    agentModelConfig.setModelId("qwen2.5-1.5b-instruct-q5_k_m");
-    this.titleGeneratorModel = modelProvider.get(agentModelConfig);
+  public SessionTitleGenerator(InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
+    this.titleGeneratorModelLoader = new LazyLoader<>(() -> {
+      final AgentModelConfig agentModelConfig = new AgentModelConfig();
+      agentModelConfig.setRole("title_generator");
+      agentModelConfig.setSystemPrompt(
+              "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
+      final TitleConfig config = infraMongoRepository.findOneByType(TYPE);
+      agentModelConfig.setModelId(Objects.requireNonNull(config.getModelId()));
+      return modelProvider.get(agentModelConfig);
+    });
   }
 
   public Optional<String> generateTitle(final List<Event> events) {
@@ -52,7 +60,7 @@ public final class SessionTitleGenerator {
     final Content promptContent = Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
     final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
     try {
-      final LlmResponse response = titleGeneratorModel.generateContent(request, false).blockingFirst();
+      final LlmResponse response = titleGeneratorModelLoader.getInstance().generateContent(request, false).blockingFirst();
       final String rawTitle = response.content().map(Content::text).orElse(null);
       return Optional.ofNullable(sanitizeTitle(rawTitle));
     } catch (Exception e) {

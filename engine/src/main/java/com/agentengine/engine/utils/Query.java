@@ -27,4 +27,9 @@ public class Query {
     this.filter = filter;
     return this;
   }
+
+  public Query withPage(final Page page) {
+    this.page = page;
+    return this;
+  }
 }

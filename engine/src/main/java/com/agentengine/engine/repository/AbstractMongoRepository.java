@@ -38,10 +38,17 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   protected final MongoClient mongoClient;
   protected final String collectionName;
   protected final Class<T> entityClass;
+  private final String databaseName;
 
   public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String collectionName,
       Class<T> entityClass) {
+    this(mongoClientSupport, "AGENT_ENGINE", collectionName, entityClass);
+  }
+
+  public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String databaseName, String collectionName,
+                                 Class<T> entityClass) {
     this.mongoClient = createClient(mongoClientSupport);
+    this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
   }
@@ -156,7 +163,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     }
   }
   protected MongoCollection<T> getCollection() {
-    return mongoClient.getDatabase("AGENT_ENGINE").getCollection(collectionName, entityClass);
+    return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
   }
 
   private MongoClient createClient(MongoClientSupport mongoClientSupport) {
