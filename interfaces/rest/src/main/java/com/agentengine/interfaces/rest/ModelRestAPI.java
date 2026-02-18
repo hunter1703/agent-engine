@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.repository.ModelRepository;
+import com.agentengine.engine.api.services.ModelService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -29,11 +29,11 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @RunOnVirtualThread
 public class ModelRestAPI {
 
-  private final ModelRepository modelRepository;
+  private final ModelService modelService;
 
   @Inject
-  public ModelRestAPI(ModelRepository modelRepository) {
-    this.modelRepository = modelRepository;
+  public ModelRestAPI(ModelService modelService) {
+    this.modelService = modelService;
   }
 
   @GET
@@ -46,7 +46,7 @@ public class ModelRestAPI {
       throw new WebApplicationException("Model ID is required", 400);
     }
 
-    return modelRepository.findById(modelId).orElseThrow(() -> new WebApplicationException("Model not found", 404));
+    return modelService.getModel(modelId).orElseThrow(() -> new WebApplicationException("Model not found", 404));
   }
 
   @POST
@@ -56,7 +56,7 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "409", description = "Model already exists")
   public ModelConfig createModel(final ModelConfig modelConfig) {
     modelConfig.validate();
-    modelRepository.insert(modelConfig);
+    modelService.createModel(modelConfig);
     return modelConfig;
   }
 
@@ -70,7 +70,7 @@ public class ModelRestAPI {
       throw new WebApplicationException("Model config is required", 400);
     }
     modelConfig.validate();
-    return modelRepository.update(modelId, modelConfig);
+    return modelService.updateModel(modelConfig);
   }
 
   @DELETE
@@ -83,8 +83,6 @@ public class ModelRestAPI {
       throw new WebApplicationException("Model ID is required", 400);
     }
 
-    if (!modelRepository.deleteById(modelId)) {
-      throw new WebApplicationException("Model not found", 404);
-    }
+    modelService.deleteModel(modelId);
   }
 }

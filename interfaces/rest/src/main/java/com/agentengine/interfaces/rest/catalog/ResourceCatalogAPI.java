@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.catalog;
 
 import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.utils.PaginatedResult;
+import com.agentengine.engine.api.utils.PaginatedResult;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -65,7 +65,7 @@ public class ResourceCatalogAPI {
     @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
     @APIResponse(responseCode = "200", description = "List of resources",
             content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
-    public PaginatedResult<Object> searchResources(AssetRequest request) {
+    public PaginatedResult<?> searchResources(AssetRequest request) {
         if (request == null || request.getAssetType() == null) {
             throw new WebApplicationException("Resource type is required", 400);
         }
@@ -75,8 +75,7 @@ public class ResourceCatalogAPI {
             throw new WebApplicationException(STR."Unsupported resource type: \{request.getAssetType()}", 400);
         }
 
-        //noinspection unchecked
-        return (PaginatedResult<Object>) handler.findAssets(request);
+        return handler.findAssets(request);
     }
 
   @GET

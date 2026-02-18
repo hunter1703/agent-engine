@@ -4,9 +4,10 @@ import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.MongoUtils;
-import com.agentengine.engine.utils.Page;
-import com.agentengine.engine.utils.PaginatedResult;
-import com.agentengine.engine.utils.Query;
+import com.agentengine.engine.api.utils.Page;
+import com.agentengine.engine.api.utils.PaginatedResult;
+import com.agentengine.engine.api.query.Query;
+import com.agentengine.engine.mongo.MongoQueryAdapter;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -29,7 +30,7 @@ import java.util.Optional;
  * Abstract MongoDB repository implementation providing generic CRUD operations
  *
  * @param <T>
- *          the entity type
+ *            the entity type
  */
 public abstract class AbstractMongoRepository<T extends BaseEntity> implements Repository<T> {
 
@@ -45,8 +46,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     this(mongoClientSupport, "AGENT_ENGINE", collectionName, entityClass);
   }
 
-  public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String databaseName, String collectionName,
-                                 Class<T> entityClass) {
+  public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String databaseName,
+      String collectionName,
+      Class<T> entityClass) {
     this.mongoClient = createClient(mongoClientSupport);
     this.databaseName = databaseName;
     this.collectionName = collectionName;
@@ -130,7 +132,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       return result.getDeletedCount() > 0;
     } catch (Exception e) {
       LOG.error("Error deleting entity by ID: {}", id, e);
-      throw new RuntimeException(STR."Error deleting entity by ID: \{id}", e);
+      throw new RuntimeException("Error deleting entity by ID: " + id, e);
     }
   }
 
@@ -140,15 +142,32 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       Page page = query == null ? null : query.getPage();
       page = page == null ? new Page() : page;
       List<T> entities = new ArrayList<>();
-      final FindIterable<T> iter = query != null && query.getFilter() != null
-          ? getCollection().find(query.getFilter(), entityClass).skip(page.getOffset()).limit(page.getLimit())
-          : getCollection().find(entityClass).skip(page.getOffset()).limit(page.getLimit());
+
+      Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
+
+      final FindIterable<T> iter = getCollection().find(bsonFilter, entityClass)
+          .skip(page.getOffset())
+          .limit(page.getLimit());
+
       for (T document : iter) {
         entities.add(document);
       }
-      return PaginatedResult.create(entities, page);
+
+      //TODO: only add when needed
+      long total = count(bsonFilter);
+
+      return PaginatedResult.create(entities, page, total);
     } catch (Exception e) {
       throw new RuntimeException("Error finding all entities", e);
+    }
+  }
+
+  private long count(Bson filter) {
+    try {
+      return getCollection().countDocuments(filter);
+    } catch (Exception e) {
+      LOG.error("Error counting entities with filter", e);
+      return 0;
     }
   }
 

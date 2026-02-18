@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.catalog.handlers.AgentAssetHandler;
 import java.util.List;
 import java.util.Map;
@@ -17,15 +17,14 @@ class GenericAssetAPITest {
 
   @Test
   void getAssetByKeyReturnsCorrectAsset() {
-    // Mock the AgentRepository
-    AgentRepository configRepository = mock(AgentRepository.class);
+    // Mock the AgentService
+    AgentService agentService = mock(AgentService.class);
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
-    when(configRepository.findById("test-agent")).thenReturn(Optional.of(config)); // Changed from getAgentConfig() to
-                                                                                   // findById()
+    when(agentService.getAgent("test-agent")).thenReturn(Optional.of(config));
 
     // Create the handler
-    AgentAssetHandler handler = new AgentAssetHandler(configRepository);
+    AgentAssetHandler handler = new AgentAssetHandler(agentService);
 
     // Prepare the request with keys
     AssetRequest requestWithKeys = new AssetRequest();

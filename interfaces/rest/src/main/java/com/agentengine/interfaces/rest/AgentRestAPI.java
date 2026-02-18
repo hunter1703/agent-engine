@@ -5,7 +5,7 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
@@ -53,14 +53,14 @@ public class AgentRestAPI {
 
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
-  private final AgentRepository agentRepository;
+  private final AgentService agentService;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentRepository agentRepository) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentService agentService) {
     this.handlers = handlers != null
         ? handlers.stream().collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()))
         : null;
-    this.agentRepository = agentRepository;
+    this.agentService = agentService;
   }
 
   @POST
@@ -126,7 +126,7 @@ public class AgentRestAPI {
       throw new WebApplicationException("Agent config is required", 400);
     }
     agentConfig.validate();
-    return agentRepository.insert(agentConfig);
+    return agentService.createAgent(agentConfig);
   }
 
   @PUT
@@ -139,7 +139,7 @@ public class AgentRestAPI {
       throw new WebApplicationException("Agent config is required", 400);
     }
     agentConfig.validate();
-    return agentRepository.update(agentId, agentConfig);
+    return agentService.updateAgent(agentConfig);
   }
 
   @DELETE
@@ -148,7 +148,7 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "204", description = "Agent deleted")
   @APIResponse(responseCode = "404", description = "Agent not found")
   public boolean deleteAgent(@PathParam("agentId") final String agentId) {
-    return agentRepository.deleteById(agentId);
+    return agentService.deleteAgent(agentId);
   }
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {

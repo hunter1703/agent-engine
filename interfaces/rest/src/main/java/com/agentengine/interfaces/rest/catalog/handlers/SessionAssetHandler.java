@@ -1,10 +1,10 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.beans.session.AgentSession;
+import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.repository.AgentSessionRepository;
-import com.agentengine.engine.utils.PaginatedResult;
-import com.agentengine.interfaces.rest.catalog.AssetHandler;
+import com.agentengine.engine.api.services.SessionService;
+import com.agentengine.engine.api.utils.PaginatedResult;
+import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.handlers.AGUIEventMapper;
@@ -19,16 +19,16 @@ import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
+public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
+  public static final String INCLUDE_EVENTS_OPTION = "includeEvents";
   private static final String ASSET_TYPE = "session";
-  private static final String INCLUDE_EVENTS_OPTION = "includeEvents";
 
-  private final AgentSessionRepository agentSessionRepository;
+  private final SessionService sessionService;
 
   @Inject
-  public SessionAssetHandler(final AgentSessionRepository agentSessionRepository) {
-    this.agentSessionRepository = agentSessionRepository;
+  public SessionAssetHandler(final SessionService sessionService) {
+    this.sessionService = sessionService;
   }
 
   @Override
@@ -38,11 +38,12 @@ public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
 
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
-    final PaginatedResult<AgentSession> result = agentSessionRepository.findByQuery(request.getQuery());
+    //TODO: do not fetch not needed fields
+    final PaginatedResult<AgentSession> result = sessionService.findSessions(request.getQuery());
     return result.transform(session -> {
       final AgentSessionDTO dto = shouldIncludeEvents(request)
-          ? attachEvents(session)
-          : new AgentSessionDTO(session, List.of());
+              ? attachEvents(session)
+              : new AgentSessionDTO(session, List.of());
       dto.setSessionInfo(null);
       return dto;
     });
@@ -57,12 +58,20 @@ public class SessionAssetHandler implements AssetHandler<AgentSessionDTO> {
 
     final boolean includeEvents = shouldIncludeEvents(request);
     for (final String key : request.getKeys()) {
-      agentSessionRepository.findById(key)
-          .map(session -> includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of()))
-          .ifPresent(value -> result.put(key, value));
+      sessionService.getSession(key)
+          .map(session -> {
+            final AgentSessionDTO dto = includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
+            dto.setSessionInfo(null);
+            return dto;
+          }).ifPresent(value -> result.put(key, value));
     }
 
     return result;
+  }
+
+  @Override
+  protected String getName(AgentSessionDTO asset) {
+    return asset.getTitle();
   }
 
   private AgentSessionDTO attachEvents(final AgentSession session) {

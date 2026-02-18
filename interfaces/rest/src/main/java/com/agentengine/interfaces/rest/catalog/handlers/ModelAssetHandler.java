@@ -1,8 +1,8 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.repository.ModelRepository;
-import com.agentengine.engine.utils.PaginatedResult;
+import com.agentengine.engine.api.services.ModelService;
+import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
@@ -16,11 +16,11 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
 
   private static final String ASSET_TYPE = "model";
 
-  private final ModelRepository modelRepository;
+  private final ModelService modelService;
 
   @Inject
-  public ModelAssetHandler(ModelRepository modelRepository) {
-    this.modelRepository = modelRepository;
+  public ModelAssetHandler(ModelService modelService) {
+    this.modelService = modelService;
   }
 
   @Override
@@ -30,7 +30,7 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
 
   @Override
   public PaginatedResult<ModelConfig> findAssets(AssetRequest request) {
-    return modelRepository.findByQuery(request.getQuery());
+    return modelService.findModels(request.getQuery());
   }
 
   @Override
@@ -41,9 +41,14 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
     }
 
     for (String key : request.getKeys()) {
-      modelRepository.findById(key).ifPresent(value -> result.put(key, value));
+      modelService.getModel(key).ifPresent(value -> result.put(key, value));
     }
 
     return result;
+  }
+
+  @Override
+  protected String getName(ModelConfig asset) {
+    return asset.getName();
   }
 }

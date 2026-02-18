@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.dto;
 
-import com.agentengine.engine.beans.session.AgentSession;
+import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agui.core.event.BaseEvent;
 
 import java.util.List;

@@ -18,8 +18,8 @@ import org.eclipse.microprofile.faulttolerance.Timeout;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_APP;
-import static com.agentengine.engine.beans.session.AgentSession.DEFAULT_USER_ID;
+import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_APP;
+import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.google.adk.agents.RunConfig.StreamingMode.SSE;
 import static com.google.genai.types.Part.fromText;
 

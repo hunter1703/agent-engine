@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
-import com.agentengine.engine.beans.session.AgentSession;
+import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.repository.AgentRepository;

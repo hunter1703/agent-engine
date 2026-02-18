@@ -3,11 +3,13 @@ package com.agentengine.interfaces.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.AgentRunner;
-import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
@@ -18,6 +20,7 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.agents.AgentSessionRuntimeManager;
 import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.google.adk.events.Event;
@@ -104,29 +107,32 @@ class AgentRestAPITest {
 
   @Test
   void createAgentStoresConfig() {
-    final AgentRepository configRepository = mock(AgentRepository.class);
+    final AgentService agentService = mock(AgentService.class);
     final AgentConfig config = buildValidAgentConfig();
-    when(configRepository.insert(config)).thenReturn(config);
+    // agentService.createAgent is void, so we verify it's called
 
     final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
-        configRepository);
+        agentService);
 
     final AgentConfig response = resource.createAgent(config);
 
     assertThat(response).isInstanceOf(AgentConfig.class);
     final AgentConfig created = response;
     assertThat(created.getId()).isEqualTo("agent");
+    verify(agentService).createAgent(config);
   }
 
   @Test
   void createAgentGeneratesIdWhenMissing() {
-    final AgentRepository configRepository = mock(AgentRepository.class);
+    final AgentService agentService = mock(AgentService.class);
     final AgentConfig config = buildValidAgentConfig();
     config.setId(null);
-    when(configRepository.insert(any(AgentConfig.class))).thenAnswer(assignId("generated-id"));
+
+    // Simulate ID generation
+    doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
 
     final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
-        configRepository);
+        agentService);
 
     final AgentConfig response = resource.createAgent(config);
 

@@ -1,14 +1,15 @@
 package com.agentengine.engine.repository;
 
+import com.agentengine.engine.api.query.Filter;
+import com.agentengine.engine.api.query.Filters;
 import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.beans.session.AgentSession;
-import com.agentengine.engine.sessions.SessionInfo;
-import com.agentengine.engine.utils.Query;
+import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.beans.session.SessionInfo;
+import com.agentengine.engine.api.query.Query;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.*;
-import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
@@ -39,7 +40,7 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   }
 
   public void updateTitle(String id, String title) {
-    getCollection().findOneAndUpdate(Filters.eq("_id", id), Updates.set(AgentSession.FIELD_TITLE, title));
+    update(id, Update.of(Operation.set("sessionInfo.title", title)));
   }
 
   @Override
@@ -78,7 +79,10 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   @Override
   public Single<ListSessionsResponse> listSessions(final String agentId, final String userId) {
     final List<Session> sessions = new ArrayList<>();
-    findByQuery(new Query().withFilter(Filters.and(Filters.eq("agentId", agentId), Filters.eq("userId", userId))))
+
+    final Filter filter = Filters.and(Filters.eq("agentId", agentId), Filters.eq("userId", userId));
+    Query query = new Query().withFilter(filter);
+    findByQuery(query)
         .getItems().forEach(agentSession -> {
           final SessionInfo sessionInfo = agentSession.getSessionInfo();
           final Session stored = sessionInfo.toSession();

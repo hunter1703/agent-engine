@@ -1,0 +1,28 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+    alias(libs.plugins.quarkus)
+}
+
+configurations.all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    exclude group: 'ch.qos.logback', module: 'logback-classic'
+    exclude group: 'ch.qos.logback', module: 'logback-core'
+}
+
+dependencies {
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation libs.slf4j.api
+    implementation project(':engine')
+    implementation project(':interfaces:rest')
+    implementation libs.quarkus.logging.json
+    implementation libs.quarkus.mongodb.client
+    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
+
+    testImplementation libs.quarkus.junit5
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+}
+
+tasks.named('compileJava').configure {
+    dependsOn 'compileQuarkusGeneratedSourcesJava'
+}

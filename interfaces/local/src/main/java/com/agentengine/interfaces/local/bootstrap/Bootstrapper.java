@@ -1,10 +1,12 @@
-package com.agentengine.engine.bootstrap;
+package com.agentengine.interfaces.local.bootstrap;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.repository.AgentRepository;
-import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.model.TitleConfig;
+import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.engine.repository.ModelRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -18,9 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @ApplicationScoped
-public class DataBootstrapper {
+public class Bootstrapper {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DataBootstrapper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Bootstrapper.class);
 
   @ConfigProperty(name = "agent.engine.bootstrap.dir", defaultValue = "configs")
   String bootstrapDir;
@@ -31,9 +33,15 @@ public class DataBootstrapper {
   @Inject
   ModelRepository modelRepository;
 
+  @Inject
+  InfraMongoRepository infraMongoRepository;
+
   void onStart(@Observes StartupEvent ev) {
     LOG.info("Starting data bootstrapping from directory: {}", bootstrapDir);
     Path root = Paths.get(bootstrapDir);
+
+    bootstrapInfraConfigs();
+
     if (!Files.exists(root)) {
       LOG.warn("Bootstrap directory does not exist: {}", bootstrapDir);
       return;
@@ -42,6 +50,19 @@ public class DataBootstrapper {
     bootstrapAgents(root.resolve("agents"));
     bootstrapModels(root.resolve("models"));
     LOG.info("Data bootstrapping completed.");
+  }
+
+  private void bootstrapInfraConfigs() {
+    LOG.info("Bootstrapping infrastructure configurations...");
+    TitleConfig titleConfig = infraMongoRepository.findOneByType(TitleConfig.TYPE);
+    if (titleConfig == null) {
+      LOG.info("Inserting default TitleConfig...");
+      titleConfig = new TitleConfig();
+      titleConfig.setModelId("qwen2.5-1.5b-instruct-q5_k_m");
+      infraMongoRepository.save(titleConfig);
+    } else {
+      LOG.info("TitleConfig already exists, skipping.");
+    }
   }
 
   private void bootstrapAgents(Path path) {

@@ -38,14 +38,22 @@ public final class SessionTitleGenerator {
       final AgentModelConfig agentModelConfig = new AgentModelConfig();
       agentModelConfig.setRole("title_generator");
       agentModelConfig.setSystemPrompt(
-              "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
+          "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
       final TitleConfig config = infraMongoRepository.findOneByType(TYPE);
-      agentModelConfig.setModelId(Objects.requireNonNull(config.getModelId()));
+      if (config == null || StringUtils.isBlank(config.getModelId())) {
+        LOG.warn("Title generator configuration not found or incomplete. Type: {}", TYPE);
+        return null;
+      }
+      agentModelConfig.setModelId(config.getModelId());
       return modelProvider.get(agentModelConfig);
     });
   }
 
   public Optional<String> generateTitle(final List<Event> events) {
+    final BaseLlm titleGeneratorModel = titleGeneratorModelLoader.getInstance();
+    if (titleGeneratorModel == null) {
+      return Optional.empty();
+    }
     final List<Event> conversationEvents = SessionUtils.filterConversationEvents(events);
     if (conversationEvents.isEmpty()) {
       return Optional.empty();
@@ -60,7 +68,7 @@ public final class SessionTitleGenerator {
     final Content promptContent = Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
     final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
     try {
-      final LlmResponse response = titleGeneratorModelLoader.getInstance().generateContent(request, false).blockingFirst();
+      final LlmResponse response = titleGeneratorModel.generateContent(request, false).blockingFirst();
       final String rawTitle = response.content().map(Content::text).orElse(null);
       return Optional.ofNullable(sanitizeTitle(rawTitle));
     } catch (Exception e) {
