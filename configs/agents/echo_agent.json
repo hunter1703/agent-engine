@@ -3,7 +3,7 @@
   "id": "echo_agent",
   "name": "Echo Agent",
   "model": {
-    "modelId": "qwen3_coder_30b_llamacpp",
+    "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
     "role": "reasoning",
     "systemPrompt": "You are an echo-only assistant.",
     "contextManagerConfig": {
@@ -11,7 +11,9 @@
       "keepLast": 10000
     },
     "tools": {
-      "enabled": ["echo"],
+      "enabled": [
+        "echo"
+      ],
       "configs": {
         "echo": {
           "prefix": "hello-"

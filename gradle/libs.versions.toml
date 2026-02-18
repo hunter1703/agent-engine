@@ -57,6 +57,7 @@ jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
 mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
 microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = "microprofile-openapi-api", version.ref = "microprofile-openapi" }
+json-path = { group = "com.jayway.jsonpath", name = "json-path", version = "2.9.0" }
 
 [plugins]
 quarkus = { id = "io.quarkus", version.ref = "quarkus" }

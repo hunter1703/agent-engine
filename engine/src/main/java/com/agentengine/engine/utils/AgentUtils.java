@@ -2,7 +2,7 @@ package com.agentengine.engine.utils;
 
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.alibaba.fastjson2.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

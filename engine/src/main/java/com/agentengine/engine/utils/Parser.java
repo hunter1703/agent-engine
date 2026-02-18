@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.alibaba.fastjson2.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;

@@ -1,9 +1,9 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONType;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeName = "last_n")
+@JsonTypeName("last_n")
 @BsonDiscriminator(value = "last_n")
 public class LastNContextManagerConfig extends ContextManagerConfig {
   private int keepLast = 24;

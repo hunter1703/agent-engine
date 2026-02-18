@@ -34,3 +34,7 @@ tasks.jacocoTestReport {
 tasks.test {
     finalizedBy tasks.jacocoTestReport
 }
+
+tasks.named('compileJava').configure {
+    dependsOn 'compileQuarkusGeneratedSourcesJava'
+}

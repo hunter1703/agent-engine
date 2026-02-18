@@ -1,9 +1,9 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.alibaba.fastjson2.annotation.JSONType;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JSONType(typeName = "mongodb")
+@JsonTypeName("mongodb")
 @BsonDiscriminator(value = "mongodb")
 public class MongoSessionServiceConfig extends SessionServiceConfig {
 

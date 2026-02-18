@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.requests;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -8,7 +9,8 @@ public class ResponsesApiRequest {
 
   private String model;
   private List<InputMessage> input;
-  @JSONField(alternateNames = "prompt_cache_key")
+  @JsonProperty("session_id")
+  @JsonAlias("prompt_cache_key")
   private String sessionId;
 
   public ResponsesApiRequest() {

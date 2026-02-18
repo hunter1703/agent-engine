@@ -1,9 +1,9 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReasoningSummaryPartAddedEventData extends BaseResponsesEventData {
-  @JSONField(name = "summary_index")
+  @JsonProperty("summary_index")
   private final Integer summaryIndex;
 
   public ReasoningSummaryPartAddedEventData(int thinkingIndex) {

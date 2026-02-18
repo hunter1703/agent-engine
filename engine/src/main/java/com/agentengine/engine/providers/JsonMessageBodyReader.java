@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
 @Provider
 @Consumes({MediaType.APPLICATION_JSON, "application/*+json"})
 @RegisterForReflection
-public class Fastjson2MessageBodyReader implements MessageBodyReader<Object> {
+public class JsonMessageBodyReader implements MessageBodyReader<Object> {
 
   @Override
   public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
@@ -25,13 +25,13 @@ public class Fastjson2MessageBodyReader implements MessageBodyReader<Object> {
   }
 
   @Override
-    public Object readFrom(Class<Object> type, Type genericType, Annotation[] annotations,
-                          MediaType mediaType, MultivaluedMap<String, String> httpHeaders,
-                          InputStream entityStream) throws JsonDeserializationException {
-        try {
-            return JsonUtils.fromStream(entityStream, type);
-        } catch (Exception e) {
-            throw new JsonDeserializationException(STR."Error deserializing JSON with Fastjson2: \{e.getMessage()}", e);
-        }
+  public Object readFrom(Class<Object> type, Type genericType, Annotation[] annotations, MediaType mediaType,
+      MultivaluedMap<String, String> httpHeaders, InputStream entityStream) throws JsonDeserializationException {
+    try {
+      return JsonUtils.fromStream(entityStream, type);
+    } catch (Exception e) {
+      throw new JsonDeserializationException(String.format("Error deserializing JSON with Jackson: %s", e.getMessage()),
+          e);
     }
+  }
 }

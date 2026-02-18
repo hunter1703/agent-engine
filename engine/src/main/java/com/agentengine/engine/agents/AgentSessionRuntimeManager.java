@@ -64,7 +64,6 @@ public class AgentSessionRuntimeManager {
     if (createSession) {
       LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
       sessionService.createSession(DEFAULT_APP, DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
-      agentSessionRepository.save(new AgentSession(sessionId, agentConfig.getId(), "New Session"));
     }
 
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);

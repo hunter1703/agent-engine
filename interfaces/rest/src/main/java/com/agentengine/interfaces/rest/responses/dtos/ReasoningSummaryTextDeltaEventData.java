@@ -1,10 +1,10 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import com.alibaba.fastjson2.annotation.JSONField;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReasoningSummaryTextDeltaEventData extends BaseResponsesEventData {
   private final String delta;
-  @JSONField(name = "summary_index")
+  @JsonProperty("summary_index")
   private final Integer summaryIndex;
 
   public ReasoningSummaryTextDeltaEventData(String delta, int thinkingIndex) {

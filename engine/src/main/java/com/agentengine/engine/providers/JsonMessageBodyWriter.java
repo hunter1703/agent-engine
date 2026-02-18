@@ -16,7 +16,7 @@ import java.lang.reflect.Type;
 @Provider
 @Produces({MediaType.APPLICATION_JSON, "application/*+json"})
 @RegisterForReflection
-public class Fastjson2MessageBodyWriter implements MessageBodyWriter<Object> {
+public class JsonMessageBodyWriter implements MessageBodyWriter<Object> {
 
   @Override
   public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
@@ -25,20 +25,12 @@ public class Fastjson2MessageBodyWriter implements MessageBodyWriter<Object> {
   }
 
   @Override
-  public long getSize(Object o, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-    return -1;
-  }
-
-  @Override
-    public void writeTo(Object o, Class<?> type, Type genericType, Annotation[] annotations,
-                       MediaType mediaType, MultivaluedMap<String, Object> httpHeaders,
-                       OutputStream entityStream) {
-        try {
-            String jsonString = JsonUtils.toJson(o);
-            entityStream.write(jsonString.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            entityStream.flush();
-        } catch (Exception e) {
-            throw new JsonSerializationException(STR."Error serializing JSON with Fastjson2: \{e.getMessage()}", e);
-        }
+  public void writeTo(Object o, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType,
+      MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream) throws JsonSerializationException {
+    try {
+      JsonUtils.toStream(entityStream, o);
+    } catch (Exception e) {
+      throw new JsonSerializationException(String.format("Error serializing JSON with Jackson: %s", e.getMessage()), e);
     }
+  }
 }

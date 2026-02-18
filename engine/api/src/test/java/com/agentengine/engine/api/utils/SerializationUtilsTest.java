@@ -2,7 +2,7 @@ package com.agentengine.engine.api.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.alibaba.fastjson2.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;

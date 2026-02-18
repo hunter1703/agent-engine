@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.*;
 import com.agentengine.engine.model.ModelUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
-import com.alibaba.fastjson2.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;

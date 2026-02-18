@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.services;
 
 import com.agentengine.engine.api.utils.JsonUtils;
-import com.alibaba.fastjson2.TypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.inject.Singleton;
 
 import java.io.IOException;

@@ -51,6 +51,10 @@ if (isContinuousIntegration) {
 tasks.named('quarkusDev') {
 }
 
+tasks.named('compileJava').configure {
+    dependsOn 'compileQuarkusGeneratedSourcesJava'
+}
+
 tasks.withType(Test).configureEach {
     systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
 }
