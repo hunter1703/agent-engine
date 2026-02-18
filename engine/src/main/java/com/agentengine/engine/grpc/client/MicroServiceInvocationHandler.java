@@ -2,7 +2,6 @@ package com.agentengine.engine.grpc.client;
 
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.grpc.Request;
-import com.agentengine.engine.grpc.Response;
 import com.agentengine.engine.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
@@ -20,15 +19,12 @@ import java.util.Set;
 
 /**
  * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards
- * method calls
- * to a remote {@code @MicroService} implementation over gRPC.
+ * method calls to a remote {@code @MicroService} implementation over gRPC.
  *
  * <p>
  * Blocking methods are dispatched via a server-streaming RPC and the first
- * response is
- * returned. Methods whose return type is {@link Flowable} are mapped to a lazy
- * stream of
- * all responses.
+ * response is returned. Methods whose return type is {@link Flowable} are
+ * mapped to a lazy stream of all responses.
  */
 public class MicroServiceInvocationHandler implements InvocationHandler {
 
@@ -62,16 +58,14 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     LOG.debug("Remote call: {}.{}()", serviceClass.getSimpleName(), method.getName());
 
     Request request = buildRequest(method, args);
-    //noinspection ReactiveStreamsUnusedPublisher
+    // noinspection ReactiveStreamsUnusedPublisher
     return method.getReturnType().equals(Flowable.class)
         ? streamingCall(request, method)
         : blockingCall(request, method);
   }
 
   private Request buildRequest(Method method, Object[] args) {
-    Request.Builder builder = Request.newBuilder()
-        .setService(serviceClass.getSimpleName())
-        .setMethod(method.getName());
+    Request.Builder builder = Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
 
     if (args != null && args.length > 0) {
       builder.setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(args)));
@@ -112,7 +106,8 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
    * unavailable.
    */
   private static Class<?> firstTypeArgument(Type type) {
-    if (type instanceof ParameterizedType parameterizedType && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
+    if (type instanceof ParameterizedType parameterizedType
+        && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
       return clazz;
     }
     return Object.class;

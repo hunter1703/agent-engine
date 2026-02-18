@@ -24,27 +24,25 @@ import java.util.stream.Collectors;
 @GrpcService
 public class GrpcServiceImpl extends ServiceGrpc.ServiceImplBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GrpcServiceImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GrpcServiceImpl.class);
 
-    /**
-     * Two-level registry built eagerly at startup.
-     * Outer key: {@link MicroService} interface simple name.
-     * Inner key: method name → resolved {@link Method}.
-     */
-    private final Map<String, ServiceEntry> registry;
+  /**
+   * Two-level registry built eagerly at startup. Outer key: {@link MicroService}
+   * interface simple name. Inner key: method name → resolved {@link Method}.
+   */
+  private final Map<String, ServiceEntry> registry;
 
-    @Inject
-    public GrpcServiceImpl(@All List<Object> allBeans) {
-        this.registry = allBeans.stream()
-                .flatMap(bean -> Optional.ofNullable(microServiceInterface(bean.getClass()))
-                        .map(iface -> Map.entry(iface.getSimpleName(), new ServiceEntry(bean, iface)))
-                        .stream())
-                // First registration wins if multiple beans implement the same interface
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
+  @Inject
+  public GrpcServiceImpl(@All List<Object> allBeans) {
+    this.registry = allBeans.stream()
+        .flatMap(bean -> Optional.ofNullable(microServiceInterface(bean.getClass()))
+            .map(iface -> Map.entry(iface.getSimpleName(), new ServiceEntry(bean, iface))).stream())
+        // First registration wins if multiple beans implement the same interface
+        .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
 
-        LOG.info("Registered MicroServices: {}", registry.keySet());
-        registry.forEach((name, entry) -> LOG.debug("  {} → methods: {}", name, entry.methods().keySet()));
-    }
+    LOG.info("Registered MicroServices: {}", registry.keySet());
+    registry.forEach((name, entry) -> LOG.debug("  {} → methods: {}", name, entry.methods().keySet()));
+  }
 
   @Override
   public void execute(Request request, StreamObserver<Response> responseObserver) {
@@ -89,96 +87,92 @@ public class GrpcServiceImpl extends ServiceGrpc.ServiceImplBase {
     }
   }
 
-    // ── Startup helpers
-    // ───────────────────────────────────────────────────────────
+  // ── Startup helpers
+  // ───────────────────────────────────────────────────────────
 
-    /**
-     * Walks the full type hierarchy (class superclasses and interface supertypes)
-     * to find
-     * an interface annotated with {@link MicroService}. Returns {@code null} if
-     * none is found.
-     */
-    private static Class<?> microServiceInterface(Class<?> clazz) {
-        if (clazz == null || clazz == Object.class) {
-            return null;
-        }
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (iface.isAnnotationPresent(MicroService.class)) {
-                return iface;
-            }
-            // Recurse into the interface's own supertypes (interface inheritance)
-            Class<?> found = microServiceInterface(iface);
-            if (found != null) {
-                return found;
-            }
-        }
-        return microServiceInterface(clazz.getSuperclass());
+  /**
+   * Walks the full type hierarchy (class superclasses and interface supertypes)
+   * to find an interface annotated with {@link MicroService}. Returns
+   * {@code null} if none is found.
+   */
+  private static Class<?> microServiceInterface(Class<?> clazz) {
+    if (clazz == null || clazz == Object.class) {
+      return null;
+    }
+    for (Class<?> iface : clazz.getInterfaces()) {
+      if (iface.isAnnotationPresent(MicroService.class)) {
+        return iface;
+      }
+      // Recurse into the interface's own supertypes (interface inheritance)
+      Class<?> found = microServiceInterface(iface);
+      if (found != null) {
+        return found;
+      }
+    }
+    return microServiceInterface(clazz.getSuperclass());
+  }
+
+  // ── Request handling
+  // ──────────────────────────────────────────────────────────
+
+  private Object[] deserializeArgs(Request request, Method method) {
+    int paramCount = method.getParameterCount();
+    if (paramCount == 0 || request.getPayload().isEmpty()) {
+      return new Object[paramCount];
     }
 
-    // ── Request handling
-    // ──────────────────────────────────────────────────────────
-
-    private Object[] deserializeArgs(Request request, Method method) {
-        int paramCount = method.getParameterCount();
-        if (paramCount == 0 || request.getPayload().isEmpty()) {
-            return new Object[paramCount];
-        }
-
-        Object[] rawArgs = JsonUtils.fromJson(request.getPayload().toStringUtf8(), Object[].class);
-        if (rawArgs == null) {
-            return new Object[paramCount];
-        }
-
-        Class<?>[] paramTypes = method.getParameterTypes();
-        Object[] typedArgs = new Object[paramCount];
-        for (int i = 0; i < paramCount && i < rawArgs.length; i++) {
-            if (rawArgs[i] instanceof Map<?, ?> map) {
-                // noinspection unchecked
-                typedArgs[i] = JsonUtils.fromJacksonMap((Map<String, Object>) map, paramTypes[i]);
-            } else {
-                typedArgs[i] = rawArgs[i];
-            }
-        }
-        return typedArgs;
+    Object[] rawArgs = JsonUtils.fromJson(request.getPayload().toStringUtf8(), Object[].class);
+    if (rawArgs == null) {
+      return new Object[paramCount];
     }
 
-    private void sendResult(Object result, StreamObserver<Response> observer) {
-        if (result instanceof Flowable<?> flowable) {
-            flowable.subscribe(
-                    item -> sendPayload(observer, item),
-                    err -> observer.onError(Status.INTERNAL
-                            .withDescription(err.getMessage())
-                            .withCause(err)
-                            .asRuntimeException()),
-                    observer::onCompleted);
-        } else if (result != null) {
-            sendPayload(observer, result);
-            observer.onCompleted();
-        } else {
-            observer.onCompleted();
-        }
+    Class<?>[] paramTypes = method.getParameterTypes();
+    Object[] typedArgs = new Object[paramCount];
+    for (int i = 0; i < paramCount && i < rawArgs.length; i++) {
+      if (rawArgs[i] instanceof Map<?, ?> map) {
+        // noinspection unchecked
+        typedArgs[i] = JsonUtils.fromJacksonMap((Map<String, Object>) map, paramTypes[i]);
+      } else {
+        typedArgs[i] = rawArgs[i];
+      }
     }
+    return typedArgs;
+  }
 
-    private void sendPayload(StreamObserver<Response> observer, Object value) {
-        observer.onNext(Response.newBuilder()
-                .setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value)))
-                .build());
+  private void sendResult(Object result, StreamObserver<Response> observer) {
+    if (result instanceof Flowable<?> flowable) {
+      flowable.subscribe(item -> sendPayload(observer, item),
+          err -> observer
+              .onError(Status.INTERNAL.withDescription(err.getMessage()).withCause(err).asRuntimeException()),
+          observer::onCompleted);
+    } else if (result != null) {
+      sendPayload(observer, result);
+      observer.onCompleted();
+    } else {
+      observer.onCompleted();
     }
+  }
 
-    // ── Inner types
-    // ───────────────────────────────────────────────────────────────
+  private void sendPayload(StreamObserver<Response> observer, Object value) {
+    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
+  }
 
-    /**
-     * Holds a registered service bean alongside its eagerly-resolved method map.
-     *
-     * @param bean    the CDI bean instance
-     * @param methods all public methods of the service interface, keyed by name
-     */
-    private record ServiceEntry(Object bean, Map<String, Method> methods) {
+  // ── Inner types
+  // ───────────────────────────────────────────────────────────────
 
-        ServiceEntry(Object bean, Class<?> iface) {
-            this(bean, Arrays.stream(iface.getMethods())
-                    .collect(Collectors.toUnmodifiableMap(Method::getName, m -> m, (first, __) -> first)));
-        }
+  /**
+   * Holds a registered service bean alongside its eagerly-resolved method map.
+   *
+   * @param bean
+   *          the CDI bean instance
+   * @param methods
+   *          all public methods of the service interface, keyed by name
+   */
+  private record ServiceEntry(Object bean, Map<String, Method> methods) {
+
+    ServiceEntry(Object bean, Class<?> iface) {
+      this(bean, Arrays.stream(iface.getMethods())
+          .collect(Collectors.toUnmodifiableMap(Method::getName, m -> m, (first, __) -> first)));
     }
+  }
 }

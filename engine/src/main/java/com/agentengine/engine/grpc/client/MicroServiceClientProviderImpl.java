@@ -9,8 +9,7 @@ import java.lang.reflect.Proxy;
 
 /**
  * Resolves {@link MicroService} dependencies, preferring a local CDI bean when
- * available
- * and falling back to a transparent gRPC proxy for remote services.
+ * available and falling back to a transparent gRPC proxy for remote services.
  */
 @Singleton
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {

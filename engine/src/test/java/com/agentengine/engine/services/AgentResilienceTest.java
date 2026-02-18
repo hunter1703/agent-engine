@@ -20,22 +20,22 @@ import static org.mockito.Mockito.when;
 @QuarkusTest
 class AgentResilienceTest {
 
-        @Inject
-        AgentExecutionService agentExecutionService;
+  @Inject
+  AgentExecutionService agentExecutionService;
 
-        AgentSessionRuntimeManager agentSessionRuntimeManager;
-        AgentRunner agentRunner;
+  AgentSessionRuntimeManager agentSessionRuntimeManager;
+  AgentRunner agentRunner;
 
-        @BeforeEach
-        void setUpMocks() {
-                agentSessionRuntimeManager = Mockito.mock(AgentSessionRuntimeManager.class);
-                QuarkusMock.installMockForType(agentSessionRuntimeManager, AgentSessionRuntimeManager.class);
+  @BeforeEach
+  void setUpMocks() {
+    agentSessionRuntimeManager = Mockito.mock(AgentSessionRuntimeManager.class);
+    QuarkusMock.installMockForType(agentSessionRuntimeManager, AgentSessionRuntimeManager.class);
 
-                agentRunner = Mockito.mock(AgentRunner.class);
-                QuarkusMock.installMockForType(agentRunner, AgentRunner.class);
-        }
+    agentRunner = Mockito.mock(AgentRunner.class);
+    QuarkusMock.installMockForType(agentRunner, AgentRunner.class);
+  }
 
-        @Test
+  @Test
         void testRetryOnRun() {
                 // Configure mock to throw exception
                 when(agentSessionRuntimeManager.getOrStartRuntime(anyString(), anyString()))
