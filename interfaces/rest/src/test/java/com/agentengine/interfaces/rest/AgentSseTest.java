@@ -6,22 +6,16 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.agents.AgentSessionRuntimeManager;
+import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.agents.AgentRunner;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
-import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.type.EventType;
 import com.google.adk.events.Event;
-import com.google.adk.agents.RunConfig;
-import com.google.adk.runner.Runner;
-import com.google.adk.sessions.BaseSessionService;
-import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
@@ -36,45 +30,16 @@ class AgentSseTest {
 
   @Test
   void eventsStreamEmitsListenerEvents() {
-    AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
-    Runner runner = mock(Runner.class);
-    BaseSessionService sessionService = mock(BaseSessionService.class);
-
-    when(service.getOrStartRuntime(anyString(), anyString())).thenReturn(new AgentSessionRuntime("session", runner));
-    when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
-        .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
+    AgentExecutionService executionService = mock(AgentExecutionService.class);
 
     // Create an event that contains content to trigger all expected events
     Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false) // Explicitly
-                                                                                                                     // set
-                                                                                                                     // partial
-                                                                                                                     // to
-                                                                                                                     // false
-                                                                                                                     // to
-                                                                                                                     // ensure
-                                                                                                                     // completion
-                                                                                                                     // events
-                                                                                                                     // are
-                                                                                                                     // triggered
+        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
         .build();
 
-    // Mock the runner to return the event in a Flowable and ensure completion
-    when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
-        .thenAnswer(invocation -> Flowable.just(event).concatWith(Flowable.defer(() -> {
-          // Add a small delay to ensure async processing completes
-          try {
-            Thread.sleep(10); // Small delay to allow async processing
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-          return Flowable.empty(); // Complete the flowable
-        })));
+    when(executionService.runStreaming(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
-    AgentRunner agentRunner = mock(AgentRunner.class);
-    when(agentRunner.runStreaming(any(AgentSessionRuntime.class), anyString())).thenReturn(Flowable.just(event));
-
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service, agentRunner), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest agentRequest = new AgentRequest();
     agentRequest.setAgentId("agent");
     agentRequest.setAgentConfigPath("config.json");
@@ -126,12 +91,35 @@ class AgentSseTest {
         EventType.STEP_FINISHED, EventType.RUN_FINISHED);
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service,
-      final AgentRunner agentRunner) {
-    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
-    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,
-        agentRunner);
+  @Test
+  void eventsStreamGeneratesSessionIdIfMissing() {
+    AgentExecutionService executionService = mock(AgentExecutionService.class);
+
+    Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
+        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
+        .build();
+
+    when(executionService.runStreaming(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
+    AgentRequest agentRequest = new AgentRequest();
+    agentRequest.setAgentId("agent");
+    agentRequest.setAgentConfigPath("config.json");
+    // Session ID is intentionally missing
+    agentRequest.setMessage("hello");
+    agentRequest.setType(RequestType.STREAM_AGUI_EVENTS.name());
+
+    var publisher = resource.events(agentRequest);
+
+    assertThat(publisher).isNotNull();
+    assertThat(agentRequest.getSessionId()).isNotNull();
+  }
+
+  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentExecutionService executionService) {
+    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(executionService);
+    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(executionService,
+        streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 }

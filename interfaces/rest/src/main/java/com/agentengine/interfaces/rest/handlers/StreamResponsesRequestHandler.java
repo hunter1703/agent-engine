@@ -1,9 +1,8 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.agents.AgentRunner;
-import com.agentengine.engine.agents.AgentSessionRuntimeManager;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
@@ -15,9 +14,9 @@ public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<F
   private final StreamAguiEventsRequestHandler eventsRequestHandler;
 
   @Inject
-  public StreamResponsesRequestHandler(final AgentSessionRuntimeManager agentManager,
-      StreamAguiEventsRequestHandler eventsRequestHandler, AgentRunner agentRunner) {
-    super(agentManager, agentRunner);
+  public StreamResponsesRequestHandler(AgentExecutionService agentExecutionService,
+      StreamAguiEventsRequestHandler eventsRequestHandler) {
+    super(agentExecutionService);
     this.eventsRequestHandler = eventsRequestHandler;
   }
 

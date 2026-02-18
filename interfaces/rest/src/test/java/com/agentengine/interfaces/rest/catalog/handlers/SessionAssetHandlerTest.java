@@ -12,6 +12,7 @@ import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.Page;
 import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
+import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
@@ -50,12 +51,13 @@ class SessionAssetHandlerTest {
         SessionAssetHandler handler = new SessionAssetHandler(sessionService);
 
         // Run
-        PaginatedResult<AgentSession> result = handler.findAssets(request);
+        PaginatedResult<AgentSessionDTO> result = handler.findAssets(request);
 
         // Verify
         assertThat(result).isNotNull();
         assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getItems().get(0)).isEqualTo(session);
+        assertThat(result.getItems().get(0).getId()).isEqualTo(session.getId());
+        assertThat(result.getItems().get(0).getTitle()).isEqualTo(session.getTitle());
     }
 
     @Test
@@ -65,6 +67,7 @@ class SessionAssetHandlerTest {
 
         AgentSession session = new AgentSession();
         session.setId("test-session");
+        session.setAgentId("test-agent"); // Required for AGUIEventMapper
         session.setTitle("Test Session");
 
         // Mock SessionInfo with events
@@ -92,7 +95,7 @@ class SessionAssetHandlerTest {
         request.setKeys(List.of("test-session"));
         request.setOptions(Map.of(SessionAssetHandler.INCLUDE_EVENTS_OPTION, "true"));
 
-        Map<String, AgentSession> result = null;
+        Map<String, AgentSessionDTO> result = null;
         try {
             result = handler.getAssetsByIds(request);
         } catch (Exception e) {
@@ -101,9 +104,11 @@ class SessionAssetHandlerTest {
         }
 
         assertThat(result).containsKey("test-session");
-        AgentSession resultSession = result.get("test-session");
-        assertThat(resultSession.getSessionInfo()).isNotNull();
-        assertThat(resultSession.getSessionInfo().getEvents()).hasSize(1);
+        AgentSessionDTO resultSession = result.get("test-session");
+        // Verify events are mapped to the DTO events list
+        assertThat(resultSession.getEvents()).isNotEmpty();
+        // SessionInfo is cleared in the DTO
+        assertThat(resultSession.getSessionInfo()).isNull();
     }
 
     @Test
@@ -138,10 +143,11 @@ class SessionAssetHandlerTest {
         final AssetRequest request = new AssetRequest();
         request.setOptions(Map.of("includeEvents", true));
 
-        final PaginatedResult<AgentSession> result = handler.findAssets(request);
-        final AgentSession asset = result.getItems().get(0);
+        final PaginatedResult<AgentSessionDTO> result = handler.findAssets(request);
+        final AgentSessionDTO asset = result.getItems().get(0);
 
-        assertThat(asset).isInstanceOf(AgentSession.class);
-        assertThat(asset.getSessionInfo().getEvents()).isNotEmpty();
+        assertThat(asset).isInstanceOf(AgentSessionDTO.class);
+        assertThat(asset.getEvents()).isNotEmpty();
+        assertThat(asset.getSessionInfo()).isNull();
     }
 }

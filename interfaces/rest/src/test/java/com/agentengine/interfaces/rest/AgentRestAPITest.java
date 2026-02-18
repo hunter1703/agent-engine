@@ -2,13 +2,12 @@ package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.agents.AgentRunner;
+import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
@@ -20,18 +19,11 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
-import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.agents.AgentSessionRuntimeManager;
-import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.google.adk.events.Event;
-import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
-import com.google.adk.sessions.BaseSessionService;
-import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.core.Maybe;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
@@ -43,19 +35,16 @@ class AgentRestAPITest {
 
   @Test
   void invokeReturnsSessionAndResponse() {
-    AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
+    AgentExecutionService executionService = mock(AgentExecutionService.class);
     Runner runner = mock(Runner.class);
-    BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "session")).thenReturn(new AgentSessionRuntime("session", runner));
-    when(runner.sessionService()).thenReturn(sessionService);
-    when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
-        .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
+
+    // Create an event that mimics the AgentRunner output
     Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
         .content(Content.builder().role("model").parts(Part.builder().text("response").build()).build()).build();
-    when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
-        .thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
+    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -73,17 +62,10 @@ class AgentRestAPITest {
 
   @Test
   void invokeHandlesNullEngineResponse() {
-    AgentSessionRuntimeManager service = mock(AgentSessionRuntimeManager.class);
-    Runner runner = mock(Runner.class);
-    BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(service.getOrStartRuntime("agent", "session")).thenReturn(new AgentSessionRuntime("session", runner));
-    when(runner.sessionService()).thenReturn(sessionService);
-    when(sessionService.getSession(anyString(), anyString(), anyString(), any()))
-        .thenReturn(Maybe.just(Session.builder("session").appName("agent").userId("default").build()));
-    when(runner.runAsync(anyString(), anyString(), any(Content.class), any(RunConfig.class)))
-        .thenReturn(Flowable.empty());
+    AgentExecutionService executionService = mock(AgentExecutionService.class);
+    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.empty());
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(service), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest request = new AgentRequest();
     request.setAgentId("agent");
     request.setAgentConfigPath("config.json");
@@ -109,9 +91,9 @@ class AgentRestAPITest {
   void createAgentStoresConfig() {
     final AgentService agentService = mock(AgentService.class);
     final AgentConfig config = buildValidAgentConfig();
-    // agentService.createAgent is void, so we verify it's called
+    when(agentService.createAgent(config)).thenReturn(config);
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)),
         agentService);
 
     final AgentConfig response = resource.createAgent(config);
@@ -131,7 +113,7 @@ class AgentRestAPITest {
     // Simulate ID generation
     doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentSessionRuntimeManager.class)),
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)),
         agentService);
 
     final AgentConfig response = resource.createAgent(config);
@@ -139,18 +121,11 @@ class AgentRestAPITest {
     assertThat(response.getId()).isEqualTo("generated-id");
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentSessionRuntimeManager service) {
-    com.agentengine.engine.repository.AgentSessionRepository sessionRepo = mock(
-        com.agentengine.engine.repository.AgentSessionRepository.class);
-    when(sessionRepo.findById(anyString())).thenReturn(java.util.Optional.empty());
-    com.agentengine.engine.agents.SessionTitleGenerator titleGen = mock(
-        com.agentengine.engine.agents.SessionTitleGenerator.class);
-    final AgentRunner agentRunner = new AgentRunner(sessionRepo, titleGen);
-
-    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(service, agentRunner);
-    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(service, agentRunner);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(service, streamingHandler,
-        agentRunner);
+  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentExecutionService executionService) {
+    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(executionService);
+    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
+    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(executionService,
+        streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 

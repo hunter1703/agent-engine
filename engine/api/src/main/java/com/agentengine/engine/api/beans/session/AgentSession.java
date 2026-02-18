@@ -28,6 +28,9 @@ public class AgentSession extends BaseEntity {
     }
 
     public AgentSession(final AgentSession other) {
+        setId(other.getId());
+        setCreatedTime(other.getCreatedTime());
+        setUpdatedTime(other.getUpdatedTime());
         this.agentId = other.agentId;
         this.userId = other.userId;
         this.title = other.title;
