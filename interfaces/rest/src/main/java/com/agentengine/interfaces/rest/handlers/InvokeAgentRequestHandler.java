@@ -5,8 +5,8 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

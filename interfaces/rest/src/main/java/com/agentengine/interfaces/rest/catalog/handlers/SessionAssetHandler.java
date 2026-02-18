@@ -38,12 +38,12 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
-    //TODO: do not fetch not needed fields
+    // TODO: do not fetch not needed fields
     final PaginatedResult<AgentSession> result = sessionService.findSessions(request.getQuery());
     return result.transform(session -> {
       final AgentSessionDTO dto = shouldIncludeEvents(request)
-              ? attachEvents(session)
-              : new AgentSessionDTO(session, List.of());
+          ? attachEvents(session)
+          : new AgentSessionDTO(session, List.of());
       dto.setSessionInfo(null);
       return dto;
     });
@@ -58,12 +58,11 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
     final boolean includeEvents = shouldIncludeEvents(request);
     for (final String key : request.getKeys()) {
-      sessionService.getSession(key)
-          .map(session -> {
-            final AgentSessionDTO dto = includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
-            dto.setSessionInfo(null);
-            return dto;
-          }).ifPresent(value -> result.put(key, value));
+      sessionService.getSession(key).map(session -> {
+        final AgentSessionDTO dto = includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
+        dto.setSessionInfo(null);
+        return dto;
+      }).ifPresent(value -> result.put(key, value));
     }
 
     return result;

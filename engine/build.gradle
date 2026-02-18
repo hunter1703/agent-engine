@@ -16,11 +16,15 @@ dependencies {
     implementation libs.quarkus.mongodb.client
     implementation libs.google.adk.langchain4j
     implementation libs.vertx.json.schema
-    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
+    implementation libs.quarkus.smallrye.fault.tolerance
+    implementation libs.quarkus.jackson
+    implementation libs.quarkus.grpc
+    implementation libs.quarkus.opentelemetry
 
     testImplementation libs.quarkus.junit5
+    testImplementation libs.quarkus.junit5.mockito
     testImplementation libs.assertj.core
-    testImplementation libs.mockito.core
+    testImplementation libs.grpc.testing
 }
 
 tasks.jacocoTestReport {

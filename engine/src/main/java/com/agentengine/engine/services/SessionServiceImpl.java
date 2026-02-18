@@ -6,33 +6,33 @@ import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.repository.AgentSessionRepository;
 
-import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import java.util.Optional;
 
 @Singleton
 public class SessionServiceImpl implements SessionService {
 
-    private final AgentSessionRepository sessionRepository;
+  private final AgentSessionRepository sessionRepository;
 
-    @Inject
-    public SessionServiceImpl(AgentSessionRepository sessionRepository) {
-        this.sessionRepository = sessionRepository;
-    }
+  @Inject
+  public SessionServiceImpl(AgentSessionRepository sessionRepository) {
+    this.sessionRepository = sessionRepository;
+  }
 
-    @Override
-    public Optional<AgentSession> getSession(String id) {
-        return sessionRepository.findById(id);
-    }
+  @Override
+  public Optional<AgentSession> getSession(String id) {
+    return sessionRepository.findById(id);
+  }
 
-    @Override
-    public PaginatedResult<AgentSession> findSessions(Query query) {
-        return sessionRepository.findByQuery(query);
-    }
+  @Override
+  public PaginatedResult<AgentSession> findSessions(Query query) {
+    return sessionRepository.findByQuery(query);
+  }
 
-    @Override
-    public void deleteSession(String id) {
-        sessionRepository.deleteById(id);
-    }
+  @Override
+  public void deleteSession(String id) {
+    sessionRepository.deleteById(id);
+  }
 }

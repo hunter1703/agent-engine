@@ -12,14 +12,14 @@ import jakarta.inject.Singleton;
 @Singleton
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
-    public InfraMongoRepository(final MongoClientSupport mongoClientSupport) {
-        super(mongoClientSupport, "INFRA", "InfraConfig", InfraConfig.class);
-    }
+  public InfraMongoRepository(final MongoClientSupport mongoClientSupport) {
+    super(mongoClientSupport, "INFRA", "InfraConfig", InfraConfig.class);
+  }
 
-    public <T extends InfraConfig> T findOneByType(String type) {
-        final Query query = new Query().withFilter(Filters.eq("type", type)).withPage(new Page(0, 1));
-        // noinspection unchecked
-        final PaginatedResult<T> result = (PaginatedResult<T>) findByQuery(query);
-        return CollectionUtils.getFirst(result.getItems());
-    }
+  public <T extends InfraConfig> T findOneByType(String type) {
+    final Query query = new Query().withFilter(Filters.eq("type", type)).withPage(new Page(0, 1));
+    // noinspection unchecked
+    final PaginatedResult<T> result = (PaginatedResult<T>) findByQuery(query);
+    return CollectionUtils.getFirst(result.getItems());
+  }
 }

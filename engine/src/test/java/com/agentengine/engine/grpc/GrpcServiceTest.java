@@ -1,0 +1,132 @@
+package com.agentengine.engine.grpc;
+
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.engine.api.services.AgentExecutionService;
+import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.grpc.client.MicroServiceInvocationHandler;
+import com.google.adk.events.Event;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
+import io.grpc.ManagedChannel;
+import io.grpc.Server;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
+import io.reactivex.rxjava3.core.Flowable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.io.IOException;
+import java.lang.reflect.Proxy;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+
+class GrpcServiceTest {
+
+  @Mock
+  private AgentService agentService;
+  @Mock
+  private AgentExecutionService agentExecutionService;
+
+  private Server server;
+  private ManagedChannel channel;
+  private AgentService agentServiceProxy;
+  private AgentExecutionService agentExecutionServiceProxy;
+
+  @BeforeEach
+  void setUp() throws IOException {
+    MockitoAnnotations.openMocks(this);
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new Jdk8Module());
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    objectMapper.setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+
+    String serverName = InProcessServerBuilder.generateName();
+
+    // Create generic server impl with mocked services
+    GrpcServiceImpl engineGrpcService = new GrpcServiceImpl(List.of(agentService, agentExecutionService));
+
+    server = InProcessServerBuilder.forName(serverName).directExecutor().addService(engineGrpcService).build().start();
+
+    channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
+
+    // Create generic client proxies
+    agentServiceProxy = (AgentService) Proxy.newProxyInstance(AgentService.class.getClassLoader(),
+        new Class[]{AgentService.class}, new MicroServiceInvocationHandler(AgentService.class, channel));
+
+    agentExecutionServiceProxy = (AgentExecutionService) Proxy.newProxyInstance(
+        AgentExecutionService.class.getClassLoader(), new Class[]{AgentExecutionService.class},
+        new MicroServiceInvocationHandler(AgentExecutionService.class, channel));
+  }
+
+  @AfterEach
+  void tearDown() {
+    if (channel != null) {
+      channel.shutdownNow();
+    }
+    if (server != null) {
+      server.shutdownNow();
+    }
+  }
+
+  @Test
+  void testGetAgent() {
+    String agentId = UUID.randomUUID().toString();
+    AgentConfig config = new AgentConfig();
+    config.setId(agentId);
+    config.setName("Test Agent");
+    config.setDescription("Test Description");
+    AgentModelConfig modelConfig = new AgentModelConfig();
+    modelConfig.setModelId("gpt-4");
+    config.setModel(modelConfig);
+
+    when(agentService.getAgent(agentId)).thenReturn(Optional.of(config));
+
+    // Call via generic proxy
+    Optional<AgentConfig> resultOpt = agentServiceProxy.getAgent(agentId);
+
+    assertThat(resultOpt).isPresent();
+    AgentConfig result = resultOpt.get();
+    assertThat(result.getId()).isEqualTo(agentId);
+    assertThat(result.getName()).isEqualTo("Test Agent");
+    assertThat(result.getDescription()).isEqualTo("Test Description");
+    assertThat(result.getModel().getModelId()).isEqualTo("gpt-4");
+  }
+
+  @Test
+  void testRun() {
+    String agentId = "test-agent";
+    String sessionId = "test-session";
+    Event event = Event.builder().id("event-1").author("model").content(Content.fromParts(Part.fromText("response")))
+        .build();
+
+    AgentRequest request = new AgentRequest();
+    request.setAgentId(agentId);
+    request.setSessionId(sessionId);
+
+    when(agentExecutionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+
+    // Call via generic proxy
+    Flowable<Event> resultFlow = agentExecutionServiceProxy.run(request);
+
+    List<Event> results = resultFlow.toList().blockingGet();
+
+    assertThat(results).hasSize(1);
+    assertThat(results.get(0).id()).isEqualTo("event-1");
+    assertThat(results.get(0).author()).isEqualTo("model");
+  }
+}

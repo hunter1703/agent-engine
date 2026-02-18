@@ -23,42 +23,42 @@ import org.junit.jupiter.api.Test;
 
 class SessionTitleGeneratorTest {
 
-    private InfraMongoRepository infraMongoRepository;
-    private ModelProvider modelProvider;
-    private BaseLlm baseLlm;
-    private SessionTitleGenerator generator;
+  private InfraMongoRepository infraMongoRepository;
+  private ModelProvider modelProvider;
+  private BaseLlm baseLlm;
+  private SessionTitleGenerator generator;
 
-    @BeforeEach
-    void setUp() {
-        infraMongoRepository = mock(InfraMongoRepository.class);
-        modelProvider = mock(ModelProvider.class);
-        baseLlm = mock(BaseLlm.class);
-    }
+  @BeforeEach
+  void setUp() {
+    infraMongoRepository = mock(InfraMongoRepository.class);
+    modelProvider = mock(ModelProvider.class);
+    baseLlm = mock(BaseLlm.class);
+  }
 
-    @Test
-    void generateTitle_success() {
-        TitleConfig config = new TitleConfig();
-        config.setModelId("test-model");
-        when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
-        when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(baseLlm);
+  @Test
+  void generateTitle_success() {
+    TitleConfig config = new TitleConfig();
+    config.setModelId("test-model");
+    when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
+    when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(baseLlm);
 
-        LlmResponse response = mock(LlmResponse.class);
-        Content content = Content.builder().parts(Part.builder().text("Test Title").build()).build();
-        when(response.content()).thenReturn(Optional.of(content));
-        when(baseLlm.generateContent(any(), any(Boolean.class))).thenReturn(Flowable.just(response));
+    LlmResponse response = mock(LlmResponse.class);
+    Content content = Content.builder().parts(Part.builder().text("Test Title").build()).build();
+    when(response.content()).thenReturn(Optional.of(content));
+    when(baseLlm.generateContent(any(), any(Boolean.class))).thenReturn(Flowable.just(response));
 
-        generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
+    generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
 
-        Event event = mock(Event.class);
-        Content eventContent = Content.builder().parts(Part.builder().text("Hello").build()).build();
-        when(event.content()).thenReturn(Optional.of(eventContent));
+    Event event = mock(Event.class);
+    Content eventContent = Content.builder().parts(Part.builder().text("Hello").build()).build();
+    when(event.content()).thenReturn(Optional.of(eventContent));
 
-        Optional<String> title = generator.generateTitle(List.of(event));
+    Optional<String> title = generator.generateTitle(List.of(event));
 
-        assertThat(title).isPresent().contains("Test Title");
-    }
+    assertThat(title).isPresent().contains("Test Title");
+  }
 
-    @Test
+  @Test
     void generateTitle_missingConfig() {
         when(infraMongoRepository.findOneByType(TYPE)).thenReturn(null);
         generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
@@ -68,39 +68,39 @@ class SessionTitleGeneratorTest {
         assertThat(title).isEmpty();
     }
 
-    @Test
-    void generateTitle_emptyEvents() {
-        TitleConfig config = new TitleConfig();
-        config.setModelId("test-model");
-        when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
-        when(modelProvider.get(any())).thenReturn(baseLlm);
-        generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
+  @Test
+  void generateTitle_emptyEvents() {
+    TitleConfig config = new TitleConfig();
+    config.setModelId("test-model");
+    when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
+    when(modelProvider.get(any())).thenReturn(baseLlm);
+    generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
 
-        Optional<String> title = generator.generateTitle(List.of());
+    Optional<String> title = generator.generateTitle(List.of());
 
-        assertThat(title).isEmpty();
-    }
+    assertThat(title).isEmpty();
+  }
 
-    @Test
-    void generateTitle_sanitizesTitle() {
-        TitleConfig config = new TitleConfig();
-        config.setModelId("test-model");
-        when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
-        when(modelProvider.get(any())).thenReturn(baseLlm);
+  @Test
+  void generateTitle_sanitizesTitle() {
+    TitleConfig config = new TitleConfig();
+    config.setModelId("test-model");
+    when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
+    when(modelProvider.get(any())).thenReturn(baseLlm);
 
-        LlmResponse response = mock(LlmResponse.class);
-        Content content = Content.builder().parts(Part.builder().text("  \"Sanitized Title\"  ").build()).build();
-        when(response.content()).thenReturn(Optional.of(content));
-        when(baseLlm.generateContent(any(), any(Boolean.class))).thenReturn(Flowable.just(response));
+    LlmResponse response = mock(LlmResponse.class);
+    Content content = Content.builder().parts(Part.builder().text("  \"Sanitized Title\"  ").build()).build();
+    when(response.content()).thenReturn(Optional.of(content));
+    when(baseLlm.generateContent(any(), any(Boolean.class))).thenReturn(Flowable.just(response));
 
-        generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
+    generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
 
-        Event event = mock(Event.class);
-        Content eventContent = Content.builder().parts(Part.builder().text("Hello").build()).build();
-        when(event.content()).thenReturn(Optional.of(eventContent));
+    Event event = mock(Event.class);
+    Content eventContent = Content.builder().parts(Part.builder().text("Hello").build()).build();
+    when(event.content()).thenReturn(Optional.of(eventContent));
 
-        Optional<String> title = generator.generateTitle(List.of(event));
+    Optional<String> title = generator.generateTitle(List.of(event));
 
-        assertThat(title).isPresent().contains("Sanitized Title");
-    }
+    assertThat(title).isPresent().contains("Sanitized Title");
+  }
 }

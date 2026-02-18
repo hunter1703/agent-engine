@@ -7,13 +7,13 @@ import com.agentengine.engine.api.query.Query;
 import java.util.Optional;
 
 public interface ModelService {
-    PaginatedResult<ModelConfig> findModels(Query query);
+  PaginatedResult<ModelConfig> findModels(Query query);
 
-    Optional<ModelConfig> getModel(String id);
+  Optional<ModelConfig> getModel(String id);
 
-    ModelConfig createModel(ModelConfig model);
+  ModelConfig createModel(ModelConfig model);
 
-    ModelConfig updateModel(ModelConfig model);
+  ModelConfig updateModel(ModelConfig model);
 
-    boolean deleteModel(String id);
+  boolean deleteModel(String id);
 }

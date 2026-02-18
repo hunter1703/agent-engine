@@ -2,6 +2,7 @@ package com.agentengine.engine.sessions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;

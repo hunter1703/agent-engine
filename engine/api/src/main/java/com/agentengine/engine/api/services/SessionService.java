@@ -6,9 +6,9 @@ import com.agentengine.engine.api.query.Query;
 import java.util.Optional;
 
 public interface SessionService {
-    Optional<AgentSession> getSession(String id);
+  Optional<AgentSession> getSession(String id);
 
-    PaginatedResult<AgentSession> findSessions(Query query);
+  PaginatedResult<AgentSession> findSessions(Query query);
 
-    void deleteSession(String id);
+  void deleteSession(String id);
 }

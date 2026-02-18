@@ -1,3 +1,7 @@
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+protobuf = { id = "com.google.protobuf", version = "0.9.4" }
+
 [versions]
 quarkus = "3.23.0"
 quarkus-langchain4j = "0.26.1"
@@ -11,6 +15,11 @@ ag-ui = "0.0.1"
 ok-http = "4.12.0"
 langchain4j-plugin = "1.8.0"
 microprofile-openapi = "3.1.1"
+protobuf = "3.25.3"
+grpc = "1.62.2"
+rest-assured = "5.4.0"
+hamcrest = "2.2"
+jakarta-validation = "3.0.2"
 
 [libraries]
 # BOMs
@@ -23,12 +32,23 @@ google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchai
 # Quarkus & LangChain4j Core
 quarkus-langchain4j-core = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-core" }
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
-langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai", version.ref="langchain4j-plugin" }
-langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref="langchain4j-plugin" }
+langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai", version.ref = "langchain4j-plugin" }
+langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref = "langchain4j-plugin" }
 quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client" }
 quarkus-logging-json = { group = "io.quarkus", name = "quarkus-logging-json" }
 quarkus-rest-jackson = { group = "io.quarkus", name = "quarkus-rest-jackson" }
 quarkus-smallrye-openapi = { group = "io.quarkus", name = "quarkus-smallrye-openapi" }
+quarkus-grpc = { group = "io.quarkus", name = "quarkus-grpc" }
+quarkus-opentelemetry = { group = "io.quarkus", name = "quarkus-opentelemetry" }
+quarkus-smallrye-fault-tolerance = { group = "io.quarkus", name = "quarkus-smallrye-fault-tolerance" }
+quarkus-jackson = { group = "io.quarkus", name = "quarkus-jackson" }
+quarkus-smallrye-health = { group = "io.quarkus", name = "quarkus-smallrye-health" }
+quarkus-micrometer-registry-prometheus = { group = "io.quarkus", name = "quarkus-micrometer-registry-prometheus" }
+quarkus-hibernate-validator = { group = "io.quarkus", name = "quarkus-hibernate-validator" }
+quarkus-arc = { group = "io.quarkus", name = "quarkus-arc" }
+jakarta-validation-api = { group = "jakarta.validation", name = "jakarta.validation-api", version.ref = "jakarta-validation" }
+jakarta-inject-api = { group = "jakarta.inject", name = "jakarta.inject-api", version = "2.0.1" }
+jakarta-enterprise-cdi-api = { group = "jakarta.enterprise", name = "jakarta.enterprise.cdi-api", version = "4.0.1" }
 
 # Logging
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version = "2.0.16" }
@@ -38,8 +58,11 @@ logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-lo
 # Testing
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
-junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 quarkus-junit5 = { group = "io.quarkus", name = "quarkus-junit5" }
+quarkus-junit5-mockito = { group = "io.quarkus", name = "quarkus-junit5-mockito" }
+rest-assured = { group = "io.rest-assured", name = "rest-assured", version.ref = "rest-assured" }
+hamcrest = { group = "org.hamcrest", name = "hamcrest", version.ref = "hamcrest" }
 
 # AG-UI
 ag-ui-core = { group = "com.ag-ui", name = "core", version.ref = "ag-ui" }
@@ -59,5 +82,9 @@ vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = 
 microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = "microprofile-openapi-api", version.ref = "microprofile-openapi" }
 json-path = { group = "com.jayway.jsonpath", name = "json-path", version = "2.9.0" }
 
-[plugins]
-quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+# gRPC & Protobuf
+protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
+grpc-protobuf = { group = "io.grpc", name = "grpc-protobuf", version.ref = "grpc" }
+grpc-stub = { group = "io.grpc", name = "grpc-stub", version.ref = "grpc" }
+grpc-testing = { group = "io.grpc", name = "grpc-testing", version.ref = "grpc" }
+annotations-api = { group = "javax.annotation", name = "javax.annotation-api", version = "1.3.2" }

@@ -5,13 +5,13 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import io.reactivex.rxjava3.core.Flowable;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.inject.Inject;
 
 @Singleton
 public class StreamResponsesRequestHandler extends AbstractAgentRequestHandler<Flowable<BaseResponsesEventData>> {
 
-  private final StreamAguiEventsRequestHandler eventsRequestHandler;
+  private StreamAguiEventsRequestHandler eventsRequestHandler;
 
   @Inject
   public StreamResponsesRequestHandler(AgentExecutionService agentExecutionService,

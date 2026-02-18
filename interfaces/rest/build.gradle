@@ -18,10 +18,10 @@ dependencies {
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi
     implementation libs.quarkus.mongodb.client
-    implementation 'io.quarkus:quarkus-smallrye-health'
-    implementation 'io.quarkus:quarkus-micrometer-registry-prometheus'
-    implementation 'io.quarkus:quarkus-hibernate-validator'
-    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
+    implementation libs.quarkus.smallrye.health
+    implementation libs.quarkus.micrometer.registry.prometheus
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.smallrye.fault.tolerance
 
     implementation libs.ag.ui.core
     implementation libs.ag.ui.server
@@ -29,13 +29,16 @@ dependencies {
     implementation libs.ag.ui.http
     implementation libs.ag.ui.ok.http
 
+    runtimeOnly project(':engine')
+
+    testImplementation project(':engine')
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
     testImplementation libs.mockito.core
-    testImplementation 'io.rest-assured:rest-assured:5.4.0'
-    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation libs.rest.assured
+    testImplementation libs.hamcrest
 }
 
 def isCiServer = System.getenv("CI_SERVER") != null

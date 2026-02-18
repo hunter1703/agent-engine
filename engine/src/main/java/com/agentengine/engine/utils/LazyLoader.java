@@ -1,30 +1,28 @@
 package com.agentengine.engine.utils;
 
-import io.quarkus.arc.impl.InstanceProvider;
-
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 public class LazyLoader<T> {
-    private volatile T instance;
-    private final Lock lock = new ReentrantLock();
-    private final Supplier<T> provider;
+  private volatile T instance;
+  private final Lock lock = new ReentrantLock();
+  private final Supplier<T> provider;
 
-    public LazyLoader(Supplier<T> provider) {
-        this.provider = provider;
-    }
-    public T getInstance() {
+  public LazyLoader(Supplier<T> provider) {
+    this.provider = provider;
+  }
+  public T getInstance() {
+    if (instance == null) {
+      lock.lock();
+      try {
         if (instance == null) {
-            lock.lock();
-            try {
-                if (instance == null) {
-                    instance = provider.get();
-                }
-            } finally {
-                lock.unlock();
-            }
+          instance = provider.get();
         }
-        return instance;
+      } finally {
+        lock.unlock();
+      }
     }
+    return instance;
+  }
 }

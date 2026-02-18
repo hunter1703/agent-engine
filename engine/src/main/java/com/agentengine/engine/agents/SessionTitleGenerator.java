@@ -6,7 +6,6 @@ import static java.lang.StringTemplate.STR;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.model.InfraConfig;
 import com.agentengine.engine.model.TitleConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.utils.LazyLoader;
@@ -19,7 +18,6 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.inject.Singleton;

@@ -10,7 +10,6 @@ import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.query.Query;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.*;
-import com.mongodb.client.model.Updates;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
@@ -82,13 +81,12 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
 
     final Filter filter = Filters.and(Filters.eq("agentId", agentId), Filters.eq("userId", userId));
     Query query = new Query().withFilter(filter);
-    findByQuery(query)
-        .getItems().forEach(agentSession -> {
-          final SessionInfo sessionInfo = agentSession.getSessionInfo();
-          final Session stored = sessionInfo.toSession();
-          sessions.add(Session.builder(stored.id()).appName(stored.appName()).userId(stored.userId())
-              .lastUpdateTime(stored.lastUpdateTime()).build());
-        });
+    findByQuery(query).getItems().forEach(agentSession -> {
+      final SessionInfo sessionInfo = agentSession.getSessionInfo();
+      final Session stored = sessionInfo.toSession();
+      sessions.add(Session.builder(stored.id()).appName(stored.appName()).userId(stored.userId())
+          .lastUpdateTime(stored.lastUpdateTime()).build());
+    });
     return Single.just(ListSessionsResponse.builder().sessions(sessions).build());
   }
 

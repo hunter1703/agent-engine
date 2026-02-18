@@ -13,10 +13,10 @@ import java.util.regex.Pattern;
 
 public final class MongoQueryAdapter {
 
-    private MongoQueryAdapter() {
-    }
+  private MongoQueryAdapter() {
+  }
 
-    public static Bson toBson(Filter filter) {
+  public static Bson toBson(Filter filter) {
         if (filter == null) {
             return new Document();
         }
@@ -35,29 +35,29 @@ public final class MongoQueryAdapter {
         }
     }
 
-    private static Bson toSimpleFilterBson(Filter filter) {
-        String field = filter.getField();
-        List<Object> value = filter.getValues();
-        Operator op = filter.getOp();
+  private static Bson toSimpleFilterBson(Filter filter) {
+    String field = filter.getField();
+    List<Object> value = filter.getValues();
+    Operator op = filter.getOp();
 
-        if (op == null) {
-            return Filters.eq(field, value);
-        }
-
-        final Object first = CollectionUtils.getFirst(value);
-        return switch (op) {
-            case EQ -> Filters.eq(field, first);
-            case NE -> Filters.ne(field, first);
-            case GT -> Filters.gt(field, Objects.requireNonNull(first));
-            case GTE -> Filters.gte(field, Objects.requireNonNull(first));
-            case LT -> Filters.lt(field, Objects.requireNonNull(first));
-            case LTE -> Filters.lte(field, Objects.requireNonNull(first));
-            case IN -> Filters.in(field, (Iterable<?>) value);
-            case NIN -> Filters.nin(field, (Iterable<?>) value);
-            case CONTAINS -> Filters.regex(field, Pattern.quote(String.valueOf(first)), "i");
-            case EXISTS -> Filters.exists(field);
-            case NOT_EXISTS -> Filters.exists(field, false);
-            default -> throw new IllegalArgumentException("Unsupported operator: " + op);
-        };
+    if (op == null) {
+      return Filters.eq(field, value);
     }
+
+    final Object first = CollectionUtils.getFirst(value);
+    return switch (op) {
+      case EQ -> Filters.eq(field, first);
+      case NE -> Filters.ne(field, first);
+      case GT -> Filters.gt(field, Objects.requireNonNull(first));
+      case GTE -> Filters.gte(field, Objects.requireNonNull(first));
+      case LT -> Filters.lt(field, Objects.requireNonNull(first));
+      case LTE -> Filters.lte(field, Objects.requireNonNull(first));
+      case IN -> Filters.in(field, (Iterable<?>) value);
+      case NIN -> Filters.nin(field, (Iterable<?>) value);
+      case CONTAINS -> Filters.regex(field, Pattern.quote(String.valueOf(first)), "i");
+      case EXISTS -> Filters.exists(field);
+      case NOT_EXISTS -> Filters.exists(field, false);
+      default -> throw new IllegalArgumentException("Unsupported operator: " + op);
+    };
+  }
 }

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.agentengine.engine.grpc";
+option java_outer_classname = "ServiceProto";
+
+package com.agentengine.engine.grpc;
+
+message Request {
+  string service = 1;
+  string method = 2;
+  bytes payload = 3; // JSON Array of arguments
+}
+
+message Response {
+  bytes payload = 1; // JSON result
+  string error = 2;
+}
+
+service Service {
+  rpc execute(Request) returns (stream Response);
+}
+
+service StreamingService {
+  rpc execute(stream Request) returns (stream Response);
+}

@@ -93,8 +93,7 @@ class AgentRestAPITest {
     final AgentConfig config = buildValidAgentConfig();
     when(agentService.createAgent(config)).thenReturn(config);
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)),
-        agentService);
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
 
     final AgentConfig response = resource.createAgent(config);
 
@@ -113,8 +112,7 @@ class AgentRestAPITest {
     // Simulate ID generation
     doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)),
-        agentService);
+    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
 
     final AgentConfig response = resource.createAgent(config);
 

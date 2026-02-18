@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,7 +18,6 @@ import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.core.Maybe;
 
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
@@ -37,7 +35,7 @@ class AgentSseTest {
         .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
         .build();
 
-    when(executionService.runStreaming(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest agentRequest = new AgentRequest();
@@ -99,7 +97,7 @@ class AgentSseTest {
         .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
         .build();
 
-    when(executionService.runStreaming(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest agentRequest = new AgentRequest();

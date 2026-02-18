@@ -16,12 +16,12 @@ import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
-import jakarta.inject.Singleton;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

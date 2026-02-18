@@ -30,16 +30,23 @@ import java.util.Optional;
  * Abstract MongoDB repository implementation providing generic CRUD operations
  *
  * @param <T>
- *            the entity type
+ *          the entity type
  */
 public abstract class AbstractMongoRepository<T extends BaseEntity> implements Repository<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoRepository.class);
 
-  protected final MongoClient mongoClient;
-  protected final String collectionName;
-  protected final Class<T> entityClass;
-  private final String databaseName;
+  protected MongoClient mongoClient;
+  protected String collectionName;
+  protected Class<T> entityClass;
+  protected String databaseName;
+
+  protected AbstractMongoRepository() {
+    this.mongoClient = null;
+    this.collectionName = null;
+    this.entityClass = null;
+    this.databaseName = null;
+  }
 
   public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String collectionName,
       Class<T> entityClass) {
@@ -47,9 +54,20 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   }
 
   public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String databaseName,
-      String collectionName,
-      Class<T> entityClass) {
+      String collectionName, Class<T> entityClass) {
     this.mongoClient = createClient(mongoClientSupport);
+    this.databaseName = databaseName;
+    this.collectionName = collectionName;
+    this.entityClass = entityClass;
+  }
+
+  public AbstractMongoRepository(final MongoClient mongoClient, String collectionName, Class<T> entityClass) {
+    this(mongoClient, "AGENT_ENGINE", collectionName, entityClass);
+  }
+
+  public AbstractMongoRepository(final MongoClient mongoClient, String databaseName, String collectionName,
+      Class<T> entityClass) {
+    this.mongoClient = mongoClient;
     this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
@@ -145,15 +163,14 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
       Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
 
-      final FindIterable<T> iter = getCollection().find(bsonFilter, entityClass)
-          .skip(page.getOffset())
+      final FindIterable<T> iter = getCollection().find(bsonFilter, entityClass).skip(page.getOffset())
           .limit(page.getLimit());
 
       for (T document : iter) {
         entities.add(document);
       }
 
-      //TODO: only add when needed
+      // TODO: only add when needed
       long total = count(bsonFilter);
 
       return PaginatedResult.create(entities, page, total);
@@ -181,6 +198,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       throw new RuntimeException("Error counting entities", e);
     }
   }
+
   protected MongoCollection<T> getCollection() {
     return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
   }

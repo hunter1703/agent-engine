@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractAgentRequestHandler<T> implements AgentRequestHandler<T> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractAgentRequestHandler.class);
 
-  protected final AgentExecutionService agentExecutionService;
+  protected AgentExecutionService agentExecutionService;
 
   public AbstractAgentRequestHandler(AgentExecutionService agentExecutionService) {
     this.agentExecutionService = agentExecutionService;

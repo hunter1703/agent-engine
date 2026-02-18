@@ -5,8 +5,8 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +32,7 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
       request.setSessionId(UUID.randomUUID().toString());
     }
     final AGUIEventMapper mapper = new AGUIEventMapper(request.getSessionId(), request.getAgentId());
-    return agentExecutionService.runStreaming(request).concatMap(event -> {
+    return agentExecutionService.run(request).concatMap(event -> {
       try {
         return mapper.map(event);
       } catch (Exception e) {

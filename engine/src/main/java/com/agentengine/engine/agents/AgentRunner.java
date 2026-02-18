@@ -37,24 +37,14 @@ public class AgentRunner {
   @Timeout(5000)
   @Retry(maxRetries = 2)
   public Flowable<Event> run(final AgentSessionRuntime runtime, String text) {
-    final RunConfig runConfig = RunConfig.builder().build();
-    final Runner runner = runtime.runner();
-    final String sessionId = runtime.sessionId();
-    return runner.runAsync(DEFAULT_USER_ID, sessionId, buildFromText(text), runConfig)
-        .doOnComplete(updateTitle(runner, sessionId));
-  }
-
-  @Timeout(5000)
-  @Retry(maxRetries = 2)
-  public Flowable<Event> runStreaming(final AgentSessionRuntime runtime, String text) {
-    LOG.debug("runStreaming - session_id={} text=\"{}\"", runtime.sessionId(), StringUtils.substring(text, 0, 50));
+    LOG.debug("run - session_id={} text=\"{}\"", runtime.sessionId(), StringUtils.substring(text, 0, 50));
     final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();
     final Runner runner = runtime.runner();
     final String sessionId = runtime.sessionId();
     return runner.runAsync(DEFAULT_USER_ID, sessionId, buildFromText(text), runConfig)
-        .doOnNext(event -> LOG.debug("runStreaming event - session_id={} eventType={}", sessionId,
-            event.getClass().getSimpleName()))
-        .doOnComplete(() -> LOG.debug("runStreaming complete - session_id={}", sessionId))
+        .doOnNext(
+            event -> LOG.debug("run event - session_id={} eventType={}", sessionId, event.getClass().getSimpleName()))
+        .doOnComplete(() -> LOG.debug("run complete - session_id={}", sessionId))
         .doOnComplete(updateTitle(runner, sessionId));
   }
 
