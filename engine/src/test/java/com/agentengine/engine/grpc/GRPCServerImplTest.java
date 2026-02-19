@@ -6,6 +6,7 @@ import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.grpc.client.MicroServiceInvocationHandler;
+import com.agentengine.engine.server.grpc.GRPCServerImpl;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -33,8 +34,9 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-class GrpcServiceTest {
+class GRPCServerImplTest {
 
   @Mock
   private AgentService agentService;
@@ -53,14 +55,14 @@ class GrpcServiceTest {
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(new Jdk8Module());
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    objectMapper.setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+    objectMapper.setSerializationInclusion(Include.NON_NULL);
 
     String serverName = InProcessServerBuilder.generateName();
 
     // Create generic server impl with mocked services
-    GrpcServiceImpl engineGrpcService = new GrpcServiceImpl(List.of(agentService, agentExecutionService));
+    GRPCServerImpl engineGRPCServer = new GRPCServerImpl(List.of(agentService, agentExecutionService));
 
-    server = InProcessServerBuilder.forName(serverName).directExecutor().addService(engineGrpcService).build().start();
+    server = InProcessServerBuilder.forName(serverName).directExecutor().addService(engineGRPCServer).build().start();
 
     channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
 

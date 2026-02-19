@@ -23,6 +23,7 @@ public abstract class BaseJavaConventionsPlugin {
         // Configure code formatting
         project.getExtensions().configure(SpotlessExtension.class, spotless -> {
             spotless.java(java -> {
+                java.target("src/main/java/**/*.java", "src/test/java/**/*.java");
                 java.eclipse().configFile(project.getRootProject().file("configs/spotless/eclipse.xml").getAbsolutePath());
                 java.removeUnusedImports();
             });

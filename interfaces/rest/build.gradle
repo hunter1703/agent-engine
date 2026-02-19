@@ -22,6 +22,7 @@ dependencies {
     implementation libs.quarkus.micrometer.registry.prometheus
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.smallrye.fault.tolerance
+    implementation libs.quarkus.grpc
 
     implementation libs.ag.ui.core
     implementation libs.ag.ui.server
@@ -29,7 +30,7 @@ dependencies {
     implementation libs.ag.ui.http
     implementation libs.ag.ui.ok.http
 
-    runtimeOnly project(':engine')
+
 
     testImplementation project(':engine')
     testImplementation libs.quarkus.junit5
@@ -54,9 +55,6 @@ if (isContinuousIntegration) {
 tasks.named('quarkusDev') {
 }
 
-tasks.named('compileJava').configure {
-    dependsOn 'compileQuarkusGeneratedSourcesJava'
-}
 
 tasks.withType(Test).configureEach {
     systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'

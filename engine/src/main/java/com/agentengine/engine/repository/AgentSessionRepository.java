@@ -92,6 +92,7 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
 
   @Override
   public Completable deleteSession(final String appName, final String userId, final String sessionId) {
+    LOG.debug("deleteSession - appName={} userId={} sessionId={}", appName, userId, sessionId);
     final boolean deleted = deleteById(sessionId);
     if (!deleted) {
       LOG.debug("Session delete did not match any document - session_id={}", sessionId);
@@ -101,6 +102,7 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
 
   @Override
   public Single<ListEventsResponse> listEvents(final String appName, final String userId, final String sessionId) {
+    LOG.debug("listEvents - appName={} userId={} sessionId={}", appName, userId, sessionId);
     final SessionInfo sessionInfo = findById(sessionId).map(AgentSession::getSessionInfo).orElse(null);
     if (sessionInfo == null) {
       return Single.just(ListEventsResponse.builder().build());

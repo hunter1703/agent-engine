@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
+import jakarta.validation.ValidationException;
 
 @Provider
 @RegisterForReflection
@@ -28,7 +29,7 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
       return Response.status(status).entity(new ErrorResponse(String.valueOf(status), message, traceId)).build();
     }
 
-    if (exception instanceof jakarta.validation.ValidationException) {
+    if (exception instanceof ValidationException) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId)).build();
     }

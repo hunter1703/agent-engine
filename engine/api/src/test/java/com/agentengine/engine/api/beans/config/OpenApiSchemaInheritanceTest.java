@@ -3,14 +3,14 @@ package com.agentengine.engine.api.beans.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.junit.jupiter.api.Test;
 
 class OpenApiSchemaInheritanceTest {
 
   @Test
   void sessionServiceConfigDefinesDiscriminatorMappings() {
-    final org.eclipse.microprofile.openapi.annotations.media.Schema schema = SessionServiceConfig.class
-        .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
+    final Schema schema = SessionServiceConfig.class.getAnnotation(Schema.class);
 
     assertThat(schema).isNotNull();
     assertThat(schema.discriminatorProperty()).isEqualTo("type");
@@ -23,8 +23,7 @@ class OpenApiSchemaInheritanceTest {
 
   @Test
   void contextManagerConfigDefinesDiscriminatorMappings() {
-    final org.eclipse.microprofile.openapi.annotations.media.Schema schema = ContextManagerConfig.class
-        .getAnnotation(org.eclipse.microprofile.openapi.annotations.media.Schema.class);
+    final Schema schema = ContextManagerConfig.class.getAnnotation(Schema.class);
 
     assertThat(schema).isNotNull();
     assertThat(schema.discriminatorProperty()).isEqualTo("type");

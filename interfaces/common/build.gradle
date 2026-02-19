@@ -4,10 +4,10 @@ plugins {
 
 dependencies {
     implementation project(':engine:api')
-    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
+    api libs.jakarta.inject.api
 
     testImplementation libs.assertj.core
     testImplementation libs.mockito.core
     testImplementation libs.junit.jupiter
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly libs.junit.platform.launcher
 }

@@ -15,13 +15,13 @@ java {
 }
 
 dependencies {
-    implementation 'com.diffplug.spotless:spotless-plugin-gradle:6.25.0'
-    implementation 'org.kordamp.gradle:jandex-gradle-plugin:2.0.0'
+    implementation "com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}"
+    implementation "org.kordamp.gradle:jandex-gradle-plugin:${libs.versions.jandex.get()}"
 
     testImplementation gradleTestKit()
-    testImplementation 'org.assertj:assertj-core:3.25.3'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.9.2'
+    testImplementation libs.assertj.core
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly libs.junit.platform.launcher
 }
 
 gradlePlugin {

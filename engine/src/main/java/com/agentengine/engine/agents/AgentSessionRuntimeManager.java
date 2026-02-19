@@ -1,6 +1,5 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_APP;
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
 import static java.lang.StringTemplate.STR;
@@ -63,12 +62,13 @@ public class AgentSessionRuntimeManager {
 
     if (createSession) {
       LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
-      sessionService.createSession(DEFAULT_APP, DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
+      sessionService.createSession(agentConfig.getId(), DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
     }
 
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
     final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
-    final Runner runner = Runner.builder().agent(agent).appName(DEFAULT_APP).sessionService(sessionService).build();
+    final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getId()).sessionService(sessionService)
+        .build();
 
     return new AgentSessionRuntime(sessionId, runner);
   }

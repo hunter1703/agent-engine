@@ -19,6 +19,7 @@ dependencies {
     implementation libs.quarkus.smallrye.fault.tolerance
     implementation libs.quarkus.jackson
     implementation libs.quarkus.grpc
+    implementation libs.quarkus.arc
     implementation libs.quarkus.opentelemetry
 
     testImplementation libs.quarkus.junit5
@@ -39,6 +40,3 @@ tasks.test {
     finalizedBy tasks.jacocoTestReport
 }
 
-tasks.named('compileJava').configure {
-    dependsOn 'compileQuarkusGeneratedSourcesJava'
-}

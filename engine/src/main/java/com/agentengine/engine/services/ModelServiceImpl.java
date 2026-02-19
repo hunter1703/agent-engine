@@ -6,12 +6,14 @@ import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.repository.ModelRepository;
 
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import java.util.Optional;
 
 @Singleton
+@Unremovable
 public class ModelServiceImpl implements ModelService {
 
   @Inject

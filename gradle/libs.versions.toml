@@ -20,6 +20,10 @@ grpc = "1.62.2"
 rest-assured = "5.4.0"
 hamcrest = "2.2"
 jakarta-validation = "3.0.2"
+rxjava = "3.1.10"
+spotless = "6.25.0"
+jandex = "2.0.0"
+junit-platform = "1.10.3"
 
 [libraries]
 # BOMs
@@ -54,6 +58,7 @@ jakarta-enterprise-cdi-api = { group = "jakarta.enterprise", name = "jakarta.ent
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version = "2.0.16" }
 logback-classic = { group = "ch.qos.logback", name = "logback-classic", version = "1.5.12" }
 logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version = "7.4" }
+rxjava = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava" }
 
 # Testing
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
@@ -62,6 +67,7 @@ junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
 quarkus-junit5 = { group = "io.quarkus", name = "quarkus-junit5" }
 quarkus-junit5-mockito = { group = "io.quarkus", name = "quarkus-junit5-mockito" }
 rest-assured = { group = "io.rest-assured", name = "rest-assured", version.ref = "rest-assured" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit-platform" }
 hamcrest = { group = "org.hamcrest", name = "hamcrest", version.ref = "hamcrest" }
 
 # AG-UI

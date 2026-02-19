@@ -18,7 +18,6 @@ import org.eclipse.microprofile.faulttolerance.Timeout;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_APP;
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.google.adk.agents.RunConfig.StreamingMode.SSE;
 import static com.google.genai.types.Part.fromText;
@@ -50,8 +49,8 @@ public class AgentRunner {
 
   private Action updateTitle(final Runner runner, final String sessionId) {
     return () -> {
-      final Session session = Objects.requireNonNull(
-          runner.sessionService().getSession(DEFAULT_APP, DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
+      final Session session = Objects.requireNonNull(runner.sessionService()
+          .getSession(runner.appName(), DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
       sessionTitleGenerator.generateTitle(session.events()).ifPresent(title -> {
         agentSessionRepository.updateTitle(sessionId, title);
       });

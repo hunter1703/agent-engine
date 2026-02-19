@@ -15,7 +15,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards
@@ -29,12 +28,6 @@ import java.util.Set;
 public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceInvocationHandler.class);
-
-  /**
-   * {@link Object} methods that must be handled locally, never forwarded over the
-   * wire.
-   */
-  private static final Set<String> LOCAL_OBJECT_METHODS = Set.of("toString", "hashCode", "equals");
 
   private final Class<?> serviceClass;
   private final ServiceGrpc.ServiceBlockingStub stub;
@@ -51,9 +44,6 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    if (LOCAL_OBJECT_METHODS.contains(method.getName())) {
-      return handleObjectMethod(proxy, method, args);
-    }
 
     LOG.debug("Remote call: {}.{}()", serviceClass.getSimpleName(), method.getName());
 
@@ -76,29 +66,27 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   private Object blockingCall(Request request, Method method) {
     var responseIterator = stub.execute(request);
     if (!responseIterator.hasNext()) {
+      // No payload from the server — return Optional.empty() for Optional return
+      // types
+      if (Optional.class.isAssignableFrom(method.getReturnType())) {
+        return Optional.empty();
+      }
       return null;
     }
 
     String payload = responseIterator.next().getPayload().toStringUtf8();
-    Class<?> returnType = method.getReturnType();
+    Object result = JsonUtils.fromJson(payload, method.getGenericReturnType());
 
-    return returnType.equals(Optional.class)
-        ? deserializeOptional(payload, method.getGenericReturnType())
-        : JsonUtils.fromJson(payload, returnType);
+    if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
+      return Optional.empty();
+    }
+    return result;
   }
 
   private Flowable<?> streamingCall(Request request, Method method) {
     Class<?> itemType = firstTypeArgument(method.getGenericReturnType());
     return Flowable.fromIterable(() -> stub.execute(request))
         .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType));
-  }
-
-  private Optional<?> deserializeOptional(String payload, Type genericReturnType) {
-    if (payload == null || payload.isBlank()) {
-      return Optional.empty();
-    }
-    Class<?> typeArg = firstTypeArgument(genericReturnType);
-    return Optional.ofNullable(JsonUtils.fromJson(payload, typeArg));
   }
 
   /**
@@ -111,14 +99,5 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
       return clazz;
     }
     return Object.class;
-  }
-
-  private Object handleObjectMethod(Object proxy, Method method, Object[] args) {
-    return switch (method.getName()) {
-      case "toString" -> STR."MicroServiceProxy(\{serviceClass.getSimpleName()})";
-      case "hashCode" -> System.identityHashCode(proxy);
-      case "equals" -> args != null && args.length > 0 && proxy == args[0];
-      default -> throw new UnsupportedOperationException(method.getName());
-    };
   }
 }

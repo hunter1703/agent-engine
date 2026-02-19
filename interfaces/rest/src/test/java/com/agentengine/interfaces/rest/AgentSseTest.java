@@ -21,8 +21,14 @@ import io.reactivex.rxjava3.core.Flowable;
 
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 class AgentSseTest {
 
@@ -49,13 +55,13 @@ class AgentSseTest {
 
     // Collect events directly from the publisher using the reactive streams
     // approach
-    final var events = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-      final var collectedEvents = new java.util.ArrayList<BaseEvent>();
-      final var latch = new java.util.concurrent.CountDownLatch(1);
+    final var events = CompletableFuture.supplyAsync(() -> {
+      final var collectedEvents = new ArrayList<BaseEvent>();
+      final var latch = new CountDownLatch(1);
 
-      publisher.subscribe(new org.reactivestreams.Subscriber<BaseEvent>() {
+      publisher.subscribe(new Subscriber<BaseEvent>() {
         @Override
-        public void onSubscribe(org.reactivestreams.Subscription s) {
+        public void onSubscribe(Subscription s) {
           s.request(Long.MAX_VALUE); // Request all events
         }
 
@@ -76,7 +82,7 @@ class AgentSseTest {
       });
 
       try {
-        latch.await(5, java.util.concurrent.TimeUnit.SECONDS); // Wait up to 5 seconds for completion
+        latch.await(5, TimeUnit.SECONDS); // Wait up to 5 seconds for completion
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }

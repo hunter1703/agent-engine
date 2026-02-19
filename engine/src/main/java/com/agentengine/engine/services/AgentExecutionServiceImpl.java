@@ -12,8 +12,10 @@ import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.faulttolerance.Timeout;
+import io.quarkus.arc.Unremovable;
 
 @Singleton
+@Unremovable
 public class AgentExecutionServiceImpl implements AgentExecutionService {
 
   private final AgentSessionRuntimeManager agentSessionRuntimeManager;

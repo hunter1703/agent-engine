@@ -5,6 +5,7 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.dto.InvokeResponse;
+import java.util.UUID;
 import jakarta.inject.Singleton;
 import jakarta.inject.Inject;
 
@@ -28,7 +29,7 @@ public class InvokeAgentRequestHandler extends AbstractAgentRequestHandler<Agent
   @Override
   public AgentResponse handle(final AgentRequest request) {
     if (request.getSessionId() == null) {
-      request.setSessionId(java.util.UUID.randomUUID().toString());
+      request.setSessionId(UUID.randomUUID().toString());
     }
     LOG.info("Agent invocation handler started - agent_id={} session_id={} operation=agent.invoke.start",
         request.getAgentId(), request.getSessionId());

@@ -7,6 +7,7 @@ import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.repository.AgentRepository;
 
+import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.inject.Singleton;
@@ -14,6 +15,7 @@ import jakarta.inject.Singleton;
 import java.util.Optional;
 
 @Singleton
+@Unremovable
 public class AgentServiceImpl implements AgentService {
 
   @Inject

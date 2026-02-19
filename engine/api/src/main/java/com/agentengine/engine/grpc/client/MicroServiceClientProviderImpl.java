@@ -3,6 +3,9 @@ package com.agentengine.engine.grpc.client;
 import com.agentengine.engine.api.MicroService;
 import com.agentengine.engine.api.MicroServiceClientProvider;
 import io.quarkus.arc.Arc;
+import io.quarkus.arc.ArcContainer;
+import io.quarkus.arc.InjectableBean;
+import jakarta.enterprise.inject.Any;
 import jakarta.inject.Singleton;
 
 import java.lang.reflect.Proxy;
@@ -22,9 +25,17 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
     }
 
     // Prefer a local implementation when co-located in the same process
-    try (var localInstance = Arc.container().instance(serviceClass)) {
-      if (localInstance.isAvailable()) {
-        return localInstance.get();
+    ArcContainer container = Arc.container();
+    var beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
+    for (var bean : beans) {
+      if (bean instanceof InjectableBean<?> injectable) {
+        if (injectable.getKind() == InjectableBean.Kind.CLASS) {
+          try (var localInstance = container.instance(serviceClass)) {
+            if (localInstance.isAvailable()) {
+              return localInstance.get();
+            }
+          }
+        }
       }
     }
 

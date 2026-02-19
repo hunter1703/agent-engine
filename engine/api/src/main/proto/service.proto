@@ -14,13 +14,8 @@ message Request {
 
 message Response {
   bytes payload = 1; // JSON result
-  string error = 2;
 }
 
 service Service {
   rpc execute(Request) returns (stream Response);
-}
-
-service StreamingService {
-  rpc execute(stream Request) returns (stream Response);
 }
