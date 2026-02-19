@@ -10,6 +10,7 @@ import com.jayway.jsonpath.JsonPath;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -34,6 +35,17 @@ public final class JsonUtils {
     }
     try {
       return STABLE_MAPPER.readValue(json, clazz);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static <T> T fromJson(final String json, final Type type) {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    try {
+      return STABLE_MAPPER.readValue(json, STABLE_MAPPER.getTypeFactory().constructType(type));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
