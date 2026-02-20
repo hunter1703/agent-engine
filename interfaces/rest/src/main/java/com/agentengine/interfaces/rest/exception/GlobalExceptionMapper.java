@@ -34,6 +34,11 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
           .entity(new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId)).build();
     }
 
+    if ("com.agentengine.engine.exceptions.JsonDeserializationException".equals(exception.getClass().getName())) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(new ErrorResponse("400", "JSON Deserialization Error: " + exception.getMessage(), traceId)).build();
+    }
+
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
         .entity(new ErrorResponse("500", "Internal Server Error", traceId)).build();
   }

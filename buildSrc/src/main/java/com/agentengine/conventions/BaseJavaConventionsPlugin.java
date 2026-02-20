@@ -47,6 +47,9 @@ public abstract class BaseJavaConventionsPlugin {
             task.jvmArgs("--enable-preview");
         });
 
+        project.getDependencies().add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher");
+        project.getDependencies().add("testRuntimeOnly", "org.junit.jupiter:junit-jupiter-engine");
+
         // Apply preview flag to JavaExec tasks
         project.getTasks().withType(JavaExec.class).configureEach(task -> task.jvmArgs("--enable-preview"));
 

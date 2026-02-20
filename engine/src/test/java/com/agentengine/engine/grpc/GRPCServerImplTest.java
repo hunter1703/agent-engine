@@ -27,6 +27,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.agentengine.engine.api.query.Query;
+import com.agentengine.engine.api.utils.PaginatedResult;
+import io.grpc.StatusRuntimeException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -110,6 +114,41 @@ class GRPCServerImplTest {
   }
 
   @Test
+  void testGetAgentNotFound() {
+    when(agentService.getAgent("missing")).thenReturn(Optional.empty());
+
+    Optional<AgentConfig> resultOpt = agentServiceProxy.getAgent("missing");
+
+    assertThat(resultOpt).isEmpty();
+  }
+
+  @Test
+  void testDeleteAgent() {
+    when(agentService.deleteAgent("test-id")).thenReturn(true);
+
+    boolean deleted = agentServiceProxy.deleteAgent("test-id");
+
+    assertThat(deleted).isTrue();
+  }
+
+  @Test
+  void testFindAgents() {
+    AgentConfig config = new AgentConfig();
+    config.setId("agent-1");
+    PaginatedResult<AgentConfig> mockResult = new PaginatedResult<>();
+    mockResult.setItems(List.of(config));
+    mockResult.setTotal(1L);
+
+    when(agentService.findAgents(any())).thenReturn(mockResult);
+
+    PaginatedResult<AgentConfig> result = agentServiceProxy.findAgents(new Query());
+
+    assertThat(result.getItems()).hasSize(1);
+    assertThat(result.getItems().get(0).getId()).isEqualTo("agent-1");
+    assertThat(result.getTotal()).isEqualTo(1);
+  }
+
+  @Test
   void testRun() {
     String agentId = "test-agent";
     String sessionId = "test-session";
@@ -130,5 +169,14 @@ class GRPCServerImplTest {
     assertThat(results).hasSize(1);
     assertThat(results.get(0).id()).isEqualTo("event-1");
     assertThat(results.get(0).author()).isEqualTo("model");
+  }
+
+  @Test
+  void testServerErrorPropagation() {
+    when(agentService.getAgent("error")).thenThrow(new RuntimeException("Simulated server error"));
+
+    assertThatThrownBy(() -> agentServiceProxy.getAgent("error"))
+        .isInstanceOf(StatusRuntimeException.class)
+        .hasMessageContaining("INTERNAL");
   }
 }

@@ -15,7 +15,7 @@ import jakarta.ws.rs.WebApplicationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 
-class ResourceCatalogAPITest {
+class ResourceCatalogTest {
 
   private ResourceCatalogAPI resourceCatalogAPI;
   private AgentAssetHandler mockHandler;

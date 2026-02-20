@@ -7,15 +7,20 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.is;
 
 @QuarkusTest
-public class HealthCheckTest {
+public class HealthResourceTest {
 
   @Test
-  public void testLivenessProbe() {
+  public void testHealthEndpoint() {
+    given().when().get("/q/health").then().statusCode(200).body("status", is("UP"));
+  }
+
+  @Test
+  public void testLivenessEndpoint() {
     given().when().get("/q/health/live").then().statusCode(200).body("status", is("UP"));
   }
 
   @Test
-  public void testReadinessProbe() {
+  public void testReadinessEndpoint() {
     given().when().get("/q/health/ready").then().statusCode(200).body("status", is("UP"));
   }
 }
