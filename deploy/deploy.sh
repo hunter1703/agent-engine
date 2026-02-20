@@ -2,9 +2,14 @@
 set -e
 
 MODE=$1
+BOOTSTRAP=false
 
-if [ -z "$MODE" ]; then
-    echo "Usage: ./deploy/deploy.sh [dev|production|bootstrap]"
+if [ "$2" == "--bootstrap" ] || [ "$3" == "--bootstrap" ]; then
+    BOOTSTRAP=true
+fi
+
+if [ -z "$MODE" ] || [[ "$MODE" != "dev" && "$MODE" != "production" ]]; then
+    echo "Usage: ./deploy/deploy.sh [dev|production] [--bootstrap]"
     exit 1
 fi
 
@@ -12,39 +17,20 @@ fi
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$SCRIPT_DIR/.."
 
-if [ "$MODE" == "dev" ]; then
-    echo "Starting in DEV mode (Monolith)..."
-    cd "$PROJECT_ROOT"
-    ./gradlew :interfaces:local:quarkusDev
-    exit 0
-fi
+# 1. Start MongoDB via docker-compose automatically
+echo "Starting MongoDB infrastructure..."
+cd "$PROJECT_ROOT"
+docker-compose -f deploy/docker-compose.yaml up -d mongodb
 
-if [ "$MODE" == "production" ]; then
-    echo "Starting in PRODUCTION mode (Separate Services)..."
-    
-    echo "Building ubers-jars..."
-    cd "$PROJECT_ROOT"
-    ./gradlew clean :engine:quarkusBuild :interfaces:rest:quarkusBuild -x test -x spotlessCheck
-
-    echo "Starting Engine (Port 8081, gRPC 9000)..."
-    java --enable-preview -Dquarkus.http.port=8081 -Dquarkus.grpc.server.port=9000 -jar engine/build/quarkus-app/quarkus-run.jar &
-    ENGINE_PID=$!
-
-    echo "Starting REST (Port 8080)..."
-    # Wait a bit for engine to start
-    sleep 5
-    java --enable-preview -Dquarkus.http.port=8080 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar &
-
-    REST_PID=$!
-
-    echo "Services started. Engine PID: $ENGINE_PID, REST PID: $REST_PID"
-    exit 0
-fi
-
-if [ "$MODE" == "bootstrap" ]; then
-    echo "Bootstrapping Agents and Models..."
-    
+# 2. Define Bootstrap Function
+bootstrap_data() {
     API_URL="http://localhost:8080"
+    
+    echo "Waiting for REST API to become responsive on $API_URL..."
+    until curl -s "$API_URL/q/openapi" > /dev/null; do
+        sleep 2
+    done
+    echo "API is responsive. Bootstrapping Agents and Models!"
     
     # Bootstrap Models
     if [ -d "$PROJECT_ROOT/configs/models" ]; then
@@ -71,10 +57,48 @@ if [ "$MODE" == "bootstrap" ]; then
             fi
         done
     fi
+    echo "✅ Bootstrap complete."
+}
+
+# 3. Launch the requested environment
+if [ "$MODE" == "dev" ]; then
+    echo "Starting in DEV mode (Monolith)..."
     
-    echo "Bootstrap complete."
+    # Run bootstrap asynchronously if requested
+    if [ "$BOOTSTRAP" = true ]; then
+        bootstrap_data &
+    fi
+
+    cd "$PROJECT_ROOT"
+    ./gradlew :interfaces:local:quarkusDev
     exit 0
 fi
 
-echo "Invalid mode: $MODE. Use 'dev' or 'production'."
-exit 1
+if [ "$MODE" == "production" ]; then
+    echo "Starting in PRODUCTION mode (Separate Services)..."
+    
+    echo "Building ubers-jars..."
+    cd "$PROJECT_ROOT"
+    ./gradlew clean :engine:quarkusBuild :interfaces:rest:quarkusBuild -x test -x spotlessCheck
+
+    echo "Starting Engine (Port 8081, gRPC 9000)..."
+    java --enable-preview -Dquarkus.http.port=8081 -Dquarkus.grpc.server.port=9000 -jar engine/build/quarkus-app/quarkus-run.jar &
+    ENGINE_PID=$!
+
+    echo "Starting REST (Port 8080)..."
+    # Wait a bit for engine to start
+    sleep 5
+    java --enable-preview -Dquarkus.http.port=8080 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar &
+    REST_PID=$!
+
+    echo "Services started. Engine PID: $ENGINE_PID, REST PID: $REST_PID"
+
+    # Run bootstrap asynchronously if requested
+    if [ "$BOOTSTRAP" = true ]; then
+        bootstrap_data &
+    fi
+    
+    # Wait for the java background processes so the script doesn't exit immediately 
+    wait
+    exit 0
+fi
