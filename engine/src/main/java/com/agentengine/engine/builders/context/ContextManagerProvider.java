@@ -26,6 +26,7 @@ public class ContextManagerProvider {
     this.defaultBuilder = lastNContextManagerBuilder;
   }
 
+  @SuppressWarnings("unchecked")
   public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(
       final C config) {
     // noinspection unchecked

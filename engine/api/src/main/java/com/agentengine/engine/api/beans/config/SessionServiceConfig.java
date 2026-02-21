@@ -13,7 +13,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       @DiscriminatorMapping(value = "memory", schema = InMemorySessionServiceConfig.class),
       @DiscriminatorMapping(value = "mongodb", schema = MongoSessionServiceConfig.class)
     })
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = InMemorySessionServiceConfig.class, name = "memory"),
   @JsonSubTypes.Type(value = MongoSessionServiceConfig.class, name = "mongodb")

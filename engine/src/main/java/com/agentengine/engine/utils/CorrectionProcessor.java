@@ -109,6 +109,7 @@ public abstract class CorrectionProcessor implements RequestProcessor, ResponseP
             getViolationKey(),
             (key, oldVal) -> {
               // noinspection unchecked
+              @SuppressWarnings("unchecked")
               final List<Object> violationsList =
                   oldVal == null ? new ArrayList<>() : (List<Object>) oldVal;
               violationsList.addAll(violations);

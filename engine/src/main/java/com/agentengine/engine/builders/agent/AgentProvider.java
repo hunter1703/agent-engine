@@ -28,6 +28,7 @@ public class AgentProvider {
     this.defaultAgentBuilder = simpleAgentBuilder;
   }
 
+  @SuppressWarnings("unchecked")
   public <C extends AgentConfig, A extends LlmAgent> A get(
       final C config, final AgentContext agentContext) {
     // noinspection unchecked

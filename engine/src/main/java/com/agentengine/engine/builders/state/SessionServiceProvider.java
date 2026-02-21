@@ -26,6 +26,7 @@ public class SessionServiceProvider {
     this.defaultBuilder = inMemorySessionServiceBuilder;
   }
 
+  @SuppressWarnings("unchecked")
   public <C extends SessionServiceConfig, S extends BaseSessionService> S get(final C config) {
     // noinspection unchecked
     final SessionServiceBuilder<C, S> builder =

@@ -1,6 +1,7 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public class AgentModelConfig implements Config {
     this.systemPrompt = systemPrompt;
   }
 
+  @JsonIgnore
   @Override
   public String getType() {
     return null;

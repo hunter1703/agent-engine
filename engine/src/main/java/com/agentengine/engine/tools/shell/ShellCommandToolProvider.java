@@ -29,6 +29,7 @@ public class ShellCommandToolProvider implements ToolProvider {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public Map<String, Object> configsSchema() {
     //noinspection unchecked
     return Schemas.objectSchema()

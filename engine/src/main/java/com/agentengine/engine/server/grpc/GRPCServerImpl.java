@@ -170,6 +170,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   // ── Request handling
   // ──────────────────────────────────────────────────────────
 
+  @SuppressWarnings("unchecked")
   private Object[] deserializeArgs(Request request, Method method) {
     int paramCount = method.getParameterCount();
     if (paramCount == 0 || request.getPayload().isEmpty()) {

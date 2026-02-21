@@ -16,6 +16,7 @@ public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
     super(mongoClientSupport, "INFRA", "InfraConfig", InfraConfig.class);
   }
 
+  @SuppressWarnings("unchecked")
   public <T extends InfraConfig> T findOneByType(String type) {
     final Query query = new Query().withFilter(Filters.eq("type", type)).withPage(new Page(0, 1));
     // noinspection unchecked

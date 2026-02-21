@@ -7,7 +7,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.PROPERTY,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
     property = "type",
     defaultImpl = AgentConfig.class)
 @BsonDiscriminator(key = "type", value = "default")

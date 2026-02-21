@@ -18,10 +18,11 @@ public final class SchemaUtils {
 
   private SchemaUtils() {}
 
+  @SuppressWarnings("unchecked")
   public static String toJsonSchema(final Schema schema) {
     final SchemaBuilder<?, ?> vertxSchema = toVertxSchema(schema);
     final HashMap<String, Object> jsonSchemaMap =
-        new HashMap<>(vertxSchema.toJson().mapTo(Map.class));
+        new HashMap<>((Map<String, Object>) vertxSchema.toJson().mapTo(Map.class));
     JsonUtils.removeValue(jsonSchemaMap, "$..['$id']");
     return JsonUtils.toJson(jsonSchemaMap);
   }
