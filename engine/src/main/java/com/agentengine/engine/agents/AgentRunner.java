@@ -12,8 +12,6 @@ import io.reactivex.rxjava3.functions.Action;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.eclipse.microprofile.faulttolerance.Retry;
-import org.eclipse.microprofile.faulttolerance.Timeout;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,8 +31,6 @@ public class AgentRunner {
     this.sessionTitleGenerator = sessionTitleGenerator;
   }
 
-  @Timeout(5000)
-  @Retry(maxRetries = 2)
   public Flowable<Event> run(final AgentSessionRuntime runtime, String text) {
     LOG.debug("run - session_id={} text=\"{}\"", runtime.sessionId(), StringUtils.substring(text, 0, 50));
     final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();

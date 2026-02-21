@@ -31,6 +31,15 @@ Run as separate, production-ready microservices (Core Engine on port 8081/9000, 
 ./deploy/deploy.sh production [--bootstrap]
 ```
 
+
+### Stopping Services
+
+To stop all background services (Engine, REST) and the MongoDB infrastructure:
+
+```bash
+./deploy/stop.sh
+```
+
 ---
 
 ## 🛠 Building & Testing
@@ -73,14 +82,14 @@ Interact with your agents using the unified REST API:
 ### Core Runtime Settings
 
 - `PLUGIN_DIR`: Directory containing plugin JARs (default: `plugins`)
-- `MONGODB_CONNECTION_STRING`: Connection string for the Agent Config and Session store (default: `mongodb://localhost:27002`)
+- `MONGODB_CONNECTION_STRING`: Connection string for the Agent Config and Session store (default: `mongodb://localhost:27017`)
 - `sessionStore.type: mongodb`: Persists context state, events, and app state natively in MongoDB.
 
 ---
 
 ## 🧩 Plugins & Custom Tools
 
-Agent Engine's power comes from its modular architecture. Tools are external JARs that implement `com.agentengine.engine.api.ToolProvider` via `META-INF/services` and are dynamically added to the runtime classpath.
+Agent Engine's power comes from its modular architecture. Tools are external JARs that implement `com.agentengine.engine.api.tools.ToolProvider` via `META-INF/services` and are dynamically added to the runtime classpath.
 
 At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./plugins` by default).
 

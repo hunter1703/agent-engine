@@ -1,7 +1,7 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.ToolProvider;
+import com.agentengine.engine.api.tools.ToolProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import io.reactivex.rxjava3.core.Single;

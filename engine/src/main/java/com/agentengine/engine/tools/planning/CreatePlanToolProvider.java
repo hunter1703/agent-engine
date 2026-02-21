@@ -1,7 +1,7 @@
-package com.agentengine.engine.tools;
+package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.ToolProvider;
+import com.agentengine.engine.api.tools.ToolProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
 import jakarta.inject.Singleton;
@@ -22,5 +22,10 @@ public final class CreatePlanToolProvider implements ToolProvider {
   @Override
   public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     return FunctionTool.create(new Planning(), "createPlan");
+  }
+
+  @Override
+  public boolean isSubTool() {
+    return true;
   }
 }

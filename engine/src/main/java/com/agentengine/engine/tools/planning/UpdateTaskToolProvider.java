@@ -1,14 +1,15 @@
-package com.agentengine.engine.tools;
+package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.ToolProvider;
+import com.agentengine.engine.api.tools.ToolProvider;
+import com.agentengine.engine.tools.planning.Planning;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
 import jakarta.inject.Singleton;
 import java.util.Map;
 
 @Singleton
-public final class UpdatePlanInfoToolProvider implements ToolProvider {
+public final class UpdateTaskToolProvider implements ToolProvider {
   @Override
   public String agentId() {
     return "ALL";
@@ -16,11 +17,16 @@ public final class UpdatePlanInfoToolProvider implements ToolProvider {
 
   @Override
   public String toolName() {
-    return "update_plan_info";
+    return "update_subtask_state";
   }
 
   @Override
   public BaseTool create(final AgentContext agentContext, final Map<String, Object> config) {
-    return FunctionTool.create(new Planning(), "updatePlanInfo");
+    return FunctionTool.create(new Planning(), "updateSubtaskState");
+  }
+
+  @Override
+  public boolean isSubTool() {
+    return true;
   }
 }

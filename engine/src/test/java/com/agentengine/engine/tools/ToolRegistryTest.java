@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.ToolProvider;
+import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.google.adk.tools.BaseTool;

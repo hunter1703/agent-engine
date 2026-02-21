@@ -10,7 +10,6 @@ public class AgentRequest {
   private String agentId;
   private String agentConfigPath;
 
-  @NotBlank(message = "sessionId is required")
   private String sessionId;
 
   @NotBlank(message = "message is required")

@@ -83,7 +83,7 @@ When MongoDB is configured, omit `agentConfigPath` and the service loads configs
 by `agentName`.
 
 MongoDB is configured via the environment variable `MONGODB_CONNECTION_STRING` (default
-`mongodb://localhost:27002`). The database name is currently fixed to `AGENT_ENGINE`.
+`mongodb://localhost:27017`). The database name is currently fixed to `AGENT_ENGINE`.
 
 ### Event Payloads (SSE)
 Each event is an AG-UI `BaseEvent` JSON payload, compatible with the AG-UI protocol.

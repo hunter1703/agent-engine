@@ -17,7 +17,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 public final class MongoClientFactory {
-  private static final String DEFAULT_CONNECTION = "mongodb://localhost:27002";
+  private static final String DEFAULT_CONNECTION = "mongodb://localhost:27017";
 
   private MongoClientFactory() {
   }

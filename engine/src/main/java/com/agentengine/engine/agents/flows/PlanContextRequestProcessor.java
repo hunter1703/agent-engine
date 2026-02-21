@@ -3,7 +3,7 @@ package com.agentengine.engine.agents.flows;
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.PlanningUtils;
+import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.models.LlmRequest;

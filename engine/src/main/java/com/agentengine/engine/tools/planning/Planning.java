@@ -1,4 +1,4 @@
-package com.agentengine.engine.tools;
+package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.tools.planning.Planning;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;

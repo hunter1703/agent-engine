@@ -10,7 +10,7 @@ import java.util.Map;
 public final class ShellCommandToolProvider implements ToolProvider {
   @Override
   public String agentId() {
-    return "shell_agent";
+    return "ALL";
   }
 
   @Override

@@ -2,13 +2,16 @@ package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AgentModelConfig implements Config {
   private String modelId;
   // unique role of the model within the agent
   private String role;
   private String systemPrompt;
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
-  private ToolsConfig tools = new ToolsConfig();
+  private List<ToolsConfig> tools = new ArrayList<>();
 
   public String getModelId() {
     return modelId;
@@ -47,11 +50,11 @@ public class AgentModelConfig implements Config {
     this.contextManagerConfig = contextManagerConfig;
   }
 
-  public ToolsConfig getTools() {
+  public List<ToolsConfig> getTools() {
     return tools;
   }
 
-  public void setTools(final ToolsConfig tools) {
+  public void setTools(final List<ToolsConfig> tools) {
     this.tools = tools;
   }
 
@@ -63,6 +66,5 @@ public class AgentModelConfig implements Config {
     if (StringUtils.isBlank(systemPrompt)) {
       throw new IllegalArgumentException("systemPrompt is required");
     }
-    tools.validate();
   }
 }
