@@ -4,7 +4,6 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -26,8 +25,13 @@ public record AgentRunResult(String finalAnswer, String thoughts) {
       if (StringUtils.isNotBlank(text)) {
         finalAnswer = text;
       }
-      final String thoughtText = content.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false))
-          .map(Part::text).flatMap(Optional::stream).filter(StringUtils::isNotBlank).collect(Collectors.joining("\n"));
+      final String thoughtText =
+          content.parts().orElse(List.of()).stream()
+              .filter(part -> part.thought().orElse(false))
+              .map(Part::text)
+              .flatMap(Optional::stream)
+              .filter(StringUtils::isNotBlank)
+              .collect(Collectors.joining("\n"));
       if (StringUtils.isNotBlank(thoughtText)) {
         thoughts = thoughtText;
       }

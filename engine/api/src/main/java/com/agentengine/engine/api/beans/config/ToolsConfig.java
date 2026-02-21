@@ -7,13 +7,13 @@ public final class ToolsConfig {
   private String toolName;
   private Map<String, Object> configs;
 
-  public ToolsConfig() {
-  }
+  public ToolsConfig() {}
 
   public ToolsConfig(final String toolName, final Map<String, Object> configs) {
     this.toolName = toolName;
     this.configs = configs;
   }
+
   public String getToolName() {
     return toolName;
   }

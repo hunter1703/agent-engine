@@ -12,6 +12,8 @@ public class JsonDeserializationException extends RuntimeException {
   }
 
   public Response toResponse() {
-    return Response.status(Response.Status.BAD_REQUEST).entity("{\"error\":\"" + getMessage() + "\"}").build();
+    return Response.status(Response.Status.BAD_REQUEST)
+        .entity("{\"error\":\"" + getMessage() + "\"}")
+        .build();
   }
 }

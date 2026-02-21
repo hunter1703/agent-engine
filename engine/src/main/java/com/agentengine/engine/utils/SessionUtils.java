@@ -4,7 +4,6 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +17,7 @@ public final class SessionUtils {
   public static final String TITLE_EVENT_COUNT_KEY = "session:titleEventCount";
   public static final String EVENT_COUNT_KEY = "session:eventCount";
 
-  private SessionUtils() {
-  }
+  private SessionUtils() {}
 
   public static List<Event> filterConversationEvents(final List<Event> events) {
     if (events == null || events.isEmpty()) {
@@ -79,9 +77,16 @@ public final class SessionUtils {
     final StringBuilder builder = new StringBuilder();
     for (final Part part : parts) {
       part.functionCall()
-          .ifPresent(call -> builder.append("Tool call: ").append(call.name().orElse("tool")).append('\n'));
+          .ifPresent(
+              call ->
+                  builder.append("Tool call: ").append(call.name().orElse("tool")).append('\n'));
       part.functionResponse()
-          .ifPresent(response -> builder.append("Tool result: ").append(response.name().orElse("tool")).append('\n'));
+          .ifPresent(
+              response ->
+                  builder
+                      .append("Tool result: ")
+                      .append(response.name().orElse("tool"))
+                      .append('\n'));
     }
     final String summary = builder.toString().trim();
     return summary.isEmpty() ? null : summary;

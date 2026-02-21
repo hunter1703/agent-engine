@@ -1,7 +1,6 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
-
 import java.util.ArrayList;
 import java.util.List;
 

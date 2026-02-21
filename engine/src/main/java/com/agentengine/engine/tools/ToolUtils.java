@@ -4,13 +4,11 @@ import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.utils.SchemaUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.FunctionDeclaration;
-
 import java.util.List;
 
 public final class ToolUtils {
 
-  private ToolUtils() {
-  }
+  private ToolUtils() {}
 
   public static String buildToolMessage(final List<BaseTool> tools) {
     if (tools == null || tools.isEmpty()) {
@@ -25,8 +23,12 @@ public final class ToolUtils {
       if (tool.description() != null && !tool.description().isBlank()) {
         line += STR." - \{tool.description()}";
       }
-      final FunctionDeclaration declaration = tool.declaration().orElse(FunctionDeclaration.builder().build());
-      builder.append(line).append("\n\t-").append("tool args schema - ")
+      final FunctionDeclaration declaration =
+          tool.declaration().orElse(FunctionDeclaration.builder().build());
+      builder
+          .append(line)
+          .append("\n\t-")
+          .append("tool args schema - ")
           .append(renderSchema(declaration))
           .append("\n");
     }

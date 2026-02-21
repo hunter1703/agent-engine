@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class Plan {
-  private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  private static final DateTimeFormatter FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   private String id = UUID.randomUUID().toString();
   private String name;

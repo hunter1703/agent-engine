@@ -8,27 +8,25 @@ import com.agentengine.engine.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import io.quarkus.grpc.GrpcService;
-import io.reactivex.rxjava3.core.Flowable;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.List;
-import java.lang.annotation.Annotation;
-import java.util.stream.Collectors;
-
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InstanceHandle;
+import io.quarkus.grpc.GrpcService;
+import io.reactivex.rxjava3.core.Flowable;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Any;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 @GrpcService
@@ -37,8 +35,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
 
   /**
-   * Two-level registry built eagerly at startup. Outer key: {@link MicroService}
-   * interface simple name. Inner key: method name → resolved {@link Method}.
+   * Two-level registry built eagerly at startup. Outer key: {@link MicroService} interface simple
+   * name. Inner key: method name → resolved {@link Method}.
    */
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
@@ -49,12 +47,13 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   // ── Testing Helper ────────────────────────────────────────────────────────
   public GRPCServerImpl(List<Object> services) {
-    services.forEach(instance -> {
-      Class<?> iface = microServiceInterface(instance.getClass());
-      if (iface != null) {
-        this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
-      }
-    });
+    services.forEach(
+        instance -> {
+          Class<?> iface = microServiceInterface(instance.getClass());
+          if (iface != null) {
+            this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
+          }
+        });
   }
 
   @PostConstruct
@@ -62,24 +61,42 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     LOG.info("Initializing GRPCServerImpl. Scanning beans for @MicroService via Arc...");
 
     ArcContainer container = Arc.container();
-    this.registry = container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
-        .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
-        .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
-        .map(bean -> container.instance(bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
-        .filter(InstanceHandle::isAvailable).map(handle -> {
-          Object instance = handle.get();
-          LOG.info("Checking instance: {}", instance.getClass().getName());
-          return instance;
-        }).flatMap(instance -> Optional.ofNullable(microServiceInterface(instance.getClass())).map(iface -> {
-          LOG.info("Discovered MicroService: {} implemented by {}", iface.getSimpleName(),
-              instance.getClass().getName());
-          return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
-        }).stream())
-        // First registration wins if multiple beans implement the same interface
-        .collect(Collectors.toUnmodifiableMap(e -> e.getKey(), e -> e.getValue(), (first, __) -> first));
+    this.registry =
+        container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
+            .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
+            .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
+            .map(
+                bean ->
+                    container.instance(
+                        bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
+            .filter(InstanceHandle::isAvailable)
+            .map(
+                handle -> {
+                  Object instance = handle.get();
+                  LOG.info("Checking instance: {}", instance.getClass().getName());
+                  return instance;
+                })
+            .flatMap(
+                instance ->
+                    Optional.ofNullable(microServiceInterface(instance.getClass()))
+                        .map(
+                            iface -> {
+                              LOG.info(
+                                  "Discovered MicroService: {} implemented by {}",
+                                  iface.getSimpleName(),
+                                  instance.getClass().getName());
+                              return Map.entry(
+                                  iface.getSimpleName(), new ServiceEntry(instance, iface));
+                            })
+                        .stream())
+            // First registration wins if multiple beans implement the same interface
+            .collect(
+                Collectors.toUnmodifiableMap(
+                    e -> e.getKey(), e -> e.getValue(), (first, __) -> first));
 
     LOG.info("Registered MicroServices: {}", registry.keySet());
-    registry.forEach((name, entry) -> LOG.debug("  {} → methods: {}", name, entry.methods().keySet()));
+    registry.forEach(
+        (name, entry) -> LOG.debug("  {} → methods: {}", name, entry.methods().keySet()));
   }
 
   @Override
@@ -91,18 +108,20 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     ServiceEntry entry = registry.get(serviceName);
     if (entry == null) {
       LOG.error("Service not found: {}. Available: {}", serviceName, registry.keySet());
-      responseObserver.onError(Status.NOT_FOUND
-          .withDescription(STR."Service not found: \{serviceName}")
-          .asRuntimeException());
+      responseObserver.onError(
+          Status.NOT_FOUND
+              .withDescription(STR."Service not found: \{serviceName}")
+              .asRuntimeException());
       return;
     }
 
     Method method = entry.methods().get(methodName);
     if (method == null) {
       LOG.error("Method not found: {}/{}", serviceName, methodName);
-      responseObserver.onError(Status.NOT_FOUND
-          .withDescription(STR."Method not found: \{methodName}")
-          .asRuntimeException());
+      responseObserver.onError(
+          Status.NOT_FOUND
+              .withDescription(STR."Method not found: \{methodName}")
+              .asRuntimeException());
       return;
     }
 
@@ -119,10 +138,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
     } catch (Exception e) {
       LOG.error("Error executing {}/{}", serviceName, methodName, e);
-      responseObserver.onError(Status.INTERNAL
-          .withDescription(e.getMessage())
-          .withCause(e)
-          .asRuntimeException());
+      responseObserver.onError(
+          Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
     }
   }
 
@@ -130,9 +147,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   // ───────────────────────────────────────────────────────────
 
   /**
-   * Walks the full type hierarchy (class superclasses and interface supertypes)
-   * to find an interface annotated with {@link MicroService}. Returns
-   * {@code null} if none is found.
+   * Walks the full type hierarchy (class superclasses and interface supertypes) to find an
+   * interface annotated with {@link MicroService}. Returns {@code null} if none is found.
    */
   private static Class<?> microServiceInterface(Class<?> clazz) {
     if (clazz == null || clazz == Object.class) {
@@ -181,16 +197,23 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private void sendResult(Object result, StreamObserver<Response> observer) {
     if (result instanceof Flowable<?> flowable) {
       LOG.debug("Subscribing to Flowable result...");
-      flowable.subscribe(item -> {
-        LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
-        sendPayload(observer, item);
-      }, err -> {
-        LOG.error("Flowable error", err);
-        observer.onError(Status.INTERNAL.withDescription(err.getMessage()).withCause(err).asRuntimeException());
-      }, () -> {
-        LOG.debug("Flowable complete");
-        observer.onCompleted();
-      });
+      flowable.subscribe(
+          item -> {
+            LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
+            sendPayload(observer, item);
+          },
+          err -> {
+            LOG.error("Flowable error", err);
+            observer.onError(
+                Status.INTERNAL
+                    .withDescription(err.getMessage())
+                    .withCause(err)
+                    .asRuntimeException());
+          },
+          () -> {
+            LOG.debug("Flowable complete");
+            observer.onCompleted();
+          });
     } else if (result != null) {
       sendPayload(observer, result);
       observer.onCompleted();
@@ -200,7 +223,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   }
 
   private void sendPayload(StreamObserver<Response> observer, Object value) {
-    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
+    observer.onNext(
+        Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
   }
 
   // ── Inner types
@@ -209,16 +233,17 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   /**
    * Holds a registered service bean alongside its eagerly-resolved method map.
    *
-   * @param bean
-   *          the CDI bean instance
-   * @param methods
-   *          all public methods of the service interface, keyed by name
+   * @param bean the CDI bean instance
+   * @param methods all public methods of the service interface, keyed by name
    */
   private record ServiceEntry(Object bean, Map<String, Method> methods) {
 
     ServiceEntry(Object bean, Class<?> iface) {
-      this(bean, Arrays.stream(iface.getMethods())
-          .collect(Collectors.toUnmodifiableMap(Method::getName, m -> m, (first, __) -> first)));
+      this(
+          bean,
+          Arrays.stream(iface.getMethods())
+              .collect(
+                  Collectors.toUnmodifiableMap(Method::getName, m -> m, (first, __) -> first)));
     }
   }
 }

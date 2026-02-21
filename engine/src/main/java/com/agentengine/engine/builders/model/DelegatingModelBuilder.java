@@ -12,7 +12,8 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class DelegatingModelBuilder<T extends BaseLlm> implements ModelBuilder<DelegatingLLMModel> {
+public abstract class DelegatingModelBuilder<T extends BaseLlm>
+    implements ModelBuilder<DelegatingLLMModel> {
 
   @Override
   public final DelegatingLLMModel build(final ModelConfig modelConfig) {
@@ -20,25 +21,35 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm> implements Model
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
     final boolean parseToolCallsFromText = !toolCallingSupported;
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
-    final Parser parser = Parser.create().withResponseFormat(responseFormatType).toolCallingEnabled(toolCallingEnabled)
-        .parseToolCallsFromText(parseToolCallsFromText);
-    final String protocol = buildProtocolMessage(responseFormatType, toolCallingEnabled, toolCallingSupported);
+    final Parser parser =
+        Parser.create()
+            .withResponseFormat(responseFormatType)
+            .toolCallingEnabled(toolCallingEnabled)
+            .parseToolCallsFromText(parseToolCallsFromText);
+    final String protocol =
+        buildProtocolMessage(responseFormatType, toolCallingEnabled, toolCallingSupported);
     final T delegate = buildDelegate(modelConfig);
-    return new DelegatingLLMModel(delegate, parser, protocol, toolCallingEnabled, parseToolCallsFromText);
+    return new DelegatingLLMModel(
+        delegate, parser, protocol, toolCallingEnabled, parseToolCallsFromText);
   }
 
   protected abstract T buildDelegate(final ModelConfig modelConfig);
 
   protected static ResponseFormatType resolveResponseFormatType(final ModelConfig config) {
     if (StringUtils.isNotBlank(config.getResponseFormat())) {
-      return "json".equalsIgnoreCase(config.getResponseFormat()) ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
+      return "json".equalsIgnoreCase(config.getResponseFormat())
+          ? ResponseFormatType.JSON
+          : ResponseFormatType.TEXT;
     }
-    final boolean parseToolCallsFromText = config.isToolCallingEnabled() && !config.isToolCallingSupported();
+    final boolean parseToolCallsFromText =
+        config.isToolCallingEnabled() && !config.isToolCallingSupported();
     return parseToolCallsFromText ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
   }
 
-  private static String buildProtocolMessage(final ResponseFormatType responseFormatType,
-      final boolean toolCallingEnabled, final boolean toolCallingSupported) {
+  private static String buildProtocolMessage(
+      final ResponseFormatType responseFormatType,
+      final boolean toolCallingEnabled,
+      final boolean toolCallingSupported) {
     final String templateName = resolveProtocolTemplate(responseFormatType);
     final Map<String, Object> context = new HashMap<>();
     context.put("toolCallingAllowed", toolCallingEnabled);

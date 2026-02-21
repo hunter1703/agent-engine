@@ -5,5 +5,4 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 
 @RegisterForReflection
 @Unremovable
-public record ErrorResponse(String code, String message, String traceId) {
-}
+public record ErrorResponse(String code, String message, String traceId) {}

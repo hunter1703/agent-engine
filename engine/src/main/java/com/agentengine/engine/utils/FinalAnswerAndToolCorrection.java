@@ -15,17 +15,20 @@ import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
 /**
  * prevents LLM from returning both final answers and tool calls simultaneously.
- * <p>
- * Example usage:
- * 
+ *
+ * <p>Example usage:
+ *
  * <pre>
  * ToolCallAnswerSeparation processor = ToolCallAnswerSeparation.builder().convertToThought(true)
  *     .correctionTemplate("Custom message: %s").build();
@@ -38,7 +41,8 @@ public class FinalAnswerAndToolCorrection extends CorrectionProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FinalAnswerAndToolCorrection.class);
 
-  private static final String DEFAULT_CORRECTION_TEMPLATE = """
+  private static final String DEFAULT_CORRECTION_TEMPLATE =
+      """
       You attempted to provide a final answer while simultaneously making tool calls. This is not allowed.
 
       What you did:
@@ -79,8 +83,11 @@ public class FinalAnswerAndToolCorrection extends CorrectionProcessor {
       details.put("toolCount", toolCallNames.size());
       details.put("textLength", finalAnswer.length());
 
-      Violation violation = Violation.builder(Violation.Codes.ANSWER_WITH_TOOL_CALLS)
-          .message("Model returned both text and tool calls").details(details).build();
+      Violation violation =
+          Violation.builder(Violation.Codes.ANSWER_WITH_TOOL_CALLS)
+              .message("Model returned both text and tool calls")
+              .details(details)
+              .build();
 
       return List.of(violation);
     }
@@ -89,7 +96,8 @@ public class FinalAnswerAndToolCorrection extends CorrectionProcessor {
   }
 
   @Override
-  protected LlmResponse fixResponse(InvocationContext context, LlmResponse response, List<Violation> violations) {
+  protected LlmResponse fixResponse(
+      InvocationContext context, LlmResponse response, List<Violation> violations) {
     if (violations.isEmpty()) {
       return response;
     }
@@ -113,38 +121,38 @@ public class FinalAnswerAndToolCorrection extends CorrectionProcessor {
       newParts.add(Part.builder().text(thoughtsBuilder.toString().trim()).thought(true).build());
     }
 
-    Content newContent = Content.builder().role(originalContent.role().orElse(null)).parts(newParts.build()).build();
+    Content newContent =
+        Content.builder().role(originalContent.role().orElse(null)).parts(newParts.build()).build();
 
     return response.toBuilder().content(newContent).build();
   }
 
   @Override
-    protected String buildCorrectionPrompt(InvocationContext context, List<Violation> violations) {
-        List<String> allToolCalls = new ArrayList<>();
-        List<String> allTexts = new ArrayList<>();
+  protected String buildCorrectionPrompt(InvocationContext context, List<Violation> violations) {
+    List<String> allToolCalls = new ArrayList<>();
+    List<String> allTexts = new ArrayList<>();
 
-        for (Violation violation : violations) {
-            List<String> toolCalls = violation.getDetail("toolCalls");
-            String text = violation.getDetail("text");
+    for (Violation violation : violations) {
+      List<String> toolCalls = violation.getDetail("toolCalls");
+      String text = violation.getDetail("text");
 
-            allToolCalls.addAll(toolCalls);
-            allTexts.add(text);
-        }
-
-        String toolCallsList = allToolCalls.stream()
-                .distinct()
-                .collect(Collectors.joining(", "));
-
-        String combinedText = String.join(" | ", allTexts);
-        if (combinedText.length() > 200) {
-            combinedText = STR."\{combinedText.substring(0, 197)}...";
-        }
-
-        return TemplateUtils.renderTextTemplate(correctionTemplate, Map.of(
-                "toolCalls", toolCallsList,
-                "text", combinedText
-        ));
+      allToolCalls.addAll(toolCalls);
+      allTexts.add(text);
     }
+
+    String toolCallsList = allToolCalls.stream().distinct().collect(Collectors.joining(", "));
+
+    String combinedText = String.join(" | ", allTexts);
+    if (combinedText.length() > 200) {
+      combinedText = STR."\{combinedText.substring(0, 197)}...";
+    }
+
+    return TemplateUtils.renderTextTemplate(
+        correctionTemplate,
+        Map.of(
+            "toolCalls", toolCallsList,
+            "text", combinedText));
+  }
 
   public static Builder builder() {
     return new Builder();

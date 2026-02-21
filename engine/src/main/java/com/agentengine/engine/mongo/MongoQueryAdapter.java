@@ -4,36 +4,35 @@ import com.agentengine.engine.api.query.Filter;
 import com.agentengine.engine.api.query.Operator;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.mongodb.client.model.Filters;
-import org.bson.Document;
-import org.bson.conversions.Bson;
-
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import org.bson.Document;
+import org.bson.conversions.Bson;
 
 public final class MongoQueryAdapter {
 
-  private MongoQueryAdapter() {
-  }
+  private MongoQueryAdapter() {}
 
   public static Bson toBson(Filter filter) {
-        if (filter == null) {
-            return new Document();
-        }
-        if (filter.getOp().isCompound()) {
-            final List<Bson> subFilters = filter.getValues().stream()
-                    .map(value -> toBson((Filter) value))
-                    .toList();
-            return switch (filter.getOp()) {
-                case AND -> Filters.and(subFilters.toArray(new Bson[0]));
-                case OR -> Filters.or(subFilters.toArray(new Bson[0]));
-                case NOT -> Filters.not(Objects.requireNonNull(CollectionUtils.getFirst(subFilters)));
-                default -> throw new IllegalArgumentException(STR."Unsupported compound operator: \{filter.getOp()}");
-            };
-        } else {
-            return toSimpleFilterBson(filter);
-        }
+    if (filter == null) {
+      return new Document();
     }
+    if (filter.getOp().isCompound()) {
+      final List<Bson> subFilters =
+          filter.getValues().stream().map(value -> toBson((Filter) value)).toList();
+      return switch (filter.getOp()) {
+        case AND -> Filters.and(subFilters.toArray(new Bson[0]));
+        case OR -> Filters.or(subFilters.toArray(new Bson[0]));
+        case NOT -> Filters.not(Objects.requireNonNull(CollectionUtils.getFirst(subFilters)));
+        default ->
+            throw new IllegalArgumentException(
+                STR."Unsupported compound operator: \{filter.getOp()}");
+      };
+    } else {
+      return toSimpleFilterBson(filter);
+    }
+  }
 
   private static Bson toSimpleFilterBson(Filter filter) {
     String field = filter.getField();

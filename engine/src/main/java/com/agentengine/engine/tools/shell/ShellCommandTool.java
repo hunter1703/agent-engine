@@ -20,9 +20,13 @@ public final class ShellCommandTool {
     this.timeout = timeout == null ? Duration.ofMinutes(30) : timeout;
   }
 
-  @Schema(name = "run_cmd", description = "Execute ONE shell command using `bash -lc`. Command must be single-line; no heredocs; avoid rm.")
+  @Schema(
+      name = "run_cmd",
+      description =
+          "Execute ONE shell command using `bash -lc`. Command must be single-line; no heredocs; avoid rm.")
   public Map<String, Object> runCommand(
-      @Schema(name = "command", description = "The shell command to execute") final String command) {
+      @Schema(name = "command", description = "The shell command to execute")
+          final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");
     }
@@ -34,8 +38,7 @@ public final class ShellCommandTool {
     builder.redirectErrorStream(true);
     try {
       final Process process = builder.start();
-      final boolean finished =
-          process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+      final boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
       String output = readAll(process);
       output = truncate(output.trim());
       final String result;

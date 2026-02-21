@@ -5,12 +5,11 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
+import java.io.IOException;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
-import java.io.IOException;
-import java.util.UUID;
 
 @Provider
 public class RequestLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
@@ -26,12 +25,16 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
       requestId = UUID.randomUUID().toString();
     }
     MDC.put(MDC_KEY, requestId);
-    LOG.debug("Request received method={} path={} requestId={}", requestContext.getMethod(),
-        requestContext.getUriInfo().getPath(), requestId);
+    LOG.debug(
+        "Request received method={} path={} requestId={}",
+        requestContext.getMethod(),
+        requestContext.getUriInfo().getPath(),
+        requestId);
   }
 
   @Override
-  public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext)
+  public void filter(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext)
       throws IOException {
     String requestId = MDC.get(MDC_KEY);
     if (requestId != null) {

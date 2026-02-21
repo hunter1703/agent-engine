@@ -6,7 +6,6 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
 import io.vertx.json.schema.common.dsl.Schemas;
 import jakarta.inject.Singleton;
-
 import java.time.Duration;
 import java.util.Map;
 
@@ -33,8 +32,18 @@ public class ShellCommandToolProvider implements ToolProvider {
   public Map<String, Object> configsSchema() {
     //noinspection unchecked
     return Schemas.objectSchema()
-            .property("timeout_seconds", Schemas.intSchema().withKeyword("description", "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.").withKeyword("default", 30))
-            .requiredProperty("command", Schemas.stringSchema().withKeyword("description", "The shell command to execute.")).toJson().mapTo(Map.class);
+        .property(
+            "timeout_seconds",
+            Schemas.intSchema()
+                .withKeyword(
+                    "description",
+                    "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
+                .withKeyword("default", 30))
+        .requiredProperty(
+            "command",
+            Schemas.stringSchema().withKeyword("description", "The shell command to execute."))
+        .toJson()
+        .mapTo(Map.class);
   }
 
   private static Long parseTimeoutSeconds(final Map<String, Object> toolConfig) {

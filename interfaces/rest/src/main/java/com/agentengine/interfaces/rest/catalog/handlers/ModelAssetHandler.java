@@ -7,7 +7,6 @@ import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.HashMap;
 import java.util.Map;
 

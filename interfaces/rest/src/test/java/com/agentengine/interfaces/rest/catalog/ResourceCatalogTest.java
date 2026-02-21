@@ -7,13 +7,12 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.interfaces.rest.catalog.handlers.AgentAssetHandler;
-import java.util.List;
-import java.util.Map;
-
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.WebApplicationException;
-import org.junit.jupiter.api.Test;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class ResourceCatalogTest {
 

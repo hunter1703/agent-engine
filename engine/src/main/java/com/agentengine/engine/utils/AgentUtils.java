@@ -10,8 +10,7 @@ import org.slf4j.LoggerFactory;
 public final class AgentUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AgentUtils.class);
 
-  private AgentUtils() {
-  }
+  private AgentUtils() {}
 
   public static Map<String, Object> parseJsonPayload(final String text) {
     if (StringUtils.isBlank(text)) {
@@ -29,15 +28,13 @@ public final class AgentUtils {
     }
     Map<String, Object> payload = null;
     try {
-      payload = JsonUtils.fromJson(cleaned, new TypeReference<>() {
-      });
+      payload = JsonUtils.fromJson(cleaned, new TypeReference<>() {});
     } catch (Exception ex) {
       final int start = cleaned.indexOf('{');
       final int end = cleaned.lastIndexOf('}');
       if (start >= 0 && end > start) {
         try {
-          payload = JsonUtils.fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {
-          });
+          payload = JsonUtils.fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
         } catch (Exception innerEx) {
           LOG.warn("Failed to parse JSON payload from substring", innerEx);
         }
@@ -45,5 +42,4 @@ public final class AgentUtils {
     }
     return payload;
   }
-
 }

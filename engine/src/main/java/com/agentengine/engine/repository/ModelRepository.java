@@ -5,9 +5,7 @@ import com.agentengine.engine.model.ModelUtils;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 
-/**
- * Repository for managing ModelConfig entities
- */
+/** Repository for managing ModelConfig entities */
 @Singleton
 public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
 

@@ -1,13 +1,13 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Update;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.utils.MongoUtils;
 import com.agentengine.engine.api.utils.Page;
 import com.agentengine.engine.api.utils.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.mongo.MongoQueryAdapter;
+import com.agentengine.engine.utils.MongoUtils;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -17,20 +17,18 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 /**
  * Abstract MongoDB repository implementation providing generic CRUD operations
  *
- * @param <T>
- *          the entity type
+ * @param <T> the entity type
  */
 public abstract class AbstractMongoRepository<T extends BaseEntity> implements Repository<T> {
 
@@ -48,24 +46,31 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     this.databaseName = null;
   }
 
-  public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String collectionName,
-      Class<T> entityClass) {
+  public AbstractMongoRepository(
+      final MongoClientSupport mongoClientSupport, String collectionName, Class<T> entityClass) {
     this(mongoClientSupport, "AGENT_ENGINE", collectionName, entityClass);
   }
 
-  public AbstractMongoRepository(final MongoClientSupport mongoClientSupport, String databaseName,
-      String collectionName, Class<T> entityClass) {
+  public AbstractMongoRepository(
+      final MongoClientSupport mongoClientSupport,
+      String databaseName,
+      String collectionName,
+      Class<T> entityClass) {
     this.mongoClient = createClient(mongoClientSupport);
     this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
   }
 
-  public AbstractMongoRepository(final MongoClient mongoClient, String collectionName, Class<T> entityClass) {
+  public AbstractMongoRepository(
+      final MongoClient mongoClient, String collectionName, Class<T> entityClass) {
     this(mongoClient, "AGENT_ENGINE", collectionName, entityClass);
   }
 
-  public AbstractMongoRepository(final MongoClient mongoClient, String databaseName, String collectionName,
+  public AbstractMongoRepository(
+      final MongoClient mongoClient,
+      String databaseName,
+      String collectionName,
       Class<T> entityClass) {
     this.mongoClient = mongoClient;
     this.databaseName = databaseName;
@@ -110,7 +115,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   public T update(String id, Update update) {
     try {
       final Bson updateOperation = MongoUtils.toBsonUpdate(update);
-      final FindOneAndUpdateOptions options = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
+      final FindOneAndUpdateOptions options =
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
       return getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
     } catch (Exception e) {
       LOG.error("Error updating entity: {}", id, e);
@@ -163,8 +169,11 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
       Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
 
-      final FindIterable<T> iter = getCollection().find(bsonFilter, entityClass).skip(page.getOffset())
-          .limit(page.getLimit());
+      final FindIterable<T> iter =
+          getCollection()
+              .find(bsonFilter, entityClass)
+              .skip(page.getOffset())
+              .limit(page.getLimit());
 
       for (T document : iter) {
         entities.add(document);
@@ -175,7 +184,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
       return PaginatedResult.create(entities, page, total);
     } catch (Exception e) {
-      LOG.error("Error finding all entities in collection: {} with query: {}", collectionName, query, e);
+      LOG.error(
+          "Error finding all entities in collection: {} with query: {}", collectionName, query, e);
       throw new RuntimeException("Error finding all entities in " + collectionName, e);
     }
   }

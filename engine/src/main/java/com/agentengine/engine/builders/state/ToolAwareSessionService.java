@@ -15,15 +15,14 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ToolAwareSessionService implements BaseSessionService {
   private static final Logger LOG = LoggerFactory.getLogger(ToolAwareSessionService.class);
@@ -34,13 +33,19 @@ public class ToolAwareSessionService implements BaseSessionService {
   }
 
   @Override
-  public Single<Session> createSession(final String appName, final String userId,
-      final ConcurrentMap<String, Object> state, final String sessionId) {
+  public Single<Session> createSession(
+      final String appName,
+      final String userId,
+      final ConcurrentMap<String, Object> state,
+      final String sessionId) {
     return delegate.createSession(appName, userId, state, sessionId);
   }
 
   @Override
-  public Maybe<Session> getSession(final String appName, final String userId, final String sessionId,
+  public Maybe<Session> getSession(
+      final String appName,
+      final String userId,
+      final String sessionId,
       final Optional<GetSessionConfig> config) {
     return delegate.getSession(appName, userId, sessionId, config);
   }
@@ -51,12 +56,14 @@ public class ToolAwareSessionService implements BaseSessionService {
   }
 
   @Override
-  public Completable deleteSession(final String appName, final String userId, final String sessionId) {
+  public Completable deleteSession(
+      final String appName, final String userId, final String sessionId) {
     return delegate.deleteSession(appName, userId, sessionId);
   }
 
   @Override
-  public Single<ListEventsResponse> listEvents(final String appName, final String userId, final String sessionId) {
+  public Single<ListEventsResponse> listEvents(
+      final String appName, final String userId, final String sessionId) {
     return delegate.listEvents(appName, userId, sessionId);
   }
 
@@ -67,16 +74,30 @@ public class ToolAwareSessionService implements BaseSessionService {
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
-    LOG.debug("Appending event to session - event_id={}, author={}, content={}", event.id(), event.author(),
+    LOG.debug(
+        "Appending event to session - event_id={}, author={}, content={}",
+        event.id(),
+        event.author(),
         event.content().map(Content::text).orElse("null"));
-    LOG.debug("Event parts: {}",
-        event.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+    LOG.debug(
+        "Event parts: {}",
+        event
+            .content()
+            .map(c -> c.parts().orElse(List.of()).toString())
+            .orElse(List.of().toString()));
 
     final Event decoratedEvent = decorateToolEvent(event);
-    LOG.debug("Decorated event - event_id={}, author={}, content={}", decoratedEvent.id(), decoratedEvent.author(),
+    LOG.debug(
+        "Decorated event - event_id={}, author={}, content={}",
+        decoratedEvent.id(),
+        decoratedEvent.author(),
         decoratedEvent.content().map(Content::text).orElse("null"));
-    LOG.debug("Decorated event parts: {}",
-        decoratedEvent.content().map(c -> c.parts().orElse(List.of()).toString()).orElse(List.of().toString()));
+    LOG.debug(
+        "Decorated event parts: {}",
+        decoratedEvent
+            .content()
+            .map(c -> c.parts().orElse(List.of()).toString())
+            .orElse(List.of().toString()));
 
     return delegate.appendEvent(session, decoratedEvent).map(ignored -> event);
   }
@@ -102,7 +123,8 @@ public class ToolAwareSessionService implements BaseSessionService {
 
     boolean hasFunctionCall = parts.stream().anyMatch(p -> p.functionCall().isPresent());
     boolean hasFunctionResponse = parts.stream().anyMatch(p -> p.functionResponse().isPresent());
-    LOG.debug("Event has functionCall: {}, functionResponse: {}", hasFunctionCall, hasFunctionResponse);
+    LOG.debug(
+        "Event has functionCall: {}, functionResponse: {}", hasFunctionCall, hasFunctionResponse);
 
     final String toolText = buildToolText(parts);
     LOG.debug("Built tool text: '{}'", toolText);
@@ -123,16 +145,20 @@ public class ToolAwareSessionService implements BaseSessionService {
     final StringBuilder builder = new StringBuilder();
     for (final Part part : parts) {
       LOG.debug("Processing part: {}", part);
-      part.functionCall().ifPresent(call -> {
-        String formattedCall = formatToolCall(call);
-        LOG.debug("Found function call: {}", formattedCall);
-        builder.append(formattedCall).append('\n');
-      });
-      part.functionResponse().ifPresent(response -> {
-        String formattedResponse = formatToolResponse(response);
-        LOG.debug("Found function response: {}", formattedResponse);
-        builder.append(formattedResponse).append('\n');
-      });
+      part.functionCall()
+          .ifPresent(
+              call -> {
+                String formattedCall = formatToolCall(call);
+                LOG.debug("Found function call: {}", formattedCall);
+                builder.append(formattedCall).append('\n');
+              });
+      part.functionResponse()
+          .ifPresent(
+              response -> {
+                String formattedResponse = formatToolResponse(response);
+                LOG.debug("Found function response: {}", formattedResponse);
+                builder.append(formattedResponse).append('\n');
+              });
     }
     final String text = builder.toString().trim();
     LOG.debug("Built tool text: '{}'", text);

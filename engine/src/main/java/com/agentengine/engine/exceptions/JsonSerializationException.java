@@ -12,7 +12,8 @@ public class JsonSerializationException extends RuntimeException {
   }
 
   public Response toResponse() {
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("{\"error\":\"" + getMessage() + "\"}")
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+        .entity("{\"error\":\"" + getMessage() + "\"}")
         .build();
   }
 }

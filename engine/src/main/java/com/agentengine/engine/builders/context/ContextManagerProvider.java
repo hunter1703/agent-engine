@@ -7,7 +7,6 @@ import com.agentengine.engine.api.utils.CollectionUtils;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Map;
 import java.util.function.Function;
 
@@ -18,17 +17,20 @@ public class ContextManagerProvider {
   private final ContextManagerBuilder<?, ?> defaultBuilder;
 
   @Inject
-  public ContextManagerProvider(final Instance<ContextManagerBuilder<?, ?>> allBuilders,
+  public ContextManagerProvider(
+      final Instance<ContextManagerBuilder<?, ?>> allBuilders,
       final LastNContextManagerBuilder lastNContextManagerBuilder) {
-    this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ContextManagerBuilder::type,
-        Function.identity());
+    this.typeVsBuilder =
+        CollectionUtils.transformToMap(
+            allBuilders.stream().toList(), ContextManagerBuilder::type, Function.identity());
     this.defaultBuilder = lastNContextManagerBuilder;
   }
 
-  public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(final C config) {
+  public <C extends ContextManagerConfig, CM extends ContextManager> ContextManager get(
+      final C config) {
     // noinspection unchecked
-    final ContextManagerBuilder<C, CM> builder = (ContextManagerBuilder<C, CM>) typeVsBuilder
-        .getOrDefault(config.getType(), defaultBuilder);
+    final ContextManagerBuilder<C, CM> builder =
+        (ContextManagerBuilder<C, CM>) typeVsBuilder.getOrDefault(config.getType(), defaultBuilder);
     return builder.build(config);
   }
 }

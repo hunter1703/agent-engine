@@ -1,15 +1,13 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.repository.AgentSessionRepository;
-
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Optional;
 
 @Singleton

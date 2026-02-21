@@ -1,12 +1,18 @@
 package com.agentengine.engine.api.utils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public final class CollectionUtils {
 
-  private CollectionUtils() {
-  }
+  private CollectionUtils() {}
 
   public static <T> Set<T> union(final Collection<T> one, final Collection<T> two) {
     final Set<T> setOne = CollectionUtils.nullSafeMutableSet(one);
@@ -84,7 +90,8 @@ public final class CollectionUtils {
     return value == null ? null : value.toString();
   }
 
-  public static <T> T getValueFromMap(final Map<String, Object> map, final String key, final Class<T> type) {
+  public static <T> T getValueFromMap(
+      final Map<String, Object> map, final String key, final Class<T> type) {
     if (CollectionUtils.isEmpty(map) || type == null) {
       return null;
     }
@@ -163,8 +170,10 @@ public final class CollectionUtils {
     return !isEmpty(map);
   }
 
-  public static <T, K, V> Map<K, V> transformToMultiKeyMap(final Collection<T> collection,
-      final Function<T, ? extends Collection<K>> keysFunction, final Function<T, V> valueFunction) {
+  public static <T, K, V> Map<K, V> transformToMultiKeyMap(
+      final Collection<T> collection,
+      final Function<T, ? extends Collection<K>> keysFunction,
+      final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     for (final T item : collection) {
       final Collection<K> keys = keysFunction.apply(item);
@@ -181,7 +190,9 @@ public final class CollectionUtils {
     return map;
   }
 
-  public static <T, K, V> Map<K, V> transformToMap(final Collection<T> collection, final Function<T, K> keyFunction,
+  public static <T, K, V> Map<K, V> transformToMap(
+      final Collection<T> collection,
+      final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     for (final T item : collection) {

@@ -5,21 +5,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
+import com.agentengine.interfaces.rest.support.HandlerInstance;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.type.EventType;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
-
-import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +36,15 @@ class AgentSseTest {
     AgentExecutionService executionService = mock(AgentExecutionService.class);
 
     // Create an event that contains content to trigger all expected events
-    Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
-        .build();
+    Event event =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("model")
+            .content(
+                Content.builder().role("model").parts(Part.builder().text("hello").build()).build())
+            .partial(false)
+            .build();
 
     when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
@@ -55,53 +60,70 @@ class AgentSseTest {
 
     // Collect events directly from the publisher using the reactive streams
     // approach
-    final var events = CompletableFuture.supplyAsync(() -> {
-      final var collectedEvents = new ArrayList<BaseEvent>();
-      final var latch = new CountDownLatch(1);
+    final var events =
+        CompletableFuture.supplyAsync(
+                () -> {
+                  final var collectedEvents = new ArrayList<BaseEvent>();
+                  final var latch = new CountDownLatch(1);
 
-      publisher.subscribe(new Subscriber<BaseEvent>() {
-        @Override
-        public void onSubscribe(Subscription s) {
-          s.request(Long.MAX_VALUE); // Request all events
-        }
+                  publisher.subscribe(
+                      new Subscriber<BaseEvent>() {
+                        @Override
+                        public void onSubscribe(Subscription s) {
+                          s.request(Long.MAX_VALUE); // Request all events
+                        }
 
-        @Override
-        public void onNext(BaseEvent event) {
-          collectedEvents.add(event);
-        }
+                        @Override
+                        public void onNext(BaseEvent event) {
+                          collectedEvents.add(event);
+                        }
 
-        @Override
-        public void onError(Throwable t) {
-          latch.countDown();
-        }
+                        @Override
+                        public void onError(Throwable t) {
+                          latch.countDown();
+                        }
 
-        @Override
-        public void onComplete() {
-          latch.countDown();
-        }
-      });
+                        @Override
+                        public void onComplete() {
+                          latch.countDown();
+                        }
+                      });
 
-      try {
-        latch.await(5, TimeUnit.SECONDS); // Wait up to 5 seconds for completion
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
+                  try {
+                    latch.await(5, TimeUnit.SECONDS); // Wait up to 5 seconds for completion
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  }
 
-      return collectedEvents;
-    }).join();
+                  return collectedEvents;
+                })
+            .join();
 
-    assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,
-        EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_END,
-        EventType.STEP_FINISHED, EventType.RUN_FINISHED);
+    assertThat(events)
+        .extracting(BaseEvent::getType)
+        .containsExactly(
+            EventType.RUN_STARTED,
+            EventType.STEP_STARTED,
+            EventType.TEXT_MESSAGE_START,
+            EventType.TEXT_MESSAGE_CONTENT,
+            EventType.TEXT_MESSAGE_END,
+            EventType.STEP_FINISHED,
+            EventType.RUN_FINISHED);
   }
 
   @Test
   void eventsStreamGeneratesSessionIdIfMissing() {
     AgentExecutionService executionService = mock(AgentExecutionService.class);
 
-    Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("hello").build()).build()).partial(false)
-        .build();
+    Event event =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("model")
+            .content(
+                Content.builder().role("model").parts(Part.builder().text("hello").build()).build())
+            .partial(false)
+            .build();
 
     when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
@@ -119,11 +141,13 @@ class AgentSseTest {
     assertThat(agentRequest.getSessionId()).isNotNull();
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentExecutionService executionService) {
-    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(executionService);
+  private static Instance<AgentRequestHandler<?>> buildHandlers(
+      final AgentExecutionService executionService) {
+    final StreamAguiEventsRequestHandler streamingHandler =
+        new StreamAguiEventsRequestHandler(executionService);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(executionService,
-        streamingHandler);
+    final StreamResponsesRequestHandler responsesHandler =
+        new StreamResponsesRequestHandler(executionService, streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 }

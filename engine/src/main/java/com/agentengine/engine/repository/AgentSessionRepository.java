@@ -1,23 +1,24 @@
 package com.agentengine.engine.repository;
 
+import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.query.Filter;
 import com.agentengine.engine.api.query.Filters;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.api.beans.session.SessionInfo;
-import com.agentengine.engine.api.query.Query;
 import com.google.adk.events.Event;
-import com.google.adk.sessions.*;
+import com.google.adk.sessions.BaseSessionService;
+import com.google.adk.sessions.GetSessionConfig;
+import com.google.adk.sessions.ListEventsResponse;
+import com.google.adk.sessions.ListSessionsResponse;
+import com.google.adk.sessions.Session;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import jakarta.inject.Singleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +27,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * Repository for managing Session entities
- */
+/** Repository for managing Session entities */
 @Singleton
-public class AgentSessionRepository extends AbstractMongoRepository<AgentSession> implements BaseSessionService {
+public class AgentSessionRepository extends AbstractMongoRepository<AgentSession>
+    implements BaseSessionService {
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRepository.class);
 
   public AgentSessionRepository(MongoClientSupport mongoClientSupport) {
@@ -43,14 +45,23 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   }
 
   @Override
-  public Single<Session> createSession(final String agentId, final String userId,
-      final ConcurrentMap<String, Object> state, final String sessionId) {
-    final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
-    final ConcurrentMap<String, Object> initialState = state == null
-        ? new ConcurrentHashMap<>()
-        : new ConcurrentHashMap<>(state);
-    final Session session = Session.builder(resolvedSessionId).appName(agentId).userId(userId).state(initialState)
-        .events(new ArrayList<>()).lastUpdateTime(Instant.now()).build();
+  public Single<Session> createSession(
+      final String agentId,
+      final String userId,
+      final ConcurrentMap<String, Object> state,
+      final String sessionId) {
+    final String resolvedSessionId =
+        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+    final ConcurrentMap<String, Object> initialState =
+        state == null ? new ConcurrentHashMap<>() : new ConcurrentHashMap<>(state);
+    final Session session =
+        Session.builder(resolvedSessionId)
+            .appName(agentId)
+            .userId(userId)
+            .state(initialState)
+            .events(new ArrayList<>())
+            .lastUpdateTime(Instant.now())
+            .build();
 
     final AgentSession agentSession = new AgentSession(resolvedSessionId, agentId, session);
     insert(agentSession);
@@ -58,20 +69,28 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   }
 
   @Override
-  public Maybe<Session> getSession(final String agentId, final String userId, final String sessionId,
+  public Maybe<Session> getSession(
+      final String agentId,
+      final String userId,
+      final String sessionId,
       final Optional<GetSessionConfig> config) {
-    final SessionInfo sessionInfo = findById(sessionId).map(AgentSession::getSessionInfo).orElse(null);
+    final SessionInfo sessionInfo =
+        findById(sessionId).map(AgentSession::getSessionInfo).orElse(null);
     if (sessionInfo == null) {
       return Maybe.empty();
     }
     final Session session = sessionInfo.toSession();
     final List<Event> events = filterEvents(session.events(), config.orElse(null));
-    final Session.Builder builder = Session.builder(session.id()).appName(session.appName()).userId(session.userId())
-        .state(session.state())
-        // events need to be mutable so that later on the adk framework can modify,
-        // particularly when appending new events
-        // (com.google.adk.sessions.BaseSessionService.appendEvent)
-        .events(new ArrayList<>(events)).lastUpdateTime(session.lastUpdateTime());
+    final Session.Builder builder =
+        Session.builder(session.id())
+            .appName(session.appName())
+            .userId(session.userId())
+            .state(session.state())
+            // events need to be mutable so that later on the adk framework can modify,
+            // particularly when appending new events
+            // (com.google.adk.sessions.BaseSessionService.appendEvent)
+            .events(new ArrayList<>(events))
+            .lastUpdateTime(session.lastUpdateTime());
     return Maybe.just(builder.build());
   }
 
@@ -81,17 +100,25 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
 
     final Filter filter = Filters.and(Filters.eq("agentId", agentId), Filters.eq("userId", userId));
     Query query = new Query().withFilter(filter);
-    findByQuery(query).getItems().forEach(agentSession -> {
-      final SessionInfo sessionInfo = agentSession.getSessionInfo();
-      final Session stored = sessionInfo.toSession();
-      sessions.add(Session.builder(stored.id()).appName(stored.appName()).userId(stored.userId())
-          .lastUpdateTime(stored.lastUpdateTime()).build());
-    });
+    findByQuery(query)
+        .getItems()
+        .forEach(
+            agentSession -> {
+              final SessionInfo sessionInfo = agentSession.getSessionInfo();
+              final Session stored = sessionInfo.toSession();
+              sessions.add(
+                  Session.builder(stored.id())
+                      .appName(stored.appName())
+                      .userId(stored.userId())
+                      .lastUpdateTime(stored.lastUpdateTime())
+                      .build());
+            });
     return Single.just(ListSessionsResponse.builder().sessions(sessions).build());
   }
 
   @Override
-  public Completable deleteSession(final String appName, final String userId, final String sessionId) {
+  public Completable deleteSession(
+      final String appName, final String userId, final String sessionId) {
     LOG.debug("deleteSession - appName={} userId={} sessionId={}", appName, userId, sessionId);
     final boolean deleted = deleteById(sessionId);
     if (!deleted) {
@@ -101,25 +128,33 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   }
 
   @Override
-  public Single<ListEventsResponse> listEvents(final String appName, final String userId, final String sessionId) {
+  public Single<ListEventsResponse> listEvents(
+      final String appName, final String userId, final String sessionId) {
     LOG.debug("listEvents - appName={} userId={} sessionId={}", appName, userId, sessionId);
-    final SessionInfo sessionInfo = findById(sessionId).map(AgentSession::getSessionInfo).orElse(null);
+    final SessionInfo sessionInfo =
+        findById(sessionId).map(AgentSession::getSessionInfo).orElse(null);
     if (sessionInfo == null) {
       return Single.just(ListEventsResponse.builder().build());
     }
-    return Single.just(ListEventsResponse.builder().events(sessionInfo.toSession().events()).build());
+    return Single.just(
+        ListEventsResponse.builder().events(sessionInfo.toSession().events()).build());
   }
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
-    return BaseSessionService.super.appendEvent(session, event).doOnSuccess(_ -> {
-      if (!event.partial().orElse(false)) {
-        final Operation setSessionInfo = Operation.set(AgentSession.FIELD_SESSION_INFO,
-            SessionInfo.fromSession(session));
-        final Operation setLastUpdateTime = Operation.set(AgentSession.FIELD_UPDATED_TIME, System.currentTimeMillis());
-        update(session.id(), Update.of(setSessionInfo, setLastUpdateTime));
-      }
-    });
+    return BaseSessionService.super
+        .appendEvent(session, event)
+        .doOnSuccess(
+            _ -> {
+              if (!event.partial().orElse(false)) {
+                final Operation setSessionInfo =
+                    Operation.set(
+                        AgentSession.FIELD_SESSION_INFO, SessionInfo.fromSession(session));
+                final Operation setLastUpdateTime =
+                    Operation.set(AgentSession.FIELD_UPDATED_TIME, System.currentTimeMillis());
+                update(session.id(), Update.of(setSessionInfo, setLastUpdateTime));
+              }
+            });
   }
 
   private static List<Event> filterEvents(final List<Event> events, final GetSessionConfig config) {
@@ -139,7 +174,8 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
     }
     if (config.afterTimestamp().isPresent()) {
       final Instant threshold = config.afterTimestamp().get();
-      return result.stream().filter(event -> !Instant.ofEpochMilli(event.timestamp()).isBefore(threshold))
+      return result.stream()
+          .filter(event -> !Instant.ofEpochMilli(event.timestamp()).isBefore(threshold))
           .collect(Collectors.toList());
     }
     return result;

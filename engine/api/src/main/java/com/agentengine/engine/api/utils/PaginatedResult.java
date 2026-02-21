@@ -49,7 +49,8 @@ public class PaginatedResult<T> {
     result.setHasMore(page.getOffset() + page.getLimit() < total);
     if (result.isHasMore()) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
-      result.setNextCursor(Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
+      result.setNextCursor(
+          Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
     }
     return result;
   }
@@ -70,7 +71,8 @@ public class PaginatedResult<T> {
     result.setHasMore(hasMore);
     if (hasMore) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
-      result.setNextCursor(Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
+      result.setNextCursor(
+          Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
     }
     return result;
   }

@@ -14,7 +14,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,8 +27,9 @@ public class SchemaRestAPI {
   @Inject
   public SchemaRestAPI(ResourceService resourceService, Instance<SchemaRequestHandler> handlers) {
     this.resourceService = resourceService;
-    this.handlers = handlers.stream()
-        .collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
+    this.handlers =
+        handlers.stream()
+            .collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
   }
 
   @GET
@@ -40,7 +40,8 @@ public class SchemaRestAPI {
       return Response.ok(resourceService.getJsonResource(assetType)).build();
     } catch (IOException e) {
       return Response.status(Response.Status.NOT_FOUND)
-          .entity(STR."Schema for assetType '\{assetType}' not found: \{e.getMessage()}").build();
+          .entity(STR."Schema for assetType '\{assetType}' not found: \{e.getMessage()}")
+          .build();
     }
   }
 
@@ -56,7 +57,7 @@ public class SchemaRestAPI {
     }
 
     return Response.status(Response.Status.BAD_REQUEST)
-        .entity(STR."Unsupported assetType for POST: \{assetType }")
+        .entity(STR."Unsupported assetType for POST: \{assetType}")
         .build();
   }
 }

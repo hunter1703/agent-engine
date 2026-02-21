@@ -14,11 +14,15 @@ class OpenApiSchemaInheritanceTest {
 
     assertThat(schema).isNotNull();
     assertThat(schema.discriminatorProperty()).isEqualTo("type");
-    assertThat(schema.oneOf()).contains(InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class);
-    assertThat(schema.discriminatorMapping()).extracting(DiscriminatorMapping::value)
+    assertThat(schema.oneOf())
+        .contains(InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class);
+    assertThat(schema.discriminatorMapping())
+        .extracting(DiscriminatorMapping::value)
         .containsExactlyInAnyOrder("memory", "mongodb");
-    assertThat(schema.discriminatorMapping()).extracting(DiscriminatorMapping::schema)
-        .containsExactlyInAnyOrder(InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class);
+    assertThat(schema.discriminatorMapping())
+        .extracting(DiscriminatorMapping::schema)
+        .containsExactlyInAnyOrder(
+            InMemorySessionServiceConfig.class, MongoSessionServiceConfig.class);
   }
 
   @Test
@@ -28,8 +32,11 @@ class OpenApiSchemaInheritanceTest {
     assertThat(schema).isNotNull();
     assertThat(schema.discriminatorProperty()).isEqualTo("type");
     assertThat(schema.oneOf()).containsExactly(LastNContextManagerConfig.class);
-    assertThat(schema.discriminatorMapping()).extracting(DiscriminatorMapping::value).containsExactly("last_n");
-    assertThat(schema.discriminatorMapping()).extracting(DiscriminatorMapping::schema)
+    assertThat(schema.discriminatorMapping())
+        .extracting(DiscriminatorMapping::value)
+        .containsExactly("last_n");
+    assertThat(schema.discriminatorMapping())
+        .extracting(DiscriminatorMapping::schema)
         .containsExactly(LastNContextManagerConfig.class);
   }
 }

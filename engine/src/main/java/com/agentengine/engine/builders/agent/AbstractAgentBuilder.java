@@ -8,14 +8,18 @@ import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.google.adk.agents.LlmAgent;
 
-public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent> implements AgentBuilder<C, A> {
+public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent>
+    implements AgentBuilder<C, A> {
   protected final ModelProvider modelProvider;
   protected final SessionServiceProvider sessionServiceProvider;
   protected final ContextManagerProvider contextManagerProvider;
   protected final ToolRegistry toolRegistry;
 
-  protected AbstractAgentBuilder(ModelProvider modelProvider, SessionServiceProvider sessionServiceProvider,
-      ContextManagerProvider contextManagerProvider, ToolRegistry toolRegistry) {
+  protected AbstractAgentBuilder(
+      ModelProvider modelProvider,
+      SessionServiceProvider sessionServiceProvider,
+      ContextManagerProvider contextManagerProvider,
+      ToolRegistry toolRegistry) {
     this.modelProvider = modelProvider;
     this.sessionServiceProvider = sessionServiceProvider;
     this.contextManagerProvider = contextManagerProvider;

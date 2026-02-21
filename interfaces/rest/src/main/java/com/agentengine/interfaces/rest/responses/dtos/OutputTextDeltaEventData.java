@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OutputTextDeltaEventData extends BaseResponsesEventData {
   private final String delta;
+
   @JsonProperty("output_index")
   private final Integer outputIndex;
 

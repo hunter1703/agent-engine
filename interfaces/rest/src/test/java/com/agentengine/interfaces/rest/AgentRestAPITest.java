@@ -7,6 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
@@ -15,17 +19,13 @@ import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
-import com.agentengine.engine.api.AgentRequest;
-import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.interfaces.rest.support.HandlerInstance;
 import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
-import com.agentengine.interfaces.rest.support.HandlerInstance;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -39,8 +39,17 @@ class AgentRestAPITest {
     Runner runner = mock(Runner.class);
 
     // Create an event that mimics the AgentRunner output
-    Event event = Event.builder().id("event-1").invocationId("run-1").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("response").build()).build()).build();
+    Event event =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("model")
+            .content(
+                Content.builder()
+                    .role("model")
+                    .parts(Part.builder().text("response").build())
+                    .build())
+            .build();
 
     when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
@@ -83,7 +92,10 @@ class AgentRestAPITest {
 
   @Test
   void invokeRunsOnVirtualThread() throws NoSuchMethodException {
-    assertThat(AgentRestAPI.class.getMethod("invoke", AgentRequest.class).isAnnotationPresent(RunOnVirtualThread.class))
+    assertThat(
+            AgentRestAPI.class
+                .getMethod("invoke", AgentRequest.class)
+                .isAnnotationPresent(RunOnVirtualThread.class))
         .isTrue();
   }
 
@@ -93,7 +105,8 @@ class AgentRestAPITest {
     final AgentConfig config = buildValidAgentConfig();
     when(agentService.createAgent(config)).thenReturn(config);
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
+    final AgentRestAPI resource =
+        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
 
     final AgentConfig response = resource.createAgent(config);
 
@@ -112,18 +125,21 @@ class AgentRestAPITest {
     // Simulate ID generation
     doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
 
-    final AgentRestAPI resource = new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
+    final AgentRestAPI resource =
+        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
 
     final AgentConfig response = resource.createAgent(config);
 
     assertThat(response.getId()).isEqualTo("generated-id");
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(final AgentExecutionService executionService) {
-    final StreamAguiEventsRequestHandler streamingHandler = new StreamAguiEventsRequestHandler(executionService);
+  private static Instance<AgentRequestHandler<?>> buildHandlers(
+      final AgentExecutionService executionService) {
+    final StreamAguiEventsRequestHandler streamingHandler =
+        new StreamAguiEventsRequestHandler(executionService);
     final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
-    final StreamResponsesRequestHandler responsesHandler = new StreamResponsesRequestHandler(executionService,
-        streamingHandler);
+    final StreamResponsesRequestHandler responsesHandler =
+        new StreamResponsesRequestHandler(executionService, streamingHandler);
     return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
   }
 

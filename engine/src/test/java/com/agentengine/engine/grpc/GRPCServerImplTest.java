@@ -1,51 +1,47 @@
 package com.agentengine.engine.grpc;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.engine.grpc.client.MicroServiceInvocationHandler;
 import com.agentengine.engine.server.grpc.GRPCServerImpl;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
+import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.reactivex.rxjava3.core.Flowable;
+import java.io.IOException;
+import java.lang.reflect.Proxy;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
-import java.lang.reflect.Proxy;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import com.agentengine.engine.api.query.Query;
-import com.agentengine.engine.api.utils.PaginatedResult;
-import io.grpc.StatusRuntimeException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-
 class GRPCServerImplTest {
 
-  @Mock
-  private AgentService agentService;
-  @Mock
-  private AgentExecutionService agentExecutionService;
+  @Mock private AgentService agentService;
+  @Mock private AgentExecutionService agentExecutionService;
 
   private Server server;
   private ManagedChannel channel;
@@ -64,19 +60,32 @@ class GRPCServerImplTest {
     String serverName = InProcessServerBuilder.generateName();
 
     // Create generic server impl with mocked services
-    GRPCServerImpl engineGRPCServer = new GRPCServerImpl(List.of(agentService, agentExecutionService));
+    GRPCServerImpl engineGRPCServer =
+        new GRPCServerImpl(List.of(agentService, agentExecutionService));
 
-    server = InProcessServerBuilder.forName(serverName).directExecutor().addService(engineGRPCServer).build().start();
+    server =
+        InProcessServerBuilder.forName(serverName)
+            .directExecutor()
+            .addService(engineGRPCServer)
+            .build()
+            .start();
 
     channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
 
     // Create generic client proxies
-    agentServiceProxy = (AgentService) Proxy.newProxyInstance(AgentService.class.getClassLoader(),
-        new Class[]{AgentService.class}, new MicroServiceInvocationHandler(AgentService.class, channel));
+    agentServiceProxy =
+        (AgentService)
+            Proxy.newProxyInstance(
+                AgentService.class.getClassLoader(),
+                new Class[] {AgentService.class},
+                new MicroServiceInvocationHandler(AgentService.class, channel));
 
-    agentExecutionServiceProxy = (AgentExecutionService) Proxy.newProxyInstance(
-        AgentExecutionService.class.getClassLoader(), new Class[]{AgentExecutionService.class},
-        new MicroServiceInvocationHandler(AgentExecutionService.class, channel));
+    agentExecutionServiceProxy =
+        (AgentExecutionService)
+            Proxy.newProxyInstance(
+                AgentExecutionService.class.getClassLoader(),
+                new Class[] {AgentExecutionService.class},
+                new MicroServiceInvocationHandler(AgentExecutionService.class, channel));
   }
 
   @AfterEach
@@ -152,8 +161,12 @@ class GRPCServerImplTest {
   void testRun() {
     String agentId = "test-agent";
     String sessionId = "test-session";
-    Event event = Event.builder().id("event-1").author("model").content(Content.fromParts(Part.fromText("response")))
-        .build();
+    Event event =
+        Event.builder()
+            .id("event-1")
+            .author("model")
+            .content(Content.fromParts(Part.fromText("response")))
+            .build();
 
     AgentRequest request = new AgentRequest();
     request.setAgentId(agentId);

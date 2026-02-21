@@ -36,7 +36,8 @@ class ConfigJsonTest {
 
     assertThat(configFiles).isNotEmpty();
     for (final Path configFile : configFiles) {
-      assertThatCode(() -> MAPPER.readTree(configFile.toFile())).as("config file %s", configFile)
+      assertThatCode(() -> MAPPER.readTree(configFile.toFile()))
+          .as("config file %s", configFile)
           .doesNotThrowAnyException();
     }
   }

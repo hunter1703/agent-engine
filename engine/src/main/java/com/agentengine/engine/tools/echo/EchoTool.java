@@ -14,7 +14,8 @@ public final class EchoTool {
   @Schema(name = "echo", description = "Echoes input text with an optional prefix.")
   public Map<String, Object> echo(
       @Schema(name = "text", description = "The text to echo") final String text,
-      @Schema(name = "prefix", description = "Optional prefix to prepend", optional = true) final String prefix) {
+      @Schema(name = "prefix", description = "Optional prefix to prepend", optional = true)
+          final String prefix) {
     final String resolvedPrefix = StringUtils.isNotBlank(prefix) ? prefix : defaultPrefix;
     final String resolvedText = text == null ? "" : text;
     final String combined = (resolvedPrefix == null ? "" : resolvedPrefix) + resolvedText;

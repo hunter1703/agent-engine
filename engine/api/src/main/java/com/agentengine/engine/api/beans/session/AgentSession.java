@@ -14,8 +14,7 @@ public class AgentSession extends BaseEntity {
   private String title;
   private SessionInfo sessionInfo;
 
-  public AgentSession() {
-  }
+  public AgentSession() {}
 
   public AgentSession(final String id, final String agentId, final Session session) {
     setId(id);

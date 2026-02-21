@@ -18,17 +18,27 @@ class LoggingRequestProcessorTest {
 
   @Test
   void returnsOriginalRequest() {
-    final Event event = Event.builder().id("event-1").author("user").content(Content.fromParts(Part.fromText("hello")))
-        .build();
+    final Event event =
+        Event.builder()
+            .id("event-1")
+            .author("user")
+            .content(Content.fromParts(Part.fromText("hello")))
+            .build();
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
-    final Session session = Session.builder("session-1").appName("app").userId("user").state(state)
-        .events(new ArrayList<>(List.of(event))).build();
+    final Session session =
+        Session.builder("session-1")
+            .appName("app")
+            .userId("user")
+            .state(state)
+            .events(new ArrayList<>(List.of(event)))
+            .build();
     final InvocationContext context = InvocationContext.builder().session(session).build();
     final LlmRequest request = LlmRequest.builder().build();
 
     final LoggingRequestProcessor processor = new LoggingRequestProcessor();
 
-    final LlmRequest updated = processor.processRequest(context, request).blockingGet().updatedRequest();
+    final LlmRequest updated =
+        processor.processRequest(context, request).blockingGet().updatedRequest();
 
     assertThat(updated).isSameAs(request);
   }

@@ -15,11 +15,14 @@ public class SimpleAgent extends LlmAgent {
 
   @Override
   protected BaseLlmFlow determineLlmFlow() {
-    final AbstractLLM agentModel = (AbstractLLM) model().orElse(Model.builder().build()).model().orElse(null);
+    final AbstractLLM agentModel =
+        (AbstractLLM) model().orElse(Model.builder().build()).model().orElse(null);
     if (agentModel == null) {
       return null;
     }
-    return new SimpleFlow(maxSteps().orElse(10), agentModel.getRequestProcessors(), agentModel.getResponseProcessors());
+    return new SimpleFlow(
+        maxSteps().orElse(10),
+        agentModel.getRequestProcessors(),
+        agentModel.getResponseProcessors());
   }
-
 }

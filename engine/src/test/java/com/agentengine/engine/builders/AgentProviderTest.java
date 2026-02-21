@@ -5,9 +5,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.agents.SimpleAgent;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.agent.SimpleAgentBuilder;
@@ -24,7 +24,8 @@ class AgentProviderTest {
     final AgentBuilder<AgentConfig, LlmAgent> named = new StubBuilder("alpha");
     final AgentBuilder<AgentConfig, LlmAgent> other = new StubBuilder("beta");
     @SuppressWarnings("unchecked")
-    final Instance<AgentBuilder<?, ?>> instance = (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
+    final Instance<AgentBuilder<?, ?>> instance =
+        (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.<AgentBuilder<?, ?>>of(named, other));
     final SimpleAgentBuilder fallback = mock(SimpleAgentBuilder.class);
     when(fallback.build(any(), any())).then(invocation -> fallbackAgent);

@@ -16,7 +16,8 @@ class MongoUtilsTest {
 
   @Test
   void toBsonUpdateMapsOperations() {
-    final Update update = new Update(List.of(Operation.set("name", "value"), Operation.unset("age")));
+    final Update update =
+        new Update(List.of(Operation.set("name", "value"), Operation.unset("age")));
 
     final Bson actual = MongoUtils.toBsonUpdate(update);
     final Bson expected = Updates.combine(Updates.set("name", "value"), Updates.unset("age"));
@@ -26,7 +27,8 @@ class MongoUtilsTest {
 
   @Test
   void toBsonUpdateRequiresUpdate() {
-    assertThatThrownBy(() -> MongoUtils.toBsonUpdate(null)).isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> MongoUtils.toBsonUpdate(null))
+        .isInstanceOf(NullPointerException.class);
   }
 
   private static BsonDocument toDocument(final Bson bson) {

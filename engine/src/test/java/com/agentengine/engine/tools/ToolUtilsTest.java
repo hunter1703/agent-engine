@@ -23,7 +23,8 @@ class ToolUtilsTest {
 
   static class SampleTool {
     @Schema(name = "run_cmd", description = "Run a command")
-    public String run(@Schema(name = "command", description = "Shell command") final String command) {
+    public String run(
+        @Schema(name = "command", description = "Shell command") final String command) {
       return command;
     }
   }

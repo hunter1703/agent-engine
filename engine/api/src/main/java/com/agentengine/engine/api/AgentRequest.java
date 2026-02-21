@@ -8,6 +8,7 @@ public class AgentRequest {
 
   @NotBlank(message = "agentId is required")
   private String agentId;
+
   private String agentConfigPath;
 
   private String sessionId;
@@ -15,10 +16,13 @@ public class AgentRequest {
   @NotBlank(message = "message is required")
   private String message;
 
-  public AgentRequest() {
-  }
+  public AgentRequest() {}
 
-  private AgentRequest(final String type, final String agentId, final String agentConfigPath, final String sessionId,
+  private AgentRequest(
+      final String type,
+      final String agentId,
+      final String agentConfigPath,
+      final String sessionId,
       final String message) {
     this.type = type;
     this.agentId = agentId;
@@ -72,6 +76,10 @@ public class AgentRequest {
   }
 
   public enum RequestType {
-    INVOKE_AGENT, STREAM_AGUI_EVENTS, STREAM_RESPONSES, BUILD_EVENT, STOP_AGENT
+    INVOKE_AGENT,
+    STREAM_AGUI_EVENTS,
+    STREAM_RESPONSES,
+    BUILD_EVENT,
+    STOP_AGENT
   }
 }

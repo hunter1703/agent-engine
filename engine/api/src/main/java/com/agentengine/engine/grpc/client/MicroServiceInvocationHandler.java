@@ -7,23 +7,20 @@ import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.reactivex.rxjava3.core.Flowable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards
- * method calls to a remote {@code @MicroService} implementation over gRPC.
+ * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards method calls to a
+ * remote {@code @MicroService} implementation over gRPC.
  *
- * <p>
- * Blocking methods are dispatched via a server-streaming RPC and the first
- * response is returned. Methods whose return type is {@link Flowable} are
- * mapped to a lazy stream of all responses.
+ * <p>Blocking methods are dispatched via a server-streaming RPC and the first response is returned.
+ * Methods whose return type is {@link Flowable} are mapped to a lazy stream of all responses.
  */
 public class MicroServiceInvocationHandler implements InvocationHandler {
 
@@ -55,7 +52,8 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   }
 
   private Request buildRequest(Method method, Object[] args) {
-    Request.Builder builder = Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
+    Request.Builder builder =
+        Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
 
     if (args != null && args.length > 0) {
       builder.setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(args)));
@@ -89,10 +87,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType));
   }
 
-  /**
-   * Returns the first type argument of a generic type, or {@code Object.class} if
-   * unavailable.
-   */
+  /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */
   private static Class<?> firstTypeArgument(Type type) {
     if (type instanceof ParameterizedType parameterizedType
         && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {

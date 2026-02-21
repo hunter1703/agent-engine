@@ -2,9 +2,7 @@ package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 
-/**
- * Interface for handling schema lookup requests.
- */
+/** Interface for handling schema lookup requests. */
 public interface SchemaRequestHandler {
 
   /**

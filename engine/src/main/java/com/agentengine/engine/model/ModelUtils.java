@@ -29,18 +29,19 @@ public final class ModelUtils {
   private static final Duration READY_POLL_INTERVAL = Duration.ofMillis(500);
   private static final Map<String, ManagedServer> SERVERS = new ConcurrentHashMap<>();
   private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
-  private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+  private static final HttpClient HTTP_CLIENT =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
   // Constants for server configuration generation
   private static final Random RANDOM = new Random();
   private static final int MIN_PORT = 18000;
   private static final int MAX_PORT = 65535;
 
-  private ModelUtils() {
-  }
+  private ModelUtils() {}
 
   /**
-   * Generates server configuration for open_ai_compatible models when no explicit server settings exist.
+   * Generates server configuration for open_ai_compatible models when no explicit server settings
+   * exist.
    *
    * @param modelConfig The model configuration to update
    * @return true if configuration was generated, false otherwise
@@ -114,8 +115,7 @@ public final class ModelUtils {
   /**
    * Builds server arguments from the model path.
    *
-   * @param model
-   *          The model path
+   * @param model The model path
    * @return A list of server arguments
    */
   private static List<String> buildServerArgs(String model) {
@@ -141,10 +141,8 @@ public final class ModelUtils {
   /**
    * Updates the port argument in the server args to match the generated port.
    *
-   * @param serverArgs
-   *          The server arguments list
-   * @param port
-   *          The port to set
+   * @param serverArgs The server arguments list
+   * @param port The port to set
    */
   public static void updatePortInServerArgs(List<String> serverArgs, int port) {
     if (serverArgs == null) {
@@ -176,15 +174,22 @@ public final class ModelUtils {
       return;
     }
     if (StringUtils.isBlank(config.getServerCommand())) {
-      LOGGER.warning(STR."\{ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()} server unavailable and no serverCommand configured for model: \{config.getModel()}");
+      LOGGER.warning(
+          STR."\{
+              ModelConfig.Provider.OPEN_AI_COMPATIBLE
+                  .type()} server unavailable and no serverCommand configured for model: \{
+              config.getModel()}");
       return;
     }
-    ManagedServer server = SERVERS.compute(address.baseUrl(), (key, existing) -> {
-      if (existing != null && existing.process().isAlive()) {
-        return existing;
-      }
-      return startServer(config, address);
-    });
+    ManagedServer server =
+        SERVERS.compute(
+            address.baseUrl(),
+            (key, existing) -> {
+              if (existing != null && existing.process().isAlive()) {
+                return existing;
+              }
+              return startServer(config, address);
+            });
     if (server != null) {
       waitForReady(address, READY_TIMEOUT);
     }
@@ -226,7 +231,8 @@ public final class ModelUtils {
       LOGGER.info("Started OpenAI-compatible server for " + address.baseUrl());
       return new ManagedServer(address.baseUrl(), process, command);
     } catch (Exception ex) {
-      LOGGER.log(Level.WARNING, "Failed to start OpenAI-compatible server for " + address.baseUrl(), ex);
+      LOGGER.log(
+          Level.WARNING, "Failed to start OpenAI-compatible server for " + address.baseUrl(), ex);
       return null;
     }
   }
@@ -235,13 +241,16 @@ public final class ModelUtils {
     if (!SHUTDOWN_HOOK_REGISTERED.compareAndSet(false, true)) {
       return;
     }
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      for (ManagedServer server : SERVERS.values()) {
-        if (server.process().isAlive()) {
-          server.process().destroy();
-        }
-      }
-    }));
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  for (ManagedServer server : SERVERS.values()) {
+                    if (server.process().isAlive()) {
+                      server.process().destroy();
+                    }
+                  }
+                }));
   }
 
   private static boolean isReachable(final ServerAddress address) {
@@ -270,7 +279,11 @@ public final class ModelUtils {
         return;
       }
     }
-    LOGGER.warning(STR."\{ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()} server did not report ready within timeout for \{address.baseUrl()}");
+    LOGGER.warning(
+        STR."\{
+            ModelConfig.Provider.OPEN_AI_COMPATIBLE
+                .type()} server did not report ready within timeout for \{
+            address.baseUrl()}");
   }
 
   static URI buildModelsEndpoint(final String baseUrl) {
@@ -285,7 +298,13 @@ public final class ModelUtils {
         normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
       }
       String modelsPath = STR."\{normalizedPath}/models";
-      return new URI(baseUri.getScheme(), baseUri.getUserInfo(), baseUri.getHost(), baseUri.getPort(), modelsPath, null,
+      return new URI(
+          baseUri.getScheme(),
+          baseUri.getUserInfo(),
+          baseUri.getHost(),
+          baseUri.getPort(),
+          modelsPath,
+          null,
           null);
     } catch (URISyntaxException ex) {
       LOGGER.log(Level.WARNING, STR."Invalid baseUrl: \{baseUrl}", ex);
@@ -295,8 +314,10 @@ public final class ModelUtils {
 
   private static boolean isModelReady(final URI modelsEndpoint) {
     try {
-      HttpRequest request = HttpRequest.newBuilder(modelsEndpoint).timeout(Duration.ofSeconds(2)).GET().build();
-      HttpResponse<Void> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding());
+      HttpRequest request =
+          HttpRequest.newBuilder(modelsEndpoint).timeout(Duration.ofSeconds(2)).GET().build();
+      HttpResponse<Void> response =
+          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding());
       int statusCode = response.statusCode();
       if (statusCode == 404) {
         return true;
@@ -307,9 +328,7 @@ public final class ModelUtils {
     }
   }
 
-  record ServerAddress(String baseUrl, String host, int port) {
-  }
+  record ServerAddress(String baseUrl, String host, int port) {}
 
-  record ManagedServer(String baseUrl, Process process, List<String> command) {
-  }
+  record ManagedServer(String baseUrl, Process process, List<String> command) {}
 }

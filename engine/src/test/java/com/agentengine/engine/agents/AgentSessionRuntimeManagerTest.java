@@ -1,7 +1,9 @@
 package com.agentengine.engine.agents;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -18,9 +20,6 @@ import io.reactivex.rxjava3.core.Single;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
-
 class AgentSessionRuntimeManagerTest {
 
   @Test
@@ -32,11 +31,13 @@ class AgentSessionRuntimeManagerTest {
 
     when(agentRepository.findById(anyString())).thenReturn(Optional.empty());
 
-    final AgentSessionRuntimeManager manager = new AgentSessionRuntimeManager(agentRepository, agentProvider,
-        sessionServiceProvider, agentSessionRepository);
+    final AgentSessionRuntimeManager manager =
+        new AgentSessionRuntimeManager(
+            agentRepository, agentProvider, sessionServiceProvider, agentSessionRepository);
 
     assertThatThrownBy(() -> manager.getOrStartRuntime("non-existent", null))
-        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("has no resolved config");
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("has no resolved config");
   }
 
   @Test
@@ -64,8 +65,9 @@ class AgentSessionRuntimeManagerTest {
     final LlmAgent agent = mock(LlmAgent.class);
     when(agentProvider.get(any(), any())).thenReturn(agent);
 
-    final AgentSessionRuntimeManager manager = new AgentSessionRuntimeManager(agentRepository, agentProvider,
-        sessionServiceProvider, agentSessionRepository);
+    final AgentSessionRuntimeManager manager =
+        new AgentSessionRuntimeManager(
+            agentRepository, agentProvider, sessionServiceProvider, agentSessionRepository);
 
     final AgentSessionRuntime runtime = manager.getOrStartRuntime("agent-id", "session-id");
 
@@ -94,8 +96,9 @@ class AgentSessionRuntimeManagerTest {
     when(sessionServiceProvider.get(any())).thenReturn(sessionService);
     when(agentProvider.get(any(), any())).thenReturn(mock(LlmAgent.class));
 
-    final AgentSessionRuntimeManager manager = new AgentSessionRuntimeManager(agentRepository, agentProvider,
-        sessionServiceProvider, agentSessionRepository);
+    final AgentSessionRuntimeManager manager =
+        new AgentSessionRuntimeManager(
+            agentRepository, agentProvider, sessionServiceProvider, agentSessionRepository);
 
     final AgentSessionRuntime runtime1 = manager.getOrStartRuntime("agent-id", "session-1");
     final AgentSessionRuntime runtime2 = manager.getOrStartRuntime("agent-id", "session-1");

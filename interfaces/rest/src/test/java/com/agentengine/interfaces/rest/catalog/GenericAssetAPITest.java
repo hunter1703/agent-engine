@@ -10,7 +10,6 @@ import com.agentengine.interfaces.rest.catalog.handlers.AgentAssetHandler;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 
 class GenericAssetAPITest {

@@ -30,8 +30,11 @@ class ParserTest {
 
   @Test
   void stripsToolCallTagsWhenToolCallingEnabled() {
-    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT).toolCallingEnabled(true)
-        .parseToolCallsFromText(false);
+    final Parser parser =
+        Parser.create()
+            .withResponseFormat(ResponseFormatType.TEXT)
+            .toolCallingEnabled(true)
+            .parseToolCallsFromText(false);
     final Content content = Content.fromParts(Part.fromText("Answer <tool_call>"));
 
     final Content parsed = parser.parse(content);
@@ -44,15 +47,29 @@ class ParserTest {
   @Test
   void preservesToolPartsWhenNativeToolCalling() {
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
-    final FunctionCall functionCall = FunctionCall.builder().id("call-1").name("run_cmd").args(Map.of("command", "ls"))
-        .build();
-    final FunctionResponse functionResponse = FunctionResponse.builder().id("call-1").name("run_cmd")
-        .response(Map.of("output", "ok")).build();
-    final Content callContent = Content.builder().role("model")
-        .parts(List.of(Part.builder().text("run").build(), Part.builder().functionCall(functionCall).build())).build();
-    final Content responseContent = Content.builder().role("user")
-        .parts(List.of(Part.builder().functionResponse(functionResponse).build())).build();
-    final LlmRequest request = LlmRequest.builder().contents(List.of(callContent, responseContent)).build();
+    final FunctionCall functionCall =
+        FunctionCall.builder().id("call-1").name("run_cmd").args(Map.of("command", "ls")).build();
+    final FunctionResponse functionResponse =
+        FunctionResponse.builder()
+            .id("call-1")
+            .name("run_cmd")
+            .response(Map.of("output", "ok"))
+            .build();
+    final Content callContent =
+        Content.builder()
+            .role("model")
+            .parts(
+                List.of(
+                    Part.builder().text("run").build(),
+                    Part.builder().functionCall(functionCall).build()))
+            .build();
+    final Content responseContent =
+        Content.builder()
+            .role("user")
+            .parts(List.of(Part.builder().functionResponse(functionResponse).build()))
+            .build();
+    final LlmRequest request =
+        LlmRequest.builder().contents(List.of(callContent, responseContent)).build();
 
     final LlmRequest updated = parser.processRequest(null, request).blockingGet().updatedRequest();
 
@@ -69,12 +86,22 @@ class ParserTest {
 
   @Test
   void skipsEmptyJsonPartsForToolResponses() {
-    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.JSON).toolCallingEnabled(true)
-        .parseToolCallsFromText(false);
-    final FunctionResponse functionResponse = FunctionResponse.builder().id("call-1").name("run_cmd")
-        .response(Map.of("output", "ok")).build();
-    final Content responseContent = Content.builder().role("user")
-        .parts(List.of(Part.builder().functionResponse(functionResponse).build())).build();
+    final Parser parser =
+        Parser.create()
+            .withResponseFormat(ResponseFormatType.JSON)
+            .toolCallingEnabled(true)
+            .parseToolCallsFromText(false);
+    final FunctionResponse functionResponse =
+        FunctionResponse.builder()
+            .id("call-1")
+            .name("run_cmd")
+            .response(Map.of("output", "ok"))
+            .build();
+    final Content responseContent =
+        Content.builder()
+            .role("user")
+            .parts(List.of(Part.builder().functionResponse(functionResponse).build()))
+            .build();
     final LlmRequest request = LlmRequest.builder().contents(List.of(responseContent)).build();
 
     final LlmRequest updated = parser.processRequest(null, request).blockingGet().updatedRequest();

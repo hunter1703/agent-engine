@@ -1,18 +1,17 @@
 package com.agentengine.interfaces.rest;
 
-import io.quarkus.test.junit.QuarkusTest;
-import io.restassured.http.ContentType;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-
-import java.util.UUID;
-
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
+import java.util.UUID;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -23,7 +22,8 @@ public class AgentResourceTest {
   @Test
   @Order(0)
   public void testCreateModel() {
-    String payload = """
+    String payload =
+        """
         {
           "id": "qwen2.5-1.5b-instruct-q5_k_m",
           "model": "qwen2.5-1.5b-instruct-q5_k_m",
@@ -32,14 +32,20 @@ public class AgentResourceTest {
           "baseUrl": "http://127.0.0.1:17000/v1"
         }
         """;
-    given().contentType(ContentType.JSON).body(payload).when().post("/v1/model").then()
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/model")
+        .then()
         .statusCode(anyOf(equalTo(200), equalTo(201), equalTo(500)));
   }
 
   @Test
   @Order(1)
   public void testCreateEchoAgent() {
-    String payload = """
+    String payload =
+        """
         {
           "type": "default",
           "id": "echo_agent",
@@ -63,14 +69,21 @@ public class AgentResourceTest {
           }
         }
         """;
-    given().contentType(ContentType.JSON).body(payload).when().post("/v1/agent/agent").then()
-        .statusCode(anyOf(equalTo(200), equalTo(201), equalTo(500))); // 500 if duplicate key for now
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/agent/agent")
+        .then()
+        .statusCode(
+            anyOf(equalTo(200), equalTo(201), equalTo(500))); // 500 if duplicate key for now
   }
 
   @Test
   @Order(2)
   public void testCreateAgent() {
-    String payload = """
+    String payload =
+        """
         {
            "id": "qa_test_agent",
            "name": "QA Test Agent",
@@ -83,19 +96,31 @@ public class AgentResourceTest {
            }
         }
         """;
-    given().contentType(ContentType.JSON).body(payload).when().post("/v1/agent/agent").then().statusCode(200);
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/agent/agent")
+        .then()
+        .statusCode(200);
   }
 
   @Test
   @Order(3)
   public void testGetAgent() {
-    given().when().get("/v1/catalog/agent/" + AGENT_ID).then().statusCode(200).body("id", equalTo(AGENT_ID));
+    given()
+        .when()
+        .get("/v1/catalog/agent/" + AGENT_ID)
+        .then()
+        .statusCode(200)
+        .body("id", equalTo(AGENT_ID));
   }
 
   @Test
   @Order(4)
   public void testUpdateAgent() {
-    String payload = """
+    String payload =
+        """
         {
            "id": "qa_test_agent",
            "name": "QA Test Agent Updated",
@@ -108,7 +133,12 @@ public class AgentResourceTest {
            }
         }
         """;
-    given().contentType(ContentType.JSON).body(payload).when().put("/v1/agent/agent/" + AGENT_ID).then()
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .put("/v1/agent/agent/" + AGENT_ID)
+        .then()
         .statusCode(200);
   }
 
@@ -126,14 +156,22 @@ public class AgentResourceTest {
            "id": "bad_agent"
         }
         """;
-    given().contentType(ContentType.JSON).body(payload).when().post("/v1/agent/agent").then()
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/agent/agent")
+        .then()
         .statusCode(org.hamcrest.Matchers.anyOf(equalTo(400), equalTo(500)));
   }
 
   @Test
   @Order(7)
   public void testDeleteAgent() {
-    given().when().delete("/v1/agent/agent/" + AGENT_ID).then()
+    given()
+        .when()
+        .delete("/v1/agent/agent/" + AGENT_ID)
+        .then()
         .statusCode(org.hamcrest.Matchers.anyOf(equalTo(200), equalTo(204)));
   }
 
@@ -147,16 +185,24 @@ public class AgentResourceTest {
   @Order(8)
   public void testInvokeEchoAgent() {
     String sessionId = "invoke-" + UUID.randomUUID().toString();
-    String payload = """
+    String payload =
+        """
         {
            "type": "INVOKE_AGENT",
            "agentId": "echo_agent",
            "sessionId": "%s",
            "message": "Hello QA final test"
         }
-        """.formatted(sessionId);
+        """
+            .formatted(sessionId);
 
-    given().contentType(ContentType.JSON).body(payload).when().post("/v1/agent/invoke").then().statusCode(200)
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/agent/invoke")
+        .then()
+        .statusCode(200)
         .body("finalAnswer", notNullValue());
   }
 
@@ -164,16 +210,26 @@ public class AgentResourceTest {
   @Order(9)
   public void testSseStreaming() {
     String sessionId = "stream-" + UUID.randomUUID().toString();
-    String payload = """
+    String payload =
+        """
         {
            "type": "STREAM_AGUI_EVENTS",
            "agentId": "echo_agent",
            "sessionId": "%s",
            "message": "Stream me"
         }
-        """.formatted(sessionId);
+        """
+            .formatted(sessionId);
 
-    given().contentType(ContentType.JSON).accept("text/event-stream").body(payload).when().post("/v1/agent/events")
-        .then().statusCode(200).contentType("text/event-stream").body(org.hamcrest.Matchers.containsString("data:"));
+    given()
+        .contentType(ContentType.JSON)
+        .accept("text/event-stream")
+        .body(payload)
+        .when()
+        .post("/v1/agent/events")
+        .then()
+        .statusCode(200)
+        .contentType("text/event-stream")
+        .body(org.hamcrest.Matchers.containsString("data:"));
   }
 }

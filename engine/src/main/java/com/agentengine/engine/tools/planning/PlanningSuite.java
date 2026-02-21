@@ -21,7 +21,12 @@ public class PlanningSuite implements ToolSuite {
 
   @Override
   public List<ToolProvider> toolProviders() {
-    return List.of(new CreatePlanToolProvider(), new UpdatePlanInfoToolProvider(), new RevisePlanToolProvider(),
-        new UpdateTaskToolProvider(), new CompletePlanToolProvider(), new ViewPlanToolProvider());
+    return List.of(
+        new CreatePlanToolProvider(),
+        new UpdatePlanInfoToolProvider(),
+        new RevisePlanToolProvider(),
+        new UpdateTaskToolProvider(),
+        new CompletePlanToolProvider(),
+        new ViewPlanToolProvider());
   }
 }

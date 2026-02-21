@@ -14,8 +14,7 @@ public final class PlanningUtils {
   public static final String PLAN_STATE_KEY = "currentPlan";
   private static final int MAX_SECTION_ITEMS = 5;
 
-  private PlanningUtils() {
-  }
+  private PlanningUtils() {}
 
   public static String buildPlanSummary(final Plan plan) {
     if (plan == null) {
@@ -41,11 +40,26 @@ public final class PlanningUtils {
     final List<PlanNode> planNodes = collectPlanNodes(plan);
     appendProgressSummary(builder, planNodes);
 
-    appendPlanSection(builder, "CURRENT FOCUS", filterByStatus(planNodes, PlanStatus.IN_PROGRESS), MAX_SECTION_ITEMS,
-        true, false);
-    appendPlanSection(builder, "NEXT ITEMS", filterByStatus(planNodes, PlanStatus.TODO), MAX_SECTION_ITEMS, true,
+    appendPlanSection(
+        builder,
+        "CURRENT FOCUS",
+        filterByStatus(planNodes, PlanStatus.IN_PROGRESS),
+        MAX_SECTION_ITEMS,
+        true,
         false);
-    appendPlanSection(builder, "RECENT COMPLETED", filterByStatus(planNodes, PlanStatus.DONE), MAX_SECTION_ITEMS, false,
+    appendPlanSection(
+        builder,
+        "NEXT ITEMS",
+        filterByStatus(planNodes, PlanStatus.TODO),
+        MAX_SECTION_ITEMS,
+        true,
+        false);
+    appendPlanSection(
+        builder,
+        "RECENT COMPLETED",
+        filterByStatus(planNodes, PlanStatus.DONE),
+        MAX_SECTION_ITEMS,
+        false,
         true);
 
     builder.append("Plan Tree (compact):\n");
@@ -53,7 +67,8 @@ public final class PlanningUtils {
     return builder.toString().trim();
   }
 
-  private static void appendProgressSummary(final StringBuilder builder, final List<PlanNode> planNodes) {
+  private static void appendProgressSummary(
+      final StringBuilder builder, final List<PlanNode> planNodes) {
     if (CollectionUtils.isEmpty(planNodes)) {
       builder.append("Progress: No subtasks defined yet.\n");
       return;
@@ -63,8 +78,18 @@ public final class PlanningUtils {
     final int inProgress = countByStatus(planNodes, PlanStatus.IN_PROGRESS);
     final int todo = countByStatus(planNodes, PlanStatus.TODO);
     final int abandoned = countByStatus(planNodes, PlanStatus.ABANDONED);
-    builder.append("Progress: ").append(completed).append("/").append(total).append(" done, ").append(inProgress)
-        .append(" in progress, ").append(todo).append(" todo, ").append(abandoned).append(" abandoned\n");
+    builder
+        .append("Progress: ")
+        .append(completed)
+        .append("/")
+        .append(total)
+        .append(" done, ")
+        .append(inProgress)
+        .append(" in progress, ")
+        .append(todo)
+        .append(" todo, ")
+        .append(abandoned)
+        .append(" abandoned\n");
   }
 
   private static int countByStatus(final List<PlanNode> planNodes, final PlanStatus status) {
@@ -77,22 +102,31 @@ public final class PlanningUtils {
     return count;
   }
 
-  private static void appendPlanSection(final StringBuilder builder, final String title, final List<PlanNode> items,
-      final int maxItems, final boolean includeExpected, final boolean includeOutcome) {
+  private static void appendPlanSection(
+      final StringBuilder builder,
+      final String title,
+      final List<PlanNode> items,
+      final int maxItems,
+      final boolean includeExpected,
+      final boolean includeOutcome) {
     if (CollectionUtils.isEmpty(items)) {
       return;
     }
     builder.append(title).append(":\n");
     final int limit = Math.min(items.size(), maxItems);
     for (int i = 0; i < limit; i++) {
-      builder.append("- ").append(formatPlanNode(items.get(i), includeExpected, includeOutcome)).append("\n");
+      builder
+          .append("- ")
+          .append(formatPlanNode(items.get(i), includeExpected, includeOutcome))
+          .append("\n");
     }
     if (items.size() > maxItems) {
       builder.append("- ").append(items.size() - maxItems).append(" more items not shown\n");
     }
   }
 
-  private static List<PlanNode> filterByStatus(final List<PlanNode> nodes, final PlanStatus status) {
+  private static List<PlanNode> filterByStatus(
+      final List<PlanNode> nodes, final PlanStatus status) {
     if (CollectionUtils.isEmpty(nodes)) {
       return Collections.emptyList();
     }
@@ -105,11 +139,16 @@ public final class PlanningUtils {
     return matches;
   }
 
-  private static void appendPlanTree(final StringBuilder builder, final Plan plan, final int depth) {
+  private static void appendPlanTree(
+      final StringBuilder builder, final Plan plan, final int depth) {
     if (plan == null) {
       return;
     }
-    builder.append("  ".repeat(Math.max(0, depth))).append("- ").append(planLabel(plan)).append("\n");
+    builder
+        .append("  ".repeat(Math.max(0, depth)))
+        .append("- ")
+        .append(planLabel(plan))
+        .append("\n");
     for (Plan subtask : CollectionUtils.nullSafeList(plan.getSubtasks())) {
       appendPlanTree(builder, subtask, depth + 1);
     }
@@ -135,8 +174,8 @@ public final class PlanningUtils {
     return nodes;
   }
 
-  private static void appendPlanNodes(final List<Plan> plans, final List<String> parentPath,
-      final List<PlanNode> nodes) {
+  private static void appendPlanNodes(
+      final List<Plan> plans, final List<String> parentPath, final List<PlanNode> nodes) {
     if (CollectionUtils.isEmpty(plans)) {
       return;
     }
@@ -151,8 +190,8 @@ public final class PlanningUtils {
     }
   }
 
-  private static String formatPlanNode(final PlanNode node, final boolean includeExpected,
-      final boolean includeOutcome) {
+  private static String formatPlanNode(
+      final PlanNode node, final boolean includeExpected, final boolean includeOutcome) {
     final Plan plan = node.plan();
     final StringBuilder line = new StringBuilder();
     line.append(String.join(" > ", node.path()));
@@ -169,6 +208,5 @@ public final class PlanningUtils {
     return line.toString();
   }
 
-  private record PlanNode(Plan plan, List<String> path) {
-  }
+  private record PlanNode(Plan plan, List<String> path) {}
 }

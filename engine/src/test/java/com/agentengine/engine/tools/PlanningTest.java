@@ -23,8 +23,15 @@ class PlanningTest {
     ToolContext toolContext = buildToolContext(session);
 
     Planning planning = new Planning();
-    Map<String, Object> result = planning.createPlan(toolContext, null, "Root", "Desc", "Outcome",
-        List.of(Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
+    Map<String, Object> result =
+        planning.createPlan(
+            toolContext,
+            null,
+            "Root",
+            "Desc",
+            "Outcome",
+            List.of(
+                Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
     String planId = (String) result.get("plan_id");
 
     planning.updatePlanInfo(toolContext, planId, "Updated", null, null);
@@ -41,7 +48,12 @@ class PlanningTest {
     ToolContext toolContext = buildToolContext(session);
 
     Planning planning = new Planning();
-    planning.createPlan(toolContext, null, "Root", "Desc", "Outcome",
+    planning.createPlan(
+        toolContext,
+        null,
+        "Root",
+        "Desc",
+        "Outcome",
         List.of(Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
 
     Plan plan = loadPlan(session);
@@ -56,8 +68,12 @@ class PlanningTest {
   }
 
   private static Session buildSession(final String sessionId) {
-    return Session.builder(sessionId).appName("agent").userId("default").state(new ConcurrentHashMap<>())
-        .events(new ArrayList<>()).build();
+    return Session.builder(sessionId)
+        .appName("agent")
+        .userId("default")
+        .state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>())
+        .build();
   }
 
   private static ToolContext buildToolContext(final Session session) {

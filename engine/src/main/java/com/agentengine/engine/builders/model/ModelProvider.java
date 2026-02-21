@@ -9,7 +9,6 @@ import com.google.adk.models.BaseLlm;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -22,18 +21,22 @@ public class ModelProvider {
   private final ModelRepository modelRepository;
 
   @Inject
-  public ModelProvider(final Instance<ModelBuilder<?>> allBuilders, final OpenAIModelBuilder openAIModelBuilder,
+  public ModelProvider(
+      final Instance<ModelBuilder<?>> allBuilders,
+      final OpenAIModelBuilder openAIModelBuilder,
       ModelRepository modelRepository) {
-    this.typeVsBuilder = CollectionUtils.transformToMap(allBuilders.stream().toList(), ModelBuilder::type,
-        Function.identity());
+    this.typeVsBuilder =
+        CollectionUtils.transformToMap(
+            allBuilders.stream().toList(), ModelBuilder::type, Function.identity());
     this.defaultBuilder = openAIModelBuilder;
     this.modelRepository = modelRepository;
   }
 
   public BaseLlm get(final AgentModelConfig config) {
-    final ModelConfig modelConfig = Objects.requireNonNull(modelRepository.findById(config.getModelId()).orElse(null));
-    final ModelBuilder<? extends BaseLlm> builder = typeVsBuilder.getOrDefault(modelConfig.getType().toLowerCase(),
-        defaultBuilder);
+    final ModelConfig modelConfig =
+        Objects.requireNonNull(modelRepository.findById(config.getModelId()).orElse(null));
+    final ModelBuilder<? extends BaseLlm> builder =
+        typeVsBuilder.getOrDefault(modelConfig.getType().toLowerCase(), defaultBuilder);
     return builder.build(modelConfig);
   }
 }

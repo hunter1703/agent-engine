@@ -7,8 +7,7 @@ public class ToolEntity extends BaseEntity {
   private String description;
   private Map<String, Object> configsSchema;
 
-  public ToolEntity() {
-  }
+  public ToolEntity() {}
 
   public ToolEntity(String id, String name, String description, Map<String, Object> configsSchema) {
     this.setId(id);

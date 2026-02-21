@@ -11,9 +11,10 @@ class LastNContextManagerTest {
 
   @Test
   void buildPromptKeepsRecentCharacters() {
-    final List<Content> contents = List.of(
-        Content.builder().role("user").parts(Part.builder().text("first").build()).build(),
-        Content.builder().role("user").parts(Part.builder().text("second").build()).build());
+    final List<Content> contents =
+        List.of(
+            Content.builder().role("user").parts(Part.builder().text("first").build()).build(),
+            Content.builder().role("user").parts(Part.builder().text("second").build()).build());
 
     final LastNContextManager contextManager = new LastNContextManager(1);
 

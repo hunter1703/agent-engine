@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +17,7 @@ public final class PluginLoader {
   private static final String DEFAULT_PLUGIN_DIR = "plugins";
   private static final AtomicReference<ClassLoader> LOADER = new AtomicReference<>();
 
-  private PluginLoader() {
-  }
+  private PluginLoader() {}
 
   public static ClassLoader getClassLoader() {
     ClassLoader existing = LOADER.get();
@@ -38,13 +36,16 @@ public final class PluginLoader {
     }
     List<URL> urls = new ArrayList<>();
     try (var paths = Files.list(pluginsDir)) {
-      paths.filter(path -> path.toString().endsWith(".jar")).forEach(path -> {
-        try {
-          urls.add(path.toUri().toURL());
-        } catch (Exception e) {
-          LOG.warn("Failed to convert path to URL: {}", path, e);
-        }
-      });
+      paths
+          .filter(path -> path.toString().endsWith(".jar"))
+          .forEach(
+              path -> {
+                try {
+                  urls.add(path.toUri().toURL());
+                } catch (Exception e) {
+                  LOG.warn("Failed to convert path to URL: {}", path, e);
+                }
+              });
     } catch (Exception e) {
       LOG.warn("Failed to list plugin directory: {}", pluginsDir, e);
       return PluginLoader.class.getClassLoader();

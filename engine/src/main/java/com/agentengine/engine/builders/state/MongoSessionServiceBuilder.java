@@ -8,8 +8,7 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class MongoSessionServiceBuilder
-    implements
-      SessionServiceBuilder<MongoSessionServiceConfig, AgentSessionRepository> {
+    implements SessionServiceBuilder<MongoSessionServiceConfig, AgentSessionRepository> {
   private final AgentSessionRepository sessionRepository;
 
   public MongoSessionServiceBuilder(final AgentSessionRepository sessionRepository) {

@@ -1,14 +1,14 @@
 package com.agentengine.engine.builders.context;
 
-import com.agentengine.engine.api.beans.config.*;
+import com.agentengine.engine.api.beans.config.ContextManagerConfig;
+import com.agentengine.engine.api.beans.config.LastNContextManagerConfig;
 import com.agentengine.engine.api.builders.ContextManagerBuilder;
 import com.agentengine.engine.context.LastNContextManager;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class LastNContextManagerBuilder
-    implements
-      ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
+    implements ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
 
   @Override
   public LastNContextManager build(final LastNContextManagerConfig contextConfig) {

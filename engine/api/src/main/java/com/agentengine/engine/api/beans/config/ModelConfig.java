@@ -8,7 +8,9 @@ import java.util.Locale;
 public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
-    OLLAMA("ollama"), OPEN_AI_COMPATIBLE("open_ai_compatible"), GEMINI("gemini");
+    OLLAMA("ollama"),
+    OPEN_AI_COMPATIBLE("open_ai_compatible"),
+    GEMINI("gemini");
 
     private final String type;
 

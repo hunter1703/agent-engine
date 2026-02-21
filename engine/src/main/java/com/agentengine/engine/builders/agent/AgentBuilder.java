@@ -25,28 +25,31 @@ public class AgentBuilder extends LlmAgent.Builder {
   }
 
   public LlmAgent.Builder reWriteInstructions() {
-    final String fullToolInstructions = StringUtils.isNotBlank(toolInstructions) ? STR."# TOOLS\n\{toolInstructions}" : "";
-    this.instruction(STR."""
+    final String fullToolInstructions =
+        StringUtils.isNotBlank(toolInstructions) ? STR."# TOOLS\n\{toolInstructions}" : "";
+    this.instruction(
+        STR."""
     # YOUR MANDATE:
-    \{globalInstruction}
+    \{
+            globalInstruction}
 
     ---
 
     # PROTOCOL YOU MUST FOLLOW:
-    \{protocolInstructions}
+    \{
+            protocolInstructions}
 
     ---
 
-    \{fullToolInstructions}
-    """
-    );
+    \{
+            fullToolInstructions}
+    """);
     return this;
   }
 
   @Override
   public SimpleAgent build() {
     validate();
-    return new SimpleAgent(this) {
-    };
+    return new SimpleAgent(this) {};
   }
 }

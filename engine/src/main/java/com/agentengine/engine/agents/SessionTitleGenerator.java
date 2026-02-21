@@ -16,11 +16,9 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-
+import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Optional;
-
-import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,20 +29,23 @@ public final class SessionTitleGenerator {
   private static final int MAX_TITLE_LENGTH = 80;
   private final LazyLoader<BaseLlm> titleGeneratorModelLoader;
 
-  public SessionTitleGenerator(InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
-    this.titleGeneratorModelLoader = new LazyLoader<>(() -> {
-      final AgentModelConfig agentModelConfig = new AgentModelConfig();
-      agentModelConfig.setRole("title_generator");
-      agentModelConfig.setSystemPrompt(
-          "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
-      final TitleConfig config = infraMongoRepository.findOneByType(TYPE);
-      if (config == null || StringUtils.isBlank(config.getModelId())) {
-        LOG.warn("Title generator configuration not found or incomplete. Type: {}", TYPE);
-        return null;
-      }
-      agentModelConfig.setModelId(config.getModelId());
-      return modelProvider.get(agentModelConfig);
-    });
+  public SessionTitleGenerator(
+      InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
+    this.titleGeneratorModelLoader =
+        new LazyLoader<>(
+            () -> {
+              final AgentModelConfig agentModelConfig = new AgentModelConfig();
+              agentModelConfig.setRole("title_generator");
+              agentModelConfig.setSystemPrompt(
+                  "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
+              final TitleConfig config = infraMongoRepository.findOneByType(TYPE);
+              if (config == null || StringUtils.isBlank(config.getModelId())) {
+                LOG.warn("Title generator configuration not found or incomplete. Type: {}", TYPE);
+                return null;
+              }
+              agentModelConfig.setModelId(config.getModelId());
+              return modelProvider.get(agentModelConfig);
+            });
   }
 
   public Optional<String> generateTitle(final List<Event> events) {
@@ -57,16 +58,19 @@ public final class SessionTitleGenerator {
       return Optional.empty();
     }
     final int startIndex = Math.max(0, conversationEvents.size() - MAX_EVENTS);
-    final List<Event> recentEvents = conversationEvents.subList(startIndex, conversationEvents.size());
+    final List<Event> recentEvents =
+        conversationEvents.subList(startIndex, conversationEvents.size());
     final String transcript = SessionUtils.buildTranscript(recentEvents);
     if (StringUtils.isBlank(transcript)) {
       return Optional.empty();
     }
     final String prompt = buildPrompt(transcript);
-    final Content promptContent = Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
+    final Content promptContent =
+        Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
     final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
     try {
-      final LlmResponse response = titleGeneratorModel.generateContent(request, false).blockingFirst();
+      final LlmResponse response =
+          titleGeneratorModel.generateContent(request, false).blockingFirst();
       final String rawTitle = response.content().map(Content::text).orElse(null);
       return Optional.ofNullable(sanitizeTitle(rawTitle));
     } catch (Exception e) {
@@ -76,13 +80,15 @@ public final class SessionTitleGenerator {
   }
 
   private static String buildPrompt(final String transcript) {
-        return STR."""
+    return STR."""
         Generate a concise title (max 8 words) for this conversation. Respond with only the title.
 
         Conversation:
-        \{transcript}
-        """.strip();
-    }
+        \{
+            transcript}
+        """
+        .strip();
+  }
 
   private static String sanitizeTitle(final String title) {
     if (StringUtils.isBlank(title)) {

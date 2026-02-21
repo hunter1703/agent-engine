@@ -29,11 +29,13 @@ class AbstractMongoRepositoryUpdateTest {
     final MongoCollection<TestEntity> collection = mock(MongoCollection.class);
     final TestEntity updated = new TestEntity();
     updated.setId("id");
-    when(collection.findOneAndUpdate(any(Bson.class), any(Bson.class), any(FindOneAndUpdateOptions.class)))
+    when(collection.findOneAndUpdate(
+            any(Bson.class), any(Bson.class), any(FindOneAndUpdateOptions.class)))
         .thenReturn(updated);
     final TestRepository repository = new TestRepository(collection);
 
-    final Update update = new Update(List.of(Operation.set("name", "value"), Operation.unset("age")));
+    final Update update =
+        new Update(List.of(Operation.set("name", "value"), Operation.unset("age")));
 
     final TestEntity result = repository.update("id", update);
 
@@ -41,10 +43,11 @@ class AbstractMongoRepositoryUpdateTest {
 
     final ArgumentCaptor<Bson> filterCaptor = ArgumentCaptor.forClass(Bson.class);
     final ArgumentCaptor<Bson> updateCaptor = ArgumentCaptor.forClass(Bson.class);
-    final ArgumentCaptor<FindOneAndUpdateOptions> optionsCaptor = ArgumentCaptor
-        .forClass(FindOneAndUpdateOptions.class);
+    final ArgumentCaptor<FindOneAndUpdateOptions> optionsCaptor =
+        ArgumentCaptor.forClass(FindOneAndUpdateOptions.class);
 
-    verify(collection).findOneAndUpdate(filterCaptor.capture(), updateCaptor.capture(), optionsCaptor.capture());
+    verify(collection)
+        .findOneAndUpdate(filterCaptor.capture(), updateCaptor.capture(), optionsCaptor.capture());
 
     final Bson expectedFilter = Filters.eq("_id", "id");
     final Bson expectedUpdate = Updates.combine(Updates.set("name", "value"), Updates.unset("age"));
@@ -72,6 +75,5 @@ class AbstractMongoRepositoryUpdateTest {
     }
   }
 
-  private static final class TestEntity extends BaseEntity {
-  }
+  private static final class TestEntity extends BaseEntity {}
 }

@@ -8,7 +8,6 @@ import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,9 +33,10 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolEntity> {
   public PaginatedResult<ToolEntity> findAssets(AssetRequest request) {
     List<ToolEntity> tools = toolService.getAvailableTools(null);
 
-    Page page = request.getQuery() != null && request.getQuery().getPage() != null
-        ? request.getQuery().getPage()
-        : new Page(0, 100);
+    Page page =
+        request.getQuery() != null && request.getQuery().getPage() != null
+            ? request.getQuery().getPage()
+            : new Page(0, 100);
 
     return PaginatedResult.create(tools, page, tools.size());
   }
@@ -46,7 +46,8 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolEntity> {
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return Map.of();
     }
-    return findAssets(request).getItems().stream().filter(t -> request.getKeys().contains(t.getId()))
+    return findAssets(request).getItems().stream()
+        .filter(t -> request.getKeys().contains(t.getId()))
         .collect(Collectors.toMap(ToolEntity::getId, t -> t));
   }
 

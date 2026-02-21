@@ -21,8 +21,13 @@ class PlanContextRequestProcessorTest {
     Plan plan = new Plan("Root", "Plan desc", "Finish", List.of(subtask));
     plan.setId("plan-1");
 
-    Session session = Session.builder("session-1").appName("agent").userId("default")
-        .state(new ConcurrentHashMap<>(Map.of("currentPlan", plan))).events(new ArrayList<>()).build();
+    Session session =
+        Session.builder("session-1")
+            .appName("agent")
+            .userId("default")
+            .state(new ConcurrentHashMap<>(Map.of("currentPlan", plan)))
+            .events(new ArrayList<>())
+            .build();
 
     InvocationContext context = InvocationContext.builder().session(session).build();
     LlmRequest request = LlmRequest.builder().build();

@@ -3,11 +3,10 @@ package com.agentengine.interfaces.rest.support;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.util.TypeLiteral;
-import org.jetbrains.annotations.NotNull;
-
 import java.lang.annotation.Annotation;
 import java.util.Iterator;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
 public final class HandlerInstance implements Instance<AgentRequestHandler<?>> {
   private final List<AgentRequestHandler<?>> handlers;
@@ -57,13 +56,14 @@ public final class HandlerInstance implements Instance<AgentRequestHandler<?>> {
   }
 
   @Override
-  public <U extends AgentRequestHandler<?>> Instance<U> select(final Class<U> subtype, final Annotation... qualifiers) {
+  public <U extends AgentRequestHandler<?>> Instance<U> select(
+      final Class<U> subtype, final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 
   @Override
-  public <U extends AgentRequestHandler<?>> Instance<U> select(final TypeLiteral<U> subtype,
-      final Annotation... qualifiers) {
+  public <U extends AgentRequestHandler<?>> Instance<U> select(
+      final TypeLiteral<U> subtype, final Annotation... qualifiers) {
     throw new UnsupportedOperationException("Not used in tests");
   }
 }

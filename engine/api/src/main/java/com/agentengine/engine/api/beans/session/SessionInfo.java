@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+import org.bson.codecs.pojo.annotations.BsonId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,17 +26,19 @@ public class SessionInfo extends BaseEntity {
   private List<Map<String, Object>> events = new ArrayList<>();
   private Long lastUpdateTime;
 
-  public SessionInfo() {
-  }
+  public SessionInfo() {}
 
   public static SessionInfo fromSession(final Session session) {
     final SessionInfo sessionInfo = new SessionInfo();
     sessionInfo.setId(session.id());
     sessionInfo.setAppName(session.appName());
     sessionInfo.setUserId(session.userId());
-    sessionInfo.setState(session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
+    sessionInfo.setState(
+        session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
     sessionInfo.setEvents(
-        session.events() == null ? new ArrayList<>() : session.events().stream().map(JsonUtils::toJacksonMap).toList());
+        session.events() == null
+            ? new ArrayList<>()
+            : session.events().stream().map(JsonUtils::toJacksonMap).toList());
     sessionInfo.setLastUpdateTime(session.lastUpdateTime().toEpochMilli());
     return sessionInfo;
   }
@@ -59,8 +61,12 @@ public class SessionInfo extends BaseEntity {
         }
       }
     }
-    final Session.Builder builder = Session.builder(getId()).appName(appName).userId(userId).state(sessionState)
-        .events(sessionEvents);
+    final Session.Builder builder =
+        Session.builder(getId())
+            .appName(appName)
+            .userId(userId)
+            .state(sessionState)
+            .events(sessionEvents);
     if (lastUpdateTime != null) {
       builder.lastUpdateTime(Instant.ofEpochMilli(lastUpdateTime));
     }

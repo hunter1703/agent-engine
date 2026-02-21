@@ -2,17 +2,47 @@ package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agui.core.event.*;
-import com.agentengine.interfaces.rest.responses.dtos.*;
+import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
+import com.agentengine.interfaces.rest.responses.dtos.CompletedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.CreatedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.DoneEventData;
+import com.agentengine.interfaces.rest.responses.dtos.FailedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.InProgressEventData;
+import com.agentengine.interfaces.rest.responses.dtos.MessageCompletedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.MessageStartedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.OutputTextDeltaEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ReasoningAddedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ReasoningDoneEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ReasoningSummaryPartAddedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ReasoningSummaryTextDeltaEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ToolCallAddedEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ToolCallEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultDoneEventData;
+import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultEventData;
+import com.agui.core.event.BaseEvent;
+import com.agui.core.event.EventMapper;
+import com.agui.core.event.RunErrorEvent;
+import com.agui.core.event.RunFinishedEvent;
+import com.agui.core.event.RunStartedEvent;
+import com.agui.core.event.StepFinishedEvent;
+import com.agui.core.event.StepStartedEvent;
+import com.agui.core.event.TextMessageChunkEvent;
+import com.agui.core.event.TextMessageContentEvent;
+import com.agui.core.event.TextMessageEndEvent;
+import com.agui.core.event.TextMessageStartEvent;
+import com.agui.core.event.ThinkingEndEvent;
+import com.agui.core.event.ThinkingStartEvent;
+import com.agui.core.event.ToolCallArgsEvent;
+import com.agui.core.event.ToolCallEndEvent;
+import com.agui.core.event.ToolCallResultEvent;
+import com.agui.core.event.ToolCallStartEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Maps AGUI events to Responses API format for Codex CLI compatibility
- */
+/** Maps AGUI events to Responses API format for Codex CLI compatibility */
 public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseResponsesEventData> {
   private final MapperState state;
 
@@ -27,20 +57,22 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
 
   public Flowable<BaseResponsesEventData> onComplete() {
     final BaseResponsesEventData completed = finishMessageItem();
-    return Flowable.defer(() -> {
-      if (completed != null) {
-        return Flowable.concatArray(Flowable.just(completed), doneEvent());
-      } else {
-        return doneEvent();
-      }
-    });
+    return Flowable.defer(
+        () -> {
+          if (completed != null) {
+            return Flowable.concatArray(Flowable.just(completed), doneEvent());
+          } else {
+            return doneEvent();
+          }
+        });
   }
 
   public Flowable<BaseResponsesEventData> onError(final Throwable throwable) {
-    return Flowable.defer(() -> {
-      final BaseResponsesEventData failed = mapError(throwable);
-      return Flowable.concatArray(Flowable.just(failed), doneEvent());
-    });
+    return Flowable.defer(
+        () -> {
+          final BaseResponsesEventData failed = mapError(throwable);
+          return Flowable.concatArray(Flowable.just(failed), doneEvent());
+        });
   }
 
   private Flowable<BaseResponsesEventData> mapEvent(final BaseEvent baseEvent) {
@@ -55,7 +87,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       case TextMessageStartEvent _ -> mapTextMessageStart();
       case TextMessageEndEvent _ -> mapTextMessageEnd();
       case TextMessageChunkEvent textMessageChunkEvent -> mapTextChunk(textMessageChunkEvent);
-      case TextMessageContentEvent textMessageContentEvent -> mapTextContent(textMessageContentEvent);
+      case TextMessageContentEvent textMessageContentEvent ->
+          mapTextContent(textMessageContentEvent);
       case ToolCallStartEvent toolCallStartEvent -> mapToolCallStart(toolCallStartEvent);
       case ToolCallArgsEvent toolCallArgsEvent -> mapToolCallArgs(toolCallArgsEvent);
       case ToolCallEndEvent toolCallEndEvent -> mapToolCallEnd(toolCallEndEvent);
@@ -96,7 +129,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     }
     state.thinkingStarted = true;
     final BaseResponsesEventData reasoningAdded = beginReasoningItem();
-    final BaseResponsesEventData summaryPart = new ReasoningSummaryPartAddedEventData(state.thinkingIndex);
+    final BaseResponsesEventData summaryPart =
+        new ReasoningSummaryPartAddedEventData(state.thinkingIndex);
     return fromEvents(reasoningAdded, summaryPart);
   }
 
@@ -123,22 +157,26 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     return Flowable.empty();
   }
 
-  private Flowable<BaseResponsesEventData> mapTextChunk(final TextMessageChunkEvent textMessageChunkEvent) {
+  private Flowable<BaseResponsesEventData> mapTextChunk(
+      final TextMessageChunkEvent textMessageChunkEvent) {
     final String delta = textMessageChunkEvent.getDelta();
     if (state.thinkingStarted) {
       appendReasoning(delta);
       return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
     }
-    final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
+    final BaseResponsesEventData messageStart =
+        state.activeMessageOutputIndex == null ? beginMessageItem() : null;
     state.messageHasChunks = true;
     appendMessage(delta);
-    final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
-        ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
-        : null;
+    final BaseResponsesEventData deltaEvent =
+        state.activeMessageOutputIndex != null
+            ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
+            : null;
     return fromEvents(messageStart, deltaEvent);
   }
 
-  private Flowable<BaseResponsesEventData> mapTextContent(final TextMessageContentEvent textMessageContentEvent) {
+  private Flowable<BaseResponsesEventData> mapTextContent(
+      final TextMessageContentEvent textMessageContentEvent) {
     final String delta = textMessageContentEvent.getDelta();
     if (state.thinkingStarted) {
       appendReasoning(delta);
@@ -148,25 +186,32 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       state.messageBuffer = new StringBuilder(delta);
       return Flowable.empty();
     }
-    final BaseResponsesEventData messageStart = state.activeMessageOutputIndex == null ? beginMessageItem() : null;
+    final BaseResponsesEventData messageStart =
+        state.activeMessageOutputIndex == null ? beginMessageItem() : null;
     appendMessage(delta);
-    final BaseResponsesEventData deltaEvent = state.activeMessageOutputIndex != null
-        ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
-        : null;
+    final BaseResponsesEventData deltaEvent =
+        state.activeMessageOutputIndex != null
+            ? new OutputTextDeltaEventData(delta, state.activeMessageOutputIndex)
+            : null;
     return fromEvents(messageStart, deltaEvent);
   }
 
-  private Flowable<BaseResponsesEventData> mapToolCallStart(final ToolCallStartEvent toolCallStartEvent) {
+  private Flowable<BaseResponsesEventData> mapToolCallStart(
+      final ToolCallStartEvent toolCallStartEvent) {
     final BaseResponsesEventData messageDone = finishMessageItem();
     final int outputIndex = nextOutputIndex();
-    state.toolCallDetails.put(toolCallStartEvent.getToolCallId(),
-        new ToolCallDetails(toolCallStartEvent.getToolCallName(), new StringBuilder(), outputIndex));
-    final BaseResponsesEventData toolCallAdded = new ToolCallAddedEventData(toolCallStartEvent.getToolCallId(),
-        toolCallStartEvent.getToolCallName(), outputIndex);
+    state.toolCallDetails.put(
+        toolCallStartEvent.getToolCallId(),
+        new ToolCallDetails(
+            toolCallStartEvent.getToolCallName(), new StringBuilder(), outputIndex));
+    final BaseResponsesEventData toolCallAdded =
+        new ToolCallAddedEventData(
+            toolCallStartEvent.getToolCallId(), toolCallStartEvent.getToolCallName(), outputIndex);
     return fromEvents(messageDone, toolCallAdded);
   }
 
-  private Flowable<BaseResponsesEventData> mapToolCallArgs(final ToolCallArgsEvent toolCallArgsEvent) {
+  private Flowable<BaseResponsesEventData> mapToolCallArgs(
+      final ToolCallArgsEvent toolCallArgsEvent) {
     final String toolCallId = toolCallArgsEvent.getToolCallId();
     final ToolCallDetails details = state.toolCallDetails.get(toolCallId);
     if (details != null) {
@@ -191,7 +236,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     return toFlowable(new ToolCallEventData(toolCallId, toolName, arguments, details.index()));
   }
 
-  private Flowable<BaseResponsesEventData> mapToolCallResult(final ToolCallResultEvent toolCallResultEvent) {
+  private Flowable<BaseResponsesEventData> mapToolCallResult(
+      final ToolCallResultEvent toolCallResultEvent) {
     final String toolCallId = toolCallResultEvent.getToolCallId();
     final ToolCallDetails details = state.toolCallDetails.get(toolCallId);
     if (details == null) {
@@ -200,13 +246,16 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     state.toolCallDetails.remove(toolCallId);
     final int outputIndex = nextOutputIndex();
     final String output = toolCallResultEvent.getContent();
-    final BaseResponsesEventData outputAdded = new ToolCallResultEventData(toolCallId, output, outputIndex);
-    final BaseResponsesEventData outputDone = new ToolCallResultDoneEventData(toolCallId, output, outputIndex);
+    final BaseResponsesEventData outputAdded =
+        new ToolCallResultEventData(toolCallId, output, outputIndex);
+    final BaseResponsesEventData outputDone =
+        new ToolCallResultDoneEventData(toolCallId, output, outputIndex);
     return fromEvents(outputAdded, outputDone);
   }
 
   private Flowable<BaseResponsesEventData> doneEvent() {
-    final Map<String, Object> response = state.responseState.isEmpty() ? Map.of() : new HashMap<>(state.responseState);
+    final Map<String, Object> response =
+        state.responseState.isEmpty() ? Map.of() : new HashMap<>(state.responseState);
     return Flowable.just(new DoneEventData(response));
   }
 
@@ -231,7 +280,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
 
   private BaseResponsesEventData buildFailure(final String error) {
     updateResponseStatus("failed");
-    final String id = StringUtils.isNotBlank(state.responseId) ? state.responseId : UUID.randomUUID().toString();
+    final String id =
+        StringUtils.isNotBlank(state.responseId) ? state.responseId : UUID.randomUUID().toString();
     return new FailedEventData(id, error);
   }
 
@@ -262,7 +312,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       return null;
     }
     final String text = state.messageBuffer != null ? state.messageBuffer.toString() : "";
-    final BaseResponsesEventData completed = new MessageCompletedEventData(text, state.activeMessageOutputIndex);
+    final BaseResponsesEventData completed =
+        new MessageCompletedEventData(text, state.activeMessageOutputIndex);
     state.activeMessageOutputIndex = null;
     state.messageBuffer = null;
     state.messageCompleted = true;
@@ -291,7 +342,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       return null;
     }
     final String summary = state.reasoningBuffer != null ? state.reasoningBuffer.toString() : "";
-    final BaseResponsesEventData completed = new ReasoningDoneEventData(summary, state.activeReasoningOutputIndex);
+    final BaseResponsesEventData completed =
+        new ReasoningDoneEventData(summary, state.activeReasoningOutputIndex);
     state.activeReasoningOutputIndex = null;
     state.reasoningBuffer = null;
     return completed;
@@ -308,7 +360,8 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     return Flowable.just(event);
   }
 
-  private static Flowable<BaseResponsesEventData> fromEvents(final BaseResponsesEventData... events) {
+  private static Flowable<BaseResponsesEventData> fromEvents(
+      final BaseResponsesEventData... events) {
     if (events == null || events.length == 0) {
       return Flowable.empty();
     }
@@ -356,6 +409,5 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     return CollectionUtils.getValueFromMap(rawEvent, key);
   }
 
-  private record ToolCallDetails(String name, StringBuilder argsBuilder, int index) {
-  }
+  private record ToolCallDetails(String name, StringBuilder argsBuilder, int index) {}
 }

@@ -6,13 +6,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
+import com.agentengine.engine.api.tools.ToolProvider;
+import com.agentengine.engine.api.tools.ToolSuite;
+import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
-import com.google.adk.sessions.InMemorySessionService;
 import io.reactivex.rxjava3.core.Single;
 import jakarta.enterprise.inject.Instance;
 import java.util.Collections;
@@ -29,12 +29,14 @@ class ToolRegistryTest {
     ToolProvider provider = mock(ToolProvider.class);
     when(provider.agentId()).thenReturn("test-agent");
     when(provider.name()).thenReturn("fake");
-    BaseTool fakeTool = new BaseTool("fake", "test tool") {
-      @Override
-      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
-        return Single.just(Map.of("output", "pre-" + args.get("value")));
-      }
-    };
+    BaseTool fakeTool =
+        new BaseTool("fake", "test tool") {
+          @Override
+          public Single<Map<String, Object>> runAsync(
+              final Map<String, Object> args, final ToolContext toolContext) {
+            return Single.just(Map.of("output", "pre-" + args.get("value")));
+          }
+        };
     when(provider.create(any(AgentContext.class), anyMap())).thenReturn(fakeTool);
 
     Instance<ToolProvider> providers = mock(Instance.class);
@@ -56,7 +58,8 @@ class ToolRegistryTest {
 
     assertThat(tools).isNotEmpty();
     BaseTool tool = tools.stream().filter(t -> t.name().equals("fake")).findFirst().orElseThrow();
-    Map<String, Object> result = (Map<String, Object>) tool.runAsync(Map.of("value", "fix"), null).blockingGet();
+    Map<String, Object> result =
+        (Map<String, Object>) tool.runAsync(Map.of("value", "fix"), null).blockingGet();
     assertThat(result).containsEntry("output", "pre-fix");
   }
 
@@ -134,17 +137,20 @@ class ToolRegistryTest {
     return buildProvider(toolName, "ALL", false);
   }
 
-  private static ToolProvider buildProvider(final String toolName, final String agentId, boolean subTool) {
+  private static ToolProvider buildProvider(
+      final String toolName, final String agentId, boolean subTool) {
     ToolProvider provider = mock(ToolProvider.class);
     when(provider.agentId()).thenReturn(agentId);
     when(provider.name()).thenReturn(toolName);
     when(provider.isSubTool()).thenReturn(subTool);
-    BaseTool tool = new BaseTool(toolName, "test tool") {
-      @Override
-      public Single<Map<String, Object>> runAsync(Map<String, Object> args, ToolContext toolContext) {
-        return Single.just(Map.of("status", "ok"));
-      }
-    };
+    BaseTool tool =
+        new BaseTool(toolName, "test tool") {
+          @Override
+          public Single<Map<String, Object>> runAsync(
+              Map<String, Object> args, ToolContext toolContext) {
+            return Single.just(Map.of("status", "ok"));
+          }
+        };
     when(provider.create(any(AgentContext.class), anyMap())).thenReturn(tool);
     return provider;
   }
@@ -166,9 +172,12 @@ class ToolRegistryTest {
 
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator())
-        .thenReturn(List.of(globalProvider, agentSpecificProvider, otherAgentProvider, subToolProvider).iterator());
+        .thenReturn(
+            List.of(globalProvider, agentSpecificProvider, otherAgentProvider, subToolProvider)
+                .iterator());
     when(providers.stream())
-        .thenReturn(Stream.of(globalProvider, agentSpecificProvider, otherAgentProvider, subToolProvider));
+        .thenReturn(
+            Stream.of(globalProvider, agentSpecificProvider, otherAgentProvider, subToolProvider));
 
     Instance<ToolSuite> suites = mock(Instance.class);
     when(suites.iterator()).thenReturn(List.of(globalSuite, agentSuite).iterator());
@@ -176,10 +185,12 @@ class ToolRegistryTest {
 
     ToolRegistry registry = new ToolRegistry(providers, suites);
 
-    List<com.agentengine.engine.api.beans.ToolEntity> tools = registry.getAvailableTools("custom-agent");
+    List<com.agentengine.engine.api.beans.ToolEntity> tools =
+        registry.getAvailableTools("custom-agent");
 
     assertThat(tools).hasSize(4);
-    assertThat(tools).extracting(com.agentengine.engine.api.beans.ToolEntity::getName)
+    assertThat(tools)
+        .extracting(com.agentengine.engine.api.beans.ToolEntity::getName)
         .containsExactlyInAnyOrder("global-tool", "agent-tool", "global-suite", "agent-suite");
   }
 }

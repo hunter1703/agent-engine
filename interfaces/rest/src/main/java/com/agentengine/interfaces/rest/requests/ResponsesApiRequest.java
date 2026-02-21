@@ -2,19 +2,18 @@ package com.agentengine.interfaces.rest.requests;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 public class ResponsesApiRequest {
 
   private String model;
   private List<InputMessage> input;
+
   @JsonProperty("session_id")
   @JsonAlias("prompt_cache_key")
   private String sessionId;
 
-  public ResponsesApiRequest() {
-  }
+  public ResponsesApiRequest() {}
 
   public ResponsesApiRequest(String model, List<InputMessage> input) {
     this.model = model;
@@ -50,8 +49,7 @@ public class ResponsesApiRequest {
     private String role;
     private List<ContentPart> content;
 
-    public InputMessage() {
-    }
+    public InputMessage() {}
 
     public InputMessage(String type, String role, List<ContentPart> content) {
       this.type = type;
@@ -88,8 +86,7 @@ public class ResponsesApiRequest {
     private String type;
     private String text;
 
-    public ContentPart() {
-    }
+    public ContentPart() {}
 
     public ContentPart(String type, String text) {
       this.type = type;

@@ -59,14 +59,14 @@ class SessionTitleGeneratorTest {
   }
 
   @Test
-    void generateTitle_missingConfig() {
-        when(infraMongoRepository.findOneByType(TYPE)).thenReturn(null);
-        generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
+  void generateTitle_missingConfig() {
+    when(infraMongoRepository.findOneByType(TYPE)).thenReturn(null);
+    generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
 
-        Optional<String> title = generator.generateTitle(List.of(mock(Event.class)));
+    Optional<String> title = generator.generateTitle(List.of(mock(Event.class)));
 
-        assertThat(title).isEmpty();
-    }
+    assertThat(title).isEmpty();
+  }
 
   @Test
   void generateTitle_emptyEvents() {
@@ -89,7 +89,8 @@ class SessionTitleGeneratorTest {
     when(modelProvider.get(any())).thenReturn(baseLlm);
 
     LlmResponse response = mock(LlmResponse.class);
-    Content content = Content.builder().parts(Part.builder().text("  \"Sanitized Title\"  ").build()).build();
+    Content content =
+        Content.builder().parts(Part.builder().text("  \"Sanitized Title\"  ").build()).build();
     when(response.content()).thenReturn(Optional.of(content));
     when(baseLlm.generateContent(any(), any(Boolean.class))).thenReturn(Flowable.just(response));
 

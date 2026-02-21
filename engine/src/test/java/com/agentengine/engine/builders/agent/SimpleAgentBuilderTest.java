@@ -42,22 +42,30 @@ class SimpleAgentBuilderTest {
     final ModelRepository modelRepository = mock(ModelRepository.class);
 
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
-    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, true);
+    final DelegatingLLMModel model =
+        new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, true);
 
-    final BaseTool tool = new BaseTool("run_cmd", "run command") {
-      @Override
-      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
-        return Single.just(Map.of("status", "ok"));
-      }
-    };
+    final BaseTool tool =
+        new BaseTool("run_cmd", "run command") {
+          @Override
+          public Single<Map<String, Object>> runAsync(
+              final Map<String, Object> args, final ToolContext toolContext) {
+            return Single.just(Map.of("status", "ok"));
+          }
+        };
 
     when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
     when(modelRepository.findById(any())).thenReturn(Optional.of(new ModelConfig()));
 
-    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
-        contextManagerProvider, modelRepository);
+    final SimpleAgentBuilder builder =
+        new SimpleAgentBuilder(
+            modelProvider,
+            sessionServiceProvider,
+            toolRegistry,
+            contextManagerProvider,
+            modelRepository);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -84,22 +92,30 @@ class SimpleAgentBuilderTest {
     final ModelRepository modelRepository = mock(ModelRepository.class);
 
     final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
-    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, false);
+    final DelegatingLLMModel model =
+        new DelegatingLLMModel(new StubLlm(), parser, "protocol", true, false);
 
-    final BaseTool tool = new BaseTool("run_cmd", "run command") {
-      @Override
-      public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
-        return Single.just(Map.of("status", "ok"));
-      }
-    };
+    final BaseTool tool =
+        new BaseTool("run_cmd", "run command") {
+          @Override
+          public Single<Map<String, Object>> runAsync(
+              final Map<String, Object> args, final ToolContext toolContext) {
+            return Single.just(Map.of("status", "ok"));
+          }
+        };
 
     when(modelProvider.get(any())).thenReturn(model);
     when(toolRegistry.loadTools(any(), any())).thenReturn(List.of(tool));
     when(sessionServiceProvider.get(any())).thenReturn(null);
     when(modelRepository.findById(any())).thenReturn(Optional.of(new ModelConfig()));
 
-    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
-        contextManagerProvider, modelRepository);
+    final SimpleAgentBuilder builder =
+        new SimpleAgentBuilder(
+            modelProvider,
+            sessionServiceProvider,
+            toolRegistry,
+            contextManagerProvider,
+            modelRepository);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -126,7 +142,8 @@ class SimpleAgentBuilderTest {
     final ModelRepository modelRepository = mock(ModelRepository.class);
 
     final Parser parser = Parser.create().toolCallingEnabled(false).parseToolCallsFromText(false);
-    final DelegatingLLMModel model = new DelegatingLLMModel(new StubLlm(), parser, "protocol", false, false);
+    final DelegatingLLMModel model =
+        new DelegatingLLMModel(new StubLlm(), parser, "protocol", false, false);
 
     final ModelConfig modelConfig = new ModelConfig();
     modelConfig.setInstructions("Prefer concise answers.");
@@ -135,8 +152,13 @@ class SimpleAgentBuilderTest {
     when(sessionServiceProvider.get(any())).thenReturn(null);
     when(modelRepository.findById(any())).thenReturn(Optional.of(modelConfig));
 
-    final SimpleAgentBuilder builder = new SimpleAgentBuilder(modelProvider, sessionServiceProvider, toolRegistry,
-        contextManagerProvider, modelRepository);
+    final SimpleAgentBuilder builder =
+        new SimpleAgentBuilder(
+            modelProvider,
+            sessionServiceProvider,
+            toolRegistry,
+            contextManagerProvider,
+            modelRepository);
 
     final AgentModelConfig modelDefinition = new AgentModelConfig();
     modelDefinition.setModelId("model-id");
@@ -160,7 +182,8 @@ class SimpleAgentBuilderTest {
     }
 
     @Override
-    public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
+    public Flowable<LlmResponse> generateContent(
+        final LlmRequest llmRequest, final boolean stream) {
       return Flowable.empty();
     }
 

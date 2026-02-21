@@ -14,19 +14,30 @@ public final class DelegatingLLMModel extends AbstractLLM {
   private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
   private final BaseLlm delegate;
 
-  public DelegatingLLMModel(final BaseLlm delegate, final Parser parser, final String protocol,
-      final boolean toolCallingEnabled, final boolean parseToolCallsFromText) {
-    super(Objects.requireNonNull(delegate, "delegate cannot be null").model(), parser, protocol, toolCallingEnabled,
+  public DelegatingLLMModel(
+      final BaseLlm delegate,
+      final Parser parser,
+      final String protocol,
+      final boolean toolCallingEnabled,
+      final boolean parseToolCallsFromText) {
+    super(
+        Objects.requireNonNull(delegate, "delegate cannot be null").model(),
+        parser,
+        protocol,
+        toolCallingEnabled,
         parseToolCallsFromText);
     this.delegate = delegate;
   }
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
-    final LlmRequest requestForModel = LlmModelUtils.stripToolsFromModelRequest(llmRequest, isToolCallingEnabled(),
-        isParseToolCallsFromText());
+    final LlmRequest requestForModel =
+        LlmModelUtils.stripToolsFromModelRequest(
+            llmRequest, isToolCallingEnabled(), isParseToolCallsFromText());
     final boolean useStreaming = stream && !(isToolCallingEnabled() && isParseToolCallsFromText());
-    LOG.debug("Delegating LLM generateContent using {} mode", useStreaming ? "streaming" : "non-streaming");
+    LOG.debug(
+        "Delegating LLM generateContent using {} mode",
+        useStreaming ? "streaming" : "non-streaming");
     if (!useStreaming) {
       return delegate.generateContent(requestForModel, false).map(LlmModelUtils::markTurnComplete);
     }

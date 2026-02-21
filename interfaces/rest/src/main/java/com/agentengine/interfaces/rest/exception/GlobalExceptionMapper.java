@@ -2,15 +2,14 @@ package com.agentengine.interfaces.rest.exception;
 
 import com.agentengine.interfaces.rest.dto.ErrorResponse;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import jakarta.validation.ValidationException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.UUID;
-import jakarta.validation.ValidationException;
 
 @Provider
 @RegisterForReflection
@@ -21,25 +20,35 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
   @Override
   public Response toResponse(Throwable exception) {
     String traceId = UUID.randomUUID().toString();
-    LOG.error("Request failed traceId={} class={}", traceId, exception.getClass().getName(), exception);
+    LOG.error(
+        "Request failed traceId={} class={}", traceId, exception.getClass().getName(), exception);
 
     if (exception instanceof WebApplicationException webEx) {
       int status = webEx.getResponse().getStatus();
       String message = webEx.getMessage();
-      return Response.status(status).entity(new ErrorResponse(String.valueOf(status), message, traceId)).build();
+      return Response.status(status)
+          .entity(new ErrorResponse(String.valueOf(status), message, traceId))
+          .build();
     }
 
     if (exception instanceof ValidationException) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId)).build();
+          .entity(
+              new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId))
+          .build();
     }
 
-    if ("com.agentengine.engine.exceptions.JsonDeserializationException".equals(exception.getClass().getName())) {
+    if ("com.agentengine.engine.exceptions.JsonDeserializationException"
+        .equals(exception.getClass().getName())) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorResponse("400", "JSON Deserialization Error: " + exception.getMessage(), traceId)).build();
+          .entity(
+              new ErrorResponse(
+                  "400", "JSON Deserialization Error: " + exception.getMessage(), traceId))
+          .build();
     }
 
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-        .entity(new ErrorResponse("500", "Internal Server Error", traceId)).build();
+        .entity(new ErrorResponse("500", "Internal Server Error", traceId))
+        .build();
   }
 }

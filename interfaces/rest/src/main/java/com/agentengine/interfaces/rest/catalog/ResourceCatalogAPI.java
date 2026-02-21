@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest.catalog;
 
 import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.utils.PaginatedResult;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -14,7 +15,6 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 
 @Path("/v1")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -38,14 +37,23 @@ public class ResourceCatalogAPI {
 
   @Inject
   public ResourceCatalogAPI(Instance<AssetHandler<?>> handlers) {
-    this.assetHandlers = handlers.stream()
-        .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
+    this.assetHandlers =
+        handlers.stream()
+            .collect(Collectors.toUnmodifiableMap(AssetHandler::getAssetType, Function.identity()));
   }
 
   @POST
   @Path("/catalog/list")
-  @Operation(summary = "List resources", description = "List resources of a specific type based on provided criteria.")
-  @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
+  @Operation(
+      summary = "List resources",
+      description = "List resources of a specific type based on provided criteria.")
+  @APIResponse(
+      responseCode = "200",
+      description = "List of resources",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON,
+              schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<NameIdEntity> listResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
       throw new WebApplicationException("Resource type is required", 400);
@@ -53,7 +61,8 @@ public class ResourceCatalogAPI {
 
     NamedAssetHandler<?> handler = (NamedAssetHandler<?>) assetHandlers.get(request.getAssetType());
     if (handler == null) {
-      throw new WebApplicationException("Unsupported resource type: " + request.getAssetType(), 400);
+      throw new WebApplicationException(
+          "Unsupported resource type: " + request.getAssetType(), 400);
     }
 
     return handler.listAssets(request);
@@ -61,8 +70,16 @@ public class ResourceCatalogAPI {
 
   @POST
   @Path("/catalog/search")
-  @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
-  @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
+  @Operation(
+      summary = "Search resources",
+      description = "Searches resources of a specific type based on provided criteria.")
+  @APIResponse(
+      responseCode = "200",
+      description = "List of resources",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON,
+              schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<?> searchResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
       throw new WebApplicationException("Resource type is required", 400);
@@ -70,7 +87,8 @@ public class ResourceCatalogAPI {
 
     AssetHandler<?> handler = assetHandlers.get(request.getAssetType());
     if (handler == null) {
-      throw new WebApplicationException("Unsupported resource type: " + request.getAssetType(), 400);
+      throw new WebApplicationException(
+          "Unsupported resource type: " + request.getAssetType(), 400);
     }
 
     return handler.findAssets(request);
@@ -78,11 +96,21 @@ public class ResourceCatalogAPI {
 
   @GET
   @Path("/catalog/{resourceType}/{id}")
-  @Operation(summary = "Get resource by ID", description = "Retrieves a specific resource by its ID.")
-  @APIResponse(responseCode = "200", description = "Resource details", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Object.class)))
+  @Operation(
+      summary = "Get resource by ID",
+      description = "Retrieves a specific resource by its ID.")
+  @APIResponse(
+      responseCode = "200",
+      description = "Resource details",
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON,
+              schema = @Schema(implementation = Object.class)))
   @APIResponse(responseCode = "404", description = "Resource not found")
-  public <T extends BaseEntity> T getResource(@PathParam("resourceType") String resourceType,
-      @PathParam("id") String id, @Context UriInfo uriInfo) {
+  public <T extends BaseEntity> T getResource(
+      @PathParam("resourceType") String resourceType,
+      @PathParam("id") String id,
+      @Context UriInfo uriInfo) {
     if (resourceType == null || id == null) {
       throw new WebApplicationException("Resource type and ID are required", 400);
     }
@@ -99,11 +127,14 @@ public class ResourceCatalogAPI {
 
     Map<String, Object> options = new HashMap<>();
     if (uriInfo != null && uriInfo.getQueryParameters() != null) {
-      uriInfo.getQueryParameters().forEach((key, values) -> {
-        if (values != null && !values.isEmpty()) {
-          options.put(key, values.get(0));
-        }
-      });
+      uriInfo
+          .getQueryParameters()
+          .forEach(
+              (key, values) -> {
+                if (values != null && !values.isEmpty()) {
+                  options.put(key, values.get(0));
+                }
+              });
     }
     request.setOptions(options);
 

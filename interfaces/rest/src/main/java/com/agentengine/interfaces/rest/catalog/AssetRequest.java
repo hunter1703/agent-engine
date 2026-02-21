@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest.catalog;
 
 import com.agentengine.engine.api.query.Query;
-
 import java.util.List;
 import java.util.Map;
 
@@ -12,8 +11,7 @@ public class AssetRequest {
   private Query query;
   private Map<String, Object> options;
 
-  public AssetRequest() {
-  }
+  public AssetRequest() {}
 
   public AssetRequest(String assetType, List<String> keys, Query query) {
     this.assetType = assetType;

@@ -8,11 +8,11 @@ import static org.mockito.Mockito.when;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.services.SessionService;
+import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.Page;
 import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
-import com.agentengine.engine.api.utils.JsonUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -45,7 +45,8 @@ class SessionAssetHandlerTest {
 
     // Mock SessionService
     SessionService sessionService = mock(SessionService.class);
-    when(sessionService.findSessions(any())).thenReturn(PaginatedResult.create(List.of(session), new Page()));
+    when(sessionService.findSessions(any()))
+        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
 
     SessionAssetHandler handler = new SessionAssetHandler(sessionService);
 
@@ -74,8 +75,14 @@ class SessionAssetHandlerTest {
     sessionInfo.setId("test-session");
 
     // Create valid Event
-    Event event = Event.builder().id("event-1").invocationId("run-1").author("user")
-        .content(Content.builder().role("user").parts(Part.builder().text("test").build()).build()).build();
+    Event event =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("user")
+            .content(
+                Content.builder().role("user").parts(Part.builder().text("test").build()).build())
+            .build();
 
     // Convert to map using JsonUtils
     Map<String, Object> eventMap = JsonUtils.toJacksonMap(event);
@@ -121,14 +128,21 @@ class SessionAssetHandlerTest {
     sessionInfo.setId("session-2");
 
     // Create valid Event
-    Event event = Event.builder().id("event-2").invocationId("run-2").author("model")
-        .content(Content.builder().role("model").parts(Part.builder().text("done").build()).build()).build();
+    Event event =
+        Event.builder()
+            .id("event-2")
+            .invocationId("run-2")
+            .author("model")
+            .content(
+                Content.builder().role("model").parts(Part.builder().text("done").build()).build())
+            .build();
 
     Map<String, Object> eventMap = JsonUtils.toJacksonMap(event);
     sessionInfo.setEvents(Collections.singletonList(eventMap));
     session.setSessionInfo(sessionInfo);
 
-    when(sessionService.findSessions(any())).thenReturn(PaginatedResult.create(List.of(session), new Page()));
+    when(sessionService.findSessions(any()))
+        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
 
     final SessionAssetHandler handler = new SessionAssetHandler(sessionService);
     final AssetRequest request = new AssetRequest();

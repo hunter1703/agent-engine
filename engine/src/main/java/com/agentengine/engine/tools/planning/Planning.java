@@ -16,14 +16,24 @@ public class Planning {
   private static final Logger LOG = LoggerFactory.getLogger(Planning.class);
   private static final String PLAN_STATE_KEY = "currentPlan";
 
-  @Schema(name = "create_plan", description = "Create a new plan with subtasks to organize your work. Each subtask can have nested subtasks for hierarchical planning. toolContext is injected by the runtime.")
+  @Schema(
+      name = "create_plan",
+      description =
+          "Create a new plan with subtasks to organize your work. Each subtask can have nested subtasks for hierarchical planning. toolContext is injected by the runtime.")
   public Map<String, Object> createPlan(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
-      @Schema(name = "plan_id", description = "Optional ID for the new plan", optional = true) String planId,
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
+      @Schema(name = "plan_id", description = "Optional ID for the new plan", optional = true)
+          String planId,
       @Schema(name = "name", description = "Name of the plan") String name,
       @Schema(name = "description", description = "What this plan accomplishes") String description,
-      @Schema(name = "expected_outcome", description = "Expected result when the plan is complete") String expectedOutcome,
-      @Schema(name = "subtasks", description = "List of subtasks, each with 'name', 'description', 'expected_outcome', and optionally nested 'subtasks'") List<Map<String, Object>> subtasksList) {
+      @Schema(name = "expected_outcome", description = "Expected result when the plan is complete")
+          String expectedOutcome,
+      @Schema(
+              name = "subtasks",
+              description =
+                  "List of subtasks, each with 'name', 'description', 'expected_outcome', and optionally nested 'subtasks'")
+          List<Map<String, Object>> subtasksList) {
 
     if (toolContext == null) {
       return Map.of("error", "toolContext is required");
@@ -37,7 +47,8 @@ public class Planning {
     savePlan(toolContext, currentPlan);
 
     LOG.info("Created plan '{}' with {} subtasks", currentPlan.getId(), subtaskPlans.size());
-    return Map.of("status", "success", "plan_id", currentPlan.getId(), "subtask_count", subtaskPlans.size());
+    return Map.of(
+        "status", "success", "plan_id", currentPlan.getId(), "subtask_count", subtaskPlans.size());
   }
 
   private static List<Plan> toPlans(final List<Map<String, Object>> subtasksList) {
@@ -46,13 +57,15 @@ public class Planning {
     for (Map<String, Object> subtaskProps : safeSubtasksList) {
       String name = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "name");
       String description = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "description");
-      String expectedOutcome = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "expected_outcome");
+      String expectedOutcome =
+          CollectionUtils.getStringValueFromMapSafe(subtaskProps, "expected_outcome");
       Plan subtask = new Plan(name, description, expectedOutcome);
       final String planId = resolvePlanId(subtaskProps);
       if (StringUtils.isNotBlank(planId)) {
         subtask.setId(planId);
       }
-      final List<Map<String, Object>> nestedSubtasks = CollectionUtils.getListFromMap(subtaskProps, "subtasks");
+      final List<Map<String, Object>> nestedSubtasks =
+          CollectionUtils.getListFromMap(subtaskProps, "subtasks");
       if (CollectionUtils.isNotEmpty(nestedSubtasks)) {
         subtask.setSubtasks(toPlans(nestedSubtasks));
       }
@@ -65,50 +78,54 @@ public class Planning {
     return CollectionUtils.getStringValueFromMapSafe(planArgsItem, "plan_id");
   }
 
-  @Schema(name = "update_plan_info", description = "Update the general information of the current plan. toolContext is injected by the runtime.")
+  @Schema(
+      name = "update_plan_info",
+      description =
+          "Update the general information of the current plan. toolContext is injected by the runtime.")
   public Map<String, Object> updatePlanInfo(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
       @Schema(name = "plan_id", description = "ID of the plan to update") String planId,
       @Schema(name = "name", description = "New name (optional)") String name,
       @Schema(name = "description", description = "New description (optional)") String description,
-      @Schema(name = "expected_outcome", description = "New expected outcome (optional)") String expectedOutcome) {
+      @Schema(name = "expected_outcome", description = "New expected outcome (optional)")
+          String expectedOutcome) {
 
     Plan currentPlan = getCurrentPlan(toolContext);
-    if (currentPlan == null)
-      return Map.of("error", "No active plan found");
-    if (StringUtils.isBlank(planId))
-      return Map.of("error", "plan_id is required");
+    if (currentPlan == null) return Map.of("error", "No active plan found");
+    if (StringUtils.isBlank(planId)) return Map.of("error", "plan_id is required");
 
     Plan targetPlan = findPlanById(currentPlan, planId);
-    if (targetPlan == null)
-      return Map.of("error", "Plan not found: " + planId);
+    if (targetPlan == null) return Map.of("error", "Plan not found: " + planId);
 
-    if (name != null)
-      targetPlan.setName(name);
-    if (description != null)
-      targetPlan.setDescription(description);
-    if (expectedOutcome != null)
-      targetPlan.setExpectedOutcome(expectedOutcome);
+    if (name != null) targetPlan.setName(name);
+    if (description != null) targetPlan.setDescription(description);
+    if (expectedOutcome != null) targetPlan.setExpectedOutcome(expectedOutcome);
 
     savePlan(toolContext, currentPlan);
     return Map.of("status", "success");
   }
 
-  @Schema(name = "revise_current_plan", description = "Replace the current plan's subtasks with a new list. Use this to restructure your plan or add/remove subtasks. toolContext is injected by the runtime.")
+  @Schema(
+      name = "revise_current_plan",
+      description =
+          "Replace the current plan's subtasks with a new list. Use this to restructure your plan or add/remove subtasks. toolContext is injected by the runtime.")
   public Map<String, Object> reviseCurrentPlan(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
       @Schema(name = "plan_id", description = "ID of the plan to revise") String planId,
-      @Schema(name = "subtasks", description = "Complete new list of subtasks (replaces existing). Can include nested subtasks.") List<Map<String, Object>> subtasksArgs) {
+      @Schema(
+              name = "subtasks",
+              description =
+                  "Complete new list of subtasks (replaces existing). Can include nested subtasks.")
+          List<Map<String, Object>> subtasksArgs) {
 
     Plan currentPlan = getCurrentPlan(toolContext);
-    if (currentPlan == null)
-      return Map.of("error", "No active plan found");
-    if (StringUtils.isBlank(planId))
-      return Map.of("error", "plan_id is required");
+    if (currentPlan == null) return Map.of("error", "No active plan found");
+    if (StringUtils.isBlank(planId)) return Map.of("error", "plan_id is required");
 
     Plan targetPlan = findPlanById(currentPlan, planId);
-    if (targetPlan == null)
-      return Map.of("error", "Plan not found: " + planId);
+    if (targetPlan == null) return Map.of("error", "Plan not found: " + planId);
 
     List<Plan> subtaskPlans = toPlans(subtasksArgs);
     targetPlan.setSubtasks(subtaskPlans);
@@ -117,22 +134,28 @@ public class Planning {
     return Map.of("status", "success", "subtask_count", subtaskPlans.size());
   }
 
-  @Schema(name = "update_subtask_state", description = "Update the status of a specific subtask. Use this to mark tasks as in progress, done, or abandoned. toolContext is injected by the runtime.")
+  @Schema(
+      name = "update_subtask_state",
+      description =
+          "Update the status of a specific subtask. Use this to mark tasks as in progress, done, or abandoned. toolContext is injected by the runtime.")
   public Map<String, Object> updateSubtaskState(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
       @Schema(name = "plan_id", description = "ID of the plan to update") String planId,
-      @Schema(name = "status", description = "New status: TODO, IN_PROGRESS, DONE, or ABANDONED") String statusStr,
-      @Schema(name = "outcome", description = "Optional outcome description (recommended when marking DONE)", optional = true) String outcome) {
+      @Schema(name = "status", description = "New status: TODO, IN_PROGRESS, DONE, or ABANDONED")
+          String statusStr,
+      @Schema(
+              name = "outcome",
+              description = "Optional outcome description (recommended when marking DONE)",
+              optional = true)
+          String outcome) {
 
     Plan currentPlan = getCurrentPlan(toolContext);
-    if (currentPlan == null)
-      return Map.of("error", "No active plan found");
-    if (StringUtils.isBlank(planId))
-      return Map.of("error", "plan_id is required");
+    if (currentPlan == null) return Map.of("error", "No active plan found");
+    if (StringUtils.isBlank(planId)) return Map.of("error", "plan_id is required");
 
     Plan targetPlan = findPlanById(currentPlan, planId);
-    if (targetPlan == null)
-      return Map.of("error", "Plan not found: " + planId);
+    if (targetPlan == null) return Map.of("error", "Plan not found: " + planId);
 
     try {
       PlanStatus status = PlanStatus.valueOf(statusStr.toUpperCase());
@@ -149,22 +172,26 @@ public class Planning {
     }
   }
 
-  @Schema(name = "finish_plan", description = "Mark the entire plan as complete or abandoned with a final outcome. toolContext is injected by the runtime.")
+  @Schema(
+      name = "finish_plan",
+      description =
+          "Mark the entire plan as complete or abandoned with a final outcome. toolContext is injected by the runtime.")
   public Map<String, Object> finishPlan(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
       @Schema(name = "plan_id", description = "ID of the plan to finish") String planId,
       @Schema(name = "status", description = "Final status: DONE or ABANDONED") String statusStr,
-      @Schema(name = "outcome", description = "Summary of what was accomplished or why it was abandoned") String outcome) {
+      @Schema(
+              name = "outcome",
+              description = "Summary of what was accomplished or why it was abandoned")
+          String outcome) {
 
     Plan currentPlan = getCurrentPlan(toolContext);
-    if (currentPlan == null)
-      return Map.of("error", "No active plan found");
-    if (StringUtils.isBlank(planId))
-      return Map.of("error", "plan_id is required");
+    if (currentPlan == null) return Map.of("error", "No active plan found");
+    if (StringUtils.isBlank(planId)) return Map.of("error", "plan_id is required");
 
     Plan targetPlan = findPlanById(currentPlan, planId);
-    if (targetPlan == null)
-      return Map.of("error", "Plan not found: " + planId);
+    if (targetPlan == null) return Map.of("error", "Plan not found: " + planId);
 
     try {
       targetPlan.finish(PlanStatus.valueOf(statusStr.toUpperCase()), outcome);
@@ -175,9 +202,13 @@ public class Planning {
     }
   }
 
-  @Schema(name = "view_current_plan", description = "View the complete plan including all subtasks, their statuses, and progress. toolContext is injected by the runtime.")
+  @Schema(
+      name = "view_current_plan",
+      description =
+          "View the complete plan including all subtasks, their statuses, and progress. toolContext is injected by the runtime.")
   public Plan viewCurrentPlan(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext) {
+      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext) {
     return getCurrentPlan(toolContext);
   }
 

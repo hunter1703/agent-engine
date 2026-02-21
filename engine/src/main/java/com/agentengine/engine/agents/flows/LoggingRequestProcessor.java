@@ -17,11 +17,16 @@ public final class LoggingRequestProcessor implements RequestProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(LoggingRequestProcessor.class);
 
   @Override
-  public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
+  public Single<RequestProcessingResult> processRequest(
+      final InvocationContext context, final LlmRequest request) {
     if (LOG.isDebugEnabled()) {
       final Session session = context == null ? null : context.session();
-      final List<Event> events = session == null ? List.of() : CollectionUtils.nullSafeList(session.events());
-      LOG.debug("Processing LLM request - events={} request={}", JsonUtils.toJson(events), JsonUtils.toJson(request));
+      final List<Event> events =
+          session == null ? List.of() : CollectionUtils.nullSafeList(session.events());
+      LOG.debug(
+          "Processing LLM request - events={} request={}",
+          JsonUtils.toJson(events),
+          JsonUtils.toJson(request));
     }
     return Single.just(RequestProcessingResult.create(request, List.of()));
   }

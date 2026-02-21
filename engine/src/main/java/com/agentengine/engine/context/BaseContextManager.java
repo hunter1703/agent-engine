@@ -2,7 +2,6 @@ package com.agentengine.engine.context;
 
 import com.agentengine.engine.api.ContextManager;
 import com.google.genai.types.Content;
-
 import java.util.List;
 import java.util.function.UnaryOperator;
 
@@ -17,5 +16,4 @@ public class BaseContextManager implements ContextManager {
   public UnaryOperator<List<Content>> getPromptBuilder() {
     return promptBuilder;
   }
-
 }

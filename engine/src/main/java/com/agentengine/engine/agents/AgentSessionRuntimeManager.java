@@ -15,12 +15,10 @@ import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
-
+import jakarta.inject.Singleton;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
-import jakarta.inject.Singleton;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +32,11 @@ public class AgentSessionRuntimeManager {
   private final AgentSessionRepository agentSessionRepository;
   private final ConcurrentMap<String, AgentSessionRuntime> runtimes = new ConcurrentHashMap<>();
 
-  public AgentSessionRuntimeManager(AgentRepository agentRepository, final AgentProvider agentProvider,
-      final SessionServiceProvider sessionServiceProvider, AgentSessionRepository agentSessionRepository) {
+  public AgentSessionRuntimeManager(
+      AgentRepository agentRepository,
+      final AgentProvider agentProvider,
+      final SessionServiceProvider sessionServiceProvider,
+      AgentSessionRepository agentSessionRepository) {
     this.agentRepository = agentRepository;
     this.agentProvider = agentProvider;
     this.sessionServiceProvider = sessionServiceProvider;
@@ -43,32 +44,45 @@ public class AgentSessionRuntimeManager {
   }
 
   public AgentSessionRuntime getOrStartRuntime(String agentId, String sessionId) {
-        final AgentSession session = StringUtils.isNotBlank(sessionId) ? agentSessionRepository.findById(sessionId).orElse(null) : null;
-        final AgentConfig agentConfig = getAgentConfig(agentId, session);
-        if (agentConfig == null) {
-            String errorMsg = STR."agentId \"\{agentId}\" has no resolved config";
-            LOG.error("Agent configuration resolution failed - agent_id={} error=\"{}\"",
-                    agentId, errorMsg);
-            throw new IllegalArgumentException(errorMsg);
-        }
-        agentConfig.validate();
-        final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
-        return runtimes.computeIfAbsent(resolvedSessionId, _ -> createRuntime(resolvedSessionId, agentConfig, session == null));
+    final AgentSession session =
+        StringUtils.isNotBlank(sessionId)
+            ? agentSessionRepository.findById(sessionId).orElse(null)
+            : null;
+    final AgentConfig agentConfig = getAgentConfig(agentId, session);
+    if (agentConfig == null) {
+      String errorMsg = STR."agentId \"\{agentId}\" has no resolved config";
+      LOG.error(
+          "Agent configuration resolution failed - agent_id={} error=\"{}\"", agentId, errorMsg);
+      throw new IllegalArgumentException(errorMsg);
     }
+    agentConfig.validate();
+    final String resolvedSessionId =
+        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+    return runtimes.computeIfAbsent(
+        resolvedSessionId, _ -> createRuntime(resolvedSessionId, agentConfig, session == null));
+  }
 
-  private AgentSessionRuntime createRuntime(final String sessionId, final AgentConfig agentConfig,
-      final boolean createSession) {
-    final BaseSessionService sessionService = sessionServiceProvider.get(agentConfig.getSessionStore());
+  private AgentSessionRuntime createRuntime(
+      final String sessionId, final AgentConfig agentConfig, final boolean createSession) {
+    final BaseSessionService sessionService =
+        sessionServiceProvider.get(agentConfig.getSessionStore());
 
     if (createSession) {
-      LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
-      sessionService.createSession(agentConfig.getId(), DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
+      LOG.debug(
+          "Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
+      sessionService
+          .createSession(agentConfig.getId(), DEFAULT_USER_ID, buildInitialState(), sessionId)
+          .blockingGet();
     }
 
     final AgentContext agentContext = new AgentContext(agentConfig, sessionService);
     final LlmAgent agent = agentProvider.get(agentConfig, agentContext);
-    final Runner runner = Runner.builder().agent(agent).appName(agentConfig.getId()).sessionService(sessionService)
-        .build();
+    final Runner runner =
+        Runner.builder()
+            .agent(agent)
+            .appName(agentConfig.getId())
+            .sessionService(sessionService)
+            .build();
 
     return new AgentSessionRuntime(sessionId, runner);
   }

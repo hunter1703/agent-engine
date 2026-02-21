@@ -4,7 +4,11 @@ import com.agentengine.engine.api.beans.NamedEntity;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", defaultImpl = AgentConfig.class)
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "type",
+    defaultImpl = AgentConfig.class)
 @BsonDiscriminator(key = "type", value = "default")
 public class AgentConfig extends NamedEntity implements Config {
   private String type;

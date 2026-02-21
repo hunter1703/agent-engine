@@ -45,9 +45,7 @@ public class Violation implements Serializable {
     return (T) details.getOrDefault(key, defaultValue);
   }
 
-  /**
-   * Get a detail value by key.
-   */
+  /** Get a detail value by key. */
   @SuppressWarnings("unchecked")
   public <T> T getDetail(String key) {
     return (T) details.get(key);

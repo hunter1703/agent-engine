@@ -10,7 +10,10 @@ public abstract class NamedAssetHandler<T extends BaseEntity> implements AssetHa
     final PaginatedResult<T> assets = findAssets(request);
     final Page page = request.getQuery() == null ? new Page() : request.getQuery().getPage();
     return PaginatedResult.create(
-        assets.getItems().stream().map(asset -> new NameIdEntity(asset.getId(), getName(asset))).toList(), page);
+        assets.getItems().stream()
+            .map(asset -> new NameIdEntity(asset.getId(), getName(asset)))
+            .toList(),
+        page);
   }
 
   protected abstract String getName(T asset);

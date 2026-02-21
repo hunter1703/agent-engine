@@ -6,7 +6,6 @@ import com.agentengine.interfaces.rest.dto.ErrorResponse;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-
 import java.util.UUID;
 
 @Provider
@@ -19,7 +18,8 @@ public class AgentExceptionMapper implements ExceptionMapper<AgentException> {
       status = 400;
     }
     String traceId = UUID.randomUUID().toString();
-    return Response.status(status).entity(new ErrorResponse(String.valueOf(status), exception.getMessage(), traceId))
+    return Response.status(status)
+        .entity(new ErrorResponse(String.valueOf(status), exception.getMessage(), traceId))
         .build();
   }
 }

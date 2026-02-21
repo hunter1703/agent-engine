@@ -1,12 +1,10 @@
 package com.agentengine.engine.api.services;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.utils.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
-
-import java.util.Optional;
-
 import com.agentengine.engine.api.MicroService;
+import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.query.Query;
+import com.agentengine.engine.api.utils.PaginatedResult;
+import java.util.Optional;
 
 @MicroService
 public interface AgentService {

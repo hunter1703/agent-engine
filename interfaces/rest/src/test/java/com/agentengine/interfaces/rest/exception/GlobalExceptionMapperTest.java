@@ -1,13 +1,13 @@
 package com.agentengine.interfaces.rest.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.agentengine.interfaces.rest.dto.ErrorResponse;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
 public class GlobalExceptionMapperTest {

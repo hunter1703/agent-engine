@@ -1,13 +1,19 @@
 package com.agentengine.interfaces.rest.responses.dtos;
 
-import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-@Schema(oneOf = {MessageCompletedEventData.class, ToolCallEventData.class, ToolCallResultDoneEventData.class,
-    ReasoningDoneEventData.class})
+@Schema(
+    oneOf = {
+      MessageCompletedEventData.class,
+      ToolCallEventData.class,
+      ToolCallResultDoneEventData.class,
+      ReasoningDoneEventData.class
+    })
 public class OutputItemDoneEventData extends BaseResponsesEventData {
   private final Map<String, Object> item;
+
   @JsonProperty("output_index")
   private final Integer outputIndex;
 

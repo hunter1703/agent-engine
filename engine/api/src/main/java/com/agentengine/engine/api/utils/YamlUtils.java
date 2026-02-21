@@ -11,16 +11,14 @@ import java.util.Map;
 public final class YamlUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
-  private YamlUtils() {
-  }
+  private YamlUtils() {}
 
   public static Map<String, Object> toMap(final String yaml) {
     if (yaml == null || yaml.isBlank()) {
       return null;
     }
     try {
-      return OBJECT_MAPPER.readValue(yaml, new TypeReference<>() {
-      });
+      return OBJECT_MAPPER.readValue(yaml, new TypeReference<>() {});
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }

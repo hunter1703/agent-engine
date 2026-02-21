@@ -1,22 +1,20 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.beans.ToolEntity;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.services.ToolService;
+import com.agentengine.engine.api.tools.ToolProvider;
+import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.plugins.PluginLoader;
-import com.google.adk.tools.BaseTool;
 import com.agentengine.engine.utils.Cache;
+import com.google.adk.tools.BaseTool;
 import com.google.common.cache.CacheBuilder;
-
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,7 +35,8 @@ public final class ToolRegistry implements ToolService {
   private final Cache<String, Map<String, ToolProvider>> providerCache;
 
   @Inject
-  public ToolRegistry(final @Any Instance<ToolProvider> providers, final @Any Instance<ToolSuite> suites) {
+  public ToolRegistry(
+      final @Any Instance<ToolProvider> providers, final @Any Instance<ToolSuite> suites) {
     final List<ToolProvider> allProviders = new ArrayList<>();
     final List<ToolSuite> allSuites = new ArrayList<>();
 
@@ -54,17 +53,21 @@ public final class ToolRegistry implements ToolService {
       allSuites.addAll(loadToolSuites(pluginLoader));
     }
 
-    final com.google.common.cache.Cache<String, Map<String, ToolProvider>> toolProvidersGuavaCache = CacheBuilder
-        .newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
-    this.providerCache = new com.agentengine.engine.utils.Cache<>(toolProvidersGuavaCache,
-        key -> getProvidersMap(key, allProviders));
+    final com.google.common.cache.Cache<String, Map<String, ToolProvider>> toolProvidersGuavaCache =
+        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
+    this.providerCache =
+        new com.agentengine.engine.utils.Cache<>(
+            toolProvidersGuavaCache, key -> getProvidersMap(key, allProviders));
 
-    final com.google.common.cache.Cache<String, Map<String, ToolSuite>> suitesGuavaCache = CacheBuilder.newBuilder()
-        .maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
-    this.suiteCache = new com.agentengine.engine.utils.Cache<>(suitesGuavaCache, key -> getSuitesMap(key, allSuites));
+    final com.google.common.cache.Cache<String, Map<String, ToolSuite>> suitesGuavaCache =
+        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
+    this.suiteCache =
+        new com.agentengine.engine.utils.Cache<>(
+            suitesGuavaCache, key -> getSuitesMap(key, allSuites));
   }
 
-  public List<BaseTool> loadTools(final AgentContext agentContext, final List<ToolsConfig> toolsConfig) {
+  public List<BaseTool> loadTools(
+      final AgentContext agentContext, final List<ToolsConfig> toolsConfig) {
     if (CollectionUtils.isEmpty(toolsConfig)) {
       return Collections.emptyList();
     }
@@ -104,11 +107,12 @@ public final class ToolRegistry implements ToolService {
   @Override
   public List<ToolEntity> getAvailableTools(String agentId) {
     final String cacheKey = Objects.requireNonNullElse(agentId, ALL);
-    return Stream
-        .concat(
-            providerCache.get(cacheKey).values().stream().filter(p -> !p.isSubTool())
+    return Stream.concat(
+            providerCache.get(cacheKey).values().stream()
+                .filter(p -> !p.isSubTool())
                 .map(p -> new ToolEntity(p.name(), p.name(), null, p.configsSchema())),
-            suiteCache.get(cacheKey).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
+            suiteCache.get(cacheKey).values().stream()
+                .map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
         .toList();
   }
 
@@ -122,22 +126,25 @@ public final class ToolRegistry implements ToolService {
     if (suite != null) {
       return new ToolEntity(suite.name(), suite.name(), null, suite.configsSchema());
     }
-    final ToolProvider provider = CollectionUtils.getValueFromMap(providerCache.get(cacheKey), toolId);
+    final ToolProvider provider =
+        CollectionUtils.getValueFromMap(providerCache.get(cacheKey), toolId);
     if (provider != null) {
       return new ToolEntity(provider.name(), provider.name(), null, provider.configsSchema());
     }
     return null;
   }
 
-
   private Map<String, ToolSuite> getSuitesMap(String agentId, List<ToolSuite> suites) {
-    return suites.stream().filter(s -> ALL.equals(s.agentId()) || Objects.equals(s.agentId(), agentId))
+    return suites.stream()
+        .filter(s -> ALL.equals(s.agentId()) || Objects.equals(s.agentId(), agentId))
         .collect(Collectors.toUnmodifiableMap(ToolSuite::name, s -> s, (existing, _) -> existing));
   }
 
   private Map<String, ToolProvider> getProvidersMap(String agentId, List<ToolProvider> providers) {
-    return providers.stream().filter(p -> ALL.equals(p.agentId()) || Objects.equals(p.agentId(), agentId))
-        .collect(Collectors.toUnmodifiableMap(ToolProvider::name, p -> p, (existing, _) -> existing));
+    return providers.stream()
+        .filter(p -> ALL.equals(p.agentId()) || Objects.equals(p.agentId(), agentId))
+        .collect(
+            Collectors.toUnmodifiableMap(ToolProvider::name, p -> p, (existing, _) -> existing));
   }
 
   private static List<ToolProvider> loadToolProviders(final ClassLoader classLoader) {

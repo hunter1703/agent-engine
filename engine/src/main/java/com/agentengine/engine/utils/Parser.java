@@ -1,5 +1,7 @@
 package com.agentengine.engine.utils;
 
+import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
+
 import com.agentengine.engine.api.beans.session.ToolCall;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
@@ -16,23 +18,27 @@ import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import io.reactivex.rxjava3.core.Single;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Parser implements RequestProcessor, ResponseProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
-  private static final Pattern TOOL_CALL_PATTERN = Pattern.compile(
-      "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*\\}",
-      Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-  private static final Pattern TOOL_CALL_TAG_PATTERN = Pattern.compile("<\\/?tool_call\\s*/?>",
-      Pattern.CASE_INSENSITIVE);
+  private static final Pattern TOOL_CALL_PATTERN =
+      Pattern.compile(
+          "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*\\}",
+          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern TOOL_CALL_TAG_PATTERN =
+      Pattern.compile("<\\/?tool_call\\s*/?>", Pattern.CASE_INSENSITIVE);
   private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
   private boolean toolCallingEnabled = false;
   private boolean parseToolCallsFromText = true;
@@ -73,20 +79,25 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     if (parsed == null) {
       return content;
     }
-    final List<Part> toolCallParts = CollectionUtils.nullSafeList(toolCallingEnabled
-        ? (parseToolCallsFromText ? getToolCallParts(parsed) : getToolCallParts(content))
-        : List.of());
-    final List<Part> otherParts = content.parts().orElse(Collections.emptyList()).stream()
-        .filter(part -> part.functionCall().orElse(null) == null).toList();
+    final List<Part> toolCallParts =
+        CollectionUtils.nullSafeList(
+            toolCallingEnabled
+                ? (parseToolCallsFromText ? getToolCallParts(parsed) : getToolCallParts(content))
+                : List.of());
+    final List<Part> otherParts =
+        content.parts().orElse(Collections.emptyList()).stream()
+            .filter(part -> part.functionCall().orElse(null) == null)
+            .toList();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.addAll(otherParts);
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }
 
   private static List<Part> getToolCallParts(final Content content) {
-    final List<Part> parts = content.parts().isPresent()
-        ? content.parts().orElse(Collections.emptyList())
-        : Collections.emptyList();
+    final List<Part> parts =
+        content.parts().isPresent()
+            ? content.parts().orElse(Collections.emptyList())
+            : Collections.emptyList();
     return parts.stream().filter(part -> part.functionCall().orElse(null) != null).toList();
   }
 
@@ -104,7 +115,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     final List<Part> allParts = new ArrayList<>(toolCallParts);
     allParts.add(Part.builder().text(finalAnswer).build());
 
-    final List<Part> contentParts = content.parts().isPresent() ? content.parts().orElse(List.of()) : List.of();
+    final List<Part> contentParts =
+        content.parts().isPresent() ? content.parts().orElse(List.of()) : List.of();
     allParts.addAll(contentParts.stream().filter(part -> part.thought().orElse(false)).toList());
 
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
@@ -112,7 +124,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   private static Part buildToolCallPart(final ToolCall toolCall) {
     return Part.builder()
-        .functionCall(FunctionCall.builder().id(toolCall.id()).name(toolCall.name()).args(toolCall.args())).build();
+        .functionCall(
+            FunctionCall.builder().id(toolCall.id()).name(toolCall.name()).args(toolCall.args()))
+        .build();
   }
 
   private Content buildContentFromJsonText(final Content content) {
@@ -122,9 +136,10 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       return null;
     }
     final String finalAnswer = CollectionUtils.getStringValueFromMap(payload, FINAL_ANSWER_KEY);
-    final List<ToolCall> toolCalls = toolCallingEnabled && parseToolCallsFromText
-        ? parseToolCallsFromJsonMap(payload)
-        : List.of();
+    final List<ToolCall> toolCalls =
+        toolCallingEnabled && parseToolCallsFromText
+            ? parseToolCallsFromJsonMap(payload)
+            : List.of();
     final Part finalAnswerPart = Part.builder().text(finalAnswer).build();
     final List<Part> toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
     final List<Part> allParts = new ArrayList<>();
@@ -150,9 +165,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       final String toolName = nameValue.toString();
       final Object argsValue = map.get("args");
       @SuppressWarnings("unchecked")
-      final Map<String, Object> args = argsValue instanceof Map<?, ?> argsMap
-          ? (Map<String, Object>) argsMap
-          : Map.of();
+      final Map<String, Object> args =
+          argsValue instanceof Map<?, ?> argsMap ? (Map<String, Object>) argsMap : Map.of();
       final Object idValue = map.get("id");
       calls.add(new ToolCall(idValue == null ? null : idValue.toString(), toolName, args));
     }
@@ -172,8 +186,7 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       String argsStr = matcher.group(3);
       Map<String, Object> args;
       try {
-        args = JsonUtils.fromJson(argsStr, new TypeReference<>() {
-        });
+        args = JsonUtils.fromJson(argsStr, new TypeReference<>() {});
       } catch (Exception e) {
         LOG.warn("Failed to parse tool call arguments: {}", argsStr, e);
         args = Map.of();
@@ -206,22 +219,28 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   }
 
   @Override
-  public Single<ResponseProcessingResult> processResponse(final InvocationContext context, final LlmResponse response) {
+  public Single<ResponseProcessingResult> processResponse(
+      final InvocationContext context, final LlmResponse response) {
     final boolean isPartial = response.partial().orElse(false);
     final boolean turnCompleted = response.turnComplete().orElse(false);
 
     final LlmResponse.Builder builder = response.toBuilder();
     if (!isPartial && turnCompleted) {
-      response.content().ifPresent(content -> {
-        builder.content(parse(content));
-      });
+      response
+          .content()
+          .ifPresent(
+              content -> {
+                builder.content(parse(content));
+              });
     }
 
-    return Single.just(ResponseProcessingResult.create(builder.build(), List.of(), Optional.empty()));
+    return Single.just(
+        ResponseProcessingResult.create(builder.build(), List.of(), Optional.empty()));
   }
 
   @Override
-  public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
+  public Single<RequestProcessingResult> processRequest(
+      final InvocationContext context, final LlmRequest request) {
     final List<Content> contents = new ArrayList<>();
     for (final Content content : CollectionUtils.nullSafeList(request.contents())) {
       List<Part> parts = new ArrayList<>();
@@ -258,7 +277,8 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       }
     }
 
-    return Single.just(RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
+    return Single.just(
+        RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
   }
 
   private List<Part> getResponseParts(final List<Part> toolResponseParts) {
@@ -271,8 +291,9 @@ public class Parser implements RequestProcessor, ResponseProcessor {
       if (response == null) {
         continue;
       }
-      String responseText = String.format("Tool Response [%s]: %s", response.name().orElse("unknown"),
-          response.response());
+      String responseText =
+          String.format(
+              "Tool Response [%s]: %s", response.name().orElse("unknown"), response.response());
       parsedResponseParts.add(Part.builder().text(responseText).build());
     }
     return parsedResponseParts;
@@ -343,8 +364,10 @@ public class Parser implements RequestProcessor, ResponseProcessor {
           continue;
         }
         String argsJson = JsonUtils.toJson(call.args());
-        String toolCallText = String.format("\n{'id': '%s', 'name': '%s', 'args': %s}", call.id().orElse(""),
-            call.name().orElse(""), argsJson);
+        String toolCallText =
+            String.format(
+                "\n{'id': '%s', 'name': '%s', 'args': %s}",
+                call.id().orElse(""), call.name().orElse(""), argsJson);
         textBuilder.append(toolCallText);
       }
     }

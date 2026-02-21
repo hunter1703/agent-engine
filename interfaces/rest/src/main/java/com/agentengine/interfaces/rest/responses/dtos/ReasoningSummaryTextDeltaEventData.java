@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReasoningSummaryTextDeltaEventData extends BaseResponsesEventData {
   private final String delta;
+
   @JsonProperty("summary_index")
   private final Integer summaryIndex;
 

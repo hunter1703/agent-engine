@@ -12,6 +12,7 @@ public class LazyLoader<T> {
   public LazyLoader(Supplier<T> provider) {
     this.provider = provider;
   }
+
   public T getInstance() {
     if (instance == null) {
       lock.lock();

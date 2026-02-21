@@ -6,8 +6,7 @@ public class Query {
   private Filter filter;
   private Page page;
 
-  public Query() {
-  }
+  public Query() {}
 
   public Filter getFilter() {
     return filter;

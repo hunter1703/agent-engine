@@ -15,7 +15,8 @@ public final class PlanContextRequestProcessor implements RequestProcessor {
   private static final String PLAN_STATE_KEY = PlanningUtils.PLAN_STATE_KEY;
 
   @Override
-  public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
+  public Single<RequestProcessingResult> processRequest(
+      final InvocationContext context, final LlmRequest request) {
     final Plan plan = extractPlan(context);
     if (plan == null) {
       return Single.just(RequestProcessingResult.create(request, List.of()));
@@ -24,7 +25,8 @@ public final class PlanContextRequestProcessor implements RequestProcessor {
     if (StringUtils.isBlank(summary)) {
       return Single.just(RequestProcessingResult.create(request, List.of()));
     }
-    final LlmRequest updatedRequest = request.toBuilder().appendInstructions(List.of(summary)).build();
+    final LlmRequest updatedRequest =
+        request.toBuilder().appendInstructions(List.of(summary)).build();
     return Single.just(RequestProcessingResult.create(updatedRequest, List.of()));
   }
 
@@ -38,5 +40,4 @@ public final class PlanContextRequestProcessor implements RequestProcessor {
     }
     return CollectionUtils.getValueFromMap(session.state(), PLAN_STATE_KEY, Plan.class);
   }
-
 }

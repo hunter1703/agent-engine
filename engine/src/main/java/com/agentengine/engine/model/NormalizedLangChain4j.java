@@ -13,7 +13,9 @@ import java.util.List;
 
 public final class NormalizedLangChain4j extends LangChain4j {
 
-  public NormalizedLangChain4j(final ChatModel chatModel, final StreamingChatModel streamingChatModel,
+  public NormalizedLangChain4j(
+      final ChatModel chatModel,
+      final StreamingChatModel streamingChatModel,
       final String modelName) {
     super(chatModel, streamingChatModel, modelName);
   }
@@ -25,14 +27,17 @@ public final class NormalizedLangChain4j extends LangChain4j {
   }
 
   private static Flowable<LlmResponse> normalize(final Flowable<LlmResponse> responses) {
-    return Flowable.defer(() -> {
-      final ResponseState state = new ResponseState();
-      return responses.concatMap(response -> mapResponse(response, state))
-          .concatWith(Flowable.defer(() -> finalizeStream(state)));
-    });
+    return Flowable.defer(
+        () -> {
+          final ResponseState state = new ResponseState();
+          return responses
+              .concatMap(response -> mapResponse(response, state))
+              .concatWith(Flowable.defer(() -> finalizeStream(state)));
+        });
   }
 
-  private static Flowable<LlmResponse> mapResponse(LlmResponse response, final ResponseState responseState) {
+  private static Flowable<LlmResponse> mapResponse(
+      LlmResponse response, final ResponseState responseState) {
     response = ensureModelRole(response);
     if (response == null) {
       return Flowable.empty();
@@ -102,7 +107,8 @@ public final class NormalizedLangChain4j extends LangChain4j {
     if (responseState.fullText.isEmpty()) {
       return Flowable.empty();
     }
-    return Flowable.just(markFinal(responseState.lastTextResponse, responseState.fullText.toString()));
+    return Flowable.just(
+        markFinal(responseState.lastTextResponse, responseState.fullText.toString()));
   }
 
   private static LlmResponse markFinal(final LlmResponse response, final String fullText) {

@@ -24,8 +24,10 @@ class UpdateTest {
 
   @Test
   void operationRequiresFieldAndType() {
-    assertThatThrownBy(() -> new Operation(null, OperationType.SET, "value")).isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new Operation("field", null, "value")).isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> new Operation(null, OperationType.SET, "value"))
+        .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> new Operation("field", null, "value"))
+        .isInstanceOf(NullPointerException.class);
   }
 
   @Test

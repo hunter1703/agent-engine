@@ -7,7 +7,6 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
 import io.vertx.json.schema.common.dsl.Schemas;
 import jakarta.inject.Singleton;
-
 import java.util.Map;
 
 @Singleton
@@ -32,6 +31,11 @@ public final class EchoToolProvider implements ToolProvider {
   public Map<String, Object> configsSchema() {
     //noinspection unchecked
     return Schemas.objectSchema()
-        .requiredProperty("prefix", Schemas.stringSchema().withKeyword("description", "A prefix to add before the echoed message")).toJson().mapTo(Map.class);
+        .requiredProperty(
+            "prefix",
+            Schemas.stringSchema()
+                .withKeyword("description", "A prefix to add before the echoed message"))
+        .toJson()
+        .mapTo(Map.class);
   }
 }
