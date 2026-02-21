@@ -40,9 +40,6 @@ public class ShellCommandToolProvider implements ToolProvider {
                     "description",
                     "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
                 .withKeyword("default", 30))
-        .requiredProperty(
-            "command",
-            Schemas.stringSchema().withKeyword("description", "The shell command to execute."))
         .toJson()
         .mapTo(Map.class);
   }
