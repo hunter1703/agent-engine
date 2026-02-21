@@ -40,6 +40,24 @@ public class Bootstrapper {
     LOG.info("Starting data bootstrapping from directory: {}", bootstrapDir);
     Path root = Paths.get(bootstrapDir);
 
+    if (!Files.exists(root)) {
+      // Try resolving relative to current working directory or upward
+      Path current = Paths.get("").toAbsolutePath();
+      LOG.info("Bootstrap directory {} not found in {}, searching upward...", bootstrapDir, current);
+
+      Path candidate = current;
+      while (candidate != null) {
+          Path check = candidate.resolve(bootstrapDir);
+          LOG.debug("Checking for bootstrap directory at: {}", check);
+          if (Files.exists(check)) {
+              root = check;
+              LOG.info("Found bootstrap directory at: {}", root);
+              break;
+          }
+          candidate = candidate.getParent();
+      }
+    }
+
     bootstrapInfraConfigs();
 
     if (!Files.exists(root)) {

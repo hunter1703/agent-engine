@@ -103,11 +103,12 @@ public final class ToolRegistry implements ToolService {
 
   @Override
   public List<ToolEntity> getAvailableTools(String agentId) {
+    final String cacheKey = Objects.requireNonNullElse(agentId, ALL);
     return Stream
         .concat(
-            providerCache.get(agentId).values().stream().filter(p -> !p.isSubTool())
+            providerCache.get(cacheKey).values().stream().filter(p -> !p.isSubTool())
                 .map(p -> new ToolEntity(p.name(), p.name(), null, p.configsSchema())),
-            suiteCache.get(agentId).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
+            suiteCache.get(cacheKey).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
         .toList();
   }
 
@@ -116,11 +117,12 @@ public final class ToolRegistry implements ToolService {
     if (toolId == null) {
       return null;
     }
-    final ToolSuite suite = CollectionUtils.getValueFromMap(suiteCache.get(agentId), toolId);
+    final String cacheKey = Objects.requireNonNullElse(agentId, ALL);
+    final ToolSuite suite = CollectionUtils.getValueFromMap(suiteCache.get(cacheKey), toolId);
     if (suite != null) {
       return new ToolEntity(suite.name(), suite.name(), null, suite.configsSchema());
     }
-    final ToolProvider provider = CollectionUtils.getValueFromMap(providerCache.get(agentId), toolId);
+    final ToolProvider provider = CollectionUtils.getValueFromMap(providerCache.get(cacheKey), toolId);
     if (provider != null) {
       return new ToolEntity(provider.name(), provider.name(), null, provider.configsSchema());
     }

@@ -175,7 +175,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
       return PaginatedResult.create(entities, page, total);
     } catch (Exception e) {
-      throw new RuntimeException("Error finding all entities", e);
+      LOG.error("Error finding all entities in collection: {} with query: {}", collectionName, query, e);
+      throw new RuntimeException("Error finding all entities in " + collectionName, e);
     }
   }
 

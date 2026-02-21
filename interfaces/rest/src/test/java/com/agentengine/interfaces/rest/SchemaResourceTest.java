@@ -24,7 +24,7 @@ public class SchemaResourceTest {
     public void testResolveToolConfigSchema() {
         String payload = """
             {
-                "assetType": "tool",
+                "assetType": "tool_configs",
                 "assetId": "echo",
                 "agentId": "ALL"
             }
@@ -33,7 +33,7 @@ public class SchemaResourceTest {
         given()
             .contentType(ContentType.JSON)
             .body(payload)
-            .when().post("/schemas/tool_configs")
+            .when().post("/schemas")
             .then()
             .statusCode(200)
             .body("type", equalTo("object"))
@@ -42,11 +42,17 @@ public class SchemaResourceTest {
 
     @Test
     public void testUnsupportedPostType() {
-        String payload = "{}";
+        String payload = """
+            {
+                "assetType": "unsupported",
+                "assetId": "any",
+                "agentId": "ALL"
+            }
+            """;
         given()
             .contentType(ContentType.JSON)
             .body(payload)
-            .when().post("/schemas/unsupported")
+            .when().post("/schemas")
             .then()
             .statusCode(400);
     }
