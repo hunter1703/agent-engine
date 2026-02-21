@@ -1,6 +1,5 @@
 {
   "schema": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Agent Configuration",
     "type": "object",
     "required": [
@@ -21,11 +20,6 @@
         "title": "Agent Name",
         "description": "Display name shown in UIs."
       },
-      "description": {
-        "type": "string",
-        "title": "Agent Description",
-        "description": "Long-form summary of the agent's role and scope."
-      },
       "type": {
         "type": "string",
         "title": "Agent Type",
@@ -38,8 +32,7 @@
       "model": {
         "$ref": "#/$defs/AgentModelConfig",
         "title": "Model Configuration",
-        "description": "Language model configuration for this agent.",
-        "help": "Set `modelId` to an entry from `model.json`."
+        "description": "Language model configuration for this agent."
       }
     },
     "$defs": {
@@ -177,14 +170,12 @@
           "toolName": {
             "type": "string",
             "title": "Tool Name",
-            "description": "Name of the tool or tool suite.",
-            "help": "Select a tool from the list (e.g., `echo`, `planning`)."
+            "description": "Name of the tool.",
+            "help": "Select a tool from the list"
           },
           "configs": {
             "type": "object",
-            "title": "Tool Configuration Params",
-            "description": "Custom parameters for the tool.",
-            "help": "{ \"param1\": \"value1\" }"
+            "title": "Tool Configuration Params"
           }
         }
       },
@@ -269,6 +260,18 @@
               "method": "POST",
               "body": {
                 "assetType": "tool"
+              }
+            }
+          },
+          "configs": {
+            "widget": "SCHEMA_LOOKUP",
+            "lookupRequest": {
+              "url": "/schemas",
+              "method": "POST",
+              "body": {
+                "assetType": "tool_configs",
+                "assetId": "$toolName",
+                "agentId": "$.id"
               }
             }
           }

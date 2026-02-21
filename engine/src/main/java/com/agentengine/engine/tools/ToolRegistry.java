@@ -106,10 +106,27 @@ public final class ToolRegistry implements ToolService {
     return Stream
         .concat(
             providerCache.get(agentId).values().stream().filter(p -> !p.isSubTool())
-                .map(p -> new ToolEntity(p.name(), p.name(), null)),
-            suiteCache.get(agentId).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null)))
+                .map(p -> new ToolEntity(p.name(), p.name(), null, p.configsSchema())),
+            suiteCache.get(agentId).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
         .toList();
   }
+
+  @Override
+  public ToolEntity getToolById(String agentId, String toolId) {
+    if (toolId == null) {
+      return null;
+    }
+    final ToolSuite suite = CollectionUtils.getValueFromMap(suiteCache.get(agentId), toolId);
+    if (suite != null) {
+      return new ToolEntity(suite.name(), suite.name(), null, suite.configsSchema());
+    }
+    final ToolProvider provider = CollectionUtils.getValueFromMap(providerCache.get(agentId), toolId);
+    if (provider != null) {
+      return new ToolEntity(provider.name(), provider.name(), null, provider.configsSchema());
+    }
+    return null;
+  }
+
 
   private Map<String, ToolSuite> getSuitesMap(String agentId, List<ToolSuite> suites) {
     return suites.stream().filter(s -> ALL.equals(s.agentId()) || Objects.equals(s.agentId(), agentId))

@@ -68,7 +68,7 @@ public final class CollectionUtils {
     return (String) map.get(key);
   }
 
-  public static <T> T getValueFromMap(final Map<String, Object> map, final String key) {
+  public static <T> T getValueFromMap(final Map<String, ?> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
