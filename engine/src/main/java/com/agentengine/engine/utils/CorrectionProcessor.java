@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class CorrectionProcessor implements RequestProcessor, ResponseProcessor {
 
-  private static final Logger logger = LoggerFactory.getLogger(CorrectionProcessor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CorrectionProcessor.class);
   private static final String VIOLATION_KEY_PREFIX = "correction.violations.";
 
   protected abstract List<Violation> detectViolations(
@@ -56,12 +56,12 @@ public abstract class CorrectionProcessor implements RequestProcessor, ResponseP
       InvocationContext context, LlmResponse response) {
     List<Violation> violations = detectViolations(context, response);
     if (CollectionUtils.isEmpty(violations)) {
-      logger.debug("No violations detected in response");
+      LOG.debug("No violations detected in response");
       return Single.just(
           ResponseProcessingResult.create(response, ImmutableList.of(), Optional.empty()));
     }
 
-    logger.warn(
+    LOG.warn(
         "Detected {} violation(s): {}",
         violations.size(),
         violations.stream().map(Violation::getCode).toList());
@@ -79,11 +79,11 @@ public abstract class CorrectionProcessor implements RequestProcessor, ResponseP
     List<Violation> violations = retrieveViolations(context);
 
     if (CollectionUtils.isEmpty(violations)) {
-      logger.debug("No violations to correct");
+      LOG.debug("No violations to correct");
       return Single.just(RequestProcessingResult.create(request, ImmutableList.of()));
     }
 
-    logger.info("Injecting correction prompt for {} violation(s)", violations.size());
+    LOG.info("Injecting correction prompt for {} violation(s)", violations.size());
 
     clearViolations(context);
 

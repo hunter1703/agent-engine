@@ -64,7 +64,6 @@ public class ModelRestAPI {
       content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
   public ModelConfig createModel(final ModelConfig modelConfig) {
-    modelConfig.validate();
     modelService.createModel(modelConfig);
     return modelConfig;
   }
@@ -82,7 +81,6 @@ public class ModelRestAPI {
     if (modelConfig == null || StringUtils.isBlank(modelId)) {
       throw new WebApplicationException("Model config is required", 400);
     }
-    modelConfig.validate();
     return modelService.updateModel(modelConfig);
   }
 

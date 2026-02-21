@@ -2,6 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.constraints.NotNull;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeInfo(
@@ -14,6 +15,7 @@ public class AgentConfig extends NamedEntity implements Config {
   private String type;
   private String description;
   private String avatar;
+  @NotNull
   private AgentModelConfig model;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
 
@@ -64,15 +66,6 @@ public class AgentConfig extends NamedEntity implements Config {
 
   public void setSessionStore(final SessionServiceConfig sessionStore) {
     this.sessionStore = sessionStore;
-  }
-
-  @Override
-  public void validate() {
-    if (model == null) {
-      throw new IllegalArgumentException("model is required");
-    }
-    model.validate();
-    sessionStore.validate();
   }
 
   public enum AgentType {

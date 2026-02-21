@@ -55,7 +55,6 @@ public class AgentSessionRuntimeManager {
           "Agent configuration resolution failed - agent_id={} error=\"{}\"", agentId, errorMsg);
       throw new IllegalArgumentException(errorMsg);
     }
-    agentConfig.validate();
     final String resolvedSessionId =
         StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
     return runtimes.computeIfAbsent(

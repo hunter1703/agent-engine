@@ -1,10 +1,13 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.utils.StringUtils;
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class AgentModelConfig implements Config {
+  @NotBlank
   private String modelId;
   // unique role of the model within the agent
   private String role;
@@ -55,15 +58,5 @@ public class AgentModelConfig implements Config {
 
   public void setTools(final List<ToolsConfig> tools) {
     this.tools = tools;
-  }
-
-  @Override
-  public void validate() {
-    if (StringUtils.isBlank(modelId)) {
-      throw new IllegalArgumentException("engine.reasoningModelId is required");
-    }
-    if (StringUtils.isBlank(systemPrompt)) {
-      throw new IllegalArgumentException("systemPrompt is required");
-    }
   }
 }

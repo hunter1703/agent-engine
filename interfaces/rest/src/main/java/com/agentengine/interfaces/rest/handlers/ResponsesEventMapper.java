@@ -20,7 +20,6 @@ import com.agentengine.interfaces.rest.responses.dtos.ToolCallEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultDoneEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultEventData;
 import com.agui.core.event.BaseEvent;
-import com.agui.core.event.EventMapper;
 import com.agui.core.event.RunErrorEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;

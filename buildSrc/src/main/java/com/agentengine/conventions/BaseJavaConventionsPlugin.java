@@ -53,8 +53,9 @@ public abstract class BaseJavaConventionsPlugin {
         // Apply preview flag to JavaExec tasks
         project.getTasks().withType(JavaExec.class).configureEach(task -> task.jvmArgs("--enable-preview"));
 
-        // Ensure jandex runs before jar creation
+        // Ensure jandex runs before jar creation and javadoc
         project.getTasks().named("jar").configure(task -> task.dependsOn("jandex"));
+        project.getTasks().withType(org.gradle.api.tasks.javadoc.Javadoc.class).configureEach(task -> task.dependsOn("jandex"));
 
         // For Quarkus projects, ensure jandex runs before quarkus dependencies build
         project.getPluginManager().withPlugin("io.quarkus", applied -> project.getTasks()

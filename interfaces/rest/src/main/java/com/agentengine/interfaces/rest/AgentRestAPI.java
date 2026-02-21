@@ -155,7 +155,6 @@ public class AgentRestAPI {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
-    agentConfig.validate();
     return agentService.createAgent(agentConfig);
   }
 
@@ -172,7 +171,6 @@ public class AgentRestAPI {
     if (agentConfig == null || StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent config is required", 400);
     }
-    agentConfig.validate();
     return agentService.updateAgent(agentConfig);
   }
 

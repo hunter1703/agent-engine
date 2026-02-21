@@ -123,7 +123,8 @@
         "type": "object",
         "title": "Agent Model Configuration",
         "required": [
-          "modelId"
+          "modelId",
+          "systemPrompt"
         ],
         "properties": {
           "modelId": {
@@ -147,8 +148,7 @@
           "contextManagerConfig": {
             "$ref": "#/$defs/ContextManagerConfig",
             "title": "Context Manager",
-            "description": "Conversation context management configuration.",
-            "help": "{ \"type\": \"last_n\", \"keepLast\": 24 }"
+            "description": "Conversation context management configuration."
           },
           "tools": {
             "type": "array",
@@ -265,6 +265,7 @@
           },
           "configs": {
             "widget": "SCHEMA_LOOKUP",
+            "dependencies": ["$toolName"],
             "lookupRequest": {
               "url": "/schemas",
               "method": "POST",
