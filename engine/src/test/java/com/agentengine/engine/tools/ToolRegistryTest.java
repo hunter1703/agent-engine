@@ -28,7 +28,7 @@ class ToolRegistryTest {
   void loadToolsFiltersByAgentId() {
     ToolProvider provider = mock(ToolProvider.class);
     when(provider.agentId()).thenReturn("test-agent");
-    when(provider.toolName()).thenReturn("fake");
+    when(provider.name()).thenReturn("fake");
     BaseTool fakeTool = new BaseTool("fake", "test tool") {
       @Override
       public Single<Map<String, Object>> runAsync(final Map<String, Object> args, final ToolContext toolContext) {
@@ -67,7 +67,7 @@ class ToolRegistryTest {
 
     ToolSuite suite = mock(ToolSuite.class);
     when(suite.agentId()).thenReturn("ALL");
-    when(suite.suiteName()).thenReturn("test-suite");
+    when(suite.name()).thenReturn("test-suite");
     when(suite.toolProviders()).thenReturn(List.of(tool1, tool2));
 
     Instance<ToolProvider> providers = mock(Instance.class);
@@ -137,7 +137,7 @@ class ToolRegistryTest {
   private static ToolProvider buildProvider(final String toolName, final String agentId, boolean subTool) {
     ToolProvider provider = mock(ToolProvider.class);
     when(provider.agentId()).thenReturn(agentId);
-    when(provider.toolName()).thenReturn(toolName);
+    when(provider.name()).thenReturn(toolName);
     when(provider.isSubTool()).thenReturn(subTool);
     BaseTool tool = new BaseTool(toolName, "test tool") {
       @Override
@@ -158,11 +158,11 @@ class ToolRegistryTest {
 
     ToolSuite globalSuite = mock(ToolSuite.class);
     when(globalSuite.agentId()).thenReturn("ALL");
-    when(globalSuite.suiteName()).thenReturn("global-suite");
+    when(globalSuite.name()).thenReturn("global-suite");
 
     ToolSuite agentSuite = mock(ToolSuite.class);
     when(agentSuite.agentId()).thenReturn("custom-agent");
-    when(agentSuite.suiteName()).thenReturn("agent-suite");
+    when(agentSuite.name()).thenReturn("agent-suite");
 
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator())

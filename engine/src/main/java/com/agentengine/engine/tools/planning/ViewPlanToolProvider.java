@@ -15,7 +15,7 @@ public final class ViewPlanToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "view_current_plan";
   }
 

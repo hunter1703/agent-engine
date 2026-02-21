@@ -15,7 +15,7 @@ public final class CompletePlanToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "finish_plan";
   }
 

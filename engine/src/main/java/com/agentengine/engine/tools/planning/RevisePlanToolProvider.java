@@ -15,7 +15,7 @@ public final class RevisePlanToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "revise_current_plan";
   }
 

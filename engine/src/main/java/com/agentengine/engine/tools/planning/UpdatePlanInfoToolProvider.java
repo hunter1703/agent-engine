@@ -15,7 +15,7 @@ public final class UpdatePlanInfoToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "update_plan_info";
   }
 

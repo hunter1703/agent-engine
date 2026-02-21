@@ -5,10 +5,7 @@ import com.google.adk.tools.BaseTool;
 
 import java.util.Map;
 
-public interface ToolProvider {
-  String agentId();
-
-  String toolName();
+public interface ToolProvider extends ToolAssetProvider {
 
   BaseTool create(AgentContext agentContext, Map<String, Object> toolConfig);
 

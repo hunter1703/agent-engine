@@ -15,7 +15,7 @@ public class PlanningSuite implements ToolSuite {
   }
 
   @Override
-  public String suiteName() {
+  public String name() {
     return "planning";
   }
 

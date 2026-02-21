@@ -15,7 +15,7 @@ public final class UpdateTaskToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "update_subtask_state";
   }
 

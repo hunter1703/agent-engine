@@ -1,4 +1,4 @@
-package com.agentengine.plugins.echoagent.tools;
+package com.agentengine.engine.tools.echo;
 
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.Annotations.Schema;

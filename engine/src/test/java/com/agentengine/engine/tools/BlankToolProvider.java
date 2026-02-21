@@ -13,7 +13,7 @@ public class BlankToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "";
   }
 

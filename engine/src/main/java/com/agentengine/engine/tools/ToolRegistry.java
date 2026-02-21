@@ -106,19 +106,19 @@ public final class ToolRegistry implements ToolService {
     return Stream
         .concat(
             providerCache.get(agentId).values().stream().filter(p -> !p.isSubTool())
-                .map(p -> new ToolEntity(p.toolName(), p.toolName(), null)),
-            suiteCache.get(agentId).values().stream().map(s -> new ToolEntity(s.suiteName(), s.suiteName(), null)))
+                .map(p -> new ToolEntity(p.name(), p.name(), null)),
+            suiteCache.get(agentId).values().stream().map(s -> new ToolEntity(s.name(), s.name(), null)))
         .toList();
   }
 
   private Map<String, ToolSuite> getSuitesMap(String agentId, List<ToolSuite> suites) {
     return suites.stream().filter(s -> ALL.equals(s.agentId()) || Objects.equals(s.agentId(), agentId))
-        .collect(Collectors.toUnmodifiableMap(ToolSuite::suiteName, s -> s, (existing, _) -> existing));
+        .collect(Collectors.toUnmodifiableMap(ToolSuite::name, s -> s, (existing, _) -> existing));
   }
 
   private Map<String, ToolProvider> getProvidersMap(String agentId, List<ToolProvider> providers) {
     return providers.stream().filter(p -> ALL.equals(p.agentId()) || Objects.equals(p.agentId(), agentId))
-        .collect(Collectors.toUnmodifiableMap(ToolProvider::toolName, p -> p, (existing, _) -> existing));
+        .collect(Collectors.toUnmodifiableMap(ToolProvider::name, p -> p, (existing, _) -> existing));
   }
 
   private static List<ToolProvider> loadToolProviders(final ClassLoader classLoader) {

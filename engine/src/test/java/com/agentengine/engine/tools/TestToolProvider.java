@@ -15,7 +15,7 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public String toolName() {
+  public String name() {
     return "fake";
   }
 
