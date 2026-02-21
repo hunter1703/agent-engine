@@ -2,7 +2,6 @@ package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.tools.planning.Planning;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.FunctionTool;
 import jakarta.inject.Singleton;

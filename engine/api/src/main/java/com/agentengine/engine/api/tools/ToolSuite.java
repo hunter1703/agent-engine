@@ -4,9 +4,9 @@ import java.util.List;
 
 public interface ToolSuite {
 
-    String agentId();
+  String agentId();
 
-    String suiteName();
+  String suiteName();
 
-    List<ToolProvider> toolProviders();
+  List<ToolProvider> toolProviders();
 }

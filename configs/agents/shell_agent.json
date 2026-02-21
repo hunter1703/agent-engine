@@ -10,13 +10,13 @@
       "type": "last_n",
       "keepLast": 10000
     },
-    "tools": {
-      "enabled": ["run_cmd"],
-      "configs": {
-        "run_cmd": {
+    "tools": [
+      {
+        "toolName": "run_cmd",
+        "configs": {
           "timeout_seconds": 3000
         }
       }
-    }
+    ]
   }
 }

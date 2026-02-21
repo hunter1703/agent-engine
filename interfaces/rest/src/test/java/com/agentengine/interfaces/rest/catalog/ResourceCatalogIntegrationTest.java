@@ -56,6 +56,19 @@ public class ResourceCatalogIntegrationTest {
 
   @Test
   public void testGetAgentEchoAgent() {
+    String payload = """
+        {
+          "type": "default",
+          "id": "echo_agent",
+          "name": "Echo Agent",
+          "model": {
+            "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
+            "role": "reasoning",
+            "systemPrompt": "You are an echo-only assistant."
+          }
+        }
+        """;
+    given().contentType(ContentType.JSON).body(payload).when().post("/v1/agent/agent");
     given().when().get("/v1/catalog/agent/echo_agent").then().statusCode(200);
   }
 

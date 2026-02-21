@@ -105,8 +105,8 @@ class AGUIEventMapperTest {
         .partial(false).build();
 
     final List<BaseEvent> events = Flowable.just(userEvent, modelEvent)
-        .concatMap(e -> mapper.map(e).concatWith(Flowable.empty()))
-        .concatWith(Flowable.defer(mapper::onComplete)).toList().blockingGet();
+        .concatMap(e -> mapper.map(e).concatWith(Flowable.empty())).concatWith(Flowable.defer(mapper::onComplete))
+        .toList().blockingGet();
 
     assertThat(events).extracting(BaseEvent::getType).containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED,
         EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_END,

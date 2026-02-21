@@ -14,7 +14,6 @@ import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.sessions.BaseSessionService;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -37,8 +36,7 @@ class AgentSessionRuntimeManagerTest {
         sessionServiceProvider, agentSessionRepository);
 
     assertThatThrownBy(() -> manager.getOrStartRuntime("non-existent", null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("has no resolved config");
+        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("has no resolved config");
   }
 
   @Test
@@ -91,7 +89,8 @@ class AgentSessionRuntimeManagerTest {
 
     when(agentRepository.findById("agent-id")).thenReturn(Optional.of(agentConfig));
     final BaseSessionService sessionService = mock(BaseSessionService.class);
-    when(sessionService.createSession(any(), any(), any(), any())).thenReturn(Single.just(mock(com.google.adk.sessions.Session.class)));
+    when(sessionService.createSession(any(), any(), any(), any()))
+        .thenReturn(Single.just(mock(com.google.adk.sessions.Session.class)));
     when(sessionServiceProvider.get(any())).thenReturn(sessionService);
     when(agentProvider.get(any(), any())).thenReturn(mock(LlmAgent.class));
 

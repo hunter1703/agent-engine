@@ -5,6 +5,7 @@ import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.services.SessionService;
+import com.agentengine.engine.api.services.ToolService;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
@@ -14,6 +15,13 @@ import jakarta.inject.Singleton;
  */
 @Singleton
 public class ClientProducer {
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public ToolService toolService(MicroServiceClientProvider provider) {
+    return provider.get(ToolService.class);
+  }
 
   @Produces
   @Singleton

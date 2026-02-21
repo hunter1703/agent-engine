@@ -21,6 +21,7 @@ dependencies {
     implementation libs.quarkus.grpc
     implementation libs.quarkus.arc
     implementation libs.quarkus.opentelemetry
+    implementation libs.guava
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.quarkus.junit5.mockito

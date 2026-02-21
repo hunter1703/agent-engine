@@ -10,15 +10,13 @@
       "type": "last_n",
       "keepLast": 10000
     },
-    "tools": {
-      "enabled": [
-        "echo"
-      ],
-      "configs": {
-        "echo": {
+    "tools": [
+      {
+        "toolName": "echo",
+        "configs": {
           "prefix": "hello-"
         }
       }
-    }
+    ]
   }
 }

@@ -156,6 +156,35 @@
             "title": "Context Manager",
             "description": "Conversation context management configuration.",
             "help": "{ \"type\": \"last_n\", \"keepLast\": 24 }"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ToolsConfig"
+            },
+            "title": "Tools",
+            "description": "List of tools enabled for this model."
+          }
+        }
+      },
+      "ToolsConfig": {
+        "type": "object",
+        "title": "Tool Configuration",
+        "required": [
+          "toolName"
+        ],
+        "properties": {
+          "toolName": {
+            "type": "string",
+            "title": "Tool Name",
+            "description": "Name of the tool or tool suite.",
+            "help": "Select a tool from the list (e.g., `echo`, `planning`)."
+          },
+          "configs": {
+            "type": "object",
+            "title": "Tool Configuration Params",
+            "description": "Custom parameters for the tool.",
+            "help": "{ \"param1\": \"value1\" }"
           }
         }
       },
@@ -228,6 +257,20 @@
           "method": "POST",
           "body": {
             "assetType": "model"
+          }
+        }
+      },
+      "tools": {
+        "items": {
+          "toolName": {
+            "widget": "LOOKUP",
+            "lookupRequest": {
+              "url": "/catalog/list",
+              "method": "POST",
+              "body": {
+                "assetType": "tool"
+              }
+            }
           }
         }
       }
