@@ -9,5 +9,5 @@ public interface ToolProvider {
 
   List<ToolDescriptor> tools();
 
-  Tool create(AgentContext agentContext, String toolName, Map<String, Object> toolConfig);
+  BaseTool create(AgentContext agentContext, String toolName, Map<String, Object> toolConfig);
 }

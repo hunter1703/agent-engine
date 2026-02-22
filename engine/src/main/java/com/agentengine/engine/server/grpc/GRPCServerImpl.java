@@ -1,6 +1,6 @@
 package com.agentengine.engine.server.grpc;
 
-import com.agentengine.engine.api.MicroService;
+import com.agentengine.engine.api.ms.MicroService;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.grpc.Request;
 import com.agentengine.engine.grpc.Response;

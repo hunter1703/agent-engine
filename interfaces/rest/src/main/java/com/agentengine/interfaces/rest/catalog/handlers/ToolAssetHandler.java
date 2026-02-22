@@ -1,10 +1,9 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.services.ToolService;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.utils.Page;
-import com.agentengine.engine.api.utils.PaginatedResult;
+import com.agentengine.engine.api.query.Page;
+import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import jakarta.inject.Inject;
@@ -33,7 +32,7 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
   @Override
   public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
-    List<ToolDescriptor> tools = toolService.getAvailableTools(null);
+    List<ToolDescriptor> tools = toolService.getVisibleTools(null);
 
     Page page =
         request.getQuery() != null && request.getQuery().getPage() != null

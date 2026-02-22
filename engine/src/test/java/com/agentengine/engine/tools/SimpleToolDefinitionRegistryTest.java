@@ -9,6 +9,7 @@ import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
+import com.agentengine.engine.api.tools.ToolSuite;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Instance;
@@ -27,8 +28,10 @@ class SimpleToolDefinitionRegistryTest {
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
+    Instance<ToolSuite> suites = mock(Instance.class);
+    when(suites.iterator()).thenReturn(List.<ToolSuite>of().iterator());
 
-    ToolRegistry registry = new ToolRegistry(providers);
+    ToolRegistry registry = new ToolRegistry(providers, suites);
     Map<String, Object> toolConfigs = Map.of("prefix", "pre-");
     ToolsConfig toolsConfig = new ToolsConfig("fake", toolConfigs);
 
@@ -50,8 +53,10 @@ class SimpleToolDefinitionRegistryTest {
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
+    Instance<ToolSuite> suites = mock(Instance.class);
+    when(suites.iterator()).thenReturn(List.<ToolSuite>of().iterator());
 
-    ToolRegistry registry = new ToolRegistry(providers);
+    ToolRegistry registry = new ToolRegistry(providers, suites);
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
@@ -67,8 +72,10 @@ class SimpleToolDefinitionRegistryTest {
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
+    Instance<ToolSuite> suites = mock(Instance.class);
+    when(suites.iterator()).thenReturn(List.<ToolSuite>of().iterator());
 
-    ToolRegistry registry = new ToolRegistry(providers);
+    ToolRegistry registry = new ToolRegistry(providers, suites);
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
@@ -87,10 +94,12 @@ class SimpleToolDefinitionRegistryTest {
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
+    Instance<ToolSuite> suites = mock(Instance.class);
+    when(suites.iterator()).thenReturn(List.<ToolSuite>of().iterator());
 
-    ToolRegistry registry = new ToolRegistry(providers);
+    ToolRegistry registry = new ToolRegistry(providers, suites);
 
-    List<ToolDescriptor> tools = registry.getAvailableTools("custom-agent");
+    List<ToolDescriptor> tools = registry.getVisibleTools("custom-agent");
 
     assertThat(tools).hasSize(3);
     assertThat(tools)

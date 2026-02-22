@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 
 public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, V> delegate;
-  final Function<K, ? extends V> loader;
+  private final Function<K, ? extends V> loader;
 
   public Cache(com.google.common.cache.Cache<K, V> delegate, Function<K, ? extends V> loader) {
     this.delegate = delegate;

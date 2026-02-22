@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.utils;
+package com.agentengine.engine.api.query;
 
 public class Page {
   private int offset;

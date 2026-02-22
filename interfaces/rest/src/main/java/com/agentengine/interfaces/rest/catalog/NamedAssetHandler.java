@@ -2,9 +2,8 @@ package com.agentengine.interfaces.rest.catalog;
 
 import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.beans.NamedEntity;
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.utils.Page;
-import com.agentengine.engine.api.utils.PaginatedResult;
+import com.agentengine.engine.api.query.Page;
+import com.agentengine.engine.api.query.PaginatedResult;
 
 public abstract class NamedAssetHandler<T> implements AssetHandler<T> {
 

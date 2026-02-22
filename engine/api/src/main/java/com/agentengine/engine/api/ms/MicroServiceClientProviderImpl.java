@@ -1,7 +1,5 @@
-package com.agentengine.engine.grpc.client;
+package com.agentengine.engine.api.ms;
 
-import com.agentengine.engine.api.MicroService;
-import com.agentengine.engine.api.MicroServiceClientProvider;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InjectableBean;

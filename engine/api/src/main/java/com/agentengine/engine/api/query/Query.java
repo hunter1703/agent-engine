@@ -1,7 +1,5 @@
 package com.agentengine.engine.api.query;
 
-import com.agentengine.engine.api.utils.Page;
-
 public class Query {
   private Filter filter;
   private Page page;
