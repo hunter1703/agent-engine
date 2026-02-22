@@ -2,7 +2,6 @@ package com.agentengine.engine.tools.echo;
 
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.Annotations.Schema;
 import io.vertx.json.schema.common.dsl.Schemas;
@@ -10,7 +9,6 @@ import io.vertx.json.schema.common.dsl.Schemas;
 import java.util.List;
 import java.util.Map;
 
-@AgentTool
 public final class EchoTool implements Tool {
   private static final String TOOL_NAME = "echo";
   public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, List.of(ALL), configsSchema());

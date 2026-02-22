@@ -1,12 +1,13 @@
 package com.agentengine.engine.api.services;
 
 import com.agentengine.engine.api.MicroService;
-import com.agentengine.engine.api.beans.ToolEntity;
+import com.agentengine.engine.api.tools.ToolDescriptor;
+
 import java.util.List;
 
 @MicroService
 public interface ToolService {
-  List<ToolEntity> getAvailableTools(String agentId);
+  List<ToolDescriptor> getAvailableTools(String agentId);
 
-  ToolEntity getToolById(String agentId, String toolId);
+  ToolDescriptor getToolById(String agentId, String toolId);
 }

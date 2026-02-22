@@ -7,7 +7,7 @@ import com.google.adk.tools.BaseTool;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class CreatePlanAgentToolTestDefinition {
+class CreatePlanSimpleToolTestDefinition {
 
   @Test
   void createPlanToolDoesNotRequireSessionService() {

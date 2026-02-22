@@ -1,17 +1,19 @@
 package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.beans.session.Plan;
+import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.SimpleTool;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;
 import java.util.Map;
 
-public final class UpdatePlanInfoTool extends SimpleTool {
+public final class UpdatePlanInfoTool implements Tool {
   private static final String TOOL_NAME = "update_plan_info";
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
 
   @Schema(
       name = "update_plan_info",
@@ -55,6 +57,6 @@ public final class UpdatePlanInfoTool extends SimpleTool {
 
   @Override
   public ToolDescriptor descriptor() {
-    return new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
+    return DESCRIPTOR;
   }
 }

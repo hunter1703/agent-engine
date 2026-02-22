@@ -5,7 +5,7 @@ import com.agentengine.engine.api.utils.PaginatedResult;
 import java.util.Map;
 
 /** Interface for asset handlers that process requests for specific asset types */
-public interface AssetHandler<T extends BaseEntity> {
+public interface AssetHandler<T> {
 
   /** Returns the asset type this handler supports */
   String getAssetType();

@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.api.beans.ToolEntity;
 import com.agentengine.engine.api.services.ToolService;
+import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -25,9 +25,9 @@ public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
 
   @Override
   public Object handle(SchemaLookupRequest request) {
-    ToolEntity tool = toolService.getToolById(request.agentId(), request.assetId());
-    if (tool != null && tool.getConfigsSchema() != null) {
-      return tool.getConfigsSchema();
+    ToolDescriptor tool = toolService.getToolById(request.agentId(), request.assetId());
+    if (tool != null && tool.configsSchema() != null) {
+      return tool.configsSchema();
     }
     return Collections.emptyMap();
   }

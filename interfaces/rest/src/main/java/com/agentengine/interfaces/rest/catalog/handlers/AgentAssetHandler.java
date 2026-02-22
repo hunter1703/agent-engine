@@ -45,9 +45,4 @@ public class AgentAssetHandler extends NamedAssetHandler<AgentConfig> {
 
     return result;
   }
-
-  @Override
-  protected String getName(AgentConfig asset) {
-    return asset.getName();
-  }
 }

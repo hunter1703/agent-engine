@@ -1,7 +1,8 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.api.beans.ToolEntity;
+import com.agentengine.engine.api.beans.BaseEntity;
 import com.agentengine.engine.api.services.ToolService;
+import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.Page;
 import com.agentengine.engine.api.utils.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
@@ -10,10 +11,11 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Singleton
-public class ToolAssetHandler extends NamedAssetHandler<ToolEntity> {
+public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
   private static final String ASSET_TYPE = "tool";
 
@@ -30,8 +32,8 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolEntity> {
   }
 
   @Override
-  public PaginatedResult<ToolEntity> findAssets(AssetRequest request) {
-    List<ToolEntity> tools = toolService.getAvailableTools(null);
+  public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
+    List<ToolDescriptor> tools = toolService.getAvailableTools(null);
 
     Page page =
         request.getQuery() != null && request.getQuery().getPage() != null
@@ -42,17 +44,22 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolEntity> {
   }
 
   @Override
-  public Map<String, ToolEntity> getAssetsByIds(AssetRequest request) {
+  public Map<String, ToolDescriptor> getAssetsByIds(AssetRequest request) {
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return Map.of();
     }
     return findAssets(request).getItems().stream()
-        .filter(t -> request.getKeys().contains(t.getId()))
-        .collect(Collectors.toMap(ToolEntity::getId, t -> t));
+        .filter(t -> request.getKeys().contains(t.name()))
+        .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
   }
 
   @Override
-  protected String getName(ToolEntity asset) {
-    return asset.getName();
+  protected String getId(ToolDescriptor asset) {
+    return asset.name();
+  }
+
+  @Override
+  protected String getName(ToolDescriptor asset) {
+    return asset.name();
   }
 }

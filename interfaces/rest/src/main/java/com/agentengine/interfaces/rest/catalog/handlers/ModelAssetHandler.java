@@ -45,9 +45,4 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
 
     return result;
   }
-
-  @Override
-  protected String getName(ModelConfig asset) {
-    return asset.getName();
-  }
 }

@@ -1,28 +1,24 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.SimpleTool;
 import com.google.adk.tools.Annotations.Schema;
-import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.FunctionTool;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;
 import java.util.Map;
 
-public final class CompletePlanTool extends SimpleTool {
+public final class CompletePlanTool implements Tool {
   private static final String TOOL_NAME = "finish_plan";
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
 
   @Override
   public ToolDescriptor descriptor() {
-    return new ToolDescriptor(
-        TOOL_NAME,
-        List.of(ALL),
-        Map.of());
+    return DESCRIPTOR;
   }
 
   @Schema(

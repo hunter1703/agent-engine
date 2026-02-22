@@ -8,7 +8,7 @@ import com.google.adk.tools.FunctionTool;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class AgentToolDefinitionUtilsTest {
+class SimpleToolDefinitionUtilsTest {
 
   @Test
   void buildToolMessageIncludesSchemaProperties() {

@@ -21,7 +21,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
-class AgentToolDefinitionRegistryTest {
+class SimpleToolDefinitionRegistryTest {
 
   @Test
   void loadToolsFiltersByAgentId() {

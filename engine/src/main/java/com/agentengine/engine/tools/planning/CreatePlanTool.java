@@ -1,13 +1,10 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.session.Plan;
+import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.SimpleTool;
 import com.google.adk.tools.Annotations.Schema;
-import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.FunctionTool;
 import com.google.adk.tools.ToolContext;
 import jakarta.enterprise.context.Dependent;
 import java.util.List;
@@ -16,13 +13,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Dependent
-public final class CreatePlanTool extends SimpleTool {
+public final class CreatePlanTool implements Tool {
   private static final Logger LOG = LoggerFactory.getLogger(CreatePlanTool.class);
   private static final String TOOL_NAME = "create_plan";
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
 
   @Override
   public ToolDescriptor descriptor() {
-    return new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
+    return DESCRIPTOR;
   }
 
   @Schema(

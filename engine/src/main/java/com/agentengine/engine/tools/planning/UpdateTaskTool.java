@@ -2,17 +2,19 @@ package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.SimpleTool;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;
 import java.util.Map;
 
-public final class UpdateTaskTool extends SimpleTool {
+public final class UpdateTaskTool implements Tool {
   private static final String TOOL_NAME = "update_subtask_state";
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
 
   @Schema(
       name = "update_subtask_state",
@@ -60,6 +62,6 @@ public final class UpdateTaskTool extends SimpleTool {
 
   @Override
   public ToolDescriptor descriptor() {
-    return new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
+    return DESCRIPTOR;
   }
 }

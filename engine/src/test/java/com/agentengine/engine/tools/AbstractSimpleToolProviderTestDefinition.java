@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class AbstractAgentToolProviderTestDefinition {
+class AbstractSimpleToolProviderTestDefinition {
 
   @Test
   void exposesDescriptorsAndCreatesTools() {

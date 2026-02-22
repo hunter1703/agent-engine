@@ -19,7 +19,7 @@ public final class EchoToolProvider implements ToolProvider {
 
   @Override
   public List<ToolDescriptor> tools() {
-    return List.of(ShellCommandTool.DESCRIPTOR);
+    return List.of(EchoTool.DESCRIPTOR);
   }
 
   @Override

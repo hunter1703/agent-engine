@@ -1,69 +1,62 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.beans.ToolEntity;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.services.ToolService;
+import com.agentengine.engine.api.tools.Tool;
+import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.Cache;
 import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.FunctionTool;
 import com.google.common.cache.CacheBuilder;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
+
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Singleton
 public final class ToolRegistry implements ToolService {
 
-  private static final String ALL = "ALL";
-
-  private final Cache<String, Map<String, ToolSuite>> suiteCache;
-
-  private final Cache<String, Map<String, ToolProvider>> providerCache;
+  private final Cache<String, Map<String, ToolEntry>> toolCache;
 
   @Inject
-  public ToolRegistry(
-      final @Any Instance<ToolProvider> providers, final @Any Instance<ToolSuite> suites) {
+  public ToolRegistry(final @Any Instance<ToolProvider> providers) {
     final List<ToolProvider> allProviders = new ArrayList<>();
-    final List<ToolSuite> allSuites = new ArrayList<>();
-
     for (ToolProvider provider : providers) {
       allProviders.add(provider);
-    }
-    for (ToolSuite suite : suites) {
-      allSuites.add(suite);
     }
 
     final ClassLoader pluginLoader = PluginLoader.getClassLoader();
     if (pluginLoader != Thread.currentThread().getContextClassLoader()) {
       allProviders.addAll(loadToolProviders(pluginLoader));
-      allSuites.addAll(loadToolSuites(pluginLoader));
     }
 
-    final com.google.common.cache.Cache<String, Map<String, ToolProvider>> toolProvidersGuavaCache =
+    final com.google.common.cache.Cache<String, Map<String, ToolEntry>> toolCacheGuava =
         CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
-    this.providerCache =
-        new com.agentengine.engine.utils.Cache<>(
-            toolProvidersGuavaCache, key -> getProvidersMap(key, allProviders));
-
-    final com.google.common.cache.Cache<String, Map<String, ToolSuite>> suitesGuavaCache =
-        CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build();
-    this.suiteCache =
-        new com.agentengine.engine.utils.Cache<>(
-            suitesGuavaCache, key -> getSuitesMap(key, allSuites));
+    this.toolCache = new Cache<>(toolCacheGuava, agentId -> {
+      final Map<String, ToolEntry> nameVsEntry = new HashMap<>();
+      for (final ToolProvider provider : allProviders) {
+        if (provider == null) {
+          continue;
+        }
+        for (final ToolDescriptor descriptor : CollectionUtils.nullSafeList(provider.tools())) {
+          final String name = descriptor.name();
+          if (StringUtils.isBlank(name) || !matchesAgent(descriptor, agentId)) {
+            continue;
+          }
+          nameVsEntry.put(name, new ToolEntry(descriptor, provider));
+        }
+      }
+      return nameVsEntry;
+    });
   }
 
   public List<BaseTool> loadTools(
@@ -73,78 +66,64 @@ public final class ToolRegistry implements ToolService {
     }
 
     final String agentId = agentContext == null ? null : agentContext.agentId();
-
-    final Map<String, ToolSuite> suiteMap = suiteCache.get(agentId);
-    final Map<String, ToolProvider> providerMap = providerCache.get(agentId);
-
+    final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
+    final Map<String, ToolEntry> toolMap = toolCache.get(cacheKey);
     final List<BaseTool> tools = new ArrayList<>(toolsConfig.size());
 
     for (final ToolsConfig config : toolsConfig) {
-      final String name = config.getToolName();
-
-      final ToolSuite suite = suiteMap.get(name);
-      if (suite != null) {
-        for (final ToolProvider provider : suite.toolProviders()) {
-          final BaseTool tool = provider.create(agentContext, config.getConfigs());
-          if (tool != null) {
-            tools.add(tool);
-          }
-        }
+      if (config == null) {
         continue;
       }
-
-      final ToolProvider provider = providerMap.get(name);
-      if (provider != null) {
-        final BaseTool tool = provider.create(agentContext, config.getConfigs());
-        if (tool != null) {
-          tools.add(tool);
-        }
+      final String name = config.getToolName();
+      if (name == null || name.isBlank()) {
+        continue;
+      }
+      final ToolEntry entry = toolMap.get(name);
+      if (entry == null) {
+        continue;
+      }
+      final Tool tool = entry.provider().create(agentContext, name, config.getConfigs());
+      if (tool != null) {
+        tools.add(FunctionTool.create(tool, "execute"));
       }
     }
     return tools;
   }
 
   @Override
-  public List<ToolEntity> getAvailableTools(String agentId) {
-    final String cacheKey = Objects.requireNonNullElse(agentId, ALL);
-    return Stream.concat(
-            providerCache.get(cacheKey).values().stream()
-                .filter(p -> !p.isSubTool())
-                .map(p -> new ToolEntity(p.name(), p.name(), null, p.configsSchema())),
-            suiteCache.get(cacheKey).values().stream()
-                .map(s -> new ToolEntity(s.name(), s.name(), null, s.configsSchema())))
-        .toList();
+  public List<ToolDescriptor> getAvailableTools(final String agentId) {
+    final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
+    return toolCache.get(cacheKey).values().stream().map(ToolEntry::descriptor).toList();
   }
 
   @Override
-  public ToolEntity getToolById(String agentId, String toolId) {
-    if (toolId == null) {
+  public ToolDescriptor getToolById(final String agentId, final String toolId) {
+    if (toolId == null || toolId.isBlank()) {
       return null;
     }
-    final String cacheKey = Objects.requireNonNullElse(agentId, ALL);
-    final ToolSuite suite = CollectionUtils.getValueFromMap(suiteCache.get(cacheKey), toolId);
-    if (suite != null) {
-      return new ToolEntity(suite.name(), suite.name(), null, suite.configsSchema());
+    final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
+    final ToolEntry entry = CollectionUtils.getValueFromMap(toolCache.get(cacheKey), toolId);
+    if (entry == null) {
+      return null;
     }
-    final ToolProvider provider =
-        CollectionUtils.getValueFromMap(providerCache.get(cacheKey), toolId);
-    if (provider != null) {
-      return new ToolEntity(provider.name(), provider.name(), null, provider.configsSchema());
-    }
-    return null;
+    return entry.descriptor();
   }
 
-  private Map<String, ToolSuite> getSuitesMap(String agentId, List<ToolSuite> suites) {
-    return suites.stream()
-        .filter(s -> ALL.equals(s.agentId()) || Objects.equals(s.agentId(), agentId))
-        .collect(Collectors.toUnmodifiableMap(ToolSuite::name, s -> s, (existing, _) -> existing));
-  }
-
-  private Map<String, ToolProvider> getProvidersMap(String agentId, List<ToolProvider> providers) {
-    return providers.stream()
-        .filter(p -> ALL.equals(p.agentId()) || Objects.equals(p.agentId(), agentId))
-        .collect(
-            Collectors.toUnmodifiableMap(ToolProvider::name, p -> p, (existing, _) -> existing));
+  private static boolean matchesAgent(final ToolDescriptor descriptor, final String agentId) {
+    if (descriptor == null) {
+      return false;
+    }
+    final List<String> agentIds = descriptor.agentIds();
+    if (CollectionUtils.isEmpty(agentIds)) {
+      return true;
+    }
+    if (agentIds.contains(Tool.ALL)) {
+      return true;
+    }
+    if (agentId == null || agentId.isBlank()) {
+      return false;
+    }
+    return agentIds.contains(agentId);
   }
 
   private static List<ToolProvider> loadToolProviders(final ClassLoader classLoader) {
@@ -159,15 +138,5 @@ public final class ToolRegistry implements ToolService {
     return providers;
   }
 
-  private static List<ToolSuite> loadToolSuites(final ClassLoader classLoader) {
-    final List<ToolSuite> suites = new ArrayList<>();
-    final ServiceLoader<ToolSuite> suiteLoader = ServiceLoader.load(ToolSuite.class, classLoader);
-    for (ToolSuite suite : suiteLoader) {
-      if (suite == null) {
-        continue;
-      }
-      suites.add(suite);
-    }
-    return suites;
-  }
+  private record ToolEntry(ToolDescriptor descriptor, ToolProvider provider) {}
 }
