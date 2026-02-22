@@ -93,6 +93,15 @@ Agent Engine's power comes from its modular architecture. Tools are provided by 
 
 At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./plugins` by default).
 
+### Tooling Model
+
+- A tool implements `com.agentengine.engine.api.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, scope, and config schema.
+- `ToolDescriptor.agentIds` is a scope filter: empty or `ALL` means globally available; otherwise the tool is scoped to the listed agent IDs.
+- `@AgentTool` marks auto-discoverable tools. `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
+- `@ToolParam` maps constructor params to config keys. When omitted, parameter names are used (requires compilation with `-parameters`).
+- `ToolParam.AGENT_CONTEXT` or an `AgentContext` parameter injects the current execution context.
+- `ToolSuite` describes a user-facing suite name plus `toolNames()`; selecting the suite in `model.tools` expands to the member tools at runtime.
+
 ### Building Plugins
 
 To compile custom plugins (like the `shell-agent` or `echo-agent`) into your environment:

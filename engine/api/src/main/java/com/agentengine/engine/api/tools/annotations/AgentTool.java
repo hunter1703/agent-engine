@@ -8,6 +8,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/** Marks a CDI-managed tool eligible for auto-discovery. */
 @Documented
 @Dependent
 @Retention(RetentionPolicy.RUNTIME)
