@@ -17,7 +17,7 @@ public final class ViewPlanTool implements Tool {
       name = "view_current_plan",
       description =
           "View the complete plan including all subtasks, their statuses, and progress. toolContext is injected by the runtime.")
-  public Plan viewCurrentPlan(
+  public Plan execute(
       @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext) {
     return PlanningUtils.getCurrentPlan(toolContext);
