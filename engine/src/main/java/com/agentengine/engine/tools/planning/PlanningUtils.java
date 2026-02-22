@@ -6,13 +6,19 @@ import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.google.adk.tools.ToolContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public final class PlanningUtils {
-  public static final String PLAN_STATE_KEY = "currentPlan";
   private static final int MAX_SECTION_ITEMS = 5;
+  private static final Logger LOG = LoggerFactory.getLogger(PlanningUtils.class);
+  public static final String PLAN_STATE_KEY = "currentPlan";
 
   private PlanningUtils() {}
 
@@ -206,6 +212,75 @@ public final class PlanningUtils {
       line.append(" | outcome: ").append(plan.getOutcome());
     }
     return line.toString();
+  }
+
+  public static List<Plan> toPlans(final List<Map<String, Object>> subtasksList) {
+    final List<Map<String, Object>> safeSubtasksList =
+        CollectionUtils.nullSafeMutableList(subtasksList);
+    final List<Plan> subtasks = new ArrayList<>();
+    for (final Map<String, Object> subtaskProps : safeSubtasksList) {
+      final String name = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "name");
+      final String description =
+          CollectionUtils.getStringValueFromMapSafe(subtaskProps, "description");
+      final String expectedOutcome =
+          CollectionUtils.getStringValueFromMapSafe(subtaskProps, "expected_outcome");
+      final Plan subtask = new Plan(name, description, expectedOutcome);
+      final String planId = resolvePlanId(subtaskProps);
+      if (StringUtils.isNotBlank(planId)) {
+        subtask.setId(planId);
+      }
+      final List<Map<String, Object>> nestedSubtasks =
+          CollectionUtils.getListFromMap(subtaskProps, "subtasks");
+      if (CollectionUtils.isNotEmpty(nestedSubtasks)) {
+        subtask.setSubtasks(toPlans(nestedSubtasks));
+      }
+      subtasks.add(subtask);
+    }
+    return subtasks;
+  }
+
+  public static Plan getCurrentPlan(final ToolContext toolContext) {
+    if (toolContext == null) {
+      LOG.warn("toolContext is missing for plan access");
+      return null;
+    }
+    return CollectionUtils.getValueFromMap(
+        toolContext.state(), PLAN_STATE_KEY, Plan.class);
+  }
+
+  public static void savePlan(final ToolContext toolContext, final Plan plan) {
+    if (toolContext == null) {
+      LOG.warn("toolContext is missing for plan save");
+      return;
+    }
+    toolContext.state().put(PLAN_STATE_KEY, plan);
+  }
+
+  static Plan findPlanById(final Plan plan, final String planId) {
+    if (plan == null || StringUtils.isBlank(planId)) {
+      return null;
+    }
+    if (planId.equals(plan.getId())) {
+      return plan;
+    }
+    return _findPlanById(plan.getSubtasks(), planId);
+  }
+
+  private static Plan _findPlanById(final List<Plan> planItems, final String planId) {
+    if (planItems == null || StringUtils.isBlank(planId)) {
+      return null;
+    }
+    for (final Plan planItem : planItems) {
+      final Plan match = findPlanById(planItem, planId);
+      if (match != null) {
+        return match;
+      }
+    }
+    return null;
+  }
+
+  private static String resolvePlanId(final Map<String, Object> planArgsItem) {
+    return CollectionUtils.getStringValueFromMapSafe(planArgsItem, "plan_id");
   }
 
   private record PlanNode(Plan plan, List<String> path) {}

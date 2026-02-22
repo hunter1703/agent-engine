@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
-import com.agentengine.engine.tools.planning.Planning;
+import com.agentengine.engine.tools.planning.CreatePlanTool;
+import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.tools.planning.UpdatePlanInfoTool;
+import com.agentengine.engine.tools.planning.UpdateTaskTool;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;
@@ -22,9 +25,10 @@ class PlanningTest {
     Session session = buildSession(sessionId);
     ToolContext toolContext = buildToolContext(session);
 
-    Planning planning = new Planning();
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    UpdatePlanInfoTool updatePlanInfoTool = new UpdatePlanInfoTool();
     Map<String, Object> result =
-        planning.createPlan(
+        createPlanTool.createPlan(
             toolContext,
             null,
             "Root",
@@ -34,7 +38,7 @@ class PlanningTest {
                 Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
     String planId = (String) result.get("plan_id");
 
-    planning.updatePlanInfo(toolContext, planId, "Updated", null, null);
+    updatePlanInfoTool.updatePlanInfo(toolContext, planId, "Updated", null, null);
 
     Plan plan = loadPlan(session);
     assertThat(plan.getId()).isEqualTo(planId);
@@ -47,8 +51,9 @@ class PlanningTest {
     Session session = buildSession(sessionId);
     ToolContext toolContext = buildToolContext(session);
 
-    Planning planning = new Planning();
-    planning.createPlan(
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    UpdateTaskTool updateTaskTool = new UpdateTaskTool();
+    createPlanTool.createPlan(
         toolContext,
         null,
         "Root",
@@ -59,7 +64,7 @@ class PlanningTest {
     Plan plan = loadPlan(session);
     Plan subtask = plan.getSubtasks().get(0);
 
-    planning.updateSubtaskState(toolContext, subtask.getId(), "DONE", "finished");
+    updateTaskTool.execute(toolContext, subtask.getId(), "DONE", "finished");
 
     Plan updated = loadPlan(session);
     Plan updatedSubtask = updated.getSubtasks().get(0);
@@ -82,6 +87,6 @@ class PlanningTest {
   }
 
   private static Plan loadPlan(final Session session) {
-    return (Plan) session.state().get("currentPlan");
+    return (Plan) session.state().get(PlanningUtils.PLAN_STATE_KEY);
   }
 }

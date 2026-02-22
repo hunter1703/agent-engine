@@ -2,13 +2,12 @@ package com.agentengine.engine.api.tools;
 
 import com.agentengine.engine.api.AgentContext;
 import com.google.adk.tools.BaseTool;
+import java.util.List;
 import java.util.Map;
 
-public interface ToolProvider extends ToolAssetProvider {
+public interface ToolProvider {
 
-  BaseTool create(AgentContext agentContext, Map<String, Object> toolConfig);
+  List<ToolDescriptor> tools();
 
-  default boolean isSubTool() {
-    return false;
-  }
+  Tool create(AgentContext agentContext, String toolName, Map<String, Object> toolConfig);
 }

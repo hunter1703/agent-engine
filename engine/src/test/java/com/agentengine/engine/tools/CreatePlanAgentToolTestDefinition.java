@@ -2,16 +2,17 @@ package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.tools.planning.CreatePlanToolProvider;
+import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.google.adk.tools.BaseTool;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class PlanToolProviderTest {
+class CreatePlanAgentToolTestDefinition {
 
   @Test
   void createPlanToolDoesNotRequireSessionService() {
-    CreatePlanToolProvider provider = new CreatePlanToolProvider();
-    BaseTool created = provider.create(null, null);
+    CreatePlanTool tool = new CreatePlanTool();
+    BaseTool created = tool.create(null, Map.of());
     assertThat(created).isNotNull();
   }
 }
