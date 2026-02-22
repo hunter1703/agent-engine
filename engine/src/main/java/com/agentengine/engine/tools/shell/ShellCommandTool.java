@@ -1,10 +1,11 @@
 package com.agentengine.engine.tools.shell;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.annotations.AgentTool;
+import com.agentengine.engine.api.tools.annotations.ToolConstructor;
+import com.agentengine.engine.api.tools.annotations.ToolParam;
 import com.google.adk.tools.Annotations.Schema;
-import com.google.adk.tools.BaseTool;
 import io.vertx.json.schema.common.dsl.Schemas;
 
 import java.io.BufferedReader;
@@ -18,15 +19,22 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+@AgentTool
 public final class ShellCommandTool implements Tool {
   private static final Pattern BLOCKED = Pattern.compile("(^|[\\s;|&()])(/bin/)?rm(\\s|$)");
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private static final String TOOL_NAME = "run_cmd";
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, List.of(ALL), buildConfigSchema());
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), buildConfigSchema());
   private final Duration timeout;
 
-  public ShellCommandTool(final Duration timeout) {
-    this.timeout = timeout == null ? Duration.ofMinutes(30) : timeout;
+  public ShellCommandTool() {
+    this(null);
+  }
+
+  @ToolConstructor
+  public ShellCommandTool(@ToolParam("timeout_seconds") final Long timeoutSecs) {
+    this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
   }
 
   @Schema(

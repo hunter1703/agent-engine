@@ -4,16 +4,13 @@ import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
-import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.ToolContext;
-import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
 
 public class TestToolProvider implements ToolProvider {
   private static final String TOOL_NAME = "fake";
   private static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(TOOL_NAME, "test-agent", false, Map.of());
+      new ToolDescriptor(TOOL_NAME, List.of("test-agent"), Map.of());
 
   @Override
   public List<ToolDescriptor> tools() {
@@ -28,15 +25,28 @@ public class TestToolProvider implements ToolProvider {
     if (!TOOL_NAME.equals(toolName)) {
       return null;
     }
-    return new BaseTool(TOOL_NAME, "test tool") {
-      @Override
-      public Single<Map<String, Object>> runAsync(
-          final Map<String, Object> args, final ToolContext toolContext) {
-        final Object prefix = toolConfig == null ? null : toolConfig.get("prefix");
-        final String output =
-            (prefix == null ? "" : prefix.toString()) + args.getOrDefault("value", "");
-        return Single.just(Map.of("output", output));
-      }
-    };
+    return new StubTool(toolConfig, DESCRIPTOR);
+  }
+
+  private static final class StubTool implements Tool {
+    private final Map<String, Object> toolConfig;
+    private final ToolDescriptor descriptor;
+
+    private StubTool(final Map<String, Object> toolConfig, final ToolDescriptor descriptor) {
+      this.toolConfig = toolConfig;
+      this.descriptor = descriptor;
+    }
+
+    public Map<String, Object> execute(final String value) {
+      final Object prefix = toolConfig == null ? null : toolConfig.get("prefix");
+      final String output =
+          (prefix == null ? "" : prefix.toString()) + (value == null ? "" : value);
+      return Map.of("output", output);
+    }
+
+    @Override
+    public ToolDescriptor descriptor() {
+      return descriptor;
+    }
   }
 }

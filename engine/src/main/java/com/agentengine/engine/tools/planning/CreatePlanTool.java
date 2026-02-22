@@ -6,13 +6,11 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.ToolContext;
-import jakarta.enterprise.context.Dependent;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Dependent
 public final class CreatePlanTool implements Tool {
   private static final Logger LOG = LoggerFactory.getLogger(CreatePlanTool.class);
   private static final String TOOL_NAME = "create_plan";

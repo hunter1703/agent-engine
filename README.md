@@ -89,7 +89,7 @@ Interact with your agents using the unified REST API:
 
 ## 🧩 Plugins & Custom Tools
 
-Agent Engine's power comes from its modular architecture. Tools are provided by `com.agentengine.engine.api.tools.ToolProvider` implementations. Built-in providers include CDI-discoverable `SimpleTool` beans, while plugins register providers via `META-INF/services`.
+Agent Engine's power comes from its modular architecture. Tools are provided by `com.agentengine.engine.api.tools.ToolProvider` implementations. Built-in providers include the auto-discovery provider for `@AgentTool` classes, while plugins register providers via `META-INF/services`.
 
 At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./plugins` by default).
 
@@ -134,4 +134,5 @@ The repository is structured to separate interface transports from the core LLM 
 - Agent configurations use the native Java schema: `engine` defines the system prompt and model keys, while `context` defines the summarizer model.
 - Enable built-in automated planning by listing `create_plan`, `update_plan_info`, `revise_current_plan`, `update_subtask_state`, `finish_plan`, and `view_current_plan` under `model.tools` for an agent.
 - Plugin tools are discovered via Java `ServiceLoader` entries under `META-INF/services` for `ToolProvider` implementations.
+- Auto-discoverable tools use `@AgentTool` with constructor selection via `@ToolConstructor` and `@ToolParam`.
 - Prompt templates (located in `engine/src/main/resources/prompts`) are natively rendered via `Jinjava`.

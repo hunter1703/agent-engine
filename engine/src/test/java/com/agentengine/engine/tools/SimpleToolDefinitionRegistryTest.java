@@ -5,15 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.beans.ToolEntity;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.ToolContext;
-import io.reactivex.rxjava3.core.Single;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +23,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsFiltersByAgentId() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", "test-agent", false, Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", List.of("test-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -49,7 +46,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsSkipsMismatchedAgentAndNullConfig() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", "other-agent", false, Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", List.of("other-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -66,7 +63,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsSkipsWhenNoEnabledTools() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", "test-agent", false, Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", List.of("test-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -81,10 +78,10 @@ class SimpleToolDefinitionRegistryTest {
 
   @Test
   void getAvailableToolsReturnsAllAndAgentSpecific() {
-    ToolDescriptor globalTool = new ToolDescriptor("global-tool", "ALL", false, Map.of());
-    ToolDescriptor agentTool = new ToolDescriptor("agent-tool", "custom-agent", false, Map.of());
-    ToolDescriptor otherTool = new ToolDescriptor("other-tool", "other-agent", false, Map.of());
-    ToolDescriptor subTool = new ToolDescriptor("sub-tool", "ALL", true, Map.of());
+    ToolDescriptor globalTool = new ToolDescriptor("global-tool", List.of("ALL"), Map.of());
+    ToolDescriptor agentTool = new ToolDescriptor("agent-tool", List.of("custom-agent"), Map.of());
+    ToolDescriptor otherTool = new ToolDescriptor("other-tool", List.of("other-agent"), Map.of());
+    ToolDescriptor subTool = new ToolDescriptor("sub-tool", List.of("ALL"), Map.of());
     ToolProvider provider = new StubToolProvider(globalTool, agentTool, otherTool, subTool);
 
     Instance<ToolProvider> providers = mock(Instance.class);
@@ -93,12 +90,12 @@ class SimpleToolDefinitionRegistryTest {
 
     ToolRegistry registry = new ToolRegistry(providers);
 
-    List<ToolEntity> tools = registry.getAvailableTools("custom-agent");
+    List<ToolDescriptor> tools = registry.getAvailableTools("custom-agent");
 
-    assertThat(tools).hasSize(2);
+    assertThat(tools).hasSize(3);
     assertThat(tools)
-        .extracting(ToolEntity::getName)
-        .containsExactlyInAnyOrder("global-tool", "agent-tool");
+        .extracting(ToolDescriptor::name)
+        .containsExactlyInAnyOrder("global-tool", "agent-tool", "sub-tool");
   }
 
   private static final class StubToolProvider implements ToolProvider {
@@ -114,7 +111,7 @@ class SimpleToolDefinitionRegistryTest {
     }
 
     @Override
-    public BaseTool create(
+    public com.agentengine.engine.api.tools.Tool create(
         final AgentContext agentContext,
         final String toolName,
         final Map<String, Object> toolConfig) {
@@ -123,14 +120,33 @@ class SimpleToolDefinitionRegistryTest {
       }
       final String prefix =
           toolConfig == null ? "" : Objects.toString(toolConfig.get("prefix"), "");
-      return new BaseTool(toolName, "test tool") {
-        @Override
-        public Single<Map<String, Object>> runAsync(
-            final Map<String, Object> args, final ToolContext toolContext) {
-          final String value = Objects.toString(args.get("value"), "");
-          return Single.just(Map.of("output", prefix + value));
-        }
-      };
+      final ToolDescriptor descriptor =
+          descriptors.stream()
+              .filter(item -> item.name().equals(toolName))
+              .findFirst()
+              .orElseThrow();
+      return new StubTool(toolName, prefix, descriptor);
+    }
+  }
+
+  private static final class StubTool implements com.agentengine.engine.api.tools.Tool {
+    private final String name;
+    private final String prefix;
+    private final ToolDescriptor descriptor;
+
+    private StubTool(final String name, final String prefix, final ToolDescriptor descriptor) {
+      this.name = name;
+      this.prefix = prefix;
+      this.descriptor = descriptor;
+    }
+
+    public Map<String, Object> execute(final String value) {
+      return Map.of("output", prefix + value);
+    }
+
+    @Override
+    public ToolDescriptor descriptor() {
+      return descriptor;
     }
   }
 }

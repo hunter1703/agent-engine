@@ -2,6 +2,9 @@ package com.agentengine.engine.tools.echo;
 
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.annotations.AgentTool;
+import com.agentengine.engine.api.tools.annotations.ToolConstructor;
+import com.agentengine.engine.api.tools.annotations.ToolParam;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.Annotations.Schema;
 import io.vertx.json.schema.common.dsl.Schemas;
@@ -9,15 +12,18 @@ import io.vertx.json.schema.common.dsl.Schemas;
 import java.util.List;
 import java.util.Map;
 
+@AgentTool
 public final class EchoTool implements Tool {
   private static final String TOOL_NAME = "echo";
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, List.of(ALL), configsSchema());
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(TOOL_NAME, List.of(ALL), configsSchema());
   private final String prefix;
 
   public EchoTool() {
     this(null);
   }
 
+  @ToolConstructor
   public EchoTool(final String prefix) {
     this.prefix = prefix;
   }
@@ -42,11 +48,11 @@ public final class EchoTool implements Tool {
   private static Map<String, Object> configsSchema() {
     //noinspection unchecked
     return Schemas.objectSchema()
-            .requiredProperty(
-                    "prefix",
-                    Schemas.stringSchema()
-                            .withKeyword("description", "A prefix to add before the echoed message"))
-            .toJson()
-            .mapTo(Map.class);
+        .requiredProperty(
+            "prefix",
+            Schemas.stringSchema()
+                .withKeyword("description", "A prefix to add before the echoed message"))
+        .toJson()
+        .mapTo(Map.class);
   }
 }
