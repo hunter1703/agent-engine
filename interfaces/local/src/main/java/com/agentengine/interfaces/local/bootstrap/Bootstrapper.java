@@ -2,11 +2,11 @@ package com.agentengine.interfaces.local.bootstrap;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.model.TitleConfig;
-import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.engine.repository.InfraMongoRepository;
-import com.agentengine.engine.repository.ModelRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -26,9 +26,9 @@ public class Bootstrapper {
   @ConfigProperty(name = "agent.engine.bootstrap.dir", defaultValue = "configs")
   String bootstrapDir;
 
-  @Inject AgentRepository agentRepository;
+  @Inject AgentService agentService;
 
-  @Inject ModelRepository modelRepository;
+  @Inject ModelService modelService;
 
   @Inject InfraMongoRepository infraMongoRepository;
 
@@ -94,8 +94,9 @@ public class Bootstrapper {
                   if (config.getId() == null) {
                     config.setId(p.getFileName().toString().replace(".json", ""));
                   }
-                  agentRepository.save(config);
+                  agentService.saveAgent(config);
                   LOG.info("Bootstrapped agent: {}", config.getId());
+
                 } catch (Exception e) {
                   LOG.error("Failed to bootstrap agent from file: {}", p, e);
                 }
@@ -118,7 +119,7 @@ public class Bootstrapper {
                   if (config.getId() == null) {
                     config.setId(p.getFileName().toString().replace(".json", ""));
                   }
-                  modelRepository.save(config);
+                  modelService.saveModel(config);
                   LOG.info("Bootstrapped model: {}", config.getId());
                 } catch (Exception e) {
                   LOG.error("Failed to bootstrap model from file: {}", p, e);

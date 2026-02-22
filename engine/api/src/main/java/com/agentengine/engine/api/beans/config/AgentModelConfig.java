@@ -1,15 +1,12 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.engine.api.utils.StringUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class AgentModelConfig implements Config {
-  @NotBlank
-  private String modelId;
+  @NotBlank private String modelId;
   // unique role of the model within the agent
   private String role;
   private String systemPrompt;

@@ -15,8 +15,7 @@ public class AgentConfig extends NamedEntity implements Config {
   private String type;
   private String description;
   private String avatar;
-  @NotNull
-  private AgentModelConfig model;
+  @NotNull private AgentModelConfig model;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
 
   public AgentConfig() {

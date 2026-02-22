@@ -14,6 +14,8 @@ public interface ModelService {
 
   ModelConfig createModel(ModelConfig model);
 
+  ModelConfig saveModel(ModelConfig model);
+
   ModelConfig updateModel(ModelConfig model);
 
   boolean deleteModel(String id);

@@ -25,7 +25,7 @@ public class ShellCommandToolProvider implements ToolProvider {
   public BaseTool create(final AgentContext agentContext, final Map<String, Object> toolConfig) {
     final Long timeoutSeconds = parseTimeoutSeconds(toolConfig);
     final Duration timeout = Duration.ofSeconds(timeoutSeconds == null ? 30 : timeoutSeconds);
-    return FunctionTool.create(new ShellCommandTool(timeout), "command");
+    return FunctionTool.create(new ShellCommandTool(timeout), "runCommand");
   }
 
   @Override

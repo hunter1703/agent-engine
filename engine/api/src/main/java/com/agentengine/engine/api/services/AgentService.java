@@ -14,6 +14,8 @@ public interface AgentService {
 
   AgentConfig createAgent(AgentConfig agent);
 
+  AgentConfig saveAgent(AgentConfig agent);
+
   AgentConfig updateAgent(AgentConfig agent);
 
   boolean deleteAgent(String id);

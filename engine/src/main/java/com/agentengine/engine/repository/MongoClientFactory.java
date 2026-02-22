@@ -17,7 +17,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 public final class MongoClientFactory {
-  private static final String DEFAULT_CONNECTION = "mongodb://localhost:27017";
+  private static final String DEFAULT_CONNECTION = "mongodb://localhost:27018";
 
   private MongoClientFactory() {}
 

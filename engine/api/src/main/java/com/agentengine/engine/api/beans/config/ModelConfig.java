@@ -3,8 +3,6 @@ package com.agentengine.engine.api.beans.config;
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.agentengine.engine.api.utils.StringUtils;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
 import java.util.List;
 import java.util.Locale;
 
@@ -45,10 +43,8 @@ public class ModelConfig extends NamedEntity implements Config {
 
   private String baseUrl;
 
-  @NotBlank
-  private String type;
-  @NotBlank
-  private String model;
+  @NotBlank private String type;
+  @NotBlank private String model;
   private Double temperature;
 
   private Integer topK;

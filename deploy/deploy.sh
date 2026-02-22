@@ -24,7 +24,8 @@ docker-compose -f deploy/docker-compose.yaml up -d mongodb
 
 # 2. Define Bootstrap Function
 bootstrap_data() {
-    API_URL="http://localhost:8080"
+    API_URL="http://localhost:18080"
+
     
     echo "Waiting for REST API to become responsive on $API_URL..."
     until curl -s -m 10 "$API_URL/q/openapi" > /dev/null; do
@@ -84,14 +85,16 @@ if [ "$MODE" == "production" ]; then
     # Create logs directory if it doesn't exist
     mkdir -p "$PROJECT_ROOT/logs"
 
-    echo "Starting Engine (Port 8081, gRPC 9000)..."
-    nohup java --enable-preview -Dquarkus.http.port=8081 -Dquarkus.grpc.server.port=9000 -jar engine/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/engine.log" 2>&1 &
+    echo "Starting Engine (Port 18081, gRPC 19000)..."
+    nohup java --enable-preview -Dquarkus.http.port=18081 -Dquarkus.grpc.server.port=19000 -jar engine/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/engine.log" 2>&1 &
+
     ENGINE_PID=$!
 
-    echo "Starting REST (Port 8080)..."
+    echo "Starting REST (Port 18080)..."
     # Wait a bit for engine to start
     sleep 5
-    nohup java --enable-preview -Dquarkus.http.port=8080 -Dquarkus.grpc.clients.engine.host=localhost -Dquarkus.grpc.clients.engine.port=9000 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/rest.log" 2>&1 &
+    nohup java --enable-preview -Dquarkus.http.port=18080 -Dagentengine.grpc.host=localhost -Dagentengine.grpc.port=19000 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/rest.log" 2>&1 &
+
     REST_PID=$!
 
     echo "Services started. Engine PID: $ENGINE_PID, REST PID: $REST_PID"

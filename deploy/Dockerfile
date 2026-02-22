@@ -33,7 +33,7 @@ COPY --chown=185 interfaces/rest/build/quarkus-app/app/ /deployments/app/
 COPY --chown=185 interfaces/rest/build/quarkus-app/quarkus/ /deployments/quarkus/
 COPY --chown=185 plugins/ /deployments/plugins/
 
-EXPOSE 8080
+EXPOSE 18080
 USER 185
 ENV AB_JOLOKIA_OFF=""
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"

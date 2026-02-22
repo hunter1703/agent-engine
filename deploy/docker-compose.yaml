@@ -6,7 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "18080:18080"
+
     environment:
       - QUARKUS_MONGODB_CONNECTION_STRING=mongodb://mongodb:27017
     depends_on:
@@ -17,7 +18,8 @@ services:
   mongodb:
     image: mongo:6.0
     ports:
-      - "27017:27017" # Exposed for local debugging on standard port
+      - "27018:27017" # Exposed for local debugging on non-standard port 27018
+
     volumes:
       - mongodb_data:/data/db
     networks:

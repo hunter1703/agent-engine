@@ -32,6 +32,11 @@ public class ModelServiceImpl implements ModelService {
   }
 
   @Override
+  public ModelConfig saveModel(ModelConfig model) {
+    return modelRepository.save(model);
+  }
+
+  @Override
   public ModelConfig updateModel(ModelConfig model) {
     return modelRepository.update(model.getId(), model);
   }

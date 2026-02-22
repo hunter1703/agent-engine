@@ -34,9 +34,15 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     this.stub = ServiceGrpc.newBlockingStub(channel);
   }
 
-  /** Convenience constructor that connects to the default local gRPC port. */
+  /** Convenience constructor that connects to the configured gRPC host and port. */
   public MicroServiceInvocationHandler(Class<?> serviceClass) {
-    this(serviceClass, ManagedChannelBuilder.forAddress("localhost", 9000).usePlaintext().build());
+    this(
+        serviceClass,
+        ManagedChannelBuilder.forAddress(
+                System.getProperty("agentengine.grpc.host", "localhost"),
+                Integer.getInteger("agentengine.grpc.port", 9000))
+            .usePlaintext()
+            .build());
   }
 
   @Override
