@@ -1,9 +1,9 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.repository.ModelRepository;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;

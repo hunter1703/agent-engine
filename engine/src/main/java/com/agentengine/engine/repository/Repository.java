@@ -1,9 +1,9 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Update;
-import com.agentengine.engine.api.query.PaginatedResult;
 import java.util.Optional;
 
 /**

@@ -1,9 +1,9 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;

@@ -1,9 +1,10 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
+import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.FunctionTool;
 import java.util.List;
 import java.util.Map;
 
@@ -18,17 +19,17 @@ public class TestToolProvider implements ToolProvider {
   }
 
   @Override
-  public Tool create(
+  public BaseTool create(
       final AgentContext agentContext,
       final String toolName,
       final Map<String, Object> toolConfig) {
     if (!TOOL_NAME.equals(toolName)) {
       return null;
     }
-    return new StubTool(toolConfig, DESCRIPTOR);
+    return FunctionTool.create(new StubTool(toolConfig, DESCRIPTOR), "execute");
   }
 
-  private static final class StubTool implements Tool {
+  private static final class StubTool implements com.agentengine.engine.api.tools.Tool {
     private final Map<String, Object> toolConfig;
     private final ToolDescriptor descriptor;
 

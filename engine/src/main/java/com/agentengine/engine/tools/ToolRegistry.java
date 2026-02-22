@@ -82,7 +82,8 @@ public final class ToolRegistry implements ToolService {
     return catalogCache.get(cacheKey).visibleDescriptors().get(toolId);
   }
 
-  private static List<ToolProvider> collectProviders(final Instance<ToolProvider> providers, final ClassLoader pluginLoader) {
+  private static List<ToolProvider> collectProviders(
+      final Instance<ToolProvider> providers, final ClassLoader pluginLoader) {
     final List<ToolProvider> allProviders = new ArrayList<>();
     for (ToolProvider provider : providers) {
       if (provider != null) {
@@ -172,7 +173,8 @@ public final class ToolRegistry implements ToolService {
       if (StringUtils.isBlank(descriptor.name()) || !matchesAgent(descriptor, agentId)) {
         continue;
       }
-      suiteEntries.putIfAbsent(descriptor.name(), new SuiteEntry(descriptor, getAvailableTools(suite, toolEntries)));
+      suiteEntries.putIfAbsent(
+          descriptor.name(), new SuiteEntry(descriptor, getAvailableTools(suite, toolEntries)));
     }
     return suiteEntries;
   }
@@ -223,8 +225,7 @@ public final class ToolRegistry implements ToolService {
   }
 
   private static List<BaseTool> getToolsForConfig(
-      final ToolCatalog catalog,
-      final AgentContext agentContext, final ToolsConfig config) {
+      final ToolCatalog catalog, final AgentContext agentContext, final ToolsConfig config) {
     if (config == null) {
       return Collections.emptyList();
     }
@@ -237,20 +238,29 @@ public final class ToolRegistry implements ToolService {
     if (suiteEntry != null) {
       for (final String toolName : suiteEntry.toolNames()) {
         final ToolEntry toolEntry = catalog.toolEntries().get(toolName);
-        tools.add(createTool(agentContext, toolEntry, config.getConfigs()));
+        addIfPresent(tools, createTool(agentContext, toolEntry, config.getConfigs()));
       }
     } else {
       final ToolEntry toolEntry = catalog.toolEntries().get(name);
-      tools.add(createTool(agentContext, toolEntry, config.getConfigs()));
+      addIfPresent(tools, createTool(agentContext, toolEntry, config.getConfigs()));
     }
     return tools;
   }
 
-  private static BaseTool createTool(final AgentContext agentContext, final ToolEntry entry, final Map<String, Object> toolConfig) {
+  private static BaseTool createTool(
+      final AgentContext agentContext,
+      final ToolEntry entry,
+      final Map<String, Object> toolConfig) {
     if (entry == null) {
       return null;
     }
     return entry.provider().create(agentContext, entry.descriptor().name(), toolConfig);
+  }
+
+  private static void addIfPresent(final List<BaseTool> tools, final BaseTool tool) {
+    if (tool != null) {
+      tools.add(tool);
+    }
   }
 
   private static boolean matchesAgent(final ToolDescriptor descriptor, final String agentId) {

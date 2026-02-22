@@ -7,7 +7,6 @@ import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolParam;
 import com.google.adk.tools.Annotations.Schema;
 import io.vertx.json.schema.common.dsl.Schemas;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -102,14 +101,14 @@ public final class ShellCommandTool implements Tool {
   private static Map<String, Object> buildConfigSchema() {
     //noinspection unchecked
     return Schemas.objectSchema()
-            .property(
-                    "timeout_seconds",
-                    Schemas.intSchema()
-                            .withKeyword(
-                                    "description",
-                                    "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
-                            .withKeyword("default", 30))
-            .toJson()
-            .mapTo(Map.class);
+        .property(
+            "timeout_seconds",
+            Schemas.intSchema()
+                .withKeyword(
+                    "description",
+                    "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
+                .withKeyword("default", 30))
+        .toJson()
+        .mapTo(Map.class);
   }
 }

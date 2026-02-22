@@ -2,7 +2,6 @@ package com.agentengine.engine.api.query;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
-
 import java.util.Base64;
 import java.util.List;
 import java.util.function.Function;

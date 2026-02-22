@@ -4,11 +4,9 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolParam;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.Annotations.Schema;
 import io.vertx.json.schema.common.dsl.Schemas;
-
 import java.util.List;
 import java.util.Map;
 

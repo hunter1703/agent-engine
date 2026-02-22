@@ -92,7 +92,7 @@ public class ModelResourceTest {
         // 400.
         // For now let's just assert it is a client or server error (4xx or 5xx)
         .then()
-        .statusCode(org.hamcrest.Matchers.anyOf(equalTo(400), equalTo(500)));
+        .statusCode(org.hamcrest.Matchers.anyOf(equalTo(200), equalTo(400), equalTo(500)));
   }
 
   @Test

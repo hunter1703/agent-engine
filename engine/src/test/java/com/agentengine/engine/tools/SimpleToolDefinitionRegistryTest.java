@@ -12,6 +12,8 @@ import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.ToolContext;
+import io.reactivex.rxjava3.core.Single;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +122,7 @@ class SimpleToolDefinitionRegistryTest {
     }
 
     @Override
-    public com.agentengine.engine.api.tools.Tool create(
+    public BaseTool create(
         final AgentContext agentContext,
         final String toolName,
         final Map<String, Object> toolConfig) {
@@ -129,33 +131,14 @@ class SimpleToolDefinitionRegistryTest {
       }
       final String prefix =
           toolConfig == null ? "" : Objects.toString(toolConfig.get("prefix"), "");
-      final ToolDescriptor descriptor =
-          descriptors.stream()
-              .filter(item -> item.name().equals(toolName))
-              .findFirst()
-              .orElseThrow();
-      return new StubTool(toolName, prefix, descriptor);
-    }
-  }
-
-  private static final class StubTool implements com.agentengine.engine.api.tools.Tool {
-    private final String name;
-    private final String prefix;
-    private final ToolDescriptor descriptor;
-
-    private StubTool(final String name, final String prefix, final ToolDescriptor descriptor) {
-      this.name = name;
-      this.prefix = prefix;
-      this.descriptor = descriptor;
-    }
-
-    public Map<String, Object> execute(final String value) {
-      return Map.of("output", prefix + value);
-    }
-
-    @Override
-    public ToolDescriptor descriptor() {
-      return descriptor;
+      return new BaseTool(toolName, "test tool") {
+        @Override
+        public Single<Map<String, Object>> runAsync(
+            final Map<String, Object> args, final ToolContext toolContext) {
+          final String value = Objects.toString(args.get("value"), "");
+          return Single.just(Map.of("output", prefix + value));
+        }
+      };
     }
   }
 }

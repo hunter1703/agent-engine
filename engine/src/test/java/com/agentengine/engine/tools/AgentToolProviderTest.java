@@ -12,6 +12,7 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolParam;
+import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
 import java.util.Map;
@@ -32,20 +33,19 @@ class AgentToolProviderTest {
     config.setId("agent-id");
     AgentContext context = new AgentContext(config, null);
 
-    Tool created = provider.create(context, "sample-tool", Map.of("prefix", "pre-"));
+    BaseTool created = provider.create(context, "sample-tool", Map.of("prefix", "pre-"));
 
     assertThat(provider.tools()).extracting(ToolDescriptor::name).contains("sample-tool");
-    assertThat(created).isInstanceOf(SampleAutoTool.class);
-    SampleAutoTool autoTool = (SampleAutoTool) created;
-    Map<String, Object> output = autoTool.execute("fix");
+    Map<String, Object> output =
+        created.runAsync(Map.of("value", "fix", "arg0", "fix"), null).blockingGet();
     assertThat(output).containsEntry("output", "pre-fix").containsEntry("agentId", "agent-id");
   }
 
   @AgentTool
-  private static final class SampleAutoTool implements Tool {
+  public static final class SampleAutoTool implements Tool {
     private static final String TOOL_NAME = "sample-tool";
     private static final ToolDescriptor DESCRIPTOR =
-        new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
+        new ToolDescriptor(TOOL_NAME, List.of(Tool.ALL), Map.of());
     private final String prefix;
     private final String agentId;
 

@@ -7,13 +7,12 @@ import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.ToolContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class PlanningUtils {
   private static final int MAX_SECTION_ITEMS = 5;
@@ -244,8 +243,7 @@ public final class PlanningUtils {
       LOG.warn("toolContext is missing for plan access");
       return null;
     }
-    return CollectionUtils.getValueFromMap(
-        toolContext.state(), PLAN_STATE_KEY, Plan.class);
+    return CollectionUtils.getValueFromMap(toolContext.state(), PLAN_STATE_KEY, Plan.class);
   }
 
   public static void savePlan(final ToolContext toolContext, final Plan plan) {

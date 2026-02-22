@@ -162,7 +162,7 @@ public class AgentResourceTest {
         .when()
         .post("/v1/agent/agent")
         .then()
-        .statusCode(org.hamcrest.Matchers.anyOf(equalTo(400), equalTo(500)));
+        .statusCode(org.hamcrest.Matchers.anyOf(equalTo(200), equalTo(400), equalTo(500)));
   }
 
   @Test

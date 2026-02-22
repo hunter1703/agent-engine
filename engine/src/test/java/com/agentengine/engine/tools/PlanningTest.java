@@ -28,7 +28,7 @@ class PlanningTest {
     CreatePlanTool createPlanTool = new CreatePlanTool();
     UpdatePlanInfoTool updatePlanInfoTool = new UpdatePlanInfoTool();
     Map<String, Object> result =
-        createPlanTool.createPlan(
+        createPlanTool.execute(
             toolContext,
             null,
             "Root",
@@ -38,7 +38,7 @@ class PlanningTest {
                 Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
     String planId = (String) result.get("plan_id");
 
-    updatePlanInfoTool.updatePlanInfo(toolContext, planId, "Updated", null, null);
+    updatePlanInfoTool.execute(toolContext, planId, "Updated", null, null);
 
     Plan plan = loadPlan(session);
     assertThat(plan.getId()).isEqualTo(planId);
@@ -53,7 +53,7 @@ class PlanningTest {
 
     CreatePlanTool createPlanTool = new CreatePlanTool();
     UpdateTaskTool updateTaskTool = new UpdateTaskTool();
-    createPlanTool.createPlan(
+    createPlanTool.execute(
         toolContext,
         null,
         "Root",

@@ -60,14 +60,14 @@ class ToolSuiteSupportTest {
     }
 
     @Override
-    public Tool create(
+    public BaseTool create(
         final AgentContext agentContext,
         final String toolName,
         final Map<String, Object> toolConfig) {
       if (!MEMBER_DESCRIPTOR.name().equals(toolName)) {
         return null;
       }
-      return new SuiteMemberTool();
+      return com.google.adk.tools.FunctionTool.create(new SuiteMemberTool(), "execute");
     }
 
     @Override

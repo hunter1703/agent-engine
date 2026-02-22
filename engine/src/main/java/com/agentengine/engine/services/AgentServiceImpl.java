@@ -1,9 +1,9 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.AgentService;
-import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.repository.AgentRepository;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
