@@ -18,5 +18,5 @@
   "repeatPenalty": 1.0,
   "toolCallingEnabled": true,
   "toolCallingSupported": true,
-  "instructions": "Use native tool calling only; never emit <tool_call> or </tool_call> in normal text. If those tags are part of the user content or need to be shown literally, wrap them in formatting (e.g., code blocks or quoted strings). Avoid repeating or restating previously emitted text; continue from the last token without re-sending the full sentence."
+  "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool, and do not add user-facing prose after the tool call. If you need to show tool-call tags literally, wrap them in formatting (e.g., code blocks or quoted strings). Avoid repeating or restating previously emitted text; continue from the last token without re-sending the full sentence."
 }
