@@ -2,11 +2,12 @@ package com.agentengine.engine.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.beans.session.Plan;
-import com.agentengine.engine.api.beans.session.PlanStatus;
+import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
-import com.agentengine.engine.tools.planning.UpdatePlanInfoTool;
+import com.agentengine.engine.tools.planning.UpdatePlanTool;
 import com.agentengine.engine.tools.planning.UpdateTaskTool;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
@@ -20,29 +21,23 @@ import org.junit.jupiter.api.Test;
 class PlanningTest {
 
   @Test
-  void updatePlanInfoTargetsPlanById() {
+  void updatePlanTargetsPlanById() {
     String sessionId = "session-1";
     Session session = buildSession(sessionId);
     ToolContext toolContext = buildToolContext(session);
 
     CreatePlanTool createPlanTool = new CreatePlanTool();
-    UpdatePlanInfoTool updatePlanInfoTool = new UpdatePlanInfoTool();
-    Map<String, Object> result =
-        createPlanTool.execute(
-            toolContext,
-            null,
-            "Root",
-            "Desc",
-            "Outcome",
-            List.of(
-                Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
-    String planId = (String) result.get("plan_id");
+    UpdatePlanTool updatePlanTool = new UpdatePlanTool();
+    createPlanTool.execute(
+        toolContext,
+        "Root",
+        "Desc",
+        List.of(new Task("Task", "Task goal")));
 
-    updatePlanInfoTool.execute(toolContext, planId, "Updated", null, null);
+    updatePlanTool.execute(toolContext, "Updated", null);
 
     Plan plan = loadPlan(session);
-    assertThat(plan.getId()).isEqualTo(planId);
-    assertThat(plan.getName()).isEqualTo("Updated");
+    assertThat(plan.getTitle()).isEqualTo("Updated");
   }
 
   @Test
@@ -55,21 +50,19 @@ class PlanningTest {
     UpdateTaskTool updateTaskTool = new UpdateTaskTool();
     createPlanTool.execute(
         toolContext,
-        null,
         "Root",
         "Desc",
-        "Outcome",
-        List.of(Map.of("name", "Task", "description", "Task desc", "expected_outcome", "Done")));
+        List.of(new Task("Task", "Task goal")));
 
     Plan plan = loadPlan(session);
-    Plan subtask = plan.getSubtasks().get(0);
+    Task task = plan.getTasks().get(0);
 
-    updateTaskTool.execute(toolContext, subtask.getId(), "DONE", "finished");
+    updateTaskTool.execute(toolContext, task.getId(), null, null, "DONE", "finished");
 
     Plan updated = loadPlan(session);
-    Plan updatedSubtask = updated.getSubtasks().get(0);
-    assertThat(updatedSubtask.getStatus()).isEqualTo(PlanStatus.DONE);
-    assertThat(updatedSubtask.getOutcome()).isEqualTo("finished");
+    Task updatedTask = updated.getTasks().get(0);
+    assertThat(updatedTask.getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(updatedTask.getResult()).isEqualTo("finished");
   }
 
   private static Session buildSession(final String sessionId) {

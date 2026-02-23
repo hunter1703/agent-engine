@@ -2,7 +2,7 @@ package com.agentengine.engine.utils;
 
 import static com.agentengine.engine.utils.AgentUtils.parseJsonPayload;
 
-import com.agentengine.engine.api.beans.session.ToolCall;
+import com.agentengine.engine.model.ToolCall;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;

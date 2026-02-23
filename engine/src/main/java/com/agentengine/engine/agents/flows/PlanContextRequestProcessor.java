@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents.flows;
 
-import com.agentengine.engine.api.beans.session.Plan;
+import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;

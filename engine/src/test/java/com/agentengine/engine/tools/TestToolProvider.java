@@ -3,15 +3,15 @@ package com.agentengine.engine.tools;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.FunctionTool;
 import java.util.List;
 import java.util.Map;
 
 public class TestToolProvider implements ToolProvider {
   private static final String TOOL_NAME = "fake";
   private static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(TOOL_NAME, List.of("test-agent"), Map.of());
+      new ToolDescriptor(TOOL_NAME, "Fake tool for tests.", List.of("test-agent"), Map.of());
 
   @Override
   public List<ToolDescriptor> tools() {
@@ -26,19 +26,22 @@ public class TestToolProvider implements ToolProvider {
     if (!TOOL_NAME.equals(toolName)) {
       return null;
     }
-    return FunctionTool.create(new StubTool(toolConfig, DESCRIPTOR), "execute");
+    return new StubTool(toolConfig, DESCRIPTOR);
   }
 
-  private static final class StubTool implements com.agentengine.engine.api.tools.Tool {
+  private static final class StubTool extends com.agentengine.engine.api.tools.Tool {
     private final Map<String, Object> toolConfig;
     private final ToolDescriptor descriptor;
 
     private StubTool(final Map<String, Object> toolConfig, final ToolDescriptor descriptor) {
+      super(descriptor);
       this.toolConfig = toolConfig;
       this.descriptor = descriptor;
     }
 
-    public Map<String, Object> execute(final String value) {
+    @ToolSchema(name = "fake")
+    public Map<String, Object> execute(
+        @ToolSchema(name = "value", description = "Input value") final String value) {
       final Object prefix = toolConfig == null ? null : toolConfig.get("prefix");
       final String output =
           (prefix == null ? "" : prefix.toString()) + (value == null ? "" : value);

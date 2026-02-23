@@ -11,7 +11,6 @@ import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.FunctionTool;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -67,7 +66,7 @@ public final class AgentToolProvider implements ToolProvider {
     if (definition == null) {
       return null;
     }
-    return FunctionTool.create(instantiate(definition, agentContext, toolConfig), "execute");
+    return instantiate(definition, agentContext, toolConfig);
   }
 
   private static Tool instantiate(

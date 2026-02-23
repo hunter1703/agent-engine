@@ -5,8 +5,9 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolParam;
-import com.google.adk.tools.Annotations.Schema;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.vertx.json.schema.common.dsl.Schemas;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -19,12 +20,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @AgentTool
-public final class ShellCommandTool implements Tool {
+public final class ShellCommandTool extends Tool {
   private static final Pattern BLOCKED = Pattern.compile("(^|[\\s;|&()])(/bin/)?rm(\\s|$)");
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private static final String TOOL_NAME = "run_cmd";
   public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(TOOL_NAME, List.of(ALL), buildConfigSchema());
+      new ToolDescriptor(
+          TOOL_NAME,
+          "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
+          List.of(ALL),
+          buildConfigSchema());
   private final Duration timeout;
 
   public ShellCommandTool() {
@@ -33,15 +38,14 @@ public final class ShellCommandTool implements Tool {
 
   @ToolConstructor
   public ShellCommandTool(@ToolParam("timeout_seconds") final Long timeoutSecs) {
+    super(DESCRIPTOR);
     this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
   }
 
-  @Schema(
-      name = "run_cmd",
-      description =
-          "Execute ONE shell command using `bash -lc`. Command must be single-line; no heredocs; avoid rm.")
   public Map<String, Object> execute(
-      @Schema(name = "command", description = "The shell command to execute")
+      @ToolSchema(
+              name = "command",
+              description = "The shell command to execute. Can include pipes, redirects, and logic operators.")
           final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");
@@ -90,11 +94,6 @@ public final class ShellCommandTool implements Tool {
       return text;
     }
     return text.substring(0, MAX_OUTPUT_CHARS) + "\n...<truncated>...";
-  }
-
-  @Override
-  public ToolDescriptor descriptor() {
-    return DESCRIPTOR;
   }
 
   @SuppressWarnings("unchecked")

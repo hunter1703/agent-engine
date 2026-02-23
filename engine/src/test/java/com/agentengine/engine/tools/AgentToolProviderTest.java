@@ -42,21 +42,24 @@ class AgentToolProviderTest {
   }
 
   @AgentTool
-  public static final class SampleAutoTool implements Tool {
+  public static final class SampleAutoTool extends Tool {
     private static final String TOOL_NAME = "sample-tool";
     private static final ToolDescriptor DESCRIPTOR =
-        new ToolDescriptor(TOOL_NAME, List.of(Tool.ALL), Map.of());
+        new ToolDescriptor(TOOL_NAME, "Sample tool for testing.", List.of(Tool.ALL), Map.of());
     private final String prefix;
     private final String agentId;
 
     public SampleAutoTool() {
-      this(null, null);
+      super(DESCRIPTOR);
+      this.prefix = "";
+      this.agentId = null;
     }
 
     @ToolConstructor
     public SampleAutoTool(
         @ToolParam("prefix") final String prefix,
         @ToolParam(ToolParam.AGENT_CONTEXT) final AgentContext agentContext) {
+      super(DESCRIPTOR);
       this.prefix = prefix == null ? "" : prefix;
       this.agentId = agentContext == null ? null : agentContext.agentId();
     }

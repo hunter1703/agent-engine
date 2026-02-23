@@ -7,7 +7,6 @@ import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.FunctionTool;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
@@ -16,23 +15,23 @@ import java.util.function.Supplier;
 @Singleton
 public final class PlanningToolProvider implements ToolProvider, ToolSuite {
   private static final ToolDescriptor SUITE_DESCRIPTOR =
-      new ToolDescriptor("planning", List.of(Tool.ALL), Map.of());
+      new ToolDescriptor("planning", "Tools for agent planning and task management.", List.of(Tool.ALL), Map.of());
   private static final Map<String, Supplier<Tool>> TOOL_FACTORIES =
       Map.of(
           CreatePlanTool.DESCRIPTOR.name(), CreatePlanTool::new,
-          UpdatePlanInfoTool.DESCRIPTOR.name(), UpdatePlanInfoTool::new,
-          RevisePlanTool.DESCRIPTOR.name(), RevisePlanTool::new,
+          UpdatePlanTool.DESCRIPTOR.name(), UpdatePlanTool::new,
+          AddTaskTool.DESCRIPTOR.name(), AddTaskTool::new,
           UpdateTaskTool.DESCRIPTOR.name(), UpdateTaskTool::new,
-          CompletePlanTool.DESCRIPTOR.name(), CompletePlanTool::new,
+          FinishPlanTool.DESCRIPTOR.name(), FinishPlanTool::new,
           ViewPlanTool.DESCRIPTOR.name(), ViewPlanTool::new);
   private static final List<ToolDescriptor> DESCRIPTORS =
       List.of(
           SUITE_DESCRIPTOR,
           CreatePlanTool.DESCRIPTOR,
-          UpdatePlanInfoTool.DESCRIPTOR,
-          RevisePlanTool.DESCRIPTOR,
+          UpdatePlanTool.DESCRIPTOR,
+          AddTaskTool.DESCRIPTOR,
           UpdateTaskTool.DESCRIPTOR,
-          CompletePlanTool.DESCRIPTOR,
+          FinishPlanTool.DESCRIPTOR,
           ViewPlanTool.DESCRIPTOR);
 
   @Override
@@ -44,10 +43,10 @@ public final class PlanningToolProvider implements ToolProvider, ToolSuite {
   public List<String> toolNames() {
     return List.of(
         CreatePlanTool.DESCRIPTOR.name(),
-        UpdatePlanInfoTool.DESCRIPTOR.name(),
-        RevisePlanTool.DESCRIPTOR.name(),
+        UpdatePlanTool.DESCRIPTOR.name(),
+        AddTaskTool.DESCRIPTOR.name(),
         UpdateTaskTool.DESCRIPTOR.name(),
-        CompletePlanTool.DESCRIPTOR.name(),
+        FinishPlanTool.DESCRIPTOR.name(),
         ViewPlanTool.DESCRIPTOR.name());
   }
 
@@ -63,7 +62,7 @@ public final class PlanningToolProvider implements ToolProvider, ToolSuite {
     if (factory == null) {
       return null;
     }
-    return FunctionTool.create(factory.get(), "execute");
+    return factory.get();
   }
 
   @Override

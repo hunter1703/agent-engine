@@ -1,16 +1,15 @@
 package com.agentengine.engine.tools.planning;
 
-
-
-import com.agentengine.engine.api.beans.session.Plan;
-import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,99 +20,141 @@ public final class PlanningUtils {
 
   private PlanningUtils() {}
 
+  /**
+   * Builds a tree-like string representation of the root plan and its current task hierarchy.
+   * This summary is injected into the LLM context to help the agent track progress.
+   *
+   * Example prompt output:
+   *
+   * PLAN CONTEXT
+   * Title: Refactor API layer
+   * Status: in_progress
+   * Goal: Migrate all endpoints to flat Task models to resolve recursion issues.
+   * Task IDs: Use the IDs below when updating tasks.
+   *
+   * Progress: 1/5 completed (1 in progress, 3 pending)
+   *
+   * CURRENT FOCUS:
+   * - Refactor API layer > Update Plan bean (id: task-2, parent: none) [in_progress] | goal: Update Plan model
+   *
+   * NEXT ITEMS:
+   * - Refactor API layer > Define Task bean (id: task-1, parent: none) [todo] | goal: Create Task model
+   * - Refactor API layer > Remove subtasks field (id: task-3, parent: task-2) [todo] | goal: Drop recursion
+   * - Refactor API layer > Add tasks field (id: task-4, parent: task-2) [todo] | goal: Flat list
+   *
+   * RECENT COMPLETED:
+   * - Refactor API layer > Verify llama-server fix (id: task-5, parent: none) [done] | result: Smoke tested
+   *
+   * Plan Tree (compact):
+   * - [todo] Define Task bean (id: task-1, parent: none)
+   * - [in_progress] Update Plan bean (id: task-2, parent: none)
+   *   - [todo] Remove subtasks field (id: task-3, parent: task-2)
+   *   - [todo] Add tasks field (id: task-4, parent: task-2)
+   * - [done] Verify llama-server recursion fix (id: task-5, parent: none)
+   *
+   * @param plan the root Plan to summarize
+   * @return a formatted hierarchical string
+   */
   public static String buildPlanSummary(final Plan plan) {
     if (plan == null) {
-      return "";
-    }
-    final StringBuilder builder = new StringBuilder();
-    builder.append("PLAN CONTEXT\n");
-    builder.append("Plan: ").append(planName(plan));
-    if (StringUtils.isNotBlank(plan.getId())) {
-      builder.append(" (id=").append(plan.getId()).append(")");
-    }
-    builder.append("\nStatus: ").append(plan.getStatus()).append("\n");
-    if (StringUtils.isNotBlank(plan.getDescription())) {
-      builder.append("Description: ").append(plan.getDescription()).append("\n");
-    }
-    if (StringUtils.isNotBlank(plan.getExpectedOutcome())) {
-      builder.append("Expected Outcome: ").append(plan.getExpectedOutcome()).append("\n");
-    }
-    if (StringUtils.isNotBlank(plan.getOutcome())) {
-      builder.append("Outcome: ").append(plan.getOutcome()).append("\n");
+      return "No active plan found.";
     }
 
-    final List<PlanNode> planNodes = collectPlanNodes(plan);
-    appendProgressSummary(builder, planNodes);
+    final String title = planTitle(plan);
+
+    final StringBuilder builder = new StringBuilder();
+    builder.append("PLAN CONTEXT");
+    builder.append("\nTitle: ").append(title);
+    builder.append("\nStatus: ").append(plan.getStatus().getValue());
+    if (StringUtils.isNotBlank(plan.getGoal())) {
+      builder.append("\nGoal: ").append(plan.getGoal());
+    }
+    if (StringUtils.isNotBlank(plan.getResult())) {
+      builder.append("\nResult: ").append(plan.getResult());
+    }
+    builder.append("\nTask IDs: Use the IDs below when updating tasks.");
+    builder.append("\n\n");
+
+    final List<TaskNode> taskNodes = collectTaskNodes(plan);
+    appendProgressSummary(builder, taskNodes);
 
     appendPlanSection(
         builder,
         "CURRENT FOCUS",
-        filterByStatus(planNodes, PlanStatus.IN_PROGRESS),
+        filterByStatus(taskNodes, TaskStatus.IN_PROGRESS),
         MAX_SECTION_ITEMS,
         true,
         false);
     appendPlanSection(
         builder,
         "NEXT ITEMS",
-        filterByStatus(planNodes, PlanStatus.TODO),
+        filterByStatus(taskNodes, TaskStatus.TODO),
         MAX_SECTION_ITEMS,
         true,
         false);
     appendPlanSection(
         builder,
         "RECENT COMPLETED",
-        filterByStatus(planNodes, PlanStatus.DONE),
+        filterByStatus(taskNodes, TaskStatus.DONE),
         MAX_SECTION_ITEMS,
         false,
         true);
 
-    builder.append("Plan Tree (compact):\n");
-    appendPlanTree(builder, plan, 0);
+    builder.append("\nPlan Tree (compact):\n");
+    appendTaskTree(builder, plan.getTasks(), null, 0);
+
     return builder.toString().trim();
   }
 
   private static void appendProgressSummary(
-      final StringBuilder builder, final List<PlanNode> planNodes) {
-    if (CollectionUtils.isEmpty(planNodes)) {
+      final StringBuilder builder, final List<TaskNode> taskNodes) {
+    if (CollectionUtils.isEmpty(taskNodes)) {
       builder.append("Progress: No subtasks defined yet.\n");
       return;
     }
-    final int total = planNodes.size();
-    final int completed = countByStatus(planNodes, PlanStatus.DONE);
-    final int inProgress = countByStatus(planNodes, PlanStatus.IN_PROGRESS);
-    final int todo = countByStatus(planNodes, PlanStatus.TODO);
-    final int abandoned = countByStatus(planNodes, PlanStatus.ABANDONED);
+    final int total = taskNodes.size();
+    final int completed = countByStatus(taskNodes, TaskStatus.DONE);
+    final int inProgress = countByStatus(taskNodes, TaskStatus.IN_PROGRESS);
+    final int todo = countByStatus(taskNodes, TaskStatus.TODO);
+    final int abandoned = countByStatus(taskNodes, TaskStatus.ABANDONED);
     builder
         .append("Progress: ")
         .append(completed)
         .append("/")
         .append(total)
-        .append(" done, ")
+        .append(" completed (")
         .append(inProgress)
         .append(" in progress, ")
         .append(todo)
-        .append(" todo, ")
-        .append(abandoned)
-        .append(" abandoned\n");
+        .append(" pending");
+
+    if (abandoned > 0) {
+      builder.append(", ").append(abandoned).append(" abandoned");
+    }
+    builder.append(")\n");
   }
 
-  private static int countByStatus(final List<PlanNode> planNodes, final PlanStatus status) {
-    int count = 0;
-    for (PlanNode planNode : CollectionUtils.nullSafeList(planNodes)) {
-      if (planNode.plan().getStatus() == status) {
-        count++;
-      }
+  private static int countByStatus(final List<TaskNode> nodes, final TaskStatus status) {
+    return (int) nodes.stream().filter(n -> n.task().getStatus() == status).count();
+  }
+
+  private static List<TaskNode> filterByStatus(
+      final List<TaskNode> nodes, final TaskStatus status) {
+    if (CollectionUtils.isEmpty(nodes)) {
+      return Collections.emptyList();
     }
-    return count;
+    return nodes.stream()
+        .filter(n -> n.task().getStatus() == status)
+        .collect(Collectors.toList());
   }
 
   private static void appendPlanSection(
       final StringBuilder builder,
       final String title,
-      final List<PlanNode> items,
+      final List<TaskNode> items,
       final int maxItems,
-      final boolean includeExpected,
-      final boolean includeOutcome) {
+      final boolean includeGoal,
+      final boolean includeResult) {
     if (CollectionUtils.isEmpty(items)) {
       return;
     }
@@ -122,7 +163,7 @@ public final class PlanningUtils {
     for (int i = 0; i < limit; i++) {
       builder
           .append("- ")
-          .append(formatPlanNode(items.get(i), includeExpected, includeOutcome))
+          .append(formatTaskNode(items.get(i), includeGoal, includeResult))
           .append("\n");
     }
     if (items.size() > maxItems) {
@@ -130,85 +171,81 @@ public final class PlanningUtils {
     }
   }
 
-  private static List<PlanNode> filterByStatus(
-      final List<PlanNode> nodes, final PlanStatus status) {
-    if (CollectionUtils.isEmpty(nodes)) {
-      return Collections.emptyList();
-    }
-    final List<PlanNode> matches = new ArrayList<>();
-    for (PlanNode node : nodes) {
-      if (node.plan().getStatus() == status) {
-        matches.add(node);
-      }
-    }
-    return matches;
-  }
+  private static void appendTaskTree(
+          final StringBuilder sb, final List<Task> allTasks, final String parentId, final int depth) {
+    final List<Task> level =
+        CollectionUtils.nullSafeList(allTasks).stream()
+            .filter(
+                t ->
+                    (parentId == null && t.getParentId() == null)
+                        || (parentId != null && parentId.equals(t.getParentId())))
+            .collect(Collectors.toList());
 
-  private static void appendPlanTree(
-      final StringBuilder builder, final Plan plan, final int depth) {
-    if (plan == null) {
-      return;
-    }
-    builder
-        .append("  ".repeat(Math.max(0, depth)))
-        .append("- ")
-        .append(planLabel(plan))
-        .append("\n");
-    for (Plan subtask : CollectionUtils.nullSafeList(plan.getSubtasks())) {
-      appendPlanTree(builder, subtask, depth + 1);
+    for (Task task : level) {
+      sb.append("  ".repeat(Math.max(0, depth)))
+          .append("- ")
+          .append(taskLabel(task))
+          .append("\n");
+      appendTaskTree(sb, allTasks, task.getId(), depth + 1);
     }
   }
 
-  private static String planLabel(final Plan plan) {
-    final String name = StringUtils.isBlank(plan.getName()) ? "Untitled" : plan.getName();
-    final String id = StringUtils.isBlank(plan.getId()) ? "" : " (id=" + plan.getId() + ")";
-    return name + " [" + plan.getStatus() + "]" + id;
+  private static String taskLabel(final Task task) {
+    final String name = StringUtils.isBlank(task.getName()) ? "Untitled" : task.getName();
+    final String id = StringUtils.isBlank(task.getId()) ? "no-id" : task.getId();
+    final String parentId = StringUtils.isBlank(task.getParentId()) ? "none" : task.getParentId();
+    return "[" + task.getStatus().getValue() + "] " + name + " (id: " + id + ", parent: " + parentId + ")";
   }
 
-  private static String planName(final Plan plan) {
+  private static String planTitle(final Plan plan) {
     if (plan == null) {
       return "Untitled";
     }
-    return StringUtils.isBlank(plan.getName()) ? "Untitled" : plan.getName();
+    return StringUtils.isBlank(plan.getTitle()) ? "Untitled" : plan.getTitle();
   }
 
-  private static List<PlanNode> collectPlanNodes(final Plan plan) {
-    final List<PlanNode> nodes = new ArrayList<>();
-    final List<String> rootPath = List.of(planName(plan));
-    appendPlanNodes(plan.getSubtasks(), rootPath, nodes);
+  private static List<TaskNode> collectTaskNodes(final Plan plan) {
+    final List<TaskNode> nodes = new ArrayList<>();
+    final String rootTitle = planTitle(plan);
+    appendTaskNodes(plan.getTasks(), null, List.of(rootTitle), nodes);
     return nodes;
   }
 
-  private static void appendPlanNodes(
-      final List<Plan> plans, final List<String> parentPath, final List<PlanNode> nodes) {
-    if (CollectionUtils.isEmpty(plans)) {
-      return;
-    }
-    for (Plan planItem : plans) {
-      if (planItem == null) {
-        continue;
-      }
+  private static void appendTaskNodes(
+      final List<Task> allTasks, final String parentId, final List<String> parentPath, final List<TaskNode> nodes) {
+    final List<Task> level =
+        CollectionUtils.nullSafeList(allTasks).stream()
+            .filter(
+                t ->
+                    (parentId == null && t.getParentId() == null)
+                        || (parentId != null && parentId.equals(t.getParentId())))
+            .collect(Collectors.toList());
+
+    for (Task task : level) {
       final List<String> path = new ArrayList<>(parentPath);
-      path.add(planName(planItem));
-      nodes.add(new PlanNode(planItem, path));
-      appendPlanNodes(planItem.getSubtasks(), path, nodes);
+      path.add(task.getName());
+      nodes.add(new TaskNode(task, path));
+      appendTaskNodes(allTasks, task.getId(), path, nodes);
     }
   }
 
-  private static String formatPlanNode(
-      final PlanNode node, final boolean includeExpected, final boolean includeOutcome) {
-    final Plan plan = node.plan();
+  private static String formatTaskNode(
+      final TaskNode node, final boolean includeGoal, final boolean includeResult) {
+    final Task task = node.task();
     final StringBuilder line = new StringBuilder();
     line.append(String.join(" > ", node.path()));
-    if (StringUtils.isNotBlank(plan.getId())) {
-      line.append(" (id=").append(plan.getId()).append(")");
+    if (StringUtils.isNotBlank(task.getId())) {
+      line.append(" (id: ").append(task.getId());
+      line.append(", parent: ")
+          .append(StringUtils.isBlank(task.getParentId()) ? "none" : task.getParentId());
+      line.append(")");
     }
-    line.append(" [").append(plan.getStatus()).append("]");
-    if (includeExpected && StringUtils.isNotBlank(plan.getExpectedOutcome())) {
-      line.append(" | expected: ").append(plan.getExpectedOutcome());
+    line.append(" [").append(task.getStatus().getValue()).append("]");
+    if (includeGoal && StringUtils.isNotBlank(task.getGoal())) {
+      line.append(" | goal: ").append(task.getGoal());
     }
-    if (includeOutcome && StringUtils.isNotBlank(plan.getOutcome())) {
-      line.append(" | outcome: ").append(plan.getOutcome());
+    if (includeResult && StringUtils.isNotBlank(task.getResult())) {
+      line.append(" | result: ").append(task.getResult());
     }
     return line.toString();
   }
@@ -229,28 +266,17 @@ public final class PlanningUtils {
     toolContext.state().put(PLAN_STATE_KEY, plan);
   }
 
-  static Plan findPlanById(final Plan plan, final String planId) {
-    if (plan == null || StringUtils.isBlank(planId)) {
+  public static Task findTaskById(final Plan plan, final String taskId) {
+    if (plan == null || plan.getTasks() == null || StringUtils.isBlank(taskId)) {
       return null;
     }
-    if (planId.equals(plan.getId())) {
-      return plan;
-    }
-    return _findPlanById(plan.getSubtasks(), planId);
-  }
-
-  private static Plan _findPlanById(final List<Plan> planItems, final String planId) {
-    if (planItems == null || StringUtils.isBlank(planId)) {
-      return null;
-    }
-    for (final Plan planItem : planItems) {
-      final Plan match = findPlanById(planItem, planId);
-      if (match != null) {
-        return match;
+    for (Task task : plan.getTasks()) {
+      if (taskId.equals(task.getId())) {
+        return task;
       }
     }
     return null;
   }
 
-  private record PlanNode(Plan plan, List<String> path) {}
+  private record TaskNode(Task task, List<String> path) {}
 }

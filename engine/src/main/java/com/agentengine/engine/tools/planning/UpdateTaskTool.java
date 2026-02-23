@@ -1,66 +1,79 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.beans.session.Plan;
-import com.agentengine.engine.api.beans.session.PlanStatus;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.google.adk.tools.Annotations.Schema;
+import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.google.adk.tools.ToolContext;
+
 import java.util.List;
 import java.util.Map;
 
-public final class UpdateTaskTool implements Tool {
-  private static final String TOOL_NAME = "update_subtask_state";
+public final class UpdateTaskTool extends Tool {
+  private static final String TOOL_NAME = "update_task";
   public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(TOOL_NAME, List.of(ALL), Map.of());
+      new ToolDescriptor(
+          TOOL_NAME,
+          "Update the status or result of a specific task in the current plan.",
+          List.of(ALL),
+          Map.of());
 
-  @Schema(
-      name = "update_subtask_state",
-      description =
-          "Update the status of a specific subtask. Use this to mark tasks as in progress, done, or abandoned. toolContext is injected by the runtime.")
+  public UpdateTaskTool() {
+    super(DESCRIPTOR);
+  }
+
+
   public Map<String, Object> execute(
-      @Schema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @Schema(name = "plan_id", description = "ID of the plan to update") String planId,
-      @Schema(name = "status", description = "New status: TODO, IN_PROGRESS, DONE, or ABANDONED")
-          String statusStr,
-      @Schema(
-              name = "outcome",
-              description = "Optional outcome description (recommended when marking DONE)",
+      @ToolSchema(name = "task_id", description = "ID of the specific task to update") String taskId,
+      @ToolSchema(
+              name = "name",
+              description = "Updated task name",
               optional = true)
-          String outcome) {
+          String name,
+      @ToolSchema(
+              name = "goal",
+              description = "Updated task goal",
+              optional = true)
+          String goal,
+      @ToolSchema(
+              name = "status",
+              description = "The new status of the task",
+              enums = {"todo", "in_progress", "done", "abandoned"},
+              optional = true)
+          String status,
+      @ToolSchema(name = "result", description = "The actual result of the task", optional = true)
+          String result) {
 
     final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
     }
-    if (StringUtils.isBlank(planId)) {
-      return Map.of("error", "plan_id is required");
+
+    final Task task = PlanningUtils.findTaskById(currentPlan, taskId);
+    if (task == null) {
+      return Map.of("error", "Task not found with ID: " + taskId);
     }
 
-    final Plan targetPlan = PlanningUtils.findPlanById(currentPlan, planId);
-    if (targetPlan == null) {
-      return Map.of("error", "Plan not found: " + planId);
+    if (StringUtils.isNotBlank(name)) {
+      task.setName(name);
+    }
+    if (StringUtils.isNotBlank(goal)) {
+      task.setGoal(goal);
+    }
+    if (StringUtils.isNotBlank(status)) {
+      task.setStatus(TaskStatus.valueOf(status.toUpperCase()));
+    }
+    if (StringUtils.isNotBlank(result)) {
+      task.setResult(result);
     }
 
-    try {
-      final PlanStatus status = PlanStatus.valueOf(statusStr.toUpperCase());
-      targetPlan.setStatus(status);
-
-      if (status == PlanStatus.DONE && outcome != null && !outcome.isBlank()) {
-        targetPlan.setOutcome(outcome);
-      }
-
-      PlanningUtils.savePlan(toolContext, currentPlan);
-      return Map.of("status", "success");
-    } catch (IllegalArgumentException e) {
-      return Map.of("error", "Invalid status: " + statusStr);
-    }
+    PlanningUtils.savePlan(toolContext, currentPlan);
+    return Map.of("status", "success", "task_id", taskId);
   }
 
-  @Override
-  public ToolDescriptor descriptor() {
-    return DESCRIPTOR;
-  }
 }

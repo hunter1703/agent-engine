@@ -1,0 +1,70 @@
+package com.agentengine.engine.tools.planning;
+
+import com.agentengine.engine.api.tools.Tool;
+import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.tools.planning.beans.Task;
+import com.google.adk.tools.ToolContext;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public final class AddTaskTool extends Tool {
+  private static final String TOOL_NAME = "add_task";
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(
+          TOOL_NAME,
+          "Add a new task to the current plan, optionally under a parent task.",
+          List.of(ALL),
+          Map.of());
+
+  public AddTaskTool() {
+    super(DESCRIPTOR);
+  }
+
+  public Map<String, Object> execute(
+      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+          ToolContext toolContext,
+      @ToolSchema(
+              name = "parent_id",
+              description = "Optional parent task id to attach this task under",
+              optional = true)
+          String parentId,
+      @ToolSchema(name = "name", description = "Short name for the new task") String name,
+      @ToolSchema(
+              name = "goal",
+              description = "The goal or expected result of this task")
+          String goal) {
+    final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+    if (currentPlan == null) {
+      return Map.of("error", "No active plan found");
+    }
+
+    if (StringUtils.isBlank(name)) {
+      return Map.of("error", "Task name is required");
+    }
+    if (StringUtils.isBlank(goal)) {
+      return Map.of("error", "Task goal is required");
+    }
+
+    if (StringUtils.isNotBlank(parentId)
+        && PlanningUtils.findTaskById(currentPlan, parentId) == null) {
+      return Map.of("error", "Parent task not found with ID: " + parentId);
+    }
+
+    final Task task = new Task(name, goal);
+    if (StringUtils.isNotBlank(parentId)) {
+      task.setParentId(parentId);
+    }
+
+    if (currentPlan.getTasks() == null) {
+      currentPlan.setTasks(new ArrayList<>());
+    }
+    currentPlan.getTasks().add(task);
+
+    PlanningUtils.savePlan(toolContext, currentPlan);
+    return Map.of("status", "success", "task_id", task.getId());
+  }
+}

@@ -26,7 +26,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsFiltersByAgentId() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", List.of("test-agent"), Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", "Fake tool.", List.of("test-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -51,7 +51,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsSkipsMismatchedAgentAndNullConfig() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", List.of("other-agent"), Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", "Fake tool.", List.of("other-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -70,7 +70,7 @@ class SimpleToolDefinitionRegistryTest {
   @Test
   void loadToolsSkipsWhenNoEnabledTools() {
     ToolProvider provider =
-        new StubToolProvider(new ToolDescriptor("fake", List.of("test-agent"), Map.of()));
+        new StubToolProvider(new ToolDescriptor("fake", "Fake tool.", List.of("test-agent"), Map.of()));
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
@@ -87,10 +87,10 @@ class SimpleToolDefinitionRegistryTest {
 
   @Test
   void getAvailableToolsReturnsAllAndAgentSpecific() {
-    ToolDescriptor globalTool = new ToolDescriptor("global-tool", List.of("ALL"), Map.of());
-    ToolDescriptor agentTool = new ToolDescriptor("agent-tool", List.of("custom-agent"), Map.of());
-    ToolDescriptor otherTool = new ToolDescriptor("other-tool", List.of("other-agent"), Map.of());
-    ToolDescriptor subTool = new ToolDescriptor("sub-tool", List.of("ALL"), Map.of());
+    ToolDescriptor globalTool = new ToolDescriptor("global-tool", "Global tool.", List.of("ALL"), Map.of());
+    ToolDescriptor agentTool = new ToolDescriptor("agent-tool", "Agent tool.", List.of("custom-agent"), Map.of());
+    ToolDescriptor otherTool = new ToolDescriptor("other-tool", "Other tool.", List.of("other-agent"), Map.of());
+    ToolDescriptor subTool = new ToolDescriptor("sub-tool", "Sub tool.", List.of("ALL"), Map.of());
     ToolProvider provider = new StubToolProvider(globalTool, agentTool, otherTool, subTool);
 
     Instance<ToolProvider> providers = mock(Instance.class);

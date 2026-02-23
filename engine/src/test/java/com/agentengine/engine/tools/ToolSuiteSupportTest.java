@@ -11,8 +11,8 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.google.adk.sessions.InMemorySessionService;
-import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
@@ -45,9 +45,9 @@ class ToolSuiteSupportTest {
 
   private static final class SuiteToolProvider implements ToolProvider, ToolSuite {
     private static final ToolDescriptor SUITE_DESCRIPTOR =
-        new ToolDescriptor("planning", List.of("ALL"), Map.of());
+        new ToolDescriptor("planning", "Planning suite.", List.of("ALL"), Map.of());
     private static final ToolDescriptor MEMBER_DESCRIPTOR =
-        new ToolDescriptor("suite_member", List.of("ALL"), Map.of());
+        new ToolDescriptor("suite_member", "Member of planning suite.", List.of("ALL"), Map.of());
 
     @Override
     public List<ToolDescriptor> tools() {
@@ -67,7 +67,7 @@ class ToolSuiteSupportTest {
       if (!MEMBER_DESCRIPTOR.name().equals(toolName)) {
         return null;
       }
-      return com.google.adk.tools.FunctionTool.create(new SuiteMemberTool(), "execute");
+      return new SuiteMemberTool(MEMBER_DESCRIPTOR);
     }
 
     @Override
@@ -76,13 +76,17 @@ class ToolSuiteSupportTest {
     }
   }
 
-  private static final class SuiteMemberTool implements Tool {
-    @Override
-    public ToolDescriptor descriptor() {
-      return new ToolDescriptor("suite_member", List.of("ALL"), Map.of());
+  private static final class SuiteMemberTool extends Tool {
+    private SuiteMemberTool(final ToolDescriptor descriptor) {
+      super(descriptor);
     }
 
-    @Schema(name = "suite_member")
+    @Override
+    public ToolDescriptor descriptor() {
+      return new ToolDescriptor("suite_member", "Member tool.", List.of("ALL"), Map.of());
+    }
+
+    @ToolSchema(name = "suite_member")
     public Map<String, Object> execute() {
       return Map.of("status", "ok");
     }

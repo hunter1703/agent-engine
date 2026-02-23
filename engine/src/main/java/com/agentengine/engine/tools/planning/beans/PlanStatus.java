@@ -1,7 +1,6 @@
-package com.agentengine.engine.api.beans.session;
+package com.agentengine.engine.tools.planning.beans;
 
 public enum PlanStatus {
-  TODO("todo"),
   IN_PROGRESS("in_progress"),
   DONE("done"),
   ABANDONED("abandoned");

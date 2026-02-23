@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.beans.session;
+package com.agentengine.engine.model;
 
 import java.util.Map;
 import java.util.Objects;
