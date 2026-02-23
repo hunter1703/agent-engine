@@ -16,8 +16,9 @@ bin/
 **/target/
 *.log
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.gguf
 llamacpp_models/
-gradlew
-gradlew.bat
-gradle/wrapper/
+!gradlew
+!gradlew.bat
+!gradle/wrapper/
