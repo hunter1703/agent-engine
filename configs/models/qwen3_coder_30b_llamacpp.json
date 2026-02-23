@@ -8,7 +8,8 @@
   "serverArgs": [
     "-m", "/Users/rhp/Projects/local-agent/llamacpp_models/qwen3-coder-30b.gguf",
     "--host", "127.0.0.1",
-    "--port", "17001"
+    "--port", "17001",
+    "--chat-template-file", "/Users/rhp/Projects/agent-engine/configs/models/templates/qwen3_coder_30b_llamacpp.jinja"
   ],
   "temperature": 0.2,
   "numPredict": 120,
