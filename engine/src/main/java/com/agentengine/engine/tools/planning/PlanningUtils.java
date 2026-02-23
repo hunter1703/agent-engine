@@ -213,31 +213,6 @@ public final class PlanningUtils {
     return line.toString();
   }
 
-  public static List<Plan> toPlans(final List<Map<String, Object>> subtasksList) {
-    final List<Map<String, Object>> safeSubtasksList =
-        CollectionUtils.nullSafeMutableList(subtasksList);
-    final List<Plan> subtasks = new ArrayList<>();
-    for (final Map<String, Object> subtaskProps : safeSubtasksList) {
-      final String name = CollectionUtils.getStringValueFromMapSafe(subtaskProps, "name");
-      final String description =
-          CollectionUtils.getStringValueFromMapSafe(subtaskProps, "description");
-      final String expectedOutcome =
-          CollectionUtils.getStringValueFromMapSafe(subtaskProps, "expected_outcome");
-      final Plan subtask = new Plan(name, description, expectedOutcome);
-      final String planId = resolvePlanId(subtaskProps);
-      if (StringUtils.isNotBlank(planId)) {
-        subtask.setId(planId);
-      }
-      final List<Map<String, Object>> nestedSubtasks =
-          CollectionUtils.getListFromMap(subtaskProps, "subtasks");
-      if (CollectionUtils.isNotEmpty(nestedSubtasks)) {
-        subtask.setSubtasks(toPlans(nestedSubtasks));
-      }
-      subtasks.add(subtask);
-    }
-    return subtasks;
-  }
-
   public static Plan getCurrentPlan(final ToolContext toolContext) {
     if (toolContext == null) {
       LOG.warn("toolContext is missing for plan access");
@@ -275,10 +250,6 @@ public final class PlanningUtils {
       }
     }
     return null;
-  }
-
-  private static String resolvePlanId(final Map<String, Object> planArgsItem) {
-    return CollectionUtils.getStringValueFromMapSafe(planArgsItem, "plan_id");
   }
 
   private record PlanNode(Plan plan, List<String> path) {}
