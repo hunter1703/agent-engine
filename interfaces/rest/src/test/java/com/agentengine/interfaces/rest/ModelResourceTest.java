@@ -28,7 +28,7 @@ public class ModelResourceTest {
         .contentType(ContentType.JSON)
         .body(payload)
         .when()
-        .post("/v1/model")
+        .post("/v1/model/upsert")
         .then()
         .statusCode(200);
   }

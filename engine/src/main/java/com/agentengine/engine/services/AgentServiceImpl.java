@@ -31,7 +31,7 @@ public class AgentServiceImpl implements AgentService {
 
   @Override
   @WithSpan
-  public AgentConfig createAgent(AgentConfig agent) {
+  public AgentConfig createAgent(final AgentConfig agent) {
     return agentRepository.insert(agent);
   }
 

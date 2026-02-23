@@ -35,8 +35,6 @@ dependencies {
     testImplementation project(':engine')
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
-    testImplementation libs.quarkus.junit5
-    testImplementation libs.assertj.core
     testImplementation libs.mockito.core
     testImplementation libs.rest.assured
     testImplementation libs.hamcrest
@@ -51,10 +49,6 @@ if (isContinuousIntegration) {
         options.compilerArgs += ['-Xlint:all', '-Werror']
     }
 }
-
-tasks.named('quarkusDev') {
-}
-
 
 tasks.withType(Test).configureEach {
     systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'

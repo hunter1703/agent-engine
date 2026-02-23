@@ -27,7 +27,7 @@ public class ModelServiceImpl implements ModelService {
   }
 
   @Override
-  public ModelConfig createModel(ModelConfig model) {
+  public ModelConfig createModel(final ModelConfig model) {
     return modelRepository.insert(model);
   }
 

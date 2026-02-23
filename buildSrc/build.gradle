@@ -17,11 +17,6 @@ java {
 dependencies {
     implementation "com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}"
     implementation "org.kordamp.gradle:jandex-gradle-plugin:${libs.versions.jandex.get()}"
-
-    testImplementation gradleTestKit()
-    testImplementation libs.assertj.core
-    testImplementation libs.junit.jupiter
-    testRuntimeOnly libs.junit.platform.launcher
 }
 
 gradlePlugin {
@@ -35,8 +30,4 @@ gradlePlugin {
             implementationClass = 'com.agentengine.conventions.JavaApplicationConventionsPlugin'
         }
     }
-}
-
-test {
-    useJUnitPlatform()
 }

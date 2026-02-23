@@ -100,7 +100,7 @@ public class AgentResourceTest {
         .contentType(ContentType.JSON)
         .body(payload)
         .when()
-        .post("/v1/agent/agent")
+        .post("/v1/agent/agent/upsert")
         .then()
         .statusCode(200);
   }

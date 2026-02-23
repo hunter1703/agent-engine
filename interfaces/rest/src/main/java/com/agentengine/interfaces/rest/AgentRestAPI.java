@@ -158,6 +158,20 @@ public class AgentRestAPI {
     return agentService.createAgent(agentConfig);
   }
 
+  @POST
+  @Path("/agent/upsert")
+  @Operation(summary = "Upsert an agent")
+  @APIResponse(
+      responseCode = "200",
+      description = "Agent created or updated",
+      content = @Content(schema = @Schema(implementation = AgentConfig.class)))
+  public AgentConfig upsertAgent(final AgentConfig agentConfig) {
+    if (agentConfig == null) {
+      throw new WebApplicationException("Agent config is required", 400);
+    }
+    return agentService.saveAgent(agentConfig);
+  }
+
   @PUT
   @Path("/agent/{agentId}")
   @Operation(summary = "Update an agent")

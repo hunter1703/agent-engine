@@ -68,6 +68,22 @@ public class ModelRestAPI {
     return modelConfig;
   }
 
+  @POST
+  @Path("/model/upsert")
+  @Operation(
+      summary = "Upsert a model",
+      description = "Creates a new model configuration or updates an existing one.")
+  @APIResponse(
+      responseCode = "200",
+      description = "Model created or updated",
+      content = @Content(schema = @Schema(implementation = ModelConfig.class)))
+  public ModelConfig upsertModel(final ModelConfig modelConfig) {
+    if (modelConfig == null) {
+      throw new WebApplicationException("Model config is required", 400);
+    }
+    return modelService.saveModel(modelConfig);
+  }
+
   @PUT
   @Path("/model/{modelId}")
   @Operation(summary = "Update a model", description = "Updates an existing model configuration.")

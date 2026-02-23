@@ -80,6 +80,8 @@ Interact with your agents using the unified REST API:
   `POST /agent/events` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
 - **Codex CLI Compatible Stream**:
   `POST /agent/responses` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
+- **Bootstrap Upserts**:
+  `POST /v1/model/upsert` and `POST /v1/agent/agent/upsert` with the model/agent JSON payloads
 
 ### Core Runtime Settings
 
@@ -112,11 +114,10 @@ To compile custom plugins (like the `shell-agent` or `echo-agent`) into your env
    ```bash
    ./gradlew :engine:jar
    ```
-2. Build and assemble all plugins:
+2. Build the plugin project and copy the resulting `*-plugin.jar` into `plugins/`:
    ```bash
-   ./gradlew preparePlugins
+   ./gradlew -p plugins/<plugin-project> assemble
    ```
-   _The `preparePlugins` task compiles each project under `plugins/` and automatically copies the resulting `_-plugin.jar`artifacts into the top-level`plugins/` directory so the runtime can discover them.\*
 
 ---
 

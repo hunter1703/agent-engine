@@ -1,7 +1,3 @@
-import java.io.IOException
-import java.net.Socket
-import org.gradle.api.file.RelativePath
-
 allprojects {
     group = 'com.agentengine'
 }
@@ -12,39 +8,3 @@ subprojects {
         mavenLocal()
     }
 }
-
-final def coreModules = [
-    ':engine',
-    ':engine:api',
-    ':interfaces:common',
-    ':interfaces:rest'
-]
-
-tasks.register('build') {
-    dependsOn coreModules.collect { module -> "${module}:build" }
-}
-
-tasks.register('buildPlugins') {
-    dependsOn ':engine:api:assemble'
-    doLast {
-        file('plugins').listFiles()?.each { pluginDir ->
-            if (pluginDir.directory && new File(pluginDir, 'build.gradle').exists()) {
-                println "Building plugin: ${pluginDir.name}"
-                exec {
-                    workingDir pluginDir
-                    commandLine '../../gradlew', 'clean', 'assemble'
-                }
-                copy {
-                    from "${pluginDir}/build/libs"
-                    into "plugins"
-                    include "*-plugin.jar"
-                }
-            }
-        }
-    }
-}
-
-tasks.register('test') {
-    dependsOn coreModules.collect { module -> "${module}:test" }
-}
-

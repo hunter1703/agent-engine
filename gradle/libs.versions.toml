@@ -4,7 +4,6 @@ protobuf = { id = "com.google.protobuf", version = "0.9.4" }
 
 [versions]
 quarkus = "3.23.0"
-quarkus-langchain4j = "0.26.1"
 langchain4j = "1.0.0-beta2"
 google-adk = "0.5.0"
 jackson = "2.17.1"
@@ -30,13 +29,11 @@ guava = "33.2.1-jre"
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 # BOMs
 quarkus-bom = { group = "io.quarkus", name = "quarkus-bom", version.ref = "quarkus" }
-quarkus-langchain4j-bom = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-bom", version.ref = "quarkus-langchain4j" }
 langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version.ref = "langchain4j" }
 
 google-adk-core = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
 google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
 # Quarkus & LangChain4j Core
-quarkus-langchain4j-core = { group = "io.quarkiverse.langchain4j", name = "quarkus-langchain4j-core" }
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
 langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai", version.ref = "langchain4j-plugin" }
 langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref = "langchain4j-plugin" }
@@ -58,8 +55,6 @@ jakarta-enterprise-cdi-api = { group = "jakarta.enterprise", name = "jakarta.ent
 
 # Logging
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version = "2.0.16" }
-logback-classic = { group = "ch.qos.logback", name = "logback-classic", version = "1.5.12" }
-logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version = "7.4" }
 rxjava = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava" }
 
 # Testing
@@ -83,8 +78,6 @@ ag-ui-ok-http = { group = "com.ag-ui", name = "ok-http", version.ref = "ok-http"
 # Commons & Utilities
 jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
-jackson-annotations = { group = "com.fasterxml.jackson.core", name = "jackson-annotations", version.ref = "jackson" }
-fastjson2 = { group = "com.alibaba.fastjson2", name = "fastjson2", version = "2.0.48" }
 jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
 mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }

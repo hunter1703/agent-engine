@@ -44,7 +44,7 @@ bootstrap_data() {
         for file in "$PROJECT_ROOT"/configs/models/*.json; do
             if [ -f "$file" ]; then
                 echo "  - $(basename "$file")"
-                curl -s -X POST "$API_URL/v1/model" \
+                curl -s -X POST "$API_URL/v1/model/upsert" \
                      -H "Content-Type: application/json" \
                      -d @"$file" > /dev/null
             fi
@@ -57,7 +57,7 @@ bootstrap_data() {
         for file in "$PROJECT_ROOT"/configs/agents/*.json; do
             if [ -f "$file" ]; then
                 echo "  - $(basename "$file")"
-                curl -s -X POST "$API_URL/v1/agent/agent" \
+                curl -s -X POST "$API_URL/v1/agent/agent/upsert" \
                      -H "Content-Type: application/json" \
                      -d @"$file" > /dev/null
             fi
