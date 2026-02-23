@@ -21,21 +21,24 @@
 # docker run -i --rm -p 8080:8080 -p 5005:5005 -e JAVA_ENABLE_DEBUG="true" quarkus/agent-engine-jvm
 #
 ###
-FROM registry.access.redhat.com/ubi8/openjdk-17:1.15
+FROM eclipse-temurin:25-jre-alpine
 
 ENV LANGUAGE='en_US:en'
 
+RUN addgroup -S quarkus && adduser -S quarkus -G quarkus
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
-COPY --chown=185 interfaces/rest/build/quarkus-app/lib/ /deployments/lib/
-COPY --chown=185 interfaces/rest/build/quarkus-app/*.jar /deployments/
-COPY --chown=185 interfaces/rest/build/quarkus-app/app/ /deployments/app/
-COPY --chown=185 interfaces/rest/build/quarkus-app/quarkus/ /deployments/quarkus/
-COPY --chown=185 plugins/ /deployments/plugins/
+COPY --chown=quarkus interfaces/rest/build/quarkus-app/lib/ /deployments/lib/
+COPY --chown=quarkus interfaces/rest/build/quarkus-app/*.jar /deployments/
+COPY --chown=quarkus interfaces/rest/build/quarkus-app/app/ /deployments/app/
+COPY --chown=quarkus interfaces/rest/build/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=quarkus plugins/ /deployments/plugins/
 
 EXPOSE 18080
-USER 185
+USER quarkus
 ENV AB_JOLOKIA_OFF=""
 ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 ENV PLUGIN_DIR="/deployments/plugins"
+
+ENTRYPOINT [ "sh", "-c", "java $JAVA_OPTS -jar $JAVA_APP_JAR" ]

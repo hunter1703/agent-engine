@@ -71,7 +71,7 @@ public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangC
             buildOpenAIStreaming(modelConfig, responseFormat),
             responseFormat);
       }
-      default -> throw new IllegalArgumentException(STR."Unsupported model provider: \{provider}");
+      default -> throw new IllegalArgumentException("Unsupported model provider: " + provider);
     };
   }
 

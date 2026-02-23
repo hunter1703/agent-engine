@@ -18,7 +18,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
   public <T> T get(Class<T> serviceClass) {
     if (!serviceClass.isAnnotationPresent(MicroService.class)) {
       throw new IllegalArgumentException(
-          STR."\{serviceClass.getName()} is not annotated with @MicroService");
+          serviceClass.getName() + " is not annotated with @MicroService");
     }
 
     // Prefer a local implementation when co-located in the same process

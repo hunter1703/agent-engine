@@ -40,7 +40,7 @@ public class SchemaRestAPI {
       return Response.ok(resourceService.getJsonResource(assetType)).build();
     } catch (IOException e) {
       return Response.status(Response.Status.NOT_FOUND)
-          .entity(STR."Schema for assetType '\{assetType}' not found: \{e.getMessage()}")
+          .entity("Schema for assetType '" + assetType + "' not found: " + e.getMessage())
           .build();
     }
   }
@@ -57,7 +57,7 @@ public class SchemaRestAPI {
     }
 
     return Response.status(Response.Status.BAD_REQUEST)
-        .entity(STR."Unsupported assetType for POST: \{assetType}")
+        .entity("Unsupported assetType for POST: " + assetType)
         .build();
   }
 }

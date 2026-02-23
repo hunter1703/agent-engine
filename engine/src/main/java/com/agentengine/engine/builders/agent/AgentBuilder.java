@@ -26,24 +26,20 @@ public class AgentBuilder extends LlmAgent.Builder {
 
   public LlmAgent.Builder reWriteInstructions() {
     final String fullToolInstructions =
-        StringUtils.isNotBlank(toolInstructions) ? STR."# TOOLS\n\{toolInstructions}" : "";
-    this.instruction(
-        STR."""
+        StringUtils.isNotBlank(toolInstructions) ? "# TOOLS\n" + toolInstructions : "";
+    this.instruction(String.format("""
     # YOUR MANDATE:
-    \{
-            globalInstruction}
+    %s
 
     ---
 
     # PROTOCOL YOU MUST FOLLOW:
-    \{
-            protocolInstructions}
+    %s
 
     ---
 
-    \{
-            fullToolInstructions}
-    """);
+    %s
+    """, globalInstruction, protocolInstructions, fullToolInstructions));
     return this;
   }
 

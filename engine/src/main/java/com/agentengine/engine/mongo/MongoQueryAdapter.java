@@ -26,8 +26,7 @@ public final class MongoQueryAdapter {
         case OR -> Filters.or(subFilters.toArray(new Bson[0]));
         case NOT -> Filters.not(Objects.requireNonNull(CollectionUtils.getFirst(subFilters)));
         default ->
-            throw new IllegalArgumentException(
-                STR."Unsupported compound operator: \{filter.getOp()}");
+            throw new IllegalArgumentException("Unsupported compound operator: " + filter.getOp());
       };
     } else {
       return toSimpleFilterBson(filter);

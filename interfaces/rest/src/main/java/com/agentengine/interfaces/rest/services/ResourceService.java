@@ -24,23 +24,25 @@ public class ResourceService {
    * @throws IOException if there's an error reading the resource
    */
   public String getResource(String resourceType, String extension) throws IOException {
-    String cacheKey = STR."\{resourceType.toLowerCase()}.\{extension}";
+    String cacheKey = resourceType.toLowerCase() + "." + extension;
 
     String cachedResource = resourceCache.get(cacheKey);
     if (cachedResource != null) {
       return cachedResource;
     }
 
-    String resourceFileName = STR."\{resourceType.toLowerCase()}.\{extension}";
-    String resourcePath = STR."schemas/\{resourceFileName}";
+    String resourceFileName = resourceType.toLowerCase() + "." + extension;
+    String resourcePath = "schemas/" + resourceFileName;
 
     try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
       if (Objects.isNull(inputStream)) {
         throw new IOException(
-            STR."Resource for type '\{
-                resourceType}' with extension '\{
-                extension}' not found at path: \{
-                resourcePath}");
+            "Resource for type '"
+                + resourceType
+                + "' with extension '"
+                + extension
+                + "' not found at path: "
+                + resourcePath);
       }
       String resourceContent = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
       resourceCache.put(cacheKey, resourceContent);

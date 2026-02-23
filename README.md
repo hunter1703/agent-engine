@@ -3,7 +3,7 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](#)
 
-Agent Engine is a production-ready, highly modular Java 21/Quarkus runtime for building and orchestrating LLM-powered agents.
+Agent Engine is a production-ready, highly modular Java 25/Quarkus runtime for building and orchestrating LLM-powered agents.
 
 Built on top of `quarkus-langchain4j`, it provides a pluggable tool system, configurable agent definitions, scalable context management, and multiple interface modules (CLI and REST) for seamless interaction with your custom agents over gRPC or REST.
 

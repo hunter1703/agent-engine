@@ -65,7 +65,8 @@ rxjava = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjav
 # Testing
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
-junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 quarkus-junit5 = { group = "io.quarkus", name = "quarkus-junit5" }
 quarkus-junit5-mockito = { group = "io.quarkus", name = "quarkus-junit5-mockito" }
 rest-assured = { group = "io.rest-assured", name = "rest-assured", version.ref = "rest-assured" }

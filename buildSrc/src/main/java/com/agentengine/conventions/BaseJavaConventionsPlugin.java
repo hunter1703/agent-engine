@@ -2,6 +2,8 @@ package com.agentengine.conventions;
 
 import com.diffplug.gradle.spotless.SpotlessExtension;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.VersionCatalog;
+import org.gradle.api.artifacts.VersionCatalogsExtension;
 import org.gradle.api.plugins.JavaPluginExtension;
 
 import org.gradle.api.tasks.JavaExec;
@@ -18,7 +20,7 @@ public abstract class BaseJavaConventionsPlugin {
         // Configure Java toolchain
         project.getExtensions().configure(JavaPluginExtension.class, extension -> extension.getToolchain()
                 .getLanguageVersion()
-                .set(JavaLanguageVersion.of(21)));
+                .set(JavaLanguageVersion.of(25)));
 
         // Configure code formatting
         project.getExtensions().configure(SpotlessExtension.class, spotless -> {
@@ -47,8 +49,11 @@ public abstract class BaseJavaConventionsPlugin {
             task.jvmArgs("--enable-preview");
         });
 
-        project.getDependencies().add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher");
-        project.getDependencies().add("testRuntimeOnly", "org.junit.jupiter:junit-jupiter-engine");
+        final VersionCatalog libs = project.getExtensions().getByType(VersionCatalogsExtension.class).named("libs");
+        project.getDependencies().add("testRuntimeOnly", libs.findLibrary("junit-platform-launcher")
+                .orElseThrow(() -> new IllegalStateException("Missing junit-platform-launcher catalog entry")));
+        project.getDependencies().add("testRuntimeOnly", libs.findLibrary("junit-jupiter-engine")
+                .orElseThrow(() -> new IllegalStateException("Missing junit-jupiter-engine catalog entry")));
 
         // Apply preview flag to JavaExec tasks
         project.getTasks().withType(JavaExec.class).configureEach(task -> task.jvmArgs("--enable-preview"));

@@ -102,7 +102,7 @@ public class SimpleAgentBuilder extends AbstractAgentBuilder<AgentConfig, Simple
     if (StringUtils.isBlank(systemPrompt)) {
       return modelInstructions;
     }
-    return STR."\{systemPrompt}\n\n# FOLLOW\n\{modelInstructions}";
+    return systemPrompt + "\n\n# FOLLOW\n" + modelInstructions;
   }
 
   private BaseSessionService resolveSessionService(

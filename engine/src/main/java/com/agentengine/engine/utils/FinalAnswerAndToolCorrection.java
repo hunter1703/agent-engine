@@ -4,7 +4,7 @@
 
 package com.agentengine.engine.utils;
 
-import static java.lang.StringTemplate.STR;
+
 
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -144,7 +144,7 @@ public class FinalAnswerAndToolCorrection extends CorrectionProcessor {
 
     String combinedText = String.join(" | ", allTexts);
     if (combinedText.length() > 200) {
-      combinedText = STR."\{combinedText.substring(0, 197)}...";
+      combinedText = combinedText.substring(0, 197) + "...";
     }
 
     return TemplateUtils.renderTextTemplate(

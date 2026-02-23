@@ -2,7 +2,6 @@ package com.agentengine.engine.agents;
 
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
-import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
@@ -50,7 +49,7 @@ public class AgentSessionRuntimeManager {
             : null;
     final AgentConfig agentConfig = getAgentConfig(agentId, session);
     if (agentConfig == null) {
-      String errorMsg = STR."agentId \"\{agentId}\" has no resolved config";
+      String errorMsg = "agentId \"" + agentId + "\" has no resolved config";
       LOG.error(
           "Agent configuration resolution failed - agent_id={} error=\"{}\"", agentId, errorMsg);
       throw new IllegalArgumentException(errorMsg);

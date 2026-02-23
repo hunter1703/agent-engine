@@ -110,7 +110,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       LOG.error("Service not found: {}. Available: {}", serviceName, registry.keySet());
       responseObserver.onError(
           Status.NOT_FOUND
-              .withDescription(STR."Service not found: \{serviceName}")
+              .withDescription("Service not found: " + serviceName)
               .asRuntimeException());
       return;
     }
@@ -119,9 +119,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     if (method == null) {
       LOG.error("Method not found: {}/{}", serviceName, methodName);
       responseObserver.onError(
-          Status.NOT_FOUND
-              .withDescription(STR."Method not found: \{methodName}")
-              .asRuntimeException());
+          Status.NOT_FOUND.withDescription("Method not found: " + methodName).asRuntimeException());
       return;
     }
 

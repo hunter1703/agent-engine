@@ -4,7 +4,7 @@
 > This project is in an active development phase. Backward compatibility is not guaranteed, and breaking changes may occur frequently as we refine the core APIs and integration protocols.
 
 ## Project Summary
-Agent Engine is a modular Java 21/Quarkus agent runtime built on LangChain4j. It provides a
+Agent Engine is a modular Java 25/Quarkus agent runtime built on LangChain4j. It provides a
 plugin-based tool system, configurable agent definitions, and multiple interface modules (CLI
 and REST) for interacting with agents.
 
@@ -33,7 +33,7 @@ and REST) for interacting with agents.
 14. Reuse existing utility methods instead of reimplementing similar logic in private methods.
 15. Create new utility classes or extend existing ones when it improves reuse.
 16. When fixing a bug, first write a unit test that reproduces the bug and fails, then implement the fix, then rerun the test to verify it passes.
-17. Leverage Java 21 features (virtual threads, string templates, records) where they improve clarity or performance.
+17. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
 18. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin rather than repeating snippets in module build files.
 19. Avoid redundant or low-value tests that do not exercise functional behavior.
 20. Document REST endpoints with MicroProfile OpenAPI annotations.

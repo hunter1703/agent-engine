@@ -1,6 +1,6 @@
 package com.agentengine.engine.tools.planning;
 
-import static java.lang.StringTemplate.STR;
+
 
 import com.agentengine.engine.api.beans.session.Plan;
 import com.agentengine.engine.api.beans.session.PlanStatus;
@@ -162,7 +162,7 @@ public final class PlanningUtils {
   private static String planLabel(final Plan plan) {
     final String name = StringUtils.isBlank(plan.getName()) ? "Untitled" : plan.getName();
     final String id = StringUtils.isBlank(plan.getId()) ? "" : " (id=" + plan.getId() + ")";
-    return STR."\{name} [\{plan.getStatus()}]\{id}";
+    return name + " [" + plan.getStatus() + "]" + id;
   }
 
   private static String planName(final Plan plan) {

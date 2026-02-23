@@ -1,7 +1,5 @@
 package com.agentengine.engine.model;
 
-import static java.lang.StringTemplate.STR;
-
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -65,12 +63,7 @@ public final class ModelUtils {
     // Generate a random port greater than 18000
     final int port = generateRandomPort();
 
-    // Set the base URL
-    final String baseUrl = STR."http://127.0.0.1:\{port}/v1";
-    modelConfig.setBaseUrl(baseUrl);
-
-    // Set the server command to always be llama-server
-    modelConfig.setServerCommand(getLlamaServerCommand());
+    final String baseUrl = "http://127.0.0.1:" + port + "/v1";
 
     // Build server args from the model property
     final List<String> serverArgs = buildServerArgs(modelConfig.getModel());
@@ -175,10 +168,9 @@ public final class ModelUtils {
     }
     if (StringUtils.isBlank(config.getServerCommand())) {
       LOGGER.warning(
-          STR."\{
-              ModelConfig.Provider.OPEN_AI_COMPATIBLE
-                  .type()} server unavailable and no serverCommand configured for model: \{
-              config.getModel()}");
+          ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()
+              + " server unavailable and no serverCommand configured for model: "
+              + config.getModel());
       return;
     }
     ManagedServer server =
@@ -280,10 +272,9 @@ public final class ModelUtils {
       }
     }
     LOGGER.warning(
-        STR."\{
-            ModelConfig.Provider.OPEN_AI_COMPATIBLE
-                .type()} server did not report ready within timeout for \{
-            address.baseUrl()}");
+        ModelConfig.Provider.OPEN_AI_COMPATIBLE.type()
+            + " server did not report ready within timeout for "
+            + address.baseUrl());
   }
 
   static URI buildModelsEndpoint(final String baseUrl) {
@@ -297,7 +288,7 @@ public final class ModelUtils {
       if (normalizedPath.endsWith("/") && normalizedPath.length() > 1) {
         normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
       }
-      String modelsPath = STR."\{normalizedPath}/models";
+      String modelsPath = normalizedPath + "/models";
       return new URI(
           baseUri.getScheme(),
           baseUri.getUserInfo(),
@@ -307,7 +298,7 @@ public final class ModelUtils {
           null,
           null);
     } catch (URISyntaxException ex) {
-      LOGGER.log(Level.WARNING, STR."Invalid baseUrl: \{baseUrl}", ex);
+      LOGGER.log(Level.WARNING, "Invalid baseUrl: " + baseUrl, ex);
       return null;
     }
   }

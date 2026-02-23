@@ -19,9 +19,9 @@ public final class ToolUtils {
       if (tool == null || tool.name() == null || tool.name().isBlank()) {
         continue;
       }
-      String line = STR."- \{tool.name()}";
+      String line = "- " + tool.name();
       if (tool.description() != null && !tool.description().isBlank()) {
-        line += STR." - \{tool.description()}";
+        line += " - " + tool.description();
       }
       final FunctionDeclaration declaration =
           tool.declaration().orElse(FunctionDeclaration.builder().build());

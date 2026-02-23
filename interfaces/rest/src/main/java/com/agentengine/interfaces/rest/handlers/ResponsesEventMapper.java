@@ -92,7 +92,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       case ToolCallArgsEvent toolCallArgsEvent -> mapToolCallArgs(toolCallArgsEvent);
       case ToolCallEndEvent toolCallEndEvent -> mapToolCallEnd(toolCallEndEvent);
       case ToolCallResultEvent toolCallResultEvent -> mapToolCallResult(toolCallResultEvent);
-      default -> throw new IllegalStateException(STR."Unexpected value: \{baseEvent}");
+      default -> throw new IllegalStateException("Unexpected value: " + baseEvent);
     };
   }
 

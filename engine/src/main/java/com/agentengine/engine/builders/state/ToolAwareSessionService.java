@@ -168,7 +168,7 @@ public class ToolAwareSessionService implements BaseSessionService {
   private static String formatToolCall(final FunctionCall call) {
     final String name = call.name().orElse("tool");
     final String args = JsonUtils.toJson(call.args().orElse(Map.of()));
-    String result = STR."Tool call: \{name} \{args}";
+    String result = "Tool call: " + name + " " + args;
     LOG.debug("Formatted tool call: {}", result);
     return result;
   }
@@ -176,7 +176,7 @@ public class ToolAwareSessionService implements BaseSessionService {
   private static String formatToolResponse(final FunctionResponse response) {
     final String name = response.name().orElse("tool");
     final String payload = JsonUtils.toJson(response.response().orElse(Map.of()));
-    String result = STR."Tool result: \{name} \{payload}";
+    String result = "Tool result: " + name + " " + payload;
     LOG.debug("Formatted tool response: {}", result);
     return result;
   }

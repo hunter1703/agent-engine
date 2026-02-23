@@ -178,7 +178,7 @@ public final class AgentToolProvider implements ToolProvider {
     }
     if (annotated.size() > 1) {
       throw new IllegalStateException(
-          STR."Multiple @ToolConstructor annotations found for \{toolClass.getName()}");
+          "Multiple @ToolConstructor annotations found for " + toolClass.getName());
     }
     final Constructor<? extends Tool> resolved;
     if (annotated.size() == 1) {
@@ -187,8 +187,7 @@ public final class AgentToolProvider implements ToolProvider {
       resolved = CollectionUtils.getFirst(constructors);
     } else {
       throw new IllegalStateException(
-          STR."Multiple constructors found for \{
-              toolClass.getName()}; annotate one with @ToolConstructor");
+          "Multiple constructors found for " + toolClass.getName() + "; annotate one with @ToolConstructor");
     }
     Objects.requireNonNull(resolved).setAccessible(true);
     return resolved;
@@ -206,7 +205,7 @@ public final class AgentToolProvider implements ToolProvider {
               || ToolParam.AGENT_CONTEXT.equals(key);
       if (injectContext && !AgentContext.class.isAssignableFrom(parameter.getType())) {
         throw new IllegalStateException(
-            STR."AgentContext injection requires AgentContext type for \{parameter.getName()}");
+            "AgentContext injection requires AgentContext type for " + parameter.getName());
       }
       params.add(
           new ConstructorParam(
@@ -239,13 +238,13 @@ public final class AgentToolProvider implements ToolProvider {
       return validateDescriptor(toolClass, tool.descriptor());
     } catch (NoSuchMethodException exception) {
       throw new IllegalStateException(
-          STR."No-arg constructor required for descriptor resolution in \{toolClass.getName()}",
+          "No-arg constructor required for descriptor resolution in " + toolClass.getName(),
           exception);
     } catch (InstantiationException
         | IllegalAccessException
         | InvocationTargetException exception) {
       throw new IllegalStateException(
-          STR."Failed to instantiate \{toolClass.getName()} for descriptor resolution", exception);
+          "Failed to instantiate " + toolClass.getName() + " for descriptor resolution", exception);
     }
   }
 
@@ -269,10 +268,10 @@ public final class AgentToolProvider implements ToolProvider {
   private static ToolDescriptor validateDescriptor(
       final Class<? extends Tool> toolClass, final ToolDescriptor descriptor) {
     Objects.requireNonNull(
-        descriptor, STR."Tool descriptor is required for \{toolClass.getName()}");
+        descriptor, "Tool descriptor is required for " + toolClass.getName());
     if (StringUtils.isBlank(descriptor.name())) {
       throw new IllegalStateException(
-          STR."Tool descriptor name is required for \{toolClass.getName()}");
+          "Tool descriptor name is required for " + toolClass.getName());
     }
     return descriptor;
   }

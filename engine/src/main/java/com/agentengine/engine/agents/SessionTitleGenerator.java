@@ -1,7 +1,6 @@
 package com.agentengine.engine.agents;
 
 import static com.agentengine.engine.model.TitleConfig.TYPE;
-import static java.lang.StringTemplate.STR;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -80,13 +79,14 @@ public final class SessionTitleGenerator {
   }
 
   private static String buildPrompt(final String transcript) {
-    return STR."""
+    return String.format(
+            """
         Generate a concise title (max 8 words) for this conversation. Respond with only the title.
 
         Conversation:
-        \{
-            transcript}
-        """
+        %s
+        """,
+            transcript)
         .strip();
   }
 

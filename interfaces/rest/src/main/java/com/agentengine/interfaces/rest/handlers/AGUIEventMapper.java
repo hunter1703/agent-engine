@@ -117,7 +117,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Step already started, skipping StepStartedEvent generation");
       return Flowable.empty();
     }
-    state.currentStepName = STR."step-\{UUID.randomUUID()}";
+    state.currentStepName = "step-" + UUID.randomUUID();
     final StepStartedEvent stepEvent = new StepStartedEvent();
     stepEvent.setStepName(state.currentStepName);
     final BaseEvent decoratedStepEvent = decorateEvent(stepEvent);
@@ -252,7 +252,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
     final List<Flowable<BaseEvent>> flows = new ArrayList<>();
     if (state.currentTextMessageId == null) {
-      state.currentTextMessageId = STR."msg-\{UUID.randomUUID().toString()}";
+      state.currentTextMessageId = "msg-" + UUID.randomUUID().toString();
       final TextMessageStartEvent start = new TextMessageStartEvent();
       start.setMessageId(state.currentTextMessageId);
       final BaseEvent decoratedStart = decorateEvent(start);
