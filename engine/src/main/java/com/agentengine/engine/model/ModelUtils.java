@@ -64,6 +64,8 @@ public final class ModelUtils {
     final int port = generateRandomPort();
 
     final String baseUrl = "http://127.0.0.1:" + port + "/v1";
+    modelConfig.setBaseUrl(baseUrl);
+    modelConfig.setServerCommand("/opt/homebrew/bin/llama-server");
 
     // Build server args from the model property
     final List<String> serverArgs = buildServerArgs(modelConfig.getModel());
