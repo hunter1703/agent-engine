@@ -7,7 +7,7 @@
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m",
-    "/Users/rhp/Projects/local-agent/llamacpp_models/deepseek-r1-32b.gguf",
+    "/Users/rhp/Projects/agent-engine/llamacpp_models/deepseek-r1-32b.gguf",
     "--host",
     "127.0.0.1",
     "--port",

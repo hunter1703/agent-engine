@@ -16,6 +16,8 @@ bin/
 **/target/
 *.log
 *.jar
+*.gguf
+llamacpp_models/
 gradlew
 gradlew.bat
 gradle/wrapper/
