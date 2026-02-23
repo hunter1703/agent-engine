@@ -3,12 +3,6 @@ plugins {
     alias(libs.plugins.quarkus)
 }
 
-configurations.all {
-    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
-    exclude group: 'ch.qos.logback', module: 'logback-classic'
-    exclude group: 'ch.qos.logback', module: 'logback-core'
-}
-
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.slf4j.api
@@ -48,8 +42,4 @@ if (isContinuousIntegration) {
     tasks.withType(JavaCompile) {
         options.compilerArgs += ['-Xlint:all', '-Werror']
     }
-}
-
-tasks.withType(Test).configureEach {
-    systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
 }

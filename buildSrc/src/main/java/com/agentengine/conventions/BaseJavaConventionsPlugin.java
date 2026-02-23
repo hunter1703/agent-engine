@@ -49,6 +49,10 @@ public abstract class BaseJavaConventionsPlugin {
             task.jvmArgs("--enable-preview");
         });
 
+        project.getPluginManager().withPlugin("io.quarkus", applied -> project.getTasks()
+                .withType(Test.class)
+                .configureEach(task -> task.systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")));
+
         final VersionCatalog libs = project.getExtensions().getByType(VersionCatalogsExtension.class).named("libs");
         project.getDependencies().add("testRuntimeOnly", libs.findLibrary("junit-platform-launcher")
                 .orElseThrow(() -> new IllegalStateException("Missing junit-platform-launcher catalog entry")));
