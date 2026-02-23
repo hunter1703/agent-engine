@@ -3,15 +3,20 @@ set -e
 
 MODE=$1
 BOOTSTRAP=false
-
-if [ "$2" == "--bootstrap" ] || [ "$3" == "--bootstrap" ]; then
-    BOOTSTRAP=true
-fi
+CLEAN=false
 
 if [ -z "$MODE" ] || [[ "$MODE" != "dev" && "$MODE" != "production" ]]; then
-    echo "Usage: ./deploy/deploy.sh [dev|production] [--bootstrap]"
+    echo "Usage: ./deploy/deploy.sh [dev|production] [--bootstrap] [--clean]"
     exit 1
 fi
+
+shift
+for arg in "$@"; do
+    case "$arg" in
+        --bootstrap) BOOTSTRAP=true ;;
+        --clean) CLEAN=true ;;
+    esac
+done
 
 # Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -80,7 +85,11 @@ if [ "$MODE" == "production" ]; then
     
     echo "Building ubers-jars..."
     cd "$PROJECT_ROOT"
-    ./gradlew clean :engine:quarkusBuild :interfaces:rest:quarkusBuild -x test -x spotlessCheck
+    if [ "$CLEAN" = true ]; then
+        ./gradlew clean :engine:quarkusBuild :interfaces:rest:quarkusBuild -x test -x spotlessCheck
+    else
+        ./gradlew :engine:quarkusBuild :interfaces:rest:quarkusBuild -x test -x spotlessCheck
+    fi
 
     # Create logs directory if it doesn't exist
     mkdir -p "$PROJECT_ROOT/logs"

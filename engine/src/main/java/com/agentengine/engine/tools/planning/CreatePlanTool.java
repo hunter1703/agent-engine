@@ -39,13 +39,11 @@ public final class CreatePlanTool implements Tool {
               name = "subtasks",
               description =
                   "List of subtasks, each with 'name', 'description', 'expected_outcome', and optionally nested 'subtasks'")
-          List<Map<String, Object>> subtasksList) {
+          List<Plan> subtaskPlans) {
 
     if (toolContext == null) {
       return Map.of("error", "toolContext is required");
     }
-
-    final List<Plan> subtaskPlans = PlanningUtils.toPlans(subtasksList);
     final Plan currentPlan = new Plan(name, description, expectedOutcome, subtaskPlans);
     if (StringUtils.isNotBlank(planId)) {
       currentPlan.setId(planId);

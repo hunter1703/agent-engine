@@ -107,6 +107,39 @@ public class AgentResourceTest {
 
   @Test
   @Order(3)
+  public void testCreateAgentUpsert() {
+    String payload =
+        """
+        {
+           "id": "qa_test_agent",
+           "name": "QA Test Agent Upserted",
+           "type": "default",
+           "description": "Updated via create",
+           "model": {
+             "modelId": "gemini-2.0-flash",
+             "role": "reasoning",
+             "systemPrompt": "You are a QA test agent."
+           }
+        }
+        """;
+    given()
+        .contentType(ContentType.JSON)
+        .body(payload)
+        .when()
+        .post("/v1/agent/agent")
+        .then()
+        .statusCode(200);
+
+    given()
+        .when()
+        .get("/v1/catalog/agent/" + AGENT_ID)
+        .then()
+        .statusCode(200)
+        .body("name", equalTo("QA Test Agent Upserted"));
+  }
+
+  @Test
+  @Order(4)
   public void testGetAgent() {
     given()
         .when()
@@ -117,7 +150,7 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(4)
+  @Order(5)
   public void testUpdateAgent() {
     String payload =
         """
@@ -143,13 +176,13 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(5)
+  @Order(6)
   public void testGetNonexistentAgent() {
     given().when().get("/v1/catalog/agent/nonexistent_agent").then().statusCode(404);
   }
 
   @Test
-  @Order(6)
+  @Order(7)
   public void testCreateAgentMissingFields() {
     String payload = """
         {
@@ -166,7 +199,7 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(7)
+  @Order(8)
   public void testDeleteAgent() {
     given()
         .when()
@@ -176,13 +209,13 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(8)
+  @Order(9)
   public void testGetAgentAfterDelete() {
     given().when().get("/v1/catalog/agent/" + AGENT_ID).then().statusCode(404);
   }
 
   @Test
-  @Order(8)
+  @Order(10)
   public void testInvokeEchoAgent() {
     String sessionId = "invoke-" + UUID.randomUUID().toString();
     String payload =
@@ -207,7 +240,7 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(9)
+  @Order(11)
   public void testSseStreaming() {
     String sessionId = "stream-" + UUID.randomUUID().toString();
     String payload =

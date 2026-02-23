@@ -85,27 +85,6 @@ public final class ModelUtils {
   }
 
   /**
-   * Gets the llama server command based on the operating system.
-   *
-   * @return The llama server command
-   */
-  private static String getLlamaServerCommand() {
-    // Determine the OS and return the appropriate command
-    String osName = System.getProperty("os.name").toLowerCase();
-
-    if (osName.contains("mac")) {
-      // On macOS, typically installed via Homebrew
-      return "/opt/homebrew/bin/llama-server";
-    } else if (osName.contains("win")) {
-      // On Windows, could be llama-server.exe in various locations
-      return "llama-server.exe";
-    } else {
-      // On Linux, could be in various locations
-      return "/usr/bin/llama-server";
-    }
-  }
-
-  /**
    * Builds server arguments from the model path.
    *
    * @param model The model path

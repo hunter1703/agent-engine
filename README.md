@@ -20,7 +20,7 @@ Both modes automatically provision the required local MongoDB instance via Docke
 Boot the entire engine with hot-reload and optionally bootstrap initial models and agents:
 
 ```bash
-./deploy/deploy.sh dev [--bootstrap]
+./deploy/deploy.sh dev [--bootstrap] [--clean]
 ```
 
 ### Production Mode (Microservices)
@@ -28,8 +28,10 @@ Boot the entire engine with hot-reload and optionally bootstrap initial models a
 Run as separate, production-ready microservices (Core Engine on port 8081/9000, REST API on port 8080) and optionally bootstrap the database:
 
 ```bash
-./deploy/deploy.sh production [--bootstrap]
+./deploy/deploy.sh production [--bootstrap] [--clean]
 ```
+
+Use `--clean` to run a full Gradle clean before building.
 
 
 ### Stopping Services

@@ -26,7 +26,7 @@ public final class RevisePlanTool implements Tool {
               name = "subtasks",
               description =
                   "Complete new list of subtasks (replaces existing). Can include nested subtasks.")
-          List<Map<String, Object>> subtasksArgs) {
+          List<Plan> subtaskPlans) {
 
     final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
     if (currentPlan == null) {
@@ -40,8 +40,6 @@ public final class RevisePlanTool implements Tool {
     if (targetPlan == null) {
       return Map.of("error", "Plan not found: " + planId);
     }
-
-    final List<Plan> subtaskPlans = PlanningUtils.toPlans(subtasksArgs);
     targetPlan.setSubtasks(subtaskPlans);
 
     PlanningUtils.savePlan(toolContext, currentPlan);
