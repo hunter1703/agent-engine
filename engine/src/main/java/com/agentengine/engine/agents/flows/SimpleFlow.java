@@ -13,45 +13,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SimpleFlow extends SingleFlow {
-  private static final List<RequestProcessor> DEFAULT_PROCESSORS = new ArrayList<>();
-  private final Set<String> activeInvocations = ConcurrentHashMap.newKeySet();
-
-  static {
-    DEFAULT_PROCESSORS.addAll(SingleFlow.REQUEST_PROCESSORS);
-    DEFAULT_PROCESSORS.add(new PlanContextRequestProcessor());
-  }
+public class SimpleFlow extends AbstractFlow {
 
   public SimpleFlow(
       final int maxSteps,
       final List<RequestProcessor> requestProcessors,
       final List<ResponseProcessor> responseProcessors) {
-    super(
-        CollectionUtils.append(
-            DEFAULT_PROCESSORS,
-            CollectionUtils.append(requestProcessors, LoggingRequestProcessor.INSTANCE)),
-        CollectionUtils.append(responseProcessors, RESPONSE_PROCESSORS),
-        Optional.of(maxSteps));
-  }
-
-  @Override
-  public Flowable<Event> run(final InvocationContext invocationContext) {
-    return runWithReset(invocationContext, super.run(invocationContext));
-  }
-
-  @Override
-  public Flowable<Event> runLive(final InvocationContext invocationContext) {
-    return runWithReset(invocationContext, super.runLive(invocationContext));
-  }
-
-  private Flowable<Event> runWithReset(
-      final InvocationContext invocationContext, final Flowable<Event> flowable) {
-    final String invocationId = invocationContext.invocationId();
-    final boolean firstInvocation = activeInvocations.add(invocationId);
-    if (firstInvocation) {
-      stepsCompleted = 0;
-      return flowable.doFinally(() -> activeInvocations.remove(invocationId));
-    }
-    return flowable;
+    super(maxSteps, CollectionUtils.append(SingleFlow.REQUEST_PROCESSORS, requestProcessors, LoggingRequestProcessor.INSTANCE), CollectionUtils.append(responseProcessors, RESPONSE_PROCESSORS));
   }
 }

@@ -85,6 +85,6 @@ class PlanningUtilsTest {
     plan.setStatus(PlanStatus.DONE);
     plan.setTasks(List.of(new Task("T1", "G1")));
 
-    assertThat(PlanningUtils.hasOpenTasks(plan)).isFalse();
+    assertThat(PlanningUtils.hasOpenTask(plan)).isFalse();
   }
 }

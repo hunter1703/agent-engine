@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
-class PlanContinuationResponseProcessorTest {
+class PlanLoopResponseProcessorTest {
 
   @Test
   void marksResponsePartialWhenTasksRemain() {
@@ -35,10 +35,35 @@ class PlanContinuationResponseProcessorTest {
     InvocationContext context = InvocationContext.builder().session(session).build();
     LlmResponse response = LlmResponse.builder().build();
 
-    PlanContinuationResponseProcessor processor = new PlanContinuationResponseProcessor();
+    PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor(5);
     LlmResponse updated =
         processor.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.partial().orElse(false)).isTrue();
+  }
+
+  @Test
+  void abandonsTaskWhenStepLimitReached() {
+    Plan plan = new Plan("Root", "Goal");
+    Task task = new Task("Step", "Goal");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    plan.setTasks(List.of(task));
+
+    Session session =
+        Session.builder("session-1")
+            .appName("agent")
+            .userId("default")
+            .state(new ConcurrentHashMap<>(Map.of(PlanningUtils.PLAN_STATE_KEY, plan)))
+            .events(new ArrayList<>())
+            .build();
+
+    InvocationContext context = InvocationContext.builder().session(session).build();
+    LlmResponse response = LlmResponse.builder().build();
+
+    PlanLoopResponseProcessor processor =
+        new PlanLoopResponseProcessor(1);
+    processor.processResponse(context, response).blockingGet();
+
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.ABANDONED);
   }
 }

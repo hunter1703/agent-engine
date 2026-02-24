@@ -21,9 +21,25 @@ public final class CollectionUtils {
     return setOne;
   }
 
-  public static <T> List<T> append(List<T> one, final List<T> toAppend) {
+  public static <T> List<T> append(final List<T> one, final List<T> toAppend) {
     final List<T> newList = new ArrayList<>();
     newList.addAll(CollectionUtils.nullSafeList(one));
+    newList.addAll(CollectionUtils.nullSafeList(toAppend));
+    return newList;
+  }
+
+  @SafeVarargs
+  public static <T> List<T> append(final List<T> one, final List<T> two, T... items) {
+    final List<T> newList = new ArrayList<>();
+    newList.addAll(CollectionUtils.nullSafeList(one));
+    newList.addAll(CollectionUtils.nullSafeList(two));
+    newList.addAll(items == null ? List.of() : List.of(items));
+    return newList;
+  }
+
+  public static <T> List<T> append(final List<T> one, T element, final List<T> toAppend) {
+      final List<T> newList = new ArrayList<>(CollectionUtils.nullSafeList(one));
+    newList.add(element);
     newList.addAll(CollectionUtils.nullSafeList(toAppend));
     return newList;
   }
