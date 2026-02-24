@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 import com.agentengine.interfaces.rest.services.ResourceService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -19,6 +20,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Path("/schemas")
+@RunOnVirtualThread
 public class SchemaRestAPI {
 
   private final ResourceService resourceService;

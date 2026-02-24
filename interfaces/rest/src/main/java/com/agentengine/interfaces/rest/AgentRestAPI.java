@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Agent", description = "Agent Management and Execution APIs")
+@RunOnVirtualThread
 public class AgentRestAPI {
 
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
@@ -78,7 +79,6 @@ public class AgentRestAPI {
               schema = @Schema(implementation = AgentResponse.class)))
   @APIResponse(responseCode = "400", description = "Invalid request parameters")
   @APIResponse(responseCode = "500", description = "Internal server error")
-  @RunOnVirtualThread
   public AgentResponse invoke(@Valid final AgentRequest request) {
     LOG.debug(
         "Agent invocation request - agent_id={} session_id={}",
@@ -99,7 +99,6 @@ public class AgentRestAPI {
   @Path("/events")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
-  @RunOnVirtualThread
   @Operation(summary = "Stream agent events")
   @APIResponse(
       responseCode = "200",
@@ -126,7 +125,6 @@ public class AgentRestAPI {
   @Path("/responses")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
-  @RunOnVirtualThread
   @Operation(summary = "Stream agent responses")
   @APIResponse(
       responseCode = "200",
