@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.reactivex.rxjava3.core.Flowable;
+import io.quarkus.logging.Log;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -14,6 +15,7 @@ import java.lang.reflect.Type;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards method calls to a
@@ -48,7 +50,13 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
-    LOG.debug("Remote call: {}.{}()", serviceClass.getSimpleName(), method.getName());
+    LOG.info("Remote call: {}.{}()", serviceClass.getSimpleName(), method.getName());
+
+    final String requestId = MDC.get("requestId");
+    if (requestId != null) {
+      LOG.info(
+          "[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
+    }
 
     Request request = buildRequest(method, args);
     // noinspection ReactiveStreamsUnusedPublisher
@@ -62,13 +70,22 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
 
     if (args != null && args.length > 0) {
-      builder.setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(args)));
+      final String requestId = MDC.get("requestId");
+      LOG.info("[{}] Serializing args for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
+      final long start = System.currentTimeMillis();
+      final String json = JsonUtils.toJson(args);
+      final long end = System.currentTimeMillis();
+      LOG.info("[{}] Serialization took {}ms, payload size: {}", requestId, (end - start), json.length());
+      builder.setPayload(ByteString.copyFromUtf8(json));
     }
     return builder.build();
   }
 
   private Object blockingCall(Request request, Method method) {
+    final String requestId = MDC.get("requestId");
+    LOG.info("[{}] Initiating gRPC blocking call for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
     var responseIterator = stub.execute(request);
+    LOG.info("[{}] gRPC call returned for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
     if (!responseIterator.hasNext()) {
       // No payload from the server — return Optional.empty() for Optional return
       // types

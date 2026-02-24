@@ -99,6 +99,7 @@ public class AgentRestAPI {
   @Path("/events")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
+  @RunOnVirtualThread
   @Operation(summary = "Stream agent events")
   @APIResponse(
       responseCode = "200",
@@ -125,6 +126,7 @@ public class AgentRestAPI {
   @Path("/responses")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
+  @RunOnVirtualThread
   @Operation(summary = "Stream agent responses")
   @APIResponse(
       responseCode = "200",

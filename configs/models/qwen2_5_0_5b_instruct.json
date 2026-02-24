@@ -1,0 +1,20 @@
+{
+  "id": "qwen2.5-0.5b-instruct-q4_k_m",
+  "model": "qwen2.5-0.5b-instruct-q4_k_m",
+  "name": "Qwen2.5 0.5B Instruct",
+  "type": "open_ai_compatible",
+  "baseUrl": "http://127.0.0.1:17006/v1",
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/agent-engine/llamacpp_models/Qwen_Qwen2.5-0.5B-Instruct-GGUF_qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17006"
+  ],
+  "temperature": 0.2,
+  "topK": 50,
+  "topP": 0.88,
+  "repeatPenalty": 1.08
+}

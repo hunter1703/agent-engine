@@ -13,10 +13,10 @@
     "--port",
     "17004"
   ],
-  "temperature": 0.6,
+  "temperature": 0.35,
   "topK": 40,
-  "topP": 0.95,
-  "repeatPenalty": 1,
+  "topP": 0.9,
+  "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
   "toolCallingSupported": true
 }

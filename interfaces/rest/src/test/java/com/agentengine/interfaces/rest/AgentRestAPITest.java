@@ -19,6 +19,7 @@ import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.InvokeAgentRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
 import com.agentengine.interfaces.rest.handlers.StreamResponsesRequestHandler;
+import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
 import com.agentengine.interfaces.rest.support.HandlerInstance;
 import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
@@ -95,6 +96,24 @@ class AgentRestAPITest {
     assertThat(
             AgentRestAPI.class
                 .getMethod("invoke", AgentRequest.class)
+                .isAnnotationPresent(RunOnVirtualThread.class))
+        .isTrue();
+  }
+
+  @Test
+  void eventsRunOnVirtualThread() throws NoSuchMethodException {
+    assertThat(
+            AgentRestAPI.class
+                .getMethod("events", AgentRequest.class)
+                .isAnnotationPresent(RunOnVirtualThread.class))
+        .isTrue();
+  }
+
+  @Test
+  void responsesRunOnVirtualThread() throws NoSuchMethodException {
+    assertThat(
+            AgentRestAPI.class
+                .getMethod("responses", ResponsesApiRequest.class)
                 .isAnnotationPresent(RunOnVirtualThread.class))
         .isTrue();
   }

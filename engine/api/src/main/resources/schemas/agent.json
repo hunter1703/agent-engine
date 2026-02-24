@@ -265,7 +265,9 @@
           },
           "configs": {
             "widget": "SCHEMA_LOOKUP",
-            "dependencies": ["$toolName"],
+            "dependencies": [
+              "$toolName"
+            ],
             "lookupRequest": {
               "url": "/schemas",
               "method": "POST",
@@ -277,6 +279,10 @@
             }
           }
         }
+      },
+      "systemPrompt": {
+        "widget": "TEXTAREA",
+        "rows": 6
       }
     }
   }

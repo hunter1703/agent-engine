@@ -11,11 +11,11 @@
     "--port", "17001",
     "--chat-template-file", "/Users/rhp/Projects/agent-engine/configs/models/templates/qwen3_coder_30b_llamacpp.jinja"
   ],
-  "temperature": 0.2,
+  "temperature": 0.15,
   "numPredict": 120,
-  "topK": 20,
-  "topP": 0.8,
-  "repeatPenalty": 1.0,
+  "topK": 40,
+  "topP": 0.85,
+  "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
   "toolCallingSupported": true,
   "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool, and do not add user-facing prose after the tool call. If you need to show tool-call tags literally, wrap them in formatting (e.g., code blocks or quoted strings). Avoid repeating or restating previously emitted text; continue from the last token without re-sending the full sentence."
