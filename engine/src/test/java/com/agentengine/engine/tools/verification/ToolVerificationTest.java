@@ -231,4 +231,31 @@ class ToolVerificationTest {
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         assertEquals("What is your favorite color?", result.get("clarification"));
     }
+
+    @Test
+    void testPlanRetrievalFromMapState() {
+        // Simulate a plan that has been reloaded as a Map (e.g. from MongoDB)
+        Plan originalPlan = new Plan("Persistence Test", "Goal");
+        Map<String, Object> planMap = com.agentengine.engine.api.utils.JsonUtils.toMap(originalPlan);
+        
+        session.state().put(PlanningUtils.PLAN_STATE_KEY, planMap);
+        
+        // Verify PlanningUtils can still find it
+        Plan retrieved = PlanningUtils.getCurrentPlan(toolContext);
+        assertNotNull(retrieved);
+        assertEquals("Persistence Test", retrieved.getTitle());
+        assertEquals("Goal", retrieved.getGoal());
+        
+        // Verify a tool can still use it (e.g. AddTaskTool)
+        AddTaskTool tool = new AddTaskTool();
+        Map<String, Object> args = Map.of("name", "New Task", "goal", "Task Goal");
+        Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
+        
+        assertEquals("success", result.get("status"));
+        
+        // Verify the plan objectively in state was updated (it might be a Plan object now, or updated back to map depending on savePlan)
+        Plan updatedPlan = PlanningUtils.getCurrentPlan(toolContext);
+        assertEquals(1, updatedPlan.getTasks().size());
+        assertEquals("New Task", updatedPlan.getTasks().get(0).getName());
+    }
 }

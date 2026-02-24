@@ -1,6 +1,7 @@
 package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
@@ -9,6 +10,7 @@ import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -255,7 +257,15 @@ public final class PlanningUtils {
       LOG.warn("toolContext is missing for plan access");
       return null;
     }
-    return CollectionUtils.getValueFromMap(toolContext.state(), PLAN_STATE_KEY, Plan.class);
+    final Object value = toolContext.state().get(PLAN_STATE_KEY);
+    if (value instanceof Plan plan) {
+      return plan;
+    }
+    if (value instanceof Map<?, ?> map) {
+      // noinspection unchecked
+      return JsonUtils.fromMap((Map<String, Object>) map, Plan.class);
+    }
+    return null;
   }
 
   public static void savePlan(final ToolContext toolContext, final Plan plan) {
