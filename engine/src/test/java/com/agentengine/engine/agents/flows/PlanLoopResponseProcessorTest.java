@@ -66,4 +66,36 @@ class PlanLoopResponseProcessorTest {
 
     assertThat(task.getStatus()).isEqualTo(TaskStatus.ABANDONED);
   }
+
+  @Test
+  void doesNotAbandonTaskOnPartialResponses() {
+    Plan plan = new Plan("Root", "Goal");
+    Task task = new Task("Step", "Goal");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    plan.setTasks(List.of(task));
+
+    Session session =
+        Session.builder("session-1")
+            .appName("agent")
+            .userId("default")
+            .state(new ConcurrentHashMap<>(Map.of(PlanningUtils.PLAN_STATE_KEY, plan)))
+            .events(new ArrayList<>())
+            .build();
+
+    InvocationContext context = InvocationContext.builder().session(session).build();
+
+    // Simulate multi-chunk turn
+    LlmResponse partialResponse = LlmResponse.builder().partial(true).build();
+    LlmResponse finalResponse = LlmResponse.builder().partial(false).build();
+
+    PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor(1);
+
+    // First chunk (partial)
+    processor.processResponse(context, partialResponse).blockingGet();
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
+
+    // Second chunk (final)
+    processor.processResponse(context, finalResponse).blockingGet();
+    assertThat(task.getStatus()).isEqualTo(TaskStatus.ABANDONED);
+  }
 }

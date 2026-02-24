@@ -35,6 +35,42 @@ class NormalizedLangChain4jTest {
     }
   }
 
+  @Test
+  void toolCallsAreMarkedAsFinalAndPrecedingTextIsEmitted() {
+    final ChatModel chatModel = new StubChatModel();
+    final StubStreamingChatModel streamingChatModel = new StubStreamingChatModel();
+    streamingChatModel.setResponses(
+        List.of("Partial", " text "),
+        ChatResponse.builder()
+            .aiMessage(AiMessage.from(List.of(
+                dev.langchain4j.agent.tool.ToolExecutionRequest.builder()
+                    .id("call-id")
+                    .name("test_tool")
+                    .arguments("{}")
+                    .build())))
+            .build());
+
+    final NormalizedLangChain4j model =
+        new NormalizedLangChain4j(chatModel, streamingChatModel, "test-model");
+    final LlmRequest request =
+        LlmRequest.builder().contents(List.of(Content.fromParts(Part.fromText("Hi")))).build();
+
+    final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();
+
+    // Expecting:
+    // 1. "Partial" (partial)
+    // 2. " text " (partial)
+    // 3. Tool call (non-partial)
+    assertThat(responses).hasSize(3);
+    
+    // First two are partial chunks
+    assertThat(responses.get(0).partial()).contains(true);
+    assertThat(responses.get(1).partial()).contains(true);
+    
+    // Third is the tool call
+    assertThat(responses.get(2).content().get().parts().get().get(0).functionCall()).isPresent();
+  }
+
   private static final class StubChatModel implements ChatModel {
     @Override
     public ChatResponse doChat(final ChatRequest chatRequest) {
@@ -43,11 +79,20 @@ class NormalizedLangChain4jTest {
   }
 
   private static final class StubStreamingChatModel implements StreamingChatModel {
+    private List<String> partials = List.of("Hello", " world");
+    private ChatResponse complete = ChatResponse.builder().aiMessage(new AiMessage("done")).build();
+
+    void setResponses(List<String> partials, ChatResponse complete) {
+      this.partials = partials;
+      this.complete = complete;
+    }
+
     @Override
     public void doChat(final ChatRequest chatRequest, final StreamingChatResponseHandler handler) {
-      handler.onPartialResponse("Hello");
-      handler.onPartialResponse(" world");
-      handler.onCompleteResponse(ChatResponse.builder().aiMessage(new AiMessage("done")).build());
+      for (String p : partials) {
+        handler.onPartialResponse(p);
+      }
+      handler.onCompleteResponse(complete);
     }
   }
 }

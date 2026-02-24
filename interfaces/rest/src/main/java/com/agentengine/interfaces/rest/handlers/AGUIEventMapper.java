@@ -288,7 +288,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapToolCall(final FunctionCall call, final boolean partial) {
-    final String callId = call.id().orElse(UUID.randomUUID().toString());
+    final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
     final String toolName = call.name().orElse("unknown");
     final Map<String, Object> args = call.args().orElse(Map.of());
 

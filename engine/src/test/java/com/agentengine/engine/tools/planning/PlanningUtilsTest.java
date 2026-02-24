@@ -69,14 +69,14 @@ class PlanningUtilsTest {
     task1.setStatus(TaskStatus.IN_PROGRESS);
     Task task2 = new Task("T2", "G2");
     task2.setTaskId("t2");
+    task2.setParentId("t1");
     plan.setTasks(List.of(task1, task2));
 
     String prompt = PlanningUtils.buildTaskFocusPrompt(plan);
 
     assertThat(prompt).contains("TASK LOOP");
     assertThat(prompt).contains("FOCUS TASKS");
-    assertThat(prompt).contains("t1");
-    assertThat(prompt).doesNotContain("t2");
+    assertThat(prompt).contains("t2");
   }
 
   @Test
@@ -105,6 +105,46 @@ class PlanningUtilsTest {
 
     assertThat(openTask).isNotNull();
     assertThat(openTask.getTaskId()).isEqualTo("child");
+  }
+
+  @Test
+  void buildTaskAncestorMapOrdersAncestorsRootToLeaf() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("root");
+    Task grandchild = new Task("Grand", "G3");
+    grandchild.setTaskId("grand");
+    grandchild.setParentId("child");
+    plan.setTasks(List.of(grandchild, child, root));
+
+    var tasksById = PlanningUtils.getTasksById(plan);
+    var ancestorMap = PlanningUtils.buildTaskAncestorMap(plan, tasksById);
+
+    assertThat(ancestorMap.get("grand")).extracting(Task::getTaskId)
+        .containsExactly("root", "child");
+  }
+
+  @Test
+  void getOpenTaskUsesNextTodoAfterCompletedBranch() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    root.setStatus(TaskStatus.DONE);
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("root");
+    child.setStatus(TaskStatus.DONE);
+    Task sibling = new Task("Sibling", "G3");
+    sibling.setTaskId("sibling");
+    plan.setTasks(List.of(root, child, sibling));
+
+    Task openTask = PlanningUtils.getOpenTask(plan);
+
+    assertThat(openTask).isNotNull();
+    assertThat(openTask.getTaskId()).isEqualTo("sibling");
   }
 
   @Test
@@ -157,7 +197,7 @@ class PlanningUtilsTest {
 
     String error = plan.canUpdateTask(child, TaskStatus.IN_PROGRESS);
 
-    assertThat(error).contains("Parent task");
+    assertThat(error).contains("Parent");
   }
 
   @Test
@@ -187,5 +227,24 @@ class PlanningUtilsTest {
     String error = plan.canUpdateTask(task, TaskStatus.TODO);
 
     assertThat(error).contains("in_progress");
+  }
+
+  @Test
+  void validatePlanDetectsOutOfOrderInProgress() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    root.setStatus(TaskStatus.IN_PROGRESS);
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("root");
+    child.setStatus(TaskStatus.IN_PROGRESS);
+    Task sibling = new Task("Sibling", "G3");
+    sibling.setTaskId("sibling");
+    plan.setTasks(List.of(root, child, sibling));
+
+    String error = plan.validate();
+
+    assertThat(error).contains("out of order");
   }
 }

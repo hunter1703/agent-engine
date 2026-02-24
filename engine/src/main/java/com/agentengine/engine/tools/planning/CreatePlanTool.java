@@ -45,7 +45,7 @@ public final class CreatePlanTool extends Tool {
     final Plan existingPlan = PlanningUtils.getCurrentPlan(toolContext);
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();
-      if (status == null || (status != PlanStatus.DONE && status != PlanStatus.ABANDONED)) {
+      if ((status != PlanStatus.DONE && status != PlanStatus.ABANDONED)) {
         return Map.of("error", "Active plan already exists; finish it before creating a new plan.");
       }
     }

@@ -45,7 +45,9 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
     if (activeTask == null) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
-    updateStepCount(context, plan, activeTask);
+    if (!response.partial().orElse(false)) {
+      updateStepCount(context, plan, activeTask);
+    }
     if (!PlanningUtils.hasOpenTask(plan)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }

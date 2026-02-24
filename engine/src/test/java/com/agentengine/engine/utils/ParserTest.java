@@ -113,4 +113,30 @@ class ParserTest {
     assertThat(updatedParts.getFirst().functionResponse()).isPresent();
     assertThat(updatedParts.getFirst().text()).isEmpty();
   }
+
+  @Test
+  void mergesNativeAndTextToolCalls() {
+    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final FunctionCall nativeCall =
+        FunctionCall.builder().id("call-native").name("native_tool").args(Map.of()).build();
+    final String textWithCall = "{'id': 'call-text', 'name': 'text_tool', 'args': {}}";
+    final Content content =
+        Content.builder()
+            .role("model")
+            .parts(
+                List.of(
+                    Part.builder().text(textWithCall).build(),
+                    Part.builder().functionCall(nativeCall).build()))
+            .build();
+
+    final Content parsed = parser.parse(content);
+    final List<Part> parts = parsed.parts().orElse(List.of());
+
+    // Expecting 3 parts:
+    // 1. Native call
+    // 2. Text-based call
+    // 3. (Optional) text part (empty since textWithCall was stripped)
+    assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "native_tool".equals(p.functionCall().get().name().orElse("")));
+    assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "text_tool".equals(p.functionCall().get().name().orElse("")));
+  }
 }

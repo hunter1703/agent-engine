@@ -6,6 +6,7 @@ import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
+import com.agentengine.engine.tools.planning.FinishPlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
 import com.agentengine.engine.tools.planning.UpdateTaskTool;
@@ -63,6 +64,65 @@ class PlanningTest {
     Task updatedTask = updated.getTasks().get(0);
     assertThat(updatedTask.getStatus()).isEqualTo(TaskStatus.DONE);
     assertThat(updatedTask.getResult()).isEqualTo("finished");
+  }
+
+  @Test
+  void createPlanFailsWhenActivePlanExists() {
+    Session session = buildSession("session-3");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
+
+    Map<String, Object> response =
+        createPlanTool.execute(toolContext, "Second", "Goal", List.of(new Task("T2", "G2")));
+
+    assertThat(response).containsKey("error");
+  }
+
+  @Test
+  void finishPlanFailsWhenTasksRemainOpen() {
+    Session session = buildSession("session-4");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    FinishPlanTool finishPlanTool = new FinishPlanTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
+
+    Map<String, Object> response = finishPlanTool.execute(toolContext, "done", "done");
+
+    assertThat(response).containsKey("error");
+  }
+
+  @Test
+  void updateTaskRejectsInvalidStatus() {
+    Session session = buildSession("session-5");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    UpdateTaskTool updateTaskTool = new UpdateTaskTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
+    Plan plan = loadPlan(session);
+    Task task = plan.getTasks().get(0);
+
+    Map<String, Object> response =
+        updateTaskTool.execute(toolContext, task.getTaskId(), null, null, null, "invalid", null);
+
+    assertThat(response).containsKey("error");
+  }
+
+  @Test
+  void finishPlanRejectsInvalidStatus() {
+    Session session = buildSession("session-6");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    FinishPlanTool finishPlanTool = new FinishPlanTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of());
+
+    Map<String, Object> response = finishPlanTool.execute(toolContext, "invalid", "done");
+
+    assertThat(response).containsKey("error");
   }
 
   private static Session buildSession(final String sessionId) {

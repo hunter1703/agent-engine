@@ -103,10 +103,11 @@ public class Parser implements RequestProcessor, ResponseProcessor {
 
   private Content parseTextContent(Content content) {
     String processedText = content.text();
-    List<Part> toolCallParts = toolCallingEnabled ? getToolCallParts(content) : List.of();
+    List<Part> toolCallParts = new ArrayList<>(toolCallingEnabled ? getToolCallParts(content) : List.of());
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
-      toolCallParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
+      final List<Part> extraParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
+      toolCallParts.addAll(extraParts);
       processedText = stripToolCallsBlock(processedText);
     }
     processedText = stripToolCallTags(processedText);
