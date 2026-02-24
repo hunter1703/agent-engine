@@ -60,15 +60,21 @@ class NormalizedLangChain4jTest {
     // Expecting:
     // 1. "Partial" (partial)
     // 2. " text " (partial)
-    // 3. Tool call (non-partial)
-    assertThat(responses).hasSize(3);
+    // 3. "Partial text " (partial) - emitted right before tool call to ensure consistency
+    // 4. Tool call (non-partial)
+    assertThat(responses).hasSize(4);
     
-    // First two are partial chunks
+    // First three are partial chunks
     assertThat(responses.get(0).partial()).contains(true);
     assertThat(responses.get(1).partial()).contains(true);
+    assertThat(responses.get(2).partial()).contains(true);
+    assertThat(responses.get(2).content().get().text()).isEqualTo("Partial text ");
     
-    // Third is the tool call
-    assertThat(responses.get(2).content().get().parts().get().get(0).functionCall()).isPresent();
+    // Fourth is the tool call
+    final com.google.genai.types.Part toolPart = responses.get(3).content().get().parts().get().get(0);
+    assertThat(toolPart.functionCall()).isPresent();
+    assertThat(toolPart.functionCall().get().id()).isPresent();
+    assertThat(toolPart.functionCall().get().id().get()).startsWith("adk-");
   }
 
   private static final class StubChatModel implements ChatModel {

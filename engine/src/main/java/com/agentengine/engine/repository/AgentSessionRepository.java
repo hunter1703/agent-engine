@@ -9,6 +9,7 @@ import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.events.Event;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.sessions.GetSessionConfig;
 import com.google.adk.sessions.ListEventsResponse;
@@ -142,6 +143,7 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
 
   @Override
   public Single<Event> appendEvent(final Session session, final Event event) {
+    Functions.populateClientFunctionCallId(event);
     return BaseSessionService.super
         .appendEvent(session, event)
         .doOnSuccess(

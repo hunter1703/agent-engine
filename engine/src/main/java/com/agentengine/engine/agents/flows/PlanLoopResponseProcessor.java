@@ -51,8 +51,21 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
     if (!PlanningUtils.hasOpenTask(plan)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
+    if (hasToolParts(response)) {
+      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    }
     final LlmResponse updated = response.toBuilder().partial(true).build();
     return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
+  }
+
+  private static boolean hasToolParts(final LlmResponse response) {
+    return response
+        .content()
+        .map(
+            content ->
+                content.parts().orElse(List.of()).stream()
+                    .anyMatch(p -> p.functionCall().isPresent()))
+        .orElse(false);
   }
 
   private void updateStepCount(final InvocationContext context, final Plan plan, final Task activeTask) {
