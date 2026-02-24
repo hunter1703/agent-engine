@@ -14,6 +14,7 @@ import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.server.grpc.GRPCServerImpl;
+import com.agentengine.engine.utils.VirtualThreadExecutors;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +33,7 @@ import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,7 @@ class GRPCServerImplTest {
   private ManagedChannel channel;
   private AgentService agentServiceProxy;
   private AgentExecutionService agentExecutionServiceProxy;
+  private ExecutorService grpcExecutor;
 
   @BeforeEach
   void setUp() throws IOException {
@@ -60,8 +63,9 @@ class GRPCServerImplTest {
     String serverName = InProcessServerBuilder.generateName();
 
     // Create generic server impl with mocked services
+    grpcExecutor = VirtualThreadExecutors.newVirtualThreadExecutor("grpc-test-vt-");
     GRPCServerImpl engineGRPCServer =
-        new GRPCServerImpl(List.of(agentService, agentExecutionService));
+        new GRPCServerImpl(List.of(agentService, agentExecutionService), grpcExecutor);
 
     server =
         InProcessServerBuilder.forName(serverName)
@@ -95,6 +99,9 @@ class GRPCServerImplTest {
     }
     if (server != null) {
       server.shutdownNow();
+    }
+    if (grpcExecutor != null) {
+      grpcExecutor.shutdownNow();
     }
   }
 

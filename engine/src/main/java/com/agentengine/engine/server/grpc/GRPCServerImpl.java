@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
+  private final ExecutorService grpcExecutor;
 
   /**
    * Two-level registry built eagerly at startup. Outer key: {@link MicroService} interface simple
@@ -41,12 +44,14 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
   @Inject
-  public GRPCServerImpl() {
+  public GRPCServerImpl(final GrpcVirtualThreadExecutor grpcExecutor) {
+    this.grpcExecutor = grpcExecutor.executor();
     LOG.info("GRPCServerImpl created.");
   }
 
   // ── Testing Helper ────────────────────────────────────────────────────────
-  public GRPCServerImpl(List<Object> services) {
+  public GRPCServerImpl(final List<Object> services, final ExecutorService grpcExecutor) {
+    this.grpcExecutor = grpcExecutor;
     services.forEach(
         instance -> {
           Class<?> iface = microServiceInterface(instance.getClass());
@@ -101,6 +106,18 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   @Override
   public void execute(Request request, StreamObserver<Response> responseObserver) {
+    try {
+      grpcExecutor.execute(() -> executeInternal(request, responseObserver));
+    } catch (RejectedExecutionException e) {
+      responseObserver.onError(
+          Status.RESOURCE_EXHAUSTED
+              .withDescription("gRPC virtual thread executor rejected request")
+              .withCause(e)
+              .asRuntimeException());
+    }
+  }
+
+  private void executeInternal(Request request, StreamObserver<Response> responseObserver) {
     String serviceName = request.getService();
     String methodName = request.getMethod();
     LOG.debug("GRPCServerImpl.execute called for {}/{}", serviceName, methodName);

@@ -21,7 +21,7 @@ public class SimpleAgent extends LlmAgent {
       return null;
     }
     return new PlanningFlow(
-        maxSteps().orElse(10),
+        maxSteps().orElse(1000),
         agentModel.getRequestProcessors(),
         agentModel.getResponseProcessors());
   }

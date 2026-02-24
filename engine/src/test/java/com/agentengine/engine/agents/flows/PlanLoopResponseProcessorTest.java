@@ -33,13 +33,14 @@ class PlanLoopResponseProcessorTest {
             .build();
 
     InvocationContext context = InvocationContext.builder().session(session).build();
-    LlmResponse response = LlmResponse.builder().build();
+    LlmResponse response = LlmResponse.builder().partial(false).turnComplete(true).build();
 
     PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor(5);
     LlmResponse updated =
         processor.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.partial().orElse(false)).isTrue();
+    assertThat(updated.turnComplete().orElse(true)).isFalse();
   }
 
   @Test
