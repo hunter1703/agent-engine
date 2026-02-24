@@ -76,7 +76,7 @@ class PlanningUtilsTest {
     assertThat(prompt).contains("TASK LOOP");
     assertThat(prompt).contains("FOCUS TASKS");
     assertThat(prompt).contains("t1");
-    assertThat(prompt).contains("t2");
+    assertThat(prompt).doesNotContain("t2");
   }
 
   @Test
@@ -86,5 +86,106 @@ class PlanningUtilsTest {
     plan.setTasks(List.of(new Task("T1", "G1")));
 
     assertThat(PlanningUtils.hasOpenTask(plan)).isFalse();
+  }
+
+  @Test
+  void getOpenTaskPrefersDepthFirstOrder() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    root.setStatus(TaskStatus.DONE);
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("root");
+    Task sibling = new Task("Sibling", "G3");
+    sibling.setTaskId("sibling");
+    plan.setTasks(List.of(root, child, sibling));
+
+    Task openTask = PlanningUtils.getOpenTask(plan);
+
+    assertThat(openTask).isNotNull();
+    assertThat(openTask.getTaskId()).isEqualTo("child");
+  }
+
+  @Test
+  void canUpdateTaskBlocksMultipleLineages() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    root.setStatus(TaskStatus.IN_PROGRESS);
+    Task branchA = new Task("BranchA", "G2");
+    branchA.setTaskId("a");
+    branchA.setParentId("root");
+    branchA.setStatus(TaskStatus.IN_PROGRESS);
+    Task branchB = new Task("BranchB", "G3");
+    branchB.setTaskId("b");
+    branchB.setParentId("root");
+    plan.setTasks(List.of(root, branchA, branchB));
+
+    String error = plan.canUpdateTask(branchB, TaskStatus.IN_PROGRESS);
+
+    assertThat(error).contains("lineage");
+  }
+
+  @Test
+  void canUpdateTaskRequiresNextTodoInDfsOrder() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task root = new Task("Root", "G1");
+    root.setTaskId("root");
+    root.setStatus(TaskStatus.IN_PROGRESS);
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("root");
+    Task sibling = new Task("Sibling", "G3");
+    sibling.setTaskId("sibling");
+    plan.setTasks(List.of(root, sibling, child));
+
+    String error = plan.canUpdateTask(sibling, TaskStatus.IN_PROGRESS);
+
+    assertThat(error).contains("Next task to start");
+  }
+
+  @Test
+  void canUpdateTaskRequiresParentInProgress() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task parent = new Task("Parent", "G1");
+    parent.setTaskId("parent");
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("parent");
+    plan.setTasks(List.of(parent, child));
+
+    String error = plan.canUpdateTask(child, TaskStatus.IN_PROGRESS);
+
+    assertThat(error).contains("Parent task");
+  }
+
+  @Test
+  void canUpdateTaskRequiresTerminalChildren() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task parent = new Task("Parent", "G1");
+    parent.setTaskId("parent");
+    parent.setStatus(TaskStatus.IN_PROGRESS);
+    Task child = new Task("Child", "G2");
+    child.setTaskId("child");
+    child.setParentId("parent");
+    plan.setTasks(List.of(parent, child));
+
+    String error = plan.canUpdateTask(parent, TaskStatus.DONE);
+
+    assertThat(error).contains("child tasks");
+  }
+
+  @Test
+  void canUpdateTaskBlocksInProgressToTodo() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task task = new Task("Task", "Goal");
+    task.setTaskId("task");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    plan.setTasks(List.of(task));
+
+    String error = plan.canUpdateTask(task, TaskStatus.TODO);
+
+    assertThat(error).contains("in_progress");
   }
 }

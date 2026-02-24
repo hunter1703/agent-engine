@@ -2,6 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -35,7 +36,19 @@ public abstract class ContextManagerConfig implements Config {
   }
 
   public enum ContextType {
+    UNKNOWN,
     SUMMARIZE,
-    LAST_N
+    LAST_N;
+
+    public static ContextType valueOfOrDefault(final String value) {
+      if (value == null || value.isBlank()) {
+        return UNKNOWN;
+      }
+      try {
+        return ContextType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
+    }
   }
 }

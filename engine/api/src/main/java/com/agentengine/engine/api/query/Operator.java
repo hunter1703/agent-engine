@@ -1,6 +1,9 @@
 package com.agentengine.engine.api.query;
 
+import java.util.Locale;
+
 public enum Operator {
+  UNKNOWN(false),
   AND(true),
   NOT(true),
   OR(true),
@@ -29,5 +32,16 @@ public enum Operator {
 
   public boolean isCompound() {
     return compound;
+  }
+
+  public static Operator valueOfOrDefault(final String value) {
+    if (value == null || value.isBlank()) {
+      return UNKNOWN;
+    }
+    try {
+      return Operator.valueOf(value.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ex) {
+      return UNKNOWN;
+    }
   }
 }

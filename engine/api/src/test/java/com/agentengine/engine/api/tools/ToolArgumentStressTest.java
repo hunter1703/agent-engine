@@ -6,6 +6,7 @@ import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +52,22 @@ class ToolArgumentStressTest {
         public void setItems(List<NestedBean> items) { this.items = items; }
     }
 
-    public enum TestEnum { ALPHA, BETA }
+    public enum TestEnum {
+        UNKNOWN,
+        ALPHA,
+        BETA;
+
+        public static TestEnum valueOfOrDefault(final String value) {
+            if (value == null || value.isBlank()) {
+                return UNKNOWN;
+            }
+            try {
+                return TestEnum.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return UNKNOWN;
+            }
+        }
+    }
 
     // --- The Stress Test Tool Implementation ---
 

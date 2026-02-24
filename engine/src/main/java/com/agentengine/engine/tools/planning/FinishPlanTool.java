@@ -36,7 +36,16 @@ public final class FinishPlanTool extends Tool {
       return Map.of("error", "No active plan found");
     }
 
-    currentPlan.finish(PlanStatus.valueOf(status.toUpperCase()), result);
+    final PlanStatus newStatus = PlanStatus.valueOfOrDefault(status);
+    if (newStatus == PlanStatus.UNKNOWN) {
+      return Map.of("error", "Invalid plan status: " + status);
+    }
+    final String validationError = currentPlan.canFinish(newStatus);
+    if (validationError != null) {
+      return Map.of("error", validationError);
+    }
+
+    currentPlan.finish(newStatus, result);
 
     PlanningUtils.savePlan(toolContext, currentPlan);
     return Map.of("status", "success", "final_state", status);

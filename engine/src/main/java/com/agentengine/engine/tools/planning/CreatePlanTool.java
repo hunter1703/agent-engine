@@ -3,7 +3,9 @@ package com.agentengine.engine.tools.planning;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
@@ -40,8 +42,19 @@ public final class CreatePlanTool extends Tool {
     if (toolContext == null) {
       return Map.of("error", "toolContext is required");
     }
-    final Plan currentPlan = new Plan(title, goal);
-    currentPlan.setTasks(tasks);
+    final Plan existingPlan = PlanningUtils.getCurrentPlan(toolContext);
+    if (existingPlan != null) {
+      final PlanStatus status = existingPlan.getStatus();
+      if (status == null || (status != PlanStatus.DONE && status != PlanStatus.ABANDONED)) {
+        return Map.of("error", "Active plan already exists; finish it before creating a new plan.");
+      }
+    }
+    final Plan currentPlan = new Plan(title, goal, tasks);
+
+    final String validationError = currentPlan.validate();
+    if (StringUtils.isNotBlank(validationError)) {
+      return Map.of("error", validationError);
+    }
 
     PlanningUtils.savePlan(toolContext, currentPlan);
 

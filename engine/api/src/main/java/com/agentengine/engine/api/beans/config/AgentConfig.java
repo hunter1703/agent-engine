@@ -3,6 +3,7 @@ package com.agentengine.engine.api.beans.config;
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotNull;
+import java.util.Locale;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeInfo(
@@ -68,6 +69,18 @@ public class AgentConfig extends NamedEntity implements Config {
   }
 
   public enum AgentType {
-    DEFAULT
+    UNKNOWN,
+    DEFAULT;
+
+    public static AgentType valueOfOrDefault(final String value) {
+      if (value == null || value.isBlank()) {
+        return UNKNOWN;
+      }
+      try {
+        return AgentType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
+    }
   }
 }

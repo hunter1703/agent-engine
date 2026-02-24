@@ -23,6 +23,7 @@ public final class MongoUtils {
     return switch (operation.type()) {
       case SET -> Updates.set(operation.field(), operation.value());
       case UNSET -> Updates.unset(operation.field());
+        default -> throw new IllegalStateException("Unexpected value: " + operation.type());
     };
   }
 }

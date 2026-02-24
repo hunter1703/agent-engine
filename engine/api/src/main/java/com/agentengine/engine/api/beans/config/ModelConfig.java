@@ -9,6 +9,7 @@ import java.util.Locale;
 public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
+    UNKNOWN("unknown"),
     OLLAMA("ollama"),
     OPEN_AI_COMPATIBLE("open_ai_compatible"),
     GEMINI("gemini");
@@ -28,16 +29,22 @@ public class ModelConfig extends NamedEntity implements Config {
     }
 
     public static Provider fromType(final String value) {
-      final String normalized = normalizeType(value);
-      if (StringUtils.isBlank(normalized)) {
-        throw new IllegalArgumentException("type is required");
+      final Provider provider = valueOfOrDefault(value);
+      if (provider == UNKNOWN) {
+        throw new IllegalArgumentException("Unsupported model provider: " + value);
       }
-      for (final Provider provider : values()) {
-        if (provider.type.equals(normalized)) {
-          return provider;
-        }
+      return provider;
+    }
+
+    public static Provider valueOfOrDefault(final String value) {
+      if (StringUtils.isBlank(value)) {
+        return UNKNOWN;
       }
-      throw new IllegalArgumentException("Unsupported model provider: " + value);
+      try {
+        return Provider.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
     }
   }
 

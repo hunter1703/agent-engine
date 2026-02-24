@@ -54,17 +54,17 @@ public final class AddTaskTool extends Tool {
       return Map.of("error", "Task goal is required");
     }
 
-    if (StringUtils.isNotBlank(parentId)
-        && PlanningUtils.findTaskById(currentPlan, parentId) == null) {
-      return Map.of("error", "Parent task not found with ID: " + parentId);
-    }
-
     final Task task = new Task(name, goal);
     if (StringUtils.isNotBlank(parentId)) {
       task.setParentId(parentId);
     }
     if (StringUtils.isNotBlank(description)) {
       task.setDescription(description);
+    }
+
+    final String validationError = currentPlan.canAddTask(task);
+    if (StringUtils.isNotBlank(validationError)) {
+      return Map.of("error", validationError);
     }
 
     if (currentPlan.getTasks() == null) {

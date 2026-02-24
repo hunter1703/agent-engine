@@ -43,3 +43,4 @@ and REST) for interacting with agents.
 24. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
 25. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
 26. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+27. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.

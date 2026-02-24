@@ -85,7 +85,10 @@ public class AgentRestAPI {
         request.getAgentId(),
         request.getSessionId());
 
-    final RequestType requestType = RequestType.valueOf(request.getType());
+    final RequestType requestType = RequestType.valueOfOrDefault(request.getType());
+    if (requestType == RequestType.UNKNOWN) {
+      throw new IllegalArgumentException("Invalid request type: " + request.getType());
+    }
     @SuppressWarnings("unchecked")
     final AgentRequestHandler<AgentResponse> handler =
         (AgentRequestHandler<AgentResponse>) handlerFor(requestType);

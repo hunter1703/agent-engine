@@ -74,7 +74,15 @@ public final class UpdateTaskTool extends Tool {
       task.setDescription(description);
     }
     if (StringUtils.isNotBlank(status)) {
-      task.setStatus(TaskStatus.valueOf(status.toUpperCase()));
+      final TaskStatus newStatus = TaskStatus.valueOfOrDefault(status);
+      if (newStatus == TaskStatus.UNKNOWN) {
+        return Map.of("error", "Invalid task status: " + status);
+      }
+      final String validationError = currentPlan.canUpdateTask(task, newStatus);
+      if (StringUtils.isNotBlank(validationError)) {
+        return Map.of("error", validationError);
+      }
+      task.setStatus(newStatus);
     }
     if (StringUtils.isNotBlank(result)) {
       task.setResult(result);

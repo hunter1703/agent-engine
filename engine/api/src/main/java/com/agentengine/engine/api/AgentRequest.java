@@ -1,6 +1,7 @@
 package com.agentengine.engine.api;
 
 import jakarta.validation.constraints.NotBlank;
+import java.util.Locale;
 
 public class AgentRequest {
   @NotBlank(message = "types is required")
@@ -76,10 +77,22 @@ public class AgentRequest {
   }
 
   public enum RequestType {
+    UNKNOWN,
     INVOKE_AGENT,
     STREAM_AGUI_EVENTS,
     STREAM_RESPONSES,
     BUILD_EVENT,
-    STOP_AGENT
+    STOP_AGENT;
+
+    public static RequestType valueOfOrDefault(final String value) {
+      if (value == null || value.isBlank()) {
+        return UNKNOWN;
+      }
+      try {
+        return RequestType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
+    }
   }
 }

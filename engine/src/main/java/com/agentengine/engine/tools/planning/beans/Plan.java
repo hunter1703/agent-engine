@@ -1,5 +1,6 @@
 package com.agentengine.engine.tools.planning.beans;
 
+import com.agentengine.engine.tools.planning.PlanningValidator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,12 @@ public class Plan {
   public Plan(String title, String goal) {
     this.title = title;
     this.goal = goal;
+  }
+
+  public Plan(String title, String goal, List<Task> tasks) {
+    this.title = title;
+    this.goal = goal;
+    this.tasks = tasks;
   }
 
   public String getPlanId() {
@@ -70,5 +77,21 @@ public class Plan {
   public void finish(PlanStatus status, String result) {
     this.status = status;
     this.result = result;
+  }
+
+  public String validate() {
+    return PlanningValidator.validatePlan(this);
+  }
+
+  public String canAddTask(final Task task) {
+    return PlanningValidator.canAddTask(this, task);
+  }
+
+  public String canUpdateTask(final Task task, final TaskStatus newStatus) {
+    return PlanningValidator.canUpdateTask(this, task, newStatus);
+  }
+
+  public String canFinish(final PlanStatus newStatus) {
+    return PlanningValidator.canFinishPlan(this, newStatus);
   }
 }
