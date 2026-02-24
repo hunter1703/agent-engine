@@ -2,11 +2,12 @@ package com.agentengine.engine.agents.flows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
-import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.google.adk.agents.InvocationContext;
-import com.google.adk.models.LlmRequest;
+import com.google.adk.models.LlmResponse;
 import com.google.adk.sessions.Session;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,14 +15,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
-class PlanContextRequestProcessorTest {
+class PlanContinuationResponseProcessorTest {
 
   @Test
-  void appendsPlanSummaryToInstructions() {
-    Task task = new Task("Step 1", "Do work");
-    task.setTaskId("task-1");
-    Plan plan = new Plan("Root", "Plan goal");
-    plan.setPlanId("plan-1");
+  void marksResponsePartialWhenTasksRemain() {
+    Plan plan = new Plan("Root", "Goal");
+    Task task = new Task("Step", "Goal");
+    task.setStatus(TaskStatus.TODO);
     plan.setTasks(List.of(task));
 
     Session session =
@@ -33,12 +33,12 @@ class PlanContextRequestProcessorTest {
             .build();
 
     InvocationContext context = InvocationContext.builder().session(session).build();
-    LlmRequest request = LlmRequest.builder().build();
+    LlmResponse response = LlmResponse.builder().build();
 
-    PlanContextRequestProcessor processor = new PlanContextRequestProcessor();
-    LlmRequest updated = processor.processRequest(context, request).blockingGet().updatedRequest();
+    PlanContinuationResponseProcessor processor = new PlanContinuationResponseProcessor();
+    LlmResponse updated =
+        processor.processResponse(context, response).blockingGet().updatedResponse();
 
-    String instructions = String.join("\n", updated.getSystemInstructions());
-    assertThat(instructions).contains("PLAN CONTEXT").contains("Root").contains("task-1");
+    assertThat(updated.partial().orElse(false)).isTrue();
   }
 }

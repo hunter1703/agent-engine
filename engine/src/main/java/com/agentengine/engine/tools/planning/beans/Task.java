@@ -7,7 +7,7 @@ public class Task {
   @ToolSchema(
       description = "Unique identifier for the task",
       optional = true)
-  private String id = UUID.randomUUID().toString();
+  private String taskId = UUID.randomUUID().toString();
 
   @ToolSchema(
       name = "parent_id",
@@ -27,6 +27,9 @@ public class Task {
   @ToolSchema(description = "Actual result of the task once completed.", optional = true)
   private String result;
 
+  @ToolSchema(description = "Detailed description of the task.", optional = true)
+  private String description;
+
   public Task() {}
 
   public Task(String name, String goal) {
@@ -34,12 +37,12 @@ public class Task {
     this.goal = goal;
   }
 
-  public String getId() {
-    return id;
+  public String getTaskId() {
+    return taskId;
   }
 
-  public void setId(String id) {
-    this.id = id;
+  public void setTaskId(String taskId) {
+    this.taskId = taskId;
   }
 
   public String getParentId() {
@@ -80,5 +83,13 @@ public class Task {
 
   public void setResult(String result) {
     this.result = result;
+  }
+
+  public String getDescription() {
+    return description;
+  }
+
+  public void setDescription(String description) {
+    this.description = description;
   }
 }

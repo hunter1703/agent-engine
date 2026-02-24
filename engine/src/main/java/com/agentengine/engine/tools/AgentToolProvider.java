@@ -6,7 +6,7 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolParam;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -197,15 +197,9 @@ public final class AgentToolProvider implements ToolProvider {
     final Parameter[] parameters = constructor.getParameters();
     final List<ConstructorParam> params = new ArrayList<>(parameters.length);
     for (final Parameter parameter : parameters) {
-      final ToolParam annotation = parameter.getAnnotation(ToolParam.class);
+      final ToolSchema annotation = parameter.getAnnotation(ToolSchema.class);
       final String key = resolveKey(parameter, annotation);
-      final boolean injectContext =
-          AgentContext.class.isAssignableFrom(parameter.getType())
-              || ToolParam.AGENT_CONTEXT.equals(key);
-      if (injectContext && !AgentContext.class.isAssignableFrom(parameter.getType())) {
-        throw new IllegalStateException(
-            "AgentContext injection requires AgentContext type for " + parameter.getName());
-      }
+      final boolean injectContext = AgentContext.class.isAssignableFrom(parameter.getType());
       params.add(
           new ConstructorParam(
               key, parameter.getParameterizedType(), parameter.getType(), injectContext));
@@ -213,8 +207,8 @@ public final class AgentToolProvider implements ToolProvider {
     return params;
   }
 
-  private static String resolveKey(final Parameter parameter, final ToolParam annotation) {
-    final String key = annotation == null ? "" : annotation.value();
+  private static String resolveKey(final Parameter parameter, final ToolSchema annotation) {
+    final String key = annotation == null ? "" : annotation.name();
     if (StringUtils.isNotBlank(key)) {
       return key;
     }

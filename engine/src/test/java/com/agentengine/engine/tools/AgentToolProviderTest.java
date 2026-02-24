@@ -11,7 +11,7 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolParam;
+import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
@@ -23,6 +23,7 @@ class AgentToolProviderTest {
   @Test
   void createsAnnotatedToolWithConfigAndContext() {
     Tool toolInstance = new SampleAutoTool();
+    @SuppressWarnings("unchecked")
     Instance<Tool> tools = mock(Instance.class);
     when(tools.iterator()).thenReturn(List.of(toolInstance).iterator());
     doNothing().when(tools).destroy(toolInstance);
@@ -57,8 +58,13 @@ class AgentToolProviderTest {
 
     @ToolConstructor
     public SampleAutoTool(
-        @ToolParam("prefix") final String prefix,
-        @ToolParam(ToolParam.AGENT_CONTEXT) final AgentContext agentContext) {
+        @ToolSchema(name = "prefix", description = "Optional prefix", optional = true)
+            final String prefix,
+        @ToolSchema(
+                name = "agentContext",
+                description = "Injected agent context",
+                optional = true)
+            final AgentContext agentContext) {
       super(DESCRIPTOR);
       this.prefix = prefix == null ? "" : prefix;
       this.agentId = agentContext == null ? null : agentContext.agentId();

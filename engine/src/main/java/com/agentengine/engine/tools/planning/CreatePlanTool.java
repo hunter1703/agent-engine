@@ -45,7 +45,7 @@ public final class CreatePlanTool extends Tool {
 
     PlanningUtils.savePlan(toolContext, currentPlan);
 
-    LOG.info("Created plan '{}' with {} tasks", currentPlan.getId(), tasks.size());
+    LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return Map.of("status", "success", "task_count", tasks.size());
   }
 }

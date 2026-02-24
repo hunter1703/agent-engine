@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.agents.flows.SimpleFlow;
+import com.agentengine.engine.agents.flows.PlanningFlow;
 import com.agentengine.engine.builders.agent.AgentBuilder;
 import com.agentengine.engine.model.AbstractLLM;
 import com.google.adk.agents.LlmAgent;
@@ -20,7 +20,7 @@ public class SimpleAgent extends LlmAgent {
     if (agentModel == null) {
       return null;
     }
-    return new SimpleFlow(
+    return new PlanningFlow(
         maxSteps().orElse(10),
         agentModel.getRequestProcessors(),
         agentModel.getResponseProcessors());

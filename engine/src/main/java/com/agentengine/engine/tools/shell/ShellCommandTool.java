@@ -4,7 +4,6 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolParam;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.vertx.json.schema.common.dsl.Schemas;
 
@@ -37,7 +36,12 @@ public final class ShellCommandTool extends Tool {
   }
 
   @ToolConstructor
-  public ShellCommandTool(@ToolParam("timeout_seconds") final Long timeoutSecs) {
+  public ShellCommandTool(
+      @ToolSchema(
+              name = "timeout_seconds",
+              description = "timeout in seconds for the shell command execution.",
+              optional = true)
+          final Long timeoutSecs) {
     super(DESCRIPTOR);
     this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
   }

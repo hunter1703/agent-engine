@@ -36,7 +36,12 @@ public final class AddTaskTool extends Tool {
       @ToolSchema(
               name = "goal",
               description = "The goal or expected result of this task")
-          String goal) {
+          String goal,
+      @ToolSchema(
+              name = "description",
+              description = "Detailed description of the task",
+              optional = true)
+          String description) {
     final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
@@ -58,6 +63,9 @@ public final class AddTaskTool extends Tool {
     if (StringUtils.isNotBlank(parentId)) {
       task.setParentId(parentId);
     }
+    if (StringUtils.isNotBlank(description)) {
+      task.setDescription(description);
+    }
 
     if (currentPlan.getTasks() == null) {
       currentPlan.setTasks(new ArrayList<>());
@@ -65,6 +73,6 @@ public final class AddTaskTool extends Tool {
     currentPlan.getTasks().add(task);
 
     PlanningUtils.savePlan(toolContext, currentPlan);
-    return Map.of("status", "success", "task_id", task.getId());
+    return Map.of("status", "success", "task_id", task.getTaskId());
   }
 }

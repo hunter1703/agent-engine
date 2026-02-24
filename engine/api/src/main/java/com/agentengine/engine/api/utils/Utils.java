@@ -108,55 +108,56 @@ public final class Utils {
         String.format("Unsupported parameterized type %s%s", type, label));
   }
 
-    public static Method resolveMethod(final Class<?> toolClass, final String methodName) {
-      for (Method method : toolClass.getMethods()) {
-        if (method.getName().equals(methodName)) {
-          method.setAccessible(true);
-          return method;
-        }
+  public static Method resolveMethod(final Class<?> toolClass, final String methodName) {
+    for (Method method : toolClass.getMethods()) {
+      if (method.getName().equals(methodName)) {
+        method.setAccessible(true);
+        return method;
       }
-      throw new IllegalArgumentException(
-          String.format("Method %s not found in class %s.", methodName, toolClass.getName()));
     }
+    throw new IllegalArgumentException(
+        String.format("Method %s not found in class %s.", methodName, toolClass.getName()));
+  }
 
-    public static AnnotatedMember resolveMember(final BeanPropertyDefinition property) {
-      if (property.getPrimaryMember() != null) {
-        return property.getPrimaryMember();
-      }
-      if (property.getGetter() != null) {
-        return property.getGetter();
-      }
-      if (property.getField() != null) {
-        return property.getField();
-      }
-      return property.getSetter();
+  public static AnnotatedMember resolveMember(final BeanPropertyDefinition property) {
+    if (property.getPrimaryMember() != null) {
+      return property.getPrimaryMember();
     }
+    if (property.getGetter() != null) {
+      return property.getGetter();
+    }
+    if (property.getField() != null) {
+      return property.getField();
+    }
+    return property.getSetter();
+  }
 
-    public static <T extends Annotation> T findAnnotation(final BeanPropertyDefinition property, final Class<T> annotationClass) {
-      if (property == null) {
-        return null;
-      }
-      if (property.getPrimaryMember() != null) {
-        T annotation = property.getPrimaryMember().getAnnotation(annotationClass);
-        if (annotation != null) {
-          return annotation;
-        }
-      }
-      if (property.getGetter() != null) {
-        T annotation = property.getGetter().getAnnotation(annotationClass);
-        if (annotation != null) {
-          return annotation;
-        }
-      }
-      if (property.getField() != null) {
-        T annotation = property.getField().getAnnotation(annotationClass);
-        if (annotation != null) {
-          return annotation;
-        }
-      }
-      if (property.getSetter() != null) {
-        return property.getSetter().getAnnotation(annotationClass);
-      }
+  public static <T extends Annotation> T findAnnotation(
+      final BeanPropertyDefinition property, final Class<T> annotationClass) {
+    if (property == null) {
       return null;
     }
+    if (property.getPrimaryMember() != null) {
+      T annotation = property.getPrimaryMember().getAnnotation(annotationClass);
+      if (annotation != null) {
+        return annotation;
+      }
+    }
+    if (property.getGetter() != null) {
+      T annotation = property.getGetter().getAnnotation(annotationClass);
+      if (annotation != null) {
+        return annotation;
+      }
+    }
+    if (property.getField() != null) {
+      T annotation = property.getField().getAnnotation(annotationClass);
+      if (annotation != null) {
+        return annotation;
+      }
+    }
+    if (property.getSetter() != null) {
+      return property.getSetter().getAnnotation(annotationClass);
+    }
+    return null;
+  }
 }

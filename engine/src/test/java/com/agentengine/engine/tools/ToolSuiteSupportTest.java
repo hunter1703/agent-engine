@@ -25,9 +25,11 @@ class ToolSuiteSupportTest {
   @Test
   void suiteSelectionExpandsTools() {
     ToolProvider provider = new SuiteToolProvider();
+    @SuppressWarnings("unchecked")
     Instance<ToolProvider> providers = mock(Instance.class);
     when(providers.iterator()).thenReturn(List.of(provider).iterator());
     when(providers.stream()).thenReturn(Stream.of(provider));
+    @SuppressWarnings("unchecked")
     Instance<ToolSuite> suites = mock(Instance.class);
     when(suites.iterator()).thenReturn(List.<ToolSuite>of().iterator());
 

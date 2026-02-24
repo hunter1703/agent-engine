@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 public class Plan {
-  private String id = UUID.randomUUID().toString();
+  private String planId = UUID.randomUUID().toString();
   private String title;
   private String goal;
   private List<Task> tasks = new ArrayList<>();
@@ -19,12 +19,12 @@ public class Plan {
     this.goal = goal;
   }
 
-  public String getId() {
-    return id;
+  public String getPlanId() {
+    return planId;
   }
 
-  public void setId(String id) {
-    this.id = id;
+  public void setPlanId(String planId) {
+    this.planId = planId;
   }
 
   public String getTitle() {

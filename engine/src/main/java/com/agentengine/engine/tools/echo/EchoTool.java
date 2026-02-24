@@ -22,7 +22,9 @@ public final class EchoTool extends Tool {
   }
 
   @ToolConstructor
-  public EchoTool(final String prefix) {
+  public EchoTool(
+      @ToolSchema(name = "prefix", description = "Prefix to add to the echoed message", optional = true)
+          final String prefix) {
     super(DESCRIPTOR);
     this.prefix = prefix;
   }

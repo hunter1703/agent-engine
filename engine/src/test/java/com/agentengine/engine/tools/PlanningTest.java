@@ -57,7 +57,7 @@ class PlanningTest {
     Plan plan = loadPlan(session);
     Task task = plan.getTasks().get(0);
 
-    updateTaskTool.execute(toolContext, task.getId(), null, null, "DONE", "finished");
+    updateTaskTool.execute(toolContext, task.getTaskId(), null, null, null, "DONE", "finished");
 
     Plan updated = loadPlan(session);
     Task updatedTask = updated.getTasks().get(0);

@@ -17,7 +17,7 @@ public final class UpdateTaskTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Update the status or result of a specific task in the current plan.",
+          "Update fields on a specific task in the current plan.",
           List.of(ALL),
           Map.of());
 
@@ -40,6 +40,11 @@ public final class UpdateTaskTool extends Tool {
               description = "Updated task goal",
               optional = true)
           String goal,
+      @ToolSchema(
+              name = "description",
+              description = "Updated task description",
+              optional = true)
+          String description,
       @ToolSchema(
               name = "status",
               description = "The new status of the task",
@@ -64,6 +69,9 @@ public final class UpdateTaskTool extends Tool {
     }
     if (StringUtils.isNotBlank(goal)) {
       task.setGoal(goal);
+    }
+    if (StringUtils.isNotBlank(description)) {
+      task.setDescription(description);
     }
     if (StringUtils.isNotBlank(status)) {
       task.setStatus(TaskStatus.valueOf(status.toUpperCase()));

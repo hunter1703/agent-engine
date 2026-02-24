@@ -13,6 +13,7 @@ import com.agentengine.engine.tools.planning.UpdateTaskTool;
 import com.agentengine.engine.tools.planning.ViewPlanTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.agentengine.engine.tools.shell.ShellCommandTool;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
@@ -191,7 +192,7 @@ class ToolVerificationTest {
 
         // 2. Verify Invocation
         Map<String, Object> args = Map.of(
-            "task_id", task.getId(),
+            "task_id", task.getTaskId(),
             "status", "DONE",
             "result", "Finished"
         );
@@ -234,28 +235,38 @@ class ToolVerificationTest {
 
     @Test
     void testPlanRetrievalFromMapState() {
-        // Simulate a plan that has been reloaded as a Map (e.g. from MongoDB)
-        Plan originalPlan = new Plan("Persistence Test", "Goal");
-        Map<String, Object> planMap = com.agentengine.engine.api.utils.JsonUtils.toMap(originalPlan);
+        // Simulate a plan that has been reloaded as a Map (e.g. from session state)
+        String planId = "plan-123";
+        String taskId = "task-456";
+        
+        Map<String, Object> taskMap = new java.util.HashMap<>();
+        taskMap.put("taskId", taskId);
+        taskMap.put("name", "New Task");
+        taskMap.put("goal", "Task Goal");
+        taskMap.put("status", "TODO");
+        
+        Map<String, Object> planMap = new java.util.HashMap<>();
+        planMap.put("planId", planId);
+        planMap.put("title", "Persistence Test");
+        planMap.put("goal", "Goal");
+        planMap.put("tasks", List.of(taskMap));
         
         session.state().put(PlanningUtils.PLAN_STATE_KEY, planMap);
         
-        // Verify PlanningUtils can still find it
+        // Verify PlanningUtils can still find it and IDs are mapped correctly
         Plan retrieved = PlanningUtils.getCurrentPlan(toolContext);
         assertNotNull(retrieved);
-        assertEquals("Persistence Test", retrieved.getTitle());
-        assertEquals("Goal", retrieved.getGoal());
+        assertEquals(planId, retrieved.getPlanId());
+        assertEquals(1, retrieved.getTasks().size());
+        assertEquals(taskId, retrieved.getTasks().get(0).getTaskId());
         
-        // Verify a tool can still use it (e.g. AddTaskTool)
-        AddTaskTool tool = new AddTaskTool();
-        Map<String, Object> args = Map.of("name", "New Task", "goal", "Task Goal");
+        // Verify a tool can still use it (e.g. UpdateTaskTool uses the ID to find the task)
+        UpdateTaskTool tool = new UpdateTaskTool();
+        Map<String, Object> args = Map.of("task_id", taskId, "status", "in_progress");
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         
         assertEquals("success", result.get("status"));
-        
-        // Verify the plan objectively in state was updated (it might be a Plan object now, or updated back to map depending on savePlan)
-        Plan updatedPlan = PlanningUtils.getCurrentPlan(toolContext);
-        assertEquals(1, updatedPlan.getTasks().size());
-        assertEquals("New Task", updatedPlan.getTasks().get(0).getName());
+        Plan finalPlan = PlanningUtils.getCurrentPlan(toolContext);
+        assertEquals(TaskStatus.IN_PROGRESS, finalPlan.getTasks().get(0).getStatus());
     }
 }
