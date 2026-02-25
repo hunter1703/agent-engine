@@ -242,7 +242,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return Flowable.just(decoratedEvent);
   }
 
-  private Flowable<BaseEvent> mapMessage(final String text, final boolean partial) {
+  private Flowable<BaseEvent> mapMessage(String text, final boolean partial) {
     if (StringUtils.isBlank(text)) {
       LOG.debug("Skipping message mapping due to blank text - text='{}'", text);
       return Flowable.empty();
@@ -261,9 +261,21 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
 
     if (partial) {
+      // guard against dumb model
+      String delta = text;
+      if (state.lastSentPartialText != null && text.startsWith(state.lastSentPartialText)) {
+        delta = text.substring(state.lastSentPartialText.length());
+      }
+      
+      if (StringUtils.isBlank(delta)) {
+        LOG.debug("Skipping message chunk mapping due to empty delta - text='{}', lastSent='{}'", text, state.lastSentPartialText);
+        return Flowable.empty();
+      }
+
+      state.lastSentPartialText = text;
       final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
       chunk.setMessageId(state.currentTextMessageId);
-      chunk.setDelta(text);
+      chunk.setDelta(delta);
       final BaseEvent decoratedChunk = decorateEvent(chunk);
       LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedChunk));
       flows.add(Flowable.just(decoratedChunk));
@@ -282,6 +294,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       flows.add(Flowable.just(decoratedEnd));
       state.finalAnswer = text;
       state.currentTextMessageId = null;
+      state.lastSentPartialText = null;
     }
 
     return Flowable.concat(flows);
@@ -424,6 +437,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
+    private String lastSentPartialText;
     private String finalAnswer;
     private boolean isThinking;
     private final Set<String> pendingToolCalls = new HashSet<>();
