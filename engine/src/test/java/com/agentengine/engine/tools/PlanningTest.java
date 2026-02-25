@@ -189,8 +189,8 @@ class PlanningTest {
     Map<String, Object> response =
         completeTaskTool.execute(toolContext, t1.getTaskId(), "done", "finished t1");
 
-    assertThat(response).containsKey("next_task_nudge");
-    assertThat(response.get("next_task_nudge").toString()).contains(t2.getTaskId());
+    assertThat(response).containsKey("next_task");
+    assertThat(response.get("next_task").toString()).contains(t2.getTaskId());
   }
 
   @Test

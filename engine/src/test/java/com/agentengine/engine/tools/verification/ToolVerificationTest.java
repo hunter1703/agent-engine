@@ -9,9 +9,9 @@ import com.agentengine.engine.tools.planning.CompleteTaskTool;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.tools.planning.StartTaskTool;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
-import com.agentengine.engine.tools.planning.UpdateTaskInfoTool;
-import com.agentengine.engine.tools.planning.UpdateTaskStatusTool;
+
 import com.agentengine.engine.tools.planning.ViewPlanTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
@@ -179,8 +179,8 @@ class ToolVerificationTest {
     }
 
     @Test
-    void testUpdateTaskTool() {
-        UpdateTaskStatusTool tool = new UpdateTaskStatusTool();
+    void testCompleteTaskTool() {
+        CompleteTaskTool tool = new CompleteTaskTool();
 
         // Setup state with a plan and task
         Task task = new Task("Task1", "Goal1");
@@ -190,12 +190,12 @@ class ToolVerificationTest {
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
-        assertEquals("update_task_status", decl.name().get());
+        assertEquals("complete_task", decl.name().get());
 
         // 2. Verify Invocation
         Map<String, Object> args = Map.of(
             "task_id", task.getTaskId(),
-            "status", "DONE",
+            "status", "done",
             "result", "Finished"
         );
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
@@ -262,9 +262,9 @@ class ToolVerificationTest {
         assertEquals(1, retrieved.getTasks().size());
         assertEquals(taskId, retrieved.getTasks().get(0).getTaskId());
         
-        // Verify a tool can still use it (e.g. UpdateTaskTool uses the ID to find the task)
-        UpdateTaskInfoTool tool = new UpdateTaskInfoTool();
-        Map<String, Object> args = Map.of("task_id", taskId, "status", "in_progress");
+        // Verify a tool can still use it (e.g. StartTaskTool uses the ID to find the task)
+        StartTaskTool tool = new StartTaskTool();
+        Map<String, Object> args = Map.of("task_id", taskId);
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         
         assertEquals("success", result.get("status"));
