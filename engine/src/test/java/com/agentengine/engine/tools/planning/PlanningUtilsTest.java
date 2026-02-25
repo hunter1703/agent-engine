@@ -209,12 +209,12 @@ class PlanningUtilsTest {
     Task child = new Task("Child", "G2");
     child.setTaskId("child");
     child.setParentId("parent");
+    child.setStatus(TaskStatus.TODO);
     plan.setTasks(List.of(parent, child));
-    parent.setResult("Parent result");
 
-    String error = plan.canUpdateTask(parent, TaskStatus.DONE, null);
+    String error = plan.canUpdateTask(parent, TaskStatus.DONE, "Parent result");
 
-    assertThat(error).contains("child tasks");
+    assertThat(error).contains("child tasks are not terminal");
   }
 
   @Test
@@ -302,7 +302,7 @@ class PlanningUtilsTest {
     task.setResult("Existing result");
     plan.setTasks(List.of(task));
 
-    String error = plan.canUpdateTask(task, TaskStatus.DONE, null);
+    String error = plan.canUpdateTask(task, TaskStatus.DONE, "Existing result");
 
     assertThat(error).isNull();
   }

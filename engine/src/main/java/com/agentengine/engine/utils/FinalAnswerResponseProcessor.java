@@ -62,19 +62,19 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
             .build());
         return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
       }
-      final String text = response.content().orElse(Content.builder().build()).text();
-      if (StringUtils.isBlank(text)) {
-        ViolationUtils.addViolation(context, Violation.builder("final_answer_turnaround_no_text")
-            .message("No text in final answer turnaround")
-            .correctionMessage("You signaled for a final answer but failed to provide any text. The final answer turn must contain the answer text. Please provide the actual answer now.")
-            .build());
-        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
-      }
       if (!otherTools.isEmpty()) {
         final String toolList = otherTools.stream().distinct().collect(Collectors.joining(", "));
         ViolationUtils.addViolation(context, Violation.builder("final_answer_turnaround_tools")
             .message("Tool calls in final answer turnaround")
             .correctionMessage("You attempted to call tools: [" + toolList + "] while providing the final answer. The answer turn must be PURE text. Use this turn ONLY to state the final answer.")
+            .build());
+        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
+      }
+      final String text = response.content().orElse(Content.builder().build()).text();
+      if (StringUtils.isBlank(text)) {
+        ViolationUtils.addViolation(context, Violation.builder("final_answer_turnaround_no_text")
+            .message("No text in final answer turnaround")
+            .correctionMessage("You signaled for a final answer but failed to provide any text. The final answer turn must contain the answer text. Please provide the actual answer now.")
             .build());
         return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
       }

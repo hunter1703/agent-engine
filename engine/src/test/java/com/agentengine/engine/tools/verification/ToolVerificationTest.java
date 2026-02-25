@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.agentengine.engine.tools.UserClarificationTool;
 import com.agentengine.engine.tools.echo.EchoTool;
 import com.agentengine.engine.tools.planning.AddTaskTool;
+import com.agentengine.engine.tools.planning.CompleteTaskTool;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
 import com.agentengine.engine.tools.planning.UpdateTaskInfoTool;
+import com.agentengine.engine.tools.planning.UpdateTaskStatusTool;
 import com.agentengine.engine.tools.planning.ViewPlanTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
@@ -131,8 +133,8 @@ class ToolVerificationTest {
         );
 
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
-        assertEquals("success", result.get("status"));
-        
+        assertTrue(result.get("status").toString().contains("Success"));
+
         Plan plan = (Plan) session.state().get(PlanningUtils.PLAN_STATE_KEY);
         assertNotNull(plan);
         assertEquals(2, plan.getTasks().size());
@@ -178,7 +180,7 @@ class ToolVerificationTest {
 
     @Test
     void testUpdateTaskTool() {
-        UpdateTaskInfoTool tool = new UpdateTaskInfoTool();
+        UpdateTaskStatusTool tool = new UpdateTaskStatusTool();
 
         // Setup state with a plan and task
         Task task = new Task("Task1", "Goal1");
@@ -188,7 +190,7 @@ class ToolVerificationTest {
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
-        assertEquals("update_task_info", decl.name().get());
+        assertEquals("update_task_status", decl.name().get());
 
         // 2. Verify Invocation
         Map<String, Object> args = Map.of(

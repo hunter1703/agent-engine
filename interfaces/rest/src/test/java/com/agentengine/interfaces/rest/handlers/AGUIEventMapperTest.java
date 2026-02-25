@@ -9,6 +9,7 @@ import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.type.EventType;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
@@ -115,7 +116,7 @@ class AGUIEventMapperTest {
             .content(
                 Content.builder()
                     .role("model")
-                    .parts(List.of(Part.builder().functionCall(functionCall).build()))
+                    .parts(Part.builder().functionCall(functionCall).build())
                     .build())
             .partial(false)
             .build();
@@ -134,7 +135,7 @@ class AGUIEventMapperTest {
             .content(
                 Content.builder()
                     .role("user")
-                    .parts(List.of(Part.builder().functionResponse(functionResponse).build()))
+                    .parts(Part.builder().functionResponse(functionResponse).build())
                     .build())
             .partial(false)
             .build();
@@ -147,7 +148,7 @@ class AGUIEventMapperTest {
             .content(
                 Content.builder()
                     .role("model")
-                    .parts(List.of(Part.builder().text("done").build()))
+                    .parts(Part.builder().text("done").build())
                     .build())
             .partial(false)
             .build();

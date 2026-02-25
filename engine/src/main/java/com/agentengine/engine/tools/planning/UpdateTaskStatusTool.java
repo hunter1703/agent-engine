@@ -18,7 +18,7 @@ public class UpdateTaskStatusTool extends Tool {
         super(toolDescriptor);
     }
 
-    public Map<String, Object> _execute(ToolContext toolContext, String taskId, String name, String goal, String description, TaskStatus newStatus, String result) {
+    protected Map<String, Object> _execute(ToolContext toolContext, String taskId, String name, String goal, String description, TaskStatus newStatus, String result) {
         final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
         if (currentPlan == null) {
             return Map.of("error", "No active plan found");

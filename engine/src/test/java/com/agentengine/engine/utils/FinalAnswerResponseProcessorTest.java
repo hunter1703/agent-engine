@@ -228,7 +228,7 @@ class FinalAnswerResponseProcessorTest {
 
     assertThat(result.updatedResponse().turnComplete()).contains(false);
     assertThat(ViolationUtils.getViolations(context)).hasSize(1);
-    assertThat(ViolationUtils.getViolations(context).get(0).getCode()).isEqualTo("final_answer_missing_text");
+    assertThat(ViolationUtils.getViolations(context).get(0).getCode()).isEqualTo("final_answer_turnaround_no_text");
   }
 
   @Test

@@ -1,11 +1,16 @@
 package com.agentengine.engine.model;
 
+import com.agentengine.engine.utils.CorrectionProcessor;
+import com.agentengine.engine.utils.FinalAnswerResponseProcessor;
 import com.agentengine.engine.utils.Parser;
+import com.google.adk.flows.llmflows.RequestProcessor;
+import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +18,8 @@ import org.slf4j.LoggerFactory;
 public final class DelegatingLLMModel extends AbstractLLM {
   private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
   private final BaseLlm delegate;
+  private final List<RequestProcessor> requestProcessors;
+  private final List<ResponseProcessor> responseProcessors;
 
   public DelegatingLLMModel(
       final BaseLlm delegate,
@@ -27,6 +34,20 @@ public final class DelegatingLLMModel extends AbstractLLM {
         toolCallingEnabled,
         parseToolCallsFromText);
     this.delegate = delegate;
+    this.requestProcessors = List.of(CorrectionProcessor.INSTANCE, parser);
+    this.responseProcessors = parseToolCallsFromText
+        ? List.of(parser, FinalAnswerResponseProcessor.INSTANCE)
+        : List.of(parser);
+  }
+
+  @Override
+  public List<RequestProcessor> getRequestProcessors() {
+    return requestProcessors;
+  }
+
+  @Override
+  public List<ResponseProcessor> getResponseProcessors() {
+    return responseProcessors;
   }
 
   @Override
