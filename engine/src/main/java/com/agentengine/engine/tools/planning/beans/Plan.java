@@ -87,11 +87,11 @@ public class Plan {
     return PlanningValidator.canAddTask(this, task);
   }
 
-  public String canUpdateTask(final Task task, final TaskStatus newStatus) {
-    return PlanningValidator.canUpdateTask(this, task, newStatus);
+  public String canUpdateTask(final Task task, final TaskStatus newStatus, final String result) {
+    return PlanningValidator.canUpdateTask(this, task, newStatus, result);
   }
 
-  public String canFinish(final PlanStatus newStatus) {
-    return PlanningValidator.canFinishPlan(this, newStatus);
+  public String canFinish(final PlanStatus newStatus, final String result) {
+    return PlanningValidator.canFinishPlan(this, newStatus, result);
   }
 }

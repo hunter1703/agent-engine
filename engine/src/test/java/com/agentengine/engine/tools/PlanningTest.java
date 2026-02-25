@@ -5,11 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.tools.planning.CompleteTaskTool;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.tools.planning.StartTaskTool;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
-import com.agentengine.engine.tools.planning.UpdateTaskTool;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;
@@ -48,7 +49,7 @@ class PlanningTest {
     ToolContext toolContext = buildToolContext(session);
 
     CreatePlanTool createPlanTool = new CreatePlanTool();
-    UpdateTaskTool updateTaskTool = new UpdateTaskTool();
+    CompleteTaskTool completeTaskTool = new CompleteTaskTool();
     createPlanTool.execute(
         toolContext,
         "Root",
@@ -58,7 +59,7 @@ class PlanningTest {
     Plan plan = loadPlan(session);
     Task task = plan.getTasks().get(0);
 
-    updateTaskTool.execute(toolContext, task.getTaskId(), null, null, null, "DONE", "finished");
+    completeTaskTool.execute(toolContext, task.getTaskId(), "done", "finished");
 
     Plan updated = loadPlan(session);
     Task updatedTask = updated.getTasks().get(0);
@@ -99,14 +100,14 @@ class PlanningTest {
     Session session = buildSession("session-5");
     ToolContext toolContext = buildToolContext(session);
     CreatePlanTool createPlanTool = new CreatePlanTool();
-    UpdateTaskTool updateTaskTool = new UpdateTaskTool();
+    CompleteTaskTool completeTaskTool = new CompleteTaskTool();
 
     createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
     Plan plan = loadPlan(session);
     Task task = plan.getTasks().get(0);
 
     Map<String, Object> response =
-        updateTaskTool.execute(toolContext, task.getTaskId(), null, null, null, "invalid", null);
+        completeTaskTool.execute(toolContext, task.getTaskId(), "invalid", null);
 
     assertThat(response).containsKey("error");
   }
@@ -123,6 +124,89 @@ class PlanningTest {
     Map<String, Object> response = finishPlanTool.execute(toolContext, "invalid", "done");
 
     assertThat(response).containsKey("error");
+  }
+
+  @Test
+  void updateTaskRejectsResultForNonTerminalStatus() {
+    Session session = buildSession("session-7");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    CompleteTaskTool completeTaskTool = new CompleteTaskTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
+    Plan plan = loadPlan(session);
+    Task task = plan.getTasks().get(0);
+
+    Map<String, Object> response =
+        completeTaskTool.execute(toolContext, task.getTaskId(), "in_progress", "premature result");
+
+    assertThat(response).containsKey("error");
+    assertThat(response.get("error").toString()).contains("Only terminal statuses");
+  }
+
+  @Test
+  void validatePlanDetectsIllegalResults() {
+    Plan plan = new Plan("P1", "G1");
+    Task task = new Task("T1", "Goal");
+    task.setTaskId("t1");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    task.setResult("illegal result");
+    plan.setTasks(List.of(task));
+
+    String error = plan.validate();
+    assertThat(error).contains("is in_progress but has a result");
+
+    task.setResult(null);
+    plan.setResult("illegal plan result");
+    error = plan.validate();
+    assertThat(error).contains("is in_progress but has a result");
+  }
+
+  @Test
+  void finishPlanRejectsResultForNonTerminalStatus() {
+    // This isn't technically possible via FinishPlanTool UI as enums are restricted,
+    // but we test the validator logic.
+    Plan plan = new Plan("Root", "Goal");
+    String error = plan.canFinish(com.agentengine.engine.tools.planning.beans.PlanStatus.IN_PROGRESS, "result");
+    assertThat(error).contains("is not a terminal status");
+  }
+
+  @Test
+  void completeTaskProvidesNextTaskNudge() {
+    Session session = buildSession("session-8");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    CompleteTaskTool completeTaskTool = new CompleteTaskTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(
+        new Task("T1", "G1"),
+        new Task("T2", "G2")
+    ));
+    Plan plan = loadPlan(session);
+    Task t1 = plan.getTasks().get(0);
+    Task t2 = plan.getTasks().get(1);
+
+    Map<String, Object> response =
+        completeTaskTool.execute(toolContext, t1.getTaskId(), "done", "finished t1");
+
+    assertThat(response).containsKey("next_task_nudge");
+    assertThat(response.get("next_task_nudge").toString()).contains(t2.getTaskId());
+  }
+
+  @Test
+  void startTaskTargetsInProgressState() {
+    Session session = buildSession("session-9");
+    ToolContext toolContext = buildToolContext(session);
+    CreatePlanTool createPlanTool = new CreatePlanTool();
+    StartTaskTool startTaskTool = new StartTaskTool();
+
+    createPlanTool.execute(toolContext, "Root", "Goal", List.of(new Task("T1", "G1")));
+    Plan plan = loadPlan(session);
+    Task t1 = plan.getTasks().get(0);
+
+    // To in_progress
+    startTaskTool.execute(toolContext, t1.getTaskId());
+    assertThat(loadPlan(session).getTasks().get(0).getStatus()).isEqualTo(TaskStatus.IN_PROGRESS);
   }
 
   private static Session buildSession(final String sessionId) {

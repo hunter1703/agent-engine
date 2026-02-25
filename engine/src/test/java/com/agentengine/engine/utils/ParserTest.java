@@ -139,4 +139,21 @@ class ParserTest {
     assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "native_tool".equals(p.functionCall().get().name().orElse("")));
     assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "text_tool".equals(p.functionCall().get().name().orElse("")));
   }
+
+  @Test
+  void extractsThoughtTags() {
+    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT);
+    final String response = "<thought>Thinking about it</thought>Final answer here";
+    final Content content = Content.fromParts(Part.fromText(response));
+
+    final Content parsed = parser.parse(content);
+    final List<Part> parts = parsed.parts().orElse(List.of());
+
+    // Expecting 2 parts:
+    // 1. Text part: "Final answer here"
+    // 2. Thought part: "Thinking about it"
+    assertThat(parts).hasSize(2);
+    assertThat(parts).anyMatch(p -> "Final answer here".equals(p.text().orElse("")) && !p.thought().orElse(false));
+    assertThat(parts).anyMatch(p -> "Thinking about it".equals(p.text().orElse("")) && p.thought().orElse(true));
+  }
 }

@@ -35,10 +35,12 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
   private static final Pattern TOOL_CALL_PATTERN =
       Pattern.compile(
-          "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*\\}",
+          "\\{\\s*[\"']id[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']name[\"']\\s*:\\s*[\"']([^\"']*)[\"']\\s*,\\s*[\"']args[\"']\\s*:\\s*(\\{[^}]*})\\s*}",
           Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private static final Pattern TOOL_CALL_TAG_PATTERN =
-      Pattern.compile("<\\/?tool_call\\s*/?>", Pattern.CASE_INSENSITIVE);
+      Pattern.compile("</?tool_call\\s*/?>", Pattern.CASE_INSENSITIVE);
+  private static final Pattern THOUGHT_TAG_PATTERN =
+      Pattern.compile("<thought>(.*?)</thought>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
   private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
   private boolean toolCallingEnabled = false;
   private boolean parseToolCallsFromText = true;
@@ -104,21 +106,36 @@ public class Parser implements RequestProcessor, ResponseProcessor {
   private Content parseTextContent(Content content) {
     String processedText = content.text();
     List<Part> toolCallParts = new ArrayList<>(toolCallingEnabled ? getToolCallParts(content) : List.of());
+    List<Part> thoughtParts = new ArrayList<>(content.parts().orElse(List.of()).stream()
+        .filter(part -> part.thought().orElse(false)).toList());
+
     if (toolCallingEnabled && parseToolCallsFromText) {
       final List<ToolCall> toolCalls = dedupeToolCalls(parseToolCalls(processedText));
       final List<Part> extraParts = toolCalls.stream().map(Parser::buildToolCallPart).toList();
       toolCallParts.addAll(extraParts);
       processedText = stripToolCallsBlock(processedText);
     }
+
+    // Extract thoughts from text if tags are present
+    if (processedText != null) {
+      Matcher thoughtMatcher = THOUGHT_TAG_PATTERN.matcher(processedText);
+      while (thoughtMatcher.find()) {
+        String thoughtText = thoughtMatcher.group(1).trim();
+        if (StringUtils.isNotBlank(thoughtText)) {
+          thoughtParts.add(Part.builder().text(thoughtText).thought(true).build());
+        }
+      }
+      processedText = thoughtMatcher.replaceAll("").trim();
+    }
+
     processedText = stripToolCallTags(processedText);
 
     final String finalAnswer = processedText == null ? "" : processedText.trim();
     final List<Part> allParts = new ArrayList<>(toolCallParts);
-    allParts.add(Part.builder().text(finalAnswer).build());
-
-    final List<Part> contentParts =
-        content.parts().isPresent() ? content.parts().orElse(List.of()) : List.of();
-    allParts.addAll(contentParts.stream().filter(part -> part.thought().orElse(false)).toList());
+    if (StringUtils.isNotBlank(finalAnswer)) {
+      allParts.add(Part.builder().text(finalAnswer).build());
+    }
+    allParts.addAll(thoughtParts);
 
     return Content.builder().role(content.role().orElse(null)).parts(allParts).build();
   }

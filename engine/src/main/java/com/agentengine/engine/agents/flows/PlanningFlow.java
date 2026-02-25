@@ -16,6 +16,7 @@ public class PlanningFlow extends AbstractFlow {
     DEFAULT_REQUEST_PROCESSORS.addAll(SingleFlow.REQUEST_PROCESSORS);
     DEFAULT_REQUEST_PROCESSORS.add(new PlanContextRequestProcessor());
     DEFAULT_REQUEST_PROCESSORS.add(new PlanTaskRequestProcessor());
+    DEFAULT_RESPONSE_PROCESSORS.add(new RedundantToolCallsResponseProcessor());
     DEFAULT_RESPONSE_PROCESSORS.addAll(SingleFlow.RESPONSE_PROCESSORS);
   }
 
@@ -23,6 +24,10 @@ public class PlanningFlow extends AbstractFlow {
       final int maxStepsPerTask,
       final List<RequestProcessor> requestProcessors,
       final List<ResponseProcessor> responseProcessors) {
-    super(maxStepsPerTask, CollectionUtils.append(DEFAULT_REQUEST_PROCESSORS, requestProcessors, LoggingRequestProcessor.INSTANCE), CollectionUtils.append(responseProcessors, new PlanLoopResponseProcessor(maxStepsPerTask), DEFAULT_RESPONSE_PROCESSORS));
+      final List<ResponseProcessor> resProcessors = new ArrayList<>(responseProcessors);
+    resProcessors.add(new PlanLoopResponseProcessor(maxStepsPerTask));
+    resProcessors.addAll(DEFAULT_RESPONSE_PROCESSORS);
+
+    super(maxStepsPerTask, CollectionUtils.append(DEFAULT_REQUEST_PROCESSORS, requestProcessors, LoggingRequestProcessor.INSTANCE), resProcessors);
   }
 }

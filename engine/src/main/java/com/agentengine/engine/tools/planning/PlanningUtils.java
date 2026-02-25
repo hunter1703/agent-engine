@@ -26,6 +26,8 @@ public final class PlanningUtils {
   private static final int MAX_FOCUS_TASKS = 1;
   private static final Logger LOG = LoggerFactory.getLogger(PlanningUtils.class);
   public static final String PLAN_STATE_KEY = "currentPlan";
+  public static final String NUDGE_REQUIRED_KEY = "nudgeRequired";
+  public static final String VIOLATION_MESSAGE_KEY = "plan.verification.violation_message";
 
   private PlanningUtils() {}
 
@@ -122,7 +124,8 @@ public final class PlanningUtils {
         taskVsAncestors);
 
     builder.append("\nPlan Tree (compact):\n");
-    appendTaskTree(builder, taskVsChildren, null, 0);
+    final Set<String> relevantIds = collectRelevantTaskIds(plan, tasksById, taskVsAncestors);
+    appendTaskTree(builder, taskVsChildren, null, 0, relevantIds);
 
     return builder.toString().trim();
   }
@@ -137,8 +140,7 @@ public final class PlanningUtils {
       return "";
     }
     final StringBuilder builder = new StringBuilder();
-    builder.append("TASK LOOP: Continue until all tasks are done or abandoned. ")
-        .append("Use update_task for progress and add_task to add new work.\n");
+    builder.append("TASK LOOP: Continue until all tasks are done or abandoned. ");
     builder.append("FOCUS TASKS:\n");
     final int limit = Math.min(openTasks.size(), MAX_FOCUS_TASKS);
     for (int i = 0; i < limit; i++) {
@@ -234,15 +236,62 @@ public final class PlanningUtils {
       final StringBuilder sb,
       final Map<String, List<Task>> taskTree,
       final String parentId,
-      final int depth) {
+      final int depth,
+      final Set<String> relevantIds) {
     final List<Task> level = CollectionUtils.nullSafeList(taskTree.get(parentId));
     for (Task task : level) {
+      final String taskId = getTaskIdValue(task);
       sb.append("  ".repeat(Math.max(0, depth)))
           .append("- ")
-          .append(taskLabel(task))
-          .append("\n");
-      appendTaskTree(sb, taskTree, task.getTaskId(), depth + 1);
+          .append(taskLabel(task));
+
+      final List<Task> children = taskTree.get(taskId);
+      if (CollectionUtils.isNotEmpty(children)) {
+        if (depth == 0 || relevantIds.contains(taskId)) {
+          sb.append("\n");
+          appendTaskTree(sb, taskTree, taskId, depth + 1, relevantIds);
+        } else {
+          sb.append(" (+ ").append(countAllDescendants(taskId, taskTree)).append(" subtasks)\n");
+        }
+      } else {
+        sb.append("\n");
+      }
     }
+  }
+
+  private static int countAllDescendants(final String parentId, final Map<String, List<Task>> taskTree) {
+    int count = 0;
+    final List<Task> children = taskTree.get(parentId);
+    if (children != null) {
+      count += children.size();
+      for (Task child : children) {
+        count += countAllDescendants(getTaskIdValue(child), taskTree);
+      }
+    }
+    return count;
+  }
+
+  private static Set<String> collectRelevantTaskIds(
+      final Plan plan, final Map<String, Task> tasksById, final Map<String, List<Task>> ancestorMap) {
+    final Set<String> relevant = new HashSet<>();
+    final List<Task> inProgress =
+        plan.getTasks().stream()
+            .filter(t -> getTaskStatusEnum(t) == TaskStatus.IN_PROGRESS)
+            .toList();
+
+    for (Task task : inProgress) {
+      final String id = getTaskIdValue(task);
+      if (id != null) {
+        relevant.add(id);
+        for (Task ancestor : getAncestors(task, tasksById, ancestorMap)) {
+          final String aid = getTaskIdValue(ancestor);
+          if (aid != null) {
+            relevant.add(aid);
+          }
+        }
+      }
+    }
+    return relevant;
   }
 
   private static String taskLabel(final Task task) {
@@ -341,6 +390,21 @@ public final class PlanningUtils {
       return;
     }
     context.session().state().put(PLAN_STATE_KEY, plan);
+  }
+
+  public static void setNudgeRequired(final InvocationContext context, final boolean required) {
+    if (context == null || context.session() == null || context.session().state() == null) {
+      return;
+    }
+    context.session().state().put(NUDGE_REQUIRED_KEY, required);
+  }
+
+  public static boolean isNudgeRequired(final InvocationContext context) {
+    if (context == null || context.session() == null || context.session().state() == null) {
+      return false;
+    }
+    final Object value = context.session().state().get(NUDGE_REQUIRED_KEY);
+    return value instanceof Boolean b && b;
   }
 
   public static Task findTaskById(final Plan plan, final String taskId) {
@@ -573,7 +637,70 @@ public final class PlanningUtils {
     return false;
   }
 
-  static String getTaskIdValue(final Task task) {
+  public static Task findNextTodoTask(final Plan plan) {
+    if (plan == null) {
+      return null;
+    }
+    final Map<String, List<Task>> taskTree = groupTasksByParent(plan);
+    final List<Task> orderedTasks = collectOrderedTasks(taskTree);
+    for (Task task : orderedTasks) {
+      final TaskStatus status = getTaskStatusEnum(task);
+      if (isTerminalStatus(status) || status == TaskStatus.IN_PROGRESS) {
+        continue;
+      }
+      return task;
+    }
+    return null;
+  }
+
+  public static boolean isTerminalStatus(final TaskStatus status) {
+    return status != null && status.isTerminal();
+  }
+
+  public static boolean isTerminalStatus(final com.agentengine.engine.tools.planning.beans.PlanStatus status) {
+    return status != null && status.isTerminal();
+  }
+
+  public static String getTerminalStatuses(final Class<? extends Enum<?>> enumClass) {
+    return getStatusesByTerminalFlag(enumClass, true);
+  }
+
+  public static String getNonTerminalStatuses(final Class<? extends Enum<?>> enumClass) {
+    return getStatusesByTerminalFlag(enumClass, false);
+  }
+
+  private static String getStatusesByTerminalFlag(final Class<? extends Enum<?>> enumClass, boolean terminal) {
+    final List<String> values = new ArrayList<>();
+    if (enumClass == TaskStatus.class) {
+      for (TaskStatus s : TaskStatus.values()) {
+        if (s != TaskStatus.UNKNOWN && s.isTerminal() == terminal) {
+          values.add(s.getValue());
+        }
+      }
+    } else if (enumClass == com.agentengine.engine.tools.planning.beans.PlanStatus.class) {
+      for (com.agentengine.engine.tools.planning.beans.PlanStatus s : com.agentengine.engine.tools.planning.beans.PlanStatus.values()) {
+        if (s != com.agentengine.engine.tools.planning.beans.PlanStatus.UNKNOWN && s.isTerminal() == terminal) {
+          values.add(s.getValue());
+        }
+      }
+    }
+    return String.join(", ", values);
+  }
+
+  public static String getTaskIdValue(final Task task) {
     return task == null ? null : task.getTaskId();
+  }
+
+  public static String getViolationMessage(final InvocationContext context) {
+      if (context == null || context.session() == null || context.session().state() == null) {
+          return null;
+      }
+      return (String) context.session().state().get(VIOLATION_MESSAGE_KEY);
+  }
+
+  public static void clearViolationMessage(final InvocationContext context) {
+      if (context != null && context.session() != null && context.session().state() != null) {
+          context.session().state().remove(VIOLATION_MESSAGE_KEY);
+      }
   }
 }

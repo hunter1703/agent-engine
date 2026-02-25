@@ -210,6 +210,7 @@ class PlanningUtilsTest {
     child.setTaskId("child");
     child.setParentId("parent");
     plan.setTasks(List.of(parent, child));
+    parent.setResult("Parent result");
 
     String error = plan.canUpdateTask(parent, TaskStatus.DONE);
 
@@ -246,5 +247,63 @@ class PlanningUtilsTest {
     String error = plan.validate();
 
     assertThat(error).contains("out of order");
+  }
+
+  @Test
+  void buildPlanSummaryLensesDistantTasks() {
+    Plan plan = new Plan("Big Plan", "Goal");
+    Task root1 = new Task("Root 1", "G1");
+    root1.setTaskId("r1");
+    root1.setStatus(TaskStatus.DONE);
+
+    Task child1 = new Task("Child 1", "G1.1");
+    child1.setTaskId("c1");
+    child1.setParentId("r1");
+
+    Task root2 = new Task("Root 2", "G2");
+    root2.setTaskId("r2");
+    root2.setStatus(TaskStatus.IN_PROGRESS);
+
+    Task child2 = new Task("Child 2", "G2.1");
+    child2.setTaskId("c2");
+    child2.setParentId("r2");
+
+    plan.setTasks(List.of(root1, child1, root2, child2));
+
+    String summary = PlanningUtils.buildPlanSummary(plan);
+
+    // Root tasks should always be expanded for "strong foundation" visibility
+    // Root 1 (done) and Child 1 (todo) should be visible
+    assertThat(summary).contains("- [done] Root 1 (id: r1, parent: none)\n  - [todo] Child 1 (id: c1, parent: r1)");
+
+    // Root 2 (in_progress) and Child 2 (todo) should be visible
+    assertThat(summary).contains("- [in_progress] Root 2 (id: r2, parent: none)\n  - [todo] Child 2 (id: c2, parent: r2)");
+  }
+
+  @Test
+  void canUpdateTaskRequiresResultWhenDone() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task task = new Task("Task", "G1");
+    task.setTaskId("t1");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    plan.setTasks(List.of(task));
+
+    String error = plan.canUpdateTask(task, TaskStatus.DONE, null);
+
+    assertThat(error).contains("result' field is required");
+  }
+
+  @Test
+  void canUpdateTaskAllowsDoneWithExistingResult() {
+    Plan plan = new Plan("Plan", "Goal");
+    Task task = new Task("Task", "G1");
+    task.setTaskId("t1");
+    task.setStatus(TaskStatus.IN_PROGRESS);
+    task.setResult("Existing result");
+    plan.setTasks(List.of(task));
+
+    String error = plan.canUpdateTask(task, TaskStatus.DONE, null);
+
+    assertThat(error).isNull();
   }
 }

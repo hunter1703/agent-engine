@@ -45,8 +45,8 @@ public final class CreatePlanTool extends Tool {
     final Plan existingPlan = PlanningUtils.getCurrentPlan(toolContext);
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();
-      if ((status != PlanStatus.DONE && status != PlanStatus.ABANDONED)) {
-        return Map.of("error", "Active plan already exists; finish it before creating a new plan.");
+      if (!status.isTerminal()) {
+        return Map.of("error", "Active plan already exists; finish it before creating a new plan.\n" + PlanningUtils.buildPlanSummary(existingPlan));
       }
     }
     final Plan currentPlan = new Plan(title, goal, tasks);
@@ -59,6 +59,8 @@ public final class CreatePlanTool extends Tool {
     PlanningUtils.savePlan(toolContext, currentPlan);
 
     LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
-    return Map.of("status", "success", "task_count", tasks.size());
+    return Map.of(
+        "status",
+        "Success. Plan '" + title + "' has been created and saved with " + tasks.size() + " tasks. ");
   }
 }

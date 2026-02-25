@@ -9,7 +9,7 @@ import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
-import com.agentengine.engine.tools.planning.UpdateTaskTool;
+import com.agentengine.engine.tools.planning.UpdateTaskInfoTool;
 import com.agentengine.engine.tools.planning.ViewPlanTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
@@ -178,7 +178,7 @@ class ToolVerificationTest {
 
     @Test
     void testUpdateTaskTool() {
-        UpdateTaskTool tool = new UpdateTaskTool();
+        UpdateTaskInfoTool tool = new UpdateTaskInfoTool();
 
         // Setup state with a plan and task
         Task task = new Task("Task1", "Goal1");
@@ -188,7 +188,7 @@ class ToolVerificationTest {
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
-        assertEquals("update_task", decl.name().get());
+        assertEquals("update_task_info", decl.name().get());
 
         // 2. Verify Invocation
         Map<String, Object> args = Map.of(
@@ -261,7 +261,7 @@ class ToolVerificationTest {
         assertEquals(taskId, retrieved.getTasks().get(0).getTaskId());
         
         // Verify a tool can still use it (e.g. UpdateTaskTool uses the ID to find the task)
-        UpdateTaskTool tool = new UpdateTaskTool();
+        UpdateTaskInfoTool tool = new UpdateTaskInfoTool();
         Map<String, Object> args = Map.of("task_id", taskId, "status", "in_progress");
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         

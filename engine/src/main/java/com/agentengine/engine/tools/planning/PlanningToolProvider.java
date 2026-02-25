@@ -8,6 +8,8 @@ import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Singleton;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -21,7 +23,9 @@ public final class PlanningToolProvider implements ToolProvider, ToolSuite {
           CreatePlanTool.DESCRIPTOR.name(), CreatePlanTool::new,
           UpdatePlanTool.DESCRIPTOR.name(), UpdatePlanTool::new,
           AddTaskTool.DESCRIPTOR.name(), AddTaskTool::new,
-          UpdateTaskTool.DESCRIPTOR.name(), UpdateTaskTool::new,
+          UpdateTaskInfoTool.DESCRIPTOR.name(), UpdateTaskInfoTool::new,
+          StartTaskTool.DESCRIPTOR.name(), StartTaskTool::new,
+          CompleteTaskTool.DESCRIPTOR.name(), CompleteTaskTool::new,
           FinishPlanTool.DESCRIPTOR.name(), FinishPlanTool::new,
           ViewPlanTool.DESCRIPTOR.name(), ViewPlanTool::new);
   private static final List<ToolDescriptor> DESCRIPTORS =
@@ -30,7 +34,9 @@ public final class PlanningToolProvider implements ToolProvider, ToolSuite {
           CreatePlanTool.DESCRIPTOR,
           UpdatePlanTool.DESCRIPTOR,
           AddTaskTool.DESCRIPTOR,
-          UpdateTaskTool.DESCRIPTOR,
+          UpdateTaskInfoTool.DESCRIPTOR,
+          StartTaskTool.DESCRIPTOR,
+          CompleteTaskTool.DESCRIPTOR,
           FinishPlanTool.DESCRIPTOR,
           ViewPlanTool.DESCRIPTOR);
 
@@ -41,13 +47,7 @@ public final class PlanningToolProvider implements ToolProvider, ToolSuite {
 
   @Override
   public List<String> toolNames() {
-    return List.of(
-        CreatePlanTool.DESCRIPTOR.name(),
-        UpdatePlanTool.DESCRIPTOR.name(),
-        AddTaskTool.DESCRIPTOR.name(),
-        UpdateTaskTool.DESCRIPTOR.name(),
-        FinishPlanTool.DESCRIPTOR.name(),
-        ViewPlanTool.DESCRIPTOR.name());
+    return new ArrayList<>(TOOL_FACTORIES.keySet());
   }
 
   @Override

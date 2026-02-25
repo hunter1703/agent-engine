@@ -40,7 +40,7 @@ public final class FinishPlanTool extends Tool {
     if (newStatus == PlanStatus.UNKNOWN) {
       return Map.of("error", "Invalid plan status: " + status);
     }
-    final String validationError = currentPlan.canFinish(newStatus);
+    final String validationError = currentPlan.canFinish(newStatus, result);
     if (validationError != null) {
       return Map.of("error", validationError);
     }

@@ -55,6 +55,7 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
     final LlmResponse updated = response.toBuilder().partial(true).turnComplete(false).build();
+    PlanningUtils.setNudgeRequired(context, true);
     return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
   }
 
