@@ -1,33 +1,42 @@
 package com.agentengine.engine.agents.flows;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.utils.CorrectionProcessor;
+import com.agentengine.engine.utils.FinalAnswerResponseProcessor;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlanningFlow extends AbstractFlow {
-  private static final List<RequestProcessor> DEFAULT_REQUEST_PROCESSORS = new ArrayList<>();
-  private static final List<ResponseProcessor> DEFAULT_RESPONSE_PROCESSORS = new ArrayList<>();
-
-  static {
-    DEFAULT_REQUEST_PROCESSORS.addAll(SingleFlow.REQUEST_PROCESSORS);
-    DEFAULT_REQUEST_PROCESSORS.add(new PlanContextRequestProcessor());
-    DEFAULT_REQUEST_PROCESSORS.add(new PlanTaskRequestProcessor());
-    DEFAULT_RESPONSE_PROCESSORS.add(new RedundantToolCallsResponseProcessor());
-    DEFAULT_RESPONSE_PROCESSORS.addAll(SingleFlow.RESPONSE_PROCESSORS);
-  }
 
   public PlanningFlow(
       final int maxStepsPerTask,
       final List<RequestProcessor> requestProcessors,
       final List<ResponseProcessor> responseProcessors) {
-      final List<ResponseProcessor> resProcessors = new ArrayList<>(responseProcessors);
-    resProcessors.add(new PlanLoopResponseProcessor(maxStepsPerTask));
-    resProcessors.addAll(DEFAULT_RESPONSE_PROCESSORS);
+    super(maxStepsPerTask,
+        buildRequests(requestProcessors),
+        buildResponses(maxStepsPerTask, responseProcessors));
+  }
 
-    super(maxStepsPerTask, CollectionUtils.append(DEFAULT_REQUEST_PROCESSORS, requestProcessors, LoggingRequestProcessor.INSTANCE), resProcessors);
+  private static List<RequestProcessor> buildRequests(final List<RequestProcessor> provided) {
+    final List<RequestProcessor> requestProcessors = new ArrayList<>(SingleFlow.REQUEST_PROCESSORS);
+    requestProcessors.addAll(CollectionUtils.nullSafeList(provided));
+    requestProcessors.add(PlanningRequestProcessor.INSTANCE);
+    requestProcessors.add(FinalAnswerRequestProcessor.INSTANCE);
+    requestProcessors.add(CorrectionProcessor.INSTANCE);
+    requestProcessors.add(LoggingRequestProcessor.INSTANCE);
+    return requestProcessors;
+  }
+
+  private static List<ResponseProcessor> buildResponses(final int maxSteps, final List<ResponseProcessor> provided) {
+    final List<ResponseProcessor> responseProcessors = new ArrayList<>();
+    responseProcessors.add(FinalAnswerResponseProcessor.INSTANCE);
+    responseProcessors.addAll(CollectionUtils.nullSafeList(provided));
+    responseProcessors.add(new PlanLoopResponseProcessor(maxSteps));
+    responseProcessors.add(new RedundantToolCallsResponseProcessor());
+    responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
+    return responseProcessors;
   }
 }

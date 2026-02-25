@@ -1,7 +1,8 @@
 package com.agentengine.engine.agents.flows;
 
+import com.agentengine.engine.utils.Violation;
+import com.agentengine.engine.utils.ViolationUtils;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
@@ -25,7 +26,6 @@ public final class RedundantToolCallsResponseProcessor implements ResponseProces
   @Override
   public Single<ResponseProcessingResult> processResponse(
       final InvocationContext context, final LlmResponse response) {
-    
     if (response.partial().orElse(false)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
@@ -35,19 +35,9 @@ public final class RedundantToolCallsResponseProcessor implements ResponseProces
     if (CollectionUtils.isEmpty(toolCalls)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
-    String violation = checkRedundancy(context, toolCalls);
-
-      if (violation != null) {
-      // Mark for retry with nudge
-      PlanningUtils.setNudgeRequired(context, true);
-      context.session().state().put(PlanningUtils.VIOLATION_MESSAGE_KEY, violation);
-      
-      final LlmResponse corrected = response.toBuilder()
-          .partial(true)
-          .turnComplete(false)
-          .build();
-          
-      return Single.just(ResponseProcessingResult.create(corrected, List.of(), Optional.empty()));
+    final String violation = checkRedundancy(context, toolCalls);
+    if (violation != null) {
+      return buildViolationResponse(context, response, violation);
     }
 
     // Record last tool call for future redundancy checks
@@ -68,9 +58,9 @@ public final class RedundantToolCallsResponseProcessor implements ResponseProces
   private String checkRedundancy(final InvocationContext context, final List<FunctionCall> toolCalls) {
     final String currentTools = summarizeToolCalls(toolCalls);
     final String lastTools = (String) context.session().state().get(PREVIOUS_TOOL_CALL_KEY);
-    
+
     if (currentTools.equals(lastTools)) {
-        return "Redundancy Detected: You are repeating the exact same tool calls as the previous turn. Please adjust your strategy or update the arguments.";
+      return "Redundancy Detected: You are repeating the exact same tool calls as the previous turn. Please adjust your strategy or update the arguments.";
     }
     return null;
   }
@@ -79,6 +69,19 @@ public final class RedundantToolCallsResponseProcessor implements ResponseProces
     return toolCalls.stream()
         .map(c -> c.name().orElse("") + c.args().orElse(Map.of()))
         .collect(Collectors.joining("|"));
+  }
+
+  private Single<ResponseProcessingResult> buildViolationResponse(
+      final InvocationContext context, final LlmResponse response, final String violation) {
+    ViolationUtils.addViolation(context, Violation.builder("redundant_tool_calls")
+        .message("Redundant tool calls detected")
+        .correctionMessage(violation)
+        .build());
+    
+    final LlmResponse corrected = response.toBuilder()
+        .turnComplete(false)
+        .build();
+    return Single.just(ResponseProcessingResult.create(corrected, List.of(), Optional.empty()));
   }
 
 }

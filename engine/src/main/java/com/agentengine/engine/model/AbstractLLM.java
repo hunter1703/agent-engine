@@ -1,6 +1,5 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.utils.FinalAnswerAndToolCorrection;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
@@ -32,11 +31,11 @@ public abstract class AbstractLLM extends BaseLlm {
   }
 
   public List<RequestProcessor> getRequestProcessors() {
-    return List.of(FinalAnswerAndToolCorrection.builder().convertToThought(true).build(), parser);
+    return List.of(parser);
   }
 
   public List<ResponseProcessor> getResponseProcessors() {
-    return List.of(parser, FinalAnswerAndToolCorrection.builder().convertToThought(true).build());
+    return List.of(parser);
   }
 
   public boolean isToolCallingEnabled() {

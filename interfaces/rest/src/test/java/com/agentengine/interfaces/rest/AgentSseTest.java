@@ -36,7 +36,7 @@ class AgentSseTest {
     AgentExecutionService executionService = mock(AgentExecutionService.class);
 
     // Create an event that contains content to trigger all expected events
-    Event event =
+    Event answerEvent =
         Event.builder()
             .id("event-1")
             .invocationId("run-1")
@@ -46,7 +46,8 @@ class AgentSseTest {
             .partial(false)
             .build();
 
-    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
+    when(executionService.run(any(AgentRequest.class)))
+        .thenReturn(Flowable.just(answerEvent));
 
     AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
     AgentRequest agentRequest = new AgentRequest();

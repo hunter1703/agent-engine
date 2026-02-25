@@ -8,19 +8,21 @@ import com.agentengine.engine.tools.planning.beans.Task;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.sessions.Session;
+import com.google.genai.types.Content;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
-class PlanTaskRequestProcessorTest {
+class PlanningRequestProcessorTest {
 
   @Test
-  void appendsTaskFocusPrompt() {
-    Plan plan = new Plan("Root", "Goal");
-    Task task = new Task("Step", "Goal");
+  void appendsPlanSummaryAndTaskFocus() {
+    Task task = new Task("Step 1", "Do work");
     task.setTaskId("task-1");
+    Plan plan = new Plan("Root", "Plan goal");
+    plan.setPlanId("plan-1");
     plan.setTasks(List.of(task));
 
     Session session =
@@ -33,54 +35,41 @@ class PlanTaskRequestProcessorTest {
 
     InvocationContext context = InvocationContext.builder().session(session).build();
     LlmRequest request = LlmRequest.builder().build();
-    PlanTaskRequestProcessor processor = new PlanTaskRequestProcessor();
 
+    PlanningRequestProcessor processor = new PlanningRequestProcessor();
     LlmRequest updated = processor.processRequest(context, request).blockingGet().updatedRequest();
 
-    assertThat(updated.getSystemInstructions()).isEmpty();
+    // Verify Instructions (from PlanContext logic)
+    String instructions = String.join("\n", updated.getSystemInstructions());
+    assertThat(instructions).contains("PLAN CONTEXT").contains("Root").contains("task-1");
+
+    // Verify Content Anchor (from PlanTask logic)
     assertThat(updated.contents()).isNotEmpty();
-    
-    com.google.genai.types.Content lastContent = updated.contents().get(updated.contents().size() - 1);
-    assertThat(lastContent.role()).isPresent().hasValue("user");
-    
+    Content lastContent = updated.contents().get(updated.contents().size() - 1);
     String contentText = lastContent.parts().orElse(List.of()).stream()
         .map(p -> p.text().orElse(""))
         .collect(java.util.stream.Collectors.joining());
         
-    assertThat(contentText).contains("STRUCTURAL ANCHOR").contains("task-1");
+    assertThat(contentText).contains("### STRUCTURAL ANCHOR").contains("task-1").contains("Continue until all tasks are done");
   }
 
   @Test
-  void includesViolationNoticeOnError() {
-    Plan plan = new Plan("Root", "Goal");
-    Task task = new Task("Step", "Goal");
-    task.setTaskId("task-1");
-    plan.setTasks(List.of(task));
-
-    Session session = Session.builder("session-1")
+  void doesNothingIfNoPlan() {
+    Session session =
+        Session.builder("session-1")
             .appName("agent")
             .userId("default")
-            .state(new ConcurrentHashMap<>(Map.of(
-                PlanningUtils.PLAN_STATE_KEY, plan
-            )))
+            .state(new ConcurrentHashMap<>())
             .events(new ArrayList<>())
             .build();
-    
-    // Simulate a violation recorded in session state
-    session.state().put("plan.verification.violation_message", "Hallucination Detected");
 
     InvocationContext context = InvocationContext.builder().session(session).build();
     LlmRequest request = LlmRequest.builder().build();
 
-    PlanTaskRequestProcessor processor = new PlanTaskRequestProcessor();
+    PlanningRequestProcessor processor = new PlanningRequestProcessor();
     LlmRequest updated = processor.processRequest(context, request).blockingGet().updatedRequest();
 
-    com.google.genai.types.Content lastContent = updated.contents().get(updated.contents().size() - 1);
-    String contentText = lastContent.parts().orElse(List.of()).stream()
-        .map(p -> p.text().orElse(""))
-        .collect(java.util.stream.Collectors.joining());
-
-    assertThat(contentText).contains("REJECTION NOTICE").contains("Hallucination Detected");
-    assertThat(session.state().get("plan.verification.violation_message")).isNull(); // Verify it was cleared
+    assertThat(updated.getSystemInstructions()).isEmpty();
+    assertThat(updated.contents()).isEmpty();
   }
 }

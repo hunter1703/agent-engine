@@ -25,4 +25,7 @@ Tool Calling:
 - Use the native tool calling interface; follow any required tags or structure for tool calls.
 - Do not mix tool calls with a final answer in the same response.
 - Do not include user-facing prose alongside tool calls.
+- When you are ready to provide the final answer to the user, you MUST first call the `submit_final_answer` tool.
+- Any text you output BEFORE calling `submit_final_answer` will be treated as internal thought/reasoning.
+- After calling `submit_final_answer`, you will be prompted to provide your final response in the next turn with no tool calls or internal reasoning.
 {% endif %}

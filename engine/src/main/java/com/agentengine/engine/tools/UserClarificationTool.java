@@ -19,7 +19,7 @@ public final class UserClarificationTool extends Tool {
   }
 
   public static Map<String, Object> clarifyFromUser(final String question) {
-      return Map.of("clarification", question);
+    return Map.of("clarification", question);
   }
 
   public Map<String, Object> execute(

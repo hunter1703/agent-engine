@@ -49,15 +49,20 @@ public final class ToolRegistry implements ToolService {
 
   public List<BaseTool> loadTools(
       final AgentContext agentContext, final List<ToolsConfig> toolsConfig) {
-    if (CollectionUtils.isEmpty(toolsConfig)) {
-      return Collections.emptyList();
-    }
-
+    final List<BaseTool> tools = new ArrayList<>();
     final String agentId = agentContext == null ? null : agentContext.agentId();
     final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
     final ToolCatalog catalog = catalogCache.get(cacheKey);
-    final List<BaseTool> tools = new ArrayList<>(toolsConfig.size());
-
+ 
+    final ToolEntry finalAnswerEntry = catalog.toolEntries().get(SubmitFinalAnswerTool.TOOL_NAME);
+    if (finalAnswerEntry != null) {
+      addIfPresent(tools, createTool(agentContext, finalAnswerEntry, Collections.emptyMap()));
+    }
+ 
+    if (CollectionUtils.isEmpty(toolsConfig)) {
+      return tools;
+    }
+ 
     for (final ToolsConfig config : toolsConfig) {
       final List<BaseTool> toolsForConfigs = getToolsForConfig(catalog, agentContext, config);
       if (CollectionUtils.isNotEmpty(toolsForConfigs)) {

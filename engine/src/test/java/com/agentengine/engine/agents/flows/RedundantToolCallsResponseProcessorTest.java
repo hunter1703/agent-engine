@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.utils.ViolationUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor.ResponseProcessingResult;
 import com.google.adk.models.LlmResponse;
@@ -45,28 +46,6 @@ class RedundantToolCallsResponseProcessorTest {
   }
 
   @Test
-  void detectsHallucinatedTaskId() {
-    LlmResponse response = LlmResponse.builder()
-        .content(Content.builder()
-            .parts(List.of(Part.builder()
-                .functionCall(FunctionCall.builder()
-                    .name("UpdateTaskTool")
-                    .args(Map.of("taskId", "fake-task", "status", "DONE"))
-                    .build())
-                .build()))
-            .build())
-        .build();
-
-    ResponseProcessingResult result = processor.processResponse(context, response).blockingGet();
-
-    assertThat(result.updatedResponse().partial()).isPresent().hasValue(true);
-    assertThat(result.updatedResponse().turnComplete()).isPresent().hasValue(false);
-    assertThat(PlanningUtils.getViolationMessage(context))
-        .contains("Hallucination Detected")
-        .contains("fake-task");
-  }
-
-  @Test
   void detectsRedundantToolCalls() {
     LlmResponse response = LlmResponse.builder()
         .content(Content.builder()
@@ -85,9 +64,8 @@ class RedundantToolCallsResponseProcessorTest {
     // Second time with exact same call is redundant
     ResponseProcessingResult result = processor.processResponse(context, response).blockingGet();
 
-    assertThat(result.updatedResponse().partial()).isPresent().hasValue(true);
-    assertThat(PlanningUtils.getViolationMessage(context))
-        .contains("Redundancy Detected");
+    assertThat(result.updatedResponse().turnComplete()).contains(false);
+    assertThat(ViolationUtils.getViolations(context)).anyMatch(v -> v.getCorrectionMessage().contains("Redundancy Detected"));
   }
 
   @Test
@@ -106,6 +84,6 @@ class RedundantToolCallsResponseProcessorTest {
     ResponseProcessingResult result = processor.processResponse(context, response).blockingGet();
 
     assertThat(result.updatedResponse().partial()).isNotPresent();
-    assertThat(PlanningUtils.getViolationMessage(context)).isNull();
+    assertThat(ViolationUtils.getViolations(context)).isEmpty();
   }
 }

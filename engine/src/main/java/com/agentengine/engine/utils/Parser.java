@@ -243,13 +243,12 @@ public class Parser implements RequestProcessor, ResponseProcessor {
     final boolean turnCompleted = response.turnComplete().orElse(false);
 
     final LlmResponse.Builder builder = response.toBuilder();
-    if (!isPartial && turnCompleted) {
-      response
-          .content()
-          .ifPresent(
-              content -> {
-                builder.content(parse(content));
-              });
+    Content updatedContent = response.content().orElse(null);
+    if (!isPartial && turnCompleted && updatedContent != null) {
+      updatedContent = parse(updatedContent);
+    }
+    if (updatedContent != null) {
+      builder.content(updatedContent);
     }
 
     return Single.just(

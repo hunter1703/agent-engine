@@ -9,7 +9,6 @@ import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.type.EventType;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
-import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;

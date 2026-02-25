@@ -5,6 +5,8 @@ import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.engine.utils.Violation;
+import com.agentengine.engine.utils.ViolationUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
@@ -55,7 +57,13 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
     final LlmResponse updated = response.toBuilder().partial(true).turnComplete(false).build();
-    PlanningUtils.setNudgeRequired(context, true);
+    
+    final String taskId = PlanningUtils.getTaskIdValue(activeTask);
+    ViolationUtils.addViolation(context, Violation.builder("incomplete_task")
+        .message("Task " + taskId + " is still IN_PROGRESS")
+        .correctionMessage("System Reminder: Task [" + taskId + "] is still IN_PROGRESS. Please complete the work or update the task status before concluding.")
+        .build());
+
     return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
   }
 

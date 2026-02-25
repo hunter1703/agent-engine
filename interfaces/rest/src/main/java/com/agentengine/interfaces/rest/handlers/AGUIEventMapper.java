@@ -261,18 +261,16 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
 
     if (partial) {
-      // guard against dumb model
-      String delta = text;
-      if (state.lastSentPartialText != null && text.startsWith(state.lastSentPartialText)) {
-        delta = text.substring(state.lastSentPartialText.length());
-      }
-      
+      final String delta = resolveDelta(text, state.lastSentText);
       if (StringUtils.isBlank(delta)) {
-        LOG.debug("Skipping message chunk mapping due to empty delta - text='{}', lastSent='{}'", text, state.lastSentPartialText);
+        LOG.debug(
+            "Skipping message chunk mapping due to empty delta - text='{}', lastSentText='{}'",
+            text,
+            state.lastSentText);
         return Flowable.empty();
       }
 
-      state.lastSentPartialText = text;
+      state.lastSentText = text;
       final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
       chunk.setMessageId(state.currentTextMessageId);
       chunk.setDelta(delta);
@@ -280,6 +278,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedChunk));
       flows.add(Flowable.just(decoratedChunk));
     } else {
+      state.lastSentText = text;
       final TextMessageContentEvent content = new TextMessageContentEvent();
       content.setMessageId(state.currentTextMessageId);
       content.setDelta(text);
@@ -294,7 +293,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       flows.add(Flowable.just(decoratedEnd));
       state.finalAnswer = text;
       state.currentTextMessageId = null;
-      state.lastSentPartialText = null;
+      state.lastSentText = null;
     }
 
     return Flowable.concat(flows);
@@ -304,16 +303,15 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
     final String toolName = call.name().orElse("unknown");
     final Map<String, Object> args = call.args().orElse(Map.of());
-
+ 
+    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
     LOG.debug(
         "Processing tool call mapping - callId='{}', toolName='{}', partial={}, args={}",
         callId,
         toolName,
         partial,
         JsonUtils.toJson(args));
-
-    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
-
+ 
     if (!state.activeToolCalls.contains(callId)) {
       state.activeToolCalls.add(callId);
       final ToolCallStartEvent start = new ToolCallStartEvent();
@@ -370,6 +368,16 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final BaseEvent decoratedResult = decorateEvent(result);
     LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedResult));
     return Flowable.just(decoratedResult);
+  }
+
+  private static String resolveDelta(final String text, final String lastSentText) {
+    if (StringUtils.isBlank(text)) {
+      return "";
+    }
+    if (StringUtils.isNotBlank(lastSentText) && text.startsWith(lastSentText)) {
+      return text.substring(lastSentText.length());
+    }
+    return text;
   }
 
   private RunFinishedEvent buildRunFinished(final String runId) {
@@ -437,7 +445,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
-    private String lastSentPartialText;
+    private String lastSentText;
     private String finalAnswer;
     private boolean isThinking;
     private final Set<String> pendingToolCalls = new HashSet<>();

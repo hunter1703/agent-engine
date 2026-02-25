@@ -16,10 +16,12 @@ public class Violation implements Serializable {
   private final Map<String, Object> details;
   private final List<Violation> subViolations;
   private final String message;
+  private final String correctionMessage;
 
   private Violation(Builder builder) {
     this.code = builder.code;
     this.message = builder.message;
+    this.correctionMessage = builder.correctionMessage;
     this.details = Map.copyOf(builder.details);
     this.subViolations = List.copyOf(builder.subViolations);
   }
@@ -30,6 +32,10 @@ public class Violation implements Serializable {
 
   public String getMessage() {
     return message;
+  }
+
+  public String getCorrectionMessage() {
+    return correctionMessage;
   }
 
   public Map<String, Object> getDetails() {
@@ -62,6 +68,9 @@ public class Violation implements Serializable {
     if (message != null) {
       sb.append(", message='").append(message).append("'");
     }
+    if (correctionMessage != null) {
+      sb.append(", correctionMessage='").append(correctionMessage).append("'");
+    }
     if (!details.isEmpty()) {
       sb.append(", details=").append(details);
     }
@@ -79,6 +88,7 @@ public class Violation implements Serializable {
   public static class Builder {
     private final String code;
     private String message;
+    private String correctionMessage;
     private final Map<String, Object> details = new HashMap<>();
     private final List<Violation> subViolations = new ArrayList<>();
 
@@ -91,6 +101,11 @@ public class Violation implements Serializable {
 
     public Builder message(String message) {
       this.message = message;
+      return this;
+    }
+
+    public Builder correctionMessage(String correctionMessage) {
+      this.correctionMessage = correctionMessage;
       return this;
     }
 
@@ -117,13 +132,5 @@ public class Violation implements Serializable {
     public Violation build() {
       return new Violation(this);
     }
-  }
-
-  public static class Codes {
-    public static final String ANSWER_WITH_TOOL_CALLS = "answer_with_tool_calls";
-    public static final String INVALID_TOOL_USAGE = "invalid_tool_usage";
-    public static final String MISSING_REQUIRED_PARAM = "missing_required_param";
-    public static final String WRONG_PARAM_TYPE = "wrong_param_type";
-    public static final String FORMAT_VIOLATION = "format_violation";
   }
 }

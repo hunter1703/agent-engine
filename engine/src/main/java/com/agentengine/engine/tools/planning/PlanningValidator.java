@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -295,6 +294,27 @@ public final class PlanningValidator {
     }
     if (StringUtils.isBlank(result)) {
       return "The 'result' field is required when marking a plan as " + newStatus.getValue() + ".";
+    }
+    return null;
+  }
+
+  public static String canSubmitFinalAnswerOrError(final Plan plan) {
+    if (plan == null) {
+      return null;
+    }
+    final PlanStatus status = plan.getStatus();
+    if (!PlanningUtils.isTerminalStatus(status)) {
+      final Task openTask = findFirstOpenTask(plan);
+      final String openTaskMessage =
+          openTask == null
+              ? ""
+              : " and has open tasks (e.g., " + describeTask(openTask) + ")";
+      return "Cannot submit final answer while "
+          + describePlan(plan)
+          + " is "
+          + describePlanStatus(plan)
+          + openTaskMessage
+          + ". Please complete your plan first.";
     }
     return null;
   }

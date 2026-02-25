@@ -10,9 +10,9 @@ import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.handlers.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
 import com.google.adk.events.Event;
+import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +37,6 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
-    // TODO: do not fetch not needed fields
     final PaginatedResult<AgentSession> result = sessionService.findSessions(request.getQuery());
     return result.transform(
         session -> {
@@ -94,13 +93,12 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
     if (CollectionUtils.isEmpty(events)) {
       return List.of();
     }
-    final List<BaseEvent> mappedEvents = new ArrayList<>();
     final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-    for (final Event event : events) {
-      mappedEvents.addAll(mapper.map(event).toList().blockingGet());
-    }
-    mappedEvents.addAll(mapper.onComplete().toList().blockingGet());
-    return mappedEvents;
+    return Flowable.fromIterable(events)
+        .concatMap(mapper::map)
+        .concatWith(mapper.onComplete())
+        .toList()
+        .blockingGet();
   }
 
   private static boolean shouldIncludeEvents(final AssetRequest request) {

@@ -46,7 +46,7 @@ class AgentRestAPITest {
             .content(
                 Content.builder()
                     .role("model")
-                    .parts(Part.builder().text("response").build())
+                    .parts(List.of(Part.builder().text("response").build()))
                     .build())
             .build();
 

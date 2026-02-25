@@ -12,7 +12,7 @@ import jakarta.inject.Singleton;
 public class StreamResponsesRequestHandler
     extends AbstractAgentRequestHandler<Flowable<BaseResponsesEventData>> {
 
-  private StreamAguiEventsRequestHandler eventsRequestHandler;
+  private final StreamAguiEventsRequestHandler eventsRequestHandler;
 
   @Inject
   public StreamResponsesRequestHandler(

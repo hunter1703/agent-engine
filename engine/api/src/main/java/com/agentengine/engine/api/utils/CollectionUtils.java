@@ -44,6 +44,14 @@ public final class CollectionUtils {
     return newList;
   }
 
+  public static <T> List<T> append(T element, List<T> one, final List<T> two) {
+    final List<T> newList = new ArrayList<>();
+    newList.add(element);
+    newList.addAll(CollectionUtils.nullSafeList(one));
+    newList.addAll(CollectionUtils.nullSafeList(two));
+    return newList;
+  }
+
   public static <T> List<T> append(List<T> one, final T toAppend) {
     return append(one, List.of(toAppend));
   }

@@ -26,8 +26,6 @@ public final class PlanningUtils {
   private static final int MAX_FOCUS_TASKS = 1;
   private static final Logger LOG = LoggerFactory.getLogger(PlanningUtils.class);
   public static final String PLAN_STATE_KEY = "currentPlan";
-  public static final String NUDGE_REQUIRED_KEY = "nudgeRequired";
-  public static final String VIOLATION_MESSAGE_KEY = "plan.verification.violation_message";
 
   private PlanningUtils() {}
 
@@ -392,21 +390,6 @@ public final class PlanningUtils {
     context.session().state().put(PLAN_STATE_KEY, plan);
   }
 
-  public static void setNudgeRequired(final InvocationContext context, final boolean required) {
-    if (context == null || context.session() == null || context.session().state() == null) {
-      return;
-    }
-    context.session().state().put(NUDGE_REQUIRED_KEY, required);
-  }
-
-  public static boolean isNudgeRequired(final InvocationContext context) {
-    if (context == null || context.session() == null || context.session().state() == null) {
-      return false;
-    }
-    final Object value = context.session().state().get(NUDGE_REQUIRED_KEY);
-    return value instanceof Boolean b && b;
-  }
-
   public static Task findTaskById(final Plan plan, final String taskId) {
     if (plan == null || plan.getTasks() == null || StringUtils.isBlank(taskId)) {
       return null;
@@ -689,18 +672,5 @@ public final class PlanningUtils {
 
   public static String getTaskIdValue(final Task task) {
     return task == null ? null : task.getTaskId();
-  }
-
-  public static String getViolationMessage(final InvocationContext context) {
-      if (context == null || context.session() == null || context.session().state() == null) {
-          return null;
-      }
-      return (String) context.session().state().get(VIOLATION_MESSAGE_KEY);
-  }
-
-  public static void clearViolationMessage(final InvocationContext context) {
-      if (context != null && context.session() != null && context.session().state() != null) {
-          context.session().state().remove(VIOLATION_MESSAGE_KEY);
-      }
   }
 }

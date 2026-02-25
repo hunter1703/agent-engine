@@ -8,7 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.utils.FinalAnswerAndToolCorrection;
+import com.agentengine.engine.utils.CorrectionProcessor;
+import com.agentengine.engine.utils.FinalAnswerResponseProcessor;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
@@ -57,13 +58,42 @@ class DelegatingLLMModelTest {
 
     final List<RequestProcessor> requestProcessors = model.getRequestProcessors();
     assertThat(requestProcessors).hasSize(2);
-    assertThat(requestProcessors.getFirst()).isInstanceOf(FinalAnswerAndToolCorrection.class);
+    assertThat(requestProcessors.get(0)).isInstanceOf(CorrectionProcessor.class);
+    assertThat(requestProcessors.get(1)).isSameAs(parser);
+
+    final List<ResponseProcessor> responseProcessors = model.getResponseProcessors();
+    assertThat(responseProcessors).hasSize(2);
+    assertThat(responseProcessors.get(0)).isSameAs(parser);
+    assertThat(responseProcessors.get(1)).isSameAs(model.getResponseProcessors().get(1)); // FinalAnswerResponseProcessor
+    assertThat(responseProcessors.get(1)).isInstanceOf(FinalAnswerResponseProcessor.class);
+  }
+
+  @Test
+  void includesFinalAnswerCorrectionWhenParsingToolCallsFromText() {
+    final ChatModel chatModel = mock(ChatModel.class);
+    final ChatRequestParameters params = mock(ChatRequestParameters.class);
+    when(chatModel.defaultRequestParameters()).thenReturn(params);
+    when(params.modelName()).thenReturn("test-model");
+
+    final Parser parser = Parser.create();
+    final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
+    final DelegatingLLMModel model =
+        new DelegatingLLMModel(
+            new LangChain4j(chatModel, streamingChatModel, "test-model"),
+            parser,
+            "protocol",
+            true,
+            true);
+
+    final List<RequestProcessor> requestProcessors = model.getRequestProcessors();
+    assertThat(requestProcessors).hasSize(2);
+    assertThat(requestProcessors.get(0)).isInstanceOf(CorrectionProcessor.class);
     assertThat(requestProcessors.get(1)).isSameAs(parser);
 
     final List<ResponseProcessor> responseProcessors = model.getResponseProcessors();
     assertThat(responseProcessors).hasSize(2);
     assertThat(responseProcessors.getFirst()).isSameAs(parser);
-    assertThat(responseProcessors.get(1)).isInstanceOf(FinalAnswerAndToolCorrection.class);
+    assertThat(responseProcessors.get(1)).isInstanceOf(FinalAnswerResponseProcessor.class);
   }
 
   @Test

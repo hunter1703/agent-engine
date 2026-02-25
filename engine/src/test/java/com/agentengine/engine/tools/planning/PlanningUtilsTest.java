@@ -162,7 +162,7 @@ class PlanningUtilsTest {
     branchB.setParentId("root");
     plan.setTasks(List.of(root, branchA, branchB));
 
-    String error = plan.canUpdateTask(branchB, TaskStatus.IN_PROGRESS);
+    String error = plan.canUpdateTask(branchB, TaskStatus.IN_PROGRESS, null);
 
     assertThat(error).contains("lineage");
   }
@@ -180,7 +180,7 @@ class PlanningUtilsTest {
     sibling.setTaskId("sibling");
     plan.setTasks(List.of(root, sibling, child));
 
-    String error = plan.canUpdateTask(sibling, TaskStatus.IN_PROGRESS);
+    String error = plan.canUpdateTask(sibling, TaskStatus.IN_PROGRESS, null);
 
     assertThat(error).contains("Next task to start");
   }
@@ -195,7 +195,7 @@ class PlanningUtilsTest {
     child.setParentId("parent");
     plan.setTasks(List.of(parent, child));
 
-    String error = plan.canUpdateTask(child, TaskStatus.IN_PROGRESS);
+    String error = plan.canUpdateTask(child, TaskStatus.IN_PROGRESS, null);
 
     assertThat(error).contains("Parent");
   }
@@ -212,7 +212,7 @@ class PlanningUtilsTest {
     plan.setTasks(List.of(parent, child));
     parent.setResult("Parent result");
 
-    String error = plan.canUpdateTask(parent, TaskStatus.DONE);
+    String error = plan.canUpdateTask(parent, TaskStatus.DONE, null);
 
     assertThat(error).contains("child tasks");
   }
@@ -225,7 +225,7 @@ class PlanningUtilsTest {
     task.setStatus(TaskStatus.IN_PROGRESS);
     plan.setTasks(List.of(task));
 
-    String error = plan.canUpdateTask(task, TaskStatus.TODO);
+    String error = plan.canUpdateTask(task, TaskStatus.TODO, null);
 
     assertThat(error).contains("in_progress");
   }

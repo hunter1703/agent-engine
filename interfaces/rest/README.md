@@ -32,6 +32,7 @@ Fields:
 ### Endpoints
 - `POST /v1/invoke`: run the agent for a single turn (`INVOKE_AGENT`) or build prompt (`BUILD_PROMPT`).
   - Invoke response: `{ "sessionId": "...", "finalAnswer": "...", "thoughts": "..." }`.
+  - `finalAnswer` is populated after the agent calls `submit_final_answer`; earlier text is returned in `thoughts`.
   - Build prompt response: `{ "sessionId": "...", "messages": [ { "role": "system", "content": "..." } ] }`.
 - `POST /v1/events`: SSE stream of engine events.
   - Request body: `agentId`, `agentConfigPath`, `sessionId`, `message`.
