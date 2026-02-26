@@ -5,7 +5,6 @@ import com.agentengine.engine.api.utils.ExceptionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agui.core.event.BaseEvent;
-import com.agui.core.event.CustomEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
@@ -94,7 +93,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       for (Part part : parts) {
         final String text = part.text().orElse(null);
         if (text != null) {
-          if (part.thought().orElse(false)) {
+          final boolean isThought = part.thought().orElse(false);
+          LOG.debug("Mapping text part - text='{}', isThought={}, partial={}", text, isThought, partial);
+          if (isThought) {
             flows.add(mapThinking(text, partial));
           } else {
             flows.add(mapMessage(text, partial));
@@ -208,13 +209,36 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
     LOG.debug("Processing thinking mapping - text='{}', partial={}", text, partial);
 
-    final CustomEvent thinkDelta = new CustomEvent();
-    thinkDelta.setRawEvent(Map.of("name", "THINK_DELTA", "value", text));
-    final BaseEvent decoratedThinkDelta = decorateEvent(thinkDelta);
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedThinkDelta));
+    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
+    if (!state.isThinking) {
+      flows.add(mapThinkingStart());
+    }
 
-    return Flowable.concatArray(
-        mapThinkingStart(), Flowable.just(decoratedThinkDelta), mapThinkingEnd(partial));
+    if (state.currentThinkingMessageId == null) {
+      state.currentThinkingMessageId = "think-" + UUID.randomUUID().toString();
+    }
+
+    if (partial) {
+      final String delta = resolveDelta(text, state.lastSentThinking);
+      if (StringUtils.isNotBlank(delta)) {
+        state.lastSentThinking = text;
+        final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
+        chunk.setMessageId(state.currentThinkingMessageId);
+        chunk.setDelta(delta);
+        flows.add(Flowable.just(decorateEvent(chunk)));
+      }
+    } else {
+      state.lastSentThinking = text;
+      final TextMessageContentEvent content = new TextMessageContentEvent();
+      content.setMessageId(state.currentThinkingMessageId);
+      content.setDelta(text);
+      flows.add(Flowable.just(decorateEvent(content)));
+      flows.add(mapThinkingEnd(false));
+      state.lastSentThinking = null;
+      state.currentThinkingMessageId = null;
+    }
+
+    return Flowable.concat(flows);
   }
 
   private Flowable<BaseEvent> mapThinkingStart() {
@@ -445,7 +469,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
+    private String currentThinkingMessageId;
     private String lastSentText;
+    private String lastSentThinking;
     private String finalAnswer;
     private boolean isThinking;
     private final Set<String> pendingToolCalls = new HashSet<>();
