@@ -8,9 +8,11 @@ import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
-import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Single;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
  * 3. Formatting: Strips signal tools and manages thought-steering for UI.
  */
 public final class FinalAnswerResponseProcessor implements ResponseProcessor {
+  final Logger LOG = LoggerFactory.getLogger(FinalAnswerResponseProcessor.class);
   public static final FinalAnswerResponseProcessor INSTANCE = new FinalAnswerResponseProcessor();
 
   @Override
@@ -30,7 +33,7 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
     FinalAnswerUtils.syncInvocation(context);
 
     final Content content = response.content().orElse(null);
-    if (content == null) {
+    if (content == null || !response.turnComplete().orElse(true)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
 
@@ -42,6 +45,12 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
     String textFound = null;
 
     for (Part part : parts) {
+      LOG.info("Processing part: text='{}', functionCall='{}', functionResponse='{}', thought='{}'",
+          part.text().orElse(null),
+          part.functionCall().map(f -> f.name().orElse("unknown")).orElse(null),
+          part.functionResponse().map(f -> f.name().orElse("unknown")).orElse(null),
+          part.thought().orElse(false));
+
       if (FinalAnswerUtils.callsFinalAnswerTool(part)) {
         continue;
       }
@@ -60,7 +69,7 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
             .message("Partial response after final answer signal")
             .correctionMessage("You signaled for a final answer but provided a partial response. The final answer turn must contain the complete answer in one go. Please provide the full answer now.")
             .build());
-        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
       if (!otherTools.isEmpty()) {
         final String toolList = otherTools.stream().distinct().collect(Collectors.joining(", "));
@@ -68,7 +77,7 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
             .message("Tool calls in final answer turnaround")
             .correctionMessage("You attempted to call tools: [" + toolList + "] while providing the final answer. The answer turn must be PURE text. Use this turn ONLY to state the final answer.")
             .build());
-        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
       final String text = response.content().orElse(Content.builder().build()).text();
       if (StringUtils.isBlank(text)) {
@@ -76,7 +85,7 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
             .message("No text in final answer turnaround")
             .correctionMessage("You signaled for a final answer but failed to provide any text. The final answer turn must contain the answer text. Please provide the actual answer now.")
             .build());
-        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(false).build(), List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
       FinalAnswerUtils.markFinalAnswerComplete(context);
       return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
@@ -88,21 +97,22 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
             .build();
 
     if (callsFinalAnswerTool) {
-
       if (response.partial().orElse(false)) {
         ViolationUtils.addViolation(context, Violation.builder("final_answer_with_partial")
             .message("Partial response with final answer signal")
             .correctionMessage("You signaled for a final answer but provided a partial response. The final answer turn must contain the complete answer in one go. Please provide the full answer now.")
+            .detail("resume_needed", true)
             .build());
-        return Single.just(ResponseProcessingResult.create(strippedResponse, List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(strippedResponse.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
       if (!otherTools.isEmpty()) {
         final String toolList = otherTools.stream().distinct().collect(Collectors.joining(", "));
         ViolationUtils.addViolation(context, Violation.builder("final_answer_with_tools")
             .message("Simultaneous tool calls with final answer")
             .correctionMessage("You attempted to provide a final answer while simultaneously making other tool calls: [" + toolList + "]. This is not allowed. Please call only " + FinalAnswerUtils.TOOL_NAME + " to signal your intent.")
+            .detail("resume_needed", true)
             .build());
-        return Single.just(ResponseProcessingResult.create(strippedResponse, List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(strippedResponse.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
 
       if (textFound != null) {
@@ -110,8 +120,9 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
         ViolationUtils.addViolation(context, Violation.builder("final_answer_with_text")
             .message("Simultaneous text with final answer signal")
             .correctionMessage("You provided answer text alongside the final answer signal: \"" + display + "\". This signal turn must NOT contain the answer. Call " + FinalAnswerUtils.TOOL_NAME + " as a clean turn, and you will be steered to provide the text in the following turn.")
+            .detail("resume_needed", true)
             .build());
-        return Single.just(ResponseProcessingResult.create(strippedResponse, List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(strippedResponse.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
 
       final Plan plan = PlanningUtils.getPlanFromContext(context);
@@ -120,8 +131,9 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
         ViolationUtils.addViolation(context, Violation.builder("final_answer_validation")
             .message(planViolation)
             .correctionMessage(planViolation)
+            .detail("resume_needed", true)
             .build());
-        return Single.just(ResponseProcessingResult.create(strippedResponse, List.of(), Optional.empty()));
+        return Single.just(ResponseProcessingResult.create(strippedResponse.toBuilder().turnComplete(true).build(), List.of(), Optional.empty()));
       }
 
       FinalAnswerUtils.markNeedsFinalAnswer(context);
@@ -138,8 +150,17 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
         updatedParts.add(part);
       }
 
+      if (textFound != null) {
+        ViolationUtils.addViolation(context, Violation.builder("premature_termination")
+            .message("Output text without submit_final_answer tool call")
+            .correctionMessage("System Reminder: You provided text response but failed to call '" + FinalAnswerUtils.TOOL_NAME + "'. All text BEFORE this tool is treated as internal thought. If you are ready to reply to the user, you MUST call '" + FinalAnswerUtils.TOOL_NAME + "' now.")
+            .detail("resume_needed", true)
+            .build());
+      }
+
       final LlmResponse updatedResponse = response.toBuilder()
-              .content(content.toBuilder().parts(updatedParts).build()).turnComplete(false)
+              .content(content.toBuilder().parts(updatedParts).build())
+              .turnComplete(true)
               .build();
       return Single.just(ResponseProcessingResult.create(updatedResponse, List.of(), Optional.empty()));
     }
