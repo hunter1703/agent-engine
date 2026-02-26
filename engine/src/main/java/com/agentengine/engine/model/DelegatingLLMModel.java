@@ -1,7 +1,5 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.utils.CorrectionProcessor;
-import com.agentengine.engine.utils.FinalAnswerResponseProcessor;
 import com.agentengine.engine.utils.Parser;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
@@ -34,10 +32,8 @@ public final class DelegatingLLMModel extends AbstractLLM {
         toolCallingEnabled,
         parseToolCallsFromText);
     this.delegate = delegate;
-    this.requestProcessors = List.of(CorrectionProcessor.INSTANCE, parser);
-    this.responseProcessors = parseToolCallsFromText
-        ? List.of(parser, FinalAnswerResponseProcessor.INSTANCE)
-        : List.of(parser);
+    this.requestProcessors = List.of(parser);
+    this.responseProcessors = List.of(parser);
   }
 
   @Override

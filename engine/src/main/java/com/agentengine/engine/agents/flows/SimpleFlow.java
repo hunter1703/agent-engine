@@ -22,18 +22,18 @@ public class SimpleFlow extends AbstractFlow {
 
   private static List<RequestProcessor> buildRequests(final List<RequestProcessor> provided) {
     final List<RequestProcessor> reqs = new ArrayList<>(SingleFlow.REQUEST_PROCESSORS);
-    reqs.addAll(CollectionUtils.nullSafeList(provided));
-    reqs.add(FinalAnswerRequestProcessor.INSTANCE);
     reqs.add(CorrectionProcessor.INSTANCE);
+    reqs.add(FinalAnswerRequestProcessor.INSTANCE);
+    reqs.addAll(CollectionUtils.nullSafeList(provided));
     reqs.add(LoggingRequestProcessor.INSTANCE);
     return reqs;
   }
 
   private static List<ResponseProcessor> buildResponses(final List<ResponseProcessor> provided) {
     final List<ResponseProcessor> resps = new ArrayList<>();
-    resps.add(FinalAnswerResponseProcessor.INSTANCE);
     resps.addAll(CollectionUtils.nullSafeList(provided));
     resps.addAll(SingleFlow.RESPONSE_PROCESSORS);
+    resps.add(FinalAnswerResponseProcessor.INSTANCE);
     return resps;
   }
 }
