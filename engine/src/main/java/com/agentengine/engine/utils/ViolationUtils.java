@@ -19,7 +19,8 @@ public final class ViolationUtils {
     context.session().state().compute(VIOLATIONS_KEY, (key, oldVal) -> {
       @SuppressWarnings("unchecked")
       final List<Violation> violations =
-          oldVal == null ? new ArrayList<>() : (List<Violation>) oldVal;
+          oldVal == null ? new ArrayList<>() : new ArrayList<>((List<Violation>) oldVal);
+      violations.removeIf(v -> v.getCode().equals(violation.getCode()));
       violations.add(violation);
       return violations;
     });

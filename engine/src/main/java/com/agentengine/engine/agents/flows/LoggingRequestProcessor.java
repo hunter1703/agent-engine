@@ -8,6 +8,7 @@ import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.sessions.Session;
 import io.reactivex.rxjava3.core.Single;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +21,17 @@ public final class LoggingRequestProcessor implements RequestProcessor {
   public Single<RequestProcessingResult> processRequest(
       final InvocationContext context, final LlmRequest request) {
     if (LOG.isDebugEnabled()) {
+      final List<String> toolNames =
+              new ArrayList<>(CollectionUtils.nullSafeMap(request.tools()).keySet());
+      LOG.debug(
+              "Processing LLM request - tools={} contentsSize={}",
+              toolNames,
+              CollectionUtils.nullSafeList(request.contents()).size());
       final Session session = context == null ? null : context.session();
       final List<Event> events =
           session == null ? List.of() : CollectionUtils.nullSafeList(session.events());
       LOG.debug(
-          "Processing LLM request - events={} request={}",
+          "Processing LLM request detail - events={} request={}",
           JsonUtils.toJson(events),
           JsonUtils.toJson(request));
     }

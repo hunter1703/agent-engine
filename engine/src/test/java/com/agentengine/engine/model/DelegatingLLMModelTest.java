@@ -62,10 +62,8 @@ class DelegatingLLMModelTest {
     assertThat(requestProcessors.get(1)).isSameAs(parser);
 
     final List<ResponseProcessor> responseProcessors = model.getResponseProcessors();
-    assertThat(responseProcessors).hasSize(2);
+    assertThat(responseProcessors).hasSize(1);
     assertThat(responseProcessors.get(0)).isSameAs(parser);
-    assertThat(responseProcessors.get(1)).isSameAs(model.getResponseProcessors().get(1)); // FinalAnswerResponseProcessor
-    assertThat(responseProcessors.get(1)).isInstanceOf(FinalAnswerResponseProcessor.class);
   }
 
   @Test

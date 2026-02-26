@@ -5,7 +5,7 @@ protobuf = { id = "com.google.protobuf", version = "0.9.4" }
 [versions]
 quarkus = "3.31.0"
 langchain4j = "1.0.0-beta2"
-google-adk = "0.5.0"
+google-adk = "0.5.1-SNAPSHOT"
 jackson = "2.17.1"
 assertj = "3.26.3"
 junit = "5.10.3"

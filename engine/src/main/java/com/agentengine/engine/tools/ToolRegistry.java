@@ -17,6 +17,8 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 
 @Singleton
 public final class ToolRegistry implements ToolService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ToolRegistry.class);
 
   private final Cache<String, ToolCatalog> catalogCache;
 
@@ -54,12 +58,15 @@ public final class ToolRegistry implements ToolService {
     final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
     final ToolCatalog catalog = catalogCache.get(cacheKey);
  
+    final List<String> catalogTools = new ArrayList<>(catalog.toolEntries().keySet());
     final ToolEntry finalAnswerEntry = catalog.toolEntries().get(SubmitFinalAnswerTool.TOOL_NAME);
     if (finalAnswerEntry != null) {
       addIfPresent(tools, createTool(agentContext, finalAnswerEntry, Collections.emptyMap()));
     }
  
     if (CollectionUtils.isEmpty(toolsConfig)) {
+      final List<String> loadedToolNames = tools.stream().map(BaseTool::name).toList();
+      LOG.info("loadTools - agentId={} catalogTools={} loadedTools={}", agentId, catalogTools, loadedToolNames);
       return tools;
     }
  
@@ -69,6 +76,9 @@ public final class ToolRegistry implements ToolService {
         tools.addAll(toolsForConfigs);
       }
     }
+
+    final List<String> loadedToolNames = tools.stream().map(BaseTool::name).toList();
+    LOG.info("loadTools - agentId={} catalogTools={} loadedTools={}", agentId, catalogTools, loadedToolNames);
     return tools;
   }
 

@@ -34,6 +34,10 @@ public final class CorrectionProcessor implements RequestProcessor {
 
     LOG.info("Gathered {} violation(s) for correction", violations.size());
 
+    for (Violation v : violations) {
+        LOG.info("Violation: code={} message={} correction={}", v.getCode(), v.getMessage(), v.getCorrectionMessage());
+    }
+
     final List<String> messages =
         violations.stream()
             .map(Violation::getCorrectionMessage)
