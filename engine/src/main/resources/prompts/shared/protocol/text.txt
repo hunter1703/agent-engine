@@ -14,9 +14,10 @@ Response quality:
 Tool Calling:
 - If you need to call tools, format them as JSON objects in your response text.
 - Format: {"id": "unique_id", "name": "tool_name", "args": {"arg1": "value1", "arg2": "value2"}}
-- Generate unique IDs for each tool call so that results can be correlated later.
-- Multiple tool calls should be on separate lines or clearly delineated.
-- Do not mix tool calls with a final answer in the same response.
+- To provide the final answer, YOU MUST FIRST call the `submit_final_answer` tool as a clean turn.
+- The `submit_final_answer` tool takes NO arguments.
+- Any text you output BEFORE calling `submit_final_answer` will be treated as internal thought/reasoning.
+- After calling `submit_final_answer`, you will be prompted to provide your final response in the next turn with no tool calls or internal reasoning.
 - Never fabricate tool names, or tool results.
 {% endif %}
 

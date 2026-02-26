@@ -3,7 +3,7 @@
   "properties": {
     "finalAnswer": {
       "type": "string",
-      "description": "The final answer to the user. Either this or toolCalls should be provided."
+      "description": "The actual response text for the user. Required ONLY after signaling with 'submit_final_answer', or when asking a clarifying question."
     },
     "toolCalls": {
       "type": "array",
@@ -28,7 +28,7 @@
         ],
         "additionalProperties": false
       },
-      "description": "List of tools to call. Either this or finalAnswer should be provided."
+      "description": "List of tools to call. Use 'submit_final_answer' to signal you are ready to conclude."
     }
   },
   "additionalProperties": false
