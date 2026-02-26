@@ -21,10 +21,10 @@ public final class SubmitFinalAnswerTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,
-          "Explicitly signals that you are ready to provide the final answer to the user. "
-              + "All text emitted AFTER this tool call will be treated as the final answer. "
-              + "All text emitted BEFORE this tool call is treated as internal thoughts/reasoning. "
-              + "Call this tool only when you are ready to provide the final answer.",
+          "MANDATORY: You MUST call this tool to signal you are ready to provide the final answer to the user. "
+              + "This tool call MUST be a clean turn: DO NOT include user-facing prose, internal thoughts, or other tool calls in the same turn. "
+              + "After calling this tool, you will be prompted to provide the actual answer text in the following turn. "
+              + "Any text provided BEFORE or ALONGSIDE this tool call will NOT be seen by the user.",
           List.of(ALL),
           Map.of());
 
