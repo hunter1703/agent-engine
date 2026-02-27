@@ -7,6 +7,8 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +40,8 @@ public final class CreatePlanTool extends Tool {
               description =
                   "Flat list of tasks, use 'parent_id' matching another task's 'id' for logical hierarchy")
           List<Task> tasks) {
-
-    if (toolContext == null) {
-      return Map.of("error", "toolContext is required");
-    }
-    final Plan existingPlan = PlanningUtils.getCurrentPlan(toolContext);
+    final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+    final Plan existingPlan = runState.plan();
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();
       if (!status.isTerminal()) {
@@ -56,7 +55,7 @@ public final class CreatePlanTool extends Tool {
       return Map.of("error", validationError);
     }
 
-    PlanningUtils.savePlan(toolContext, currentPlan);
+    runState.updatePlan(currentPlan);
 
     LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return Map.of(

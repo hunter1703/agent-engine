@@ -20,6 +20,7 @@ import com.agentengine.interfaces.rest.responses.dtos.ToolCallEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultDoneEventData;
 import com.agentengine.interfaces.rest.responses.dtos.ToolCallResultEventData;
 import com.agui.core.event.BaseEvent;
+import com.agui.core.event.CustomEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
@@ -31,15 +32,16 @@ import com.agui.core.event.TextMessageEndEvent;
 import com.agui.core.event.TextMessageStartEvent;
 import com.agui.core.event.ThinkingEndEvent;
 import com.agui.core.event.ThinkingStartEvent;
+import com.agui.core.event.ThinkingTextMessageContentEvent;
+import com.agui.core.event.ThinkingTextMessageEndEvent;
+import com.agui.core.event.ThinkingTextMessageStartEvent;
 import com.agui.core.event.ToolCallArgsEvent;
 import com.agui.core.event.ToolCallEndEvent;
 import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.event.ToolCallStartEvent;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
 
 /** Maps AGUI events to Responses API format for Codex CLI compatibility */
 public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseResponsesEventData> {
@@ -83,6 +85,10 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       case StepFinishedEvent _ -> Flowable.empty();
       case ThinkingStartEvent _ -> mapThinkingStart();
       case ThinkingEndEvent _ -> mapThinkingEnd();
+      case ThinkingTextMessageStartEvent _ -> mapThinkingTextStart();
+      case ThinkingTextMessageContentEvent thinkingContentEvent ->
+          mapThinkingTextContent(thinkingContentEvent);
+      case ThinkingTextMessageEndEvent _ -> mapThinkingTextEnd();
       case TextMessageStartEvent _ -> mapTextMessageStart();
       case TextMessageEndEvent _ -> mapTextMessageEnd();
       case TextMessageChunkEvent textMessageChunkEvent -> mapTextChunk(textMessageChunkEvent);
@@ -92,6 +98,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       case ToolCallArgsEvent toolCallArgsEvent -> mapToolCallArgs(toolCallArgsEvent);
       case ToolCallEndEvent toolCallEndEvent -> mapToolCallEnd(toolCallEndEvent);
       case ToolCallResultEvent toolCallResultEvent -> mapToolCallResult(toolCallResultEvent);
+      case CustomEvent _ -> Flowable.empty();
       default -> throw new IllegalStateException("Unexpected value: " + baseEvent);
     };
   }
@@ -128,9 +135,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     }
     state.thinkingStarted = true;
     final BaseResponsesEventData reasoningAdded = beginReasoningItem();
-    final BaseResponsesEventData summaryPart =
-        new ReasoningSummaryPartAddedEventData(state.thinkingIndex);
-    return fromEvents(reasoningAdded, summaryPart);
+    return toFlowable(reasoningAdded);
   }
 
   private Flowable<BaseResponsesEventData> mapThinkingEnd() {
@@ -138,13 +143,56 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
       return Flowable.empty();
     }
     final BaseResponsesEventData completed = finishReasoningItem();
-    state.thinkingIndex++;
     state.thinkingStarted = false;
+    state.thinkingMessageOpen = false;
     return toFlowable(completed);
+  }
+
+  private Flowable<BaseResponsesEventData> mapThinkingTextStart() {
+    final List<BaseResponsesEventData> events = new ArrayList<>();
+    if (!state.thinkingStarted) {
+      state.thinkingStarted = true;
+      events.add(beginReasoningItem());
+    }
+    if (!state.thinkingMessageOpen) {
+      state.thinkingMessageOpen = true;
+      events.add(new ReasoningSummaryPartAddedEventData(state.thinkingIndex));
+    }
+    return fromEvents(events.toArray(new BaseResponsesEventData[0]));
+  }
+
+  private Flowable<BaseResponsesEventData> mapThinkingTextContent(
+      final ThinkingTextMessageContentEvent thinkingContentEvent) {
+    final String delta = getValueFromRawEvent(thinkingContentEvent, "delta");
+    if (StringUtils.isBlank(delta)) {
+      return Flowable.empty();
+    }
+    final List<BaseResponsesEventData> events = new ArrayList<>();
+    if (!state.thinkingStarted) {
+      state.thinkingStarted = true;
+      events.add(beginReasoningItem());
+    }
+    if (!state.thinkingMessageOpen) {
+      state.thinkingMessageOpen = true;
+      events.add(new ReasoningSummaryPartAddedEventData(state.thinkingIndex));
+    }
+    appendReasoning(delta);
+    events.add(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
+    return fromEvents(events.toArray(new BaseResponsesEventData[0]));
+  }
+
+  private Flowable<BaseResponsesEventData> mapThinkingTextEnd() {
+    if (!state.thinkingMessageOpen) {
+      return Flowable.empty();
+    }
+    state.thinkingMessageOpen = false;
+    state.thinkingIndex++;
+    return Flowable.empty();
   }
 
   private Flowable<BaseResponsesEventData> mapTextMessageStart() {
     state.thinkingStarted = false;
+    state.thinkingMessageOpen = false;
     if (state.activeMessageOutputIndex != null) {
       return Flowable.empty();
     }
@@ -153,16 +201,13 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
 
   private Flowable<BaseResponsesEventData> mapTextMessageEnd() {
     state.thinkingStarted = false;
+    state.thinkingMessageOpen = false;
     return Flowable.empty();
   }
 
   private Flowable<BaseResponsesEventData> mapTextChunk(
       final TextMessageChunkEvent textMessageChunkEvent) {
     final String delta = textMessageChunkEvent.getDelta();
-    if (state.thinkingStarted) {
-      appendReasoning(delta);
-      return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
-    }
     final BaseResponsesEventData messageStart =
         state.activeMessageOutputIndex == null ? beginMessageItem() : null;
     state.messageHasChunks = true;
@@ -177,10 +222,6 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
   private Flowable<BaseResponsesEventData> mapTextContent(
       final TextMessageContentEvent textMessageContentEvent) {
     final String delta = textMessageContentEvent.getDelta();
-    if (state.thinkingStarted) {
-      appendReasoning(delta);
-      return toFlowable(new ReasoningSummaryTextDeltaEventData(delta, state.thinkingIndex));
-    }
     if (state.messageHasChunks) {
       state.messageBuffer = new StringBuilder(delta);
       return Flowable.empty();
@@ -386,6 +427,7 @@ public final class ResponsesEventMapper implements EventMapper<BaseEvent, BaseRe
     private int thinkingIndex;
     private int outputIndex;
     private boolean thinkingStarted;
+    private boolean thinkingMessageOpen;
     private String responseId;
     private Integer activeMessageOutputIndex;
     private Integer activeReasoningOutputIndex;

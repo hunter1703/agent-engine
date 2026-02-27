@@ -6,7 +6,6 @@ import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.mongo.MongoQueryAdapter;
 import com.agentengine.engine.utils.MongoUtils;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;

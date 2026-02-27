@@ -3,7 +3,7 @@ package com.agentengine.engine.repository;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.model.ModelUtils;
+import com.agentengine.engine.utils.ModelUtils;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 

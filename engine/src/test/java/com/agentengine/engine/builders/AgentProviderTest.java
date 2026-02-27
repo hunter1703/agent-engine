@@ -5,12 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.agents.SimpleAgent;
+import com.agentengine.engine.agents.DefaultAgent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.builders.agent.AgentProvider;
-import com.agentengine.engine.builders.agent.SimpleAgentBuilder;
+import com.agentengine.engine.builders.agent.DefaultAgentBuilder;
 import com.google.adk.agents.LlmAgent;
 import jakarta.enterprise.inject.Instance;
 import java.util.stream.Stream;
@@ -20,14 +20,14 @@ class AgentProviderTest {
 
   @Test
   void returnsNamedBuilderOrFallback() {
-    final SimpleAgent fallbackAgent = mock(SimpleAgent.class);
+    final DefaultAgent fallbackAgent = mock(DefaultAgent.class);
     final AgentBuilder<AgentConfig, LlmAgent> named = new StubBuilder("alpha");
     final AgentBuilder<AgentConfig, LlmAgent> other = new StubBuilder("beta");
     @SuppressWarnings("unchecked")
     final Instance<AgentBuilder<?, ?>> instance =
         (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
     when(instance.stream()).thenReturn(Stream.<AgentBuilder<?, ?>>of(named, other));
-    final SimpleAgentBuilder fallback = mock(SimpleAgentBuilder.class);
+    final DefaultAgentBuilder fallback = mock(DefaultAgentBuilder.class);
     when(fallback.build(any(), any())).then(invocation -> fallbackAgent);
 
     final AgentProvider factory = new AgentProvider(instance, fallback);

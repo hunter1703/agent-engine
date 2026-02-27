@@ -1,10 +1,8 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.utils.Parser;
-import com.google.adk.flows.llmflows.RequestProcessor;
-import com.google.adk.flows.llmflows.ResponseProcessor;
+import com.agentengine.engine.agents.processors.Parser;
 import com.google.adk.models.BaseLlm;
-import java.util.List;
+
 import java.util.Objects;
 
 public abstract class AbstractLLM extends BaseLlm {
@@ -30,12 +28,8 @@ public abstract class AbstractLLM extends BaseLlm {
     return protocol;
   }
 
-  public List<RequestProcessor> getRequestProcessors() {
-    return List.of(parser);
-  }
-
-  public List<ResponseProcessor> getResponseProcessors() {
-    return List.of(parser);
+  public Parser getParser() {
+    return parser;
   }
 
   public boolean isToolCallingEnabled() {

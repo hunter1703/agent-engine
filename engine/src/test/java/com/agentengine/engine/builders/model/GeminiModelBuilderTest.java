@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.model.DelegatingLLMModel;
-import com.agentengine.engine.utils.Parser;
+import com.agentengine.engine.agents.processors.Parser;
 import org.junit.jupiter.api.Test;
 
 class GeminiModelBuilderTest {

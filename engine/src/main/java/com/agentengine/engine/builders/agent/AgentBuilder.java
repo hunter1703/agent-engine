@@ -1,6 +1,6 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.agents.SimpleAgent;
+import com.agentengine.engine.agents.DefaultAgent;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.google.adk.agents.LlmAgent;
 
@@ -44,8 +44,8 @@ public class AgentBuilder extends LlmAgent.Builder {
   }
 
   @Override
-  public SimpleAgent build() {
+  public DefaultAgent build() {
     validate();
-    return new SimpleAgent(this) {};
+    return new DefaultAgent(this) {};
   }
 }

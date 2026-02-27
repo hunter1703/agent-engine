@@ -1,14 +1,13 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.model.TitleConfig.TYPE;
+import static com.agentengine.engine.infra.TitleConfig.TYPE;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.model.TitleConfig;
+import com.agentengine.engine.infra.TitleConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.utils.LazyLoader;
-import com.agentengine.engine.utils.SessionUtils;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
@@ -16,8 +15,14 @@ import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import jakarta.inject.Singleton;
+
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,19 +52,92 @@ public final class SessionTitleGenerator {
             });
   }
 
+  public static List<Event> filterConversationEvents(final List<Event> events) {
+    if (events == null || events.isEmpty()) {
+      return List.of();
+    }
+    final List<Event> filtered = new ArrayList<>();
+    for (final Event event : events) {
+      if (hasConversationContent(event)) {
+        filtered.add(event);
+      }
+    }
+    return filtered;
+  }
+
+  public static boolean hasConversationContent(final Event event) {
+    if (event == null) {
+      return false;
+    }
+    return event.content().flatMap(Content::parts).map(parts -> !parts.isEmpty()).orElse(false);
+  }
+
+  public static String buildTranscript(final List<Event> events) {
+    if (events == null || events.isEmpty()) {
+      return "";
+    }
+    final StringBuilder builder = new StringBuilder();
+    for (final Event event : events) {
+      final String text = extractText(event);
+      if (StringUtils.isBlank(text)) {
+        continue;
+      }
+      final String author = StringUtils.isBlank(event.author()) ? "assistant" : event.author();
+      builder.append(author).append(": ").append(text.trim()).append("\n");
+    }
+    return builder.toString().trim();
+  }
+
+  private static String extractText(final Event event) {
+    if (event == null) {
+      return null;
+    }
+    final Content content = event.content().orElse(null);
+    if (content == null) {
+      return null;
+    }
+    final String text = content.text();
+    if (StringUtils.isNotBlank(text)) {
+      return text;
+    }
+    return summarizeParts(content.parts().orElse(List.of()));
+  }
+
+  private static String summarizeParts(final List<Part> parts) {
+    if (parts == null || parts.isEmpty()) {
+      return null;
+    }
+    final StringBuilder builder = new StringBuilder();
+    for (final Part part : parts) {
+      part.functionCall()
+          .ifPresent(
+              call ->
+                  builder.append("Tool call: ").append(call.name().orElse("tool")).append('\n'));
+      part.functionResponse()
+          .ifPresent(
+              response ->
+                  builder
+                      .append("Tool result: ")
+                      .append(response.name().orElse("tool"))
+                      .append('\n'));
+    }
+    final String summary = builder.toString().trim();
+    return summary.isEmpty() ? null : summary;
+  }
+
   public Optional<String> generateTitle(final List<Event> events) {
     final BaseLlm titleGeneratorModel = titleGeneratorModelLoader.getInstance();
     if (titleGeneratorModel == null) {
       return Optional.empty();
     }
-    final List<Event> conversationEvents = SessionUtils.filterConversationEvents(events);
+    final List<Event> conversationEvents = filterConversationEvents(events);
     if (conversationEvents.isEmpty()) {
       return Optional.empty();
     }
     final int startIndex = Math.max(0, conversationEvents.size() - MAX_EVENTS);
     final List<Event> recentEvents =
         conversationEvents.subList(startIndex, conversationEvents.size());
-    final String transcript = SessionUtils.buildTranscript(recentEvents);
+    final String transcript = buildTranscript(recentEvents);
     if (StringUtils.isBlank(transcript)) {
       return Optional.empty();
     }

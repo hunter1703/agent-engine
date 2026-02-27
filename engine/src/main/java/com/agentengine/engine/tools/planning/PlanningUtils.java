@@ -1,15 +1,11 @@
 package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
-import com.google.adk.agents.InvocationContext;
-import com.google.adk.sessions.Session;
-import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -18,15 +14,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public final class PlanningUtils {
   private static final int MAX_SECTION_ITEMS = 5;
   private static final int MAX_FOCUS_TASKS = 1;
-  private static final Logger LOG = LoggerFactory.getLogger(PlanningUtils.class);
-  public static final String PLAN_STATE_KEY = "currentPlan";
-
   private PlanningUtils() {}
 
   /**
@@ -145,17 +135,6 @@ public final class PlanningUtils {
       builder.append("- ").append(formatTaskFocus(openTasks.get(i))).append("\n");
     }
     return builder.toString().trim();
-  }
-
-  public static Plan getPlanFromContext(final InvocationContext context) {
-    if (context == null) {
-      return null;
-    }
-    final Session session = context.session();
-    if (session == null || session.state() == null) {
-      return null;
-    }
-    return getPlanFromState(session.state());
   }
 
   public static Task getOpenTask(final Plan plan) {
@@ -296,7 +275,7 @@ public final class PlanningUtils {
     final String name = getTaskName(task);
     final String id = getTaskId(task);
     final String parentId = getTaskParent(task);
-    return "[" + getTaskStatus(task) + "] " + name + " (id: " + id + ", parent: " + parentId + ")";
+    return "[" + getTaskStatusValue(task) + "] " + name + " (id: " + id + ", parent: " + parentId + ")";
   }
 
   private static String planTitle(final Plan plan) {
@@ -340,7 +319,7 @@ public final class PlanningUtils {
       line.append(", parent: ").append(getTaskParent(task));
       line.append(")");
     }
-    line.append(" [").append(getTaskStatus(task)).append("]");
+    line.append(" [").append(getTaskStatusValue(task)).append("]");
     if (includeGoal && StringUtils.isNotBlank(task.getGoal())) {
       line.append(" | goal: ").append(task.getGoal());
     }
@@ -348,46 +327,6 @@ public final class PlanningUtils {
       line.append(" | result: ").append(task.getResult());
     }
     return line.toString();
-  }
-
-  public static Plan getCurrentPlan(final ToolContext toolContext) {
-    if (toolContext == null) {
-      LOG.warn("toolContext is missing for plan access");
-      return null;
-    }
-    return getPlanFromState(toolContext.state());
-  }
-
-  private static Plan getPlanFromState(final Map<String, Object> state) {
-    if (CollectionUtils.isEmpty(state)) {
-      return null;
-    }
-    final Object value = state.get(PLAN_STATE_KEY);
-    if (value instanceof Plan plan) {
-      return plan;
-    }
-    if (value instanceof Map<?, ?> map) {
-      @SuppressWarnings("unchecked")
-      final Map<String, Object> stringMap = (Map<String, Object>) map;
-      return JsonUtils.fromMap(stringMap, Plan.class);
-    }
-    return null;
-  }
-
-  public static void savePlan(final ToolContext toolContext, final Plan plan) {
-    if (toolContext == null) {
-      LOG.warn("toolContext is missing for plan save");
-      return;
-    }
-    toolContext.state().put(PLAN_STATE_KEY, plan);
-  }
-
-  public static void savePlan(final InvocationContext context, final Plan plan) {
-    if (context == null || context.session() == null || context.session().state() == null) {
-      LOG.warn("Invocation context is missing for plan save");
-      return;
-    }
-    context.session().state().put(PLAN_STATE_KEY, plan);
   }
 
   public static Task findTaskById(final Plan plan, final String taskId) {
@@ -454,7 +393,7 @@ public final class PlanningUtils {
   }
 
   private static String formatTaskFocus(final Task task) {
-    final String status = getTaskStatus(task);
+    final String status = getTaskStatusValue(task);
     final String name = getTaskName(task);
     final String id = getTaskId(task);
     final String parent = getTaskParent(task);
@@ -482,7 +421,7 @@ public final class PlanningUtils {
     return StringUtils.isBlank(task.getName()) ? "Untitled" : task.getName();
   }
 
-  private static String getTaskStatus(final Task task) {
+  public static String getTaskStatusValue(final Task task) {
     return getTaskStatusEnum(task).getValue();
   }
 

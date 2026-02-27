@@ -5,6 +5,7 @@ import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.grpc.Request;
 import com.agentengine.engine.grpc.Response;
 import com.agentengine.engine.grpc.ServiceGrpc;
+import com.agentengine.engine.utils.ThreadUtils;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -33,9 +34,10 @@ import org.slf4j.LoggerFactory;
 @Singleton
 @GrpcService
 public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
+  private static final String NAME_PREFIX = "agent-grpc-vt-";
 
+  private static final ExecutorService EXECUTOR_SERVICE = ThreadUtils.newVirtualThreadExecutor(NAME_PREFIX);
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
-  private final ExecutorService grpcExecutor;
 
   /**
    * Two-level registry built eagerly at startup. Outer key: {@link MicroService} interface simple
@@ -43,15 +45,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
    */
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
-  @Inject
-  public GRPCServerImpl(final GrpcVirtualThreadExecutor grpcExecutor) {
-    this.grpcExecutor = grpcExecutor.executor();
-    LOG.info("GRPCServerImpl created.");
-  }
-
   // ── Testing Helper ────────────────────────────────────────────────────────
-  public GRPCServerImpl(final List<Object> services, final ExecutorService grpcExecutor) {
-    this.grpcExecutor = grpcExecutor;
+  public GRPCServerImpl(final List<Object> services) {
     services.forEach(
         instance -> {
           Class<?> iface = microServiceInterface(instance.getClass());
@@ -107,7 +102,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   @Override
   public void execute(Request request, StreamObserver<Response> responseObserver) {
     try {
-      grpcExecutor.execute(() -> executeInternal(request, responseObserver));
+      EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
     } catch (RejectedExecutionException e) {
       responseObserver.onError(
           Status.RESOURCE_EXHAUSTED

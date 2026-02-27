@@ -41,8 +41,9 @@ class ToolSuiteSupportTest {
     AgentContext context = new AgentContext(config, new InMemorySessionService());
     List<BaseTool> tools = registry.loadTools(context, List.of(toolsConfig));
 
-    assertThat(tools).hasSize(1);
-    assertThat(tools.get(0).name()).isEqualTo("suite_member");
+    assertThat(tools)
+        .extracting(BaseTool::name)
+        .containsExactlyInAnyOrder("suite_member", SubmitFinalAnswerTool.TOOL_NAME);
   }
 
   private static final class SuiteToolProvider implements ToolProvider, ToolSuite {

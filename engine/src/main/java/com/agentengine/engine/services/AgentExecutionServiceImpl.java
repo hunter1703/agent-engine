@@ -29,9 +29,6 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   @Override
-  @WithSpan
-  @Retry(maxRetries = 2)
-  @Timeout(5000)
   public Flowable<Event> run(AgentRequest request) {
     AgentSessionRuntime runtime =
         agentSessionRuntimeManager.getOrStartRuntime(request.getAgentId(), request.getSessionId());

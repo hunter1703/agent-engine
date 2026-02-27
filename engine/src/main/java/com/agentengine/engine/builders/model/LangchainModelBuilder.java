@@ -5,7 +5,7 @@ import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.ResourceUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.model.ModelUtils;
+import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
@@ -134,12 +134,6 @@ public abstract class LangchainModelBuilder extends DelegatingModelBuilder<LangC
   }
 
   protected static ResponseFormat getResponseFormat(final ResponseFormatType responseFormatType) {
-    if (responseFormatType == ResponseFormatType.JSON) {
-      return new ResponseFormat.Builder()
-          .type(ResponseFormatType.JSON)
-          .jsonSchema(toJsonSchema(DEFAULT_JSON_RESPONSE_FORMAT))
-          .build();
-    }
     return new ResponseFormat.Builder().type(ResponseFormatType.TEXT).build();
   }
 

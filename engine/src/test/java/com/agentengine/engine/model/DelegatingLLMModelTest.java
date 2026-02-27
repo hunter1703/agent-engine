@@ -8,9 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.utils.CorrectionProcessor;
-import com.agentengine.engine.utils.FinalAnswerResponseProcessor;
-import com.agentengine.engine.utils.Parser;
+import com.agentengine.engine.agents.processors.request.CorrectionProcessor;
+import com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor;
+import com.agentengine.engine.agents.processors.Parser;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmRequest;
@@ -44,7 +44,7 @@ class DelegatingLLMModelTest {
     when(chatModel.defaultRequestParameters()).thenReturn(params);
     when(params.modelName()).thenReturn("test-model");
 
-    final Parser parser = Parser.create();
+    final Parser parser = Parser.builder().build();
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
@@ -73,7 +73,7 @@ class DelegatingLLMModelTest {
     when(chatModel.defaultRequestParameters()).thenReturn(params);
     when(params.modelName()).thenReturn("test-model");
 
-    final Parser parser = Parser.create();
+    final Parser parser = Parser.builder().build();
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
@@ -105,7 +105,10 @@ class DelegatingLLMModelTest {
     when(chatModel.chat(any(ChatRequest.class)))
         .thenReturn(ChatResponse.builder().aiMessage(new AiMessage("ok")).build());
 
-    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(true)
+        .build();
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             new LangChain4j(chatModel, streamingChatModel, "test-model"),
@@ -157,7 +160,10 @@ class DelegatingLLMModelTest {
         .thenReturn(ChatResponse.builder().aiMessage(new AiMessage("ok")).build());
 
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
-    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(true)
+        .build();
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             new LangChain4j(chatModel, streamingChatModel, "test-model"),
@@ -198,7 +204,7 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             new LangChain4j(chatModel, streamingChatModel, "test-model"),
-            Parser.create(),
+            Parser.builder().build(),
             "protocol",
             true,
             false);
@@ -233,7 +239,7 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             new LangChain4j(chatModel, streamingChatModel, "test-model"),
-            Parser.create(),
+            Parser.builder().build(),
             "protocol",
             false,
             true);

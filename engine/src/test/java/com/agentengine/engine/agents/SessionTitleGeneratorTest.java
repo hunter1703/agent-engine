@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.model.TitleConfig.TYPE;
+import static com.agentengine.engine.infra.TitleConfig.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.model.TitleConfig;
+import com.agentengine.engine.infra.TitleConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;

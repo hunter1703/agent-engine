@@ -59,10 +59,7 @@ public final class ToolRegistry implements ToolService {
     final ToolCatalog catalog = catalogCache.get(cacheKey);
  
     final List<String> catalogTools = new ArrayList<>(catalog.toolEntries().keySet());
-    final ToolEntry finalAnswerEntry = catalog.toolEntries().get(SubmitFinalAnswerTool.TOOL_NAME);
-    if (finalAnswerEntry != null) {
-      addIfPresent(tools, createTool(agentContext, finalAnswerEntry, Collections.emptyMap()));
-    }
+    tools.add(SubmitFinalAnswerTool.INSTANCE);
  
     if (CollectionUtils.isEmpty(toolsConfig)) {
       final List<String> loadedToolNames = tools.stream().map(BaseTool::name).toList();

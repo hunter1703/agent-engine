@@ -14,6 +14,7 @@ Output format rules:
 Final Answer Protocol:
 - To provide the final answer (or a question) to the user, YOU MUST FIRST call the `submit_final_answer` tool as a clean turn.
 - The `submit_final_answer` tool takes NO arguments.
+- Always place the `submit_final_answer` call inside the "toolCalls" array when signaling readiness.
 - After you signal with `submit_final_answer`, you will be steered to provide the actual text in the next turn.
 - NEVER provide the final answer text in the same turn as a tool call.
 

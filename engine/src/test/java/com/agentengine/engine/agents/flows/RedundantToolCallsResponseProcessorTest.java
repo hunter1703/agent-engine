@@ -2,10 +2,10 @@ package com.agentengine.engine.agents.flows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
-import com.agentengine.engine.utils.ViolationUtils;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor.ResponseProcessingResult;
 import com.google.adk.models.LlmResponse;
@@ -38,11 +38,12 @@ class RedundantToolCallsResponseProcessorTest {
     session = Session.builder("session-1")
         .appName("agent")
         .userId("default")
-        .state(new ConcurrentHashMap<>(Map.of(PlanningUtils.PLAN_STATE_KEY, plan)))
+        .state(new ConcurrentHashMap<>())
         .events(new ArrayList<>())
         .build();
 
     context = InvocationContext.builder().session(session).build();
+    RunStateUtils.getState(context).updatePlan(plan);
   }
 
   @Test
@@ -65,7 +66,8 @@ class RedundantToolCallsResponseProcessorTest {
     ResponseProcessingResult result = processor.processResponse(context, response).blockingGet();
 
     assertThat(result.updatedResponse().turnComplete()).contains(false);
-    assertThat(ViolationUtils.getViolations(context)).anyMatch(v -> v.getCorrectionMessage().contains("Redundancy Detected"));
+    assertThat(RunStateUtils.getState(context).violations())
+        .anyMatch(v -> v.getCorrectionMessage().contains("Redundancy Detected"));
   }
 
   @Test
@@ -84,6 +86,6 @@ class RedundantToolCallsResponseProcessorTest {
     ResponseProcessingResult result = processor.processResponse(context, response).blockingGet();
 
     assertThat(result.updatedResponse().partial()).isNotPresent();
-    assertThat(ViolationUtils.getViolations(context)).isEmpty();
+    assertThat(RunStateUtils.getState(context).violations()).isEmpty();
   }
 }

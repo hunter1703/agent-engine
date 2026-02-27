@@ -1,16 +1,16 @@
 package com.agentengine.engine.agents;
 
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
-import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
+import static com.agentengine.engine.agents.SessionTitleGenerator.buildInitialState;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.repository.AgentRepository;
-import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.BaseSessionService;
@@ -25,27 +25,23 @@ import org.slf4j.LoggerFactory;
 public class AgentSessionRuntimeManager {
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRuntimeManager.class);
 
-  private final AgentRepository agentRepository;
+  private final AgentService agentService;
   private final AgentProvider agentProvider;
   private final SessionServiceProvider sessionServiceProvider;
-  private final AgentSessionRepository agentSessionRepository;
+  private final SessionService sessionService;
   private final ConcurrentMap<String, AgentSessionRuntime> runtimes = new ConcurrentHashMap<>();
 
-  public AgentSessionRuntimeManager(
-      AgentRepository agentRepository,
-      final AgentProvider agentProvider,
-      final SessionServiceProvider sessionServiceProvider,
-      AgentSessionRepository agentSessionRepository) {
-    this.agentRepository = agentRepository;
+  public AgentSessionRuntimeManager(final AgentService agentService, final AgentProvider agentProvider, final SessionServiceProvider sessionServiceProvider, SessionService sessionService) {
+    this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.sessionServiceProvider = sessionServiceProvider;
-    this.agentSessionRepository = agentSessionRepository;
+    this.sessionService = sessionService;
   }
 
   public AgentSessionRuntime getOrStartRuntime(String agentId, String sessionId) {
     final AgentSession session =
         StringUtils.isNotBlank(sessionId)
-            ? agentSessionRepository.findById(sessionId).orElse(null)
+            ? sessionService.getSession(sessionId).orElse(null)
             : null;
     final AgentConfig agentConfig = getAgentConfig(agentId, session);
     if (agentConfig == null) {
@@ -86,17 +82,14 @@ public class AgentSessionRuntimeManager {
   }
 
   private AgentConfig getAgentConfig(final String agentId, final AgentSession session) {
-    if (session != null) {
-      return agentRepository.findById(session.getAgentId()).orElse(null);
-    }
-    return _getConfig(agentId);
+    return _getConfig(session == null ? agentId : session.getAgentId());
   }
 
   private AgentConfig _getConfig(final String agentId) {
     if (StringUtils.isBlank(agentId)) {
       throw new IllegalArgumentException("agentId cannot be blank");
     } else {
-      return agentRepository.findById(agentId).orElse(null);
+      return agentService.getAgent(agentId).orElse(null);
     }
   }
 }

@@ -6,6 +6,8 @@ import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +44,8 @@ public final class AddTaskTool extends Tool {
               description = "Detailed description of the task",
               optional = true)
           String description) {
-    final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+    final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+    final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
     }
@@ -72,7 +75,7 @@ public final class AddTaskTool extends Tool {
     }
     currentPlan.getTasks().add(task);
 
-    PlanningUtils.savePlan(toolContext, currentPlan);
+    runState.updatePlan(currentPlan);
     return Map.of("status", "success", "task_id", task.getTaskId());
   }
 }

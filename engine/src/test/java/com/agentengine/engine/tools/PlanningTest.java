@@ -8,9 +8,9 @@ import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.CompleteTaskTool;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
-import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.StartTaskTool;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;
@@ -35,6 +35,7 @@ class PlanningTest {
         "Root",
         "Desc",
         List.of(new Task("Task", "Task goal")));
+    assertThat(RunStateUtils.getState(toolContext.invocationContext()).plan()).isNotNull();
 
     updatePlanTool.execute(toolContext, "Updated", null);
 
@@ -224,6 +225,7 @@ class PlanningTest {
   }
 
   private static Plan loadPlan(final Session session) {
-    return (Plan) session.state().get(PlanningUtils.PLAN_STATE_KEY);
+    InvocationContext invocationContext = InvocationContext.builder().session(session).build();
+    return RunStateUtils.getState(invocationContext).plan();
   }
 }

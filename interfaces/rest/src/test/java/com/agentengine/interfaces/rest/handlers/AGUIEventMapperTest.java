@@ -3,11 +3,15 @@ package com.agentengine.interfaces.rest.handlers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agui.core.event.BaseEvent;
+import com.agui.core.event.CustomEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
+import com.agui.core.event.ThinkingTextMessageContentEvent;
 import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.type.EventType;
+import com.agentengine.engine.api.utils.CorrectionUtils;
 import com.google.adk.events.Event;
+import com.google.adk.events.EventActions;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
@@ -15,6 +19,7 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class AGUIEventMapperTest {
@@ -168,6 +173,8 @@ class AGUIEventMapperTest {
             EventType.TOOL_CALL_START,
             EventType.TOOL_CALL_ARGS,
             EventType.TOOL_CALL_END,
+            EventType.STEP_FINISHED,
+            EventType.STEP_STARTED,
             EventType.TOOL_CALL_RESULT,
             EventType.STEP_FINISHED,
             EventType.STEP_STARTED,
@@ -222,10 +229,167 @@ class AGUIEventMapperTest {
             EventType.TEXT_MESSAGE_START,
             EventType.TEXT_MESSAGE_CONTENT,
             EventType.TEXT_MESSAGE_END,
+            EventType.STEP_FINISHED,
+            EventType.STEP_STARTED,
             EventType.TEXT_MESSAGE_START,
             EventType.TEXT_MESSAGE_CONTENT,
             EventType.TEXT_MESSAGE_END,
             EventType.STEP_FINISHED,
             EventType.RUN_FINISHED);
+  }
+
+  @Test
+  void emitsThinkingCyclesWithChunks() {
+    final Event thinkingEvent =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("model")
+            .content(
+                Content.builder()
+                    .role("model")
+                    .parts(List.of(Part.builder().text("Thinking...").thought(true).build()))
+                    .build())
+            .partial(true)
+            .build();
+
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    final List<BaseEvent> events =
+        Flowable.just(thinkingEvent)
+            .concatMap(e -> mapper.map(e).concatWith(Flowable.empty()))
+            .concatWith(Flowable.defer(mapper::onComplete))
+            .toList()
+            .blockingGet();
+
+    assertThat(events)
+        .extracting(BaseEvent::getType)
+        .containsExactly(
+            EventType.RUN_STARTED,
+            EventType.STEP_STARTED,
+            EventType.THINKING_START,
+            EventType.THINKING_TEXT_MESSAGE_START,
+            EventType.THINKING_TEXT_MESSAGE_CONTENT,
+            EventType.THINKING_TEXT_MESSAGE_END,
+            EventType.THINKING_END,
+            EventType.STEP_FINISHED,
+            EventType.RUN_FINISHED);
+
+    final Optional<ThinkingTextMessageContentEvent> contentEvent =
+        events.stream()
+            .filter(event -> event instanceof ThinkingTextMessageContentEvent)
+            .map(ThinkingTextMessageContentEvent.class::cast)
+            .findFirst();
+    assertThat(contentEvent).isPresent();
+    @SuppressWarnings("unchecked")
+    final Map<String, Object> rawEvent = (Map<String, Object>) contentEvent.get().getRawEvent();
+    assertThat(rawEvent).containsEntry("chunk", true).containsEntry("delta", "Thinking...");
+  }
+
+  @Test
+  void mapsCorrectionEventsToCustomEvents() {
+    final EventActions actions =
+        CorrectionUtils.buildCorrectionActions("violation", "v1", "Fix it");
+    final Event correctionEvent =
+        Event.builder()
+            .id("event-1")
+            .invocationId("run-1")
+            .author("user")
+            .actions(actions)
+            .content(Content.builder().role("user").parts(Part.builder().text("Fix it").build()).build())
+            .build();
+
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    final List<BaseEvent> events =
+        Flowable.just(correctionEvent)
+            .concatMap(e -> mapper.map(e).concatWith(Flowable.empty()))
+            .toList()
+            .blockingGet();
+
+    assertThat(events)
+        .extracting(BaseEvent::getType)
+        .containsExactly(EventType.RUN_STARTED, EventType.CUSTOM);
+
+    final CustomEvent customEvent =
+        events.stream()
+            .filter(event -> event instanceof CustomEvent)
+            .map(CustomEvent.class::cast)
+            .findFirst()
+            .orElseThrow();
+    @SuppressWarnings("unchecked")
+    final Map<String, Object> rawEvent = (Map<String, Object>) customEvent.getRawEvent();
+    assertThat(rawEvent)
+        .containsEntry("name", "CORRECTION")
+        .containsEntry("code", "v1")
+        .containsEntry("message", "Fix it");
+  }
+
+  @Test
+  void handlesComplexThinkingToTextTransition() {
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+
+    final Event thinkingEvent = Event.builder()
+        .id("e1").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("Searching...").thought(true).build())).build())
+        .partial(true).build();
+
+    final Event answerEvent = Event.builder()
+        .id("e2").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("Found it: result").build())).build())
+        .partial(false).build();
+
+    final List<BaseEvent> events = Flowable.just(thinkingEvent, answerEvent)
+        .concatMap(mapper::map)
+        .concatWith(Flowable.defer(mapper::onComplete))
+        .toList().blockingGet();
+
+    assertThat(events).extracting(BaseEvent::getType).containsExactly(
+        EventType.RUN_STARTED,
+        EventType.STEP_STARTED,
+        EventType.THINKING_START,
+        EventType.THINKING_TEXT_MESSAGE_START,
+        EventType.THINKING_TEXT_MESSAGE_CONTENT,
+        EventType.THINKING_TEXT_MESSAGE_END,
+        EventType.THINKING_END,
+        EventType.TEXT_MESSAGE_START,
+        EventType.TEXT_MESSAGE_CONTENT,
+        EventType.TEXT_MESSAGE_END,
+        EventType.STEP_FINISHED,
+        EventType.RUN_FINISHED
+    );
+  }
+
+  @Test
+  void handlesToolCallWithinStep() {
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+
+    final FunctionCall call = FunctionCall.builder().id("c1").name("tool").args(Map.of("q", "x")).build();
+    final Event callEvent = Event.builder()
+        .id("e1").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().functionCall(call).build())).build())
+        .partial(false).build();
+
+    final FunctionResponse resp = FunctionResponse.builder().id("c1").name("tool").response(Map.of("res", "ok")).build();
+    final Event respEvent = Event.builder()
+        .id("e2").invocationId("r1").author("user")
+        .content(Content.builder().parts(List.of(Part.builder().functionResponse(resp).build())).build())
+        .build();
+
+    final List<BaseEvent> events = Flowable.just(callEvent, respEvent)
+        .concatMap(mapper::map)
+        .concatWith(Flowable.defer(mapper::onComplete))
+        .toList().blockingGet();
+
+    assertThat(events).extracting(BaseEvent::getType).containsExactly(
+        EventType.RUN_STARTED,
+        EventType.STEP_STARTED,
+        EventType.TOOL_CALL_START,
+        EventType.TOOL_CALL_ARGS,
+        EventType.TOOL_CALL_END,
+        EventType.STEP_FINISHED,
+        EventType.STEP_STARTED,
+        EventType.TOOL_CALL_RESULT,
+        EventType.STEP_FINISHED,
+        EventType.RUN_FINISHED
+    );
   }
 }

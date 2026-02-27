@@ -8,6 +8,7 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;
@@ -42,8 +43,9 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
     if (newStatus == TaskStatus.UNKNOWN || !PlanningUtils.isTerminalStatus(newStatus)) {
       return Map.of("error", "Only terminal statuses (" + PlanningUtils.getTerminalStatuses(TaskStatus.class) + ") are allowed. Found: " + status);
     }
-    final Map<String, Object> response = CollectionUtils.nullSafeMutableMap(_execute(toolContext, taskId, null, null, null, newStatus, result));
-    final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+    final Map<String, Object> response =
+        CollectionUtils.nullSafeMutableMap(_execute(toolContext, taskId, null, null, null, newStatus, result));
+    final Plan currentPlan = RunStateUtils.getState(toolContext.invocationContext()).plan();
     final Task nextTask = PlanningUtils.findNextTodoTask(currentPlan);
     if (nextTask != null) {
         response.put("next_task", "Next recommended task: [" + nextTask.getTaskId() + "] (" + nextTask.getName() + ")");

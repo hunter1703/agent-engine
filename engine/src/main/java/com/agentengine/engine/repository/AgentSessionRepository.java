@@ -41,10 +41,6 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
     super(mongoClientSupport, "AgentSession", AgentSession.class);
   }
 
-  public void updateTitle(String id, String title) {
-    update(id, Update.of(Operation.set("sessionInfo.title", title)));
-  }
-
   @Override
   public Single<Session> createSession(
       final String agentId,

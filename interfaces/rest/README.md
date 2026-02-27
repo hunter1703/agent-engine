@@ -93,6 +93,7 @@ Common events include:
 - `STEP_STARTED` / `STEP_FINISHED`
 - `TEXT_MESSAGE_START` / `TEXT_MESSAGE_CONTENT` / `TEXT_MESSAGE_END`
 - `TOOL_CALL_START` / `TOOL_CALL_ARGS` / `TOOL_CALL_END` / `TOOL_CALL_RESULT`
+- `CUSTOM` events with `name=CORRECTION` in `rawEvent` for corrective prompts
 
 The server also emits `ThinkingTextMessage*` events with raw metadata for reasoning deltas and emits
 planning data via standard `TOOL_CALL_*` events.

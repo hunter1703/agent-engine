@@ -62,9 +62,15 @@ class SimpleToolDefinitionRegistryTest {
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
-    assertThat(registry.loadTools(context, List.of())).isEmpty();
-    assertThat(registry.loadTools(context, null)).isEmpty();
-    assertThat(registry.loadTools(context, List.of(new ToolsConfig("fake", Map.of())))).isEmpty();
+    assertThat(registry.loadTools(context, List.of()))
+        .extracting(BaseTool::name)
+        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
+    assertThat(registry.loadTools(context, null))
+        .extracting(BaseTool::name)
+        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
+    assertThat(registry.loadTools(context, List.of(new ToolsConfig("fake", Map.of()))))
+        .extracting(BaseTool::name)
+        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
   }
 
   @Test
@@ -82,7 +88,9 @@ class SimpleToolDefinitionRegistryTest {
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
 
-    assertThat(registry.loadTools(context, List.of())).isEmpty();
+    assertThat(registry.loadTools(context, List.of()))
+        .extracting(BaseTool::name)
+        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
   }
 
   @Test

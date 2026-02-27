@@ -14,7 +14,7 @@ import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.server.grpc.GRPCServerImpl;
-import com.agentengine.engine.utils.VirtualThreadExecutors;
+import com.agentengine.engine.utils.ThreadUtils;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -63,7 +63,7 @@ class GRPCServerImplTest {
     String serverName = InProcessServerBuilder.generateName();
 
     // Create generic server impl with mocked services
-    grpcExecutor = VirtualThreadExecutors.newVirtualThreadExecutor("grpc-test-vt-");
+    grpcExecutor = ThreadUtils.newVirtualThreadExecutor("grpc-test-vt-");
     GRPCServerImpl engineGRPCServer =
         new GRPCServerImpl(List.of(agentService, agentExecutionService), grpcExecutor);
 

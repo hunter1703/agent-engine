@@ -16,16 +16,16 @@ import java.util.function.Function;
 public class AgentProvider {
 
   private final Map<String, AgentBuilder<?, ?>> typeVsBuilder;
-  private final SimpleAgentBuilder defaultAgentBuilder;
+  private final DefaultAgentBuilder defaultAgentBuilder;
 
   @Inject
   public AgentProvider(
       final Instance<AgentBuilder<?, ?>> allBuilders,
-      @Named("simpleAgentBuilder") final SimpleAgentBuilder simpleAgentBuilder) {
+      @Named("defaultAgentBuilder") final DefaultAgentBuilder defaultAgentBuilder) {
     typeVsBuilder =
         CollectionUtils.transformToMap(
             allBuilders.stream().toList(), AgentBuilder::type, Function.identity());
-    this.defaultAgentBuilder = simpleAgentBuilder;
+    this.defaultAgentBuilder = defaultAgentBuilder;
   }
 
   @SuppressWarnings("unchecked")

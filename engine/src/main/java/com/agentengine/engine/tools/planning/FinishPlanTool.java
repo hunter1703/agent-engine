@@ -5,6 +5,8 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +32,8 @@ public final class FinishPlanTool extends Tool {
           String status,
       @ToolSchema(name = "result", description = "The final result or summary of the plan")
           String result) {
-
-    final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+    final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+    final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
     }
@@ -47,7 +49,7 @@ public final class FinishPlanTool extends Tool {
 
     currentPlan.finish(newStatus, result);
 
-    PlanningUtils.savePlan(toolContext, currentPlan);
+    runState.updatePlan(currentPlan);
     return Map.of("status", "success", "final_state", status);
   }
 }

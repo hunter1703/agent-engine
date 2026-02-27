@@ -78,11 +78,7 @@ public class AgentRequest {
 
   public enum RequestType {
     UNKNOWN,
-    INVOKE_AGENT,
-    STREAM_AGUI_EVENTS,
-    STREAM_RESPONSES,
-    BUILD_EVENT,
-    STOP_AGENT;
+    STREAM_AGUI_EVENTS;
 
     public static RequestType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

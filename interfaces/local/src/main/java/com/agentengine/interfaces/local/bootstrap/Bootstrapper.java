@@ -5,7 +5,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.model.TitleConfig;
+import com.agentengine.engine.infra.TitleConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;

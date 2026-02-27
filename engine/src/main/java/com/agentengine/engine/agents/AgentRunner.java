@@ -4,6 +4,7 @@ import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER
 import static com.google.adk.agents.RunConfig.StreamingMode.SSE;
 import static com.google.genai.types.Part.fromText;
 
+import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.agents.RunConfig;
@@ -22,12 +23,11 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class AgentRunner {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRunner.class);
-  private final AgentSessionRepository agentSessionRepository;
+  private final SessionService sessionService;
   private final SessionTitleGenerator sessionTitleGenerator;
 
-  public AgentRunner(
-      AgentSessionRepository agentSessionRepository, SessionTitleGenerator sessionTitleGenerator) {
-    this.agentSessionRepository = agentSessionRepository;
+  public AgentRunner(SessionService sessionService, SessionTitleGenerator sessionTitleGenerator) {
+    this.sessionService = sessionService;
     this.sessionTitleGenerator = sessionTitleGenerator;
   }
 
@@ -61,7 +61,7 @@ public class AgentRunner {
           .generateTitle(session.events())
           .ifPresent(
               title -> {
-                agentSessionRepository.updateTitle(sessionId, title);
+                sessionService.updateTitle(sessionId, title);
               });
     };
   }

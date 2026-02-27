@@ -7,6 +7,8 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;
@@ -19,7 +21,8 @@ public class UpdateTaskStatusTool extends Tool {
     }
 
     protected Map<String, Object> _execute(ToolContext toolContext, String taskId, String name, String goal, String description, TaskStatus newStatus, String result) {
-        final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+        final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+        final Plan currentPlan = runState.plan();
         if (currentPlan == null) {
             return Map.of("error", "No active plan found");
         }
@@ -47,7 +50,7 @@ public class UpdateTaskStatusTool extends Tool {
         }
         task.setStatus(newStatus);
         task.setResult(result);
-        PlanningUtils.savePlan(toolContext, currentPlan);
+        runState.updatePlan(currentPlan);
         return Map.of("status", "success", "task_id", taskId, "new_status", newStatus.getValue());
     }
 }

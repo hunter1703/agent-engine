@@ -2,7 +2,8 @@ package com.agentengine.engine.agents.flows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.agents.processors.request.PlanningRequestProcessor;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.google.adk.agents.InvocationContext;
@@ -11,7 +12,6 @@ import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
@@ -29,11 +29,12 @@ class PlanningRequestProcessorTest {
         Session.builder("session-1")
             .appName("agent")
             .userId("default")
-            .state(new ConcurrentHashMap<>(Map.of(PlanningUtils.PLAN_STATE_KEY, plan)))
+            .state(new ConcurrentHashMap<>())
             .events(new ArrayList<>())
             .build();
 
     InvocationContext context = InvocationContext.builder().session(session).build();
+    RunStateUtils.getState(context).updatePlan(plan);
     LlmRequest request = LlmRequest.builder().build();
 
     PlanningRequestProcessor processor = new PlanningRequestProcessor();

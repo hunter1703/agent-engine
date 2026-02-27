@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import java.util.List;
+
+import com.agentengine.engine.utils.ModelUtils;
 import org.junit.jupiter.api.Test;
 
 class ModelUtilsTest {

@@ -1,10 +1,16 @@
 package com.agentengine.engine.tools;
 
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.utils.SchemaUtils;
+import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
-import com.google.genai.types.FunctionDeclaration;
+import com.google.genai.types.*;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public final class ToolUtils {
 
@@ -47,5 +53,84 @@ public final class ToolUtils {
       return JsonUtils.toJson(declaration.parametersJsonSchema().orElse(null));
     }
     return SchemaUtils.toJsonSchema(null);
+  }
+
+  public static boolean callsFinalAnswerTool(final Part part) {
+    if (part == null) {
+      return false;
+    }
+    final Optional<FunctionCall> functionCall = part.functionCall();
+    if (functionCall.isPresent()) {
+      return SubmitFinalAnswerTool.TOOL_NAME.equals(functionCall.get().name().orElse(null));
+    }
+    final Optional<FunctionResponse> functionResponse = part.functionResponse();
+    return functionResponse.filter(response -> SubmitFinalAnswerTool.TOOL_NAME.equals(response.name().orElse(null))).isPresent();
+  }
+
+  public static boolean hasToolParts(final LlmResponse response) {
+    return CollectionUtils.isNotEmpty(extractToolCalls(response));
+  }
+
+  public static List<FunctionCall> extractToolCalls(final LlmResponse response) {
+    return response.content()
+        .flatMap(Content::parts)
+        .stream()
+        .flatMap(List::stream)
+        .map(Part::functionCall)
+        .flatMap(Optional::stream)
+        .toList();
+  }
+
+  public static boolean callsNonFinalTool(final LlmResponse response) {
+    return response.content()
+            .flatMap(Content::parts)
+            .stream()
+            .flatMap(List::stream)
+            .noneMatch(ToolUtils::callsFinalAnswerTool);
+  }
+
+  public static boolean callsFinalAnswerTool(final LlmResponse response) {
+    return response.content()
+            .flatMap(Content::parts)
+            .stream()
+            .flatMap(List::stream)
+            .anyMatch(ToolUtils::callsFinalAnswerTool);
+  }
+
+  public static String summarizeToolParts(final List<Part> parts) {
+    if (CollectionUtils.isEmpty(parts)) {
+      return "";
+    }
+    final List<String> calls = new ArrayList<>();
+    final List<String> responses = new ArrayList<>();
+    for (final Part part : parts) {
+      part.functionCall().ifPresent(call -> calls.add(call.name().orElse("unknown")));
+      part.functionResponse().ifPresent(response -> responses.add(response.name().orElse("unknown")));
+    }
+    final List<String> segments = new ArrayList<>();
+    final String callSummary = summarizeNames(calls);
+    if (!callSummary.isBlank()) {
+      segments.add("toolCalls=[" + callSummary + "]");
+    }
+    final String responseSummary = summarizeNames(responses);
+    if (!responseSummary.isBlank()) {
+      segments.add("toolResponses=[" + responseSummary + "]");
+    }
+    return String.join(", ", segments);
+  }
+
+  private static String summarizeNames(final List<String> names) {
+    if (CollectionUtils.isEmpty(names)) {
+      return "";
+    }
+    final List<String> unique = names.stream()
+        .filter(name -> name != null && !name.isBlank())
+        .distinct()
+        .toList();
+    if (unique.isEmpty()) {
+      return "";
+    }
+    final String joined = unique.stream().limit(3).collect(Collectors.joining(", "));
+    return unique.size() > 3 ? joined + ", ..." : joined;
   }
 }

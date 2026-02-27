@@ -5,6 +5,8 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +29,8 @@ public final class UpdatePlanTool extends Tool {
           String title,
       @ToolSchema(name = "goal", description = "New goal for the plan (optional)", optional = true)
           String goal) {
-
-    final Plan currentPlan = PlanningUtils.getCurrentPlan(toolContext);
+    final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+    final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
     }
@@ -40,7 +42,7 @@ public final class UpdatePlanTool extends Tool {
       currentPlan.setGoal(goal);
     }
 
-    PlanningUtils.savePlan(toolContext, currentPlan);
+    runState.updatePlan(currentPlan);
     return Map.of("status", "success");
   }
 }

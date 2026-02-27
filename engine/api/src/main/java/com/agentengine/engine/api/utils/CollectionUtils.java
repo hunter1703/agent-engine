@@ -98,12 +98,12 @@ public final class CollectionUtils {
     return (String) map.get(key);
   }
 
-  public static <T> T getValueFromMap(final Map<String, ?> map, final String key) {
+  public static <K, V> V getValueFromMap(final Map<K, ?> map, final K key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
-    // noinspection unchecked
-    return (T) map.get(key);
+    //noinspection unchecked
+    return (V) map.get(key);
   }
 
   public static String getStringValueFromMapSafe(final Map<String, Object> map, final String key) {

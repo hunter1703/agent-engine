@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.adk.JsonBaseModel;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,6 +18,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 public final class JsonUtils {
+  private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
   private static final ObjectMapper STABLE_MAPPER =
       JsonBaseModel.getMapper()
           .copy()
@@ -137,5 +141,36 @@ public final class JsonUtils {
 
   public static void removeValue(Object jsonObject, String path) {
     JsonPath.using(Configuration.builder().build()).parse(jsonObject).delete(path);
+  }
+
+  public static Map<String, Object> parseJsonPayload(final String text) {
+    if (StringUtils.isBlank(text)) {
+      return null;
+    }
+    String cleaned = text.trim();
+    if (cleaned.startsWith("```")) {
+      int end = cleaned.lastIndexOf("```");
+      if (end > 2) {
+        cleaned = cleaned.substring(3, end).trim();
+        if (cleaned.startsWith("json")) {
+          cleaned = cleaned.substring(4).trim();
+        }
+      }
+    }
+    Map<String, Object> payload = null;
+    try {
+      payload = fromJson(cleaned, new TypeReference<>() {});
+    } catch (Exception ex) {
+      final int start = cleaned.indexOf('{');
+      final int end = cleaned.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
+        } catch (Exception innerEx) {
+          LOGGER.warn("Failed to parse JSON payload from substring", innerEx);
+        }
+      }
+    }
+    return payload;
   }
 }

@@ -19,10 +19,14 @@ import com.agui.core.event.TextMessageEndEvent;
 import com.agui.core.event.TextMessageStartEvent;
 import com.agui.core.event.ThinkingEndEvent;
 import com.agui.core.event.ThinkingStartEvent;
+import com.agui.core.event.ThinkingTextMessageContentEvent;
+import com.agui.core.event.ThinkingTextMessageEndEvent;
+import com.agui.core.event.ThinkingTextMessageStartEvent;
 import com.agui.core.event.ToolCallArgsEvent;
 import com.agui.core.event.ToolCallEndEvent;
 import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.event.ToolCallStartEvent;
+import com.agui.core.event.CustomEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Map;
@@ -178,14 +182,21 @@ class ResponsesEventMapperTest {
   void mapsThinkingEventsToReasoningSummary() {
     final ThinkingStartEvent thinkingStartEvent = new ThinkingStartEvent();
 
-    final TextMessageChunkEvent chunkEvent = new TextMessageChunkEvent();
-    chunkEvent.setDelta("Think about it");
+    final ThinkingTextMessageStartEvent thinkingTextStartEvent = new ThinkingTextMessageStartEvent();
+    final ThinkingTextMessageContentEvent thinkingContentEvent = new ThinkingTextMessageContentEvent();
+    thinkingContentEvent.setRawEvent(Map.of("delta", "Think about it"));
+    final ThinkingTextMessageEndEvent thinkingTextEndEvent = new ThinkingTextMessageEndEvent();
 
     final ThinkingEndEvent thinkingEndEvent = new ThinkingEndEvent();
 
     final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
     final List<BaseResponsesEventData> responses =
-        Flowable.just(thinkingStartEvent, chunkEvent, thinkingEndEvent)
+        Flowable.just(
+                thinkingStartEvent,
+                thinkingTextStartEvent,
+                thinkingContentEvent,
+                thinkingTextEndEvent,
+                thinkingEndEvent)
             .concatMap(mapper::map)
             .toList()
             .blockingGet();
@@ -203,5 +214,14 @@ class ResponsesEventMapperTest {
 
     final BaseResponsesEventData reasoningDone = responses.get(3);
     assertThat(reasoningDone.getType()).isEqualTo("response.output_item.done");
+  }
+
+  @Test
+  void ignoresCustomEvents() {
+    final CustomEvent customEvent = new CustomEvent();
+    final ResponsesEventMapper mapper = new ResponsesEventMapper(null);
+    final List<BaseResponsesEventData> responses =
+        Flowable.just(customEvent).concatMap(mapper::map).toList().blockingGet();
+    assertThat(responses).isEmpty();
   }
 }

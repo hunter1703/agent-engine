@@ -2,11 +2,9 @@ package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.engine.utils.FinalAnswerUtils;
 import com.google.adk.tools.ToolContext;
-import jakarta.inject.Singleton;
+
 import java.util.List;
 import java.util.Map;
 
@@ -14,10 +12,9 @@ import java.util.Map;
    * A phantom tool that acts as a signal that the agent is ready with the final answer.
    * Pre-submission text is treated as thoughts; post-submission text is the final answer.
    */
-@AgentTool
-@Singleton
 public final class SubmitFinalAnswerTool extends Tool {
-  public static final String TOOL_NAME = FinalAnswerUtils.TOOL_NAME;
+  public static final SubmitFinalAnswerTool INSTANCE = new SubmitFinalAnswerTool();
+    public static final String TOOL_NAME = "submit_final_answer";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           TOOL_NAME,

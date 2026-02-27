@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest;
 
 import static com.agentengine.engine.api.AgentRequest.RequestType.STREAM_AGUI_EVENTS;
-import static com.agentengine.engine.api.AgentRequest.RequestType.STREAM_RESPONSES;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import static java.util.UUID.randomUUID;
@@ -68,34 +67,6 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/invoke")
-  @Operation(summary = "Invoke an agent")
-  @APIResponse(
-      responseCode = "200",
-      description = "Final response from the agent",
-      content =
-          @Content(
-              mediaType = MediaType.APPLICATION_JSON,
-              schema = @Schema(implementation = AgentResponse.class)))
-  @APIResponse(responseCode = "400", description = "Invalid request parameters")
-  @APIResponse(responseCode = "500", description = "Internal server error")
-  public AgentResponse invoke(@Valid final AgentRequest request) {
-    LOG.debug(
-        "Agent invocation request - agent_id={} session_id={}",
-        request.getAgentId(),
-        request.getSessionId());
-
-    final RequestType requestType = RequestType.valueOfOrDefault(request.getType());
-    if (requestType == RequestType.UNKNOWN) {
-      throw new IllegalArgumentException("Invalid request type: " + request.getType());
-    }
-    @SuppressWarnings("unchecked")
-    final AgentRequestHandler<AgentResponse> handler =
-        (AgentRequestHandler<AgentResponse>) handlerFor(requestType);
-    return handler.handle(request);
-  }
-
-  @POST
   @Path("/events")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
@@ -119,31 +90,6 @@ public class AgentRestAPI {
     final AgentRequestHandler<Flowable<BaseEvent>> handler =
         (AgentRequestHandler<Flowable<BaseEvent>>) handlerFor(STREAM_AGUI_EVENTS);
     return handler.handle(request);
-  }
-
-  @POST
-  @Path("/responses")
-  @Produces(SERVER_SENT_EVENTS)
-  @RestStreamElementType(APPLICATION_JSON)
-  @Operation(summary = "Stream agent responses")
-  @APIResponse(
-      responseCode = "200",
-      description = "SSE event stream",
-      content =
-          @Content(
-              mediaType = SERVER_SENT_EVENTS,
-              schema = @Schema(implementation = BaseResponsesEventData.class)))
-  @APIResponse(responseCode = "400", description = "Invalid request parameters")
-  @APIResponse(responseCode = "500", description = "Internal server error")
-  public Publisher<Map<String, Object>> responses(final ResponsesApiRequest request) {
-    AgentRequest agentRequest = convertResponsesApiRequestToAgentRequest(request);
-
-    @SuppressWarnings("unchecked")
-    final AgentRequestHandler<Flowable<BaseResponsesEventData>> handler =
-        (AgentRequestHandler<Flowable<BaseResponsesEventData>>) handlerFor(STREAM_RESPONSES);
-    Flowable<BaseResponsesEventData> responseStream = handler.handle(agentRequest);
-
-    return responseStream.map(JsonUtils::toMap);
   }
 
   @POST
@@ -208,31 +154,5 @@ public class AgentRestAPI {
       throw new WebApplicationException(errorMsg, 400);
     }
     return handler;
-  }
-
-  private AgentRequest convertResponsesApiRequestToAgentRequest(final ResponsesApiRequest request) {
-    AgentRequest agentRequest = new AgentRequest();
-    agentRequest.setAgentId(request.getModel());
-    agentRequest.setSessionId(
-        StringUtils.isBlank(request.getSessionId())
-            ? randomUUID().toString()
-            : request.getSessionId());
-    agentRequest.setType(STREAM_RESPONSES.name());
-
-    if (request.getInput() != null && !request.getInput().isEmpty()) {
-      StringBuilder message = new StringBuilder();
-      for (ResponsesApiRequest.InputMessage inputMsg : request.getInput()) {
-        if (inputMsg.getContent() != null) {
-          for (ResponsesApiRequest.ContentPart part : inputMsg.getContent()) {
-            if ("text".equals(part.getType()) || "input_text".equals(part.getType())) {
-              message.append(part.getText()).append("\n");
-            }
-          }
-        }
-      }
-      agentRequest.setMessage(message.toString().trim());
-    }
-
-    return agentRequest;
   }
 }

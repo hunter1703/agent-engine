@@ -2,21 +2,31 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.engine.agents.processors.Parser;
+import com.agentengine.engine.tools.SubmitFinalAnswerTool;
+import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.Violation;
+import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
+import com.google.adk.sessions.Session;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 class ParserTest {
 
   @Test
   void keepsThoughtTagsInPlainTextResponses() {
-    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT);
+    final Parser parser = Parser.builder()
+        .withResponseFormat(ResponseFormatType.TEXT)
+        .build();
     final String response = "<think>internal</think> answer";
     final Content content = Content.fromParts(Part.fromText(response));
 
@@ -31,10 +41,11 @@ class ParserTest {
   @Test
   void stripsToolCallTagsWhenToolCallingEnabled() {
     final Parser parser =
-        Parser.create()
+        Parser.builder()
             .withResponseFormat(ResponseFormatType.TEXT)
             .toolCallingEnabled(true)
-            .parseToolCallsFromText(false);
+            .parseToolCallsFromText(false)
+            .build();
     final Content content = Content.fromParts(Part.fromText("Answer <tool_call>"));
 
     final Content parsed = parser.parse(content);
@@ -46,7 +57,10 @@ class ParserTest {
 
   @Test
   void preservesToolPartsWhenNativeToolCalling() {
-    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(false);
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(false)
+        .build();
     final FunctionCall functionCall =
         FunctionCall.builder().id("call-1").name("run_cmd").args(Map.of("command", "ls")).build();
     final FunctionResponse functionResponse =
@@ -87,10 +101,11 @@ class ParserTest {
   @Test
   void skipsEmptyJsonPartsForToolResponses() {
     final Parser parser =
-        Parser.create()
+        Parser.builder()
             .withResponseFormat(ResponseFormatType.JSON)
             .toolCallingEnabled(true)
-            .parseToolCallsFromText(false);
+            .parseToolCallsFromText(false)
+            .build();
     final FunctionResponse functionResponse =
         FunctionResponse.builder()
             .id("call-1")
@@ -116,7 +131,10 @@ class ParserTest {
 
   @Test
   void mergesNativeAndTextToolCalls() {
-    final Parser parser = Parser.create().toolCallingEnabled(true).parseToolCallsFromText(true);
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(true)
+        .build();
     final FunctionCall nativeCall =
         FunctionCall.builder().id("call-native").name("native_tool").args(Map.of()).build();
     final String textWithCall = "{'id': 'call-text', 'name': 'text_tool', 'args': {}}";
@@ -142,7 +160,9 @@ class ParserTest {
 
   @Test
   void extractsThoughtTags() {
-    final Parser parser = Parser.create().withResponseFormat(ResponseFormatType.TEXT);
+    final Parser parser = Parser.builder()
+        .withResponseFormat(ResponseFormatType.TEXT)
+        .build();
     final String response = "<thought>Thinking about it</thought>Final answer here";
     final Content content = Content.fromParts(Part.fromText(response));
 
@@ -155,5 +175,92 @@ class ParserTest {
     assertThat(parts).hasSize(2);
     assertThat(parts).anyMatch(p -> "Final answer here".equals(p.text().orElse("")) && !p.thought().orElse(false));
     assertThat(parts).anyMatch(p -> "Thinking about it".equals(p.text().orElse("")) && p.thought().orElse(true));
+  }
+
+  @Test
+  void parsesFinalAnswerToolCallsWhenToolCallingDisabled() {
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(false)
+        .parseToolCallsFromText(false)
+        .build();
+    final String toolCall =
+        "{\"id\":\"call-1\",\"name\":\"" + SubmitFinalAnswerTool.TOOL_NAME + "\",\"args\":{}}";
+    final Content content = Content.fromParts(Part.fromText(toolCall));
+
+    final Content parsed = parser.parse(content);
+    final List<Part> parts = parsed.parts().orElse(List.of());
+
+    assertThat(parts)
+        .anyMatch(
+            part ->
+                part.functionCall().isPresent()
+                    && SubmitFinalAnswerTool.TOOL_NAME.equals(
+                        part.functionCall().get().name().orElse("")));
+  }
+
+  @Test
+  void splitsMixedPartsIntoSeparateTypes() {
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(false)
+        .build();
+    final FunctionCall functionCall =
+        FunctionCall.builder().id("call-1").name("run_cmd").args(Map.of("command", "ls")).build();
+    final Content content =
+        Content.builder()
+            .role("model")
+            .parts(List.of(Part.builder().text("hello").functionCall(functionCall).build()))
+            .build();
+
+    final Content parsed = parser.parse(content);
+    final List<Part> parts = parsed.parts().orElse(List.of());
+
+    assertThat(parts).anyMatch(part -> part.functionCall().isPresent() && part.text().isEmpty());
+    assertThat(parts).anyMatch(part -> "hello".equals(part.text().orElse("")) && part.functionCall().isEmpty());
+    assertThat(parts)
+        .noneMatch(part -> part.functionCall().isPresent() && part.text().isPresent());
+  }
+
+  @Test
+  void stripsToolCallsFromPartialResponses() {
+    final Parser parser = Parser.builder()
+        .toolCallingEnabled(true)
+        .parseToolCallsFromText(false)
+        .build();
+    final FunctionCall functionCall =
+        FunctionCall.builder().id("call-1").name("run_cmd").args(Map.of("command", "ls")).build();
+    final Content content =
+        Content.builder()
+            .role("model")
+            .parts(List.of(Part.builder().text("hello").functionCall(functionCall).build()))
+            .build();
+    final var response = com.google.adk.models.LlmResponse.builder()
+        .content(content)
+        .partial(true)
+        .turnComplete(true)
+        .build();
+
+    final Session session = Session.builder("s1")
+        .appName("app")
+        .userId("u1")
+        .state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>())
+        .build();
+    final InvocationContext context = InvocationContext.builder()
+        .session(session)
+        .invocationId("inv-1")
+        .build();
+
+    final var updated = parser.processResponse(context, response).blockingGet().updatedResponse();
+
+    final List<Part> parts = updated.content().orElseThrow().parts().orElse(List.of());
+    assertThat(parts).hasSize(1);
+    assertThat(parts.getFirst().functionCall()).isEmpty();
+    assertThat(parts.getFirst().text().orElse("")).isEqualTo("hello");
+    assertThat(updated.partial().orElse(false)).isTrue();
+    assertThat(updated.turnComplete().orElse(false)).isTrue();
+    assertThat(RunStateUtils.getState(context).violations())
+        .extracting(Violation::getCode)
+        .contains("partial_tool_calls");
   }
 }

@@ -1,9 +1,13 @@
 package com.agentengine.engine.context;
 
+import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +25,10 @@ public final class LastNContextManager extends BaseContextManager {
           final List<Content> recent = new ArrayList<>();
 
           int remaining = keepLast * 3;
+          boolean wasTrimmed = false;
           for (final Content content : contents.reversed()) {
             if (remaining == 0) {
+                wasTrimmed = true;
               break;
             }
             final String text = content.text();
@@ -35,18 +41,22 @@ public final class LastNContextManager extends BaseContextManager {
             final int length = Math.min(remaining, actualLength);
             remaining -= length;
             if (length > 0) {
-              final String trimmed = text.substring(actualLength - length, actualLength);
-              recent.add(Content.builder().parts(Part.builder().text(trimmed).build()).build());
-              LOG.debug("Added trimmed content: '{}'", trimmed);
+                if (length < actualLength) {
+                    final String trimmed = text.substring(actualLength - length, actualLength);
+                    final List<Part> nonTextPart = content.parts().orElse(new ArrayList<>()).stream().filter(part -> StringUtils.isNotBlank(part.text().orElse(null))).collect(Collectors.toCollection(ArrayList::new));
+                    recent.add(content.toBuilder().parts(CollectionUtils.append(nonTextPart, Part.fromText(trimmed))).build());
+                    LOG.debug("Added trimmed content: '{}'", trimmed);
+                } else {
+                    recent.add(content.toBuilder().build());
+                }
             }
-            if (remaining == 0) {
+          }
+          if (wasTrimmed) {
               recent.add(
-                  Content.builder()
-                      .parts(Part.builder().text("Following is the trimmed conversation").build())
-                      .build());
+                      Content.builder().role("user")
+                              .parts(Part.builder().text("Following is the trimmed conversation").build())
+                              .build());
               LOG.debug("Reached limit, adding trim indicator");
-              break;
-            }
           }
           LOG.debug("Returning {} recent contents", recent.size());
           if (LOG.isDebugEnabled()) {

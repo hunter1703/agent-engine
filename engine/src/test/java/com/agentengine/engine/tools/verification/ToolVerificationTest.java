@@ -8,7 +8,6 @@ import com.agentengine.engine.tools.planning.AddTaskTool;
 import com.agentengine.engine.tools.planning.CompleteTaskTool;
 import com.agentengine.engine.tools.planning.CreatePlanTool;
 import com.agentengine.engine.tools.planning.FinishPlanTool;
-import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.StartTaskTool;
 import com.agentengine.engine.tools.planning.UpdatePlanTool;
 
@@ -17,6 +16,7 @@ import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.agentengine.engine.tools.shell.ShellCommandTool;
+import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;
@@ -92,7 +92,7 @@ class ToolVerificationTest {
         
         // Setup state with a plan
         Plan plan = new Plan("My Plan", "Goal");
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, plan);
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
@@ -135,7 +135,7 @@ class ToolVerificationTest {
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         assertTrue(result.get("status").toString().contains("Success"));
 
-        Plan plan = (Plan) session.state().get(PlanningUtils.PLAN_STATE_KEY);
+        Plan plan = RunStateUtils.getState(toolContext.invocationContext()).plan();
         assertNotNull(plan);
         assertEquals(2, plan.getTasks().size());
         assertEquals("T1", plan.getTasks().get(0).getName());
@@ -146,7 +146,7 @@ class ToolVerificationTest {
 
         // Setup state with a plan
         Plan plan = new Plan("My Plan", "Goal");
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, plan);
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
@@ -165,7 +165,7 @@ class ToolVerificationTest {
 
         // Setup state with a plan
         Plan plan = new Plan("Old Title", "Old Goal");
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, plan);
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
@@ -186,7 +186,7 @@ class ToolVerificationTest {
         Task task = new Task("Task1", "Goal1");
         Plan plan = new Plan("Plan", "Goal");
         plan.setTasks(new ArrayList<>(List.of(task)));
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, plan);
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
@@ -209,7 +209,7 @@ class ToolVerificationTest {
 
         // Setup state with a plan
         Plan plan = new Plan("Plan", "Goal");
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, plan);
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
 
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
@@ -236,39 +236,30 @@ class ToolVerificationTest {
     }
 
     @Test
-    void testPlanRetrievalFromMapState() {
-        // Simulate a plan that has been reloaded as a Map (e.g. from session state)
+    void testPlanRetrievalFromRunState() {
         String planId = "plan-123";
         String taskId = "task-456";
-        
-        Map<String, Object> taskMap = new java.util.HashMap<>();
-        taskMap.put("taskId", taskId);
-        taskMap.put("name", "New Task");
-        taskMap.put("goal", "Task Goal");
-        taskMap.put("status", "TODO");
-        
-        Map<String, Object> planMap = new java.util.HashMap<>();
-        planMap.put("planId", planId);
-        planMap.put("title", "Persistence Test");
-        planMap.put("goal", "Goal");
-        planMap.put("tasks", List.of(taskMap));
-        
-        session.state().put(PlanningUtils.PLAN_STATE_KEY, planMap);
-        
-        // Verify PlanningUtils can still find it and IDs are mapped correctly
-        Plan retrieved = PlanningUtils.getCurrentPlan(toolContext);
+
+        Task task = new Task("New Task", "Task Goal");
+        task.setTaskId(taskId);
+        Plan plan = new Plan("Persistence Test", "Goal");
+        plan.setPlanId(planId);
+        plan.setTasks(List.of(task));
+
+        RunStateUtils.getState(toolContext.invocationContext()).updatePlan(plan);
+
+        Plan retrieved = RunStateUtils.getState(toolContext.invocationContext()).plan();
         assertNotNull(retrieved);
         assertEquals(planId, retrieved.getPlanId());
         assertEquals(1, retrieved.getTasks().size());
         assertEquals(taskId, retrieved.getTasks().get(0).getTaskId());
-        
-        // Verify a tool can still use it (e.g. StartTaskTool uses the ID to find the task)
+
         StartTaskTool tool = new StartTaskTool();
         Map<String, Object> args = Map.of("task_id", taskId);
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
-        
+
         assertEquals("success", result.get("status"));
-        Plan finalPlan = PlanningUtils.getCurrentPlan(toolContext);
+        Plan finalPlan = RunStateUtils.getState(toolContext.invocationContext()).plan();
         assertEquals(TaskStatus.IN_PROGRESS, finalPlan.getTasks().get(0).getStatus());
     }
 }

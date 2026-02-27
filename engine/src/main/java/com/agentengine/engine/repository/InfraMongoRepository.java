@@ -5,7 +5,7 @@ import com.agentengine.engine.api.query.Page;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.model.InfraConfig;
+import com.agentengine.engine.infra.InfraConfig;
 import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 

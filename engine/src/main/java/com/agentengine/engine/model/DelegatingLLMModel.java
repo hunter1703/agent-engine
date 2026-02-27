@@ -1,14 +1,13 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.utils.Parser;
-import com.google.adk.flows.llmflows.RequestProcessor;
-import com.google.adk.flows.llmflows.ResponseProcessor;
+import com.agentengine.engine.agents.processors.Parser;
+import com.agentengine.engine.utils.ModelUtils;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.List;
+
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +15,7 @@ import org.slf4j.LoggerFactory;
 public final class DelegatingLLMModel extends AbstractLLM {
   private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
   private final BaseLlm delegate;
-  private final List<RequestProcessor> requestProcessors;
-  private final List<ResponseProcessor> responseProcessors;
+  private final Parser parser;
 
   public DelegatingLLMModel(
       final BaseLlm delegate,
@@ -32,31 +30,25 @@ public final class DelegatingLLMModel extends AbstractLLM {
         toolCallingEnabled,
         parseToolCallsFromText);
     this.delegate = delegate;
-    this.requestProcessors = List.of(parser);
-    this.responseProcessors = List.of(parser);
+    this.parser = parser;
   }
 
   @Override
-  public List<RequestProcessor> getRequestProcessors() {
-    return requestProcessors;
-  }
-
-  @Override
-  public List<ResponseProcessor> getResponseProcessors() {
-    return responseProcessors;
+  public Parser getParser() {
+    return parser;
   }
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final LlmRequest requestForModel =
-        LlmModelUtils.stripToolsFromModelRequest(
+        ModelUtils.stripToolsFromModelRequest(
             llmRequest, isToolCallingEnabled(), isParseToolCallsFromText());
     final boolean useStreaming = stream && !(isToolCallingEnabled() && isParseToolCallsFromText());
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
     if (!useStreaming) {
-      return delegate.generateContent(requestForModel, false).map(LlmModelUtils::markTurnComplete);
+      return delegate.generateContent(requestForModel, false).map(ModelUtils::markTurnComplete);
     }
     return delegate.generateContent(requestForModel, true);
   }

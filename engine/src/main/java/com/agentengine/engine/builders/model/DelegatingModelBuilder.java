@@ -6,7 +6,7 @@ import com.agentengine.engine.api.utils.ResourceUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.model.DelegatingLLMModel;
-import com.agentengine.engine.utils.Parser;
+import com.agentengine.engine.agents.processors.Parser;
 import com.google.adk.models.BaseLlm;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.HashMap;
@@ -22,10 +22,11 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
     final boolean parseToolCallsFromText = !toolCallingSupported;
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final Parser parser =
-        Parser.create()
+        Parser.builder()
             .withResponseFormat(responseFormatType)
             .toolCallingEnabled(toolCallingEnabled)
-            .parseToolCallsFromText(parseToolCallsFromText);
+            .parseToolCallsFromText(parseToolCallsFromText)
+            .build();
     final String protocol =
         buildProtocolMessage(responseFormatType, toolCallingEnabled, toolCallingSupported);
     final T delegate = buildDelegate(modelConfig);
@@ -36,14 +37,7 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
   protected abstract T buildDelegate(final ModelConfig modelConfig);
 
   protected static ResponseFormatType resolveResponseFormatType(final ModelConfig config) {
-    if (StringUtils.isNotBlank(config.getResponseFormat())) {
-      return "json".equalsIgnoreCase(config.getResponseFormat())
-          ? ResponseFormatType.JSON
-          : ResponseFormatType.TEXT;
-    }
-    final boolean parseToolCallsFromText =
-        config.isToolCallingEnabled() && !config.isToolCallingSupported();
-    return parseToolCallsFromText ? ResponseFormatType.JSON : ResponseFormatType.TEXT;
+    return ResponseFormatType.TEXT;
   }
 
   private static String buildProtocolMessage(

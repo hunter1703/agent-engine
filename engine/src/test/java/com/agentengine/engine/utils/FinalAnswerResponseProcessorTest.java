@@ -2,7 +2,8 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor;
+import com.agentengine.engine.tools.SubmitFinalAnswerTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.google.adk.agents.InvocationContext;
@@ -53,11 +54,10 @@ class FinalAnswerResponseProcessorTest {
     // 2. Verify turn is NOT complete according to protocol
     assertThat(updated.turnComplete().get()).isFalse();
     
-    // 3. Verify violation is added with resume_needed=true
-    final List<Violation> violations = ViolationUtils.getViolations(context);
+    // 3. Verify violation is added
+    final List<Violation> violations = RunStateUtils.getState(context).violations();
     assertThat(violations).hasSize(1);
     assertThat(violations.get(0).getCode()).isEqualTo("premature_termination");
-    assertThat(violations.get(0).getDetail("resume_needed", false)).isTrue();
   }
 
   @Test
@@ -77,13 +77,13 @@ class FinalAnswerResponseProcessorTest {
     // Setup a completed plan
     final Plan plan = new Plan();
     plan.setStatus(PlanStatus.DONE);
-    PlanningUtils.savePlan(context, plan);
+    RunStateUtils.getState(context).updatePlan(plan);
 
     // Turn 1: Signal
     final Content signalContent = Content.builder()
         .role("model")
         .parts(List.of(Part.builder().functionCall(com.google.genai.types.FunctionCall.builder()
-            .name(FinalAnswerUtils.TOOL_NAME)
+            .name(SubmitFinalAnswerTool.TOOL_NAME)
             .build()).build()))
         .build();
     final LlmResponse signalResponse = LlmResponse.builder()
@@ -92,7 +92,9 @@ class FinalAnswerResponseProcessorTest {
         .build();
 
     processor.processResponse(context, signalResponse).blockingGet();
-    assertThat(FinalAnswerUtils.needsFinalAnswer(context)).isTrue();
+    assertThat(RunStateUtils.getState(context).phase())
+        .isEqualTo(RunState.Phase.READY_FOR_FINAL_ANSWER);
+    RunStateUtils.getState(context).markPhase(RunState.Phase.FINAL_ANSWER_REQUESTED);
 
     // Turn 2: Actual answer
     final Content answerContent = Content.builder()
@@ -108,6 +110,108 @@ class FinalAnswerResponseProcessorTest {
     final LlmResponse updated = result.updatedResponse();
 
     assertThat(updated.turnComplete().get()).isTrue();
-    assertThat(FinalAnswerUtils.needsFinalAnswer(context)).isFalse();
+    assertThat(RunStateUtils.getState(context).phase())
+        .isEqualTo(RunState.Phase.FINAL_ANSWER_DELIVERED);
+  }
+
+  @Test
+  void rejectsRepeatedFinalAnswerSignalDuringTurnaround() {
+    final FinalAnswerResponseProcessor processor = new FinalAnswerResponseProcessor();
+    final Session session = Session.builder("s1")
+        .appName("app")
+        .userId("u1")
+        .state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>())
+        .build();
+    final InvocationContext context = InvocationContext.builder()
+        .session(session)
+        .invocationId("inv-1")
+        .build();
+
+    RunStateUtils.getState(context).markPhase(RunState.Phase.READY_FOR_FINAL_ANSWER);
+
+    final Content signalContent = Content.builder()
+        .role("model")
+        .parts(List.of(Part.builder().functionCall(com.google.genai.types.FunctionCall.builder()
+            .name(SubmitFinalAnswerTool.TOOL_NAME)
+            .build()).build()))
+        .build();
+    final LlmResponse signalResponse = LlmResponse.builder()
+        .content(signalContent)
+        .turnComplete(true)
+        .build();
+
+    processor.processResponse(context, signalResponse).blockingGet();
+
+    final List<Violation> violations = RunStateUtils.getState(context).violations();
+    assertThat(violations)
+        .anyMatch(v -> "final_answer_repeat_signal".equals(v.getCode()));
+  }
+
+  @Test
+  void ignoresFinalAnswerSignalsAfterCompletion() {
+    final FinalAnswerResponseProcessor processor = new FinalAnswerResponseProcessor();
+    final Session session = Session.builder("s1")
+        .appName("app")
+        .userId("u1")
+        .state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>())
+        .build();
+    final InvocationContext context = InvocationContext.builder()
+        .session(session)
+        .invocationId("inv-1")
+        .build();
+
+    RunStateUtils.getState(context).markPhase(RunState.Phase.FINAL_ANSWER_DELIVERED);
+
+    final Content signalContent = Content.builder()
+        .role("model")
+        .parts(List.of(Part.builder().functionCall(com.google.genai.types.FunctionCall.builder()
+            .name(SubmitFinalAnswerTool.TOOL_NAME)
+            .build()).build()))
+        .build();
+    final LlmResponse signalResponse = LlmResponse.builder()
+        .content(signalContent)
+        .turnComplete(true)
+        .build();
+
+    processor.processResponse(context, signalResponse).blockingGet();
+
+    final List<Violation> violations = RunStateUtils.getState(context).violations();
+    assertThat(violations)
+        .anyMatch(v -> "final_answer_already_complete".equals(v.getCode()));
+  }
+
+  @Test
+  void flagsInvalidPhaseTransitionOnSignal() {
+    final FinalAnswerResponseProcessor processor = new FinalAnswerResponseProcessor();
+    final Session session = Session.builder("s1")
+        .appName("app")
+        .userId("u1")
+        .state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>())
+        .build();
+    final InvocationContext context = InvocationContext.builder()
+        .session(session)
+        .invocationId("inv-1")
+        .build();
+
+    RunStateUtils.getState(context).markPhase(RunState.Phase.UNKNOWN);
+
+    final Content signalContent = Content.builder()
+        .role("model")
+        .parts(List.of(Part.builder().functionCall(com.google.genai.types.FunctionCall.builder()
+            .name(SubmitFinalAnswerTool.TOOL_NAME)
+            .build()).build()))
+        .build();
+    final LlmResponse signalResponse = LlmResponse.builder()
+        .content(signalContent)
+        .turnComplete(true)
+        .build();
+
+    processor.processResponse(context, signalResponse).blockingGet();
+
+    assertThat(RunStateUtils.getState(context).violations())
+        .anyMatch(v -> "invalid_phase_transition".equals(v.getCode()));
   }
 }
