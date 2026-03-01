@@ -64,9 +64,8 @@ public class StoryAgentBuilder extends AbstractAgentBuilder<AgentConfig, StoryAg
     final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
     String toolInstructions = "";
     final AgentBuilder agentBuilder = new AgentBuilder();
-    if (parseToolCallsFromText) {
-      toolInstructions = ToolUtils.buildToolMessage(List.of(SubmitFinalAnswerTool.INSTANCE));
-    }
+    toolInstructions = ToolUtils.buildToolMessage(List.of(SubmitFinalAnswerTool.INSTANCE));
+    agentBuilder.tools(List.of(SubmitFinalAnswerTool.INSTANCE));
     final String globalInstruction =
         buildGlobalInstruction(config.getModel().getSystemPrompt(), modelConfig.getInstructions());
     final String agentName = resolveAgentName(config);

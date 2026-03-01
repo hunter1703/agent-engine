@@ -2,7 +2,6 @@ package com.agentengine.engine.agents.flows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor;
 import com.agentengine.engine.testing.MockAgent;
 import com.agentengine.engine.tools.SubmitFinalAnswerTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
@@ -12,7 +11,6 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
-import com.google.genai.types.Content;
 import com.google.genai.types.FunctionDeclaration;
 import io.reactivex.rxjava3.core.Single;
 import java.util.List;
@@ -52,14 +50,6 @@ class EngineBehaviorTest {
 
     final List<Event> events = agent.run().toList().blockingGet();
     
-    System.out.println("DEBUG: Events captured: " + events.size());
-    events.forEach(e -> {
-        System.out.println("DEBUG EVENT: author=" + e.author() + ", content=" + extractText(e.content().orElse(null)));
-        if (e.actions() != null) {
-            System.out.println("DEBUG ACTIONS: " + e.actions().stateDelta());
-        }
-    });
-
     // Verify violations were detected: the corrective message should appear as a user event.
     assertThat(events).anyMatch(e ->
         "user".equals(e.author()) &&
@@ -145,13 +135,5 @@ class EngineBehaviorTest {
     // and the violation was triggered on Turn 2. Verify the violation was at some point held.
     // Since violations are cleared, we verify via the lastToolCall tracking that Turn 1 was registered.
     assertThat(state.lastToolCall()).isNotNull();
-  }
-
-
-
-  private static String extractText(Content content) {
-    return content.parts().orElse(List.of()).stream()
-        .map(p -> p.text().orElse(""))
-        .collect(Collectors.joining());
   }
 }

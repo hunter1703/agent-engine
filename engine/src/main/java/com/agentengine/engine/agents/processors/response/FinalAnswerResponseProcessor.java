@@ -30,7 +30,8 @@ public final class FinalAnswerResponseProcessor implements ResponseProcessor {
   public Single<ResponseProcessingResult> processResponse(
       final InvocationContext context, LlmResponse response) {
     if (response.partial().orElse(false)) {
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+      return Single.just(ResponseProcessingResult.create(
+          sanitize(response), List.of(), Optional.empty()));
     }
 
     final Content content = response.content().orElse(null);

@@ -11,7 +11,6 @@ import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
-import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Single;
 
 import java.util.ArrayList;
@@ -58,7 +57,7 @@ public final class CorrectionProcessor implements RequestProcessor {
       if (StringUtils.isBlank(correctionMessage)) {
         continue;
       }
-      final Event correctiveEvent = createCorrectiveEvent(context, violation, correctionMessage);
+      final Event correctiveEvent = CorrectionUtils.buildCorrectiveEvent(context, violation.getCode(), correctionMessage);
       correctiveEvent.content().ifPresent(contents::add);
       correctiveEvents.add(correctiveEvent);
     }
@@ -71,25 +70,5 @@ public final class CorrectionProcessor implements RequestProcessor {
     final LlmRequest updatedRequest = request.toBuilder().contents(contents).build();
 
     return Single.just(RequestProcessingResult.create(updatedRequest, correctiveEvents));
-  }
-
-  private static Event createCorrectiveEvent(
-      final InvocationContext context, final Violation violation, final String message) {
-    final Content correctiveContent =
-        Content.builder()
-            .role("user")
-            .parts(List.of(Part.fromText(message)))
-            .build();
-
-    final String code = violation == null ? null : violation.getCode();
-
-    return Event.builder()
-        .id(Event.generateEventId())
-        .invocationId(context.invocationId())
-        .author("user")
-        .branch(context.branch())
-        .actions(CorrectionUtils.buildCorrectionActions("violation", code, message))
-        .content(correctiveContent)
-        .build();
   }
 }

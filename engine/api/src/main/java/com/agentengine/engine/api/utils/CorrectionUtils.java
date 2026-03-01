@@ -2,7 +2,11 @@ package com.agentengine.engine.api.utils;
 
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
-import java.util.HashMap;
+import com.google.adk.agents.InvocationContext;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
+
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,5 +50,23 @@ public final class CorrectionUtils {
     final String code = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_CODE_KEY);
     final String message = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_MESSAGE_KEY);
     return new CorrectionMetadata(type, code, message);
+  }
+
+  public static Event buildCorrectiveEvent(
+      final InvocationContext context, final String code, final String message) {
+    final Content correctiveContent =
+        Content.builder()
+            .role("user")
+            .parts(List.of(Part.fromText(message)))
+            .build();
+
+    return Event.builder()
+        .id(Event.generateEventId())
+        .invocationId(context.invocationId())
+        .author("user")
+        .branch(context.branch())
+        .actions(buildCorrectionActions("violation", code, message))
+        .content(correctiveContent)
+        .build();
   }
 }
