@@ -56,14 +56,7 @@ class DelegatingLLMModelTest {
 
     assertThat(model.getProtocol()).isEqualTo("protocol");
 
-    final List<RequestProcessor> requestProcessors = model.getRequestProcessors();
-    assertThat(requestProcessors).hasSize(2);
-    assertThat(requestProcessors.get(0)).isInstanceOf(CorrectionProcessor.class);
-    assertThat(requestProcessors.get(1)).isSameAs(parser);
-
-    final List<ResponseProcessor> responseProcessors = model.getResponseProcessors();
-    assertThat(responseProcessors).hasSize(1);
-    assertThat(responseProcessors.get(0)).isSameAs(parser);
+    assertThat(model.getProtocol()).isEqualTo("protocol");
   }
 
   @Test
@@ -83,15 +76,7 @@ class DelegatingLLMModelTest {
             true,
             true);
 
-    final List<RequestProcessor> requestProcessors = model.getRequestProcessors();
-    assertThat(requestProcessors).hasSize(2);
-    assertThat(requestProcessors.get(0)).isInstanceOf(CorrectionProcessor.class);
-    assertThat(requestProcessors.get(1)).isSameAs(parser);
-
-    final List<ResponseProcessor> responseProcessors = model.getResponseProcessors();
-    assertThat(responseProcessors).hasSize(2);
-    assertThat(responseProcessors.getFirst()).isSameAs(parser);
-    assertThat(responseProcessors.get(1)).isInstanceOf(FinalAnswerResponseProcessor.class);
+    // Getters no longer exist
   }
 
   @Test

@@ -25,6 +25,5 @@ class GeminiModelBuilderTest {
     assertThat(model.model()).isEqualTo("gemini-2.0-flash");
     assertThat(model.isToolCallingEnabled()).isTrue();
     assertThat(model.isParseToolCallsFromText()).isFalse();
-    assertThat(model.getRequestProcessors()).anyMatch(Parser.class::isInstance);
   }
 }

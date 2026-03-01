@@ -12,8 +12,8 @@ import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.builders.agent.AgentProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.repository.AgentRepository;
-import com.agentengine.engine.repository.AgentSessionRepository;
+import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.services.SessionService;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.sessions.BaseSessionService;
 import io.reactivex.rxjava3.core.Single;
@@ -24,12 +24,12 @@ class AgentSessionRuntimeManagerTest {
 
   @Test
   void throwsExceptionWhenAgentConfigIsMissing() {
-    final AgentRepository agentRepository = mock(AgentRepository.class);
+    final AgentService agentRepository = mock(AgentService.class);
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
-    final AgentSessionRepository agentSessionRepository = mock(AgentSessionRepository.class);
+    final SessionService agentSessionRepository = mock(SessionService.class);
 
-    when(agentRepository.findById(anyString())).thenReturn(Optional.empty());
+    when(agentRepository.getAgent(anyString())).thenReturn(Optional.empty());
 
     final AgentSessionRuntimeManager manager =
         new AgentSessionRuntimeManager(
@@ -42,10 +42,10 @@ class AgentSessionRuntimeManagerTest {
 
   @Test
   void usesSessionServiceFromProviderWithoutDecoration() {
-    final AgentRepository agentRepository = mock(AgentRepository.class);
+    final AgentService agentRepository = mock(AgentService.class);
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
-    final AgentSessionRepository agentSessionRepository = mock(AgentSessionRepository.class);
+    final SessionService agentSessionRepository = mock(SessionService.class);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -55,8 +55,8 @@ class AgentSessionRuntimeManagerTest {
     agentConfig.setId("agent-id");
     agentConfig.setModel(modelConfig);
 
-    when(agentRepository.findById("agent-id")).thenReturn(Optional.of(agentConfig));
-    when(agentSessionRepository.findById("session-id"))
+    when(agentRepository.getAgent("agent-id")).thenReturn(Optional.of(agentConfig));
+    when(agentSessionRepository.getSession("session-id"))
         .thenReturn(Optional.of(new AgentSession("session-id", "agent-id", "title")));
 
     final BaseSessionService sessionService = mock(BaseSessionService.class);
@@ -76,10 +76,10 @@ class AgentSessionRuntimeManagerTest {
 
   @Test
   void cachesRuntimeBySessionId() {
-    final AgentRepository agentRepository = mock(AgentRepository.class);
+    final AgentService agentRepository = mock(AgentService.class);
     final AgentProvider agentProvider = mock(AgentProvider.class);
     final SessionServiceProvider sessionServiceProvider = mock(SessionServiceProvider.class);
-    final AgentSessionRepository agentSessionRepository = mock(AgentSessionRepository.class);
+    final SessionService agentSessionRepository = mock(SessionService.class);
 
     final AgentModelConfig modelConfig = new AgentModelConfig();
     modelConfig.setModelId("model-id");
@@ -89,7 +89,7 @@ class AgentSessionRuntimeManagerTest {
     agentConfig.setId("agent-id");
     agentConfig.setModel(modelConfig);
 
-    when(agentRepository.findById("agent-id")).thenReturn(Optional.of(agentConfig));
+    when(agentRepository.getAgent("agent-id")).thenReturn(Optional.of(agentConfig));
     final BaseSessionService sessionService = mock(BaseSessionService.class);
     when(sessionService.createSession(any(), any(), any(), any()))
         .thenReturn(Single.just(mock(com.google.adk.sessions.Session.class)));

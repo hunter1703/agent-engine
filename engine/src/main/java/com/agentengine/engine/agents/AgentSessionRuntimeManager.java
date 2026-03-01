@@ -1,7 +1,7 @@
 package com.agentengine.engine.agents;
 
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
-import static com.agentengine.engine.agents.SessionTitleGenerator.buildInitialState;
+import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;

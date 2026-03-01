@@ -235,10 +235,42 @@ public final class MockAgent {
           .sessionService(new InMemorySessionService())
           .artifactService(new InMemoryArtifactService())
           .build();
-      final BaseLlmFlow flow =
-          flowType == FlowType.SIMPLE
-              ? new SimpleFlow(maxSteps, requestProcessors, responseProcessors)
-              : new DefaultFlow(maxSteps, requestProcessors, responseProcessors);
+      final com.agentengine.engine.agents.processors.Parser parser = com.agentengine.engine.agents.processors.Parser.builder().withResponseFormat(dev.langchain4j.model.chat.request.ResponseFormatType.JSON).build();
+      final List<RequestProcessor> reqProcs = new ArrayList<>();
+      reqProcs.add(com.agentengine.engine.agents.processors.request.RunInitRequestProcessor.INSTANCE);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.CorrectionProcessor.INSTANCE);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.PlanningRequestProcessor.INSTANCE);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.FinalAnswerRequestProcessor.INSTANCE);
+      List<RequestProcessor> defaultReq = List.of();
+      List<ResponseProcessor> defaultRes = List.of();
+      try {
+        java.lang.reflect.Field reqField = com.google.adk.flows.llmflows.SingleFlow.class.getDeclaredField("REQUEST_PROCESSORS");
+        reqField.setAccessible(true);
+        defaultReq = (List<RequestProcessor>) reqField.get(null);
+        
+        java.lang.reflect.Field resField = com.google.adk.flows.llmflows.SingleFlow.class.getDeclaredField("RESPONSE_PROCESSORS");
+        resField.setAccessible(true);
+        defaultRes = (List<ResponseProcessor>) resField.get(null);
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to access SingleFlow processors", e);
+      }
+
+      com.agentengine.engine.utils.RunStateUtils.initState(context);
+
+      reqProcs.addAll(defaultReq);
+      reqProcs.add(parser);
+      reqProcs.addAll(requestProcessors);
+
+      final List<ResponseProcessor> resProcs = new ArrayList<>();
+      resProcs.add(parser);
+      resProcs.add(com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor.INSTANCE);
+      resProcs.add(com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor.INSTANCE);
+      resProcs.add(com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor.INSTANCE);
+      resProcs.addAll(defaultRes);
+      // Remove RunCleanupResponseProcessor from MockAgent during tests so state is preserved
+      resProcs.removeIf(p -> p instanceof com.agentengine.engine.agents.processors.response.RunCleanupResponseProcessor);
+
+      final BaseLlmFlow flow = new com.agentengine.engine.agents.flows.AbstractFlow(maxSteps, reqProcs, resProcs) {};
       return new MockAgent(model, flow, agent, context);
     }
   }

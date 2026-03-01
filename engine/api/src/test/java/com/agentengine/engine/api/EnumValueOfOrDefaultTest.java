@@ -17,7 +17,7 @@ class EnumValueOfOrDefaultTest {
   void parsesKnownEnumValues() {
     assertEquals(Operator.AND, Operator.valueOfOrDefault("and"));
     assertEquals(OperationType.SET, OperationType.valueOfOrDefault("SET"));
-    assertEquals(RequestType.INVOKE_AGENT, RequestType.valueOfOrDefault("invoke_agent"));
+    assertEquals(RequestType.STREAM_AGUI_EVENTS, RequestType.valueOfOrDefault("stream_agui_events"));
     assertEquals(AgentType.DEFAULT, AgentType.valueOfOrDefault("default"));
     assertEquals(SessionServiceType.MEMORY, SessionServiceType.valueOfOrDefault("memory"));
     assertEquals(ContextType.LAST_N, ContextType.valueOfOrDefault("last_n"));

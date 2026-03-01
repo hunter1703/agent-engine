@@ -94,7 +94,7 @@ class FinalAnswerResponseProcessorTest {
     processor.processResponse(context, signalResponse).blockingGet();
     assertThat(RunStateUtils.getState(context).phase())
         .isEqualTo(RunState.Phase.READY_FOR_FINAL_ANSWER);
-    RunStateUtils.getState(context).markPhase(RunState.Phase.FINAL_ANSWER_REQUESTED);
+    RunStateUtils.getState(context).setPhase(RunState.Phase.FINAL_ANSWER_REQUESTED);
 
     // Turn 2: Actual answer
     final Content answerContent = Content.builder()
@@ -128,7 +128,7 @@ class FinalAnswerResponseProcessorTest {
         .invocationId("inv-1")
         .build();
 
-    RunStateUtils.getState(context).markPhase(RunState.Phase.READY_FOR_FINAL_ANSWER);
+    RunStateUtils.getState(context).setPhase(RunState.Phase.READY_FOR_FINAL_ANSWER);
 
     final Content signalContent = Content.builder()
         .role("model")
@@ -162,7 +162,7 @@ class FinalAnswerResponseProcessorTest {
         .invocationId("inv-1")
         .build();
 
-    RunStateUtils.getState(context).markPhase(RunState.Phase.FINAL_ANSWER_DELIVERED);
+    RunStateUtils.getState(context).setPhase(RunState.Phase.FINAL_ANSWER_DELIVERED);
 
     final Content signalContent = Content.builder()
         .role("model")
@@ -196,7 +196,7 @@ class FinalAnswerResponseProcessorTest {
         .invocationId("inv-1")
         .build();
 
-    RunStateUtils.getState(context).markPhase(RunState.Phase.UNKNOWN);
+    RunStateUtils.getState(context).setPhase(RunState.Phase.UNKNOWN);
 
     final Content signalContent = Content.builder()
         .role("model")

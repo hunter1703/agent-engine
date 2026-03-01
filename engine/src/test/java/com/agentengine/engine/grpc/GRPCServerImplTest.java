@@ -65,7 +65,7 @@ class GRPCServerImplTest {
     // Create generic server impl with mocked services
     grpcExecutor = ThreadUtils.newVirtualThreadExecutor("grpc-test-vt-");
     GRPCServerImpl engineGRPCServer =
-        new GRPCServerImpl(List.of(agentService, agentExecutionService), grpcExecutor);
+        new GRPCServerImpl(List.of(agentService, agentExecutionService));
 
     server =
         InProcessServerBuilder.forName(serverName)

@@ -33,7 +33,7 @@ class FinalAnswerRequestProcessorTest {
         .invocationId("inv-1")
         .build();
 
-    RunStateUtils.getState(context).markPhase(RunState.Phase.READY_FOR_FINAL_ANSWER);
+    RunStateUtils.getState(context).setPhase(RunState.Phase.READY_FOR_FINAL_ANSWER);
 
     final LlmRequest request = LlmRequest.builder().build();
     final var result = processor.processRequest(context, request).blockingGet();
