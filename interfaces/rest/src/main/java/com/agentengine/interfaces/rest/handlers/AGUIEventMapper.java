@@ -1,22 +1,15 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.ExceptionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.api.utils.CorrectionUtils;
+import com.agentengine.engine.api.utils.*;
+import com.agentengine.interfaces.rest.dto.CorrectionEvent;
 import com.agui.core.event.*;
 import com.agui.core.message.Role;
 import com.google.adk.events.Event;
-import com.google.genai.types.Content;
-import com.google.genai.types.FunctionCall;
-import com.google.genai.types.FunctionResponse;
-import com.google.genai.types.Part;
+import com.google.genai.types.*;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,26 +26,32 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   public Flowable<BaseEvent> map(final Event event) {
     LOG.debug("Input event received for mapping - event={}", JsonUtils.toJson(event));
 
-    if (state.runId == null && event.invocationId() != null) {
+    Flowable<BaseEvent> eventFlow = Flowable.empty();
+    if (state.runId == null) {
       state.runId = event.invocationId();
-      final RunStartedEvent startEvent = new RunStartedEvent();
+      RunStartedEvent startEvent = new RunStartedEvent();
       startEvent.setRunId(state.runId);
       startEvent.setThreadId(state.sessionId);
-      final BaseEvent decoratedStartEvent = decorateEvent(startEvent);
-      LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedStartEvent));
 
-      return Flowable.concat(Flowable.just(decoratedStartEvent), mapEventInternal(event));
+      decorateEvent(startEvent);
+      LOG.debug("Generated output event - event={}", JsonUtils.toJson(startEvent));
+
+      eventFlow = eventFlow.concatWith(Flowable.just(startEvent));
     }
 
-    return mapEventInternal(event);
+    return eventFlow.concatWith(mapEventInternal(event));
   }
 
+  @Override
   public Flowable<BaseEvent> onComplete() {
+    Flowable<BaseEvent> flowable = Flowable.empty();
+    flowable = flowable.concatWith(mapStepFinish(true));
     final BaseEvent decoratedEvent = decorateEvent(buildRunFinished(state.runId));
     LOG.debug("Generated output event in onComplete - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
+    return flowable.concatWith(Flowable.just(decoratedEvent));
   }
 
+  @Override
   public Flowable<BaseEvent> onError(final Throwable throwable) {
     LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
     final RunErrorEvent errorEvent = new RunErrorEvent();
@@ -65,39 +64,50 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   private Flowable<BaseEvent> mapEventInternal(final Event event) {
     LOG.debug("Processing internal mapping for event - event={}", JsonUtils.toJson(event));
-
+    Flowable<BaseEvent> flowable = Flowable.empty();
+    flowable = flowable.concatWith(mapStepStart());
     if (CorrectionUtils.isCorrectionEvent(event)) {
-      return mapCorrectionEvent(event);
+      return flowable.concatWith(mapCorrectionEvent(event));
     }
-
-    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
-    flows.add(mapStepStart());
 
     final Content content = event.content().orElse(null);
     if (content != null) {
       final boolean partial = event.partial().orElse(false);
       final List<Part> parts = content.parts().orElse(List.of());
 
-      for (Part part : parts) {
-        final String text = part.text().orElse(null);
-        if (text != null) {
-          final boolean isThought = part.thought().orElse(false);
-          LOG.debug("Mapping text part - text='{}', isThought={}, partial={}", text, isThought, partial);
-          if (isThought) {
-            flows.add(mapThinking(text, partial));
-          } else {
-            flows.add(mapMessage(text, partial));
-          }
-        }
+      final List<Part> thoughtsParts = parts.stream().filter(part -> part.thought().orElse(false)).toList();
+      final List<Part> textParts = parts.stream().filter(part -> !part.thought().orElse(false)).toList();
+      final List<FunctionCall> toolCalls = parts.stream().map(Part::functionCall).map(optional -> optional.orElse(null)).filter(Objects::nonNull).toList();
+      final List<FunctionResponse> toolResponses = parts.stream().map(Part::functionResponse).map(optional -> optional.orElse(null)).filter(Objects::nonNull).toList();
 
-        part.functionCall().ifPresent(call -> flows.add(mapToolCall(call)));
-        part.functionResponse().ifPresent(response -> flows.add(mapToolResponse(response)));
+      for (final Part part : thoughtsParts) {
+        final String thoughtText = part.text().orElse("");
+        if (StringUtils.isNotBlank(thoughtText)) {
+          LOG.debug("Mapping thought part - text='{}', partial={}", thoughtText, partial);
+          flowable = flowable.concatWith(mapThinkingStart()).concatWith(mapThinkingMessageStart()).concatWith(mapThinkingContent(thoughtText, partial)).concatWith(mapThinkingMessageEnd(partial));
+        }
+      }
+
+      flowable = flowable.concatWith(mapThinkingEnd());
+
+      for (final Part part : textParts) {
+        final String text = part.text().orElse("");
+        if (StringUtils.isNotBlank(text)) {
+          LOG.debug("Mapping text part - text='{}', partial={}", text, partial);
+          flowable = flowable.concatWith(mapTextMessageStartEvent()).concatWith(mapTextMessageContent(text, partial)).concatWith(mapTextMessageEndEvent(partial));
+        }
+      }
+
+      for (final FunctionCall toolCall : toolCalls) {
+        flowable = flowable.concatWith(mapToolCall(toolCall));
+      }
+
+      for (final FunctionResponse toolResponse : toolResponses) {
+        flowable = flowable.concatWith(mapToolResponse(toolResponse));
       }
     }
 
-    flows.add(mapStepFinish(event));
-
-    return Flowable.concat(flows);
+    return flowable.concatWith(mapStepFinish(event.turnComplete().orElse(false)));
   }
 
   private Flowable<BaseEvent> mapStepStart() {
@@ -108,164 +118,139 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     state.currentStepName = "step-" + UUID.randomUUID();
     final StepStartedEvent stepEvent = new StepStartedEvent();
     stepEvent.setStepName(state.currentStepName);
-    final BaseEvent decoratedStepEvent = decorateEvent(stepEvent);
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedStepEvent));
-    return Flowable.just(decoratedStepEvent);
+    decorateEvent(stepEvent);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(stepEvent));
+    return Flowable.just(stepEvent);
+  }
+
+  private Flowable<BaseEvent> mapCorrectionEvent(final Event event) {
+    final CorrectionMetadata correctionMetadata = CorrectionUtils.extractCorrectionMetadata(event);
+    if (correctionMetadata == null) {
+      return Flowable.empty();
+    }
+    CorrectionEvent correctionEvent = new CorrectionEvent(correctionMetadata);
+    decorateEvent(correctionEvent);
+    LOG.debug("Generated correction event - event={}", JsonUtils.toJson(correctionEvent));
+    return Flowable.just(correctionEvent);
+  }
+
+  private Flowable<ThinkingStartEvent> mapThinkingStart() {
+    if (state.isThinking) {
+      LOG.debug("Already in thinking state, skipping ThinkingStartEvent generation");
+      return Flowable.empty();
+    }
+    state.isThinking = true;
+    final ThinkingStartEvent thinkingStartEvent = new ThinkingStartEvent();
+    decorateEvent(thinkingStartEvent);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(thinkingStartEvent));
+    return Flowable.just(thinkingStartEvent);
+  }
+
+  private Flowable<BaseEvent> mapThinkingMessageStart() {
+    if (state.thinkingMessageOpen) {
+      LOG.debug("Thinking message already open, skipping ThinkingTextMessageStartEvent generation");
+      return Flowable.empty();
+    }
+    state.thinkingMessageOpen = true;
+    final ThinkingTextMessageStartEvent event = new ThinkingTextMessageStartEvent();
+    decorateEvent(event);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(event));
+    return Flowable.just(event);
+  }
+
+  private Flowable<BaseEvent> mapThinkingContent(final String text, final boolean partial) {
+    final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
+    final Map<String, Object> rawEvent = Map.of("delta", text, "partial", partial);
+    content.setRawEvent(rawEvent);
+    decorateEvent(content);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(content));
+    return Flowable.just(content);
+  }
+
+  private Flowable<BaseEvent> mapThinkingMessageEnd(final boolean partial) {
+    if (partial) {
+        LOG.debug("Partial thinking message, skipping ThinkingTextMessageEndEvent generation");
+        return Flowable.empty();
+    }
+    final ThinkingTextMessageEndEvent event = new ThinkingTextMessageEndEvent();
+    decorateEvent(event);
+    state.thinkingMessageOpen = false;
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(event));
+    return Flowable.just(event);
+  }
+
+  private Flowable<ThinkingEndEvent> mapThinkingEnd() {
+    if (!state.isThinking) {
+      LOG.debug("Not in thinking state, skipping ThinkingEndEvent generation");
+      return Flowable.empty();
+    }
+    state.isThinking = false;
+    final ThinkingEndEvent event = new ThinkingEndEvent();
+    decorateEvent(event);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(event));
+    return Flowable.just(event);
+  }
+
+  private Flowable<TextMessageStartEvent> mapTextMessageStartEvent() {
+    if (state.currentTextMessageId != null) {
+      LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
+      return Flowable.empty();
+    }
+    state.currentTextMessageId = "msg-" + UUID.randomUUID();
+    final TextMessageStartEvent start = new TextMessageStartEvent();
+    start.setMessageId(state.currentTextMessageId);
+    decorateEvent(start);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(start));
+    return Flowable.just(start);
+  }
+
+  private Flowable<BaseEvent> mapTextMessageContent(String text, final boolean partial) {
+    LOG.debug("Processing message mapping - text='{}', partial={}", text, partial);
+    if (partial) {
+      final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
+      chunk.setMessageId(state.currentTextMessageId);
+      chunk.setDelta(text);
+      decorateEvent(chunk);
+      LOG.debug("Generated output event - event={}", JsonUtils.toJson(chunk));
+      return Flowable.just(chunk);
+    } else {
+      final TextMessageContentEvent content = new TextMessageContentEvent();
+      content.setMessageId(state.currentTextMessageId);
+      content.setDelta(text);
+      decorateEvent(content);
+      state.finalAnswer = text;
+      LOG.debug("Generated output event - event={}", JsonUtils.toJson(content));
+      return Flowable.just(content);
+    }
+  }
+
+  private Flowable<TextMessageEndEvent> mapTextMessageEndEvent(final boolean partial) {
+    if (partial) {
+        LOG.debug("Partial message, skipping TextMessageEndEvent generation");
+        return Flowable.empty();
+    }
+    final TextMessageEndEvent end = new TextMessageEndEvent();
+    end.setMessageId(state.currentTextMessageId);
+    decorateEvent(end);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(end));
+    state.currentTextMessageId = null;
+    return Flowable.just(end);
   }
 
   private boolean hasStepStarted() {
     return StringUtils.isNotBlank(state.currentStepName);
   }
 
-  private Flowable<BaseEvent> mapStepFinish(final Event event) {
-    if (!hasStepStarted()) {
-      return Flowable.empty();
-    }
-    final boolean turnComplete =
-        event.turnComplete().orElse(!event.partial().orElse(false));
+  private Flowable<BaseEvent> mapStepFinish(boolean turnComplete) {
     if (!turnComplete) {
       return Flowable.empty();
     }
     final StepFinishedEvent stepEvent = new StepFinishedEvent();
     stepEvent.setStepName(state.currentStepName);
     state.currentStepName = null;
-    final BaseEvent decoratedStepEvent = decorateEvent(stepEvent);
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedStepEvent));
-    return Flowable.just(decoratedStepEvent);
-  }
-
-  private Flowable<BaseEvent> mapThinking(final String text, final boolean partial) {
-    if (StringUtils.isBlank(text)) {
-      LOG.debug("Skipping thinking mapping due to blank text - text='{}'", text);
-      return Flowable.empty();
-    }
-
-    LOG.debug("Processing thinking mapping - text='{}', partial={}", text, partial);
-
-    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
-    if (!state.isThinking) {
-      flows.add(mapThinkingStart());
-    }
-
-    if (!state.thinkingMessageOpen) {
-      flows.add(mapThinkingMessageStart());
-    }
-
-    if (partial) {
-      final String delta = resolveDelta(text, state.lastSentThinking);
-      if (StringUtils.isNotBlank(delta)) {
-        state.lastSentThinking = text;
-        flows.add(mapThinkingContent(delta, true));
-      }
-    } else {
-      state.lastSentThinking = text;
-      flows.add(mapThinkingContent(text, false));
-      flows.add(mapThinkingMessageEnd());
-      state.isThinking = false;
-      flows.add(Flowable.just(decorateEvent(new ThinkingEndEvent())));
-      state.lastSentThinking = null;
-    }
-
-    return Flowable.concat(flows);
-  }
-
-  private Flowable<BaseEvent> mapThinkingStart() {
-    if (state.isThinking) {
-      LOG.debug("Already in thinking state, skipping ThinkingStartEvent generation");
-      return Flowable.empty();
-    }
-    state.isThinking = true;
-    final BaseEvent decoratedEvent = decorateEvent(new ThinkingStartEvent());
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
-  }
-
-  private Flowable<BaseEvent> mapThinkingMessageStart() {
-    if (state.thinkingMessageOpen) {
-      return Flowable.empty();
-    }
-    state.thinkingMessageOpen = true;
-    final BaseEvent decoratedEvent = decorateEvent(new ThinkingTextMessageStartEvent());
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
-  }
-
-  private Flowable<BaseEvent> mapThinkingMessageEnd() {
-    if (!state.thinkingMessageOpen) {
-      return Flowable.empty();
-    }
-    state.thinkingMessageOpen = false;
-    final BaseEvent decoratedEvent = decorateEvent(new ThinkingTextMessageEndEvent());
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
-  }
-
-  private Flowable<BaseEvent> mapThinkingContent(final String text, final boolean chunk) {
-    final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
-    final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap(Map.of("delta", text));
-    if (chunk) {
-      rawEvent.put("chunk", true);
-    }
-    final BaseEvent decoratedEvent = decorateEvent(content, rawEvent);
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
-  }
-
-  private Flowable<BaseEvent> mapMessage(String text, final boolean partial) {
-    if (StringUtils.isBlank(text)) {
-      LOG.debug("Skipping message mapping due to blank text - text='{}'", text);
-      return Flowable.empty();
-    }
-
-    LOG.debug("Processing message mapping - text='{}', partial={}", text, partial);
-
-    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
-    if (state.currentTextMessageId == null) {
-      state.currentTextMessageId = "msg-" + UUID.randomUUID().toString();
-      final TextMessageStartEvent start = new TextMessageStartEvent();
-      start.setMessageId(state.currentTextMessageId);
-      final BaseEvent decoratedStart = decorateEvent(start);
-      LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedStart));
-      flows.add(Flowable.just(decoratedStart));
-    }
-
-    if (partial) {
-      final String delta = resolveDelta(text, state.lastSentText);
-      if (StringUtils.isBlank(delta)) {
-        LOG.debug(
-            "Skipping message chunk mapping due to empty delta - text='{}', lastSentText='{}'",
-            text,
-            state.lastSentText);
-        return Flowable.empty();
-      }
-
-      state.lastSentText = text;
-      final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
-      chunk.setMessageId(state.currentTextMessageId);
-      chunk.setDelta(delta);
-      final BaseEvent decoratedChunk = decorateEvent(chunk);
-      LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedChunk));
-      flows.add(Flowable.just(decoratedChunk));
-    } else {
-      state.lastSentText = text;
-      final TextMessageContentEvent content = new TextMessageContentEvent();
-      content.setMessageId(state.currentTextMessageId);
-      content.setDelta(text);
-      final BaseEvent decoratedContent = decorateEvent(content);
-      LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedContent));
-      flows.add(Flowable.just(decoratedContent));
-
-      final TextMessageEndEvent end = new TextMessageEndEvent();
-      end.setMessageId(state.currentTextMessageId);
-      final BaseEvent decoratedEnd = decorateEvent(end);
-      LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedEnd));
-      flows.add(Flowable.just(decoratedEnd));
-      state.finalAnswer = text;
-      state.currentTextMessageId = null;
-      state.lastSentText = null;
-    }
-
-    return Flowable.concat(flows);
+    decorateEvent(stepEvent);
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(stepEvent));
+    return Flowable.just(stepEvent);
   }
 
   private Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
@@ -273,7 +258,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final String toolName = call.name().orElse("unknown");
     final Map<String, Object> args = call.args().orElse(Map.of());
  
-    final List<Flowable<BaseEvent>> flows = new ArrayList<>();
+    Flowable<BaseEvent> flowable = Flowable.empty();
     LOG.debug(
             "Processing tool call mapping - callId='{}', toolName='{}', args={}",
             callId,
@@ -282,17 +267,16 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final ToolCallStartEvent start = new ToolCallStartEvent();
     start.setToolCallId(callId);
     start.setToolCallName(toolName);
-    flows.add(Flowable.just(decorateEvent(start)));
+    flowable = flowable.concatWith(Flowable.just(decorateEvent(start)));
 
     final ToolCallArgsEvent argsEvent = new ToolCallArgsEvent();
     argsEvent.setToolCallId(callId);
     argsEvent.setDelta(JsonUtils.toJson(args));
-    flows.add(Flowable.just(decorateEvent(argsEvent)));
+    flowable = flowable.concatWith(Flowable.just(decorateEvent(argsEvent)));
 
     final ToolCallEndEvent end = new ToolCallEndEvent();
     end.setToolCallId(callId);
-    flows.add(Flowable.just(decorateEvent(end)));
-    return Flowable.concat(flows);
+    return flowable.concatWith(Flowable.just(decorateEvent(end)));
   }
 
   private Flowable<BaseEvent> mapToolResponse(final FunctionResponse response) {
@@ -314,28 +298,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return Flowable.just(decoratedResult);
   }
 
-  private Flowable<BaseEvent> mapCorrectionEvent(final Event event) {
-    final Map<String, Object> correctionMetadata =
-        CorrectionUtils.extractCorrectionMetadata(event);
-    if (correctionMetadata.isEmpty()) {
-      return Flowable.empty();
-    }
-    final CustomEvent customEvent = new CustomEvent();
-    final BaseEvent decoratedEvent = decorateEvent(customEvent, correctionMetadata);
-    LOG.debug("Generated correction event - event={}", JsonUtils.toJson(decoratedEvent));
-    return Flowable.just(decoratedEvent);
-  }
-
-  private static String resolveDelta(final String text, final String lastSentText) {
-    if (StringUtils.isBlank(text)) {
-      return "";
-    }
-    if (StringUtils.isNotBlank(lastSentText) && text.startsWith(lastSentText)) {
-      return text.substring(lastSentText.length());
-    }
-    return text;
-  }
-
   private RunFinishedEvent buildRunFinished(final String runId) {
     final RunFinishedEvent event = new RunFinishedEvent();
     event.setThreadId(state.sessionId);
@@ -351,17 +313,12 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return event;
   }
 
-  private BaseEvent decorateEvent(final BaseEvent event) {
-    return decorateEvent(event, null);
-  }
-
-  private BaseEvent decorateEvent(final BaseEvent event, final Map<String, Object> extraRaw) {
+  private <T extends BaseEvent> T decorateEvent(final T event) {
     event.setTimestamp(System.currentTimeMillis());
-    final Map<String, Object> eventMap = JsonUtils.toMap(event);
-    final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap(eventMap);
-    if (extraRaw != null) {
-      rawEvent.putAll(extraRaw);
-    }
+    //noinspection unchecked
+    final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.getRawEvent());
+    event.setRawEvent(null);
+    rawEvent.putAll(JsonUtils.toMap(event));
     rawEvent.put("agentId", state.agentId);
     event.setRawEvent(rawEvent);
     LOG.debug(
@@ -412,11 +369,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
-    private String lastSentText;
-    private String lastSentThinking;
-    private String finalAnswer;
     private boolean isThinking;
     private boolean thinkingMessageOpen;
+    private String finalAnswer;
 
     private MapperState(final String sessionId, final String agentId) {
       this.sessionId = sessionId;

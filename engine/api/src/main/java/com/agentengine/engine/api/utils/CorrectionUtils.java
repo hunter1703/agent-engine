@@ -37,25 +37,14 @@ public final class CorrectionUtils {
     return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(event.actions().stateDelta(), CORRECTION_KEY));
   }
 
-  public static Map<String, Object> extractCorrectionMetadata(final Event event) {
+  public static CorrectionMetadata extractCorrectionMetadata(final Event event) {
     if (!isCorrectionEvent(event)) {
-      return Map.of();
+      return null;
     }
     final Map<String, Object> stateDelta = event.actions().stateDelta();
-    final Map<String, Object> metadata = new HashMap<>();
-    metadata.put("name", "CORRECTION");
     final String type = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_TYPE_KEY);
-    if (StringUtils.isNotBlank(type)) {
-      metadata.put("type", type);
-    }
     final String code = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_CODE_KEY);
-    if (StringUtils.isNotBlank(code)) {
-      metadata.put("code", code);
-    }
     final String message = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_MESSAGE_KEY);
-    if (StringUtils.isNotBlank(message)) {
-      metadata.put("message", message);
-    }
-    return metadata;
+    return new CorrectionMetadata(type, code, message);
   }
 }

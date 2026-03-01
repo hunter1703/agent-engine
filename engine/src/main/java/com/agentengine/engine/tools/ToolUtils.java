@@ -68,7 +68,11 @@ public final class ToolUtils {
   }
 
   public static boolean hasToolParts(final LlmResponse response) {
-    return CollectionUtils.isNotEmpty(extractToolCalls(response));
+    return response.content()
+        .flatMap(Content::parts)
+        .stream()
+        .flatMap(List::stream)
+        .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
   }
 
   public static List<FunctionCall> extractToolCalls(final LlmResponse response) {
