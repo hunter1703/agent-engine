@@ -43,7 +43,7 @@ public final class LastNContextManager extends BaseContextManager {
             if (length > 0) {
                 if (length < actualLength) {
                     final String trimmed = text.substring(actualLength - length, actualLength);
-                    final List<Part> nonTextPart = content.parts().orElse(new ArrayList<>()).stream().filter(part -> StringUtils.isNotBlank(part.text().orElse(null))).collect(Collectors.toCollection(ArrayList::new));
+                    final List<Part> nonTextPart = content.parts().orElse(new ArrayList<>()).stream().filter(part -> StringUtils.isEmpty(part.text().orElse(null))).collect(Collectors.toCollection(ArrayList::new));
                     recent.add(content.toBuilder().parts(CollectionUtils.append(nonTextPart, Part.fromText(trimmed))).build());
                     LOG.debug("Added trimmed content: '{}'", trimmed);
                 } else {

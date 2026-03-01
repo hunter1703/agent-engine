@@ -53,13 +53,15 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
       }
       final String taskId = PlanningUtils.getTaskIdValue(activeTask);
       final String status = PlanningUtils.getTaskStatusValue(activeTask);
+      final String msg = "System Reminder: Task [" + taskId + "] is still " + status + ". "
+          + "Please complete the work or update the task status before concluding.";
       runState.addViolation(Violation.builder("incomplete_task")
           .message("Task " + taskId + " is still " + status)
-          .correctionMessage(
-              "System Reminder: Task [" + taskId + "] is still " + status + ". "
-                  + "Please complete the work or update the task status before concluding.")
+          .correctionMessage(msg)
           .build());
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+
+      final LlmResponse updatedResponse = response.toBuilder().turnComplete(false).build();
+      return Single.just(ResponseProcessingResult.create(updatedResponse, List.of(), Optional.empty()));
     }
 
     final String planViolation = PlanningValidator.canSubmitFinalAnswerOrError(plan);
@@ -77,6 +79,7 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
           .toList();
       final LlmResponse updated = response.toBuilder()
           .content(content.toBuilder().parts(stripped).build())
+          .turnComplete(false)
           .build();
       return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
     }

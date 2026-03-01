@@ -70,7 +70,8 @@ public class AgentConfig extends NamedEntity implements Config {
 
   public enum AgentType {
     UNKNOWN,
-    DEFAULT;
+    DEFAULT,
+    STORY;
 
     public static AgentType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

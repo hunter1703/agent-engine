@@ -40,8 +40,8 @@ class PlanLoopResponseProcessorTest {
     LlmResponse updated =
         processor.processResponse(context, response).blockingGet().updatedResponse();
 
-    assertThat(updated.partial().orElse(false)).isFalse();
-    assertThat(updated.turnComplete().orElse(true)).isTrue();
+    assertThat(updated.partial().orElse(true)).isFalse();
+    assertThat(updated.turnComplete().orElse(true)).isFalse();
   }
 
   @Test

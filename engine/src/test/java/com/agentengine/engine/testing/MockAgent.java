@@ -18,6 +18,7 @@ import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,16 +40,19 @@ public final class MockAgent {
   private final BaseLlmFlow flow;
   private final LlmAgent agent;
   private final InvocationContext context;
+  private final int maxSteps;
 
   private MockAgent(
       final ScriptedLlm model,
       final BaseLlmFlow flow,
       final LlmAgent agent,
-      final InvocationContext context) {
+      final InvocationContext context,
+      final int maxSteps) {
     this.model = Objects.requireNonNull(model, "model");
     this.flow = Objects.requireNonNull(flow, "flow");
     this.agent = Objects.requireNonNull(agent, "agent");
     this.context = Objects.requireNonNull(context, "context");
+    this.maxSteps = maxSteps;
   }
 
   public static Builder builder() {
@@ -130,8 +134,8 @@ public final class MockAgent {
     private final Deque<List<LlmResponse>> responseBatches = new ArrayDeque<>();
     private FlowType flowType = FlowType.PLANNING;
     private int maxSteps = 100;
-    private List<RequestProcessor> requestProcessors = List.of();
-    private List<ResponseProcessor> responseProcessors = List.of();
+    private final List<RequestProcessor> requestProcessors = new ArrayList<>();
+    private final List<ResponseProcessor> responseProcessors = new ArrayList<>();
     private final List<BaseTool> tools = new ArrayList<>();
     private String agentName = "mock-agent";
     private String sessionId = "mock-session";
@@ -149,12 +153,18 @@ public final class MockAgent {
     }
 
     public Builder requestProcessors(final List<RequestProcessor> requestProcessors) {
-      this.requestProcessors = requestProcessors == null ? List.of() : List.copyOf(requestProcessors);
+      if (requestProcessors != null) {
+        this.requestProcessors.clear();
+        this.requestProcessors.addAll(requestProcessors);
+      }
       return this;
     }
 
     public Builder responseProcessors(final List<ResponseProcessor> responseProcessors) {
-      this.responseProcessors = responseProcessors == null ? List.of() : List.copyOf(responseProcessors);
+      if (responseProcessors != null) {
+        this.responseProcessors.clear();
+        this.responseProcessors.addAll(responseProcessors);
+      }
       return this;
     }
 
@@ -235,12 +245,7 @@ public final class MockAgent {
           .sessionService(new InMemorySessionService())
           .artifactService(new InMemoryArtifactService())
           .build();
-      final com.agentengine.engine.agents.processors.Parser parser = com.agentengine.engine.agents.processors.Parser.builder().withResponseFormat(dev.langchain4j.model.chat.request.ResponseFormatType.JSON).build();
-      final List<RequestProcessor> reqProcs = new ArrayList<>();
-      reqProcs.add(com.agentengine.engine.agents.processors.request.RunInitRequestProcessor.INSTANCE);
-      reqProcs.add(com.agentengine.engine.agents.processors.request.CorrectionProcessor.INSTANCE);
-      reqProcs.add(com.agentengine.engine.agents.processors.request.PlanningRequestProcessor.INSTANCE);
-      reqProcs.add(com.agentengine.engine.agents.processors.request.FinalAnswerRequestProcessor.INSTANCE);
+      
       List<RequestProcessor> defaultReq = List.of();
       List<ResponseProcessor> defaultRes = List.of();
       try {
@@ -257,7 +262,17 @@ public final class MockAgent {
 
       com.agentengine.engine.utils.RunStateUtils.initState(context);
 
+      final com.agentengine.engine.agents.processors.Parser parser = com.agentengine.engine.agents.processors.Parser.builder()
+          .withResponseFormat(dev.langchain4j.model.chat.request.ResponseFormatType.TEXT)
+          .toolCallingEnabled(!tools.isEmpty())
+          .build();
+
+      final List<RequestProcessor> reqProcs = new ArrayList<>();
+      reqProcs.add(com.agentengine.engine.agents.processors.request.RunInitRequestProcessor.INSTANCE);
       reqProcs.addAll(defaultReq);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.CorrectionProcessor.INSTANCE);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.PlanningRequestProcessor.INSTANCE);
+      reqProcs.add(com.agentengine.engine.agents.processors.request.FinalAnswerRequestProcessor.INSTANCE);
       reqProcs.add(parser);
       reqProcs.addAll(requestProcessors);
 
@@ -267,11 +282,12 @@ public final class MockAgent {
       resProcs.add(com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor.INSTANCE);
       resProcs.add(com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor.INSTANCE);
       resProcs.addAll(defaultRes);
+      resProcs.addAll(responseProcessors);
       // Remove RunCleanupResponseProcessor from MockAgent during tests so state is preserved
       resProcs.removeIf(p -> p instanceof com.agentengine.engine.agents.processors.response.RunCleanupResponseProcessor);
 
       final BaseLlmFlow flow = new com.agentengine.engine.agents.flows.AbstractFlow(maxSteps, reqProcs, resProcs) {};
-      return new MockAgent(model, flow, agent, context);
+      return new MockAgent(model, flow, agent, context, maxSteps);
     }
   }
 
@@ -288,12 +304,15 @@ public final class MockAgent {
     @Override
     public Flowable<LlmResponse> generateContent(
         final LlmRequest llmRequest, final boolean stream) {
+      final int count = callCount.incrementAndGet();
+      System.out.println("DEBUG LLM Turn " + count + ": Processing request with " + llmRequest.getSystemInstructions().size() + " instructions: " + llmRequest.getSystemInstructions());
       requests.add(llmRequest);
-      callCount.incrementAndGet();
       final List<LlmResponse> responses = responseBatches.pollFirst();
       if (responses == null) {
+        System.out.println("DEBUG LLM Turn " + count + ": No more responses available.");
         return Flowable.empty();
       }
+      System.out.println("DEBUG LLM Turn " + count + ": Returning " + responses.size() + " responses.");
       return Flowable.fromIterable(responses);
     }
 

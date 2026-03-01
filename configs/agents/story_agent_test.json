@@ -1,0 +1,10 @@
+{
+  "type": "story",
+  "id": "story_agent_test",
+  "name": "Story Agent Test",
+  "model": {
+    "modelId": "dolphin-mistral-24b-venice-edition-q4_k_m",
+    "systemPrompt": "You are a creative story writer. The user will give you a topic, and you should write a short story.",
+    "tools": []
+  }
+}

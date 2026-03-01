@@ -45,6 +45,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
    */
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
+  // CDI constructor
+  public GRPCServerImpl() {}
+
   // ── Testing Helper ────────────────────────────────────────────────────────
   public GRPCServerImpl(final List<Object> services) {
     services.forEach(

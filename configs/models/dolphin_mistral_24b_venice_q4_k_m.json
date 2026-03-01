@@ -1,0 +1,22 @@
+{
+  "id": "dolphin-mistral-24b-venice-edition-q4_k_m",
+  "model": "dolphin-mistral-24b-venice-edition-q4_k_m",
+  "name": "Dolphin Mistral 24B Venice Edition",
+  "type": "open_ai_compatible",
+  "baseUrl": "http://127.0.0.1:17007/v1",
+  "serverCommand": "/opt/homebrew/bin/llama-server",
+  "serverArgs": [
+    "--hf-repo",
+    "vemas/Dolphin-Mistral-24B-Venice-Edition-Q4_K_M-GGUF",
+    "--hf-file",
+    "dolphin-mistral-24b-venice-edition-q4_k_m.gguf",
+    "-c",
+    "2048",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "17007"
+  ],
+  "temperature": 0.7,
+  "topP": 0.9
+}

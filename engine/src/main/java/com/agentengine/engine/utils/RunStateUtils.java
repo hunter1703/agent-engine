@@ -10,9 +10,6 @@ public final class RunStateUtils {
   private RunStateUtils() {}
 
   public static RunState getState(final InvocationContext context) {
-    if (context == null || context.session() == null || context.session().state() == null) {
-      return new RunState();
-    }
     final Object stored = context.session().state().get(RUN_STATE_KEY);
     if (stored instanceof RunState runState) {
       return runState;

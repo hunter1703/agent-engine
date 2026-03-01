@@ -19,7 +19,7 @@ class LangchainModelBuilderTest {
         DelegatingModelBuilder.resolveResponseFormatType(config);
     final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
-    assertThat(format.type()).isEqualTo(ResponseFormatType.JSON);
+    assertThat(format.type()).isEqualTo(ResponseFormatType.TEXT);
   }
 
   @Test
@@ -59,6 +59,6 @@ class LangchainModelBuilderTest {
         DelegatingModelBuilder.resolveResponseFormatType(config);
     final ResponseFormat format = LangchainModelBuilder.getResponseFormat(responseFormatType);
 
-    assertThat(format.type()).isEqualTo(ResponseFormatType.JSON);
+    assertThat(format.type()).isEqualTo(ResponseFormatType.TEXT);
   }
 }

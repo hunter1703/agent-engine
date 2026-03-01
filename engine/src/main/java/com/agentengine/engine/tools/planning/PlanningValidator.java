@@ -22,7 +22,7 @@ public final class PlanningValidator {
       return "Plan is required.";
     }
     final String planLabel = describePlan(plan);
-    if (plan.getStatus() == PlanStatus.UNKNOWN) {
+    if (plan.getStatus() == null || plan.getStatus() == PlanStatus.UNKNOWN) {
       return planLabel + " has unknown status.";
     }
     final Map<String, Task> tasksById = new LinkedHashMap<>();

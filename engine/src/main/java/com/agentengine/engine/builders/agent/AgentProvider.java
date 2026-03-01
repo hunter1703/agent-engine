@@ -5,9 +5,9 @@ import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import java.util.Map;
 import java.util.function.Function;
@@ -19,13 +19,11 @@ public class AgentProvider {
   private final DefaultAgentBuilder defaultAgentBuilder;
 
   @Inject
-  public AgentProvider(
-      final Instance<AgentBuilder<?, ?>> allBuilders,
-      @Named("defaultAgentBuilder") final DefaultAgentBuilder defaultAgentBuilder) {
+  public AgentProvider(final @Any Instance<AgentBuilder<?, ?>> allBuilders) {
     typeVsBuilder =
         CollectionUtils.transformToMap(
             allBuilders.stream().toList(), AgentBuilder::type, Function.identity());
-    this.defaultAgentBuilder = defaultAgentBuilder;
+    this.defaultAgentBuilder = (DefaultAgentBuilder) typeVsBuilder.get("default");
   }
 
   @SuppressWarnings("unchecked")

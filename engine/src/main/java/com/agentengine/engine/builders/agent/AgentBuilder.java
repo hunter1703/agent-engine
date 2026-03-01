@@ -9,7 +9,13 @@ public class AgentBuilder extends LlmAgent.Builder {
   private String toolInstructions;
   private String globalInstruction;
 
+  public AgentBuilder() {
+    this.disallowTransferToParent(false);
+    this.disallowTransferToPeers(false);
+  }
+
   public AgentBuilder protocolInstructions(final String protocolInstructions) {
+
     this.protocolInstructions = protocolInstructions;
     return this;
   }

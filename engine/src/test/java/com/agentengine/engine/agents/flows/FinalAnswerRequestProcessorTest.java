@@ -3,7 +3,6 @@ package com.agentengine.engine.agents.flows;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.agents.processors.request.FinalAnswerRequestProcessor;
-import com.agentengine.engine.api.utils.CorrectionUtils;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.agents.InvocationContext;
@@ -47,7 +46,6 @@ class FinalAnswerRequestProcessorTest {
 
     final List<Event> events =
         StreamSupport.stream(result.events().spliterator(), false).toList();
-    assertThat(events).hasSize(2);
-    assertThat(events).allMatch(CorrectionUtils::isCorrectionEvent);
+    assertThat(events).isEmpty();
   }
 }

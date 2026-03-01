@@ -26,11 +26,12 @@ class AgentProviderTest {
     @SuppressWarnings("unchecked")
     final Instance<AgentBuilder<?, ?>> instance =
         (Instance<AgentBuilder<?, ?>>) mock(Instance.class);
-    when(instance.stream()).thenReturn(Stream.<AgentBuilder<?, ?>>of(named, other));
     final DefaultAgentBuilder fallback = mock(DefaultAgentBuilder.class);
+    when(fallback.type()).thenReturn("default");
     when(fallback.build(any(), any())).then(invocation -> fallbackAgent);
+    when(instance.stream()).thenReturn(Stream.<AgentBuilder<?, ?>>of(named, other, fallback));
 
-    final AgentProvider factory = new AgentProvider(instance, fallback);
+    final AgentProvider factory = new AgentProvider(instance);
 
     final AgentConfig config = new AgentConfig();
     config.setType("alpha");

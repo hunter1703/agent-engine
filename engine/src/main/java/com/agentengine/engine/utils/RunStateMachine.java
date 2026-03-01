@@ -31,7 +31,11 @@ public final class RunStateMachine
     final TransitionConfiguration<Phase, Phase, Violation> config = configuration.configure(fromState);
     for (final Phase target : values()) {
       if (validTargets.contains(target)) {
-        config.permit(target, target);
+        if (target == fromState) {
+          config.permitReentry(target);
+        } else {
+          config.permit(target, target);
+        }
       } else {
         config.notPermit(target, () -> invalidTransitionViolation(fromState, target));
       }
@@ -98,11 +102,10 @@ public final class RunStateMachine
       case UNKNOWN ->
           "Begin reasoning from scratch and proceed normally.";
     };
-    final String message = "Invalid phase transition from " + fromState + " to " + toState + ".";
-    final String correctionMessage = reason == null ? guidance : reason + " " + guidance;
+    final String message = reason == null ? "Invalid phase transition from " + fromState + " to " + toState + "." : reason;
     return Violation.builder("invalid_phase_transition")
         .message(message)
-        .correctionMessage(correctionMessage)
+        .correctionMessage(guidance)
         .build();
   }
 }

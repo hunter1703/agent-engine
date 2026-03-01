@@ -65,7 +65,7 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
   }
 
   public static Parser create() {
-    return new Parser(ResponseFormatType.TEXT, false, true);
+    return new Parser(ResponseFormatType.TEXT, false, false);
   }
 
   @Override
@@ -78,27 +78,28 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
       final List<Part> nonThoughtsPart = new ArrayList<>();
 
       for (final Part part : content.parts().orElse(List.of())) {
-        final Optional<FunctionResponse> functionResponse = part.functionResponse();
-        final Optional<FunctionCall> functionCall = part.functionCall();
-
-        if (functionResponse != null && functionResponse.isPresent()) {
+        if (part.functionResponse().isPresent()) {
           toolResponseParts.add(part);
-        } else if (functionCall != null && functionCall.isPresent()) {
+        } else if (part.functionCall().isPresent()) {
           toolCallParts.add(part);
         } else if (!part.thought().orElse(false)) {
           nonThoughtsPart.add(part);
         }
       }
 
-      final List<Part> parts = new ArrayList<>(CollectionUtils.nullSafeList(nonThoughtsPart));
-      final List<Part> toolCallPartsList = buildTextFormatPartsForToolCalls(toolCallParts);
-      if (CollectionUtils.isNotEmpty(toolCallPartsList)) {
-        parts.addAll(toolCallPartsList);
+      final List<Part> parts = normalizeParts(nonThoughtsPart);
+      if (shouldParseToolCallsFromText()) {
+        parts.addAll(buildTextFormatPartsForToolCalls(toolCallParts));
+      } else {
+        parts.addAll(toolCallParts);
       }
 
-      if (CollectionUtils.isNotEmpty(parts)) {
-        contents.add(content.toBuilder().parts(parts).build());
-        final List<Part> toolResponsePartsList = buildTextFormatPartsForToolResponses(toolResponseParts);
+      final List<Part> toolResponsePartsList = buildTextFormatPartsForToolResponses(toolResponseParts);
+
+      if (CollectionUtils.isNotEmpty(parts) || CollectionUtils.isNotEmpty(toolResponsePartsList)) {
+        if (CollectionUtils.isNotEmpty(parts)) {
+            contents.add(content.toBuilder().parts(parts).build());
+        }
         if (CollectionUtils.isNotEmpty(toolResponsePartsList)) {
           contents.add(Content.builder().role("user").parts(toolResponsePartsList).build());
         }
@@ -111,33 +112,36 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
 
   @Override
   public Single<ResponseProcessingResult> processResponse(
-          final InvocationContext context, final LlmResponse response) {
+      final InvocationContext context, final LlmResponse response) {
+    if (response.content().isEmpty()) {
+      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    }
+
     final boolean isPartial = response.partial().orElse(false);
 
     final LlmResponse.Builder builder = response.toBuilder();
-    Content updatedContent = response.content().orElse(null);
-    if (updatedContent != null) {
-      if (isPartial) {
-        final List<Part> normalizedParts = normalizeParts(updatedContent.parts().orElse(new ArrayList<>()));
-        final boolean hasToolParts = normalizedParts.stream().anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
-        if (hasToolParts) {
-          final String toolSummary = ToolUtils.summarizeToolParts(normalizedParts);
-          final String correctionMessage = toolSummary.isBlank()
-              ? "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
-              : "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
-                  + " Following tool parts have been stripped : " + toolSummary + ".";
-          RunStateUtils.getState(context).addViolation(Violation.builder("partial_tool_calls")
+    Content updatedContent = response.content().get();
+
+    if (isPartial) {
+      final List<Part> normalizedParts = normalizeParts(updatedContent.parts().orElse(new ArrayList<>()));
+      final boolean hasToolParts = normalizedParts.stream().anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+      if (hasToolParts) {
+        final String toolSummary = ToolUtils.summarizeToolParts(normalizedParts);
+        final String correctionMessage = toolSummary.isBlank()
+                ? "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
+                : "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
+                + " Following tool parts have been stripped : " + toolSummary + ".";
+         RunStateUtils.getState(context).addViolation(Violation.builder("partial_tool_calls")
               .message("Tool calls in partial response")
               .correctionMessage(correctionMessage)
               .build());
-        }
-        updatedContent = updatedContent.toBuilder().parts(extractTextParts(normalizedParts)).build();
-      } else {
-        updatedContent = parse(updatedContent);
       }
-      builder.content(updatedContent);
+      updatedContent = updatedContent.toBuilder().parts(extractTextParts(normalizedParts)).build();
+    } else {
+      updatedContent = parse(updatedContent);
     }
 
+    builder.content(updatedContent);
     return Single.just(ResponseProcessingResult.create(builder.build(), List.of(), Optional.empty()));
   }
 
@@ -175,10 +179,10 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
 
   private Content parseTextContent(Content content) {
     String processedText = content.text();
-    List<Part> toolCallParts = new ArrayList<>();
     List<Part> thoughtParts = new ArrayList<>(content.parts().orElse(List.of()).stream()
         .filter(part -> part.thought().orElse(false)).toList());
 
+    List<Part> toolCallParts = new ArrayList<>();
     if (shouldParseToolCallsFromText()) {
       toolCallParts.addAll(parseToolCalls(processedText).stream().map(Parser::buildToolCallPart).toList());
       processedText = stripToolCallsBlock(processedText);
@@ -287,7 +291,8 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
     if (StringUtils.isBlank(text) || !shouldParseToolCallsFromText()) {
       return text;
     }
-    return TOOL_CALL_PATTERN.matcher(text).replaceAll("").trim();
+    final String stripped = TOOL_CALL_PATTERN.matcher(text).replaceAll("").trim();
+    return TOOL_CALL_TAG_PATTERN.matcher(stripped).replaceAll("").trim();
   }
 
   private static Content normalizeContent(final Content content) {
@@ -330,11 +335,7 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
     final List<Part> textParts = new ArrayList<>();
     for (final Part part : parts) {
       if (part.text().isPresent()) {
-        textParts.add(
-            Part.builder()
-                .text(part.text().orElse(""))
-                .thought(part.thought().orElse(false))
-                .build());
+        textParts.add(part);
       }
     }
     return textParts;
@@ -401,22 +402,27 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
                 call.id().orElse(""), call.name().orElse(""), argsJson);
         textBuilder.append(toolCallText);
       }
-      return List.of(Part.fromText(textBuilder.toString()));
+      if (!textBuilder.isEmpty()) {
+        return List.of(Part.fromText(textBuilder.toString()));
+      }
     }
-    return toolCallParts;
+    return List.of();
   }
 
   private List<Part> buildTextFormatPartsForToolResponses(final List<Part> toolResponseParts) {
+    if (CollectionUtils.isEmpty(toolResponseParts)) {
+      return List.of();
+    }
     if (!shouldParseToolCallsFromText()) {
-      return toolResponseParts;
+        return toolResponseParts;
     }
     final List<Part> parsedResponseParts = new ArrayList<>();
-    for (Part part : toolResponseParts) {
-      FunctionResponse response = part.functionResponse().orElse(null);
+    for (final Part part : toolResponseParts) {
+      final FunctionResponse response = part.functionResponse().orElse(null);
       if (response == null) {
         continue;
       }
-      String responseText =
+      final String responseText =
               String.format(
                       "Tool Response [%s]: %s", response.name().orElse("unknown"), response.response());
       parsedResponseParts.add(Part.fromText(responseText));
@@ -439,12 +445,12 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
   }
 
   private List<Part> filterToolCallParts(final List<Part> parts) {
-    if (toolCallingEnabled) {
-      return parts;
+    if (!toolCallingEnabled) {
+      return CollectionUtils.nullSafeList(parts).stream()
+          .filter(ToolUtils::callsFinalAnswerTool)
+          .toList();
     }
-    return CollectionUtils.nullSafeList(parts).stream()
-        .filter(ToolUtils::callsFinalAnswerTool)
-        .toList();
+    return CollectionUtils.nullSafeList(parts);
   }
 
   public static Builder builder() {
@@ -454,7 +460,7 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
   public static final class Builder {
     private ResponseFormatType responseFormat = ResponseFormatType.TEXT;
     private boolean toolCallingEnabled;
-    private boolean parseToolCallsFromText = true;
+    private boolean parseToolCallsFromText = false;
 
     public Builder withResponseFormat(final ResponseFormatType responseFormat) {
       this.responseFormat = responseFormat == null ? ResponseFormatType.TEXT : responseFormat;

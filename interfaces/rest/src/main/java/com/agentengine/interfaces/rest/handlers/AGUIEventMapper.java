@@ -159,6 +159,10 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapThinkingContent(final String text, final boolean partial) {
+    if (StringUtils.isBlank(text)) {
+      return Flowable.empty();
+    }
+    
     final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
     final Map<String, Object> rawEvent = Map.of("delta", text, "partial", partial);
     content.setRawEvent(rawEvent);
@@ -205,6 +209,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapTextMessageContent(String text, final boolean partial) {
+    if (StringUtils.isBlank(text)) {
+      return Flowable.empty();
+    }
     LOG.debug("Processing message mapping - text='{}', partial={}", text, partial);
     if (partial) {
       final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
@@ -297,6 +304,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     LOG.debug("Generated output event - event={}", JsonUtils.toJson(decoratedResult));
     return Flowable.just(decoratedResult);
   }
+
 
   private RunFinishedEvent buildRunFinished(final String runId) {
     final RunFinishedEvent event = new RunFinishedEvent();

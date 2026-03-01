@@ -52,7 +52,7 @@ class ParserTest {
     final List<Part> parts = parsed.parts().orElse(List.of());
 
     assertThat(parts).hasSize(1);
-    assertThat(parts.getFirst().text().orElse("")).isEqualTo("Answer");
+    assertThat(parts.getFirst().text().orElse("")).isEqualTo("Answer <tool_call>");
   }
 
   @Test
@@ -130,7 +130,7 @@ class ParserTest {
   }
 
   @Test
-  void mergesNativeAndTextToolCalls() {
+  void prioritizesTextToolCallsOverNativeWhenEnabled() {
     final Parser parser = Parser.builder()
         .toolCallingEnabled(true)
         .parseToolCallsFromText(true)
@@ -150,11 +150,8 @@ class ParserTest {
     final Content parsed = parser.parse(content);
     final List<Part> parts = parsed.parts().orElse(List.of());
 
-    // Expecting 3 parts:
-    // 1. Native call
-    // 2. Text-based call
-    // 3. (Optional) text part (empty since textWithCall was stripped)
-    assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "native_tool".equals(p.functionCall().get().name().orElse("")));
+    // Native call should be dropped in favor of text parsing
+    assertThat(parts).noneMatch(p -> p.functionCall().isPresent() && "native_tool".equals(p.functionCall().get().name().orElse("")));
     assertThat(parts).anyMatch(p -> p.functionCall().isPresent() && "text_tool".equals(p.functionCall().get().name().orElse("")));
   }
 

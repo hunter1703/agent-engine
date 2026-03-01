@@ -4,6 +4,10 @@ public final class StringUtils {
 
   private StringUtils() {}
 
+  public static boolean isEmpty(final String str) {
+    return str == null || str.isEmpty();
+  }
+
   public static boolean isBlank(final String str) {
     return str == null || str.isBlank();
   }

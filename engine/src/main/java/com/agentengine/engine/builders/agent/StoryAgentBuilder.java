@@ -1,6 +1,6 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.agents.DefaultAgent;
+import com.agentengine.engine.agents.story.StoryAgent;
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
@@ -18,31 +18,33 @@ import com.google.adk.models.BaseLlm;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import java.util.List;
 
+/**
+ * StoryAgentBuilder is responsible for creating instances of {@link StoryAgent}.
+ * It extends {@link AbstractAgentBuilder} and returns a StoryAgent.
+ */
 @Singleton
-@Named("defaultAgentBuilder")
-public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, DefaultAgent> {
+public class StoryAgentBuilder extends AbstractAgentBuilder<AgentConfig, StoryAgent> {
 
   private final ModelRepository modelRepository;
 
   @Inject
-  public DefaultAgentBuilder(
-      ModelProvider modelProvider,
-      SessionServiceProvider sessionServiceProvider,
-      ToolRegistry toolRegistry,
-      ContextManagerProvider contextManagerProvider,
-      ModelRepository modelRepository) {
+  public StoryAgentBuilder(
+      final ModelProvider modelProvider,
+      final SessionServiceProvider sessionServiceProvider,
+      final ToolRegistry toolRegistry,
+      final ContextManagerProvider contextManagerProvider,
+      final ModelRepository modelRepository) {
     super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry);
     this.modelRepository = modelRepository;
   }
 
   @Override
-  public DefaultAgent build(final AgentConfig config, final AgentContext agentContext) {
+  public StoryAgent build(final AgentConfig config, final AgentContext agentContext) {
     final AgentBuilder builder = getBuilder(config, agentContext);
-    return new DefaultAgent(builder);
+    return new StoryAgent(builder);
   }
 
   protected AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
@@ -62,16 +64,7 @@ public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, Defau
     final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
     String toolInstructions = "";
     final AgentBuilder agentBuilder = new AgentBuilder();
-    if (toolCallingEnabled) {
-      final List<BaseTool> tools =
-          toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
-      if (parseToolCallsFromText) {
-        toolInstructions = ToolUtils.buildToolMessage(tools);
-      }
-      if (CollectionUtils.isNotEmpty(tools)) {
-        agentBuilder.tools(tools);
-      }
-    } else if (parseToolCallsFromText) {
+    if (parseToolCallsFromText) {
       toolInstructions = ToolUtils.buildToolMessage(List.of(SubmitFinalAnswerTool.INSTANCE));
     }
     final String globalInstruction =
@@ -110,6 +103,6 @@ public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, Defau
 
   @Override
   public String type() {
-    return AgentConfig.AgentType.DEFAULT.name().toLowerCase();
+    return AgentConfig.AgentType.STORY.name().toLowerCase();
   }
 }
