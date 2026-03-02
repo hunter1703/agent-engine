@@ -205,11 +205,11 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
     }
 
     final String finalAnswer = StringUtils.isBlank(processedText) ? "" : processedText.trim();
-    final List<Part> allParts = new ArrayList<>(toolCallParts);
+    final List<Part> allParts = new ArrayList<>(thoughtParts);
     if (StringUtils.isNotBlank(finalAnswer)) {
       allParts.add(Part.builder().text(finalAnswer).build());
     }
-    allParts.addAll(thoughtParts);
+    allParts.addAll(toolCallParts);
 
     return content.toBuilder().parts(allParts).build();
   }

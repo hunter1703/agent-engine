@@ -26,8 +26,6 @@ import java.util.List;
 @Named("defaultAgentBuilder")
 public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, DefaultAgent> {
 
-  private final ModelRepository modelRepository;
-
   @Inject
   public DefaultAgentBuilder(
       ModelProvider modelProvider,
@@ -35,77 +33,13 @@ public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, Defau
       ToolRegistry toolRegistry,
       ContextManagerProvider contextManagerProvider,
       ModelRepository modelRepository) {
-    super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry);
-    this.modelRepository = modelRepository;
+    super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry, modelRepository);
   }
 
   @Override
   public DefaultAgent build(final AgentConfig config, final AgentContext agentContext) {
     final AgentBuilder builder = getBuilder(config, agentContext);
     return new DefaultAgent(builder);
-  }
-
-  protected AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
-    final ModelConfig modelConfig =
-        modelRepository.findById(config.getModel().getModelId()).orElse(null);
-    if (modelConfig == null) {
-      throw new IllegalStateException("Model config not found for agent.");
-    }
-    final BaseLlm model = modelProvider.get(config.getModel());
-    if (!(model instanceof AbstractLLM agentModel)) {
-      throw new IllegalStateException("Model builder did not return an AbstractLLM instance.");
-    }
-    final BaseSessionService sessionService = resolveSessionService(agentContext, config);
-    final AgentContext resolvedContext =
-        sessionService == null ? agentContext : new AgentContext(config, sessionService);
-    final boolean toolCallingEnabled = agentModel.isToolCallingEnabled();
-    final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
-    String toolInstructions = "";
-    final AgentBuilder agentBuilder = new AgentBuilder();
-    if (toolCallingEnabled) {
-      final List<BaseTool> tools =
-          toolRegistry.loadTools(resolvedContext, config.getModel().getTools());
-      if (parseToolCallsFromText) {
-        toolInstructions = ToolUtils.buildToolMessage(tools);
-      }
-      if (CollectionUtils.isNotEmpty(tools)) {
-        agentBuilder.tools(tools);
-      }
-    } else if (parseToolCallsFromText) {
-      toolInstructions = ToolUtils.buildToolMessage(List.of(SubmitFinalAnswerTool.INSTANCE));
-    }
-    final String globalInstruction =
-        buildGlobalInstruction(config.getModel().getSystemPrompt(), modelConfig.getInstructions());
-    final String agentName = resolveAgentName(config);
-    agentBuilder
-        .toolInstructions(toolInstructions)
-        .protocolInstructions(agentModel.getProtocol())
-        .globalInstruction(globalInstruction)
-        .disallowTransferToParent(false)
-        .disallowTransferToPeers(false)
-        .name(agentName)
-        .model(model);
-    return agentBuilder;
-  }
-
-  private static String resolveAgentName(final AgentConfig config) {
-    if (config == null) {
-      return "agent";
-    }
-    final String candidate =
-        StringUtils.isBlank(config.getName()) ? config.getId() : config.getName();
-    return StringUtils.isBlank(candidate) ? "agent" : candidate;
-  }
-
-  private static String buildGlobalInstruction(
-      final String systemPrompt, final String modelInstructions) {
-    if (StringUtils.isBlank(modelInstructions)) {
-      return systemPrompt;
-    }
-    if (StringUtils.isBlank(systemPrompt)) {
-      return modelInstructions;
-    }
-    return systemPrompt + "\n\n# FOLLOW\n" + modelInstructions;
   }
 
   @Override

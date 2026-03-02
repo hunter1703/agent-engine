@@ -8,14 +8,25 @@ import com.google.adk.flows.llmflows.SingleFlow;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public abstract class AbstractFlow extends SingleFlow {
     private final int maxSteps;
     private int stepsCompleted;
+    private final Predicate<Event> shouldTerminate;
 
     public AbstractFlow(final int maxSteps, final List<RequestProcessor> requestProcessors, final List<ResponseProcessor> responseProcessors) {
         super(requestProcessors, responseProcessors, Optional.of(maxSteps));
         this.maxSteps = maxSteps;
+        this.shouldTerminate = AbstractFlow::shouldTerminate;
+    }
+
+    public AbstractFlow(final int maxSteps, final List<RequestProcessor> requestProcessors, final List<ResponseProcessor> responseProcessors, final Predicate<Event> shouldTerminate) {
+        super(requestProcessors, responseProcessors, Optional.of(maxSteps));
+        this.maxSteps = maxSteps;
+        this.shouldTerminate = shouldTerminate;
     }
 
     @Override
@@ -25,40 +36,20 @@ public abstract class AbstractFlow extends SingleFlow {
     }
 
     private Flowable<Event> runWithContinuation(final InvocationContext invocationContext) {
-        final Flowable<Event> currentStepEvents =
-            new StepFlow(requestProcessors, responseProcessors).run(invocationContext).cache();
-
+        final Flowable<Event> events = super.run(invocationContext);
         if (++stepsCompleted >= maxSteps) {
-            return currentStepEvents;
+            return events;
         }
-
-        return currentStepEvents.concatWith(
-            currentStepEvents
-                .toList()
-                .flatMapPublisher(
-                    eventList -> {
-                        if (eventList.isEmpty()) {
-                            return Flowable.empty();
-                        }
-                        final Event lastEvent = eventList.getLast();
-                        if (shouldTerminate(lastEvent)) {
-                            return Flowable.empty();
-                        }
-                        return Flowable.defer(() -> runWithContinuation(invocationContext));
-                    }));
+        final AtomicBoolean terminated = new AtomicBoolean();
+        return events.doOnNext(event -> terminated.set(shouldTerminate.test(event))).takeUntil(shouldTerminate::test)
+                .concatWith(Flowable.defer(() -> terminated.get() ? Flowable.empty() : runWithContinuation(invocationContext)));
     }
 
-    private static boolean shouldTerminate(final Event lastEvent) {
-        if (lastEvent.actions().endInvocation().orElse(false)) {
+    private static boolean shouldTerminate(final Event event) {
+        if (event.actions().endInvocation().orElse(false)) {
             return true;
         }
-        final boolean turnComplete = lastEvent.turnComplete().orElse(true);
-        return lastEvent.finalResponse() && turnComplete;
-    }
-
-    private static final class StepFlow extends SingleFlow {
-        private StepFlow(final List<RequestProcessor> requestProcessors, final List<ResponseProcessor> responseProcessors) {
-            super(requestProcessors, responseProcessors, Optional.of(1));
-        }
+        final boolean turnComplete = event.turnComplete().orElse(true);
+        return event.finalResponse() && turnComplete;
     }
 }

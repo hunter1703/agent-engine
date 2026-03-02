@@ -1,17 +1,22 @@
 package com.agentengine.engine.agents.flows;
 
+import com.google.adk.agents.InvocationContext;
+import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
-import com.google.adk.flows.llmflows.SingleFlow;
-
+import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Runs exactly one LLM round-trip regardless of the outer flow's maxSteps.
+ * Runs a single logical turn, retrying until the turn completes.
  */
-final class SingleTurnFlow extends SingleFlow {
-    public SingleTurnFlow(final List<RequestProcessor> reqs, final List<ResponseProcessor> resps) {
-        super(reqs, resps, Optional.of(1));
+final class SingleTurnFlow extends AbstractFlow {
+    public SingleTurnFlow(final List<RequestProcessor> requestProcessors, final List<ResponseProcessor> responseProcessors) {
+        super(Integer.MAX_VALUE, requestProcessors, responseProcessors, SingleTurnFlow::shouldTerminate);
+    }
+
+    private static boolean shouldTerminate(final Event event) {
+        return event.actions().endInvocation().orElse(false)
+            || event.turnComplete().orElse(true);
     }
 }

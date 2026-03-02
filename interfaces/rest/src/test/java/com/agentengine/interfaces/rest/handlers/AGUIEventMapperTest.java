@@ -6,6 +6,7 @@ import com.agui.core.event.BaseEvent;
 import com.agui.core.event.CustomEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
+import com.agui.core.event.TextMessageContentEvent;
 import com.agui.core.event.ThinkingTextMessageContentEvent;
 import com.agui.core.event.ToolCallResultEvent;
 import com.agui.core.type.EventType;
@@ -283,6 +284,61 @@ class AGUIEventMapperTest {
     @SuppressWarnings("unchecked")
     final Map<String, Object> rawEvent = (Map<String, Object>) contentEvent.get().getRawEvent();
     assertThat(rawEvent).containsEntry("chunk", true).containsEntry("delta", "Thinking...");
+  }
+
+  @Test
+  void flushesChunkedTextOnComplete() {
+    final Event firstChunk = Event.builder()
+        .id("event-1")
+        .invocationId("run-1")
+        .author("model")
+        .content(Content.builder().role("model").parts(List.of(Part.builder().text("Hello ").build())).build())
+        .partial(true)
+        .build();
+    final Event secondChunk = Event.builder()
+        .id("event-2")
+        .invocationId("run-1")
+        .author("model")
+        .content(Content.builder().role("model").parts(List.of(Part.builder().text("world").build())).build())
+        .partial(true)
+        .build();
+
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    final List<BaseEvent> events =
+        Flowable.just(firstChunk, secondChunk)
+            .concatMap(mapper::map)
+            .concatWith(Flowable.defer(mapper::onComplete))
+            .toList()
+            .blockingGet();
+
+    assertThat(events)
+        .extracting(BaseEvent::getType)
+        .containsExactly(
+            EventType.RUN_STARTED,
+            EventType.STEP_STARTED,
+            EventType.TEXT_MESSAGE_START,
+            EventType.TEXT_MESSAGE_CHUNK,
+            EventType.TEXT_MESSAGE_CHUNK,
+            EventType.TEXT_MESSAGE_CONTENT,
+            EventType.TEXT_MESSAGE_END,
+            EventType.STEP_FINISHED,
+            EventType.RUN_FINISHED);
+
+    final TextMessageContentEvent contentEvent =
+        events.stream()
+            .filter(event -> event instanceof TextMessageContentEvent)
+            .map(TextMessageContentEvent.class::cast)
+            .findFirst()
+            .orElseThrow();
+    assertThat(contentEvent.getDelta()).isEqualTo("Hello world");
+
+    final RunFinishedEvent finished =
+        events.stream()
+            .filter(event -> event instanceof RunFinishedEvent)
+            .map(RunFinishedEvent.class::cast)
+            .findFirst()
+            .orElseThrow();
+    assertThat(finished.getResult()).isEqualTo("Hello world");
   }
 
   @Test

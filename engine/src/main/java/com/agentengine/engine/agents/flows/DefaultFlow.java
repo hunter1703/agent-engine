@@ -2,6 +2,7 @@ package com.agentengine.engine.agents.flows;
 
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor;
+import com.agentengine.engine.agents.processors.response.PartOrderingResponseProcessor;
 import com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor;
 import com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor;
 import com.agentengine.engine.agents.processors.response.RunCleanupResponseProcessor;
@@ -37,6 +38,7 @@ public class DefaultFlow extends AbstractFlow {
     responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
     responseProcessors.add(FinalAnswerResponseProcessor.INSTANCE);
     responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
+    responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);
     responseProcessors.add(RunCleanupResponseProcessor.INSTANCE);
     return responseProcessors;
   }
