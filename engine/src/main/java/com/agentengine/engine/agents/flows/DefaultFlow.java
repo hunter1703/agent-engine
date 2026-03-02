@@ -21,8 +21,8 @@ public class DefaultFlow extends AbstractFlow {
   }
 
   private static List<RequestProcessor> buildRequests(final Parser parser) {
-      final List<RequestProcessor> requestProcessors = new ArrayList<>();
-      requestProcessors.add(RunInitRequestProcessor.INSTANCE);
+    final List<RequestProcessor> requestProcessors = new ArrayList<>();
+    requestProcessors.add(RunInitRequestProcessor.INSTANCE);
     requestProcessors.addAll(SingleFlow.REQUEST_PROCESSORS);
     requestProcessors.add(CorrectionProcessor.INSTANCE);
     requestProcessors.add(PlanningRequestProcessor.INSTANCE);
@@ -43,9 +43,5 @@ public class DefaultFlow extends AbstractFlow {
     responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);
     responseProcessors.add(RunCleanupResponseProcessor.INSTANCE);
     return responseProcessors;
-  }
-
-  public List<ResponseProcessor> getResponseProcessors() {
-    return super.responseProcessors;
   }
 }

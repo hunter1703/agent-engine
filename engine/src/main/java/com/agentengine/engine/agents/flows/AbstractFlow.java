@@ -52,4 +52,8 @@ public abstract class AbstractFlow extends SingleFlow {
         final boolean turnComplete = event.turnComplete().orElse(true);
         return event.finalResponse() && turnComplete;
     }
+
+    public List<ResponseProcessor> getResponseProcessors() {
+        return responseProcessors;
+    }
 }

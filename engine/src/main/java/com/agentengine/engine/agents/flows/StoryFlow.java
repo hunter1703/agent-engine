@@ -1,9 +1,13 @@
 package com.agentengine.engine.agents.flows;
 
 import com.agentengine.engine.agents.processors.Parser;
+import com.agentengine.engine.agents.processors.request.*;
+import com.agentengine.engine.agents.processors.response.*;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
+import com.google.adk.flows.llmflows.ResponseProcessor;
+import com.google.adk.flows.llmflows.SingleFlow;
 import com.google.adk.models.LlmRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
@@ -14,6 +18,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Orchestrates scene generation through six sequential, isolated LLM round-trips.
@@ -23,7 +29,8 @@ import java.util.stream.Stream;
  * identification), which deliberately sees only the original user input so the protagonist profile
  * from Phase 1 does not bias the character-count inference.
  */
-public final class StoryFlow extends DefaultFlow {
+public final class StoryFlow extends AbstractFlow {
+    private static final Logger LOG = LoggerFactory.getLogger(StoryFlow.class);
 
     // ---- Phase prompts ---------------------------------------------------------
 
@@ -120,19 +127,36 @@ public final class StoryFlow extends DefaultFlow {
     // ---- Constructor ------------------------------------------------------------
 
     public StoryFlow(final Parser parser) {
-        super(parser);
+        super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser));
     }
 
     // ---- Orchestration ---------------------------------------------------------
 
     @Override
     public Flowable<Event> run(final InvocationContext context) {
-        return runStep(context, PHASE_1_PROTAGONIST)
-                .concatWith(runStepWithFreshHistory(context, PHASE_2_OTHER_CHARACTERS))
-                .concatWith(runProfilingSteps(context))
-                .concatWith(runStep(context, PHASE_4_THEME))
-                .concatWith(runStep(context, PHASE_5_SITUATION))
-                .concatWith(runStep(context, PHASE_6_SCENE));
+        LOG.info("Starting StoryFlow with 6 phases");
+        return logPhase(runStep(context, PHASE_1_PROTAGONIST), "Phase 1: Protagonist")
+                .concatWith(logPhase(runStepWithFreshHistory(context, PHASE_2_OTHER_CHARACTERS), "Phase 2: Other Characters"))
+                .concatWith(logPhase(runProfilingSteps(context), "Phase 3: Character Profiles"))
+                .concatWith(logPhase(runStep(context, PHASE_4_THEME), "Phase 4: Theme"))
+                .concatWith(logPhase(runStep(context, PHASE_5_SITUATION), "Phase 5: Situation"))
+                .concatWith(logPhase(runStep(context, PHASE_6_SCENE), "Phase 6: Scene"));
+    }
+
+    /**
+     * Wraps a phase's Flowable to log its output events.
+     */
+    private Flowable<Event> logPhase(final Flowable<Event> phase, final String phaseName) {
+        return phase.doOnNext(event -> {
+            final String content = event.content()
+                    .flatMap(c -> c.parts()
+                            .flatMap(parts -> parts.stream()
+                                    .filter(p -> p.text().isPresent())
+                                    .map(p -> p.text().get())
+                                    .findFirst()))
+                    .orElse("");
+            LOG.info("{} output: {}", phaseName, content);
+        });
     }
 
     // ---- Step execution --------------------------------------------------------
@@ -144,6 +168,7 @@ public final class StoryFlow extends DefaultFlow {
     private Flowable<Event> runStep(final InvocationContext context, final String phasePrompt) {
         final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
         processors.add(phaseInstruction(phasePrompt));
+        LOG.debug("Executing phase with prompt: {}", phasePrompt);
         return new SingleTurnFlow(processors, responseProcessors).run(context);
     }
 
@@ -157,15 +182,18 @@ public final class StoryFlow extends DefaultFlow {
         final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
         processors.add(stripModelHistory());
         processors.add(phaseInstruction(phasePrompt));
+        LOG.debug("Executing phase with fresh history (user input only) and prompt: {}", phasePrompt);
         return new SingleTurnFlow(processors, responseProcessors).run(context);
     }
 
     private Flowable<Event> runProfilingSteps(final InvocationContext context) {
         return Flowable.defer(() -> {
             final List<String> names = extractNames(context.session().events());
+            LOG.debug("Found {} characters to profile: {}", names.size(), names);
 
             Flowable<Event> profilingFlow = Flowable.empty();
             for (final String name : names) {
+                LOG.debug("Profiling character: {}", name);
                 profilingFlow = profilingFlow.concatWith(
                         runStepWithProtagonistOnly(
                                 context, String.format(PHASE_3_CHARACTER_PROFILE_TEMPLATE, name)));
@@ -184,6 +212,7 @@ public final class StoryFlow extends DefaultFlow {
         final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
         processors.add(stripNonProtagonistModelHistory());
         processors.add(phaseInstruction(phasePrompt));
+        LOG.debug("Executing character profiling phase with protagonist-only history and prompt: {}", phasePrompt);
         return new SingleTurnFlow(processors, responseProcessors).run(context);
     }
 
@@ -266,5 +295,30 @@ public final class StoryFlow extends DefaultFlow {
             }
         }
         return List.of();
+    }
+
+    private static List<RequestProcessor> buildRequests(final Parser parser) {
+        final List<RequestProcessor> requestProcessors = new ArrayList<>();
+        requestProcessors.add(RunInitRequestProcessor.INSTANCE);
+        requestProcessors.addAll(SingleFlow.REQUEST_PROCESSORS);
+        requestProcessors.add(CorrectionProcessor.INSTANCE);
+        requestProcessors.add(PlanningRequestProcessor.INSTANCE);
+        requestProcessors.add(FinalAnswerRequestProcessor.INSTANCE);
+        requestProcessors.add(parser);
+        requestProcessors.add(LoggingRequestProcessor.INSTANCE);
+        return requestProcessors;
+    }
+
+    private static List<ResponseProcessor> buildResponses(final Parser parser) {
+        final List<ResponseProcessor> responseProcessors = new ArrayList<>();
+        responseProcessors.add(parser);
+        responseProcessors.add(PlanLoopResponseProcessor.INSTANCE);
+        responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
+        responseProcessors.add(FinalAnswerResponseProcessor.INSTANCE);
+        responseProcessors.add(TurnCompletionResponseProcessor.INSTANCE);
+        responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
+        responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);
+        responseProcessors.add(RunCleanupResponseProcessor.INSTANCE);
+        return responseProcessors;
     }
 }
