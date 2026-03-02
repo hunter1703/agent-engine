@@ -13,11 +13,17 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionDeclaration;
 import io.reactivex.rxjava3.core.Single;
+
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 class EngineBehaviorTest {
 

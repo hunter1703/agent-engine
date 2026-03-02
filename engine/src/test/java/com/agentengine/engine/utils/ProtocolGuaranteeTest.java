@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 
 class ProtocolGuaranteeTest {
 
-  private final Parser parser = Parser.builder().build();
+  private final Parser parser = Parser.builder().toolCallingEnabled(true).build();
   private final DefaultFlow flow = new DefaultFlow(parser);
 
   private InvocationContext createMockContext() {
@@ -171,7 +171,10 @@ class ProtocolGuaranteeTest {
   @Test
   void ensuresTagParsing() {
     final InvocationContext context = createMockContext();
-    
+    // Set FINAL_ANSWER_REQUESTED so text-only response is treated as the final answer,
+    // not as premature_termination (which would sanitize text to thought).
+    RunStateUtils.getState(context).setPhase(RunState.Phase.FINAL_ANSWER_REQUESTED);
+
     // Parser responsibilities per RFC: Parse text/thought tags into structured parts.
     final String raw = "<thought>Thinking about it</thought>Here is the answer";
     final LlmResponse response = LlmResponse.builder()
@@ -209,9 +212,11 @@ class ProtocolGuaranteeTest {
     final LlmResponse updated = process(context, response);
     final List<Part> ordered = updated.content().get().parts().get();
 
-    // Verify canonical sequence: Thought (1) -> Text (2) -> Tool Call (3)
+    // Verify canonical sequence: Thought (1) -> Thought (2, sanitized from text) -> Tool Call (3)
+    // Per RFC: when tool calls are present, all regular text is sanitized to thoughts.
+    // So canonical order is: all thoughts first, then tool calls.
     assertThat(ordered.get(0).thought().orElse(false)).isTrue();
-    assertThat(ordered.get(1).text().isPresent() && !ordered.get(1).thought().orElse(false)).isTrue();
+    assertThat(ordered.get(1).thought().orElse(false)).isTrue(); // "Answer" sanitized to thought
     assertThat(ordered.get(2).functionCall().isPresent()).isTrue();
   }
 

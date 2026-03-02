@@ -62,15 +62,11 @@ class SimpleToolDefinitionRegistryTest {
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
-    assertThat(registry.loadTools(context, List.of()))
-        .extracting(BaseTool::name)
-        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
-    assertThat(registry.loadTools(context, null))
-        .extracting(BaseTool::name)
-        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
-    assertThat(registry.loadTools(context, List.of(new ToolsConfig("fake", Map.of()))))
-        .extracting(BaseTool::name)
-        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
+    // SubmitFinalAnswerTool is NOT injected by the registry — AbstractAgentBuilder adds it.
+    assertThat(registry.loadTools(context, List.of())).isEmpty();
+    assertThat(registry.loadTools(context, null)).isEmpty();
+    // "fake" belongs to "other-agent", so it is skipped for "test-agent"
+    assertThat(registry.loadTools(context, List.of(new ToolsConfig("fake", Map.of())))).isEmpty();
   }
 
   @Test
@@ -88,9 +84,8 @@ class SimpleToolDefinitionRegistryTest {
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
 
-    assertThat(registry.loadTools(context, List.of()))
-        .extracting(BaseTool::name)
-        .containsExactly(SubmitFinalAnswerTool.TOOL_NAME);
+    // Registry returns no tools — AbstractAgentBuilder is responsible for injecting SubmitFinalAnswerTool.
+    assertThat(registry.loadTools(context, List.of())).isEmpty();
   }
 
   @Test

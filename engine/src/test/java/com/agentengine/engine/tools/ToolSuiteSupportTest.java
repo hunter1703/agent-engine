@@ -43,7 +43,7 @@ class ToolSuiteSupportTest {
 
     assertThat(tools)
         .extracting(BaseTool::name)
-        .containsExactlyInAnyOrder("suite_member", SubmitFinalAnswerTool.TOOL_NAME);
+        .containsExactly("suite_member");
   }
 
   private static final class SuiteToolProvider implements ToolProvider, ToolSuite {

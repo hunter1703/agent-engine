@@ -36,6 +36,10 @@ class EngineProtocolTest {
         .session(session)
         .invocationId("inv-1")
         .build();
+    // Set FINAL_ANSWER_DELIVERED so RunCleanupResponseProcessor transitions to FINISHED
+    // and guarantees turnComplete=true. Without this, FinalAnswerResponseProcessor fires
+    // premature_termination on a text-only response in REASONING phase.
+    RunStateUtils.getState(context).setPhase(RunState.Phase.FINAL_ANSWER_DELIVERED);
 
     // Final response that MUST have turnComplete (enforced by RunCleanup)
     final LlmResponse finalResponse = LlmResponse.builder()
