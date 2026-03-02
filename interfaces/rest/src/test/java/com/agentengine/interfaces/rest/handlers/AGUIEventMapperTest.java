@@ -448,4 +448,45 @@ class AGUIEventMapperTest {
         EventType.RUN_FINISHED
     );
   }
+
+  @Test
+  void handlesTurnCompleteWithPendingChunksAndThoughts() {
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+
+    final Event chunk1 = Event.builder()
+        .id("e1").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("Thinking ").build())).build())
+        .partial(true).build();
+
+    final Event chunk2 = Event.builder()
+        .id("e2").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("process").build())).build())
+        .partial(true).build();
+
+    // Final event in turn: engine might have sanitized it into a thought
+    final Event finalEvent = Event.builder()
+        .id("e3").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("Thinking process").thought(true).build())).build())
+        .partial(false)
+        .turnComplete(true)
+        .build();
+
+    final List<BaseEvent> events = Flowable.just(chunk1, chunk2, finalEvent)
+        .concatMap(mapper::map)
+        .concatWith(Flowable.defer(mapper::onComplete))
+        .toList().blockingGet();
+
+    assertThat(events).extracting(BaseEvent::getType).contains(
+        EventType.TEXT_MESSAGE_CONTENT,
+        EventType.TEXT_MESSAGE_END,
+        EventType.STEP_FINISHED,
+        EventType.RUN_FINISHED
+    );
+
+    final RunFinishedEvent finished = events.stream()
+        .filter(e -> e instanceof RunFinishedEvent)
+        .map(RunFinishedEvent.class::cast)
+        .findFirst().orElseThrow();
+    assertThat(finished.getResult()).isEqualTo("Thinking process");
+  }
 }

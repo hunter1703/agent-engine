@@ -26,8 +26,8 @@ public final class PartOrderingResponseProcessor implements ResponseProcessor {
   public static final PartOrderingResponseProcessor INSTANCE = new PartOrderingResponseProcessor();
 
   private static final Comparator<Part> PART_COMPARATOR = (p1, p2) -> {
-    int o1 = getOrder(p1);
-    int o2 = getOrder(p2);
+    final int o1 = getOrder(p1);
+    final int o2 = getOrder(p2);
     return Integer.compare(o1, o2);
   };
 

@@ -138,7 +138,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (correctionMetadata == null) {
       return Flowable.empty();
     }
-    CorrectionEvent correctionEvent = new CorrectionEvent(correctionMetadata);
+    final CorrectionEvent correctionEvent = new CorrectionEvent(correctionMetadata);
     decorateEvent(correctionEvent);
     LOG.debug("Generated correction event - event={}", JsonUtils.toJson(correctionEvent));
     return Flowable.just(correctionEvent);
@@ -210,6 +210,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
       return Flowable.empty();
     }
+    resetTextMessageState();
     state.currentTextMessageId = "msg-" + UUID.randomUUID();
     final TextMessageStartEvent start = new TextMessageStartEvent();
     start.setMessageId(state.currentTextMessageId);
@@ -330,7 +331,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   private void resetTextMessageState() {
     state.currentTextMessageId = null;
-    state.textBuffer = null;
+    state.textBuffer = new StringBuilder();
     state.textMessageChunked = false;
     state.textMessageContentEmitted = false;
   }
