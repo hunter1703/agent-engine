@@ -489,4 +489,43 @@ class AGUIEventMapperTest {
         .findFirst().orElseThrow();
     assertThat(finished.getResult()).isEqualTo("Thinking process");
   }
+
+  @Test
+  void ensuresMetadataDecoration() {
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    final Event event = Event.builder()
+        .id("e1").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(Part.builder().text("hi").build())).build())
+        .build();
+
+    final List<BaseEvent> events = mapper.map(event).toList().blockingGet();
+    
+    for (BaseEvent aguiEvent : events) {
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> raw = (Map<String, Object>) aguiEvent.getRawEvent();
+        assertThat(raw.get("agentId")).isEqualTo("agent-1");
+        assertThat(raw.get("sessionId")).isEqualTo("thread-1");
+        assertThat(aguiEvent.getTimestamp()).isGreaterThan(0);
+        assertThat(aguiEvent.getRawEvent()).isNotNull();
+    }
+  }
+
+  @Test
+  void ignoresBlankThoughts() {
+    final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
+    final Event blankThought = Event.builder()
+        .id("e1").invocationId("r1").author("model")
+        .content(Content.builder().parts(List.of(
+            Part.builder().text("").thought(true).build(),
+            Part.builder().text("  ").thought(true).build(),
+            Part.builder().text(null).thought(true).build()
+        )).build())
+        .build();
+
+    final List<BaseEvent> events = mapper.map(blankThought).toList().blockingGet();
+    
+    // Should NOT contain THINKING_START or THINKING_TEXT_MESSAGE_START
+    assertThat(events).extracting(BaseEvent::getType)
+        .doesNotContain(EventType.THINKING_START, EventType.THINKING_TEXT_MESSAGE_START);
+  }
 }
