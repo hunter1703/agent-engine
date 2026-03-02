@@ -46,11 +46,12 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   public Flowable<BaseEvent> onComplete() {
     return Flowable.defer(
         () -> {
+          final Flowable<BaseEvent> flowable = finishStepIfNeeded(true);
           final RunFinishedEvent event = buildRunFinished(state.runId);
           decorateEvent(event);
           LOG.debug(
               "Generated output event in onComplete - event={}", JsonUtils.toJson(event));
-          return Flowable.just(event);
+          return flowable.concatWith(Flowable.just(event));
         });
   }
 
@@ -83,6 +84,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
         if (part.thought().orElse(false)) {
           final String thoughtText = part.text().orElse("");
           if (StringUtils.isNotEmpty(thoughtText)) {
+            flowable = state.currentTextMessageId != null ? finishStepIfNeeded(true) : flowable;
             flowable =
                 flowable
                     .concatWith(startThinkingIfNeeded())
@@ -169,15 +171,15 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapThinkingContent(final String text, final boolean partial) {
-    if (StringUtils.isBlank(text)) {
+    if (StringUtils.isEmpty(text)) {
       return Flowable.empty();
     }
-    
-    final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
-    content.setRawEvent(Map.of("delta", text, "partial", partial));
-    decorateEvent(content);
-    LOG.debug("Generated output event - event={}", JsonUtils.toJson(content));
-    return Flowable.just(content);
+
+    if (partial) {
+      state.thoughtsBuffer.append(text);
+    }
+    return emitThoughtContentIfNeeded(text, partial);
+
   }
 
   private Flowable<BaseEvent> endThinkingMessageIfNeeded(final boolean partial) {
@@ -189,6 +191,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     decorateEvent(event);
     state.thinkingMessageOpen = false;
     LOG.debug("Generated output event - event={}", JsonUtils.toJson(event));
+    state.thoughtsBuffer = new StringBuilder();
     return Flowable.just(event);
   }
 
@@ -210,7 +213,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
       return Flowable.empty();
     }
-    resetTextMessageState();
     state.currentTextMessageId = "msg-" + UUID.randomUUID();
     final TextMessageStartEvent start = new TextMessageStartEvent();
     start.setMessageId(state.currentTextMessageId);
@@ -225,8 +227,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
     LOG.debug("Processing message mapping - text='{}', partial={}", text, partial);
     if (partial) {
-      appendTextChunk(text);
-      state.textMessageChunked = true;
+      state.textBuffer.append(text);
       final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
       chunk.setMessageId(state.currentTextMessageId);
       chunk.setDelta(text);
@@ -234,7 +235,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Generated output event - event={}", JsonUtils.toJson(chunk));
       return Flowable.just(chunk);
     } else {
-      updateTextBuffer(text);
+      state.textBuffer = new StringBuilder(text);
       return emitTextMessageContentIfNeeded();
     }
   }
@@ -251,25 +252,42 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (state.currentTextMessageId == null) {
       return Flowable.empty();
     }
+    return emitTextMessageContentIfNeeded().concatWith(emitTextMessageEnd());
+  }
+
+  private Flowable<BaseEvent> finalizeThinkingIfNeeded() {
+    if (!state.isThinking) {
+      return Flowable.empty();
+    }
     Flowable<BaseEvent> flowable = Flowable.empty();
-    flowable = flowable.concatWith(emitTextMessageContentIfNeeded());
-    return flowable.concatWith(emitTextMessageEnd());
+    if (state.thinkingMessageOpen) {
+      flowable = emitThoughtContentIfNeeded(state.thoughtsBuffer.toString(), false).concatWith(endThinkingMessageIfNeeded(false));
+    }
+    return flowable.concatWith(endThinkingIfNeeded());
   }
 
   private Flowable<BaseEvent> emitTextMessageContentIfNeeded() {
     if (state.currentTextMessageId == null || state.textMessageContentEmitted) {
       return Flowable.empty();
     }
-    final String bufferedText = getBufferedText();
-    if (StringUtils.isBlank(bufferedText)) {
-      return Flowable.empty();
-    }
+    final String bufferedText = state.textBuffer.toString();
     final TextMessageContentEvent content = new TextMessageContentEvent();
     content.setMessageId(state.currentTextMessageId);
     content.setDelta(bufferedText);
     decorateEvent(content);
     state.finalAnswer = bufferedText;
     state.textMessageContentEmitted = true;
+    LOG.debug("Generated output event - event={}", JsonUtils.toJson(content));
+    return Flowable.just(content);
+  }
+
+  private Flowable<BaseEvent> emitThoughtContentIfNeeded(final String text, final boolean partial) {
+    if (!state.isThinking || !state.thinkingMessageOpen) {
+      return Flowable.empty();
+    }
+    final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
+    content.setRawEvent(Map.of("delta", text, "partial", partial));
+    decorateEvent(content);
     LOG.debug("Generated output event - event={}", JsonUtils.toJson(content));
     return Flowable.just(content);
   }
@@ -297,42 +315,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return flowable.concatWith(endThinkingIfNeeded());
   }
 
-
-  private void appendTextChunk(final String text) {
-    ensureTextBuffer();
-    state.textBuffer.append(text);
-  }
-
-  private void updateTextBuffer(final String text) {
-    ensureTextBuffer();
-    if (!state.textMessageChunked) {
-      state.textBuffer = new StringBuilder(text);
-      return;
-    }
-    final String buffered = state.textBuffer.toString();
-    if (StringUtils.isBlank(buffered)) {
-      state.textBuffer.append(text);
-      return;
-    }
-    if (text.length() >= buffered.length()) {
-      state.textBuffer = new StringBuilder(text);
-    }
-  }
-
-  private String getBufferedText() {
-    return state.textBuffer == null ? "" : state.textBuffer.toString();
-  }
-
-  private void ensureTextBuffer() {
-    if (state.textBuffer == null) {
-      state.textBuffer = new StringBuilder();
-    }
-  }
-
   private void resetTextMessageState() {
     state.currentTextMessageId = null;
     state.textBuffer = new StringBuilder();
-    state.textMessageChunked = false;
     state.textMessageContentEmitted = false;
   }
 
@@ -344,10 +329,17 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (!turnComplete || !hasStepStarted()) {
       return Flowable.empty();
     }
-    return Flowable.concatArray(
-        closeThinkingIfNeeded(),
-        finalizeTextMessageIfNeeded(),
-        Flowable.defer(
+    Flowable<BaseEvent> flowable = Flowable.empty();
+    if (state.isThinking) {
+        flowable = flowable.concatWith(finalizeThinkingIfNeeded());
+    } else if (state.currentTextMessageId != null) {
+      flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
+    }
+    return flowable.concatWith(finishStep());
+  }
+
+  private Flowable<StepFinishedEvent> finishStep() {
+    return Flowable.defer(
             () -> {
               final String stepName = state.currentStepName;
               state.currentStepName = null;
@@ -356,7 +348,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
               decorateEvent(stepEvent);
               LOG.debug("Generated output event - event={}", JsonUtils.toJson(stepEvent));
               return Flowable.just(stepEvent);
-            }));
+            });
   }
 
   private Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
@@ -427,6 +419,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     event.setRawEvent(null);
     rawEvent.putAll(JsonUtils.toMap(event));
     rawEvent.put("agentId", state.agentId);
+    rawEvent.put("threadId", state.sessionId);
     event.setRawEvent(rawEvent);
     LOG.debug(
         "Decorated event - eventType='{}', eventId='{}', agentId='{}'",
@@ -479,9 +472,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private boolean isThinking;
     private boolean thinkingMessageOpen;
     private String finalAnswer;
-    private StringBuilder textBuffer;
-    private boolean textMessageChunked;
+    private StringBuilder textBuffer = new StringBuilder();
     private boolean textMessageContentEmitted;
+    private StringBuilder thoughtsBuffer = new StringBuilder();
 
     private MapperState(final String sessionId, final String agentId) {
       this.sessionId = sessionId;

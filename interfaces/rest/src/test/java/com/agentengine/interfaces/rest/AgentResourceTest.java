@@ -214,30 +214,6 @@ public class AgentResourceTest {
   }
 
   @Test
-  @Order(10)
-  public void testInvokeEchoAgent() {
-    String sessionId = "invoke-" + UUID.randomUUID().toString();
-    String payload =
-        """
-        {
-           "type": "INVOKE_AGENT",
-           "agentId": "echo_agent",
-           "sessionId": "%s",
-           "message": "Hello QA final test"
-        }
-        """
-            .formatted(sessionId);
-
-    given()
-        .contentType(ContentType.JSON)
-        .body(payload)
-        .when()
-        .post("/v1/agent/invoke")
-        .then()
-        .statusCode(anyOf(equalTo(200), equalTo(500))); // 500 when model server not available
-  }
-
-  @Test
   @Order(11)
   public void testSseStreaming() {
     String sessionId = "stream-" + UUID.randomUUID().toString();

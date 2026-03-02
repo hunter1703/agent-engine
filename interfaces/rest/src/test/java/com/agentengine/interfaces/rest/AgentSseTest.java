@@ -41,7 +41,7 @@ class AgentSseTest {
             .author("model")
             .content(
                 Content.builder().role("model").parts(Part.builder().text("hello").build()).build())
-            .partial(false)
+            .partial(false).turnComplete(true)
             .build();
 
     when(executionService.run(any(AgentRequest.class)))
@@ -66,27 +66,27 @@ class AgentSseTest {
                   final var latch = new CountDownLatch(1);
 
                   publisher.subscribe(
-                      new Subscriber<BaseEvent>() {
-                        @Override
-                        public void onSubscribe(Subscription s) {
-                          s.request(Long.MAX_VALUE); // Request all events
-                        }
+                          new Subscriber<>() {
+                              @Override
+                              public void onSubscribe(Subscription s) {
+                                  s.request(Long.MAX_VALUE); // Request all events
+                              }
 
-                        @Override
-                        public void onNext(BaseEvent event) {
-                          collectedEvents.add(event);
-                        }
+                              @Override
+                              public void onNext(BaseEvent event) {
+                                  collectedEvents.add(event);
+                              }
 
-                        @Override
-                        public void onError(Throwable t) {
-                          latch.countDown();
-                        }
+                              @Override
+                              public void onError(Throwable t) {
+                                  latch.countDown();
+                              }
 
-                        @Override
-                        public void onComplete() {
-                          latch.countDown();
-                        }
-                      });
+                              @Override
+                              public void onComplete() {
+                                  latch.countDown();
+                              }
+                          });
 
                   try {
                     latch.await(5, TimeUnit.SECONDS); // Wait up to 5 seconds for completion
@@ -144,9 +144,6 @@ class AgentSseTest {
       final AgentExecutionService executionService) {
     final StreamAguiEventsRequestHandler streamingHandler =
         new StreamAguiEventsRequestHandler(executionService);
-    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
-    final StreamResponsesRequestHandler responsesHandler =
-        new StreamResponsesRequestHandler(executionService, streamingHandler);
-    return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
+    return new HandlerInstance(List.of(streamingHandler));
   }
 }

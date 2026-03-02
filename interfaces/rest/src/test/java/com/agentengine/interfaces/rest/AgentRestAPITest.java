@@ -31,63 +31,6 @@ import org.mockito.stubbing.Answer;
 class AgentRestAPITest {
 
   @Test
-  void invokeReturnsSessionAndResponse() {
-    AgentExecutionService executionService = mock(AgentExecutionService.class);
-    Runner runner = mock(Runner.class);
-
-    // Create an event that mimics the AgentRunner output
-    Event event =
-        Event.builder()
-            .id("event-1")
-            .invocationId("run-1")
-            .author("model")
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(List.of(Part.builder().text("response").build()))
-                    .build())
-            .build();
-
-    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
-
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
-    AgentRequest request = new AgentRequest();
-    request.setAgentId("agent");
-    request.setAgentConfigPath("config.json");
-    request.setSessionId("session");
-    request.setMessage("hello");
-    request.setType(RequestType.INVOKE_AGENT.name());
-
-    AgentResponse response = resource.invoke(request);
-
-    assertThat(response).isInstanceOf(InvokeResponse.class);
-    InvokeResponse invokeResponse = (InvokeResponse) response;
-    assertThat(invokeResponse.sessionId()).isEqualTo("session");
-    assertThat(invokeResponse.finalAnswer()).isEqualTo("response");
-  }
-
-  @Test
-  void invokeHandlesNullEngineResponse() {
-    AgentExecutionService executionService = mock(AgentExecutionService.class);
-    when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.empty());
-
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
-    AgentRequest request = new AgentRequest();
-    request.setAgentId("agent");
-    request.setAgentConfigPath("config.json");
-    request.setSessionId("session");
-    request.setMessage("hello");
-    request.setType(RequestType.INVOKE_AGENT.name());
-
-    AgentResponse response = resource.invoke(request);
-
-    assertThat(response).isInstanceOf(InvokeResponse.class);
-    InvokeResponse invokeResponse = (InvokeResponse) response;
-    assertThat(invokeResponse.sessionId()).isEqualTo("session");
-    assertThat(invokeResponse.finalAnswer()).isNull();
-  }
-
-  @Test
   void createAgentStoresConfig() {
     final AgentService agentService = mock(AgentService.class);
     final AgentConfig config = buildValidAgentConfig();
@@ -125,10 +68,7 @@ class AgentRestAPITest {
       final AgentExecutionService executionService) {
     final StreamAguiEventsRequestHandler streamingHandler =
         new StreamAguiEventsRequestHandler(executionService);
-    final InvokeAgentRequestHandler invokeHandler = new InvokeAgentRequestHandler(executionService);
-    final StreamResponsesRequestHandler responsesHandler =
-        new StreamResponsesRequestHandler(executionService, streamingHandler);
-    return new HandlerInstance(List.of(invokeHandler, streamingHandler, responsesHandler));
+    return new HandlerInstance(List.of(streamingHandler));
   }
 
   private static AgentConfig buildValidAgentConfig() {

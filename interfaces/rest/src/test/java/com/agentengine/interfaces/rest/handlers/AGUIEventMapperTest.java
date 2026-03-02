@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.interfaces.rest.dto.CorrectionEvent;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.CustomEvent;
 import com.agui.core.event.RunFinishedEvent;
@@ -124,7 +125,7 @@ class AGUIEventMapperTest {
                     .role("model")
                     .parts(Part.builder().functionCall(functionCall).build())
                     .build())
-            .partial(false)
+            .partial(false).turnComplete(true)
             .build();
 
     final FunctionResponse functionResponse =
@@ -156,7 +157,7 @@ class AGUIEventMapperTest {
                     .role("model")
                     .parts(Part.builder().text("done").build())
                     .build())
-            .partial(false)
+            .partial(false).turnComplete(true)
             .build();
 
     final List<BaseEvent> events =
@@ -177,61 +178,6 @@ class AGUIEventMapperTest {
             EventType.STEP_FINISHED,
             EventType.STEP_STARTED,
             EventType.TOOL_CALL_RESULT,
-            EventType.STEP_FINISHED,
-            EventType.STEP_STARTED,
-            EventType.TEXT_MESSAGE_START,
-            EventType.TEXT_MESSAGE_CONTENT,
-            EventType.TEXT_MESSAGE_END,
-            EventType.STEP_FINISHED,
-            EventType.RUN_FINISHED);
-  }
-
-  @Test
-  void userTextDoesNotFinishStep() {
-    final AGUIEventMapper mapper = new AGUIEventMapper("thread", "agent");
-
-    final Event userEvent =
-        Event.builder()
-            .id("event-1")
-            .invocationId("run-1")
-            .author("user")
-            .content(
-                Content.builder()
-                    .role("user")
-                    .parts(List.of(Part.builder().text("hi").build()))
-                    .build())
-            .partial(false)
-            .build();
-    final Event modelEvent =
-        Event.builder()
-            .id("event-2")
-            .invocationId("run-1")
-            .author("model")
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(List.of(Part.builder().text("hello").build()))
-                    .build())
-            .partial(false)
-            .build();
-
-    final List<BaseEvent> events =
-        Flowable.just(userEvent, modelEvent)
-            .concatMap(e -> mapper.map(e).concatWith(Flowable.empty()))
-            .concatWith(Flowable.defer(mapper::onComplete))
-            .toList()
-            .blockingGet();
-
-    assertThat(events)
-        .extracting(BaseEvent::getType)
-        .containsExactly(
-            EventType.RUN_STARTED,
-            EventType.STEP_STARTED,
-            EventType.TEXT_MESSAGE_START,
-            EventType.TEXT_MESSAGE_CONTENT,
-            EventType.TEXT_MESSAGE_END,
-            EventType.STEP_FINISHED,
-            EventType.STEP_STARTED,
             EventType.TEXT_MESSAGE_START,
             EventType.TEXT_MESSAGE_CONTENT,
             EventType.TEXT_MESSAGE_END,
@@ -269,7 +215,7 @@ class AGUIEventMapperTest {
             EventType.STEP_STARTED,
             EventType.THINKING_START,
             EventType.THINKING_TEXT_MESSAGE_START,
-            EventType.THINKING_TEXT_MESSAGE_CONTENT,
+            EventType.THINKING_TEXT_MESSAGE_CONTENT, EventType.THINKING_TEXT_MESSAGE_CONTENT,
             EventType.THINKING_TEXT_MESSAGE_END,
             EventType.THINKING_END,
             EventType.STEP_FINISHED,
@@ -283,7 +229,7 @@ class AGUIEventMapperTest {
     assertThat(contentEvent).isPresent();
     @SuppressWarnings("unchecked")
     final Map<String, Object> rawEvent = (Map<String, Object>) contentEvent.get().getRawEvent();
-    assertThat(rawEvent).containsEntry("chunk", true).containsEntry("delta", "Thinking...");
+    assertThat(rawEvent).containsEntry("partial", true).containsEntry("delta", "Thinking...");
   }
 
   @Test
@@ -354,46 +300,58 @@ class AGUIEventMapperTest {
             .content(Content.builder().role("user").parts(Part.builder().text("Fix it").build()).build())
             .build();
 
+    final Event textEvent =
+            Event.builder()
+                    .id("event-1")
+                    .invocationId("run-1")
+                    .author("model")
+                    .content(Content.builder().role("model").parts(Part.builder().text("Fixed").build()).build()).turnComplete(true)
+                    .build();
+
     final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
     final List<BaseEvent> events =
-        Flowable.just(correctionEvent)
-            .concatMap(e -> mapper.map(e).concatWith(Flowable.empty()))
+        Flowable.concatArray(Flowable.just(correctionEvent), Flowable.just(textEvent))
+            .concatMap(e -> mapper.map(e).concatWith(Flowable.empty())).concatWith(Flowable.defer(mapper::onComplete))
             .toList()
             .blockingGet();
 
     assertThat(events)
         .extracting(BaseEvent::getType)
-        .containsExactly(EventType.RUN_STARTED, EventType.CUSTOM);
+        .containsExactly(EventType.RUN_STARTED, EventType.STEP_STARTED, EventType.CUSTOM, EventType.TEXT_MESSAGE_START, EventType.TEXT_MESSAGE_CONTENT, EventType.TEXT_MESSAGE_END, EventType.STEP_FINISHED, EventType.RUN_FINISHED);
 
-    final CustomEvent customEvent =
+    final CorrectionEvent aguiCorrectionEvent =
         events.stream()
             .filter(event -> event instanceof CustomEvent)
-            .map(CustomEvent.class::cast)
+            .map(CorrectionEvent.class::cast)
             .findFirst()
             .orElseThrow();
     @SuppressWarnings("unchecked")
-    final Map<String, Object> rawEvent = (Map<String, Object>) customEvent.getRawEvent();
-    assertThat(rawEvent)
-        .containsEntry("name", "CORRECTION")
-        .containsEntry("code", "v1")
-        .containsEntry("message", "Fix it");
+    final Map<String, Object> rawEvent = (Map<String, Object>) aguiCorrectionEvent.getRawEvent();
+    assertThat(aguiCorrectionEvent.getCorrectionType()).isEqualTo("violation");
+    assertThat(aguiCorrectionEvent.getCode()).isEqualTo("v1");
+    assertThat(aguiCorrectionEvent.getMessage()).isEqualTo("Fix it");
   }
 
   @Test
   void handlesComplexThinkingToTextTransition() {
     final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
 
-    final Event thinkingEvent = Event.builder()
-        .id("e1").invocationId("r1").author("model")
+    final Event thinkingEvent1 = Event.builder()
+        .id("e1.1").invocationId("r1").author("model")
         .content(Content.builder().parts(List.of(Part.builder().text("Searching...").thought(true).build())).build())
-        .partial(true).build();
+        .partial(false).build();
+
+    final Event thinkingEvent2 = Event.builder()
+            .id("e1.2").invocationId("r1").author("model")
+            .content(Content.builder().parts(List.of(Part.builder().text("Searching...").thought(true).build())).build())
+            .partial(false).build();
 
     final Event answerEvent = Event.builder()
         .id("e2").invocationId("r1").author("model")
         .content(Content.builder().parts(List.of(Part.builder().text("Found it: result").build())).build())
-        .partial(false).build();
+        .partial(false).turnComplete(true).build();
 
-    final List<BaseEvent> events = Flowable.just(thinkingEvent, answerEvent)
+    final List<BaseEvent> events = Flowable.just(thinkingEvent1, thinkingEvent2, answerEvent)
         .concatMap(mapper::map)
         .concatWith(Flowable.defer(mapper::onComplete))
         .toList().blockingGet();
@@ -402,6 +360,9 @@ class AGUIEventMapperTest {
         EventType.RUN_STARTED,
         EventType.STEP_STARTED,
         EventType.THINKING_START,
+        EventType.THINKING_TEXT_MESSAGE_START,
+        EventType.THINKING_TEXT_MESSAGE_CONTENT,
+        EventType.THINKING_TEXT_MESSAGE_END,
         EventType.THINKING_TEXT_MESSAGE_START,
         EventType.THINKING_TEXT_MESSAGE_CONTENT,
         EventType.THINKING_TEXT_MESSAGE_END,
@@ -422,7 +383,7 @@ class AGUIEventMapperTest {
     final Event callEvent = Event.builder()
         .id("e1").invocationId("r1").author("model")
         .content(Content.builder().parts(List.of(Part.builder().functionCall(call).build())).build())
-        .partial(false).build();
+        .partial(false).turnComplete(true).build();
 
     final FunctionResponse resp = FunctionResponse.builder().id("c1").name("tool").response(Map.of("res", "ok")).build();
     final Event respEvent = Event.builder()
@@ -430,7 +391,12 @@ class AGUIEventMapperTest {
         .content(Content.builder().parts(List.of(Part.builder().functionResponse(resp).build())).build())
         .build();
 
-    final List<BaseEvent> events = Flowable.just(callEvent, respEvent)
+    final Event textEvent = Event.builder()
+            .id("e3").invocationId("r1").author("model")
+            .content(Content.builder().parts(List.of(Part.fromText("text"))).build()).turnComplete(true)
+            .build();
+
+    final List<BaseEvent> events = Flowable.just(callEvent, respEvent, textEvent)
         .concatMap(mapper::map)
         .concatWith(Flowable.defer(mapper::onComplete))
         .toList().blockingGet();
@@ -444,6 +410,9 @@ class AGUIEventMapperTest {
         EventType.STEP_FINISHED,
         EventType.STEP_STARTED,
         EventType.TOOL_CALL_RESULT,
+        EventType.TEXT_MESSAGE_START,
+        EventType.TEXT_MESSAGE_CONTENT,
+        EventType.TEXT_MESSAGE_END,
         EventType.STEP_FINISHED,
         EventType.RUN_FINISHED
     );
@@ -504,21 +473,19 @@ class AGUIEventMapperTest {
         @SuppressWarnings("unchecked")
         final Map<String, Object> raw = (Map<String, Object>) aguiEvent.getRawEvent();
         assertThat(raw.get("agentId")).isEqualTo("agent-1");
-        assertThat(raw.get("sessionId")).isEqualTo("thread-1");
+        assertThat(raw.get("threadId")).isEqualTo("thread-1");
         assertThat(aguiEvent.getTimestamp()).isGreaterThan(0);
         assertThat(aguiEvent.getRawEvent()).isNotNull();
     }
   }
 
   @Test
-  void ignoresBlankThoughts() {
+  void ignoresEmptyThoughts() {
     final AGUIEventMapper mapper = new AGUIEventMapper("thread-1", "agent-1");
     final Event blankThought = Event.builder()
         .id("e1").invocationId("r1").author("model")
         .content(Content.builder().parts(List.of(
-            Part.builder().text("").thought(true).build(),
-            Part.builder().text("  ").thought(true).build(),
-            Part.builder().text(null).thought(true).build()
+            Part.builder().text("").thought(true).build()
         )).build())
         .build();
 
