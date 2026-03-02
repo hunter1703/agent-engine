@@ -12,6 +12,10 @@ public final class StringUtils {
     return str == null || str.isBlank();
   }
 
+  public static boolean isNotEmpty(final String str) {
+    return !isBlank(str);
+  }
+
   public static boolean isNotBlank(final String str) {
     return !isBlank(str);
   }
