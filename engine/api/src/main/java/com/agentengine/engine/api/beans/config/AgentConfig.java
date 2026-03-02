@@ -1,18 +1,9 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.NamedEntity;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotNull;
 import java.util.Locale;
-import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "type",
-    visible = true,
-    defaultImpl = AgentConfig.class)
-@BsonDiscriminator(key = "type", value = "default")
 public class AgentConfig extends NamedEntity implements Config {
   private String type;
   private String description;

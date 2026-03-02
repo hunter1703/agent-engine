@@ -19,7 +19,7 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
   public final DelegatingLLMModel build(final ModelConfig modelConfig) {
     final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    final boolean parseToolCallsFromText = !toolCallingSupported;
+    final boolean parseToolCallsFromText = toolCallingEnabled && !toolCallingSupported;
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final Parser parser =
         Parser.builder()

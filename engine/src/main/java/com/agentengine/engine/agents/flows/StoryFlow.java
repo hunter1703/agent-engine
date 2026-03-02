@@ -46,7 +46,11 @@ public final class StoryFlow extends DefaultFlow {
                     - Their core personality traits
                     - Any defining characteristics relevant to the scene
 
-                    Output a concise protagonist profile. Do not write the scene yet.""";
+                    Output a concise protagonist profile. Use maximum of 10 words
+                    
+                    Hint : You don't necessarily need to form a coherent sentence, you can generate "tags" too to concisely describe the character. Though concise statements are preferred.
+                    
+                    Do not write the scene yet.""";
 
     /**
      * Who else is in the scene? Decided independently from the protagonist profile.
@@ -60,8 +64,8 @@ public final class StoryFlow extends DefaultFlow {
 
                     Output a single line in this exact format:
                     NAMES: <comma-separated character names>
-
-                    Then briefly justify each character's presence. Do not write the scene yet.""";
+                    
+                    Do not write the scene yet.""";
 
     /**
      * Template for profiling each secondary character. Protagonist context is visible here.
@@ -77,7 +81,11 @@ public final class StoryFlow extends DefaultFlow {
                     - Their relationship to the protagonist
                     - Any relevant backstory or motivation
 
-                    Output a concise character profile. Do not write the scene yet.""";
+                    Output a concise character profile. Use maximum of 10 words. 
+                    
+                    Hint : You don't necessarily need to form a coherent sentence, you can generate "tags" too to concisely describe the character. Though concise statements are preferred.
+                    
+                    Do not write the scene yet.""";
 
     /**
      * What underpins the scene emotionally or thematically?
@@ -90,7 +98,9 @@ public final class StoryFlow extends DefaultFlow {
                     - What emotion or idea does this scene revolve around?
                     - What tone does it carry (e.g. tension, warmth, dread, longing)?
 
-                    Output a concise theme statement. Do not write the scene yet.""";
+                    Output a concise theme statement. Use maximum of 20 words.
+                    
+                    Do not write the scene yet.""";
 
     /**
      * What actually happens — the concrete situation or conflict?
@@ -104,21 +114,26 @@ public final class StoryFlow extends DefaultFlow {
                     - What triggers or drives the action?
                     - What is at stake?
 
-                    Be concrete and specific. Do not write the scene yet.""";
+                    Be concrete and specific. Use maximum of 20 words.
+                    
+                    Do not write the scene yet.""";
 
     /**
-     * Final synthesis — write the scene narrative in mixed perspective:
-     * protagonist is narrated in first person, all other characters in third person.
+     * Final synthesis — write the scene narrative entirely from the protagonist's perspective:
+     * their thoughts, feelings, and perceptions drive the narration; all other characters
+     * are observed through their eyes and referred to in third person.
      */
     private static final String PHASE_6_SCENE =
             "You have everything you need: characters, profiles, theme, and situation.\n\n" +
-            "Now write the scene. Follow these perspective rules strictly:\n" +
-            "- The protagonist is the narrator. Refer to them only in first person " +
+            "Now write the scene entirely from the protagonist's perspective. " +
+            "The protagonist is the narrator — the scene unfolds through their consciousness: " +
+            "what they see, hear, feel, and think. Follow these rules strictly:\n" +
+            "- Refer to the protagonist only in first person " +
             "(\"I\", \"me\", \"my\", \"myself\"). Never use their name or \"he/she/they\" for them.\n" +
-            "- Every other character is referred to in third person " +
-            "(by name or \"he\", \"she\", \"they\") at all times.\n\n" +
+            "- Every other character is observed through the protagonist's eyes and referred to " +
+            "in third person (by name or \"he\", \"she\", \"they\") at all times.\n\n" +
             "Weave all elements into a vivid, cohesive narrative. " +
-            "Show, don't tell. Let dialogue and action carry the theme and conflict.";
+            "Show, don't tell. Let dialogue and action carry the theme and conflict. Use no more than 100 words";
 
     // ---- Name extraction pattern -----------------------------------------------
 
@@ -136,7 +151,7 @@ public final class StoryFlow extends DefaultFlow {
     public Flowable<Event> run(final InvocationContext context) {
         LOG.info("Starting StoryFlow with 6 phases");
         return logPhase(runStep(context, PHASE_1_PROTAGONIST), "Phase 1: Protagonist")
-                .concatWith(logPhase(runStepWithFreshHistory(context, PHASE_2_OTHER_CHARACTERS), "Phase 2: Other Characters"))
+                .concatWith(logPhase(runStep(context, PHASE_2_OTHER_CHARACTERS), "Phase 2: Other Characters"))
                 .concatWith(logPhase(runProfilingSteps(context), "Phase 3: Character Profiles"))
                 .concatWith(logPhase(runStep(context, PHASE_4_THEME), "Phase 4: Theme"))
                 .concatWith(logPhase(runStep(context, PHASE_5_SITUATION), "Phase 5: Situation"))
@@ -163,26 +178,14 @@ public final class StoryFlow extends DefaultFlow {
 
     /**
      * Runs a single-turn step with the normal (cumulative) request processors,
-     * appending the given phase prompt to the system instruction.
+     * converting all past model outputs into user messages to avoid consecutive
+     * assistant message errors and treat the flow as a continuous pipeline.
      */
     private Flowable<Event> runStep(final InvocationContext context, final String phasePrompt) {
         final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
+        processors.add(convertModelHistoryToUser());
         processors.add(phaseInstruction(phasePrompt));
         LOG.debug("Executing phase with prompt: {}", phasePrompt);
-        return new SingleTurnFlow(processors, responseProcessors).run(context);
-    }
-
-    /**
-     * Runs a single-turn step where the request's conversation history is stripped down
-     * to only the original user message. This prevents prior model outputs from
-     * influencing the inference.
-     */
-    private Flowable<Event> runStepWithFreshHistory(
-            final InvocationContext context, final String phasePrompt) {
-        final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
-        processors.add(stripModelHistory());
-        processors.add(phaseInstruction(phasePrompt));
-        LOG.debug("Executing phase with fresh history (user input only) and prompt: {}", phasePrompt);
         return new SingleTurnFlow(processors, responseProcessors).run(context);
     }
 
@@ -195,25 +198,10 @@ public final class StoryFlow extends DefaultFlow {
             for (final String name : names) {
                 LOG.debug("Profiling character: {}", name);
                 profilingFlow = profilingFlow.concatWith(
-                        runStepWithProtagonistOnly(
-                                context, String.format(PHASE_3_CHARACTER_PROFILE_TEMPLATE, name)));
+                        runStep(context, String.format(PHASE_3_CHARACTER_PROFILE_TEMPLATE, name)));
             }
             return profilingFlow;
         });
-    }
-
-    /**
-     * Runs a single-turn step where only the user content and the protagonist profile
-     * (the first model turn) are visible. Profiles of previously processed secondary
-     * characters are stripped so each character is evaluated independently.
-     */
-    private Flowable<Event> runStepWithProtagonistOnly(
-            final InvocationContext context, final String phasePrompt) {
-        final List<RequestProcessor> processors = new ArrayList<>(requestProcessors);
-        processors.add(stripNonProtagonistModelHistory());
-        processors.add(phaseInstruction(phasePrompt));
-        LOG.debug("Executing character profiling phase with protagonist-only history and prompt: {}", phasePrompt);
-        return new SingleTurnFlow(processors, responseProcessors).run(context);
     }
 
     // ---- Request processor factories -------------------------------------------
@@ -230,41 +218,23 @@ public final class StoryFlow extends DefaultFlow {
     }
 
     /**
-     * Strips all model-authored turns from request contents, leaving only user messages.
-     * Used for Phase 2 so the protagonist profile is not visible when inferring who else
-     * is in the scene.
+     * Converts all model-authored turns from request contents into user messages.
+     * This allows the output from previous phases to be fed sequentially into the
+     * next phase as context (a pipeline), while avoiding API errors regarding
+     * consecutive assistant messages.
      */
-    private static RequestProcessor stripModelHistory() {
+    private static RequestProcessor convertModelHistoryToUser() {
         return (ctx, req) -> {
-            final List<Content> userOnly = req.contents().stream()
-                    .filter(c -> !"model".equals(c.role().orElse("")))
+            final List<Content> pipelineContext = req.contents().stream()
+                    .map(c -> {
+                        final String role = c.role().orElse("");
+                        if ("model".equals(role) || "assistant".equals(role)) {
+                            return c.toBuilder().role("user").build();
+                        }
+                        return c;
+                    })
                     .toList();
-            final LlmRequest updated = req.toBuilder().contents(userOnly).build();
-            return Single.just(RequestProcessor.RequestProcessingResult.create(
-                    updated, ImmutableList.of()));
-        };
-    }
-
-    /**
-     * Retains only user-role content and the first model turn (the protagonist profile).
-     * Any subsequent model turns — profiles of previously processed secondary characters —
-     * are dropped so each character profiling call is evaluated against the same baseline.
-     */
-    private static RequestProcessor stripNonProtagonistModelHistory() {
-        return (ctx, req) -> {
-            boolean protagonistSeen = false;
-            final List<Content> filtered = new ArrayList<>();
-            for (final Content c : req.contents()) {
-                final boolean isModel = "model".equals(c.role().orElse(""));
-                if (isModel && !protagonistSeen) {
-                    protagonistSeen = true;
-                    filtered.add(c);
-                } else if (!isModel) {
-                    filtered.add(c);
-                }
-                // subsequent model turns are intentionally omitted
-            }
-            final LlmRequest updated = req.toBuilder().contents(filtered).build();
+            final LlmRequest updated = req.toBuilder().contents(pipelineContext).build();
             return Single.just(RequestProcessor.RequestProcessingResult.create(
                     updated, ImmutableList.of()));
         };
