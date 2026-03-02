@@ -62,7 +62,7 @@ class SimpleToolDefinitionRegistryTest {
     AgentConfig config = new AgentConfig();
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
-    // SubmitFinalAnswerTool is NOT injected by the registry — AbstractAgentBuilder adds it.
+    // Core built-in tools are added by builders.
     assertThat(registry.loadTools(context, List.of())).isEmpty();
     assertThat(registry.loadTools(context, null)).isEmpty();
     // "fake" belongs to "other-agent", so it is skipped for "test-agent"
@@ -84,7 +84,7 @@ class SimpleToolDefinitionRegistryTest {
     config.setId("test-agent");
     AgentContext context = new AgentContext(config, new InMemorySessionService());
 
-    // Registry returns no tools — AbstractAgentBuilder is responsible for injecting SubmitFinalAnswerTool.
+    // Registry returns no tools.
     assertThat(registry.loadTools(context, List.of())).isEmpty();
   }
 

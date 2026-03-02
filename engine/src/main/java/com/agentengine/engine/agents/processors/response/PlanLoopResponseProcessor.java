@@ -42,8 +42,11 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
     }
     final Plan plan = runState.plan();
     final Content content = response.content().orElse(null);
-    final boolean callsFinalAnswerTool = content != null && content.parts().orElse(List.of()).stream().anyMatch(ToolUtils::callsFinalAnswerTool);
-    if (!callsFinalAnswerTool) {
+    final boolean hasTools = content != null && content.parts().orElse(List.of()).stream().anyMatch(p -> p.functionCall().isPresent());
+    final boolean hasText = content != null && content.parts().orElse(List.of()).stream().anyMatch(p -> p.text().isPresent() && !p.thought().orElse(false));
+    final boolean isFinishing = hasText && !hasTools;
+
+    if (!isFinishing) {
       if (plan == null) {
         return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
       }
@@ -75,7 +78,7 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
           .correctionMessage(correctionMessage)
           .build());
       final List<Part> stripped = content.parts().orElse(List.of()).stream()
-          .filter(part -> !ToolUtils.callsFinalAnswerTool(part))
+          .map(part -> part.text().isPresent() && !part.thought().orElse(false) ? part.toBuilder().thought(true).build() : part)
           .toList();
       final LlmResponse updated = response.toBuilder()
           .content(content.toBuilder().parts(stripped).build())

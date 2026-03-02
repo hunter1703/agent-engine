@@ -3,9 +3,7 @@ package com.agentengine.engine.utils;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.agents.processors.Parser;
-import com.agentengine.engine.tools.SubmitFinalAnswerTool;
-import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.engine.utils.Violation;
+
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
@@ -174,26 +172,6 @@ class ParserTest {
     assertThat(parts).anyMatch(p -> "Thinking about it".equals(p.text().orElse("")) && p.thought().orElse(true));
   }
 
-  @Test
-  void parsesFinalAnswerToolCallsWhenToolCallingDisabled() {
-    final Parser parser = Parser.builder()
-        .toolCallingEnabled(false)
-        .parseToolCallsFromText(false)
-        .build();
-    final String toolCall =
-        "{\"id\":\"call-1\",\"name\":\"" + SubmitFinalAnswerTool.TOOL_NAME + "\",\"args\":{}}";
-    final Content content = Content.fromParts(Part.fromText(toolCall));
-
-    final Content parsed = parser.parse(content);
-    final List<Part> parts = parsed.parts().orElse(List.of());
-
-    assertThat(parts)
-        .anyMatch(
-            part ->
-                part.functionCall().isPresent()
-                    && SubmitFinalAnswerTool.TOOL_NAME.equals(
-                        part.functionCall().get().name().orElse("")));
-  }
 
   @Test
   void splitsMixedPartsIntoSeparateTypes() {

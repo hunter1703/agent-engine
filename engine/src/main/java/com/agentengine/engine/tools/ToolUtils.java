@@ -55,17 +55,7 @@ public final class ToolUtils {
     return SchemaUtils.toJsonSchema(null);
   }
 
-  public static boolean callsFinalAnswerTool(final Part part) {
-    if (part == null) {
-      return false;
-    }
-    final Optional<FunctionCall> functionCall = part.functionCall();
-    if (functionCall.isPresent()) {
-      return SubmitFinalAnswerTool.TOOL_NAME.equals(functionCall.get().name().orElse(null));
-    }
-    final Optional<FunctionResponse> functionResponse = part.functionResponse();
-    return functionResponse.filter(response -> SubmitFinalAnswerTool.TOOL_NAME.equals(response.name().orElse(null))).isPresent();
-  }
+ 
 
   public static boolean hasToolParts(final LlmResponse response) {
     return response.content()
@@ -85,21 +75,7 @@ public final class ToolUtils {
         .toList();
   }
 
-  public static boolean callsNonFinalTool(final LlmResponse response) {
-    return response.content()
-            .flatMap(Content::parts)
-            .stream()
-            .flatMap(List::stream)
-            .noneMatch(ToolUtils::callsFinalAnswerTool);
-  }
-
-  public static boolean callsFinalAnswerTool(final LlmResponse response) {
-    return response.content()
-            .flatMap(Content::parts)
-            .stream()
-            .flatMap(List::stream)
-            .anyMatch(ToolUtils::callsFinalAnswerTool);
-  }
+ 
 
   public static String summarizeToolParts(final List<Part> parts) {
     if (CollectionUtils.isEmpty(parts)) {

@@ -5,13 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.agentengine.engine.agents.flows.DefaultFlow;
 import com.agentengine.engine.agents.processors.Parser;
 import com.google.adk.agents.InvocationContext;
-import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-import io.reactivex.rxjava3.core.Flowable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,10 +34,6 @@ class EngineProtocolTest {
         .session(session)
         .invocationId("inv-1")
         .build();
-    // Set FINAL_ANSWER_DELIVERED so RunCleanupResponseProcessor transitions to FINISHED
-    // and guarantees turnComplete=true. Without this, FinalAnswerResponseProcessor fires
-    // premature_termination on a text-only response in REASONING phase.
-    RunStateUtils.getState(context).setPhase(RunState.Phase.FINAL_ANSWER_DELIVERED);
 
     // Final response that MUST have turnComplete (enforced by RunCleanup)
     final LlmResponse finalResponse = LlmResponse.builder()

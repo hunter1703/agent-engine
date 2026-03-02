@@ -10,6 +10,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.EXISTING_PROPERTY,
     property = "type",
+    visible = true,
     defaultImpl = AgentConfig.class)
 @BsonDiscriminator(key = "type", value = "default")
 public class AgentConfig extends NamedEntity implements Config {

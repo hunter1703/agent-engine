@@ -5,7 +5,7 @@ import static com.agentengine.engine.api.utils.JsonUtils.parseJsonPayload;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.SubmitFinalAnswerTool;
+ 
 import com.agentengine.engine.tools.ToolUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
@@ -431,26 +431,21 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
   }
 
   private boolean shouldParseToolCallsFromText() {
-    // for non tool calling models, the final answer tool call still needs to happen from text
-    return parseToolCallsFromText || !toolCallingEnabled;
+    return parseToolCallsFromText;
   }
 
   private List<ToolCall> filterToolCalls(final List<ToolCall> toolCalls) {
     if (toolCallingEnabled) {
       return toolCalls;
     }
-    return CollectionUtils.nullSafeList(toolCalls).stream()
-        .filter(call -> SubmitFinalAnswerTool.TOOL_NAME.equals(call.name()))
-        .toList();
+    return List.of();
   }
 
   private List<Part> filterToolCallParts(final List<Part> parts) {
-    if (!toolCallingEnabled) {
-      return CollectionUtils.nullSafeList(parts).stream()
-          .filter(ToolUtils::callsFinalAnswerTool)
-          .toList();
+    if (toolCallingEnabled) {
+      return CollectionUtils.nullSafeList(parts);
     }
-    return CollectionUtils.nullSafeList(parts);
+    return List.of();
   }
 
   public static Builder builder() {

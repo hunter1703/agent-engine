@@ -25,14 +25,5 @@ Tool Calling:
 {% endif %}
 
 Final Answer:
-- To provide the final answer, YOU MUST FIRST call the `submit_final_answer` tool as a clean turn.
-- The `submit_final_answer` tool takes NO arguments.
-- Any text you output BEFORE calling `submit_final_answer` will be treated as internal thought/reasoning.
-- After calling `submit_final_answer`, you will be prompted to provide your final response in the next turn with no tool calls or internal reasoning.
-{% if toolCallingAllowed and parseToolCallsFromText %}
-- Emit the tool call as JSON: {"id": "unique_id", "name": "submit_final_answer", "args": {}}.
-{% elif toolCallingAllowed and not parseToolCallsFromText %}
-- Use the native tool calling interface for `submit_final_answer`.
-{% else %}
-- Emit the tool call as JSON in plain text: {"id": "unique_id", "name": "submit_final_answer", "args": {}}.
-{% endif %}
+- When you are ready to respond, simply write your final answer in plain text. Do not emit any tool calls in the same response.
+- This plain text answer will be provided directly to the user.

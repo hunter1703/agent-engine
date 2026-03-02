@@ -2,7 +2,6 @@ package com.agentengine.engine.agents.flows;
 
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.TurnCompletionResponseProcessor;
-import com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor;
 import com.agentengine.engine.agents.processors.response.PartOrderingResponseProcessor;
 import com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor;
 import com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor;
@@ -26,7 +25,6 @@ public class DefaultFlow extends AbstractFlow {
     requestProcessors.addAll(SingleFlow.REQUEST_PROCESSORS);
     requestProcessors.add(CorrectionProcessor.INSTANCE);
     requestProcessors.add(PlanningRequestProcessor.INSTANCE);
-    requestProcessors.add(FinalAnswerRequestProcessor.INSTANCE);
     requestProcessors.add(parser);
     requestProcessors.add(LoggingRequestProcessor.INSTANCE);
     return requestProcessors;
@@ -37,7 +35,6 @@ public class DefaultFlow extends AbstractFlow {
     responseProcessors.add(parser);
     responseProcessors.add(PlanLoopResponseProcessor.INSTANCE);
     responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
-    responseProcessors.add(FinalAnswerResponseProcessor.INSTANCE);
     responseProcessors.add(TurnCompletionResponseProcessor.INSTANCE);
     responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
     responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);

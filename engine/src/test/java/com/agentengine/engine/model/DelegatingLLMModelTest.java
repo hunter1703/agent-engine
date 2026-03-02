@@ -203,24 +203,17 @@ class DelegatingLLMModelTest {
   }
 
   @Test
-  void streamsWhenToolCallingDisabled() {
+  void doesNotStreamWhenParseToolCallsFromTextRegardlessOfToolCalling() {
+    // parseToolCallsFromText=true requires the full response to locate JSON tool calls;
+    // streaming must be suppressed even when toolCallingEnabled=false.
     final ChatModel chatModel = mock(ChatModel.class);
     final ChatRequestParameters params = mock(ChatRequestParameters.class);
     when(chatModel.defaultRequestParameters()).thenReturn(params);
     when(params.modelName()).thenReturn("test-model");
+    when(chatModel.chat(any(ChatRequest.class)))
+        .thenReturn(ChatResponse.builder().aiMessage(new AiMessage("ok")).build());
 
     final StreamingChatModel streamingChatModel = mock(StreamingChatModel.class);
-    doAnswer(
-            invocation -> {
-              final StreamingChatResponseHandler handler = invocation.getArgument(1);
-              handler.onPartialResponse("partial");
-              handler.onCompleteResponse(
-                  ChatResponse.builder().aiMessage(new AiMessage("done")).build());
-              return null;
-            })
-        .when(streamingChatModel)
-        .chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             new LangChain4j(chatModel, streamingChatModel, "test-model"),
@@ -233,7 +226,8 @@ class DelegatingLLMModelTest {
     final List<LlmResponse> responses = model.generateContent(request, true).toList().blockingGet();
 
     assertThat(responses).isNotEmpty();
-    verify(streamingChatModel)
+    verify(chatModel).chat(any(ChatRequest.class));
+    verify(streamingChatModel, never())
         .chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
   }
 }

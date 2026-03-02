@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  * identification), which deliberately sees only the original user input so the protagonist profile
  * from Phase 1 does not bias the character-count inference.
  */
-public final class StoryFlow extends AbstractFlow {
+public final class StoryFlow extends DefaultFlow {
     private static final Logger LOG = LoggerFactory.getLogger(StoryFlow.class);
 
     // ---- Phase prompts ---------------------------------------------------------
@@ -127,7 +127,7 @@ public final class StoryFlow extends AbstractFlow {
     // ---- Constructor ------------------------------------------------------------
 
     public StoryFlow(final Parser parser) {
-        super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser));
+        super(parser);
     }
 
     // ---- Orchestration ---------------------------------------------------------
@@ -295,30 +295,5 @@ public final class StoryFlow extends AbstractFlow {
             }
         }
         return List.of();
-    }
-
-    private static List<RequestProcessor> buildRequests(final Parser parser) {
-        final List<RequestProcessor> requestProcessors = new ArrayList<>();
-        requestProcessors.add(RunInitRequestProcessor.INSTANCE);
-        requestProcessors.addAll(SingleFlow.REQUEST_PROCESSORS);
-        requestProcessors.add(CorrectionProcessor.INSTANCE);
-        requestProcessors.add(PlanningRequestProcessor.INSTANCE);
-        requestProcessors.add(FinalAnswerRequestProcessor.INSTANCE);
-        requestProcessors.add(parser);
-        requestProcessors.add(LoggingRequestProcessor.INSTANCE);
-        return requestProcessors;
-    }
-
-    private static List<ResponseProcessor> buildResponses(final Parser parser) {
-        final List<ResponseProcessor> responseProcessors = new ArrayList<>();
-        responseProcessors.add(parser);
-        responseProcessors.add(PlanLoopResponseProcessor.INSTANCE);
-        responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
-        responseProcessors.add(FinalAnswerResponseProcessor.INSTANCE);
-        responseProcessors.add(TurnCompletionResponseProcessor.INSTANCE);
-        responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
-        responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);
-        responseProcessors.add(RunCleanupResponseProcessor.INSTANCE);
-        return responseProcessors;
     }
 }

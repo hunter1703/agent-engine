@@ -3,7 +3,6 @@ package com.agentengine.engine.agents.flows;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.testing.MockAgent;
-import com.agentengine.engine.tools.SubmitFinalAnswerTool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.events.Event;
@@ -22,20 +21,11 @@ import org.junit.jupiter.api.Test;
 class EngineBehaviorTest {
 
   @Test
-  void simpleFlowEnforcesFinalAnswerProtocol() {
-    // Stage 1: Agent tries to provide text and final answer tool call simultaneously. (Violation)
-    final LlmResponse responseWithViolation = MockAgent.responseWithParts(
+  void simpleFlowAcceptsNaturalFinalAnswer() {
+    final LlmResponse answerResponse = MockAgent.responseWithParts(
         List.of(
-            MockAgent.textPart("The answer is 42"),
-            MockAgent.toolCallPart("call-1", SubmitFinalAnswerTool.TOOL_NAME, Map.of())
+            MockAgent.textPart("The answer is 42")
         ),
-        false,
-        true
-    );
-
-    // Stage 2: Agent provides CLEAN signal call.
-    final LlmResponse cleanSignal = MockAgent.responseWithParts(
-        List.of(MockAgent.toolCallPart("call-2", SubmitFinalAnswerTool.TOOL_NAME, Map.of())),
         false,
         true
     );
@@ -43,21 +33,19 @@ class EngineBehaviorTest {
     final MockAgent agent = MockAgent.builder()
         .flowType(MockAgent.FlowType.SIMPLE)
         .agentName("mock-agent")
-        .tool(new com.agentengine.engine.tools.SubmitFinalAnswerTool())
-        .response(responseWithViolation)
-        .response(cleanSignal)
+        .response(answerResponse)
         .build();
 
     final List<Event> events = agent.run().toList().blockingGet();
-    
-    // Verify violations were detected: the corrective message should appear as a user event.
-    assertThat(events).anyMatch(e ->
+
+    // No correction event — combined submission is valid
+    assertThat(events).noneMatch(e ->
         "user".equals(e.author()) &&
         e.content().map(c -> c.parts().orElse(List.of()).stream()
             .anyMatch(p -> p.text().orElse("").contains("Simultaneous text")))
             .orElse(false));
 
-    // Verify that the answer text was still emitted in the preserved model event.
+    // Answer text is delivered in the model event
     assertThat(events).anyMatch(e -> "mock-agent".equals(e.author()) &&
         e.content().flatMap(content -> content.parts().map(parts -> parts.stream()
             .map(p -> p.text().orElse(""))
@@ -115,15 +103,14 @@ class EngineBehaviorTest {
         .flowType(MockAgent.FlowType.SIMPLE)
         // RedundantToolCallsResponseProcessor is already in the default MockAgent pipeline
         .tool(lsTool)
-        .tool(new com.agentengine.engine.tools.SubmitFinalAnswerTool())
         .agentName("mock-agent")
         // Response 1: first ls call (succeeds), tools executed, comes back for turn 2
         .response(toolCall)
         // Response 2: same ls call again (redundant, stripped by RedundantToolCallsResponseProcessor)
         .response(toolCall)
-        // Response 3: correction applied, agent adjusts, calls final answer
+        // Response 3: correction applied, agent adjusts, provides final answer
         .response(MockAgent.responseWithParts(
-            List.of(MockAgent.toolCallPart("call-final", SubmitFinalAnswerTool.TOOL_NAME, Map.of())),
+            List.of(MockAgent.textPart("Okay, done.")),
             false, true))
         .build();
 

@@ -11,7 +11,6 @@ import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
-import com.agentengine.engine.tools.SubmitFinalAnswerTool;
 import com.agentengine.engine.tools.ToolRegistry;
 import com.agentengine.engine.tools.ToolUtils;
 import com.google.adk.agents.LlmAgent;
@@ -61,16 +60,12 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
     if (toolCallingEnabled) {
       final List<BaseTool> tools =
               CollectionUtils.nullSafeMutableList(toolRegistry.loadTools(resolvedContext, config.getModel().getTools()));
-      tools.add(SubmitFinalAnswerTool.INSTANCE);
       if (parseToolCallsFromText) {
         toolInstructions = ToolUtils.buildToolMessage(tools);
       }
       if (CollectionUtils.isNotEmpty(tools)) {
         agentBuilder.tools(tools);
       }
-    } else if (parseToolCallsFromText) {
-      toolInstructions = ToolUtils.buildToolMessage(List.of(SubmitFinalAnswerTool.INSTANCE));
-      agentBuilder.tools(List.of(SubmitFinalAnswerTool.INSTANCE));
     }
     final String globalInstruction =
             buildGlobalInstruction(config.getModel().getSystemPrompt(), modelConfig.getInstructions());

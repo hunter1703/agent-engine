@@ -18,7 +18,7 @@ The Agent Engine operates as a stateful, pull-based execution pipeline. Every in
 - **Turn**: A single request-response cycle within a Run.
 - **Part**: The fundamental unit of content in an `LlmResponse` (Text, Thought, Tool Call, Tool Response).
 - **Violation**: A protocol-level error flagged by a processor, often triggering a correction nudge to the model.
-- **Phase**: The current logical state of a Run (REASONING, READY_FOR_FINAL_ANSWER, etc.).
+- **Phase**: The current logical state of a Run (UNKNOWN, REASONING, FINISHED).
 
 ---
 
@@ -47,24 +47,19 @@ The `DefaultFlow` is the definitive source of truth for the interaction protocol
 
 - **Redundancy Protection (`RedundantToolCallsResponseProcessor`)**:
   - **Guarantee**: If a model repeats a tool-call sequence (name + args) identical to the previous turn, the sequence is stripped and a `redundant_tool_calls` violation is emitted.
-- **Final Answer Protocol (`FinalAnswerResponseProcessor`)**:
-  - **Simultaneity Guard**: Simultaneous regular text and `submit_final_answer` tool calls are forbidden. Violation: `final_answer_protocol`.
-  - **Sanitization**: If ANY tool call (execution or final) is present (even if partial), all regular text MUST be converted to thoughts.
-  - **Nudge**: Concluding a turn without a tool call or final answer signal while in `REASONING` phase triggers a `premature_termination` violation.
 - **Plan Enforcement (`PlanLoopResponseProcessor`)**:
-  - **Guarantee**: The `submit_final_answer` tool is rejected if the current Plan has open tasks. Violation: `incomplete_task` or `final_answer_validation`.
+  - **Guarantee**: Natural termination by text is rejected if the current Plan has open tasks. Violation: `incomplete_task` or `final_answer_validation`.
+  - **Sanitization**: If the turn indicates a premature final answer (text only) while tasks are incomplete, the text is converted to a thought.
 
-### 3.4. Lifecycle and Termination (`RunCleanupResponseProcessor` & `LogicalCompletionResponseProcessor`)
+### 3.4. Lifecycle and Termination (`RunCleanupResponseProcessor` & `TurnCompletionResponseProcessor`)
 
-- **State Transition**: Advances the Run phase from `FINAL_ANSWER_DELIVERED` to `FINISHED`.
 - **Positive Completion Guarantees**:
   - **Tool Invocation**: If a non-partial response contains valid (non-stripped) tool calls, the engine forces `turnComplete: true`.
   - **Model Stop**: If the model signals `finishReason: STOP` and no violations are present, the engine forces `turnComplete: true`.
-  - **Final Answer**: Once `FINAL_ANSWER_DELIVERED` is reached, `turnComplete` is forced to `true`.
+  - **Natural Termination**: If a run ends with a text message and no pending tools, `turnComplete` is forced to `true`.
 - **Terminal Signals**:
-  - **Finish Reason**: If the Run reaches `FINISHED`, the engine guarantees `finishReason: STOP`.
+  - **Finish Reason**: If the Run is truly finished (turn is complete and no tools were called), the engine guarantees `finishReason: STOP`.
   - **Completion Flags**: Sets `partial: false` and `turnComplete: true` on the final response.
-- **Guarantee**: If the Run phase is NOT `FINAL_ANSWER_DELIVERED`, the engine STRIPS any `finishReason` to avoid ambiguous termination.
 - **Cleanup**: Purges the `RunState` from the session context upon completion.
 
 ### 3.5. Processor Hygiene and State Handling
@@ -111,7 +106,6 @@ The `AGUIEventMapper` translates ADK engine signals into a structured UI event s
 
 - `partial_tool_calls`: Tool parts found in a streaming response.
 - `redundant_tool_calls`: Repeating tool calls with identical arguments.
-- `final_answer_protocol`: Simultaneous text and final answer.
 - `premature_termination`: Ending a turn without a required action signal.
 - `incomplete_task`: Attempting to finish while tasks are still open.
 - `final_answer_validation`: General plan/task validation failure.

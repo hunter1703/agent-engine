@@ -1,6 +1,5 @@
 package com.agentengine.engine.agents.processors.response;
 
-import com.agentengine.engine.tools.SubmitFinalAnswerTool;
 import com.agentengine.engine.tools.ToolUtils;
 import com.agentengine.engine.utils.Violation;
 import com.agentengine.engine.utils.RunStateUtils;
@@ -40,9 +39,7 @@ public final class RedundantToolCallsResponseProcessor implements ResponseProces
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
 
-    final List<FunctionCall> toolCalls = ToolUtils.extractToolCalls(response).stream()
-        .filter(call -> !SubmitFinalAnswerTool.TOOL_NAME.equals(call.name().orElse(null)))
-        .toList();
+    final List<FunctionCall> toolCalls = ToolUtils.extractToolCalls(response);
 
     if (CollectionUtils.isEmpty(toolCalls)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));

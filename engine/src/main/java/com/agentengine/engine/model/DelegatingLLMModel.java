@@ -43,7 +43,7 @@ public final class DelegatingLLMModel extends AbstractLLM {
     final LlmRequest requestForModel =
         ModelUtils.stripToolsFromModelRequest(
             llmRequest, isToolCallingEnabled(), isParseToolCallsFromText());
-    final boolean useStreaming = stream && !(isToolCallingEnabled() && isParseToolCallsFromText());
+    final boolean useStreaming = stream && !isParseToolCallsFromText();
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
