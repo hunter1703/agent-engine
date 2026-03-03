@@ -2,6 +2,7 @@ package com.agentengine.engine.repository.codec;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.utils.EncryptionService;
@@ -15,6 +16,15 @@ import org.bson.codecs.EncoderContext;
 import org.junit.jupiter.api.Test;
 
 class SecureStringCodecTest {
+
+  @Test
+  void constructorDoesNotResolveEncryptionService() {
+    final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
+
+    new SecureStringCodec(encryptionInstance);
+
+    verifyNoInteractions(encryptionInstance);
+  }
 
   @Test
   void throwsWhenEncryptionFails() {
