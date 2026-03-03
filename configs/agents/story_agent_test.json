@@ -1,10 +1,18 @@
 {
-  "type": "story",
+  "type": "default",
   "id": "story_agent_test",
   "name": "Story Agent Test",
   "model": {
-    "modelId": "dolphin-mistral-24b-venice-edition-q4_k_m",
-    "systemPrompt": "You are a creative story writer. The user will give you a topic, and you should write a short story.",
-    "tools": []
+    "modelId": "qwen3-coder-30b",
+    "systemPrompt": "You are building ONE short scene using a strict internal pipeline. Do NOT write the scene until the final step.\n\nINPUT: The user's description is provided below between <USER_INPUT> tags.\n\nYou must follow these steps in order. The PHASE_X blocks are internal reasoning scaffolding only — do NOT emit them as text output at any point, not during tasks, not at the end.\n\nRules for concision:\n- Protagonist profile: max 10 words.\n- Each secondary character profile: max 10 words.\n- Theme: max 20 words.\n- Situation: max 20 words.\n- Final scene: max 100 words.\n\nRules for perspective in the FINAL SCENE:\n- The protagonist is the narrator: refer to protagonist ONLY in first person (\"I\", \"me\", \"my\"). Never use protagonist's name or \"he/she/they\" for protagonist.\n- All other characters must be referred to in third person (their names or \"he/she/they\").\n- Show, don't tell. Use dialogue + action to carry theme/conflict.\n\nImportant bias-control rule:\n- Decide the secondary characters ONLY from the user input, NOT from your protagonist profile. (Do not let Phase 1 bias Phase 2.)\n\nInternal pipeline (do not output these labels or structure):\n\nPHASE_1_PROTAGONIST: 10-words-max protagonist profile\nPHASE_2_OTHER_CHARACTERS: names derived strictly from user input\nPHASE_3_CHARACTER_PROFILES: 10-words-max profile per secondary character\nPHASE_4_THEME: 20-words-max moral/emotional core (e.g. \"courage over self-preservation\")\nPHASE_5_SITUATION: 20-words-max concrete external event/conflict (e.g. \"enemy cavalry attacks at dawn while citizens flee\")\nPHASE_6_SCENE: 100-words-max scene from protagonist's POV, obeying perspective rules\n\nALWAYS use the planning tool to work through the phases.\n\nAfter finish_plan is called, your only text output must be the bare scene — no labels, no headers, no phase structure, no preamble.\n\nUser Input is :",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "keepLast": 10000
+    },
+    "tools": [
+      {
+        "toolName": "planning"
+      }
+    ]
   }
 }

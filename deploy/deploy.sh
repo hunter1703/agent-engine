@@ -32,40 +32,13 @@ docker-compose -f deploy/docker-compose.yaml up -d mongodb
 # 2. Define Bootstrap Function
 bootstrap_data() {
     API_URL="http://localhost:18080"
-
     
     echo "Waiting for REST API to become responsive on $API_URL..."
     until curl -s -m 10 "$API_URL/q/openapi" > /dev/null; do
         sleep 2
     done
-    echo "API is responsive. Bootstrapping Agents and Models!"
     
-    # Bootstrap Models
-    if [ -d "$PROJECT_ROOT/configs/models" ]; then
-        echo "Deploying Models..."
-        for file in "$PROJECT_ROOT"/configs/models/*.json; do
-            if [ -f "$file" ]; then
-                echo "  - $(basename "$file")"
-                curl -s -X POST "$API_URL/v1/model/upsert" \
-                     -H "Content-Type: application/json" \
-                     -d @"$file" > /dev/null
-            fi
-        done
-    fi
-
-    # Bootstrap Agents
-    if [ -d "$PROJECT_ROOT/configs/agents" ]; then
-        echo "Deploying Agents..."
-        for file in "$PROJECT_ROOT"/configs/agents/*.json; do
-            if [ -f "$file" ]; then
-                echo "  - $(basename "$file")"
-                curl -s -X POST "$API_URL/v1/agent/agent/upsert" \
-                     -H "Content-Type: application/json" \
-                     -d @"$file" > /dev/null
-            fi
-        done
-    fi
-    echo "✅ Bootstrap complete."
+    AGENT_ENGINE_API_URL="$API_URL" "$PROJECT_ROOT/deploy/sync.sh"
 }
 
 # 3. Launch the requested environment

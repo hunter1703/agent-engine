@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @Singleton
-public final class PlanningToolProvider implements ToolProvider, ToolSuite {
+public final class PlanningSuite implements ToolProvider, ToolSuite {
   private static final ToolDescriptor SUITE_DESCRIPTOR =
       new ToolDescriptor("planning", "Tools for agent planning and task management.", List.of(Tool.ALL), Map.of());
   private static final Map<String, Supplier<Tool>> TOOL_FACTORIES =

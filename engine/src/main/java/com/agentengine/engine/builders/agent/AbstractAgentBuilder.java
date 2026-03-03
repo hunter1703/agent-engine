@@ -19,6 +19,7 @@ import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.tools.BaseTool;
 
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent>
@@ -72,35 +73,15 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
     }
     final String globalInstruction =
             buildGlobalInstruction(config.getModel().getSystemPrompt(), modelConfig.getInstructions());
-    final String agentName = resolveAgentName(config);
     agentBuilder
             .toolInstructions(toolInstructions)
             .protocolInstructions(agentModel.getProtocol())
             .globalInstruction(globalInstruction)
             .disallowTransferToParent(false)
             .disallowTransferToPeers(false)
-            .name(agentName)
+            .name(config.getId())
             .model(model);
     return agentBuilder;
-  }
-
-  private static String resolveAgentName(final AgentConfig config) {
-    if (config == null) {
-      return "agent";
-    }
-    final String candidate =
-            StringUtils.isBlank(config.getName()) ? config.getId() : config.getName();
-    if (StringUtils.isBlank(candidate)) {
-      return "agent";
-    }
-    if (ADK_AGENT_NAME_PATTERN.matcher(candidate).matches()) {
-      return candidate;
-    }
-    final String fallback = config.getId();
-    if (StringUtils.isNotBlank(fallback) && ADK_AGENT_NAME_PATTERN.matcher(fallback).matches()) {
-      return fallback;
-    }
-    return "agent";
   }
 
   private static String buildGlobalInstruction(
