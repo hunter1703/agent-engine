@@ -45,6 +45,6 @@ public class SessionServiceImpl implements SessionService {
   @Override
   @WithSpan
   public void updateTitle(final String id, final String title) {
-    sessionRepository.update(id, Update.of(Operation.set("sessionInfo.title", title)));
+    sessionRepository.update(id, Update.of(Operation.set("title", title)));
   }
 }

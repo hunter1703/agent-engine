@@ -1,6 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.beans.Secure;
 import com.google.adk.sessions.Session;
 
 public class AgentSession extends BaseEntity {
@@ -8,6 +9,7 @@ public class AgentSession extends BaseEntity {
   public static final String FIELD_SESSION_INFO = "sessionInfo";
 
   private String agentId;
+  @Secure
   private String title;
   private SessionInfo sessionInfo;
 
