@@ -8,17 +8,19 @@ import jakarta.inject.Inject;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.Optional;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import com.agentengine.engine.infra.EncryptionInfraConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 @Unremovable
 public class EncryptionService {
+  private static final Logger LOG = LoggerFactory.getLogger(EncryptionService.class);
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int GCM_IV_LENGTH = 12; // 96 bits recommended for GCM
   private static final int GCM_TAG_LENGTH = 128; // in bits
@@ -27,36 +29,36 @@ public class EncryptionService {
   InfraMongoRepository infraMongoRepository;
 
   private SecretKey secretKey;
+  private boolean encryptionEnabled;
   private final SecureRandom secureRandom = new SecureRandom();
 
   void init(@Observes StartupEvent ev) {
-    EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
-    String keyToUse;
-
-    if (config != null && config.getKey() != null && !config.getKey().isBlank()) {
-      keyToUse = config.getKey();
-    } else {
-      byte[] newKeyBytes = new byte[32];
-      secureRandom.nextBytes(newKeyBytes);
-      keyToUse = Base64.getEncoder().encodeToString(newKeyBytes);
-      
-      if (config == null) {
-        config = new EncryptionInfraConfig();
-      }
-      config.setKey(keyToUse);
-      infraMongoRepository.save(config);
+    final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
+    if (config == null || config.getKey() == null || config.getKey().isBlank()) {
+      LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
+      encryptionEnabled = false;
+      secretKey = null;
+      return;
     }
 
-    byte[] decodedKey = Base64.getDecoder().decode(keyToUse);
+    final byte[] decodedKey = Base64.getDecoder().decode(config.getKey());
     if (decodedKey.length != 32) {
       throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
     }
     this.secretKey = new SecretKeySpec(decodedKey, "AES");
+    this.encryptionEnabled = true;
+  }
+
+  public boolean isEncryptionEnabled() {
+    return encryptionEnabled;
   }
 
   public String encrypt(final String plaintext) {
     if (plaintext == null) {
       return null;
+    }
+    if (!encryptionEnabled) {
+      return plaintext;
     }
     try {
       final Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -81,6 +83,9 @@ public class EncryptionService {
   public String decrypt(final String base64IvAndCiphertext) {
     if (base64IvAndCiphertext == null) {
       return null;
+    }
+    if (!encryptionEnabled) {
+      return base64IvAndCiphertext;
     }
     try {
       final byte[] ivAndCiphertext = Base64.getDecoder().decode(base64IvAndCiphertext);

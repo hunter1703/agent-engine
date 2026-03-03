@@ -8,14 +8,22 @@ import org.bson.BsonWriter;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SecureStringCodec implements Codec<String> {
 
+  static final String ENCRYPTED_PREFIX = "enc::";
+  private static final Logger LOG = LoggerFactory.getLogger(SecureStringCodec.class);
 
-  private final Instance<EncryptionService> encryptionService;
+  private final EncryptionService encryptionService;
 
-  public SecureStringCodec(Instance<EncryptionService> encryptionService) {
-    this.encryptionService = encryptionService;
+  public SecureStringCodec(final Instance<EncryptionService> encryptionService) {
+    if (encryptionService != null && encryptionService.isResolvable()) {
+      this.encryptionService = encryptionService.get();
+    } else {
+      this.encryptionService = null;
+    }
   }
 
   @Override
@@ -25,9 +33,14 @@ public class SecureStringCodec implements Codec<String> {
       writer.writeNull();
       return;
     }
-    if (encryptionService != null && encryptionService.isResolvable()) {
-      final String encrypted = encryptionService.get().encrypt(value);
-      writer.writeString(encrypted);
+    if (encryptionService != null && encryptionService.isEncryptionEnabled()) {
+      try {
+        final String encrypted = encryptionService.encrypt(value);
+        writer.writeString(ENCRYPTED_PREFIX + encrypted);
+      } catch (Exception e) {
+        LOG.debug("Failed to encrypt value; writing plaintext.", e);
+        writer.writeString(value);
+      }
     } else {
       writer.writeString(value);
     }
@@ -41,15 +54,20 @@ public class SecureStringCodec implements Codec<String> {
     }
 
     if (reader.getCurrentBsonType() == BsonType.STRING) {
-      String raw = reader.readString();
-      if (encryptionService != null && encryptionService.isResolvable()) {
-        try {
-          return encryptionService.get().decrypt(raw);
-        } catch (Exception e) {
-          return raw; // Fallback to raw string if decryption fails
-        }
+      final String raw = reader.readString();
+      if (!raw.startsWith(ENCRYPTED_PREFIX)) {
+        return raw;
       }
-      return raw;
+      if (encryptionService == null || !encryptionService.isEncryptionEnabled()) {
+        return raw;
+      }
+      final String payload = raw.substring(ENCRYPTED_PREFIX.length());
+      try {
+        return encryptionService.decrypt(payload);
+      } catch (Exception e) {
+        LOG.debug("Failed to decrypt secure value; returning raw value.", e);
+        return raw;
+      }
     }
 
     return null;

@@ -62,9 +62,8 @@ public class MongoClientFactory {
       final Instance<EncryptionService> encryptionService) {
     final ConnectionString connectionString = new ConnectionString(connectionStringStr);
     
-    final List<Convention> conventions = new ArrayList<>();
+    final List<Convention> conventions = new ArrayList<>(Conventions.DEFAULT_CONVENTIONS);
     conventions.add(new SecurePropertyConvention(encryptionService));
-    conventions.addAll(Conventions.DEFAULT_CONVENTIONS);
 
     PojoCodecProvider.Builder pojoCodecProviderBuilder =
         PojoCodecProvider.builder().conventions(conventions).automatic(true);

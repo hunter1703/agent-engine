@@ -20,7 +20,8 @@ class EncryptionServiceTest {
   void setUp() {
     encryptionService = new EncryptionService();
     encryptionService.infraMongoRepository = mock(InfraMongoRepository.class);
-    when(encryptionService.infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE)).thenReturn(null);
+    when(encryptionService.infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE))
+        .thenReturn(buildConfig());
 
     encryptionService.init(null);
   }
@@ -55,6 +56,19 @@ class EncryptionServiceTest {
   }
 
   @Test
+  void testMissingConfigFallsBackToPlaintext() {
+    final EncryptionService service = new EncryptionService();
+    service.infraMongoRepository = mock(InfraMongoRepository.class);
+    when(service.infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE)).thenReturn(null);
+
+    service.init(null);
+
+    final String plaintext = "No encryption";
+    assertThat(service.encrypt(plaintext)).isEqualTo(plaintext);
+    assertThat(service.decrypt(plaintext)).isEqualTo(plaintext);
+  }
+
+  @Test
   void testTamperingFails() {
     final String plaintext = "Sensitive Data";
     final String ciphertext = encryptionService.encrypt(plaintext);
@@ -79,5 +93,11 @@ class EncryptionServiceTest {
     
     assertThatThrownBy(() -> badService.init(null))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private static EncryptionInfraConfig buildConfig() {
+    final EncryptionInfraConfig config = new EncryptionInfraConfig();
+    config.setKey(Base64.getEncoder().encodeToString(new byte[32]));
+    return config;
   }
 }

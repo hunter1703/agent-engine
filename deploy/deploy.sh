@@ -125,6 +125,10 @@ if [ "$MODE" == "production" ]; then
 
     echo "Starting REST (Port 18080, waiting for Engine gRPC on 19000)..."
     until nc -z localhost 19000 2>/dev/null; do
+        if ! kill -0 $ENGINE_PID 2>/dev/null; then
+            echo "❌ Engine process died unexpectedly. Check logs/engine.log"
+            exit 1
+        fi
         sleep 0.5
     done
     nohup java --enable-preview -Dquarkus.http.port=18080 -Dagentengine.grpc.host=localhost -Dagentengine.grpc.port=19000 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/rest.log" 2>&1 &

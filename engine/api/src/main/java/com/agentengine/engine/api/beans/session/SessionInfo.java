@@ -120,12 +120,12 @@ public class SessionInfo extends BaseEntity {
 
   @BsonIgnore
   public void setEvents(final List<Map<String, Object>> events) {
-    this.events = events;
+      this.events = events == null ? new ArrayList<>() : events;
   }
   
   @Secure
   public String getEventsJson() {
-    return JsonUtils.toJson(events);
+    return JsonUtils.toJson(events == null ? List.of() : events);
   }
 
   @SuppressWarnings("unchecked")
@@ -133,7 +133,12 @@ public class SessionInfo extends BaseEntity {
     if (json == null || json.isEmpty()) {
       this.events = new ArrayList<>();
     } else {
-      this.events = (List<Map<String, Object>>) JsonUtils.fromJson(json, List.class);
+      try {
+        this.events = (List<Map<String, Object>>) JsonUtils.fromJson(json, List.class);
+      } catch (RuntimeException ex) {
+        LOG.debug("Failed to deserialize eventsJson payload; defaulting to empty events.", ex);
+        this.events = new ArrayList<>();
+      }
     }
   }
 

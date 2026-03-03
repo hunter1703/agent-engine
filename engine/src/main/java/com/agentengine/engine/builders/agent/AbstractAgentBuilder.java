@@ -19,9 +19,12 @@ import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.tools.BaseTool;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent>
     implements AgentBuilder<C, A> {
+  private static final Pattern ADK_AGENT_NAME_PATTERN =
+      Pattern.compile("^_?[a-zA-Z0-9]*([. _-][a-zA-Z0-9]+)*$");
   protected final ModelProvider modelProvider;
   protected final SessionServiceProvider sessionServiceProvider;
   protected final ContextManagerProvider contextManagerProvider;
@@ -87,7 +90,17 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
     }
     final String candidate =
             StringUtils.isBlank(config.getName()) ? config.getId() : config.getName();
-    return StringUtils.isBlank(candidate) ? "agent" : candidate;
+    if (StringUtils.isBlank(candidate)) {
+      return "agent";
+    }
+    if (ADK_AGENT_NAME_PATTERN.matcher(candidate).matches()) {
+      return candidate;
+    }
+    final String fallback = config.getId();
+    if (StringUtils.isNotBlank(fallback) && ADK_AGENT_NAME_PATTERN.matcher(fallback).matches()) {
+      return fallback;
+    }
+    return "agent";
   }
 
   private static String buildGlobalInstruction(
