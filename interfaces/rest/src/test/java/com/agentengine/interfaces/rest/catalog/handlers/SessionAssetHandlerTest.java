@@ -84,9 +84,7 @@ class SessionAssetHandlerTest {
                 Content.builder().role("user").parts(Part.builder().text("test").build()).build())
             .build();
 
-    // Convert to map using JsonUtils
-    Map<String, Object> eventMap = JsonUtils.toJacksonMap(event);
-    sessionInfo.setEvents(Collections.singletonList(eventMap));
+    sessionInfo.setEvents(Collections.singletonList(JsonUtils.toJacksonMap(event)));
     session.setSessionInfo(sessionInfo);
 
     when(sessionService.getSession("test-session")).thenReturn(Optional.of(session));
@@ -137,8 +135,7 @@ class SessionAssetHandlerTest {
                 Content.builder().role("model").parts(Part.builder().text("done").build()).build())
             .build();
 
-    Map<String, Object> eventMap = JsonUtils.toJacksonMap(event);
-    sessionInfo.setEvents(Collections.singletonList(eventMap));
+    sessionInfo.setEvents(Collections.singletonList(JsonUtils.toJacksonMap(event)));
     session.setSessionInfo(sessionInfo);
 
     when(sessionService.findSessions(any()))

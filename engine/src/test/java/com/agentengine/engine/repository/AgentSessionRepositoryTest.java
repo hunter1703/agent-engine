@@ -13,7 +13,6 @@ import com.agentengine.engine.api.update.Update;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
 import com.mongodb.client.MongoCollection;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -24,14 +23,14 @@ import org.junit.jupiter.api.Test;
 class AgentSessionRepositoryTest {
 
   private AgentSessionRepository repository;
-  private MongoClientSupport mongoClientSupport;
+  private MongoClientFactory mongoClientFactory;
   private MongoCollection<AgentSession> collection;
 
   @BeforeEach
   void setUp() {
-    mongoClientSupport = mock(MongoClientSupport.class);
+    mongoClientFactory = mock(MongoClientFactory.class);
     collection = mock(MongoCollection.class);
-    repository = spy(new AgentSessionRepository(mongoClientSupport) {
+    repository = spy(new AgentSessionRepository(mongoClientFactory) {
       @Override
       protected MongoCollection<AgentSession> getCollection() {
         return collection;

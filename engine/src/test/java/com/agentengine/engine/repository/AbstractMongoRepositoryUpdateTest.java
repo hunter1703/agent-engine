@@ -15,7 +15,6 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.bson.conversions.Bson;
@@ -65,7 +64,7 @@ class AbstractMongoRepositoryUpdateTest {
     private final MongoCollection<TestEntity> collection;
 
     private TestRepository(final MongoCollection<TestEntity> collection) {
-      super(mock(MongoClientSupport.class), "Test", TestEntity.class);
+      super(mock(MongoClientFactory.class), "Test", TestEntity.class);
       this.collection = collection;
     }
 

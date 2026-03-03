@@ -13,23 +13,36 @@ import io.quarkus.mongodb.runtime.MongoClientSupport;
 import java.util.List;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
+import org.bson.codecs.pojo.Convention;
+import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.eclipse.microprofile.config.ConfigProvider;
+import com.agentengine.engine.repository.codec.SecurePropertyConvention;
+import com.agentengine.engine.utils.EncryptionService;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import java.util.ArrayList;
 
-public final class MongoClientFactory {
+@Singleton
+public class MongoClientFactory {
   private static final String DEFAULT_CONNECTION = "mongodb://localhost:27018";
 
-  private MongoClientFactory() {}
+  @Inject
+  MongoClientSupport mongoClientSupport;
 
-  public static MongoClient createClient(
-      final MongoClientSupport mongoClientSupport, String connectionString) {
-    connectionString =
-        StringUtils.isNotBlank(connectionString) ? connectionString : resolveConnectionString();
+  @Inject
+  Instance<EncryptionService> encryptionService;
+
+  public MongoClient getClient() {
+    String connectionString = resolveConnectionString();
     return MongoClients.create(
-        buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport)));
+        buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport), encryptionService));
   }
 
-  private static String resolveConnectionString() {
+
+
+  private String resolveConnectionString() {
     return ConfigProvider.getConfig()
         .getOptionalValue("quarkus.mongodb.connection-string", String.class)
         .orElseGet(
@@ -39,15 +52,22 @@ public final class MongoClientFactory {
             });
   }
 
-  private static List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {
+  private List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {
     return CollectionUtils.nullSafeList(mongoClientSupport.getBsonDiscriminators());
   }
 
-  private static MongoClientSettings buildClientSettings(
-      final String connectionStringStr, final List<String> bsonDiscriminators) {
+  private MongoClientSettings buildClientSettings(
+      final String connectionStringStr,
+      final List<String> bsonDiscriminators,
+      final Instance<EncryptionService> encryptionService) {
     final ConnectionString connectionString = new ConnectionString(connectionStringStr);
+    
+    final List<Convention> conventions = new ArrayList<>();
+    conventions.add(new SecurePropertyConvention(encryptionService));
+    conventions.addAll(Conventions.DEFAULT_CONVENTIONS);
+
     PojoCodecProvider.Builder pojoCodecProviderBuilder =
-        PojoCodecProvider.builder().automatic(true);
+        PojoCodecProvider.builder().conventions(conventions).automatic(true);
     ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
     for (String discriminator : CollectionUtils.nullSafeList(bsonDiscriminators)) {
       try {

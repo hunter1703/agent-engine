@@ -15,7 +15,6 @@ import com.google.adk.sessions.GetSessionConfig;
 import com.google.adk.sessions.ListEventsResponse;
 import com.google.adk.sessions.ListSessionsResponse;
 import com.google.adk.sessions.Session;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
@@ -37,8 +36,8 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
     implements BaseSessionService {
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRepository.class);
 
-  public AgentSessionRepository(MongoClientSupport mongoClientSupport) {
-    super(mongoClientSupport, "AgentSession", AgentSession.class);
+  public AgentSessionRepository(MongoClientFactory mongoClientFactory) {
+    super(mongoClientFactory, "AgentSession", AgentSession.class);
   }
 
   @Override

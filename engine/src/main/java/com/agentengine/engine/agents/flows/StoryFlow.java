@@ -9,6 +9,7 @@ import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
 import com.google.adk.models.LlmRequest;
+import com.agentengine.engine.api.utils.EventUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Flowable;
@@ -150,11 +151,11 @@ public final class StoryFlow extends DefaultFlow {
     @Override
     public Flowable<Event> run(final InvocationContext context) {
         LOG.info("Starting StoryFlow with 6 phases");
-        return logPhase(runStep(context, PHASE_1_PROTAGONIST), "Phase 1: Protagonist")
-                .concatWith(logPhase(runStep(context, PHASE_2_OTHER_CHARACTERS), "Phase 2: Other Characters"))
-                .concatWith(logPhase(runProfilingSteps(context), "Phase 3: Character Profiles"))
-                .concatWith(logPhase(runStep(context, PHASE_4_THEME), "Phase 4: Theme"))
-                .concatWith(logPhase(runStep(context, PHASE_5_SITUATION), "Phase 5: Situation"))
+        return internal(logPhase(runStep(context, PHASE_1_PROTAGONIST), "Phase 1: Protagonist"))
+                .concatWith(internal(logPhase(runStep(context, PHASE_2_OTHER_CHARACTERS), "Phase 2: Other Characters")))
+                .concatWith(internal(logPhase(runProfilingSteps(context), "Phase 3: Character Profiles")))
+                .concatWith(internal(logPhase(runStep(context, PHASE_4_THEME), "Phase 4: Theme")))
+                .concatWith(internal(logPhase(runStep(context, PHASE_5_SITUATION), "Phase 5: Situation")))
                 .concatWith(logPhase(runStep(context, PHASE_6_SCENE), "Phase 6: Scene"));
     }
 
@@ -172,6 +173,15 @@ public final class StoryFlow extends DefaultFlow {
                     .orElse("");
             LOG.info("{} output: {}", phaseName, content);
         });
+    }
+
+    /**
+     * Tags every event from an internal phase with {@link EventUtils#INTERNAL_KEY}, signalling
+     * downstream consumers (e.g. the AG-UI mapper) to treat them as pipeline-only steps rather
+     * than end-user-facing output.
+     */
+    private static Flowable<Event> internal(final Flowable<Event> phase) {
+        return phase.doOnNext(EventUtils::markAsInternal);
     }
 
     // ---- Step execution --------------------------------------------------------

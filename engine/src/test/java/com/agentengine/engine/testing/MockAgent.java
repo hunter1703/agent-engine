@@ -272,7 +272,6 @@ public final class MockAgent {
       reqProcs.addAll(defaultReq);
       reqProcs.add(com.agentengine.engine.agents.processors.request.CorrectionProcessor.INSTANCE);
       reqProcs.add(com.agentengine.engine.agents.processors.request.PlanningRequestProcessor.INSTANCE);
-      reqProcs.add(com.agentengine.engine.agents.processors.request.FinalAnswerRequestProcessor.INSTANCE);
       reqProcs.add(parser);
       reqProcs.addAll(requestProcessors);
 
@@ -280,7 +279,6 @@ public final class MockAgent {
       resProcs.add(parser);
       resProcs.add(com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor.INSTANCE);
       resProcs.add(com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor.INSTANCE);
-      resProcs.add(com.agentengine.engine.agents.processors.response.FinalAnswerResponseProcessor.INSTANCE);
       resProcs.addAll(defaultRes);
       resProcs.addAll(responseProcessors);
       // Remove RunCleanupResponseProcessor from MockAgent during tests so state is preserved

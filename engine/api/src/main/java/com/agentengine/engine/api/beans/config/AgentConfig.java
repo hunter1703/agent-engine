@@ -4,9 +4,11 @@ import com.agentengine.engine.api.beans.NamedEntity;
 import jakarta.validation.constraints.NotNull;
 import java.util.Locale;
 
+import com.agentengine.engine.api.beans.Secure;
+
 public class AgentConfig extends NamedEntity implements Config {
   private String type;
-  private String description;
+  @Secure private String description;
   private String avatar;
   @NotNull private AgentModelConfig model;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
@@ -17,6 +19,18 @@ public class AgentConfig extends NamedEntity implements Config {
 
   public AgentConfig(AgentType agentType) {
     this.type = agentType.name().toLowerCase();
+  }
+
+  @Override
+  @Secure
+  public String getName() {
+    return super.getName();
+  }
+
+  @Override
+  @Secure
+  public void setName(String name) {
+    super.setName(name);
   }
 
   public String getDescription() {

@@ -5,11 +5,13 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.agentengine.engine.api.beans.Secure;
+
 public class AgentModelConfig implements Config {
   @NotBlank private String modelId;
   // unique role of the model within the agent
   private String role;
-  private String systemPrompt;
+  @Secure private String systemPrompt;
   private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
   private List<ToolsConfig> tools = new ArrayList<>();
 

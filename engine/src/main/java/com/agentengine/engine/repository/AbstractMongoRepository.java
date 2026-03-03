@@ -15,7 +15,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
+import com.mongodb.client.result.DeleteResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,16 +46,16 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   }
 
   public AbstractMongoRepository(
-      final MongoClientSupport mongoClientSupport, String collectionName, Class<T> entityClass) {
-    this(mongoClientSupport, "AGENT_ENGINE", collectionName, entityClass);
+      final MongoClientFactory mongoClientFactory, String collectionName, Class<T> entityClass) {
+    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass);
   }
 
   public AbstractMongoRepository(
-      final MongoClientSupport mongoClientSupport,
+      final MongoClientFactory mongoClientFactory,
       String databaseName,
       String collectionName,
       Class<T> entityClass) {
-    this.mongoClient = createClient(mongoClientSupport);
+    this.mongoClient = mongoClientFactory.getClient();
     this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
@@ -209,9 +209,5 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
   protected MongoCollection<T> getCollection() {
     return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
-  }
-
-  private MongoClient createClient(MongoClientSupport mongoClientSupport) {
-    return MongoClientFactory.createClient(mongoClientSupport, null);
   }
 }

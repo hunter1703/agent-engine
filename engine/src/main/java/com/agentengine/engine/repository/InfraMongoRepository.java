@@ -6,14 +6,13 @@ import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.infra.InfraConfig;
-import io.quarkus.mongodb.runtime.MongoClientSupport;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
-  public InfraMongoRepository(final MongoClientSupport mongoClientSupport) {
-    super(mongoClientSupport, "INFRA", "InfraConfig", InfraConfig.class);
+  public InfraMongoRepository(final MongoClientFactory mongoClientFactory) {
+    super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class);
   }
 
   @SuppressWarnings("unchecked")

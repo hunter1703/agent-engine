@@ -1,8 +1,10 @@
 package com.agentengine.engine.api.beans.session;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.beans.Secure;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.google.adk.events.Event;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 import com.google.adk.sessions.Session;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -23,6 +25,7 @@ public class SessionInfo extends BaseEntity {
   private String appName;
   private String userId;
   private Map<String, Object> state = new HashMap<>();
+  @BsonIgnore
   private List<Map<String, Object>> events = new ArrayList<>();
   private Long lastUpdateTime;
 
@@ -35,10 +38,17 @@ public class SessionInfo extends BaseEntity {
     sessionInfo.setUserId(session.userId());
     sessionInfo.setState(
         session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
-    sessionInfo.setEvents(
-        session.events() == null
-            ? new ArrayList<>()
-            : session.events().stream().map(JsonUtils::toJacksonMap).toList());
+
+    if (session.events() != null) {
+      final List<Map<String, Object>> eventMaps = new ArrayList<>();
+      for (final Event event : session.events()) {
+        eventMaps.add(JsonUtils.toJacksonMap(event));
+      }
+      sessionInfo.setEvents(eventMaps);
+    } else {
+      sessionInfo.setEvents(new ArrayList<>());
+    }
+    
     sessionInfo.setLastUpdateTime(session.lastUpdateTime().toEpochMilli());
     return sessionInfo;
   }
@@ -50,12 +60,12 @@ public class SessionInfo extends BaseEntity {
     }
     final List<Event> sessionEvents = new ArrayList<>();
     if (events != null) {
-      for (final Map<String, Object> eventMap : events) {
-        if (eventMap == null) {
+      for (final Map<String, Object> map : events) {
+        if (map == null) {
           continue;
         }
         try {
-          sessionEvents.add(JsonUtils.fromJacksonMap(eventMap, Event.class));
+          sessionEvents.add(JsonUtils.fromJacksonMap(map, Event.class));
         } catch (IllegalArgumentException ex) {
           LOG.debug("Skipping invalid event payload", ex);
         }
@@ -103,12 +113,28 @@ public class SessionInfo extends BaseEntity {
     this.state = state;
   }
 
+  @BsonIgnore
   public List<Map<String, Object>> getEvents() {
     return events;
   }
 
+  @BsonIgnore
   public void setEvents(final List<Map<String, Object>> events) {
     this.events = events;
+  }
+  
+  @Secure
+  public String getEventsJson() {
+    return JsonUtils.toJson(events);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void setEventsJson(final String json) {
+    if (json == null || json.isEmpty()) {
+      this.events = new ArrayList<>();
+    } else {
+      this.events = (List<Map<String, Object>>) JsonUtils.fromJson(json, List.class);
+    }
   }
 
   public Long getLastUpdateTime() {
