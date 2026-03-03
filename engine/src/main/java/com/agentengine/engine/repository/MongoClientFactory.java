@@ -40,8 +40,6 @@ public class MongoClientFactory {
         buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport), encryptionService));
   }
 
-
-
   private String resolveConnectionString() {
     return ConfigProvider.getConfig()
         .getOptionalValue("quarkus.mongodb.connection-string", String.class)
@@ -63,6 +61,8 @@ public class MongoClientFactory {
     final ConnectionString connectionString = new ConnectionString(connectionStringStr);
     
     final List<Convention> conventions = new ArrayList<>(Conventions.DEFAULT_CONVENTIONS);
+    // SecurePropertyConvention must be added last: it relies on the standard conventions
+    // having already built the property model list before it can annotate secure fields.
     conventions.add(new SecurePropertyConvention(encryptionService));
 
     PojoCodecProvider.Builder pojoCodecProviderBuilder =
@@ -73,6 +73,7 @@ public class MongoClientFactory {
         pojoCodecProviderBuilder.register(
             ClassModel.builder(Class.forName(discriminator, true, classLoader))
                 .enableDiscriminator(true)
+                .conventions(conventions)
                 .build());
       } catch (ClassNotFoundException ex) {
         // Ignore

@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# WARNING: This script prints the generated encryption key to the terminal and the key
+# may appear in your shell history.  To prevent the key from being saved to history,
+# run this script with history disabled:
+#
+#   HISTFILE=/dev/null bash scripts/generate-encryption-key.sh
+#
+# The key printed to the terminal is a secret — treat it like a password and store it
+# securely (e.g. in a secrets manager) immediately after generation.
+
 # Default MongoDB URI to the one used by Agent Engine
 MONGO_URI=${1:-"mongodb://localhost:27018"}
 DATABASE="INFRA"

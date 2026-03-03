@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class SessionInfoTest {
 
   @Test
-  void setEventsUpdatesEventsJson() {
+  void getEventsJsonSerializesCurrentEvents() {
     final SessionInfo info = new SessionInfo();
     final List<Map<String, Object>> events = List.of(Map.of("id", "event-1"));
 

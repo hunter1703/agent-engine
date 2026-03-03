@@ -128,6 +128,7 @@ public class SessionInfo extends BaseEntity {
     return JsonUtils.toJson(events == null ? List.of() : events);
   }
 
+  @Secure
   @SuppressWarnings("unchecked")
   public void setEventsJson(final String json) {
     if (json == null || json.isEmpty()) {

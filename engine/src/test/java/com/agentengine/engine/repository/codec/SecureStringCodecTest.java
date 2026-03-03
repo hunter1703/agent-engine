@@ -1,6 +1,6 @@
 package com.agentengine.engine.repository.codec;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class SecureStringCodecTest {
 
   @Test
-  void writesPlaintextWhenEncryptionFails() {
+  void throwsWhenEncryptionFails() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
     when(encryptionInstance.isResolvable()).thenReturn(true);
@@ -31,14 +31,14 @@ class SecureStringCodecTest {
     final BsonDocumentWriter writer = new BsonDocumentWriter(document);
     writer.writeStartDocument();
     writer.writeName("value");
-    codec.encode(writer, "secret", EncoderContext.builder().build());
-    writer.writeEndDocument();
 
-    assertThat(document.getString("value").getValue()).isEqualTo("secret");
+    assertThatThrownBy(() -> codec.encode(writer, "secret", EncoderContext.builder().build()))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Failed to encrypt value");
   }
 
   @Test
-  void returnsRawValueWhenDecryptionFails() {
+  void throwsWhenDecryptionFails() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
     when(encryptionInstance.isResolvable()).thenReturn(true);
@@ -54,9 +54,9 @@ class SecureStringCodecTest {
     final BsonDocumentReader reader = new BsonDocumentReader(document);
     reader.readStartDocument();
     reader.readName("value");
-    final String decoded = codec.decode(reader, DecoderContext.builder().build());
-    reader.readEndDocument();
 
-    assertThat(decoded).isEqualTo(SecureStringCodec.ENCRYPTED_PREFIX + "cipher");
+    assertThatThrownBy(() -> codec.decode(reader, DecoderContext.builder().build()))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("Failed to decrypt secure value");
   }
 }

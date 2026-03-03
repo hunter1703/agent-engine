@@ -24,7 +24,15 @@ public class EncryptionService {
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int GCM_IV_LENGTH = 12; // 96 bits recommended for GCM
   private static final int GCM_TAG_LENGTH = 128; // in bits
+  private static final ThreadLocal<Cipher> CIPHER_CACHE = ThreadLocal.withInitial(() -> {
+    try {
+      return Cipher.getInstance(ALGORITHM);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to initialize cipher", e);
+    }
+  });
 
+  // package-private for testing
   @Inject
   InfraMongoRepository infraMongoRepository;
 
@@ -41,7 +49,12 @@ public class EncryptionService {
       return;
     }
 
-    final byte[] decodedKey = Base64.getDecoder().decode(config.getKey());
+    final byte[] decodedKey;
+    try {
+      decodedKey = Base64.getDecoder().decode(config.getKey());
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Encryption key stored in database is not valid Base64", e);
+    }
     if (decodedKey.length != 32) {
       throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
     }
@@ -61,7 +74,7 @@ public class EncryptionService {
       return plaintext;
     }
     try {
-      final Cipher cipher = Cipher.getInstance(ALGORITHM);
+      final Cipher cipher = CIPHER_CACHE.get();
       final byte[] iv = new byte[GCM_IV_LENGTH];
       secureRandom.nextBytes(iv);
       final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
@@ -99,7 +112,7 @@ public class EncryptionService {
       final byte[] ciphertext = new byte[ivAndCiphertext.length - GCM_IV_LENGTH];
       System.arraycopy(ivAndCiphertext, GCM_IV_LENGTH, ciphertext, 0, ciphertext.length);
 
-      final Cipher cipher = Cipher.getInstance(ALGORITHM);
+      final Cipher cipher = CIPHER_CACHE.get();
       final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
       cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
 

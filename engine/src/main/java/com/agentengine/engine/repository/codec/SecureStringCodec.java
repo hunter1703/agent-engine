@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 public class SecureStringCodec implements Codec<String> {
 
-  static final String ENCRYPTED_PREFIX = "enc::";
+  public static final String ENCRYPTED_PREFIX = "enc::";
   private static final Logger LOG = LoggerFactory.getLogger(SecureStringCodec.class);
 
   private final EncryptionService encryptionService;
@@ -38,8 +38,8 @@ public class SecureStringCodec implements Codec<String> {
         final String encrypted = encryptionService.encrypt(value);
         writer.writeString(ENCRYPTED_PREFIX + encrypted);
       } catch (Exception e) {
-        LOG.debug("Failed to encrypt value; writing plaintext.", e);
-        writer.writeString(value);
+        LOG.error("Failed to encrypt value; aborting write to prevent storing plaintext.", e);
+        throw new RuntimeException("Failed to encrypt value", e);
       }
     } else {
       writer.writeString(value);
@@ -65,8 +65,8 @@ public class SecureStringCodec implements Codec<String> {
       try {
         return encryptionService.decrypt(payload);
       } catch (Exception e) {
-        LOG.debug("Failed to decrypt secure value; returning raw value.", e);
-        return raw;
+        LOG.error("Failed to decrypt secure value; aborting read to prevent data corruption.", e);
+        throw new RuntimeException("Failed to decrypt secure value", e);
       }
     }
 
