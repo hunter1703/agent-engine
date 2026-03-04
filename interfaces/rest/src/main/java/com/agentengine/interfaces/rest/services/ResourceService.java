@@ -25,29 +25,24 @@ public class ResourceService {
    */
   public String getResource(String resourceType, String extension) throws IOException {
     String cacheKey = resourceType.toLowerCase() + "." + extension;
-
-    String cachedResource = resourceCache.get(cacheKey);
-    if (cachedResource != null) {
-      return cachedResource;
+    String cached = resourceCache.get(cacheKey);
+    if (cached != null) {
+      return cached;
     }
 
-    String resourceFileName = resourceType.toLowerCase() + "." + extension;
-    String resourcePath = "schemas/" + resourceFileName;
+    String resourcePath = "schemas/" + cacheKey;
+    String loaded = load(resourceType, resourcePath);
+    // putIfAbsent avoids the check-then-put race; the redundant load is harmless
+    String existing = resourceCache.putIfAbsent(cacheKey, loaded);
+    return existing != null ? existing : loaded;
+  }
 
+  private String load(String resourceType, String resourcePath) throws IOException {
     try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
       if (Objects.isNull(inputStream)) {
-        throw new IOException(
-            "Resource for type '"
-                + resourceType
-                + "' with extension '"
-                + extension
-                + "' not found at path: "
-                + resourcePath);
+        throw new IOException("Resource for type '" + resourceType + "' not found at path: " + resourcePath);
       }
-      String resourceContent = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-      resourceCache.put(cacheKey, resourceContent);
-
-      return resourceContent;
+      return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
     }
   }
 

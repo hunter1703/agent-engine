@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -52,8 +53,9 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return Map.of();
     }
-    return findAssets(request).getItems().stream()
-        .filter(t -> request.getKeys().contains(t.name()))
+    return request.getKeys().stream()
+        .map(id -> toolService.getToolById(null, id))
+        .filter(Objects::nonNull)
         .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
   }
 

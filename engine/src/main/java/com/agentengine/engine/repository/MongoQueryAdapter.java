@@ -41,7 +41,7 @@ public final class MongoQueryAdapter {
     Operator op = filter.getOp();
 
     if (op == null) {
-      return Filters.eq(field, value);
+      throw new IllegalArgumentException("Filter operator is required for field: " + field);
     }
 
     final Object first = CollectionUtils.getFirst(value);

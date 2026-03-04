@@ -16,20 +16,34 @@ public final class RunState {
     public RunState() {
     }
 
+    // Record-style accessors used throughout the codebase
     public boolean thinkingOpen() {
         return thinkingOpen;
     }
 
+    public String lastThoughtText() {
+        return lastThoughtText;
+    }
+
+    public Plan plan() {
+        return plan;
+    }
+
+    public String lastToolCall() {
+        return lastToolCall;
+    }
+
+    public List<Violation> violations() {
+        return List.copyOf(violations);
+    }
+
+    // JavaBean accessors for Jackson serialization/deserialization
     public boolean isThinkingOpen() {
         return thinkingOpen;
     }
 
     public void setThinkingOpen(final boolean thinkingOpen) {
         this.thinkingOpen = thinkingOpen;
-    }
-
-    public String lastThoughtText() {
-        return lastThoughtText;
     }
 
     public String getLastThoughtText() {
@@ -40,10 +54,6 @@ public final class RunState {
         this.lastThoughtText = text;
     }
 
-    public Plan plan() {
-        return plan;
-    }
-
     public Plan getPlan() {
         return plan;
     }
@@ -52,20 +62,12 @@ public final class RunState {
         this.plan = plan;
     }
 
-    public String lastToolCall() {
-        return lastToolCall;
-    }
-
     public String getLastToolCall() {
         return lastToolCall;
     }
 
     public void setLastToolCall(final String lastToolCall) {
         this.lastToolCall = lastToolCall;
-    }
-
-    public List<Violation> violations() {
-        return List.copyOf(violations);
     }
 
     public List<Violation> getViolations() {

@@ -6,10 +6,12 @@ import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
+import com.agentengine.engine.events.SessionDeletedEvent;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.utils.EncryptionService;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Optional;
@@ -20,11 +22,16 @@ public class SessionServiceImpl implements SessionService {
 
   private final AgentSessionRepository sessionRepository;
   private final EncryptionService encryptionService;
+  private final Event<SessionDeletedEvent> sessionDeletedEvent;
 
   @Inject
-  public SessionServiceImpl(AgentSessionRepository sessionRepository, EncryptionService encryptionService) {
+  public SessionServiceImpl(
+      AgentSessionRepository sessionRepository,
+      EncryptionService encryptionService,
+      Event<SessionDeletedEvent> sessionDeletedEvent) {
     this.sessionRepository = sessionRepository;
-      this.encryptionService = encryptionService;
+    this.encryptionService = encryptionService;
+    this.sessionDeletedEvent = sessionDeletedEvent;
   }
 
   @Override
@@ -43,6 +50,7 @@ public class SessionServiceImpl implements SessionService {
   @WithSpan
   public void deleteSession(String id) {
     sessionRepository.deleteById(id);
+    sessionDeletedEvent.fire(new SessionDeletedEvent(id));
   }
 
   @Override

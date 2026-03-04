@@ -47,7 +47,7 @@ class SessionAssetHandlerTest {
     // Mock SessionService
     SessionService sessionService = mock(SessionService.class);
     when(sessionService.findSessions(any()))
-        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
+        .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     SessionAssetHandler handler = new SessionAssetHandler(sessionService);
 
@@ -124,7 +124,7 @@ class SessionAssetHandlerTest {
 
     final SessionService sessionService = mock(SessionService.class);
     when(sessionService.findSessions(any()))
-        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
+        .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     final SessionAssetHandler handler = new SessionAssetHandler(sessionService);
 
@@ -167,7 +167,7 @@ class SessionAssetHandlerTest {
     session.setSessionInfo(sessionInfo);
 
     when(sessionService.findSessions(any()))
-        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
+        .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     final SessionAssetHandler handler = new SessionAssetHandler(sessionService);
     final AssetRequest request = new AssetRequest();

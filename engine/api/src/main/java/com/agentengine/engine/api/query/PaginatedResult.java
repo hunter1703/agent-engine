@@ -67,16 +67,4 @@ public class PaginatedResult<T> {
     return result;
   }
 
-  public static <S> PaginatedResult<S> create(List<S> items, Page page) {
-    PaginatedResult<S> result = new PaginatedResult<>();
-    result.setItems(items);
-    final boolean hasMore = page.getLimit() > 0 && CollectionUtils.isNotEmpty(items) && items.size() >= page.getLimit();
-    result.setHasMore(hasMore);
-    if (hasMore) {
-      Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
-      result.setNextCursor(
-          Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
-    }
-    return result;
-  }
 }

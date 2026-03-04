@@ -32,6 +32,10 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   public Flowable<Event> run(AgentRequest request) {
     AgentSessionRuntime runtime =
         agentSessionRuntimeManager.getOrStartRuntime(request.getAgentId(), request.getSessionId());
-    return agentRunner.run(runtime, request.getMessage());
+    final String sessionId = runtime.sessionId();
+    agentSessionRuntimeManager.markRunActive(sessionId);
+    return agentRunner
+        .run(runtime, request.getMessage())
+        .doFinally(() -> agentSessionRuntimeManager.markRunInactive(sessionId));
   }
 }
