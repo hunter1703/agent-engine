@@ -37,7 +37,7 @@ class AgentRestAPITest {
     when(agentService.createAgent(config)).thenReturn(config);
 
     final AgentRestAPI resource =
-        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
+        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService, mock(com.agentengine.engine.api.services.SessionService.class));
 
     final AgentConfig response = resource.createAgent(config);
 
@@ -57,7 +57,7 @@ class AgentRestAPITest {
     doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
 
     final AgentRestAPI resource =
-        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService);
+        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService, mock(com.agentengine.engine.api.services.SessionService.class));
 
     final AgentConfig response = resource.createAgent(config);
 

@@ -13,8 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SecureStringCodec implements Codec<String> {
-
-  public static final String ENCRYPTED_PREFIX = "enc::";
   private static final Logger LOG = LoggerFactory.getLogger(SecureStringCodec.class);
 
   private final LazyLoader<EncryptionService> encryptionService;
@@ -33,8 +31,7 @@ public class SecureStringCodec implements Codec<String> {
     final EncryptionService resolvedService = encryptionService.getInstance();
     if (resolvedService != null && resolvedService.isEncryptionEnabled()) {
       try {
-        final String encrypted = resolvedService.encrypt(value);
-        writer.writeString(ENCRYPTED_PREFIX + encrypted);
+        writer.writeString(resolvedService.encrypt(value));
       } catch (Exception e) {
         LOG.error("Failed to encrypt value; aborting write to prevent storing plaintext.", e);
         throw new RuntimeException("Failed to encrypt value", e);
@@ -53,16 +50,12 @@ public class SecureStringCodec implements Codec<String> {
 
     if (reader.getCurrentBsonType() == BsonType.STRING) {
       final String raw = reader.readString();
-      if (!raw.startsWith(ENCRYPTED_PREFIX)) {
-        return raw;
-      }
       final EncryptionService resolvedService = encryptionService.getInstance();
       if (resolvedService == null || !resolvedService.isEncryptionEnabled()) {
         return raw;
       }
-      final String payload = raw.substring(ENCRYPTED_PREFIX.length());
       try {
-        return resolvedService.decrypt(payload);
+        return resolvedService.decrypt(raw);
       } catch (Exception e) {
         LOG.error("Failed to decrypt secure value; aborting read to prevent data corruption.", e);
         throw new RuntimeException("Failed to decrypt secure value", e);

@@ -3,6 +3,7 @@ package com.agentengine.engine.api.query;
 public class Query {
   private Filter filter;
   private Page page;
+  private Sort sort;
 
   public Query() {}
 
@@ -22,6 +23,14 @@ public class Query {
     this.page = page;
   }
 
+  public Sort getSort() {
+    return sort;
+  }
+
+  public void setSort(Sort sort) {
+    this.sort = sort;
+  }
+
   public Query withFilter(Filter filter) {
     this.filter = filter;
     return this;
@@ -29,6 +38,11 @@ public class Query {
 
   public Query withPage(Page page) {
     this.page = page;
+    return this;
+  }
+
+  public Query withSort(Sort sort) {
+    this.sort = sort;
     return this;
   }
 }

@@ -47,7 +47,7 @@ class AgentSseTest {
     when(executionService.run(any(AgentRequest.class)))
         .thenReturn(Flowable.just(answerEvent));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null, mock(com.agentengine.engine.api.services.SessionService.class));
     AgentRequest agentRequest = new AgentRequest();
     agentRequest.setAgentId("agent");
     agentRequest.setAgentConfigPath("config.json");
@@ -126,7 +126,7 @@ class AgentSseTest {
 
     when(executionService.run(any(AgentRequest.class))).thenReturn(Flowable.just(event));
 
-    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null);
+    AgentRestAPI resource = new AgentRestAPI(buildHandlers(executionService), null, mock(com.agentengine.engine.api.services.SessionService.class));
     AgentRequest agentRequest = new AgentRequest();
     agentRequest.setAgentId("agent");
     agentRequest.setAgentConfigPath("config.json");

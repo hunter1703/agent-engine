@@ -166,12 +166,16 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       List<T> entities = new ArrayList<>();
 
       Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
+      Bson bsonSort = MongoQueryAdapter.toSortBson(query == null ? null : query.getSort());
 
-      final FindIterable<T> iter =
-          getCollection()
+      FindIterable<T> iter = getCollection()
               .find(bsonFilter, entityClass)
               .skip(page.getOffset())
               .limit(page.getLimit());
+
+      if (bsonSort != null) {
+          iter = iter.sort(bsonSort);
+      }
 
       for (T document : iter) {
         entities.add(document);

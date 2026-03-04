@@ -118,7 +118,6 @@ class SessionAssetHandlerTest {
     final AgentSession session = new AgentSession();
     session.setId("session-2");
     session.setAgentId("agent-2");
-    session.setUserId("user-2");
     session.setTitle("Session");
 
     // Mock SessionInfo with events

@@ -7,6 +7,8 @@ import com.mongodb.client.model.Filters;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+
+import com.mongodb.client.model.Sorts;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
@@ -56,6 +58,17 @@ public final class MongoQueryAdapter {
       case EXISTS -> Filters.exists(field);
       case NOT_EXISTS -> Filters.exists(field, false);
       default -> throw new IllegalArgumentException("Unsupported operator: " + op);
+    };
+  }
+
+  public static Bson toSortBson(com.agentengine.engine.api.query.Sort sort) {
+    if (sort == null || sort.getField() == null) {
+      return null;
+    }
+    return switch (sort.getOrder()) {
+      case ASC -> Sorts.ascending(sort.getField());
+      case DESC -> Sorts.descending(sort.getField());
+      case UNKNOWN -> Sorts.ascending(sort.getField()); // Defaulting to ascending
     };
   }
 }
