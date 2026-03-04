@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 @Unremovable
 public class EncryptionService {
   private static final String ENCRYPTED_PREFIX = "enc";
+  private static final String ENCRYPTED_PREFIX_STR = ENCRYPTED_PREFIX + "::";
   private static final Logger LOG = LoggerFactory.getLogger(EncryptionService.class);
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int GCM_IV_LENGTH = 12; // 96 bits recommended for GCM
@@ -88,25 +89,21 @@ public class EncryptionService {
       System.arraycopy(iv, 0, ivAndCiphertext, 0, GCM_IV_LENGTH);
       System.arraycopy(ciphertext, 0, ivAndCiphertext, GCM_IV_LENGTH, ciphertext.length);
 
-      return prefix() + Base64.getEncoder().encodeToString(ivAndCiphertext);
+      return ENCRYPTED_PREFIX_STR + Base64.getEncoder().encodeToString(ivAndCiphertext);
     } catch (Exception e) {
       throw new RuntimeException("Encryption failed", e);
     }
-  }
-
-  private static String prefix() {
-    return ENCRYPTED_PREFIX + "::";
   }
 
   public String decrypt(final String base64IvAndCiphertext) {
     if (base64IvAndCiphertext == null) {
       return null;
     }
-    if (!encryptionEnabled || !base64IvAndCiphertext.startsWith(prefix())) {
+    if (!encryptionEnabled || !base64IvAndCiphertext.startsWith(ENCRYPTED_PREFIX_STR)) {
       return base64IvAndCiphertext;
     }
     try {
-      final String base64Only = base64IvAndCiphertext.substring(prefix().length());
+      final String base64Only = base64IvAndCiphertext.substring(ENCRYPTED_PREFIX_STR.length());
       final byte[] ivAndCiphertext = Base64.getDecoder().decode(base64Only);
       if (ivAndCiphertext.length < GCM_IV_LENGTH) {
         throw new IllegalArgumentException("Invalid ciphertext length");

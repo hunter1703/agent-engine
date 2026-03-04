@@ -13,7 +13,6 @@ public enum Operator {
   GTE,
   LT,
   LTE,
-  LIKE,
   IN,
   NIN,
   CONTAINS,

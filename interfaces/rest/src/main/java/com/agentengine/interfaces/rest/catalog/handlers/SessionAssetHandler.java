@@ -87,7 +87,7 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
   private SessionAssetSummary toSessionAssetSummary(final AgentSessionDTO session) {
     if (session == null) {
-      return SessionAssetSummary.fromSession(null, null);
+      return null;
     }
     return SessionAssetSummary.fromSession(session, getName(session));
   }

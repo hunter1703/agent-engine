@@ -20,9 +20,6 @@ public class SessionAssetSummary extends NameIdEntity {
   }
 
   public static SessionAssetSummary fromSession(final AgentSessionDTO session, final String name) {
-    if (session == null) {
-      return new SessionAssetSummary(null, null, null, null, null);
-    }
     return new SessionAssetSummary(
         session.getId(),
         name,

@@ -59,10 +59,14 @@ public class ResourceCatalogAPI {
       throw new WebApplicationException("Resource type is required", 400);
     }
 
-    NamedAssetHandler<?> handler = (NamedAssetHandler<?>) assetHandlers.get(request.getAssetType());
-    if (handler == null) {
+    AssetHandler<?> rawHandler = assetHandlers.get(request.getAssetType());
+    if (rawHandler == null) {
       throw new WebApplicationException(
           "Unsupported resource type: " + request.getAssetType(), 400);
+    }
+    if (!(rawHandler instanceof NamedAssetHandler<?> handler)) {
+      throw new WebApplicationException(
+          "Resource type does not support listing: " + request.getAssetType(), 400);
     }
 
     return handler.listAssets(request);
