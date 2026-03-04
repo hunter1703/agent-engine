@@ -3,6 +3,7 @@ package com.agentengine.engine.api.utils;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
 import com.google.adk.agents.InvocationContext;
+import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 
@@ -11,10 +12,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class CorrectionUtils {
-  public static final String CORRECTION_KEY = "correction";
-  public static final String CORRECTION_TYPE_KEY = "correction_type";
-  public static final String CORRECTION_CODE_KEY = "correction_code";
-  public static final String CORRECTION_MESSAGE_KEY = "correction_message";
+  public static final String CORRECTION_KEY = State.TEMP_PREFIX + "correction";
+  public static final String CORRECTION_TYPE_KEY = State.TEMP_PREFIX + "correction_type";
+  public static final String CORRECTION_CODE_KEY = State.TEMP_PREFIX + "correction_code";
+  public static final String CORRECTION_MESSAGE_KEY = State.TEMP_PREFIX + "correction_message";
 
   private CorrectionUtils() {}
 
