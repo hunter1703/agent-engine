@@ -12,6 +12,7 @@ import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
+import com.agentengine.interfaces.rest.catalog.SessionAssetSummary;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
@@ -109,6 +110,34 @@ class SessionAssetHandlerTest {
     assertThat(resultSession.getEvents()).isNotEmpty();
     // SessionInfo is cleared in the DTO
     assertThat(resultSession.getSessionInfo()).isNull();
+  }
+
+  @Test
+  void listAssetsIncludesSessionMetadata() {
+    final AssetRequest request = new AssetRequest();
+    final AgentSession session = new AgentSession();
+    session.setId("session-3");
+    session.setAgentId("agent-3");
+    session.setTitle("Session 3");
+    session.setCreatedTime(120L);
+    session.setUpdatedTime(220L);
+
+    final SessionService sessionService = mock(SessionService.class);
+    when(sessionService.findSessions(any()))
+        .thenReturn(PaginatedResult.create(List.of(session), new Page()));
+
+    final SessionAssetHandler handler = new SessionAssetHandler(sessionService);
+
+    final PaginatedResult<SessionAssetSummary> result = handler.listAssets(request);
+
+    assertThat(result).isNotNull();
+    assertThat(result.getItems()).hasSize(1);
+    final SessionAssetSummary summary = result.getItems().get(0);
+    assertThat(summary.getId()).isEqualTo("session-3");
+    assertThat(summary.getName()).isEqualTo("Session 3");
+    assertThat(summary.getAgentId()).isEqualTo("agent-3");
+    assertThat(summary.getCreatedTime()).isEqualTo(120L);
+    assertThat(summary.getUpdatedTime()).isEqualTo(220L);
   }
 
   @Test

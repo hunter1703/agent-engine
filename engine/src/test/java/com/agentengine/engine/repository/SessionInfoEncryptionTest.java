@@ -6,7 +6,6 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.repository.codec.SecurePropertyConvention;
-import com.agentengine.engine.repository.codec.SecureStringCodec;
 import com.agentengine.engine.utils.EncryptionService;
 import com.mongodb.MongoClientSettings;
 import jakarta.enterprise.inject.Instance;
@@ -33,6 +32,7 @@ import org.junit.jupiter.api.Test;
 class SessionInfoEncryptionTest {
 
   @Test
+  @SuppressWarnings("unchecked")
   void appendEventPathEncryptsEventsJson() {
     // Arrange: mock encryption the same way SecurePropertyConventionTest does.
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
@@ -81,7 +81,8 @@ class SessionInfoEncryptionTest {
         .as("document should contain the eventsJson field")
         .isTrue();
     assertThat(document.getString("eventsJson").getValue())
-        .as("eventsJson must be encrypted (prefixed with enc::)")
-        .startsWith(SecureStringCodec.ENCRYPTED_PREFIX);
+        .as("eventsJson must be encrypted (mocked value)")
+        .startsWith("encrypted(");
   }
 }
+

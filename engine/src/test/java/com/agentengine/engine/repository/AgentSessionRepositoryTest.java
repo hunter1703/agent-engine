@@ -27,6 +27,7 @@ class AgentSessionRepositoryTest {
   private MongoCollection<AgentSession> collection;
 
   @BeforeEach
+  @SuppressWarnings("unchecked")
   void setUp() {
     mongoClientFactory = mock(MongoClientFactory.class);
     collection = mock(MongoCollection.class);

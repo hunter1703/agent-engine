@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 class SecurePropertyConventionTest {
 
   @Test
+  @SuppressWarnings("unchecked")
   void encryptsSecureFieldsAnnotatedOnFields() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
@@ -43,10 +44,11 @@ class SecurePropertyConventionTest {
     codec.encode(writer, entity, EncoderContext.builder().build());
 
     assertThat(document.getString("secret").getValue())
-        .isEqualTo(SecureStringCodec.ENCRYPTED_PREFIX + "encrypted-secret");
+        .isEqualTo("encrypted-secret");
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void encryptsSecureFieldsAnnotatedOnGetters() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
@@ -66,10 +68,11 @@ class SecurePropertyConventionTest {
     codec.encode(writer, entity, EncoderContext.builder().build());
 
     assertThat(document.getString("secret").getValue())
-        .isEqualTo(SecureStringCodec.ENCRYPTED_PREFIX + "encrypted-secret");
+        .isEqualTo("encrypted-secret");
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void encryptsSecureFieldsAnnotatedOnSetters() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
@@ -89,10 +92,11 @@ class SecurePropertyConventionTest {
     codec.encode(writer, entity, EncoderContext.builder().build());
 
     assertThat(document.getString("secret").getValue())
-        .isEqualTo(SecureStringCodec.ENCRYPTED_PREFIX + "encrypted-secret");
+        .isEqualTo("encrypted-secret");
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void ignoresSecureAnnotationOnNonStringFields() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     when(encryptionInstance.isResolvable()).thenReturn(true);

@@ -7,14 +7,13 @@ import com.agentengine.engine.api.query.PaginatedResult;
 
 public abstract class NamedAssetHandler<T> implements AssetHandler<T> {
 
-  public PaginatedResult<NameIdEntity> listAssets(final AssetRequest request) {
+  public PaginatedResult<? extends NameIdEntity> listAssets(final AssetRequest request) {
     final PaginatedResult<T> assets = findAssets(request);
-    final Page page = request.getQuery() == null ? new Page() : request.getQuery().getPage();
-    return PaginatedResult.create(
-        assets.getItems().stream()
-            .map(asset -> new NameIdEntity(getId(asset), getName(asset)))
-            .toList(),
-        page);
+    return assets.transform(this::toNameIdEntity);
+  }
+
+  protected NameIdEntity toNameIdEntity(final T asset) {
+    return new NameIdEntity(getId(asset), getName(asset));
   }
 
   protected String getId(T asset) {

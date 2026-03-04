@@ -54,7 +54,7 @@ public class ResourceCatalogAPI {
           @Content(
               mediaType = MediaType.APPLICATION_JSON,
               schema = @Schema(implementation = PaginatedResult.class)))
-  public PaginatedResult<NameIdEntity> listResources(AssetRequest request) {
+  public PaginatedResult<? extends NameIdEntity> listResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
       throw new WebApplicationException("Resource type is required", 400);
     }

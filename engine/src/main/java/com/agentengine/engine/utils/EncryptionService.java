@@ -106,7 +106,8 @@ public class EncryptionService {
       return base64IvAndCiphertext;
     }
     try {
-      final byte[] ivAndCiphertext = Base64.getDecoder().decode(base64IvAndCiphertext);
+      final String base64Only = base64IvAndCiphertext.substring(prefix().length());
+      final byte[] ivAndCiphertext = Base64.getDecoder().decode(base64Only);
       if (ivAndCiphertext.length < GCM_IV_LENGTH) {
         throw new IllegalArgumentException("Invalid ciphertext length");
       }

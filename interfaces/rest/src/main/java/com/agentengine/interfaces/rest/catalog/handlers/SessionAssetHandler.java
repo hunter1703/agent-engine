@@ -6,6 +6,7 @@ import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
+import com.agentengine.interfaces.rest.catalog.SessionAssetSummary;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.handlers.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
@@ -50,6 +51,12 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   }
 
   @Override
+  public PaginatedResult<SessionAssetSummary> listAssets(final AssetRequest request) {
+    final PaginatedResult<AgentSessionDTO> assets = findAssets(request);
+    return assets.transform(this::toSessionAssetSummary);
+  }
+
+  @Override
   public Map<String, AgentSessionDTO> getAssetsByIds(final AssetRequest request) {
     final Map<String, AgentSessionDTO> result = new HashMap<>();
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
@@ -76,6 +83,13 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   @Override
   protected String getName(AgentSessionDTO asset) {
     return asset.getTitle();
+  }
+
+  private SessionAssetSummary toSessionAssetSummary(final AgentSessionDTO session) {
+    if (session == null) {
+      return SessionAssetSummary.fromSession(null, null);
+    }
+    return SessionAssetSummary.fromSession(session, getName(session));
   }
 
   private AgentSessionDTO attachEvents(final AgentSession session) {

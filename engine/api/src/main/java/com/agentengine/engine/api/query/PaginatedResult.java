@@ -48,7 +48,8 @@ public class PaginatedResult<T> {
     PaginatedResult<S> result = new PaginatedResult<>();
     result.setItems(items);
     result.setTotal(total);
-    result.setHasMore(page.getOffset() + page.getLimit() < total);
+    final boolean hasMore = page.getLimit() > 0 && (page.getOffset() + page.getLimit() < total);
+    result.setHasMore(hasMore);
     if (result.isHasMore()) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
       result.setNextCursor(
@@ -69,7 +70,7 @@ public class PaginatedResult<T> {
   public static <S> PaginatedResult<S> create(List<S> items, Page page) {
     PaginatedResult<S> result = new PaginatedResult<>();
     result.setItems(items);
-    final boolean hasMore = CollectionUtils.isNotEmpty(items) && items.size() >= page.getLimit();
+    final boolean hasMore = page.getLimit() > 0 && CollectionUtils.isNotEmpty(items) && items.size() >= page.getLimit();
     result.setHasMore(hasMore);
     if (hasMore) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());

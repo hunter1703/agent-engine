@@ -73,10 +73,12 @@ class EncryptionServiceTest {
     final String plaintext = "Sensitive Data";
     final String ciphertext = encryptionService.encrypt(plaintext);
     
-    // Tamper with the base64 payload
-    byte[] decoded = Base64.getDecoder().decode(ciphertext);
+    // Tamper with the base64 payload (strip "enc::" first)
+    final String prefix = "enc::";
+    final String base64 = ciphertext.substring(prefix.length());
+    byte[] decoded = Base64.getDecoder().decode(base64);
     decoded[decoded.length - 1] = (byte) (decoded[decoded.length - 1] + 1); // Mutate tag
-    final String tampered = Base64.getEncoder().encodeToString(decoded);
+    final String tampered = prefix + Base64.getEncoder().encodeToString(decoded);
     
     assertThatThrownBy(() -> encryptionService.decrypt(tampered))
         .isInstanceOf(RuntimeException.class)

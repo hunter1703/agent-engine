@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 class SecureStringCodecTest {
 
   @Test
+  @SuppressWarnings("unchecked")
   void constructorDoesNotResolveEncryptionService() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
 
@@ -27,6 +28,7 @@ class SecureStringCodecTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void throwsWhenEncryptionFails() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
@@ -48,18 +50,19 @@ class SecureStringCodecTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void throwsWhenDecryptionFails() {
     final Instance<EncryptionService> encryptionInstance = mock(Instance.class);
     final EncryptionService encryptionService = mock(EncryptionService.class);
     when(encryptionInstance.isResolvable()).thenReturn(true);
     when(encryptionInstance.get()).thenReturn(encryptionService);
     when(encryptionService.isEncryptionEnabled()).thenReturn(true);
-    when(encryptionService.decrypt("cipher"))
+    when(encryptionService.decrypt("enc::cipher"))
         .thenThrow(new RuntimeException("boom"));
 
     final SecureStringCodec codec = new SecureStringCodec(encryptionInstance);
     final BsonDocument document = new BsonDocument();
-    document.put("value", new BsonString(SecureStringCodec.ENCRYPTED_PREFIX + "cipher"));
+    document.put("value", new BsonString("enc::cipher"));
 
     final BsonDocumentReader reader = new BsonDocumentReader(document);
     reader.readStartDocument();
