@@ -9,6 +9,7 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
@@ -53,9 +54,10 @@ public class AgentRestAPI {
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
   private final AgentService agentService;
+  private final SessionService sessionService;
 
   @Inject
-  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentService agentService) {
+  public AgentRestAPI(final Instance<AgentRequestHandler<?>> handlers, AgentService agentService, SessionService sessionService) {
     this.handlers =
         handlers != null
             ? handlers.stream()
@@ -64,6 +66,7 @@ public class AgentRestAPI {
                         AgentRequestHandler::requestType, Function.identity()))
             : null;
     this.agentService = agentService;
+    this.sessionService = sessionService;
   }
 
   @POST
@@ -144,6 +147,15 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "404", description = "Agent not found")
   public boolean deleteAgent(@PathParam("agentId") final String agentId) {
     return agentService.deleteAgent(agentId);
+  }
+
+  @DELETE
+  @Path("/session/{sessionId}")
+  @Operation(summary = "Delete a session")
+  @APIResponse(responseCode = "204", description = "Session deleted")
+  @APIResponse(responseCode = "404", description = "Session not found")
+  public void deleteSession(@PathParam("sessionId") final String sessionId) {
+    sessionService.deleteSession(sessionId);
   }
 
   private AgentRequestHandler<?> handlerFor(final RequestType requestType) {

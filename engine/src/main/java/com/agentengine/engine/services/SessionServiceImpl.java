@@ -7,6 +7,7 @@ import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.repository.AgentSessionRepository;
+import com.agentengine.engine.utils.EncryptionService;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -18,10 +19,12 @@ import java.util.Optional;
 public class SessionServiceImpl implements SessionService {
 
   private final AgentSessionRepository sessionRepository;
+  private final EncryptionService encryptionService;
 
   @Inject
-  public SessionServiceImpl(AgentSessionRepository sessionRepository) {
+  public SessionServiceImpl(AgentSessionRepository sessionRepository, EncryptionService encryptionService) {
     this.sessionRepository = sessionRepository;
+      this.encryptionService = encryptionService;
   }
 
   @Override
@@ -45,6 +48,6 @@ public class SessionServiceImpl implements SessionService {
   @Override
   @WithSpan
   public void updateTitle(final String id, final String title) {
-    sessionRepository.update(id, Update.of(Operation.set("title", title)));
+    sessionRepository.update(id, Update.of(Operation.set("title", encryptionService.encrypt(title))));
   }
 }
