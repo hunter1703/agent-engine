@@ -34,6 +34,19 @@
         "$ref": "#/$defs/AgentModelConfig",
         "title": "Model Configuration",
         "description": "Language model configuration for this agent."
+      },
+      "routingModelId": {
+        "type": "string",
+        "title": "Routing Model ID",
+        "description": "Model config ID used for flow routing decisions. If omitted, the agent's main model is used.",
+        "help": "Use a lightweight model (e.g. `ollama-llama3`) to keep routing fast."
+      },
+      "routingHistorySize": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0,
+        "title": "Routing History Size",
+        "description": "Number of recent session events passed to the routing model. 0 = only the last user message (default); positive = last N events."
       }
     },
     "$defs": {
@@ -241,6 +254,16 @@
     }
   },
   "layout": {
+    "routingModelId": {
+      "widget": "LOOKUP",
+      "lookupRequest": {
+        "url": "/catalog/list",
+        "method": "POST",
+        "body": {
+          "assetType": "model"
+        }
+      }
+    },
     "model": {
       "modelId": {
         "widget": "LOOKUP",

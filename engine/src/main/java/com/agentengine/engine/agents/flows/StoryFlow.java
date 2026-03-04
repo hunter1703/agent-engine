@@ -134,7 +134,7 @@ public final class StoryFlow extends DefaultFlow {
             "- Every other character is observed through the protagonist's eyes and referred to " +
             "in third person (by name or \"he\", \"she\", \"they\") at all times.\n\n" +
             "Weave all elements into a vivid, cohesive narrative. " +
-            "Show, don't tell. Let dialogue and action carry the theme and conflict. Use no more than 100 words";
+            "Show, don't tell. Let dialogue and action carry the theme and conflict. Use no more than 200 words";
 
     // ---- Name extraction pattern -----------------------------------------------
 

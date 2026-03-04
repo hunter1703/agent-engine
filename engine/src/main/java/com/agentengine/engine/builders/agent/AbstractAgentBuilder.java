@@ -2,6 +2,7 @@ package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
@@ -21,9 +22,12 @@ import com.google.adk.tools.BaseTool;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent>
     implements AgentBuilder<C, A> {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractAgentBuilder.class);
   private static final Pattern ADK_AGENT_NAME_PATTERN =
       Pattern.compile("^_?[a-zA-Z0-9]*([. _-][a-zA-Z0-9]+)*$");
   protected final ModelProvider modelProvider;
@@ -93,6 +97,28 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
       return modelInstructions;
     }
     return systemPrompt + "\n\n# FOLLOW\n" + modelInstructions;
+  }
+
+  protected AbstractLLM resolveRoutingModel(final AgentConfig config) {
+    final String routingModelId = config.getRoutingModelId();
+    if (StringUtils.isNotBlank(routingModelId)) {
+      try {
+        final AgentModelConfig routingConfig = new AgentModelConfig();
+        routingConfig.setModelId(routingModelId);
+        final BaseLlm routingModel = modelProvider.get(routingConfig);
+        if (routingModel instanceof AbstractLLM abstractLLM) {
+          return abstractLLM;
+        }
+        LOG.warn("Routing model '{}' did not produce an AbstractLLM, falling back to main model", routingModelId);
+      } catch (final Exception e) {
+        LOG.warn("Failed to resolve routing model '{}', falling back to main model", routingModelId, e);
+      }
+    }
+    final BaseLlm mainModel = modelProvider.get(config.getModel());
+    if (mainModel instanceof AbstractLLM abstractLLM) {
+      return abstractLLM;
+    }
+    throw new IllegalStateException("Main model is not an AbstractLLM instance");
   }
 
   protected BaseSessionService resolveSessionService(

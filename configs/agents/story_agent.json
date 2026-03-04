@@ -1,0 +1,20 @@
+{
+  "type": "story",
+  "id": "story_agent",
+  "name": "Story Agent",
+  "model": {
+    "modelId": "dolphin-mistral-24b-venice-edition-q4_k_m",
+    "systemPrompt": "You are a bard who tells interesting stories about world",
+    "contextManagerConfig": {
+      "type": "last_n",
+      "keepLast": 10000
+    },
+    "tools": [
+      {
+        "toolName": "planning"
+      }
+    ]
+  },
+  "routingModelId" : "qwen2.5-1.5b-instruct-q5_k_m",
+  "routingHistorySize": 20
+}

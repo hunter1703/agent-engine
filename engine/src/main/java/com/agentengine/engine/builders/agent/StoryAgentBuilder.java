@@ -40,7 +40,8 @@ public class StoryAgentBuilder extends AbstractAgentBuilder<AgentConfig, StoryAg
   @Override
   public StoryAgent build(final AgentConfig config, final AgentContext agentContext) {
     final AgentBuilder builder = getBuilder(config, agentContext);
-    return new StoryAgent(builder);
+    final AbstractLLM routingModel = resolveRoutingModel(config);
+    return new StoryAgent(builder, routingModel, config.getRoutingHistorySize());
   }
 
   @Override

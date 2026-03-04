@@ -11,6 +11,8 @@ public class AgentConfig extends NamedEntity implements Config {
   @Secure private String description;
   private String avatar;
   @NotNull private AgentModelConfig model;
+  private String routingModelId;
+  private int routingHistorySize = 1;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
 
   public AgentConfig() {
@@ -64,6 +66,22 @@ public class AgentConfig extends NamedEntity implements Config {
 
   public void setModel(final AgentModelConfig model) {
     this.model = model;
+  }
+
+  public String getRoutingModelId() {
+    return routingModelId;
+  }
+
+  public void setRoutingModelId(final String routingModelId) {
+    this.routingModelId = routingModelId;
+  }
+
+  public int getRoutingHistorySize() {
+    return routingHistorySize;
+  }
+
+  public void setRoutingHistorySize(final int routingHistorySize) {
+    this.routingHistorySize = routingHistorySize;
   }
 
   public SessionServiceConfig getSessionStore() {
