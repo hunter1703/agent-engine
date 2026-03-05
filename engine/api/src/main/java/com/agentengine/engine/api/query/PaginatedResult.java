@@ -58,6 +58,15 @@ public class PaginatedResult<T> {
     return result;
   }
 
+  public static <S> PaginatedResult<S> create(final List<S> items) {
+    final PaginatedResult<S> result = new PaginatedResult<>();
+    result.setItems(items);
+    result.setTotal(null);
+    result.setHasMore(false);
+    result.setNextCursor(null);
+    return result;
+  }
+
   public <S> PaginatedResult<S> transform(Function<T, S> transformer) {
     PaginatedResult<S> result = new PaginatedResult<>();
     result.setItems(CollectionUtils.nullSafeList(this.items).stream().map(transformer).toList());

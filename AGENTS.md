@@ -38,9 +38,8 @@ and REST) for interacting with agents.
 19. Avoid redundant or low-value tests that do not exercise functional behavior.
 20. Document REST endpoints with MicroProfile OpenAPI annotations.
 21. Avoid qualified class names; add explicit imports instead.
-22. Avoid synchronized constructs; prefer virtual-thread-friendly patterns.
-23. Avoid methods with long argument lists. Avoid side-effect methods wherever possible; use them only when it makes sense in the context of the abstraction.
-24. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-25. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
-26. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
-27. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
+22. Avoid methods with long argument lists. Avoid side-effect methods wherever possible; use them only when it makes sense in the context of the abstraction.
+23. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
+24. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
+25. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+26. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.

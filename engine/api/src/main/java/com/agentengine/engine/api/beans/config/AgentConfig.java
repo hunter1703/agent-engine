@@ -14,6 +14,8 @@ public class AgentConfig extends NamedEntity implements Config {
   private String routingModelId;
   private int routingHistorySize = 1;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
+  private GuardrailsConfig guardrails = new GuardrailsConfig();
+  private EvaluatorOptimizerConfig evaluatorOptimizer = new EvaluatorOptimizerConfig();
 
   public AgentConfig() {
     this.type = AgentType.DEFAULT.name().toLowerCase();
@@ -92,10 +94,22 @@ public class AgentConfig extends NamedEntity implements Config {
     this.sessionStore = sessionStore;
   }
 
+  public GuardrailsConfig getGuardrails() {
+    return guardrails;
+  }
+
+  public void setGuardrails(final GuardrailsConfig guardrails) {
+    this.guardrails = guardrails;
+  }
+
   public enum AgentType {
+    /** Fallback for invalid or missing config values. */
     UNKNOWN,
+    /** Standard single-agent runtime with default flow/pipeline behavior. */
     DEFAULT,
     STORY;
+    /** Story-specialized agent with routing + multi-phase story generation flow. */
+    STORY,
 
     public static AgentType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

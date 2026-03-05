@@ -7,4 +7,9 @@ import java.util.function.UnaryOperator;
 public interface ContextManager {
 
   UnaryOperator<List<Content>> getPromptBuilder();
+
+  default List<Content> buildPrompt(
+      final String agentId, final String sessionId, final List<Content> contents) {
+    return getPromptBuilder().apply(contents);
+  }
 }

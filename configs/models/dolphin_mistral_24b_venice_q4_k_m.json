@@ -11,7 +11,7 @@
     "--hf-file",
     "dolphin-mistral-24b-venice-edition-q4_k_m.gguf",
     "-c",
-    "8192",
+    "20000",
     "--host",
     "127.0.0.1",
     "--port",

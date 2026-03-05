@@ -7,8 +7,9 @@
     "role": "reasoning",
     "systemPrompt": "You are an echo-only assistant.",
     "contextManagerConfig": {
-      "type": "last_n",
-      "keepLast": 10000
+      "type": "summarize",
+      "triggerTokens": 4096,
+      "recencyTokens": 1024
     },
     "tools": [
       {

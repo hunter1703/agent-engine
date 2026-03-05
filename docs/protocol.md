@@ -60,7 +60,10 @@ The `DefaultFlow` is the definitive source of truth for the interaction protocol
 - **Terminal Signals**:
   - **Finish Reason**: If the Run is truly finished (turn is complete and no tools were called), the engine guarantees `finishReason: STOP`.
   - **Completion Flags**: Sets `partial: false` and `turnComplete: true` on the final response.
-- **Cleanup**: Purges the `RunState` from the session context upon completion.
+- **Cleanup**: Clears transient `RunState` fields while preserving durable plan state in session context.
+- **HITL Pause/Resume**:
+  - Calling `user_clarification` pauses the session (`hitl.paused=true`) and halts flow continuation after the current turn.
+  - The next user message on the same session is treated as the resume signal; pause state is cleared and the answer is injected as resume context.
 
 ### 3.5. Processor Hygiene and State Handling
 
@@ -68,6 +71,27 @@ The `DefaultFlow` is the definitive source of truth for the interaction protocol
   - **Guarantee**: Response processors MUST NOT base their logic on the current value of `turnComplete`.
   - **Reasoning**: `turnComplete` is a lifecycle signal for the agentic loop, not for intermediate processing. Processors may *set* or *flip* this flag, but should never *read* it to branch logic.
   - **Ownership**: The final `LogicalCompletionResponseProcessor` is the definitive authority on positive completion signals.
+
+### 3.6. Multi-Agent Delegation and Handoff
+
+- **Manager-as-Tool Delegation** (`delegate_to_agent`):
+  - **Guarantee**: A source agent can call another agent as a tool and receive the delegated agent's visible text output summarized back into the tool result.
+  - **Session Rule**: Delegation uses a derived target session id (`<source>::delegate::<target>-<uuid>`) unless configured otherwise.
+- **Decentralized Handoff** (`handoff_to_agent`):
+  - **Guarantee**: Handoff metadata is written into source session state (`handoff.*`) and consumed exactly once by runtime orchestration.
+  - **Runtime Continuation**: After source run completion, `AgentExecutionServiceImpl` checks handoff state; when present, it starts a follow-up run on the target agent with the handoff message and next session id, then clears handoff keys.
+  - **Loop Protection**: Handoff continuation enforces a max-hop limit; exceeding limit blocks continuation and increments telemetry (`handoff_loop_blocked`).
+- **Parallelization Workflow** (`parallel_delegate`):
+  - **Guarantee**: Parallel delegated branches can run in `SECTIONING` or `VOTING` mode.
+  - **Aggregation Policies**: `CONCATENATE`, `BEST_EFFORT`, `MAJORITY_VOTE`.
+  - **Stopping Policies**: `ALL_COMPLETE`, `FIRST_SUCCESS`, `QUORUM`.
+
+### 3.7. Evaluator-Optimizer Workflow
+
+- **Evaluator Stage** (`EvaluatorOptimizerResponseProcessor`):
+  - **Guarantee**: Final text responses are scored against a topic anchor and may be retried before completion.
+  - **Stopping Policy**: `RETRY_THEN_ALLOW` or `RETRY_THEN_BLOCK` after retry limit.
+  - **Loop Behavior**: Low-scoring responses generate correction violations and force another turn (`turnComplete=false`) until threshold or stop policy is reached.
 
 ---
 
