@@ -1,11 +1,9 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.infra.TitleConfig.TYPE;
-
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.infra.TitleConfig;
+import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.utils.LazyLoader;
 import com.google.adk.events.Event;
@@ -16,12 +14,9 @@ import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import jakarta.inject.Singleton;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +37,26 @@ public final class SessionTitleGenerator {
               agentModelConfig.setRole("title_generator");
               agentModelConfig.setSystemPrompt(
                   "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
-              final TitleConfig config = infraMongoRepository.findOneByType(TYPE);
-              if (config == null || StringUtils.isBlank(config.getModelId())) {
-                LOG.warn("Title generator configuration not found or incomplete. Type: {}", TYPE);
+              final String modelId = resolveTitleModelId(infraMongoRepository);
+              if (StringUtils.isBlank(modelId)) {
+                LOG.warn("Title generator configuration not found or incomplete");
                 return null;
               }
-              agentModelConfig.setModelId(config.getModelId());
+              agentModelConfig.setModelId(modelId);
               return modelProvider.get(agentModelConfig);
             });
+  }
+
+  private static String resolveTitleModelId(final InfraMongoRepository infraMongoRepository) {
+    try {
+      final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+      if (defaults != null && StringUtils.isNotBlank(defaults.getTitleModelId())) {
+        return defaults.getTitleModelId();
+      }
+    } catch (Exception ex) {
+      LOG.warn("Failed to load default model config for title generation.");
+    }
+    return null;
   }
 
   public static List<Event> filterConversationEvents(final List<Event> events) {

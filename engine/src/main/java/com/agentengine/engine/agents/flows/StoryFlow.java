@@ -3,6 +3,7 @@ package com.agentengine.engine.agents.flows;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.*;
+import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -14,6 +15,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Single;
+import com.agentengine.engine.guardrails.Guardrail;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -142,8 +144,11 @@ public final class StoryFlow extends DefaultFlow {
 
     // ---- Constructor ------------------------------------------------------------
 
-    public StoryFlow(final Parser parser) {
-        super(parser);
+    public StoryFlow(
+            final Parser parser,
+            final List<Guardrail> outputGuardrails,
+            final GuardrailErrorMode guardrailErrorMode) {
+        super(parser, outputGuardrails, guardrailErrorMode);
     }
 
     // ---- Orchestration ---------------------------------------------------------

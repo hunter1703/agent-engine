@@ -12,7 +12,7 @@ public class AgentModelConfig implements Config {
   // unique role of the model within the agent
   private String role;
   @Secure private String systemPrompt;
-  private ContextManagerConfig contextManagerConfig = new LastNContextManagerConfig();
+  private ContextManagerConfig contextManagerConfig = new SummarizeContextManagerConfig();
   private List<ToolsConfig> tools = new ArrayList<>();
 
   public String getModelId() {
@@ -50,7 +50,8 @@ public class AgentModelConfig implements Config {
   }
 
   public void setContextManagerConfig(final ContextManagerConfig contextManagerConfig) {
-    this.contextManagerConfig = contextManagerConfig;
+    this.contextManagerConfig =
+        contextManagerConfig == null ? new SummarizeContextManagerConfig() : contextManagerConfig;
   }
 
   public List<ToolsConfig> getTools() {

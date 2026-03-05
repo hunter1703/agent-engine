@@ -1,9 +1,14 @@
 package com.agentengine.engine.api.query;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Query {
   private Filter filter;
   private Page page;
   private Sort sort;
+  private List<String> includeFields = new ArrayList<>();
+  private List<String> excludeFields = new ArrayList<>();
 
   public Query() {}
 
@@ -43,6 +48,32 @@ public class Query {
 
   public Query withSort(Sort sort) {
     this.sort = sort;
+    return this;
+  }
+
+  public List<String> getIncludeFields() {
+    return includeFields;
+  }
+
+  public void setIncludeFields(final List<String> includeFields) {
+    this.includeFields = includeFields == null ? new ArrayList<>() : new ArrayList<>(includeFields);
+  }
+
+  public List<String> getExcludeFields() {
+    return excludeFields;
+  }
+
+  public void setExcludeFields(final List<String> excludeFields) {
+    this.excludeFields = excludeFields == null ? new ArrayList<>() : new ArrayList<>(excludeFields);
+  }
+
+  public Query withIncludeFields(final List<String> includeFields) {
+    setIncludeFields(includeFields);
+    return this;
+  }
+
+  public Query withExcludeFields(final List<String> excludeFields) {
+    setExcludeFields(excludeFields);
     return this;
   }
 }

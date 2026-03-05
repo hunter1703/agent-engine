@@ -25,10 +25,13 @@
         "title": "Agent Type",
         "enum": [
           "default",
-          "story"
+          "story",
+          "orchestrator",
+          "worker"
         ],
         "default": "default",
-        "description": "Agent implementation type. Can be `default` or `story`."
+        "description": "Agent implementation type.",
+        "help": "`default` for standard agents, `story` for story flow, `orchestrator` for manager agents, `worker` for delegated specialists."
       },
       "model": {
         "$ref": "#/$defs/AgentModelConfig",
@@ -47,6 +50,16 @@
         "default": 0,
         "title": "Routing History Size",
         "description": "Number of recent session events passed to the routing model. 0 = only the last user message (default); positive = last N events."
+      },
+      "guardrails": {
+        "$ref": "#/$defs/GuardrailsConfig",
+        "title": "Guardrails",
+        "description": "Guardrail and on-topic policy controls."
+      },
+      "outputEvaluation": {
+        "$ref": "#/$defs/OutputEvaluationConfig",
+        "title": "Output Evaluation",
+        "description": "Output evaluation retry loop configuration."
       }
     },
     "$defs": {
@@ -193,6 +206,299 @@
           }
         }
       },
+      "GuardrailsConfig": {
+        "type": "object",
+        "title": "Guardrails Configuration",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable guardrail checks."
+          },
+          "executionMode": {
+            "type": "string",
+            "enum": [
+              "SYNC",
+              "OPTIMISTIC"
+            ],
+            "default": "SYNC",
+            "description": "Guardrail execution mode.",
+            "help": "`SYNC` evaluates before execution (safer). `OPTIMISTIC` runs concurrently and cancels on block (lower latency)."
+          },
+          "defaultOnError": {
+            "type": "string",
+            "enum": [
+              "FAIL_OPEN",
+              "FAIL_CLOSED"
+            ],
+            "default": "FAIL_CLOSED",
+            "description": "Fallback behavior when guardrail evaluation fails.",
+            "help": "`FAIL_CLOSED` blocks on guardrail runtime errors (recommended). `FAIL_OPEN` allows execution on errors."
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/InputRulesGuardrailRuleConfig"
+                },
+                {
+                  "$ref": "#/$defs/OutputRulesGuardrailRuleConfig"
+                },
+                {
+                  "$ref": "#/$defs/ToolRiskGuardrailRuleConfig"
+                },
+                {
+                  "$ref": "#/$defs/OnTopicGuardrailRuleConfig"
+                }
+              ]
+            }
+          },
+          "topicControl": {
+            "$ref": "#/$defs/TopicControlConfig"
+          }
+        }
+      },
+      "GuardrailRuleConfig": {
+        "type": "object",
+        "title": "Guardrail Rule",
+        "description": "Common guardrail rule fields.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "INPUT_RULES",
+              "OUTPUT_RULES",
+              "TOOL_RISK",
+              "ON_TOPIC"
+            ],
+            "description": "Guardrail rule type used to select the rule provider.",
+            "help": "`type` is required for strict typed rule deserialization."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "INPUT",
+              "TOOL",
+              "OUTPUT"
+            ],
+            "description": "Rule execution stage. This should align with the selected rule type."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ALLOW",
+              "WARN",
+              "BLOCK",
+              "ESCALATE"
+            ],
+            "default": "WARN",
+            "description": "Policy action when this rule matches.",
+            "help": "`WARN` allows with signal, `BLOCK` stops, `ESCALATE` requests manual intervention."
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "InputRulesGuardrailRuleConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/GuardrailRuleConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "INPUT_RULES"
+          },
+          "maxTextLength": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "blockedPatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OutputRulesGuardrailRuleConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/GuardrailRuleConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "OUTPUT_RULES"
+          },
+          "maxTextLength": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "blockedPatterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ToolRiskGuardrailRuleConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/GuardrailRuleConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "TOOL_RISK"
+          },
+          "minToolRisk": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "default": "HIGH",
+            "description": "Minimum tool risk level this rule applies to."
+          },
+          "toolNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "OnTopicGuardrailRuleConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/GuardrailRuleConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ON_TOPIC"
+          }
+        }
+      },
+      "TopicControlConfig": {
+        "type": "object",
+        "title": "On-topic Control",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "llmEvaluatorEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable LLM-based on-topic scoring. Falls back to lexical scoring if evaluator model is unavailable."
+          },
+          "evaluatorModelId": {
+            "type": "string",
+            "description": "Optional fast model used for on-topic evaluation. If omitted, evaluator falls back to current agent model."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "STEER_THEN_BLOCK",
+              "STEER_ONLY",
+              "STRICT_BLOCK"
+            ],
+            "default": "STEER_THEN_BLOCK",
+            "help": "`STEER_THEN_BLOCK` retries once then blocks, `STEER_ONLY` never blocks, `STRICT_BLOCK` blocks immediately."
+          },
+          "maxSteeringRetries": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+          },
+          "relevanceThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.2
+          },
+          "anchorStrategy": {
+            "type": "string",
+            "enum": [
+              "LATEST_USER",
+              "RECENT_USER",
+              "LATEST_USER_AND_PLAN"
+            ],
+            "default": "LATEST_USER_AND_PLAN",
+            "help": "`LATEST_USER` for strict last-turn relevance, `RECENT_USER` for conversational continuity, `LATEST_USER_AND_PLAN` for planning agents."
+          }
+        }
+      },
+      "OutputEvaluationConfig": {
+        "type": "object",
+        "title": "Output Evaluation",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "llmEvaluatorEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable LLM-based relevance evaluation (dual-prompt relevance/irrelevance scoring). Falls back to lexical scoring if model is unavailable."
+          },
+          "evaluatorModelId": {
+            "type": "string",
+            "description": "Optional fast model used for evaluator scoring. If omitted, evaluator falls back to current agent model."
+          },
+          "maxRetries": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 2
+          },
+          "minScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.25
+          },
+          "stopPolicy": {
+            "type": "string",
+            "enum": [
+              "RETRY_THEN_ALLOW",
+              "RETRY_THEN_BLOCK"
+            ],
+            "default": "RETRY_THEN_ALLOW",
+            "help": "After retries are exhausted, `RETRY_THEN_ALLOW` passes latest output; `RETRY_THEN_BLOCK` returns a block message."
+          },
+          "anchorStrategy": {
+            "type": "string",
+            "enum": [
+              "LATEST_USER",
+              "RECENT_USER",
+              "LATEST_USER_AND_PLAN"
+            ],
+            "default": "LATEST_USER_AND_PLAN"
+          }
+        }
+      },
       "ContextManagerConfig": {
         "type": "object",
         "title": "Context Manager Configuration",
@@ -200,10 +506,14 @@
         "discriminator": {
           "propertyName": "type",
           "mapping": {
+            "summarize": "#/$defs/SummarizeContextManagerConfig",
             "last_n": "#/$defs/LastNContextManagerConfig"
           }
         },
         "oneOf": [
+          {
+            "$ref": "#/$defs/SummarizeContextManagerConfig"
+          },
           {
             "$ref": "#/$defs/LastNContextManagerConfig"
           }
@@ -214,8 +524,50 @@
             "title": "Context Manager Type",
             "description": "Context management strategy (for example, `last_n` keeps recent messages).",
             "enum": [
+              "summarize",
               "last_n"
-            ]
+            ],
+            "default": "summarize"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "SummarizeContextManagerConfig": {
+        "type": "object",
+        "title": "Summarizing Context Configuration",
+        "description": "Compacts older context into a persisted summary while keeping recent raw context.",
+        "allOf": [
+          {
+            "$ref": "#/$defs/ContextManagerConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "summarize",
+            "title": "Context Manager Type",
+            "description": "Summarize older context and keep recent raw messages."
+          },
+          "triggerTokens": {
+            "type": "integer",
+            "minimum": 32,
+            "default": 4096,
+            "title": "Compaction Trigger",
+            "description": "Approximate token threshold where compaction starts."
+          },
+          "recencyTokens": {
+            "type": "integer",
+            "minimum": 8,
+            "default": 1024,
+            "title": "Raw Recency Window",
+            "description": "Approximate recent tokens to keep unsummarized. Must be lower than triggerTokens."
+          },
+          "summaryModelId": {
+            "type": "string",
+            "title": "Summary Model ID",
+            "description": "Optional model for compaction summaries. If omitted, infra default summary model is used; then agent model as fallback."
           }
         },
         "required": [

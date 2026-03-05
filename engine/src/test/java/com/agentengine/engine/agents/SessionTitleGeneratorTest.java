@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents;
 
-import static com.agentengine.engine.infra.TitleConfig.TYPE;
+import static com.agentengine.engine.infra.DefaultModelConfig.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.infra.TitleConfig;
+import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
@@ -37,8 +37,8 @@ class SessionTitleGeneratorTest {
 
   @Test
   void generateTitle_success() {
-    TitleConfig config = new TitleConfig();
-    config.setModelId("test-model");
+    DefaultModelConfig config = new DefaultModelConfig();
+    config.setTitleModelId("test-model");
     when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
     when(modelProvider.get(any(AgentModelConfig.class))).thenReturn(baseLlm);
 
@@ -70,8 +70,8 @@ class SessionTitleGeneratorTest {
 
   @Test
   void generateTitle_emptyEvents() {
-    TitleConfig config = new TitleConfig();
-    config.setModelId("test-model");
+    DefaultModelConfig config = new DefaultModelConfig();
+    config.setTitleModelId("test-model");
     when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
     when(modelProvider.get(any())).thenReturn(baseLlm);
     generator = new SessionTitleGenerator(infraMongoRepository, modelProvider);
@@ -83,8 +83,8 @@ class SessionTitleGeneratorTest {
 
   @Test
   void generateTitle_sanitizesTitle() {
-    TitleConfig config = new TitleConfig();
-    config.setModelId("test-model");
+    DefaultModelConfig config = new DefaultModelConfig();
+    config.setTitleModelId("test-model");
     when(infraMongoRepository.findOneByType(TYPE)).thenReturn(config);
     when(modelProvider.get(any())).thenReturn(baseLlm);
 

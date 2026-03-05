@@ -29,7 +29,6 @@ import java.util.Optional;
  * - BLOCK/ESCALATE: replace output with safe policy text and terminate turn.
  */
 public final class GuardrailResponseProcessor implements ResponseProcessor {
-  public static final GuardrailResponseProcessor INSTANCE = new GuardrailResponseProcessor();
   private final List<Guardrail> guardrails;
   private final GuardrailErrorMode errorMode;
 

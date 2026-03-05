@@ -1,5 +1,6 @@
 package com.agentengine.engine.agents.flows;
 
+import com.agentengine.engine.utils.HitlStateUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -42,7 +43,12 @@ public abstract class AbstractFlow extends SingleFlow {
         }
         final AtomicBoolean terminated = new AtomicBoolean();
         return events.doOnNext(event -> terminated.set(shouldTerminate.test(event))).takeUntil(shouldTerminate::test)
-                .concatWith(Flowable.defer(() -> terminated.get() ? Flowable.empty() : runWithContinuation(invocationContext)));
+                .concatWith(
+                    Flowable.defer(
+                        () ->
+                            terminated.get() || HitlStateUtils.isPaused(invocationContext)
+                                ? Flowable.empty()
+                                : runWithContinuation(invocationContext)));
     }
 
     private static boolean shouldTerminate(final Event event) {

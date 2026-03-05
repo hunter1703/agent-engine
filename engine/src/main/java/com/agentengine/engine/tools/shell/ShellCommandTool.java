@@ -2,6 +2,7 @@ package com.agentengine.engine.tools.shell;
 
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
@@ -28,7 +29,8 @@ public final class ShellCommandTool extends Tool {
           TOOL_NAME,
           "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
           List.of(ALL),
-          buildConfigSchema());
+          buildConfigSchema(),
+          ToolRiskLevel.HIGH);
   private final Duration timeout;
 
   public ShellCommandTool() {

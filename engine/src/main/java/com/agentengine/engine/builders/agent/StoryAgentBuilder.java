@@ -9,6 +9,7 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.engine.guardrails.GuardrailRegistry;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -33,8 +34,15 @@ public class StoryAgentBuilder extends AbstractAgentBuilder<AgentConfig, StoryAg
       final SessionServiceProvider sessionServiceProvider,
       final ToolRegistry toolRegistry,
       final ContextManagerProvider contextManagerProvider,
-      final ModelRepository modelRepository) {
-    super(modelProvider, sessionServiceProvider, contextManagerProvider, toolRegistry, modelRepository);
+      final ModelRepository modelRepository,
+      final GuardrailRegistry guardrailRegistry) {
+    super(
+        modelProvider,
+        sessionServiceProvider,
+        contextManagerProvider,
+        toolRegistry,
+        modelRepository,
+        guardrailRegistry);
   }
 
   @Override

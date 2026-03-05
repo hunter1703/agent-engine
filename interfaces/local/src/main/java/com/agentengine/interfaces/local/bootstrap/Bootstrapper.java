@@ -5,7 +5,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.utils.JsonUtils;
-import com.agentengine.engine.infra.TitleConfig;
+import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;
@@ -69,14 +69,15 @@ public class Bootstrapper {
 
   private void bootstrapInfraConfigs() {
     LOG.info("Bootstrapping infrastructure configurations...");
-    TitleConfig titleConfig = infraMongoRepository.findOneByType(TitleConfig.TYPE);
-    if (titleConfig == null) {
-      LOG.info("Inserting default TitleConfig...");
-      titleConfig = new TitleConfig();
-      titleConfig.setModelId("qwen2.5-1.5b-instruct-q5_k_m");
-      infraMongoRepository.save(titleConfig);
+    DefaultModelConfig defaultModelConfig =
+        infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+    if (defaultModelConfig == null) {
+      LOG.info("Inserting default DefaultModelConfig...");
+      defaultModelConfig = new DefaultModelConfig();
+      defaultModelConfig.setTitleModelId("qwen2.5-1.5b-instruct-q5_k_m");
+      infraMongoRepository.save(defaultModelConfig);
     } else {
-      LOG.info("TitleConfig already exists, skipping.");
+      LOG.info("DefaultModelConfig already exists, skipping.");
     }
   }
 

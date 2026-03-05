@@ -15,10 +15,11 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.DeleteResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import dev.langchain4j.agent.tool.P;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -162,26 +163,27 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   @Override
   public PaginatedResult<T> findByQuery(final Query query) {
     try {
-      final Page page = query != null && query.getPage() != null ? query.getPage() : new Page();
+      final Page page = query == null ? new Page(0, 20) : query.getPage();
       List<T> entities = new ArrayList<>();
 
-      Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
-      Bson bsonSort = MongoQueryAdapter.toSortBson(query == null ? null : query.getSort());
+      final Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
+      final Bson bsonSort = MongoQueryAdapter.toSortBson(query == null ? null : query.getSort());
+      final Bson projection = MongoQueryAdapter.toProjectionBson(query);
 
-      FindIterable<T> iter = getCollection()
-              .find(bsonFilter, entityClass)
-              .skip(page.getOffset())
-              .limit(page.getLimit());
-
+      FindIterable<T> iter = getCollection().find(bsonFilter, entityClass);
+      if (projection != null) {
+        iter = iter.projection(projection);
+      }
+      iter = iter.skip(page.getOffset()).limit(page.getLimit());
       if (bsonSort != null) {
-          iter = iter.sort(bsonSort);
+        iter = iter.sort(bsonSort);
       }
 
       for (T document : iter) {
         entities.add(document);
       }
 
-      long total = count(bsonFilter);
+      final Long total = query != null && query.isIncludeCount() ? count(bsonFilter) : null;
 
       return PaginatedResult.create(entities, page, total);
     } catch (Exception e) {

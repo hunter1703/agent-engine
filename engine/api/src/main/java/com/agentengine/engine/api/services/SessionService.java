@@ -12,6 +12,10 @@ public interface SessionService {
 
   PaginatedResult<AgentSession> findSessions(Query query);
 
+  default PaginatedResult<AgentSession> findSessions(final Query query, final boolean includeEvents) {
+    return findSessions(query);
+  }
+
   void deleteSession(String id);
 
   void updateTitle(String id, String title);

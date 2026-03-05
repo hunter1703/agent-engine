@@ -30,6 +30,9 @@ public final class TurnCompletionResponseProcessor implements ResponseProcessor 
     if (response.partial().orElse(false)) {
       return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
     }
+    if (response.turnComplete().isPresent()) {
+      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    }
 
     final boolean hasTools = ToolUtils.hasToolParts(response);
     final boolean modelStopped = response.finishReason().isPresent();
@@ -41,6 +44,10 @@ public final class TurnCompletionResponseProcessor implements ResponseProcessor 
         .anyMatch(p -> p.text().isPresent() && !p.thought().orElse(false));
 
     // order is important
-    return Single.just(ResponseProcessingResult.create(response.toBuilder().turnComplete(hasTools || hasText || modelStopped).build(), List.of(), Optional.empty()));
+    return Single.just(
+        ResponseProcessingResult.create(
+            response.toBuilder().turnComplete(hasTools || hasText || modelStopped).build(),
+            List.of(),
+            Optional.empty()));
   }
 }

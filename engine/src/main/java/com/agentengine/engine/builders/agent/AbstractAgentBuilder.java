@@ -1,7 +1,10 @@
 package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.api.AgentContext;
+import com.agentengine.engine.api.ContextManager;
 import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
+import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
@@ -10,6 +13,8 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
+import com.agentengine.engine.context.BaseContextManager;
+import com.agentengine.engine.guardrails.GuardrailRegistry;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -18,8 +23,11 @@ import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.sessions.BaseSessionService;
 import com.google.adk.tools.BaseTool;
+import com.google.genai.types.Content;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -34,18 +42,22 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
   protected final SessionServiceProvider sessionServiceProvider;
   protected final ContextManagerProvider contextManagerProvider;
   protected final ToolRegistry toolRegistry;
+  protected final GuardrailRegistry guardrailRegistry;
   private final ModelRepository modelRepository;
 
   protected AbstractAgentBuilder(
           ModelProvider modelProvider,
           SessionServiceProvider sessionServiceProvider,
           ContextManagerProvider contextManagerProvider,
-          ToolRegistry toolRegistry, ModelRepository modelRepository) {
+          ToolRegistry toolRegistry,
+          ModelRepository modelRepository,
+          GuardrailRegistry guardrailRegistry) {
     this.modelProvider = modelProvider;
     this.sessionServiceProvider = sessionServiceProvider;
     this.contextManagerProvider = contextManagerProvider;
     this.toolRegistry = toolRegistry;
-      this.modelRepository = modelRepository;
+    this.modelRepository = modelRepository;
+    this.guardrailRegistry = guardrailRegistry;
   }
 
   protected com.agentengine.engine.builders.agent.AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
@@ -63,6 +75,7 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
             sessionService == null ? agentContext : new AgentContext(config, sessionService);
     final boolean toolCallingEnabled = agentModel.isToolCallingEnabled();
     final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
+    final ContextManager contextManager = contextManagerProvider.get(config.getModel().getContextManagerConfig(), config);
     String toolInstructions = "";
     final com.agentengine.engine.builders.agent.AgentBuilder agentBuilder = new com.agentengine.engine.builders.agent.AgentBuilder();
     if (toolCallingEnabled) {
@@ -81,10 +94,34 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
             .toolInstructions(toolInstructions)
             .protocolInstructions(agentModel.getProtocol())
             .globalInstruction(globalInstruction)
+            .outputGuardrails(
+                guardrailRegistry.getGuardrailsForStage(
+                    config.getGuardrails(), GuardrailStage.OUTPUT))
+            .guardrailErrorMode(
+                config.getGuardrails() == null
+                    ? GuardrailErrorMode.FAIL_OPEN
+                    : config.getGuardrails().getDefaultOnError())
             .disallowTransferToParent(false)
             .disallowTransferToPeers(false)
             .name(config.getId())
-            .model(model);
+            .model(model)
+            .beforeModelCallbackSync(
+                (callbackContext, llmRequestBuilder) -> {
+                  try {
+                    final List<Content> contents =
+                        CollectionUtils.nullSafeList(llmRequestBuilder.build().contents());
+                    final List<Content> compacted =
+                        contextManager.buildPrompt(config.getId(), callbackContext.sessionId(), contents);
+                    llmRequestBuilder.contents(compacted);
+                  } catch (final Exception ex) {
+                    LOG.warn(
+                        "Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.",
+                        config.getId(),
+                        callbackContext.sessionId(),
+                        ex);
+                  }
+                  return Optional.empty();
+                });
     return agentBuilder;
   }
 

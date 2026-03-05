@@ -14,6 +14,7 @@ import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 import java.util.Optional;
 
 @Singleton
@@ -42,7 +43,7 @@ public class SessionServiceImpl implements SessionService {
 
   @Override
   @WithSpan
-  public PaginatedResult<AgentSession> findSessions(Query query) {
+  public PaginatedResult<AgentSession> findSessions(final Query query) {
     return sessionRepository.findByQuery(query);
   }
 

@@ -2,7 +2,9 @@ package com.agentengine.interfaces.rest.catalog.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
@@ -46,7 +48,7 @@ class SessionAssetHandlerTest {
 
     // Mock SessionService
     SessionService sessionService = mock(SessionService.class);
-    when(sessionService.findSessions(any()))
+    when(sessionService.findSessions(any(), eq(false)))
         .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     SessionAssetHandler handler = new SessionAssetHandler(sessionService);
@@ -59,6 +61,7 @@ class SessionAssetHandlerTest {
     assertThat(result.getItems()).hasSize(1);
     assertThat(result.getItems().get(0).getId()).isEqualTo(session.getId());
     assertThat(result.getItems().get(0).getTitle()).isEqualTo(session.getTitle());
+    verify(sessionService).findSessions(any(), eq(false));
   }
 
   @Test
@@ -123,7 +126,7 @@ class SessionAssetHandlerTest {
     session.setUpdatedTime(220L);
 
     final SessionService sessionService = mock(SessionService.class);
-    when(sessionService.findSessions(any()))
+    when(sessionService.findSessions(any(), eq(false)))
         .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     final SessionAssetHandler handler = new SessionAssetHandler(sessionService);
@@ -166,7 +169,7 @@ class SessionAssetHandlerTest {
     sessionInfo.setEvents(Collections.singletonList(JsonUtils.toJacksonMap(event)));
     session.setSessionInfo(sessionInfo);
 
-    when(sessionService.findSessions(any()))
+    when(sessionService.findSessions(any(), eq(true)))
         .thenReturn(PaginatedResult.create(List.of(session), new Page(), 1L));
 
     final SessionAssetHandler handler = new SessionAssetHandler(sessionService);

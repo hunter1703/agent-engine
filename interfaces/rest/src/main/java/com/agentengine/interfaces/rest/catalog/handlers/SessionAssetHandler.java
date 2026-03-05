@@ -38,13 +38,13 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
 
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
-    final PaginatedResult<AgentSession> result = sessionService.findSessions(request.getQuery());
+    final boolean includeEvents = shouldIncludeEvents(request);
+    final PaginatedResult<AgentSession> result =
+        sessionService.findSessions(request.getQuery(), includeEvents);
     return result.transform(
         session -> {
           final AgentSessionDTO dto =
-              shouldIncludeEvents(request)
-                  ? attachEvents(session)
-                  : new AgentSessionDTO(session, List.of());
+              includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
           dto.setSessionInfo(null);
           return dto;
         });

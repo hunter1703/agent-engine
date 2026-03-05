@@ -13,7 +13,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
   @JsonSubTypes.Type(value = InputRulesGuardrailRuleConfig.class, name = "INPUT_RULES"),
   @JsonSubTypes.Type(value = OutputRulesGuardrailRuleConfig.class, name = "OUTPUT_RULES"),
   @JsonSubTypes.Type(value = ToolRiskGuardrailRuleConfig.class, name = "TOOL_RISK"),
-  @JsonSubTypes.Type(value = OnTopicGuardrailRuleConfig.class, name = "ON_TOPIC")
+  @JsonSubTypes.Type(value = RelevanceGuardrailRuleConfig.class, name = "RELEVANCE")
 })
 @BsonDiscriminator(key = "type")
 public abstract class GuardrailRuleConfig {

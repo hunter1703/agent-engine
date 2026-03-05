@@ -14,8 +14,8 @@ public enum GuardrailRuleType {
   OUTPUT_RULES,
   /** Tool risk policy checks and escalation. */
   TOOL_RISK,
-  /** On-topic relevance/steering policy. */
-  ON_TOPIC;
+  /** Relevance/steering policy. */
+  RELEVANCE;
 
   public static GuardrailRuleType valueOfOrDefault(final String value) {
     if (value == null || value.isBlank()) {

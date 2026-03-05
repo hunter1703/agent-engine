@@ -44,11 +44,16 @@ public class PaginatedResult<T> {
     this.hasMore = hasMore;
   }
 
-  public static <S> PaginatedResult<S> create(List<S> items, Page page, long total) {
+  public static <S> PaginatedResult<S> create(List<S> items, Page page, Long total) {
     PaginatedResult<S> result = new PaginatedResult<>();
     result.setItems(items);
     result.setTotal(total);
-    final boolean hasMore = page.getLimit() > 0 && (page.getOffset() + page.getLimit() < total);
+    boolean hasMore = false;
+    if (total != null) {
+        hasMore = page.getOffset() + page.getLimit() < total;
+    } else {
+        hasMore = items.size() == page.getLimit();
+    }
     result.setHasMore(hasMore);
     if (result.isHasMore()) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());

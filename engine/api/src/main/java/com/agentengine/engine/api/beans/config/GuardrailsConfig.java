@@ -8,7 +8,6 @@ public class GuardrailsConfig {
   private GuardrailExecutionMode executionMode = GuardrailExecutionMode.SYNC;
   private GuardrailErrorMode defaultOnError = GuardrailErrorMode.FAIL_OPEN;
   private List<GuardrailRuleConfig> rules = new ArrayList<>();
-  private TopicControlConfig topicControl = new TopicControlConfig();
 
   public boolean isEnabled() {
     return enabled;
@@ -40,13 +39,5 @@ public class GuardrailsConfig {
 
   public void setRules(final List<GuardrailRuleConfig> rules) {
     this.rules = rules;
-  }
-
-  public TopicControlConfig getTopicControl() {
-    return topicControl;
-  }
-
-  public void setTopicControl(final TopicControlConfig topicControl) {
-    this.topicControl = topicControl;
   }
 }
