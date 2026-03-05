@@ -1,7 +1,7 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.beans.config.ToolsConfig;
+import com.agentengine.engine.api.beans.config.*;
 import com.agentengine.engine.api.services.ToolService;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
@@ -9,6 +9,7 @@ import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.guardrails.rules.ToolRiskGuardrail;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.Cache;
 import com.google.adk.tools.BaseTool;
@@ -263,7 +264,22 @@ public final class ToolRegistry implements ToolService {
     if (entry == null) {
       return null;
     }
-    return entry.provider().create(agentContext, entry.descriptor().name(), toolConfig);
+    final BaseTool created = entry.provider().create(agentContext, entry.descriptor().name(), toolConfig);
+    if (created == null) {
+      return null;
+    }
+    final AgentConfig agentConfig = agentContext == null ? null : agentContext.agentConfig();
+    final GuardrailsConfig guardrailsConfig = agentConfig == null ? null : agentConfig.getGuardrails();
+    final List<GuardrailRuleConfig> rules = guardrailsConfig == null ? null : guardrailsConfig.getRules();
+    final List<ToolRiskGuardrailRuleConfig> toolRules = CollectionUtils.nullSafeList(rules).stream()
+            .map(rule -> {
+                if (rule instanceof ToolRiskGuardrailRuleConfig toolRiskGuardrail && CollectionUtils.nullSafeList(toolRiskGuardrail.getToolNames()).contains(entry.descriptor().name())) {
+                    return toolRiskGuardrail;
+                }
+                return null;
+            }).filter(Objects::nonNull).filter(GuardrailRuleConfig::isEnabled)
+        .toList();
+    return CollectionUtils.isEmpty(toolRules) ? created : new GuardedTool(created, entry.descriptor(), toolRules, Objects.requireNonNull(guardrailsConfig).getDefaultOnError());
   }
 
   private static void addIfPresent(final List<BaseTool> tools, final BaseTool tool) {

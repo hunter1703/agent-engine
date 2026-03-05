@@ -228,11 +228,18 @@ class ToolVerificationTest {
         // 1. Verify Schema
         FunctionDeclaration decl = tool.declaration().get();
         assertEquals("user_clarification", decl.name().get());
+        Schema params = decl.parameters().get();
+        java.util.Map<String, Schema> props = params.properties().get();
+        assertTrue(props.containsKey("options"));
 
         // 2. Verify Invocation
-        Map<String, Object> args = Map.of("question", "What is your favorite color?");
+        Map<String, Object> args = Map.of(
+            "question", "What is your favorite color?",
+            "options", List.of("Red", "Blue")
+        );
         Map<String, Object> result = tool.runAsync(args, toolContext).blockingGet();
         assertEquals("What is your favorite color?", result.get("clarification"));
+        assertEquals(List.of("Red", "Blue"), result.get("options"));
     }
 
     @Test

@@ -7,7 +7,6 @@ import com.agentengine.engine.api.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -17,7 +16,7 @@ public final class GuardrailUtils {
 
    private GuardrailUtils() {}
 
-   public static GuardrailDecision evaluate(final GuardrailContext context, final List<Guardrail> guardrails, final GuardrailErrorMode errorMode) {
+   public static GuardrailDecision evaluate(final GuardrailContext context, final List<? extends Guardrail> guardrails, final GuardrailErrorMode errorMode) {
        GuardrailDecision decision = GuardrailDecision.allow();
        for (final Guardrail guardrail : CollectionUtils.nullSafeList(guardrails)) {
            GuardrailDecision next;

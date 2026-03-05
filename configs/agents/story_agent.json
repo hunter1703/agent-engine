@@ -6,8 +6,9 @@
     "modelId": "dolphin-mistral-24b-venice-edition-q4_k_m",
     "systemPrompt": "You are a bard who tells interesting stories about world",
     "contextManagerConfig": {
-      "type": "last_n",
-      "keepLast": 10000
+      "type": "summarize",
+      "triggerTokens": 4096,
+      "recencyTokens": 1024
     },
     "tools": [
       {
