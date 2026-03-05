@@ -8,16 +8,20 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(
-    oneOf = {LastNContextManagerConfig.class},
+    oneOf = {SummarizeContextManagerConfig.class, LastNContextManagerConfig.class},
     discriminatorProperty = "type",
     discriminatorMapping = {
+      @DiscriminatorMapping(value = "summarize", schema = SummarizeContextManagerConfig.class),
       @DiscriminatorMapping(value = "last_n", schema = LastNContextManagerConfig.class)
     })
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.EXISTING_PROPERTY,
     property = "type")
-@JsonSubTypes({@JsonSubTypes.Type(value = LastNContextManagerConfig.class, name = "last_n")})
+@JsonSubTypes({
+  @JsonSubTypes.Type(value = SummarizeContextManagerConfig.class, name = "summarize"),
+  @JsonSubTypes.Type(value = LastNContextManagerConfig.class, name = "last_n")
+})
 @BsonDiscriminator(key = "type")
 public abstract class ContextManagerConfig implements Config {
   private String type;

@@ -5,7 +5,7 @@ import com.google.genai.types.Content;
 import java.util.List;
 import java.util.function.UnaryOperator;
 
-public class BaseContextManager implements ContextManager {
+public abstract class BaseContextManager implements ContextManager {
   private final UnaryOperator<List<Content>> promptBuilder;
 
   public BaseContextManager(UnaryOperator<List<Content>> promptBuilder) {
@@ -13,7 +13,7 @@ public class BaseContextManager implements ContextManager {
   }
 
   @Override
-  public UnaryOperator<List<Content>> getPromptBuilder() {
-    return promptBuilder;
+  public List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents) {
+    return promptBuilder.apply(contents);
   }
 }

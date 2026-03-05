@@ -2,7 +2,9 @@ package com.agentengine.engine.builders.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.DefaultAgent;
@@ -82,6 +84,7 @@ class DefaultAgentBuilderTest {
 
     final Single<List<BaseTool>> toolsSingle = agent.tools();
     assertThat(toolsSingle.blockingGet()).extracting(BaseTool::name).contains("run_cmd");
+    verify(contextManagerProvider).get(any(), eq("model-id"));
     assertThat(agent.instruction()).isInstanceOf(Instruction.Static.class);
     final String instructions = ((Instruction.Static) agent.instruction()).instruction();
     assertThat(instructions).contains("run_cmd");
