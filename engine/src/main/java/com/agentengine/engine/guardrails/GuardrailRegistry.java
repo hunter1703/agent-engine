@@ -33,6 +33,15 @@ public final class GuardrailRegistry {
     this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> provider);
   }
 
+  public List<Guardrail> getGuardrailsForStage(
+      final GuardrailsConfig config, final GuardrailStage stage) {
+    if (stage == null) {
+      return List.of();
+    }
+    final Map<GuardrailStage, List<Guardrail>> stageToGuardrails = getGuardrails(config);
+    return CollectionUtils.nullSafeList(stageToGuardrails.get(stage));
+  }
+
   private Map<GuardrailStage, List<Guardrail>> getGuardrails(final GuardrailsConfig config) {
     if (config == null || !config.isEnabled()) {
       return Map.of();
@@ -49,7 +58,7 @@ public final class GuardrailRegistry {
         LOG.warn("No guardrail provider registered for rule type '{}'.", type);
         continue;
       }
-      final Guardrail created = provider.create(config, rule);
+      final Guardrail created = createGuardrail(provider, config, rule);
       if (created != null) {
         stageVsGuardRails.computeIfAbsent(created.stage(), ignored -> new ArrayList<>()).add(created);
       }
@@ -74,5 +83,13 @@ public final class GuardrailRegistry {
       }
     }
     return allProviders;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Guardrail createGuardrail(
+      final GuardrailProvider provider,
+      final GuardrailsConfig config,
+      final GuardrailRuleConfig rule) {
+    return ((GuardrailProvider<GuardrailRuleConfig>) provider).create(config, rule);
   }
 }

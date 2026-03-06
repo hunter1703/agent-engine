@@ -5,8 +5,8 @@ import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.GuardrailsConfig;
 import java.util.List;
 
-public interface GuardrailProvider {
+public interface GuardrailProvider<T extends GuardrailRuleConfig> {
   GuardrailRuleType type();
 
-  Guardrail create(GuardrailsConfig guardrailsConfig, GuardrailRuleConfig rule);
+  Guardrail create(GuardrailsConfig guardrailsConfig, T rule);
 }

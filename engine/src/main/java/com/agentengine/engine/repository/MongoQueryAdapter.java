@@ -2,8 +2,10 @@ package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.query.Filter;
 import com.agentengine.engine.api.query.Operator;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -70,5 +72,25 @@ public final class MongoQueryAdapter {
       case DESC -> Sorts.descending(sort.getField());
       case UNKNOWN -> Sorts.ascending(sort.getField()); // Defaulting to ascending
     };
+  }
+
+  public static Bson toProjectionBson(final Query query) {
+    if (query == null) {
+      return null;
+    }
+    final List<String> includes = CollectionUtils.nullSafeList(query.getIncludeFields());
+    final List<String> excludes = CollectionUtils.nullSafeList(query.getExcludeFields());
+    if (!includes.isEmpty() && !excludes.isEmpty()) {
+      return Projections.fields(
+          Projections.include(includes.toArray(new String[0])),
+          Projections.exclude(excludes.toArray(new String[0])));
+    }
+    if (!includes.isEmpty()) {
+      return Projections.include(includes.toArray(new String[0]));
+    }
+    if (!excludes.isEmpty()) {
+      return Projections.exclude(excludes.toArray(new String[0]));
+    }
+    return null;
   }
 }

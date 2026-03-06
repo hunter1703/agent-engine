@@ -9,6 +9,7 @@ public class Query {
   private Sort sort;
   private List<String> includeFields = new ArrayList<>();
   private List<String> excludeFields = new ArrayList<>();
+  private boolean includeCount = false;
 
   public Query() {}
 
@@ -75,5 +76,13 @@ public class Query {
   public Query withExcludeFields(final List<String> excludeFields) {
     setExcludeFields(excludeFields);
     return this;
+  }
+
+  public boolean isIncludeCount() {
+    return includeCount;
+  }
+
+  public void setIncludeCount(final boolean includeCount) {
+    this.includeCount = includeCount;
   }
 }

@@ -3,11 +3,14 @@ package com.agentengine.engine.agents.flows;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor;
+import com.agentengine.engine.api.utils.EventUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.google.adk.agents.InvocationContext;
+import com.google.adk.events.Event;
+import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
@@ -17,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 
 class PlanLoopResponseProcessorTest {
@@ -107,7 +111,7 @@ class PlanLoopResponseProcessorTest {
   }
 
   @Test
-  void convertsTextToThoughtsBeforePlanCompletion() {
+  void emitsInternalTextEventsBeforePlanCompletion() {
     final Plan plan = new Plan("Root", "Goal");
     final Task task = new Task("Step", "Goal");
     task.setStatus(TaskStatus.TODO);
@@ -137,17 +141,23 @@ class PlanLoopResponseProcessorTest {
         .build();
 
     final PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor();
-    final LlmResponse updated = processor.processResponse(context, response).blockingGet().updatedResponse();
+    final ResponseProcessor.ResponseProcessingResult result =
+        processor.processResponse(context, response).blockingGet();
+    final LlmResponse updated = result.updatedResponse();
     final List<Part> parts = updated.content().orElseThrow().parts().orElseThrow();
+    final List<Event> events =
+        StreamSupport.stream(result.events().spliterator(), false).toList();
 
-    assertThat(parts.get(0).text()).contains("progress update");
-    assertThat(parts.get(0).thought()).contains(true);
-    assertThat(parts.get(1).functionCall()).contains(toolCall);
-    assertThat(parts.get(1).thought().orElse(false)).isFalse();
+    assertThat(parts).hasSize(1);
+    assertThat(parts.getFirst().functionCall()).contains(toolCall);
+    assertThat(events).hasSize(1);
+    assertThat(EventUtils.isInternal(events.getFirst())).isTrue();
+    assertThat(events.getFirst().content().orElseThrow().parts().orElseThrow().getFirst().text())
+        .contains("progress update");
   }
 
   @Test
-  void convertsPartialTextToThoughtsBeforePlanCompletion() {
+  void emitsInternalPartialTextEventsBeforePlanCompletion() {
     final Plan plan = new Plan("Root", "Goal");
     final Task task = new Task("Step", "Goal");
     task.setStatus(TaskStatus.TODO);
@@ -170,12 +180,58 @@ class PlanLoopResponseProcessorTest {
         .build();
 
     final PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor();
-    final LlmResponse updated = processor.processResponse(context, response).blockingGet().updatedResponse();
-    final Part part = updated.content().orElseThrow().parts().orElseThrow().getFirst();
+    final ResponseProcessor.ResponseProcessingResult result =
+        processor.processResponse(context, response).blockingGet();
+    final LlmResponse updated = result.updatedResponse();
+    final List<Event> events =
+        StreamSupport.stream(result.events().spliterator(), false).toList();
 
-    assertThat(part.text()).contains("streaming");
-    assertThat(part.thought()).contains(true);
+    assertThat(updated.content()).isEmpty();
     assertThat(updated.partial()).contains(true);
+    assertThat(events).hasSize(1);
+    final Event internalEvent = events.getFirst();
+    assertThat(EventUtils.isInternal(internalEvent)).isTrue();
+    assertThat(internalEvent.partial()).contains(true);
+    assertThat(internalEvent.content().orElseThrow().parts().orElseThrow().getFirst().text())
+        .contains("streaming");
+  }
+
+  @Test
+  void emitsInternalFinalTextEventsBeforePlanCompletion() {
+    final Plan plan = new Plan("Root", "Goal");
+    final Task task = new Task("Step", "Goal");
+    task.setStatus(TaskStatus.TODO);
+    plan.setTasks(List.of(task));
+
+    final Session session =
+        Session.builder("session-1")
+            .appName("agent")
+            .userId("default")
+            .state(new ConcurrentHashMap<>())
+            .events(new ArrayList<>())
+            .build();
+
+    final InvocationContext context = InvocationContext.builder().session(session).build();
+    RunStateUtils.getState(context).updatePlan(plan);
+
+    final LlmResponse response = LlmResponse.builder()
+        .content(Content.builder().parts(List.of(Part.builder().text("final text").build())).build())
+        .partial(false)
+        .turnComplete(true)
+        .build();
+
+    final PlanLoopResponseProcessor processor = new PlanLoopResponseProcessor();
+    final ResponseProcessor.ResponseProcessingResult result =
+        processor.processResponse(context, response).blockingGet();
+    final List<Event> events =
+        StreamSupport.stream(result.events().spliterator(), false).toList();
+
+    assertThat(result.updatedResponse().content()).isEmpty();
+    assertThat(events).hasSize(1);
+    assertThat(EventUtils.isInternal(events.getFirst())).isTrue();
+    assertThat(events.getFirst().partial()).contains(false);
+    assertThat(events.getFirst().content().orElseThrow().parts().orElseThrow().getFirst().text())
+        .contains("final text");
   }
 
 }
