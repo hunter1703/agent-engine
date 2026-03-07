@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.AgentConfig.AgentType;
 import com.agentengine.engine.api.beans.config.ContextManagerConfig.ContextType;
+import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.ModelConfig.Provider;
 import com.agentengine.engine.api.beans.config.SessionServiceConfig.SessionServiceType;
 import com.agentengine.engine.api.query.Operator;
@@ -23,6 +24,8 @@ class EnumValueOfOrDefaultTest {
     assertEquals(ContextType.SUMMARIZE, ContextType.valueOfOrDefault("summarize"));
     assertEquals(ContextType.LAST_N, ContextType.valueOfOrDefault("last_n"));
     assertEquals(Provider.OLLAMA, Provider.valueOfOrDefault("ollama"));
+    assertEquals(GuardrailRuleType.TEXT_CONTENT, GuardrailRuleType.valueOfOrDefault("text_content"));
+    assertEquals(GuardrailRuleType.TOOL_SAFETY, GuardrailRuleType.valueOfOrDefault("tool_safety"));
   }
 
   @Test
@@ -34,5 +37,6 @@ class EnumValueOfOrDefaultTest {
     assertEquals(SessionServiceType.UNKNOWN, SessionServiceType.valueOfOrDefault("file"));
     assertEquals(ContextType.UNKNOWN, ContextType.valueOfOrDefault("none"));
     assertEquals(Provider.UNKNOWN, Provider.valueOfOrDefault("unknown_provider"));
+    assertEquals(GuardrailRuleType.UNKNOWN, GuardrailRuleType.valueOfOrDefault("wrong_type"));
   }
 }

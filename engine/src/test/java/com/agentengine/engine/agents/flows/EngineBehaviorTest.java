@@ -73,10 +73,17 @@ class EngineBehaviorTest {
     final List<LlmRequest> requests = agent.model().requests();
     assertThat(requests).isNotEmpty();
 
-    // Verify plan context was injected into system instructions
+    // Verify plan context was appended to request content.
     final LlmRequest lastRequest = requests.get(requests.size() - 1);
-    assertThat(lastRequest.getSystemInstructions())
-        .anyMatch(instr -> instr.contains("PLAN CONTEXT") && instr.contains("Refactor API") && instr.contains("Testing goal"));
+    final String requestContentText =
+        Optional.ofNullable(lastRequest.contents()).orElse(List.of()).stream()
+            .flatMap(content -> content.parts().orElse(List.of()).stream())
+            .map(part -> part.text().orElse(""))
+            .collect(Collectors.joining("\n"));
+    assertThat(requestContentText)
+        .contains("PLAN CONTEXT")
+        .contains("Refactor API")
+        .contains("Testing goal");
   }
 
   @Test

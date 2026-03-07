@@ -7,7 +7,7 @@ public class GuardrailsConfig {
   private boolean enabled = true;
   private GuardrailExecutionMode executionMode = GuardrailExecutionMode.SYNC;
   private GuardrailErrorMode defaultOnError = GuardrailErrorMode.FAIL_OPEN;
-  private List<GuardrailRuleConfig> rules = new ArrayList<>();
+  private List<GuardrailRule> rules = new ArrayList<>();
 
   public boolean isEnabled() {
     return enabled;
@@ -33,11 +33,11 @@ public class GuardrailsConfig {
     this.defaultOnError = defaultOnError;
   }
 
-  public List<GuardrailRuleConfig> getRules() {
+  public List<GuardrailRule> getRules() {
     return rules;
   }
 
-  public void setRules(final List<GuardrailRuleConfig> rules) {
+  public void setRules(final List<GuardrailRule> rules) {
     this.rules = rules;
   }
 }

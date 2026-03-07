@@ -2,6 +2,7 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
+import com.agentengine.engine.api.beans.config.GuardrailRule;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import org.slf4j.Logger;
@@ -29,6 +30,14 @@ public final class GuardrailUtils {
            decision = GuardrailDecision.merge(decision, next);
        }
        return decision;
+   }
+
+   public static String resolveRuleId(final GuardrailRule rule, final String fallbackPrefix) {
+      if (rule != null && StringUtils.isNotBlank(rule.getId())) {
+        return rule.getId();
+      }
+      final String prefix = StringUtils.isNotBlank(fallbackPrefix) ? fallbackPrefix : "guardrail";
+      return prefix + "_" + Integer.toHexString(System.identityHashCode(rule));
    }
 
     private static GuardrailDecision fallbackForError(final GuardrailErrorMode errorMode, final String guardrailId, final Exception ex) {

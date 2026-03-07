@@ -9,7 +9,6 @@ import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.guardrails.rules.ToolRiskGuardrail;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.Cache;
 import com.google.adk.tools.BaseTool;
@@ -270,14 +269,14 @@ public final class ToolRegistry implements ToolService {
     }
     final AgentConfig agentConfig = agentContext == null ? null : agentContext.agentConfig();
     final GuardrailsConfig guardrailsConfig = agentConfig == null ? null : agentConfig.getGuardrails();
-    final List<GuardrailRuleConfig> rules = guardrailsConfig == null ? null : guardrailsConfig.getRules();
-    final List<ToolRiskGuardrailRuleConfig> toolRules = CollectionUtils.nullSafeList(rules).stream()
+    final List<GuardrailRule> rules = guardrailsConfig == null ? null : guardrailsConfig.getRules();
+    final List<ToolSafetyGuardrailRule> toolRules = CollectionUtils.nullSafeList(rules).stream()
             .map(rule -> {
-                if (rule instanceof ToolRiskGuardrailRuleConfig toolRiskGuardrail && CollectionUtils.nullSafeList(toolRiskGuardrail.getToolNames()).contains(entry.descriptor().name())) {
-                    return toolRiskGuardrail;
+                if (rule instanceof ToolSafetyGuardrailRule toolSafetyGuardrail && CollectionUtils.nullSafeList(toolSafetyGuardrail.getToolNames()).contains(entry.descriptor().name())) {
+                    return toolSafetyGuardrail;
                 }
                 return null;
-            }).filter(Objects::nonNull).filter(GuardrailRuleConfig::isEnabled)
+            }).filter(Objects::nonNull).filter(GuardrailRule::isEnabled)
         .toList();
     return CollectionUtils.isEmpty(toolRules) ? created : new GuardedTool(created, entry.descriptor(), toolRules, Objects.requireNonNull(guardrailsConfig).getDefaultOnError());
   }

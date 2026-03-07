@@ -10,13 +10,12 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
     property = "type",
     visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = InputRulesGuardrailRuleConfig.class, name = "INPUT_RULES"),
-  @JsonSubTypes.Type(value = OutputRulesGuardrailRuleConfig.class, name = "OUTPUT_RULES"),
-  @JsonSubTypes.Type(value = ToolRiskGuardrailRuleConfig.class, name = "TOOL_RISK"),
-  @JsonSubTypes.Type(value = RelevanceGuardrailRuleConfig.class, name = "RELEVANCE")
+  @JsonSubTypes.Type(value = TextContentGuardrailRule.class, name = "TEXT_CONTENT"),
+  @JsonSubTypes.Type(value = ToolSafetyGuardrailRule.class, name = "TOOL_SAFETY"),
+  @JsonSubTypes.Type(value = OutputRelevanceGuardrailRule.class, name = "RELEVANCE")
 })
 @BsonDiscriminator(key = "type")
-public abstract class GuardrailRuleConfig {
+public abstract class GuardrailRule {
   private String id;
   private String type;
   private GuardrailStage stage = GuardrailStage.UNKNOWN;
@@ -24,11 +23,11 @@ public abstract class GuardrailRuleConfig {
   private GuardrailAction action = GuardrailAction.WARN;
   private String message;
 
-  protected GuardrailRuleConfig(final GuardrailRuleType type) {
+  protected GuardrailRule(final GuardrailRuleType type) {
     this.type = type.name();
   }
 
-  protected GuardrailRuleConfig() {}
+  protected GuardrailRule() {}
 
   public String getId() {
     return id;

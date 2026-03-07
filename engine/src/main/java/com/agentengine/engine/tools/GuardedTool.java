@@ -1,16 +1,13 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.ToolRiskGuardrailRuleConfig;
+import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
-import com.agentengine.engine.guardrails.rules.ToolRiskGuardrail;
+import com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail;
 import com.agentengine.engine.utils.HitlStateUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
@@ -27,15 +24,19 @@ import java.util.Optional;
 public final class GuardedTool extends BaseTool {
   private final BaseTool delegate;
   private final ToolDescriptor descriptor;
-  private final List<ToolRiskGuardrail> guardrails;
+  private final List<ToolSafetyGuardrail> guardrails;
   private final GuardrailErrorMode errorMode;
 
-  public GuardedTool(final BaseTool delegate, final ToolDescriptor descriptor, List<ToolRiskGuardrailRuleConfig> configs, GuardrailErrorMode errorMode) {
+  public GuardedTool(
+      final BaseTool delegate,
+      final ToolDescriptor descriptor,
+      final List<ToolSafetyGuardrailRule> configs,
+      final GuardrailErrorMode errorMode) {
     super(descriptor.name(), descriptor.description(), false);
     this.delegate = delegate;
     this.descriptor = descriptor;
-      this.guardrails = configs.stream().map(ToolRiskGuardrail::new).toList();
-      this.errorMode = errorMode;
+    this.guardrails = configs.stream().map(ToolSafetyGuardrail::new).toList();
+    this.errorMode = errorMode;
   }
 
   @Override

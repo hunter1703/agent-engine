@@ -98,7 +98,7 @@ public final class GuardrailResponseProcessor implements ResponseProcessor {
     if (explicit instanceof Boolean value) {
       return value;
     }
-    return "off_topic_steer".equals(decision.code());
+    return "relevance_steer".equals(decision.code());
   }
 
   private static Optional<Content> stripPlainText(final Content content) {

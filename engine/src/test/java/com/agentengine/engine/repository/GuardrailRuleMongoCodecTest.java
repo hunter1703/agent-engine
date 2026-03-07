@@ -2,9 +2,9 @@ package com.agentengine.engine.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.beans.config.GuardrailRuleConfig;
-import com.agentengine.engine.api.beans.config.InputRulesGuardrailRuleConfig;
-import com.agentengine.engine.api.beans.config.ToolRiskGuardrailRuleConfig;
+import com.agentengine.engine.api.beans.config.GuardrailRule;
+import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
+import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.mongodb.MongoClientSettings;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -21,18 +21,18 @@ import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.junit.jupiter.api.Test;
 
-class GuardrailRuleConfigMongoCodecTest {
+class GuardrailRuleMongoCodecTest {
 
   @Test
   void roundTripsPolymorphicRuleSubtypes() {
     final RuleContainer config = new RuleContainer();
 
-    final InputRulesGuardrailRuleConfig inputRule = new InputRulesGuardrailRuleConfig();
+    final TextContentGuardrailRule inputRule = new TextContentGuardrailRule();
     inputRule.setId("input-rule");
     inputRule.setMaxTextLength(128);
     inputRule.setBlockedPatterns(List.of("jailbreak"));
 
-    final ToolRiskGuardrailRuleConfig toolRule = new ToolRiskGuardrailRuleConfig();
+    final ToolSafetyGuardrailRule toolRule = new ToolSafetyGuardrailRule();
     toolRule.setId("tool-rule");
     toolRule.setToolNames(List.of("run_cmd"));
 
@@ -42,14 +42,14 @@ class GuardrailRuleConfigMongoCodecTest {
     final PojoCodecProvider.Builder pojoBuilder =
         PojoCodecProvider.builder().conventions(conventions).automatic(true);
     pojoBuilder.register(
-        ClassModel.builder(GuardrailRuleConfig.class).enableDiscriminator(true).conventions(conventions).build());
+        ClassModel.builder(GuardrailRule.class).enableDiscriminator(true).conventions(conventions).build());
     pojoBuilder.register(
-        ClassModel.builder(InputRulesGuardrailRuleConfig.class)
+        ClassModel.builder(TextContentGuardrailRule.class)
             .enableDiscriminator(true)
             .conventions(conventions)
             .build());
     pojoBuilder.register(
-        ClassModel.builder(ToolRiskGuardrailRuleConfig.class)
+        ClassModel.builder(ToolSafetyGuardrailRule.class)
             .enableDiscriminator(true)
             .conventions(conventions)
             .build());
@@ -67,18 +67,18 @@ class GuardrailRuleConfigMongoCodecTest {
         codec.decode(new BsonDocumentReader(document), DecoderContext.builder().build());
 
     assertThat(decoded.getRules()).hasSize(2);
-    assertThat(decoded.getRules().get(0)).isInstanceOf(InputRulesGuardrailRuleConfig.class);
-    assertThat(decoded.getRules().get(1)).isInstanceOf(ToolRiskGuardrailRuleConfig.class);
+    assertThat(decoded.getRules().get(0)).isInstanceOf(TextContentGuardrailRule.class);
+    assertThat(decoded.getRules().get(1)).isInstanceOf(ToolSafetyGuardrailRule.class);
   }
 
   public static class RuleContainer {
-    private List<GuardrailRuleConfig> rules;
+    private List<GuardrailRule> rules;
 
-    public List<GuardrailRuleConfig> getRules() {
+    public List<GuardrailRule> getRules() {
       return rules;
     }
 
-    public void setRules(final List<GuardrailRuleConfig> rules) {
+    public void setRules(final List<GuardrailRule> rules) {
       this.rules = rules;
     }
   }

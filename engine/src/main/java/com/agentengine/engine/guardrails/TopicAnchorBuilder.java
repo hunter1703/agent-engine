@@ -1,7 +1,7 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.TopicAnchorStrategy;
-import com.agentengine.engine.api.beans.config.RelevanceGuardrailRuleConfig;
+import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
@@ -18,13 +18,13 @@ public final class TopicAnchorBuilder {
   private TopicAnchorBuilder() {}
 
   public static String build(final InvocationContext context, final TopicAnchorStrategy strategy) {
-    final RelevanceGuardrailRuleConfig config = new RelevanceGuardrailRuleConfig();
+    final OutputRelevanceGuardrailRule config = new OutputRelevanceGuardrailRule();
     config.setAnchorStrategy(strategy);
     return build(context, config);
   }
 
   public static String build(
-      final InvocationContext context, final RelevanceGuardrailRuleConfig config) {
+      final InvocationContext context, final OutputRelevanceGuardrailRule config) {
     if (context == null || context.session() == null) {
       return "";
     }

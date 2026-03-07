@@ -7,15 +7,15 @@ import com.agentengine.engine.api.utils.JsonUtils;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class GuardrailRuleConfigPolymorphismTest {
+class GuardrailRulePolymorphismTest {
 
   @Test
-  void deserializesInputRulesSubtypeByType() {
+  void deserializesTextContentSubtypeByType() {
     final String json =
         """
         {
           "id": "r1",
-          "type": "INPUT_RULES",
+          "type": "TEXT_CONTENT",
           "enabled": true,
           "action": "BLOCK",
           "maxTextLength": 64,
@@ -23,10 +23,10 @@ class GuardrailRuleConfigPolymorphismTest {
         }
         """;
 
-    final GuardrailRuleConfig rule = JsonUtils.fromJson(json, GuardrailRuleConfig.class);
+    final GuardrailRule rule = JsonUtils.fromJson(json, GuardrailRule.class);
 
-    assertThat(rule).isInstanceOf(InputRulesGuardrailRuleConfig.class);
-    final InputRulesGuardrailRuleConfig typed = (InputRulesGuardrailRuleConfig) rule;
+    assertThat(rule).isInstanceOf(TextContentGuardrailRule.class);
+    final TextContentGuardrailRule typed = (TextContentGuardrailRule) rule;
     assertThat(typed.getMaxTextLength()).isEqualTo(64);
     assertThat(typed.getBlockedPatterns()).containsExactly("ignore previous instructions");
   }
@@ -42,14 +42,14 @@ class GuardrailRuleConfigPolymorphismTest {
         }
         """;
 
-    assertThrows(RuntimeException.class, () -> JsonUtils.fromJson(json, GuardrailRuleConfig.class));
+    assertThrows(RuntimeException.class, () -> JsonUtils.fromJson(json, GuardrailRule.class));
   }
 
   @Test
   void agentConfigRulesRoundTripPreservesSubtype() {
     final AgentConfig agentConfig = new AgentConfig();
     final GuardrailsConfig guardrails = new GuardrailsConfig();
-    final ToolRiskGuardrailRuleConfig toolRule = new ToolRiskGuardrailRuleConfig();
+    final ToolSafetyGuardrailRule toolRule = new ToolSafetyGuardrailRule();
     toolRule.setId("tool-rule");
     toolRule.setToolNames(List.of("shell"));
     guardrails.setRules(List.of(toolRule));
@@ -60,6 +60,6 @@ class GuardrailRuleConfigPolymorphismTest {
 
     assertThat(parsed.getGuardrails().getRules()).hasSize(1);
     assertThat(parsed.getGuardrails().getRules().getFirst())
-        .isInstanceOf(ToolRiskGuardrailRuleConfig.class);
+        .isInstanceOf(ToolSafetyGuardrailRule.class);
   }
 }

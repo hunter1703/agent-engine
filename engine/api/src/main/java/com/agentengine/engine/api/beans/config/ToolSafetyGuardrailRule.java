@@ -6,14 +6,14 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeName("TOOL_RISK")
-@BsonDiscriminator(value = "TOOL_RISK")
-public class ToolRiskGuardrailRuleConfig extends GuardrailRuleConfig {
+@JsonTypeName("TOOL_SAFETY")
+@BsonDiscriminator(value = "TOOL_SAFETY")
+public class ToolSafetyGuardrailRule extends GuardrailRule {
   private ToolRiskLevel minToolRisk = ToolRiskLevel.HIGH;
   private List<String> toolNames = new ArrayList<>();
 
-  public ToolRiskGuardrailRuleConfig() {
-    super(GuardrailRuleType.TOOL_RISK);
+  public ToolSafetyGuardrailRule() {
+    super(GuardrailRuleType.TOOL_SAFETY);
     setStage(GuardrailStage.TOOL);
   }
 

@@ -1,7 +1,6 @@
 package com.agentengine.engine.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.GuardrailRuleConfig;
+import com.agentengine.engine.api.beans.config.GuardrailRule;
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.GuardrailsConfig;
@@ -13,7 +12,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import java.util.*;
-import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +20,14 @@ import org.slf4j.LoggerFactory;
 public final class GuardrailRegistry {
   private static final Logger LOG = LoggerFactory.getLogger(GuardrailRegistry.class);
 
-  private final Map<GuardrailRuleType, GuardrailProvider> typeVsProvider;
+  private final Map<GuardrailRuleType, GuardrailProvider<?>> typeVsProvider;
 
   @Inject
-  public GuardrailRegistry(final @Any Instance<GuardrailProvider> providerInstances) {
+  public GuardrailRegistry(final @Any Instance<GuardrailProvider<?>> providerInstances) {
     this(collectProviders(providerInstances, PluginLoader.getClassLoader()));
   }
 
-  public GuardrailRegistry(final List<GuardrailProvider> providers) {
+  public GuardrailRegistry(final List<GuardrailProvider<?>> providers) {
     this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> provider);
   }
 
@@ -48,12 +46,12 @@ public final class GuardrailRegistry {
     }
     final Map<GuardrailStage, List<Guardrail>> stageVsGuardRails = new HashMap<>();
 
-    for (final GuardrailRuleConfig rule : config.getRules()) {
+    for (final GuardrailRule rule : config.getRules()) {
       if (!rule.isEnabled()) {
         continue;
       }
       final GuardrailRuleType type = GuardrailRuleType.valueOfOrDefault(rule.getType());
-      final GuardrailProvider provider = typeVsProvider.get(type);
+      final GuardrailProvider<?> provider = typeVsProvider.get(type);
       if (provider == null) {
         LOG.warn("No guardrail provider registered for rule type '{}'.", type);
         continue;
@@ -66,17 +64,17 @@ public final class GuardrailRegistry {
     return stageVsGuardRails;
   }
 
-  private static List<GuardrailProvider> collectProviders(final Instance<GuardrailProvider> providers, final ClassLoader pluginLoader) {
-    final List<GuardrailProvider> allProviders = new ArrayList<>();
-    for (final GuardrailProvider provider : providers) {
+  private static List<GuardrailProvider<?>> collectProviders(final Instance<GuardrailProvider<?>> providers, final ClassLoader pluginLoader) {
+    final List<GuardrailProvider<?>> allProviders = new ArrayList<>();
+    for (final GuardrailProvider<?> provider : providers) {
       if (provider != null) {
         allProviders.add(provider);
       }
     }
     if (pluginLoader != Thread.currentThread().getContextClassLoader()) {
-      final ServiceLoader<GuardrailProvider> loader =
-          ServiceLoader.load(GuardrailProvider.class, pluginLoader);
-      for (final GuardrailProvider provider : loader) {
+      //noinspection rawtypes
+      final ServiceLoader<GuardrailProvider> loader = ServiceLoader.load(GuardrailProvider.class, pluginLoader);
+      for (final GuardrailProvider<?> provider : loader) {
         if (provider != null) {
           allProviders.add(provider);
         }
@@ -87,9 +85,9 @@ public final class GuardrailRegistry {
 
   @SuppressWarnings("unchecked")
   private static Guardrail createGuardrail(
-      final GuardrailProvider provider,
+      final GuardrailProvider<?> provider,
       final GuardrailsConfig config,
-      final GuardrailRuleConfig rule) {
-    return ((GuardrailProvider<GuardrailRuleConfig>) provider).create(config, rule);
+      final GuardrailRule rule) {
+    return ((GuardrailProvider<GuardrailRule>) provider).create(config, rule);
   }
 }

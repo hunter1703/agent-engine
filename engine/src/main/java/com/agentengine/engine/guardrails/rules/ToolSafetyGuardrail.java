@@ -2,28 +2,28 @@ package com.agentengine.engine.guardrails.rules;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
-import com.agentengine.engine.api.beans.config.ToolRiskGuardrailRuleConfig;
+import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
-
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-public final class ToolRiskGuardrail implements Guardrail {
-  private final ToolRiskGuardrailRuleConfig rule;
+public final class ToolSafetyGuardrail implements Guardrail {
+  private final ToolSafetyGuardrailRule rule;
+  private final String id;
 
-  public ToolRiskGuardrail(final ToolRiskGuardrailRuleConfig rule) {
-    this.rule = rule;
+  public ToolSafetyGuardrail(final ToolSafetyGuardrailRule rule) {
+    this.rule = Objects.requireNonNull(rule);
+    this.id = GuardrailUtils.resolveRuleId(rule, "tool_safety");
   }
 
   @Override
   public String id() {
-    return "tool_risk";
+    return id;
   }
 
   @Override
@@ -43,7 +43,7 @@ public final class ToolRiskGuardrail implements Guardrail {
       final String message =
               rule.getMessage() != null
                       ? rule.getMessage()
-                      : "Tool risk policy triggered for '" + descriptor.name() + "'.";
+                      : "Tool safety policy triggered for '" + descriptor.name() + "'.";
       decision = GuardrailUtils.fromAction(
               rule.getAction(),
               "guardrail_tool_policy",

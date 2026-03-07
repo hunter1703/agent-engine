@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.agents.processors.response.GuardrailResponseProcessor;
 import com.agentengine.engine.api.beans.config.GuardrailsConfig;
-import com.agentengine.engine.api.beans.config.OnTopicMode;
-import com.agentengine.engine.api.beans.config.TopicControlConfig;
+import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
+import com.agentengine.engine.api.beans.config.RelevanceMode;
 import com.agentengine.engine.guardrails.GuardrailRuntime;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.google.adk.agents.InvocationContext;
@@ -39,12 +39,12 @@ class GuardrailResponseProcessorTest {
                 .build());
     InvocationContext context = InvocationContext.builder().session(session).build();
 
-    TopicControlConfig topicControl = new TopicControlConfig();
-    topicControl.setMode(OnTopicMode.STEER_THEN_BLOCK);
-    topicControl.setMaxSteeringRetries(1);
-    topicControl.setRelevanceThreshold(0.4);
+    final OutputRelevanceGuardrailRule relevanceRule = new OutputRelevanceGuardrailRule();
+    relevanceRule.setMode(RelevanceMode.STEER_THEN_BLOCK);
+    relevanceRule.setMaxSteeringRetries(1);
+    relevanceRule.setRelevanceThreshold(0.4);
     GuardrailsConfig config = new GuardrailsConfig();
-    config.setTopicControl(topicControl);
+    config.setRules(List.of(relevanceRule));
     GuardrailRuntime.attachConfig(session.state(), config);
 
     LlmResponse response =
@@ -64,7 +64,7 @@ class GuardrailResponseProcessorTest {
     assertThat(updated.content()).isEmpty();
     assertThat(RunStateUtils.getState(context).violations())
         .extracting(v -> v.getCode())
-        .contains("off_topic_steer");
+        .contains("relevance_steer");
   }
 
   @Test
@@ -86,12 +86,12 @@ class GuardrailResponseProcessorTest {
                 .build());
     InvocationContext context = InvocationContext.builder().session(session).build();
 
-    TopicControlConfig topicControl = new TopicControlConfig();
-    topicControl.setMode(OnTopicMode.STEER_THEN_BLOCK);
-    topicControl.setMaxSteeringRetries(1);
-    topicControl.setRelevanceThreshold(0.4);
+    final OutputRelevanceGuardrailRule relevanceRule = new OutputRelevanceGuardrailRule();
+    relevanceRule.setMode(RelevanceMode.STEER_THEN_BLOCK);
+    relevanceRule.setMaxSteeringRetries(1);
+    relevanceRule.setRelevanceThreshold(0.4);
     GuardrailsConfig config = new GuardrailsConfig();
-    config.setTopicControl(topicControl);
+    config.setRules(List.of(relevanceRule));
     GuardrailRuntime.attachConfig(session.state(), config);
 
     LlmResponse response =
