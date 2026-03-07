@@ -9,7 +9,7 @@ import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.RelevanceEvaluator;
-import com.agentengine.engine.guardrails.TopicAnchorBuilder;
+import com.agentengine.engine.guardrails.RelevanceAnchorBuilder;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
@@ -43,7 +43,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
       return GuardrailDecision.allow();
     }
 
-    final String anchor = TopicAnchorBuilder.build(context.invocationContext(), config.getAnchorStrategy());
+    final String anchor = RelevanceAnchorBuilder.build(context.invocationContext(), config.getAnchorStrategy());
     final double score = evaluator.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
     final RunState runState = RunStateUtils.getState(context.invocationContext());

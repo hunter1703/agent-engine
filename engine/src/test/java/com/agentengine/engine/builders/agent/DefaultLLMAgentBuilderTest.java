@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class DefaultAgentBuilderTest {
+class DefaultLLMAgentBuilderTest {
 
   @Test
   void includesToolInstructionsWhenParsingFromText() {

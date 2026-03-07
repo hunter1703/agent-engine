@@ -10,55 +10,23 @@ import com.agentengine.engine.agents.processors.response.GuardrailResponseProces
 import com.agentengine.engine.agents.processors.response.OutputEvaluationResponseProcessor;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
+import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
+import com.google.adk.models.BaseLlm;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DefaultFlow extends AbstractFlow {
-
-  public DefaultFlow(final Parser parser) {
-    this(parser, List.of(), GuardrailErrorMode.FAIL_OPEN);
-  }
+public final class DefaultFlow extends AbstractFlow {
 
   public DefaultFlow(
       final Parser parser,
       final List<Guardrail> outputGuardrails,
-      final GuardrailErrorMode guardrailErrorMode) {
-    super(
-        Integer.MAX_VALUE,
-        buildRequests(parser),
-        buildResponses(parser, outputGuardrails, guardrailErrorMode));
-  }
-
-  private static List<RequestProcessor> buildRequests(final Parser parser) {
-    final List<RequestProcessor> requestProcessors = new ArrayList<>();
-    requestProcessors.add(RunInitRequestProcessor.INSTANCE);
-    requestProcessors.add(HumanInTheLoopRequestProcessor.INSTANCE);
-    requestProcessors.addAll(SingleFlow.REQUEST_PROCESSORS);
-    requestProcessors.add(CorrectionProcessor.INSTANCE);
-    requestProcessors.add(PlanningRequestProcessor.INSTANCE);
-    requestProcessors.add(parser);
-    requestProcessors.add(LoggingRequestProcessor.INSTANCE);
-    return requestProcessors;
-  }
-
-  private static List<ResponseProcessor> buildResponses(
-      final Parser parser,
-      final List<Guardrail> outputGuardrails,
-      final GuardrailErrorMode guardrailErrorMode) {
-    final List<ResponseProcessor> responseProcessors = new ArrayList<>();
-    responseProcessors.add(parser);
-    responseProcessors.add(new GuardrailResponseProcessor(outputGuardrails, guardrailErrorMode));
-    responseProcessors.add(PlanLoopResponseProcessor.INSTANCE);
-    responseProcessors.add(OutputEvaluationResponseProcessor.INSTANCE);
-    responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
-    responseProcessors.add(TurnCompletionResponseProcessor.INSTANCE);
-    responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);
-    responseProcessors.add(PartOrderingResponseProcessor.INSTANCE);
-    responseProcessors.add(RunCleanupResponseProcessor.INSTANCE);
-    return responseProcessors;
+      final GuardrailErrorMode guardrailErrorMode,
+      final OutputEvaluationConfig outputEvaluationConfig) {
+    super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser, outputGuardrails, guardrailErrorMode, outputEvaluationConfig));
   }
 }

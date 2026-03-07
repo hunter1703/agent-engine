@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.builders.agent.AgentBuilder;
+import com.agentengine.engine.builders.agent.LLMAgentBuilder;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.model.AbstractLLM;
 import com.google.adk.agents.Instruction;
@@ -18,7 +18,7 @@ class StoryAgentTest {
         final Parser mockParser = mock(Parser.class);
         when(mockLlm.getParser()).thenReturn(mockParser);
 
-        final AgentBuilder builder = new AgentBuilder();
+        final LLMAgentBuilder builder = new LLMAgentBuilder();
         builder.name("StoryGen");
         builder.model(mockLlm);
         builder.globalInstruction("Custom global info");

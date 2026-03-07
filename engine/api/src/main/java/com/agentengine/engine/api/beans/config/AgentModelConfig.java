@@ -15,6 +15,12 @@ public class AgentModelConfig implements Config {
   private ContextManagerConfig contextManagerConfig = new SummarizeContextManagerConfig();
   private List<ToolsConfig> tools = new ArrayList<>();
 
+  public AgentModelConfig() {}
+
+  public AgentModelConfig(final String modelId) {
+    this.modelId = modelId;
+  }
+
   public String getModelId() {
     return modelId;
   }

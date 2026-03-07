@@ -4,15 +4,18 @@ import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.*;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
+import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.agentengine.engine.api.utils.EventUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
+import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Single;
 import com.agentengine.engine.guardrails.Guardrail;
@@ -32,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * identification), which deliberately sees only the original user input so the protagonist profile
  * from Phase 1 does not bias the character-count inference.
  */
-public final class StoryFlow extends DefaultFlow {
+public final class StoryFlow extends AbstractFlow {
     private static final Logger LOG = LoggerFactory.getLogger(StoryFlow.class);
 
     // ---- Phase prompts ---------------------------------------------------------
@@ -147,8 +150,9 @@ public final class StoryFlow extends DefaultFlow {
     public StoryFlow(
             final Parser parser,
             final List<Guardrail> outputGuardrails,
-            final GuardrailErrorMode guardrailErrorMode) {
-        super(parser, outputGuardrails, guardrailErrorMode);
+            final GuardrailErrorMode guardrailErrorMode,
+            final OutputEvaluationConfig outputEvaluationConfig) {
+        super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser, outputGuardrails, guardrailErrorMode, outputEvaluationConfig));
     }
 
     // ---- Orchestration ---------------------------------------------------------
@@ -221,11 +225,13 @@ public final class StoryFlow extends DefaultFlow {
 
     // ---- Request processor factories -------------------------------------------
 
-    /** Appends the phase-specific prompt to the system instruction. */
+    /** Appends the phase-specific prompt as user context at the end of the request. */
     private static RequestProcessor phaseInstruction(final String prompt) {
         return (ctx, req) -> {
+            final List<Content> contents = new ArrayList<>(req.contents() == null ? List.of() : req.contents());
+            contents.add(Content.builder().role("user").parts(Part.fromText(prompt)).build());
             final LlmRequest updated = req.toBuilder()
-                    .appendInstructions(List.of(prompt))
+                    .contents(contents)
                     .build();
             return Single.just(RequestProcessor.RequestProcessingResult.create(
                     updated, ImmutableList.of()));

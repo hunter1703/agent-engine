@@ -7,14 +7,16 @@ import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
-import com.agentengine.engine.context.BaseContextManager;
 import com.agentengine.engine.guardrails.GuardrailRegistry;
+import com.agentengine.engine.infra.DefaultModelConfig;
+import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -27,22 +29,19 @@ import com.google.genai.types.Content;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmAgent>
     implements AgentBuilder<C, A> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractAgentBuilder.class);
-  private static final Pattern ADK_AGENT_NAME_PATTERN =
-      Pattern.compile("^_?[a-zA-Z0-9]*([. _-][a-zA-Z0-9]+)*$");
   protected final ModelProvider modelProvider;
   protected final SessionServiceProvider sessionServiceProvider;
   protected final ContextManagerProvider contextManagerProvider;
   protected final ToolRegistry toolRegistry;
   protected final GuardrailRegistry guardrailRegistry;
+  protected final InfraMongoRepository infraMongoRepository;
   private final ModelRepository modelRepository;
 
   protected AbstractAgentBuilder(
@@ -51,16 +50,18 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
           ContextManagerProvider contextManagerProvider,
           ToolRegistry toolRegistry,
           ModelRepository modelRepository,
-          GuardrailRegistry guardrailRegistry) {
+          GuardrailRegistry guardrailRegistry,
+          InfraMongoRepository infraMongoRepository) {
     this.modelProvider = modelProvider;
     this.sessionServiceProvider = sessionServiceProvider;
     this.contextManagerProvider = contextManagerProvider;
     this.toolRegistry = toolRegistry;
     this.modelRepository = modelRepository;
     this.guardrailRegistry = guardrailRegistry;
+    this.infraMongoRepository = infraMongoRepository;
   }
 
-  protected com.agentengine.engine.builders.agent.AgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
+  protected LLMAgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
     final ModelConfig modelConfig =
             modelRepository.findById(config.getModel().getModelId()).orElse(null);
     if (modelConfig == null) {
@@ -77,7 +78,7 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
     final boolean parseToolCallsFromText = agentModel.isParseToolCallsFromText();
     final ContextManager contextManager = contextManagerProvider.get(config.getModel().getContextManagerConfig(), config);
     String toolInstructions = "";
-    final com.agentengine.engine.builders.agent.AgentBuilder agentBuilder = new com.agentengine.engine.builders.agent.AgentBuilder();
+    final LLMAgentBuilder llmAgentBuilder = getEmptyBuilder();
     if (toolCallingEnabled) {
       final List<BaseTool> tools =
               CollectionUtils.nullSafeMutableList(toolRegistry.loadTools(resolvedContext, config.getModel().getTools()));
@@ -85,15 +86,16 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
         toolInstructions = ToolUtils.buildToolMessage(tools);
       }
       if (CollectionUtils.isNotEmpty(tools)) {
-        agentBuilder.tools(tools);
+        llmAgentBuilder.tools(tools);
       }
     }
     final String globalInstruction =
             buildGlobalInstruction(config.getModel().getSystemPrompt(), modelConfig.getInstructions());
-    agentBuilder
+    llmAgentBuilder
             .toolInstructions(toolInstructions)
             .protocolInstructions(agentModel.getProtocol())
             .globalInstruction(globalInstruction)
+            .outputEvaluationConfig(hydrateOutputEvaluationConfig(config.getOutputEvaluation()))
             .outputGuardrails(
                 guardrailRegistry.getGuardrailsForStage(
                     config.getGuardrails(), GuardrailStage.OUTPUT))
@@ -110,9 +112,9 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
                   try {
                     final List<Content> contents =
                         CollectionUtils.nullSafeList(llmRequestBuilder.build().contents());
-                    final List<Content> compacted =
+                    final List<Content> prompt =
                         contextManager.buildPrompt(config.getId(), callbackContext.sessionId(), contents);
-                    llmRequestBuilder.contents(compacted);
+                    llmRequestBuilder.contents(prompt);
                   } catch (final Exception ex) {
                     LOG.warn(
                         "Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.",
@@ -122,7 +124,11 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
                   }
                   return Optional.empty();
                 });
-    return agentBuilder;
+    return llmAgentBuilder;
+  }
+
+  protected LLMAgentBuilder getEmptyBuilder() {
+    return new LLMAgentBuilder();
   }
 
   private static String buildGlobalInstruction(
@@ -136,28 +142,6 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
     return systemPrompt + "\n\n# FOLLOW\n" + modelInstructions;
   }
 
-  protected AbstractLLM resolveRoutingModel(final AgentConfig config) {
-    final String routingModelId = config.getRoutingModelId();
-    if (StringUtils.isNotBlank(routingModelId)) {
-      try {
-        final AgentModelConfig routingConfig = new AgentModelConfig();
-        routingConfig.setModelId(routingModelId);
-        final BaseLlm routingModel = modelProvider.get(routingConfig);
-        if (routingModel instanceof AbstractLLM abstractLLM) {
-          return abstractLLM;
-        }
-        LOG.warn("Routing model '{}' did not produce an AbstractLLM, falling back to main model", routingModelId);
-      } catch (final Exception e) {
-        LOG.warn("Failed to resolve routing model '{}', falling back to main model", routingModelId, e);
-      }
-    }
-    final BaseLlm mainModel = modelProvider.get(config.getModel());
-    if (mainModel instanceof AbstractLLM abstractLLM) {
-      return abstractLLM;
-    }
-    throw new IllegalStateException("Main model is not an AbstractLLM instance");
-  }
-
   protected BaseSessionService resolveSessionService(
       final AgentContext agentContext, final AgentConfig config) {
     if (agentContext != null && agentContext.sessionService() != null) {
@@ -167,5 +151,23 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
       return null;
     }
     return sessionServiceProvider.get(config.getSessionStore());
+  }
+
+  private OutputEvaluationConfig hydrateOutputEvaluationConfig(final OutputEvaluationConfig outputEvaluationConfig) {
+    if (outputEvaluationConfig == null) {
+      return null;
+    }
+    String evaluatorModelId = outputEvaluationConfig.getEvaluatorModelId();
+    if (StringUtils.isBlank(evaluatorModelId)) {
+      final DefaultModelConfig defaultModelConfig = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+        if (defaultModelConfig != null) {
+            evaluatorModelId = defaultModelConfig.getEvaluatorModelId();
+        }
+    }
+    if (StringUtils.isBlank(evaluatorModelId)) {
+      return outputEvaluationConfig;
+    }
+    outputEvaluationConfig.setEvaluatorModel(modelProvider.get(new AgentModelConfig(evaluatorModelId)));
+    return outputEvaluationConfig;
   }
 }

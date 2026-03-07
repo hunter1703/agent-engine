@@ -4,21 +4,30 @@ import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.repository.ModelRepository;
+import com.agentengine.engine.utils.RefCountedCache;
 import com.google.adk.models.BaseLlm;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.function.Function;
 
 @Singleton
 public class ModelProvider {
+  private static final Logger LOG = LoggerFactory.getLogger(ModelProvider.class);
 
   private final Map<String, ModelBuilder<? extends BaseLlm>> typeVsBuilder;
   private final ModelBuilder<?> defaultBuilder;
   private final ModelRepository modelRepository;
+  private final RefCountedCache<String, BaseLlm> cache;
 
   @Inject
   public ModelProvider(
@@ -30,13 +39,51 @@ public class ModelProvider {
             allBuilders.stream().toList(), ModelBuilder::type, Function.identity());
     this.defaultBuilder = openAIModelBuilder;
     this.modelRepository = modelRepository;
+    this.cache = RefCountedCache.<String, BaseLlm>builder()
+            .name("model-provider")
+            .idleTimeout(15, TimeUnit.MINUTES)
+            .cleanupInterval(60, TimeUnit.SECONDS)
+            .creator(this::buildModel)
+            .onEvict((_modelId, model) -> tryClose(model))
+            .build();
+  }
+  public BaseLlm get(final AgentModelConfig config) {
+    if (config == null || StringUtils.isBlank(config.getModelId())) {
+      throw new IllegalArgumentException("modelId cannot be blank");
+    }
+    final String modelId = config.getModelId();
+    return cache.getAndAcquire(modelId);
   }
 
-  public BaseLlm get(final AgentModelConfig config) {
+  public void release(final AgentModelConfig config) {
+    if (config == null) {
+      return;
+    }
+    release(config.getModelId());
+  }
+
+  public void release(final String modelId) {
+    if (StringUtils.isBlank(modelId)) {
+      return;
+    }
+    cache.release(modelId);
+  }
+
+  private BaseLlm buildModel(final String modelId) {
     final ModelConfig modelConfig =
-        Objects.requireNonNull(modelRepository.findById(config.getModelId()).orElse(null));
+        Objects.requireNonNull(modelRepository.findById(modelId).orElse(null));
     final ModelBuilder<? extends BaseLlm> builder =
         typeVsBuilder.getOrDefault(modelConfig.getType().toLowerCase(), defaultBuilder);
     return builder.build(modelConfig);
+  }
+
+  private static void tryClose(final BaseLlm model) {
+    if (model instanceof AutoCloseable closeable) {
+      try {
+        closeable.close();
+      } catch (Exception ex) {
+        LOG.debug("Failed to close model during cache eviction.", ex);
+      }
+    }
   }
 }

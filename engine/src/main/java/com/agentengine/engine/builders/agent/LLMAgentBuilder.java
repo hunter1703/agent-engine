@@ -2,47 +2,55 @@ package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.agents.DefaultAgent;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
+import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.google.adk.agents.LlmAgent;
 import java.util.List;
 
-public class AgentBuilder extends LlmAgent.Builder {
+public class LLMAgentBuilder extends LlmAgent.Builder {
   private String protocolInstructions;
   private String toolInstructions;
   private String globalInstruction;
   private List<Guardrail> outputGuardrails = List.of();
   private GuardrailErrorMode guardrailErrorMode = GuardrailErrorMode.FAIL_OPEN;
+  private OutputEvaluationConfig outputEvaluationConfig = new OutputEvaluationConfig();
 
-  public AgentBuilder() {
+  public LLMAgentBuilder() {
     this.disallowTransferToParent(false);
     this.disallowTransferToPeers(false);
   }
 
-  public AgentBuilder protocolInstructions(final String protocolInstructions) {
+  public LLMAgentBuilder protocolInstructions(final String protocolInstructions) {
 
     this.protocolInstructions = protocolInstructions;
     return this;
   }
 
-  public AgentBuilder toolInstructions(final String toolInstructions) {
+  public LLMAgentBuilder toolInstructions(final String toolInstructions) {
     this.toolInstructions = toolInstructions;
     return this;
   }
 
-  public AgentBuilder globalInstruction(final String globalInstruction) {
+  public LLMAgentBuilder globalInstruction(final String globalInstruction) {
     this.globalInstruction = globalInstruction;
     return this;
   }
 
-  public AgentBuilder outputGuardrails(final List<Guardrail> outputGuardrails) {
+  public LLMAgentBuilder outputGuardrails(final List<Guardrail> outputGuardrails) {
     this.outputGuardrails = outputGuardrails == null ? List.of() : List.copyOf(outputGuardrails);
     return this;
   }
 
-  public AgentBuilder guardrailErrorMode(final GuardrailErrorMode guardrailErrorMode) {
+  public LLMAgentBuilder guardrailErrorMode(final GuardrailErrorMode guardrailErrorMode) {
     this.guardrailErrorMode =
         guardrailErrorMode == null ? GuardrailErrorMode.FAIL_OPEN : guardrailErrorMode;
+    return this;
+  }
+
+  public LLMAgentBuilder outputEvaluationConfig(final OutputEvaluationConfig outputEvaluationConfig) {
+    this.outputEvaluationConfig =
+        outputEvaluationConfig == null ? new OutputEvaluationConfig() : outputEvaluationConfig;
     return this;
   }
 
@@ -52,6 +60,10 @@ public class AgentBuilder extends LlmAgent.Builder {
 
   public GuardrailErrorMode guardrailErrorMode() {
     return guardrailErrorMode;
+  }
+
+  public OutputEvaluationConfig outputEvaluationConfig() {
+    return outputEvaluationConfig;
   }
 
   public LlmAgent.Builder reWriteInstructions() {

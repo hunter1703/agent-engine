@@ -147,6 +147,20 @@ public final class CollectionUtils {
     };
   }
 
+  public static Double getDoubleValueFromMap(final Map<String, Object> map, final String key) {
+    if (CollectionUtils.isEmpty(map)) {
+      return null;
+    }
+    final Object value = map.get(key);
+    if (value == null) {
+      return null;
+    }
+    return switch (value) {
+      case Number number -> number.doubleValue();
+      default -> Double.parseDouble(value.toString());
+    };
+  }
+
   public static Boolean getBooleanValueFromMap(final Map<String, Object> map, final String key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;

@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * Runs a single logical turn, retrying until the turn completes.
  */
-final class SingleTurnFlow extends AbstractFlow {
+public final class SingleTurnFlow extends AbstractFlow {
     public SingleTurnFlow(final List<RequestProcessor> requestProcessors, final List<ResponseProcessor> responseProcessors) {
         super(Integer.MAX_VALUE, requestProcessors, responseProcessors, SingleTurnFlow::shouldTerminate);
     }

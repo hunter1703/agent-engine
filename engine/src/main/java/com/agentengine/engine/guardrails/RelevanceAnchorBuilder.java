@@ -1,6 +1,6 @@
 package com.agentengine.engine.guardrails;
 
-import com.agentengine.engine.api.beans.config.TopicAnchorStrategy;
+import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;
@@ -12,12 +12,12 @@ import com.google.genai.types.Content;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.agentengine.engine.api.beans.config.TopicAnchorStrategy.*;
+import static com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy.*;
 
-public final class TopicAnchorBuilder {
-  private TopicAnchorBuilder() {}
+public final class RelevanceAnchorBuilder {
+  private RelevanceAnchorBuilder() {}
 
-  public static String build(final InvocationContext context, final TopicAnchorStrategy strategy) {
+  public static String build(final InvocationContext context, final RelevanceAnchorStrategy strategy) {
     final OutputRelevanceGuardrailRule config = new OutputRelevanceGuardrailRule();
     config.setAnchorStrategy(strategy);
     return build(context, config);
@@ -28,15 +28,15 @@ public final class TopicAnchorBuilder {
     if (context == null || context.session() == null) {
       return "";
     }
-    TopicAnchorStrategy strategy = config.getAnchorStrategy();
+    RelevanceAnchorStrategy strategy = config.getAnchorStrategy();
     strategy = strategy == null ? LATEST_USER_AND_PLAN : strategy;
 
     final String latestUser = latestUserMessage(context.session().events());
-    final String recentUser = recentUserIntents(context.session().events(), strategy == RECENT_USER ? config.getRecency() : 1);
+    final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
+    final String recentUser = recentUserIntents(context.session().events(), recency);
     final String planAnchor = planAnchor(context);
 
     return switch (strategy) {
-      case LATEST_USER -> latestUser;
       case RECENT_USER -> recentUser;
       case LATEST_USER_AND_PLAN -> joinNonBlank(List.of(latestUser, planAnchor));
       case UNKNOWN -> joinNonBlank(List.of(latestUser, recentUser, planAnchor));

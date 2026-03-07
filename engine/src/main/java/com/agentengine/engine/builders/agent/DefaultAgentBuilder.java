@@ -10,6 +10,7 @@ import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.guardrails.GuardrailRegistry;
+import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -33,20 +34,21 @@ public class DefaultAgentBuilder extends AbstractAgentBuilder<AgentConfig, Defau
       ToolRegistry toolRegistry,
       ContextManagerProvider contextManagerProvider,
       ModelRepository modelRepository,
-      GuardrailRegistry guardrailRegistry) {
+      GuardrailRegistry guardrailRegistry,
+      InfraMongoRepository infraMongoRepository) {
     super(
         modelProvider,
         sessionServiceProvider,
         contextManagerProvider,
         toolRegistry,
         modelRepository,
-        guardrailRegistry);
+        guardrailRegistry,
+        infraMongoRepository);
   }
 
   @Override
   public DefaultAgent build(final AgentConfig config, final AgentContext agentContext) {
-    final AgentBuilder builder = getBuilder(config, agentContext);
-    return new DefaultAgent(builder);
+    return new DefaultAgent(getBuilder(config, agentContext));
   }
 
   @Override

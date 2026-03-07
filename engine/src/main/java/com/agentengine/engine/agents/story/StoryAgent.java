@@ -5,12 +5,15 @@ import com.agentengine.engine.agents.flows.FlowRoute;
 import com.agentengine.engine.agents.flows.RoutingFlow;
 import com.agentengine.engine.agents.flows.StoryFlow;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.builders.agent.AgentBuilder;
+import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
+import com.agentengine.engine.builders.agent.LLMAgentBuilder;
+import com.agentengine.engine.builders.agent.LLMStoryAgentBuilder;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.model.AbstractLLM;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.events.Event;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.models.Model;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
@@ -33,10 +36,11 @@ public final class StoryAgent extends LlmAgent {
 
     private final RoutingFlow routingFlow;
 
-    public StoryAgent(final AgentBuilder builder, final AbstractLLM routingModel, final int routingHistorySize) {
+    public StoryAgent(final LLMStoryAgentBuilder builder) {
         super(builder.globalInstruction(BASE_PERSONA).reWriteInstructions());
         List<Guardrail> outputGuardrails = builder.outputGuardrails();
         GuardrailErrorMode guardrailErrorMode = builder.guardrailErrorMode();
+        OutputEvaluationConfig outputEvaluationConfig = builder.outputEvaluationConfig();
         final AbstractLLM agentModel = (AbstractLLM) model()
                 .orElse(Model.builder().build())
                 .model()
@@ -45,18 +49,26 @@ public final class StoryAgent extends LlmAgent {
             throw new IllegalStateException("StoryAgent requires a configured AbstractLLM model");
         }
         this.routingFlow = new RoutingFlow(
-                routingModel,
+                builder.routingModel(),
                 List.of(
                         FlowRoute.of(
                                 "STORY_GENERATION",
                                 "User is explicitly requesting a brand-new story or scene to be generated from scratch (e.g. 'write a story about X', 'create a scene where Y'). Do NOT select this for questions about an existing story, requests to modify a story, word count questions, character questions, or any follow-up.",
-                                new StoryFlow(agentModel.getParser(), outputGuardrails, guardrailErrorMode)),
+                                new StoryFlow(
+                                    agentModel.getParser(),
+                                    outputGuardrails,
+                                    guardrailErrorMode,
+                                    outputEvaluationConfig)),
                         FlowRoute.of(
                                 "CONVERSATION",
                                 "User asks any question or makes any request that is not generating a new story from scratch — including questions about characters, word counts, story details, greetings, clarifications, requests to modify an existing story, or general conversation.",
-                                new DefaultFlow(agentModel.getParser(), outputGuardrails, guardrailErrorMode))
+                                new DefaultFlow(
+                                    agentModel.getParser(),
+                                    outputGuardrails,
+                                    guardrailErrorMode,
+                                    outputEvaluationConfig))
                 ),
-                routingHistorySize
+                builder.routingHistorySize()
         );
     }
 

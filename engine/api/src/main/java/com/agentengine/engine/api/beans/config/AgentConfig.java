@@ -1,6 +1,7 @@
 package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.NamedEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import java.util.Locale;
 
@@ -15,7 +16,7 @@ public class AgentConfig extends NamedEntity implements Config {
   private int routingHistorySize = 1;
   private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
   private GuardrailsConfig guardrails = new GuardrailsConfig();
-  private EvaluatorOptimizerConfig evaluatorOptimizer = new EvaluatorOptimizerConfig();
+  private OutputEvaluationConfig outputEvaluation = new OutputEvaluationConfig();
 
   public AgentConfig() {
     this.type = AgentType.DEFAULT.name().toLowerCase();
@@ -102,14 +103,47 @@ public class AgentConfig extends NamedEntity implements Config {
     this.guardrails = guardrails;
   }
 
+  public OutputEvaluationConfig getOutputEvaluation() {
+    return outputEvaluation;
+  }
+
+  public void setOutputEvaluation(final OutputEvaluationConfig outputEvaluation) {
+    this.outputEvaluation = outputEvaluation;
+  }
+
+  /**
+   * Backward-compatible alias for older configs using `evaluatorOptimizer`.
+   *
+   * @deprecated use {@link #getOutputEvaluation()} instead.
+   */
+  @Deprecated
+  @JsonProperty("evaluatorOptimizer")
+  public OutputEvaluationConfig getEvaluatorOptimizer() {
+    return outputEvaluation;
+  }
+
+  /**
+   * Backward-compatible alias for older configs using `evaluatorOptimizer`.
+   *
+   * @deprecated use {@link #setOutputEvaluation(OutputEvaluationConfig)} instead.
+   */
+  @Deprecated
+  @JsonProperty("evaluatorOptimizer")
+  public void setEvaluatorOptimizer(final OutputEvaluationConfig evaluatorOptimizer) {
+    this.outputEvaluation = evaluatorOptimizer;
+  }
+
   public enum AgentType {
     /** Fallback for invalid or missing config values. */
     UNKNOWN,
     /** Standard single-agent runtime with default flow/pipeline behavior. */
     DEFAULT,
-    STORY;
     /** Story-specialized agent with routing + multi-phase story generation flow. */
     STORY,
+    /** Manager/orchestrator role intended to coordinate worker agents and tools. */
+    ORCHESTRATOR,
+    /** Worker role intended to execute delegated specialist tasks. */
+    WORKER;
 
     public static AgentType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

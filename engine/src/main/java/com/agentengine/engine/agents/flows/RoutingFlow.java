@@ -8,6 +8,7 @@ import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -63,9 +64,14 @@ public final class RoutingFlow extends AbstractFlow {
                             .parts(Part.builder().text("(No conversation history yet.)").build())
                             .build())
                     : historyContents;
+            final List<Content> requestContents = new ArrayList<>(contents);
+            requestContents.add(
+                Content.builder()
+                    .role("user")
+                    .parts(Part.builder().text(buildRoutingPrompt()).build())
+                    .build());
             final LlmRequest request = LlmRequest.builder()
-                    .appendInstructions(List.of(buildRoutingPrompt()))
-                    .contents(contents)
+                    .contents(requestContents)
                     .build();
             final LlmResponse response = routingModel.generateContent(request, false).blockingFirst();
             final String rawText = response.content().map(Content::text).orElse("").trim();
