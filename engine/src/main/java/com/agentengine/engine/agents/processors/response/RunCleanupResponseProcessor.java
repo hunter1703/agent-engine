@@ -18,7 +18,7 @@ import static com.google.genai.types.FinishReason.Known.STOP;
  * <p>Responsibilities:
  * - Check if finished.
  * - Set finishReason=STOP if missing.
- * - Clear run-scoped RunState fields while preserving durable plan state.
+ * - Clear run-scoped RunState at run completion.
  *
  * <p>Ownership: run completion cleanup and termination signaling.
  */
@@ -37,7 +37,7 @@ public final class RunCleanupResponseProcessor implements ResponseProcessor {
     }
 
     final LlmResponse updated = response.toBuilder().finishReason(response.finishReason().orElse(new FinishReason(STOP))).build();
-    RunStateUtils.clearRunState(context);
+    RunStateUtils.clearState(context);
     return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
   }
 }

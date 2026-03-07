@@ -7,7 +7,6 @@ import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
@@ -15,8 +14,6 @@ import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.guardrails.GuardrailRegistry;
-import com.agentengine.engine.infra.DefaultModelConfig;
-import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -41,7 +38,6 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
   protected final ContextManagerProvider contextManagerProvider;
   protected final ToolRegistry toolRegistry;
   protected final GuardrailRegistry guardrailRegistry;
-  protected final InfraMongoRepository infraMongoRepository;
   private final ModelRepository modelRepository;
 
   protected AbstractAgentBuilder(
@@ -50,15 +46,13 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
           ContextManagerProvider contextManagerProvider,
           ToolRegistry toolRegistry,
           ModelRepository modelRepository,
-          GuardrailRegistry guardrailRegistry,
-          InfraMongoRepository infraMongoRepository) {
+          GuardrailRegistry guardrailRegistry) {
     this.modelProvider = modelProvider;
     this.sessionServiceProvider = sessionServiceProvider;
     this.contextManagerProvider = contextManagerProvider;
     this.toolRegistry = toolRegistry;
     this.modelRepository = modelRepository;
     this.guardrailRegistry = guardrailRegistry;
-    this.infraMongoRepository = infraMongoRepository;
   }
 
   protected LLMAgentBuilder getBuilder(final AgentConfig config, final AgentContext agentContext) {
@@ -95,7 +89,6 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
             .toolInstructions(toolInstructions)
             .protocolInstructions(agentModel.getProtocol())
             .globalInstruction(globalInstruction)
-            .outputEvaluationConfig(hydrateOutputEvaluationConfig(config.getOutputEvaluation()))
             .outputGuardrails(
                 guardrailRegistry.getGuardrailsForStage(
                     config.getGuardrails(), GuardrailStage.OUTPUT))
@@ -151,23 +144,5 @@ public abstract class AbstractAgentBuilder<C extends AgentConfig, A extends LlmA
       return null;
     }
     return sessionServiceProvider.get(config.getSessionStore());
-  }
-
-  private OutputEvaluationConfig hydrateOutputEvaluationConfig(final OutputEvaluationConfig outputEvaluationConfig) {
-    if (outputEvaluationConfig == null) {
-      return null;
-    }
-    String evaluatorModelId = outputEvaluationConfig.getEvaluatorModelId();
-    if (StringUtils.isBlank(evaluatorModelId)) {
-      final DefaultModelConfig defaultModelConfig = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
-        if (defaultModelConfig != null) {
-            evaluatorModelId = defaultModelConfig.getEvaluatorModelId();
-        }
-    }
-    if (StringUtils.isBlank(evaluatorModelId)) {
-      return outputEvaluationConfig;
-    }
-    outputEvaluationConfig.setEvaluatorModel(modelProvider.get(new AgentModelConfig(evaluatorModelId)));
-    return outputEvaluationConfig;
   }
 }

@@ -5,15 +5,12 @@ import com.agentengine.engine.agents.flows.FlowRoute;
 import com.agentengine.engine.agents.flows.RoutingFlow;
 import com.agentengine.engine.agents.flows.StoryFlow;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
-import com.agentengine.engine.builders.agent.LLMAgentBuilder;
 import com.agentengine.engine.builders.agent.LLMStoryAgentBuilder;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.model.AbstractLLM;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.events.Event;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.Model;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
@@ -40,7 +37,6 @@ public final class StoryAgent extends LlmAgent {
         super(builder.globalInstruction(BASE_PERSONA).reWriteInstructions());
         List<Guardrail> outputGuardrails = builder.outputGuardrails();
         GuardrailErrorMode guardrailErrorMode = builder.guardrailErrorMode();
-        OutputEvaluationConfig outputEvaluationConfig = builder.outputEvaluationConfig();
         final AbstractLLM agentModel = (AbstractLLM) model()
                 .orElse(Model.builder().build())
                 .model()
@@ -57,16 +53,14 @@ public final class StoryAgent extends LlmAgent {
                                 new StoryFlow(
                                     agentModel.getParser(),
                                     outputGuardrails,
-                                    guardrailErrorMode,
-                                    outputEvaluationConfig)),
+                                    guardrailErrorMode)),
                         FlowRoute.of(
                                 "CONVERSATION",
                                 "User asks any question or makes any request that is not generating a new story from scratch — including questions about characters, word counts, story details, greetings, clarifications, requests to modify an existing story, or general conversation.",
                                 new DefaultFlow(
                                     agentModel.getParser(),
                                     outputGuardrails,
-                                    guardrailErrorMode,
-                                    outputEvaluationConfig))
+                                    guardrailErrorMode))
                 ),
                 builder.routingHistorySize()
         );

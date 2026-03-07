@@ -150,13 +150,12 @@ The repository is structured to separate interface transports from the core LLM 
 - Compacted summaries are persisted separately in `SessionContextSummary` documents and are not written into session event history.
 - Summary model resolution order: `contextManagerConfig.summaryModelId` -> infra `default_model.summaryModelId` -> agent `model.modelId`.
 - Title model resolution order: infra `default_model.titleModelId` -> legacy infra `title_model.modelId`.
-- Evaluator model resolution order: `outputEvaluation.evaluatorModelId`/`guardrails.topicControl.evaluatorModelId` -> infra `default_model.evaluatorModelId` -> current agent model.
 - Enable built-in automated planning by listing `planning` under `model.tools`; the suite expands to `create_plan`, `update_plan`, `add_task`, `update_task_info`, `start_task`, `complete_task`, `finish_plan`, and `view_plan` at runtime.
 - Enable built-in multi-agent orchestration by listing `multi_agent` under `model.tools`; the suite expands to `delegate_to_agent` (manager-as-tool delegation), `handoff_to_agent` (decentralized handoff intent), and `parallel_delegate` (parallel sectioning/voting with aggregation + stopping policies).
 - `handoff_to_agent` persists handoff state and runtime auto-continues with the target agent after source completion using handoff message and next session id.
 - Handoff continuation is protected by max-hop limits (`max_handoff_hops`) and emits in-process telemetry counters (`handoff_requested`, `handoff_continued`, `handoff_loop_blocked`).
 - Output evaluation workflow is configurable via `outputEvaluation` in agent config and enforces retry/block stopping policy based on response relevance score thresholds.
-- On-topic scoring now supports dual-prompt LLM evaluation (`relevance` + `irrelevance`) with combined score `(x + (100 - y)) / 2`, executed in parallel and auto-fallback to lexical scoring.
+- Relevance scoring supports dual-prompt LLM evaluation (`relevance` + `irrelevance`) with combined score `(x + (100 - y)) / 2`, executed in parallel.
 - Plugin tools are discovered via Java `ServiceLoader` entries under `META-INF/services` for `ToolProvider` implementations.
 - Auto-discoverable tools use `@AgentTool` with constructor selection via `@ToolConstructor` and `@ToolParam`.
 - Prompt templates (located in `engine/src/main/resources/prompts`) are natively rendered via `Jinjava`.
@@ -172,13 +171,13 @@ Use `UNKNOWN` as parser fallback only. Do not set `UNKNOWN` intentionally in age
 | `AgentType` | `DEFAULT`, `STORY`, `ORCHESTRATOR`, `WORKER` | `DEFAULT` for most agents, `STORY` for story flow, `ORCHESTRATOR` for manager-style delegation, `WORKER` for delegated specialists. |
 | `GuardrailExecutionMode` | `SYNC`, `OPTIMISTIC` | `SYNC` for deterministic blocking before execution, `OPTIMISTIC` to reduce latency and tripwire-cancel on block. |
 | `GuardrailErrorMode` | `FAIL_CLOSED`, `FAIL_OPEN` | `FAIL_CLOSED` for safety-first production; `FAIL_OPEN` when availability is more important than strict safety. |
-| `GuardrailRuleType` | `INPUT_RULES`, `OUTPUT_RULES`, `TOOL_RISK`, `ON_TOPIC` | Selects which guardrail provider handles each rule. Prefer this for all new `guardrails.rules` entries. |
+| `GuardrailRuleType` | `TEXT_CONTENT`, `TOOL_SAFETY`, `RELEVANCE` | Selects guardrail strategy: `TEXT_CONTENT` for text policy checks, `TOOL_SAFETY` for tool risk gating, and `RELEVANCE` for on-topic control. |
 | `GuardrailStage` | `INPUT`, `TOOL`, `OUTPUT` | `INPUT` to filter user requests, `TOOL` to gate tool calls, `OUTPUT` to validate model responses before emission. |
 | `GuardrailAction` | `ALLOW`, `WARN`, `BLOCK`, `ESCALATE` | `ALLOW` pass-through, `WARN` pass-through with signal, `BLOCK` hard stop, `ESCALATE` human-in-the-loop intervention path. |
-| `OnTopicMode` | `STEER_THEN_BLOCK`, `STEER_ONLY`, `STRICT_BLOCK` | `STEER_THEN_BLOCK` for balanced behavior, `STEER_ONLY` for low-friction UX, `STRICT_BLOCK` for strict domain policy. |
-| `TopicAnchorStrategy` | `LATEST_USER`, `RECENT_USER`, `LATEST_USER_AND_PLAN` | `LATEST_USER` for strict last-turn intent, `RECENT_USER` for conversational continuity, `LATEST_USER_AND_PLAN` for planning workflows. |
+| `RelevanceMode` | `STEER_THEN_BLOCK`, `STEER_ONLY`, `STRICT_BLOCK` | `STEER_THEN_BLOCK` for balanced behavior, `STEER_ONLY` for low-friction UX, `STRICT_BLOCK` for strict domain policy. |
+| `RelevanceAchoreStrategy` | `RECENT_USER`, `LATEST_USER_AND_PLAN` | `RECENT_USER` for conversational continuity (`recency=1` is latest-only), `LATEST_USER_AND_PLAN` for planning workflows. |
 | `EvaluatorStopPolicy` | `RETRY_THEN_ALLOW`, `RETRY_THEN_BLOCK` | `RETRY_THEN_ALLOW` to avoid hard failures, `RETRY_THEN_BLOCK` for quality-gated outputs. |
-| `ToolRiskLevel` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Classify tools by side-effect sensitivity so `ToolRiskGuardrail` can enforce minimum/maximum risk policy. |
+| `ToolRiskLevel` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Classify tools by side-effect sensitivity so `ToolSafetyGuardrail` can enforce minimum/maximum risk policy. |
 | `ParallelMode` | `SECTIONING`, `VOTING` | `SECTIONING` for independent subtasks; `VOTING` to run same prompt multiple times for consensus. |
 | `ParallelAggregationPolicy` | `CONCATENATE`, `BEST_EFFORT`, `MAJORITY_VOTE` | `CONCATENATE` keep all outputs, `BEST_EFFORT` pick one best branch output, `MAJORITY_VOTE` choose consensus response. |
 | `ParallelStoppingPolicy` | `ALL_COMPLETE`, `FIRST_SUCCESS`, `QUORUM` | `ALL_COMPLETE` for full coverage, `FIRST_SUCCESS` for latency, `QUORUM` for balanced speed/confidence. |

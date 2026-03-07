@@ -8,7 +8,7 @@ import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail;
-import com.agentengine.engine.utils.HitlStateUtils;
+import com.agentengine.engine.utils.SessionStateUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
 import com.google.adk.tools.BaseTool;
@@ -57,7 +57,7 @@ public final class GuardedTool extends BaseTool {
 
     if (decision.action() == GuardrailAction.ESCALATE) {
       if (toolContext != null && toolContext.invocationContext() != null) {
-        HitlStateUtils.pause(toolContext.invocationContext(), decision.message(), decision.code());
+        SessionStateUtils.pause(toolContext.invocationContext(), decision.message(), decision.code());
       }
       return Single.just(
           Map.of(

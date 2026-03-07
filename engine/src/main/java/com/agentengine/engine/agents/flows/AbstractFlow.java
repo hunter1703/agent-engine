@@ -4,10 +4,9 @@ import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.*;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
-import com.agentengine.engine.utils.HitlStateUtils;
+import com.agentengine.engine.utils.SessionStateUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -55,7 +54,7 @@ public abstract class AbstractFlow extends SingleFlow {
                 .concatWith(
                     Flowable.defer(
                         () ->
-                            terminated.get() || HitlStateUtils.isPaused(invocationContext)
+                            terminated.get() || SessionStateUtils.isPaused(invocationContext)
                                 ? Flowable.empty()
                                 : runWithContinuation(invocationContext)));
     }
@@ -88,17 +87,13 @@ public abstract class AbstractFlow extends SingleFlow {
     protected static List<ResponseProcessor> buildResponses(
             final Parser parser,
             final List<Guardrail> outputGuardrails,
-            final GuardrailErrorMode guardrailErrorMode,
-            final OutputEvaluationConfig outputEvaluationConfig) {
+            final GuardrailErrorMode guardrailErrorMode) {
         final List<ResponseProcessor> responseProcessors = new ArrayList<>();
         responseProcessors.add(parser);
         if (CollectionUtils.isNotEmpty(outputGuardrails)) {
             responseProcessors.add(new GuardrailResponseProcessor(outputGuardrails, guardrailErrorMode));
         }
         responseProcessors.add(PlanLoopResponseProcessor.INSTANCE);
-        if (outputEvaluationConfig != null && outputEvaluationConfig.isEnabled()) {
-            responseProcessors.add(new OutputEvaluationResponseProcessor(outputEvaluationConfig));
-        }
         responseProcessors.add(RedundantToolCallsResponseProcessor.INSTANCE);
         responseProcessors.add(TurnCompletionResponseProcessor.INSTANCE);
         responseProcessors.addAll(SingleFlow.RESPONSE_PROCESSORS);

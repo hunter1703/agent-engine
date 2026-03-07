@@ -65,6 +65,18 @@ public final class OutputRelevanceGuardrail implements Guardrail {
           Map.of("score", score, "threshold", threshold, "attempt", attempt, "retry_required", true));
     }
 
+    if (mode == RelevanceMode.STEER_THEN_ALLOW
+        && attempt <= config.getMaxSteeringRetries()) {
+      return new GuardrailDecision(
+          GuardrailAction.WARN,
+          "relevance_steer",
+          "Response is not aligned with the user request. Regenerate with stronger relevance.",
+          Map.of("score", score, "threshold", threshold, "attempt", attempt, "retry_required", true));
+    } else if (mode == RelevanceMode.STEER_THEN_ALLOW) {
+      runState.resetOffTopicRetries();
+      return GuardrailDecision.allow();
+    }
+
     if (mode == RelevanceMode.STEER_THEN_BLOCK
         && attempt <= config.getMaxSteeringRetries()) {
       return new GuardrailDecision(

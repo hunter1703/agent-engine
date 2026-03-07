@@ -5,7 +5,7 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.utils.HitlStateUtils;
+import com.agentengine.engine.utils.SessionStateUtils;
 import com.google.adk.tools.ToolContext;
 
 import java.util.LinkedHashMap;
@@ -49,7 +49,7 @@ public final class UserClarificationTool extends Tool {
     final String prompt = StringUtils.isNotBlank(question) ? question : DEFAULT_QUESTION;
     final List<String> sanitized = sanitizeOptions(options);
     if (toolContext != null && toolContext.invocationContext() != null) {
-      HitlStateUtils.pause(toolContext.invocationContext(), prompt, sanitized, REASON);
+      SessionStateUtils.pause(toolContext.invocationContext(), prompt, sanitized, REASON);
     }
     return clarifyFromUser(prompt, sanitized);
   }

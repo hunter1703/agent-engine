@@ -9,7 +9,6 @@ import com.agentengine.engine.builders.context.ContextManagerProvider;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.builders.state.SessionServiceProvider;
 import com.agentengine.engine.guardrails.GuardrailRegistry;
-import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
@@ -34,23 +33,20 @@ public class StoryAgentBuilder extends AbstractAgentBuilder<AgentConfig, StoryAg
       final ToolRegistry toolRegistry,
       final ContextManagerProvider contextManagerProvider,
       final ModelRepository modelRepository,
-      final GuardrailRegistry guardrailRegistry,
-      final InfraMongoRepository infraMongoRepository) {
+      final GuardrailRegistry guardrailRegistry) {
     super(
         modelProvider,
         sessionServiceProvider,
         contextManagerProvider,
         toolRegistry,
         modelRepository,
-        guardrailRegistry,
-        infraMongoRepository);
+        guardrailRegistry);
   }
 
   @Override
   public StoryAgent build(final AgentConfig config, final AgentContext agentContext) {
     final LLMStoryAgentBuilder builder = (LLMStoryAgentBuilder) getBuilder(config, agentContext);
-    builder.withRoutingHistorySize(config.getRoutingHistorySize());
-    builder.withRoutingModel(resolveRoutingModel(config));
+    builder.withRoutingHistorySize(config.getRoutingHistorySize()).withRoutingModel(resolveRoutingModel(config));
     return new StoryAgent(builder);
   }
 

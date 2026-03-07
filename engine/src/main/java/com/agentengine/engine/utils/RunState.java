@@ -11,6 +11,7 @@ public final class RunState {
     private String lastThoughtText;
     private Plan plan;
     private String lastToolCall;
+    private int offTopicRetries;
     private final List<Violation> violations = new ArrayList<>();
 
     public RunState() {
@@ -37,7 +38,10 @@ public final class RunState {
         return List.copyOf(violations);
     }
 
-    // JavaBean accessors for Jackson serialization/deserialization
+    public int offTopicRetries() {
+        return offTopicRetries;
+    }
+
     public boolean isThinkingOpen() {
         return thinkingOpen;
     }
@@ -68,6 +72,14 @@ public final class RunState {
 
     public void setLastToolCall(final String lastToolCall) {
         this.lastToolCall = lastToolCall;
+    }
+
+    public int getOffTopicRetries() {
+        return offTopicRetries;
+    }
+
+    public void setOffTopicRetries(final int offTopicRetries) {
+        this.offTopicRetries = offTopicRetries;
     }
 
     public List<Violation> getViolations() {
@@ -125,5 +137,14 @@ public final class RunState {
 
     public void clearViolations() {
         violations.clear();
+    }
+
+    public int incrementOffTopicRetries() {
+        offTopicRetries += 1;
+        return offTopicRetries;
+    }
+
+    public void resetOffTopicRetries() {
+        offTopicRetries = 0;
     }
 }

@@ -10,6 +10,8 @@ public enum RelevanceMode {
   UNKNOWN,
   /** Warn and request regeneration, never block solely for relevance drift. */
   STEER_ONLY,
+  /** Warn up to max steering retries, then allow the response without further relevance retries. */
+  STEER_THEN_ALLOW,
   /** Warn first, then block after max steering retries. */
   STEER_THEN_BLOCK;
 

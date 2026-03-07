@@ -4,7 +4,6 @@ import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.agents.processors.request.*;
 import com.agentengine.engine.agents.processors.response.*;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.OutputEvaluationConfig;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -150,9 +149,8 @@ public final class StoryFlow extends AbstractFlow {
     public StoryFlow(
             final Parser parser,
             final List<Guardrail> outputGuardrails,
-            final GuardrailErrorMode guardrailErrorMode,
-            final OutputEvaluationConfig outputEvaluationConfig) {
-        super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser, outputGuardrails, guardrailErrorMode, outputEvaluationConfig));
+            final GuardrailErrorMode guardrailErrorMode) {
+        super(Integer.MAX_VALUE, buildRequests(parser), buildResponses(parser, outputGuardrails, guardrailErrorMode));
     }
 
     // ---- Orchestration ---------------------------------------------------------

@@ -40,11 +40,16 @@ class PlanningRequestProcessorTest {
     PlanningRequestProcessor processor = new PlanningRequestProcessor();
     LlmRequest updated = processor.processRequest(context, request).blockingGet().updatedRequest();
 
-    // Verify Instructions (from PlanContext logic)
-    String instructions = String.join("\n", updated.getSystemInstructions());
-    assertThat(instructions).contains("PLAN CONTEXT").contains("Root").contains("task-1");
+    final String allContentText =
+        updated.contents().stream()
+            .flatMap(content -> content.parts().orElse(List.of()).stream())
+            .map(part -> part.text().orElse(""))
+            .collect(java.util.stream.Collectors.joining("\n"));
 
-    // Verify Content Anchor (from PlanTask logic)
+    // Verify appended plan context summary.
+    assertThat(allContentText).contains("PLAN CONTEXT").contains("Root").contains("task-1");
+
+    // Verify structural task anchor.
     assertThat(updated.contents()).isNotEmpty();
     Content lastContent = updated.contents().get(updated.contents().size() - 1);
     String contentText = lastContent.parts().orElse(List.of()).stream()

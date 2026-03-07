@@ -1,7 +1,10 @@
 package com.agentengine.engine.utils;
 
+import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
-
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public final class RunStateUtils {
@@ -10,13 +13,12 @@ public final class RunStateUtils {
   private RunStateUtils() {}
 
   public static RunState getState(final InvocationContext context) {
-    final Object stored = context.session().state().get(RUN_STATE_KEY);
-    if (stored instanceof RunState runState) {
-      return runState;
+    final ConcurrentMap<String, Object> state = context.session().state();
+    final RunState runState = CollectionUtils.getValueFromMap(state, RUN_STATE_KEY);
+    if (runState == null) {
+      state.put(RUN_STATE_KEY, new RunState());
     }
-    final RunState runState = new RunState();
-    context.session().state().put(RUN_STATE_KEY, runState);
-    return runState;
+    return CollectionUtils.getValueFromMap(state, RUN_STATE_KEY);
   }
 
   public static void clearState(final InvocationContext context) {
