@@ -54,7 +54,7 @@
       "guardrails": {
         "$ref": "#/$defs/GuardrailsConfig",
         "title": "Guardrails",
-        "description": "Guardrail and on-topic policy controls."
+        "description": "Guardrail and relevance policy controls."
       },
       "outputEvaluation": {
         "$ref": "#/$defs/OutputEvaluationConfig",
@@ -240,26 +240,20 @@
             "items": {
               "oneOf": [
                 {
-                  "$ref": "#/$defs/InputRulesGuardrailRuleConfig"
+                  "$ref": "#/$defs/TextContentGuardrailRule"
                 },
                 {
-                  "$ref": "#/$defs/OutputRulesGuardrailRuleConfig"
+                  "$ref": "#/$defs/ToolSafetyGuardrailRule"
                 },
                 {
-                  "$ref": "#/$defs/ToolRiskGuardrailRuleConfig"
-                },
-                {
-                  "$ref": "#/$defs/OnTopicGuardrailRuleConfig"
+                  "$ref": "#/$defs/OutputRelevanceGuardrailRule"
                 }
               ]
             }
-          },
-          "topicControl": {
-            "$ref": "#/$defs/TopicControlConfig"
           }
         }
       },
-      "GuardrailRuleConfig": {
+      "GuardrailRule": {
         "type": "object",
         "title": "Guardrail Rule",
         "description": "Common guardrail rule fields.",
@@ -270,10 +264,9 @@
           "type": {
             "type": "string",
             "enum": [
-              "INPUT_RULES",
-              "OUTPUT_RULES",
-              "TOOL_RISK",
-              "ON_TOPIC"
+              "TEXT_CONTENT",
+              "TOOL_SAFETY",
+              "RELEVANCE"
             ],
             "description": "Guardrail rule type used to select the rule provider.",
             "help": "`type` is required for strict typed rule deserialization."
@@ -285,7 +278,7 @@
               "TOOL",
               "OUTPUT"
             ],
-            "description": "Rule execution stage. This should align with the selected rule type."
+            "description": "Rule installation stage. `TEXT_CONTENT` supports INPUT/OUTPUT, `TOOL_SAFETY` uses TOOL, and `RELEVANCE` uses OUTPUT."
           },
           "enabled": {
             "type": "boolean",
@@ -308,17 +301,17 @@
           }
         }
       },
-      "InputRulesGuardrailRuleConfig": {
+      "TextContentGuardrailRule": {
         "type": "object",
         "allOf": [
           {
-            "$ref": "#/$defs/GuardrailRuleConfig"
+            "$ref": "#/$defs/GuardrailRule"
           }
         ],
         "properties": {
           "type": {
             "type": "string",
-            "const": "INPUT_RULES"
+            "const": "TEXT_CONTENT"
           },
           "maxTextLength": {
             "type": "integer",
@@ -332,41 +325,17 @@
           }
         }
       },
-      "OutputRulesGuardrailRuleConfig": {
+      "ToolSafetyGuardrailRule": {
         "type": "object",
         "allOf": [
           {
-            "$ref": "#/$defs/GuardrailRuleConfig"
+            "$ref": "#/$defs/GuardrailRule"
           }
         ],
         "properties": {
           "type": {
             "type": "string",
-            "const": "OUTPUT_RULES"
-          },
-          "maxTextLength": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "blockedPatterns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "ToolRiskGuardrailRuleConfig": {
-        "type": "object",
-        "allOf": [
-          {
-            "$ref": "#/$defs/GuardrailRuleConfig"
-          }
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "TOOL_RISK"
+            "const": "TOOL_SAFETY"
           },
           "minToolRisk": {
             "type": "string",
@@ -387,51 +356,35 @@
           }
         }
       },
-      "OnTopicGuardrailRuleConfig": {
+      "OutputRelevanceGuardrailRule": {
         "type": "object",
         "allOf": [
           {
-            "$ref": "#/$defs/GuardrailRuleConfig"
+            "$ref": "#/$defs/GuardrailRule"
           }
         ],
         "properties": {
           "type": {
             "type": "string",
-            "const": "ON_TOPIC"
-          }
-        }
-      },
-      "TopicControlConfig": {
-        "type": "object",
-        "title": "On-topic Control",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "default": true
-          },
-          "llmEvaluatorEnabled": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable LLM-based on-topic scoring. Falls back to lexical scoring if evaluator model is unavailable."
+            "const": "RELEVANCE"
           },
           "evaluatorModelId": {
             "type": "string",
-            "description": "Optional fast model used for on-topic evaluation. If omitted, evaluator falls back to current agent model."
+            "description": "Optional fast model used for relevance evaluation. If omitted, evaluator uses infra default evaluator model."
           },
           "mode": {
             "type": "string",
             "enum": [
               "STEER_THEN_BLOCK",
-              "STEER_ONLY",
-              "STRICT_BLOCK"
+              "STEER_ONLY"
             ],
             "default": "STEER_THEN_BLOCK",
-            "help": "`STEER_THEN_BLOCK` retries once then blocks, `STEER_ONLY` never blocks, `STRICT_BLOCK` blocks immediately."
+            "help": "`STEER_THEN_BLOCK` retries then blocks, `STEER_ONLY` never blocks on relevance drift."
           },
           "maxSteeringRetries": {
             "type": "integer",
             "minimum": 0,
-            "default": 1
+            "default": 3
           },
           "relevanceThreshold": {
             "type": "number",
@@ -442,12 +395,16 @@
           "anchorStrategy": {
             "type": "string",
             "enum": [
-              "LATEST_USER",
               "RECENT_USER",
               "LATEST_USER_AND_PLAN"
             ],
             "default": "LATEST_USER_AND_PLAN",
-            "help": "`LATEST_USER` for strict last-turn relevance, `RECENT_USER` for conversational continuity, `LATEST_USER_AND_PLAN` for planning agents."
+            "help": "`RECENT_USER` for conversational continuity (set `recency=1` for latest-only), `LATEST_USER_AND_PLAN` for planning agents."
+          },
+          "recency": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 5
           }
         }
       },
@@ -458,11 +415,6 @@
           "enabled": {
             "type": "boolean",
             "default": false
-          },
-          "llmEvaluatorEnabled": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable LLM-based relevance evaluation (dual-prompt relevance/irrelevance scoring). Falls back to lexical scoring if model is unavailable."
           },
           "evaluatorModelId": {
             "type": "string",
@@ -491,7 +443,6 @@
           "anchorStrategy": {
             "type": "string",
             "enum": [
-              "LATEST_USER",
               "RECENT_USER",
               "LATEST_USER_AND_PLAN"
             ],
@@ -606,18 +557,139 @@
     }
   },
   "layout": {
-    "routingModelId": {
-      "widget": "LOOKUP",
-      "lookupRequest": {
-        "url": "/catalog/list",
-        "method": "POST",
-        "body": {
-          "assetType": "model"
-        }
+    "version": "1.0",
+    "mode": "wizard",
+    "steps": [
+      {
+        "id": "identity",
+        "title": "Identity",
+        "description": "Define the agent identity and base type.",
+        "sections": [
+          "identity"
+        ]
+      },
+      {
+        "id": "model",
+        "title": "Model & Prompt",
+        "description": "Configure primary model and prompting behavior.",
+        "sections": [
+          "model_core"
+        ]
+      },
+      {
+        "id": "memory",
+        "title": "Memory",
+        "description": "Control context retention strategy for LLM input.",
+        "sections": [
+          "context"
+        ]
+      },
+      {
+        "id": "guardrails",
+        "title": "Guardrails",
+        "description": "Configure runtime safety and relevance protections.",
+        "sections": [
+          "guardrails_global",
+          "guardrails_rules"
+        ]
+      },
+      {
+        "id": "quality",
+        "title": "Output Quality",
+        "description": "Configure evaluator loop quality gates.",
+        "sections": [
+          "output_evaluation"
+        ]
+      },
+      {
+        "id": "routing",
+        "title": "Routing",
+        "description": "Optional routing model controls.",
+        "sections": [
+          "routing"
+        ]
       }
-    },
-    "model": {
-      "modelId": {
+    ],
+    "sections": [
+      {
+        "id": "identity",
+        "title": "Identity",
+        "description": "Core identification fields.",
+        "schemaPointer": "#",
+        "fields": [
+          "id",
+          "name",
+          "type"
+        ]
+      },
+      {
+        "id": "model_core",
+        "title": "Model",
+        "description": "Primary model, role, prompt and tools.",
+        "dataPath": "model",
+        "schemaPointer": "#/$defs/AgentModelConfig",
+        "layoutPath": "model",
+        "fields": [
+          "modelId",
+          "role",
+          "systemPrompt",
+          "contextManagerConfig",
+          "tools"
+        ]
+      },
+      {
+        "id": "context",
+        "title": "Context Manager",
+        "description": "Summarize and recency controls.",
+        "dataPath": "model.contextManagerConfig",
+        "schemaPointer": "#/$defs/ContextManagerConfig",
+        "layoutPath": "model.contextManagerConfig"
+      },
+      {
+        "id": "guardrails_global",
+        "title": "Guardrail Runtime",
+        "description": "Enablement, execution mode and error policy.",
+        "dataPath": "guardrails",
+        "schemaPointer": "#/$defs/GuardrailsConfig",
+        "layoutPath": "guardrails",
+        "fields": [
+          "enabled",
+          "executionMode",
+          "defaultOnError"
+        ]
+      },
+      {
+        "id": "guardrails_rules",
+        "title": "Guardrail Rules",
+        "description": "Rule catalog for input, output, tool risk, and relevance.",
+        "dataPath": "guardrails",
+        "schemaPointer": "#/$defs/GuardrailsConfig",
+        "layoutPath": "guardrails",
+        "fields": [
+          "rules"
+        ]
+      },
+      {
+        "id": "output_evaluation",
+        "title": "Output Evaluation",
+        "description": "Evaluator retry loop and stop policy.",
+        "dataPath": "outputEvaluation",
+        "schemaPointer": "#/$defs/OutputEvaluationConfig",
+        "layoutPath": "outputEvaluation"
+      },
+      {
+        "id": "routing",
+        "title": "Routing",
+        "description": "Routing model and history window.",
+        "schemaPointer": "#",
+        "fields": [
+          "routingModelId",
+          "routingHistorySize"
+        ]
+      }
+    ],
+    "fields": {
+      "routingModelId": {
         "widget": "LOOKUP",
         "lookupRequest": {
           "url": "/catalog/list",
@@ -627,39 +699,279 @@
           }
         }
       },
-      "tools": {
-        "items": {
-          "toolName": {
+      "model": {
+        "modelId": {
+          "widget": "LOOKUP",
+          "lookupRequest": {
+            "url": "/catalog/list",
+            "method": "POST",
+            "body": {
+              "assetType": "model"
+            }
+          }
+        },
+        "systemPrompt": {
+          "widget": "TEXTAREA",
+          "rows": 6
+        },
+        "contextManagerConfig": {
+          "summaryModelId": {
             "widget": "LOOKUP",
             "lookupRequest": {
               "url": "/catalog/list",
               "method": "POST",
               "body": {
-                "assetType": "tool"
+                "assetType": "model"
               }
             }
-          },
-          "configs": {
-            "widget": "SCHEMA_LOOKUP",
-            "dependencies": [
-              "$toolName"
-            ],
-            "lookupRequest": {
-              "url": "/schemas",
-              "method": "POST",
-              "body": {
-                "assetType": "tool_configs",
-                "assetId": "$toolName",
-                "agentId": "$.id"
+          }
+        },
+        "tools": {
+          "items": {
+            "toolName": {
+              "widget": "LOOKUP",
+              "lookupRequest": {
+                "url": "/catalog/list",
+                "method": "POST",
+                "body": {
+                  "assetType": "tool"
+                }
+              }
+            },
+            "configs": {
+              "widget": "SCHEMA_LOOKUP",
+              "dependencies": [
+                "$toolName"
+              ],
+              "lookupRequest": {
+                "url": "/schemas",
+                "method": "POST",
+                "body": {
+                  "assetType": "tool_configs",
+                  "assetId": "$toolName",
+                  "agentId": "$.id"
+                }
               }
             }
           }
         }
       },
-      "systemPrompt": {
-        "widget": "TEXTAREA",
-        "rows": 6
+      "guardrails": {
+        "rules": {
+          "items": {
+            "type": {
+              "widget": "SELECT"
+            },
+            "message": {
+              "widget": "TEXTAREA",
+              "rows": 2
+            }
+          }
+        }
+      },
+      "outputEvaluation": {
+        "evaluatorModelId": {
+          "widget": "LOOKUP",
+          "lookupRequest": {
+            "url": "/catalog/list",
+            "method": "POST",
+            "body": {
+              "assetType": "model"
+            }
+          }
+        }
       }
+    },
+    "presets": [
+      {
+        "id": "balanced",
+        "label": "Balanced",
+        "description": "Balanced default protection and quality controls.",
+        "isDefault": true,
+        "patch": {
+          "guardrails": {
+            "enabled": true,
+            "executionMode": "SYNC",
+            "defaultOnError": "FAIL_CLOSED",
+            "rules": [
+              {
+                "type": "INPUT_RULES",
+                "stage": "INPUT",
+                "enabled": true,
+                "action": "BLOCK",
+                "maxTextLength": 16000,
+                "blockedPatterns": [
+                  "(?i)ignore\\s+previous\\s+instructions"
+                ]
+              },
+              {
+                "type": "OUTPUT_RULES",
+                "stage": "OUTPUT",
+                "enabled": true,
+                "action": "WARN",
+                "maxTextLength": 24000,
+                "blockedPatterns": []
+              },
+              {
+                "type": "TOOL_RISK",
+                "stage": "TOOL",
+                "enabled": true,
+                "action": "ESCALATE",
+                "minToolRisk": "HIGH",
+                "toolNames": []
+              },
+              {
+                "type": "RELEVANCE",
+                "stage": "OUTPUT",
+                "enabled": true,
+                "action": "WARN",
+                "llmEvaluatorEnabled": true,
+                "mode": "STEER_THEN_BLOCK",
+                "maxSteeringRetries": 2,
+                "relevanceThreshold": 0.25,
+                "anchorStrategy": "LATEST_USER_AND_PLAN",
+                "recency": 5
+              }
+            ]
+          },
+          "outputEvaluation": {
+            "enabled": true,
+            "llmEvaluatorEnabled": true,
+            "maxRetries": 2,
+            "minScore": 0.3,
+            "stopPolicy": "RETRY_THEN_ALLOW",
+            "anchorStrategy": "LATEST_USER_AND_PLAN"
+          }
+        }
+      },
+      {
+        "id": "strict",
+        "label": "Strict",
+        "description": "Higher safety and strict quality gating.",
+        "patch": {
+          "guardrails": {
+            "enabled": true,
+            "executionMode": "SYNC",
+            "defaultOnError": "FAIL_CLOSED",
+            "rules": [
+              {
+                "type": "INPUT_RULES",
+                "stage": "INPUT",
+                "enabled": true,
+                "action": "BLOCK",
+                "maxTextLength": 12000,
+                "blockedPatterns": [
+                  "(?i)ignore\\s+previous\\s+instructions"
+                ]
+              },
+              {
+                "type": "OUTPUT_RULES",
+                "stage": "OUTPUT",
+                "enabled": true,
+                "action": "BLOCK",
+                "maxTextLength": 16000,
+                "blockedPatterns": []
+              },
+              {
+                "type": "TOOL_RISK",
+                "stage": "TOOL",
+                "enabled": true,
+                "action": "ESCALATE",
+                "minToolRisk": "MEDIUM",
+                "toolNames": []
+              },
+              {
+                "type": "RELEVANCE",
+                "stage": "OUTPUT",
+                "enabled": true,
+                "action": "BLOCK",
+                "llmEvaluatorEnabled": true,
+                "mode": "STEER_THEN_BLOCK",
+                "maxSteeringRetries": 1,
+                "relevanceThreshold": 0.35,
+                "anchorStrategy": "LATEST_USER_AND_PLAN",
+                "recency": 5
+              }
+            ]
+          },
+          "outputEvaluation": {
+            "enabled": true,
+            "llmEvaluatorEnabled": true,
+            "maxRetries": 1,
+            "minScore": 0.45,
+            "stopPolicy": "RETRY_THEN_BLOCK",
+            "anchorStrategy": "LATEST_USER_AND_PLAN"
+          }
+        }
+      },
+      {
+        "id": "permissive",
+        "label": "Permissive",
+        "description": "Relaxed policy for low-friction interactions.",
+        "patch": {
+          "guardrails": {
+            "enabled": true,
+            "executionMode": "OPTIMISTIC",
+            "defaultOnError": "FAIL_OPEN",
+            "rules": [
+              {
+                "type": "INPUT_RULES",
+                "stage": "INPUT",
+                "enabled": true,
+                "action": "WARN",
+                "maxTextLength": 24000,
+                "blockedPatterns": []
+              },
+              {
+                "type": "TOOL_RISK",
+                "stage": "TOOL",
+                "enabled": true,
+                "action": "WARN",
+                "minToolRisk": "CRITICAL",
+                "toolNames": []
+              },
+              {
+                "type": "RELEVANCE",
+                "stage": "OUTPUT",
+                "enabled": true,
+                "action": "WARN",
+                "llmEvaluatorEnabled": true,
+                "mode": "STEER_ONLY",
+                "maxSteeringRetries": 3,
+                "relevanceThreshold": 0.2,
+                "anchorStrategy": "RECENT_USER",
+                "recency": 8
+              }
+            ]
+          },
+          "outputEvaluation": {
+            "enabled": false,
+            "llmEvaluatorEnabled": true,
+            "maxRetries": 1,
+            "minScore": 0.2,
+            "stopPolicy": "RETRY_THEN_ALLOW",
+            "anchorStrategy": "RECENT_USER"
+          }
+        }
+      }
+    ],
+    "validations": [
+      {
+        "id": "summarize_recency_lt_trigger",
+        "type": "lt",
+        "left": "model.contextManagerConfig.recencyTokens",
+        "right": "model.contextManagerConfig.triggerTokens",
+        "conditionPath": "model.contextManagerConfig.type",
+        "conditionEquals": "summarize",
+        "message": "Context recencyTokens must be lower than triggerTokens for summarize mode."
+      }
+    ],
+    "actions": {
+      "saveLabel": "Save Agent",
+      "cancelLabel": "Cancel",
+      "nextLabel": "Continue",
+      "backLabel": "Back",
+      "unsavedChangesWarning": "You have unsaved builder changes. Leaving now will discard them."
     }
   }
 }

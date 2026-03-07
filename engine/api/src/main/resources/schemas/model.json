@@ -181,5 +181,134 @@
         }
       }
     ]
+  },
+  "layout": {
+    "version": "1.0",
+    "mode": "wizard",
+    "steps": [
+      {
+        "id": "identity",
+        "title": "Identity",
+        "description": "Core model identity and provider.",
+        "sections": [
+          "identity"
+        ]
+      },
+      {
+        "id": "sampling",
+        "title": "Sampling",
+        "description": "Generation and sampling controls.",
+        "sections": [
+          "sampling"
+        ]
+      },
+      {
+        "id": "integration",
+        "title": "Integration",
+        "description": "Provider connectivity and advanced options.",
+        "sections": [
+          "integration"
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "identity",
+        "title": "Identity",
+        "description": "Model id, display name, provider type and model identifier.",
+        "schemaPointer": "#",
+        "fields": [
+          "id",
+          "name",
+          "type",
+          "model"
+        ]
+      },
+      {
+        "id": "sampling",
+        "title": "Sampling",
+        "description": "Temperature and token selection parameters.",
+        "schemaPointer": "#",
+        "fields": [
+          "temperature",
+          "numPredict",
+          "topK",
+          "topP",
+          "repeatPenalty",
+          "stopTokens"
+        ]
+      },
+      {
+        "id": "integration",
+        "title": "Provider Integration",
+        "description": "API keys, endpoints and runtime server options.",
+        "schemaPointer": "#",
+        "fields": [
+          "apiKey",
+          "baseUrl",
+          "serverCommand",
+          "serverArgs",
+          "serverWorkdir",
+          "instructions",
+          "responseFormat",
+          "toolCallingEnabled",
+          "toolCallingSupported"
+        ]
+      }
+    ],
+    "fields": {
+      "instructions": {
+        "widget": "TEXTAREA",
+        "rows": 4
+      },
+      "serverArgs": {
+        "widget": "TEXTAREA",
+        "rows": 3
+      }
+    },
+    "presets": [
+      {
+        "id": "balanced",
+        "label": "Balanced",
+        "description": "General purpose default profile.",
+        "isDefault": true,
+        "patch": {
+          "temperature": 0.7,
+          "topP": 0.95,
+          "repeatPenalty": 1.0,
+          "toolCallingEnabled": false
+        }
+      },
+      {
+        "id": "focused",
+        "label": "Focused",
+        "description": "Lower randomness for deterministic answers.",
+        "patch": {
+          "temperature": 0.2,
+          "topP": 0.8,
+          "repeatPenalty": 1.1,
+          "toolCallingEnabled": true
+        }
+      },
+      {
+        "id": "creative",
+        "label": "Creative",
+        "description": "Higher diversity and broader token exploration.",
+        "patch": {
+          "temperature": 1.0,
+          "topP": 1.0,
+          "repeatPenalty": 1.0,
+          "toolCallingEnabled": false
+        }
+      }
+    ],
+    "validations": [],
+    "actions": {
+      "saveLabel": "Save Model",
+      "cancelLabel": "Cancel",
+      "nextLabel": "Continue",
+      "backLabel": "Back",
+      "unsavedChangesWarning": "You have unsaved builder changes. Leaving now will discard them."
+    }
   }
 }
