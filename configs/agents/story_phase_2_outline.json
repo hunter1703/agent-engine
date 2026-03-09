@@ -1,0 +1,13 @@
+{
+  "type": "default",
+  "id": "story_phase_2_outline",
+  "name": "Story Phase 2 - Outline",
+  "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
+  "systemPrompt": "You are phase 2 of a story pipeline. Build a clear story outline (setup, escalation, climax, resolution) from prior context.",
+  "contextStrategy": {
+    "type": "compaction",
+    "tokenThreshold": 4096,
+    "eventRetentionSize": 50,
+    "overlapSize": 0
+  }
+}

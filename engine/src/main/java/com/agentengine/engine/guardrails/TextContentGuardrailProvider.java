@@ -2,7 +2,6 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
-import com.agentengine.engine.api.beans.config.GuardrailsConfig;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
 import com.agentengine.engine.guardrails.rules.TextContentGuardrail;
 import jakarta.inject.Singleton;
@@ -16,9 +15,7 @@ public final class TextContentGuardrailProvider implements GuardrailProvider<Tex
   }
 
   @Override
-  public Guardrail create(
-      final GuardrailsConfig guardrailsConfig,
-      final TextContentGuardrailRule rule) {
+  public Guardrail create(final TextContentGuardrailRule rule) {
     if (rule == null || rule.getStage() == GuardrailStage.TOOL) {
       return null;
     }

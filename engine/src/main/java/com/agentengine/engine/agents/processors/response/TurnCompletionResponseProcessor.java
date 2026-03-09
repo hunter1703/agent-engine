@@ -23,6 +23,7 @@ import com.google.genai.types.Content;
  */
 public final class TurnCompletionResponseProcessor implements ResponseProcessor {
   public static final TurnCompletionResponseProcessor INSTANCE = new TurnCompletionResponseProcessor();
+  private TurnCompletionResponseProcessor() {}
 
   @Override
   public Single<ResponseProcessingResult> processResponse(

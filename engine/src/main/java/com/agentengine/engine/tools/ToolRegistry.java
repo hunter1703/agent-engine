@@ -1,6 +1,5 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.beans.config.*;
 import com.agentengine.engine.api.services.ToolService;
 import com.agentengine.engine.api.tools.Tool;
@@ -51,10 +50,8 @@ public final class ToolRegistry implements ToolService {
         new Cache<>(toolCacheGuava, agentId -> buildCatalog(agentId, allProviders, allSuites));
   }
 
-  public List<BaseTool> loadTools(
-      final AgentContext agentContext, final List<ToolsConfig> toolsConfig) {
+  public List<BaseTool> loadTools(final String agentId, final List<ToolsConfig> toolsConfig) {
     final List<BaseTool> tools = new ArrayList<>();
-    final String agentId = agentContext == null ? null : agentContext.agentId();
     final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
     final ToolCatalog catalog = catalogCache.get(cacheKey);
  
@@ -65,7 +62,7 @@ public final class ToolRegistry implements ToolService {
     }
  
     for (final ToolsConfig config : toolsConfig) {
-      final List<BaseTool> toolsForConfigs = getToolsForConfig(catalog, agentContext, config);
+      final List<BaseTool> toolsForConfigs = getToolsForConfig(catalog, config);
       if (CollectionUtils.isNotEmpty(toolsForConfigs)) {
         tools.addAll(toolsForConfigs);
       }
@@ -233,8 +230,7 @@ public final class ToolRegistry implements ToolService {
     return visible;
   }
 
-  private static List<BaseTool> getToolsForConfig(
-      final ToolCatalog catalog, final AgentContext agentContext, final ToolsConfig config) {
+  private static List<BaseTool> getToolsForConfig(final ToolCatalog catalog, final ToolsConfig config) {
     if (config == null) {
       return Collections.emptyList();
     }
@@ -247,38 +243,20 @@ public final class ToolRegistry implements ToolService {
     if (suiteEntry != null) {
       for (final String toolName : suiteEntry.toolNames()) {
         final ToolEntry toolEntry = catalog.toolEntries().get(toolName);
-        addIfPresent(tools, createTool(agentContext, toolEntry, config.getConfigs()));
+        addIfPresent(tools, createTool(toolEntry, config.getConfigs()));
       }
     } else {
       final ToolEntry toolEntry = catalog.toolEntries().get(name);
-      addIfPresent(tools, createTool(agentContext, toolEntry, config.getConfigs()));
+      addIfPresent(tools, createTool(toolEntry, config.getConfigs()));
     }
     return tools;
   }
 
-  private static BaseTool createTool(
-      final AgentContext agentContext,
-      final ToolEntry entry,
-      final Map<String, Object> toolConfig) {
+  private static BaseTool createTool(final ToolEntry entry, final Map<String, Object> toolConfig) {
     if (entry == null) {
       return null;
     }
-    final BaseTool created = entry.provider().create(agentContext, entry.descriptor().name(), toolConfig);
-    if (created == null) {
-      return null;
-    }
-    final AgentConfig agentConfig = agentContext == null ? null : agentContext.agentConfig();
-    final GuardrailsConfig guardrailsConfig = agentConfig == null ? null : agentConfig.getGuardrails();
-    final List<GuardrailRule> rules = guardrailsConfig == null ? null : guardrailsConfig.getRules();
-    final List<ToolSafetyGuardrailRule> toolRules = CollectionUtils.nullSafeList(rules).stream()
-            .map(rule -> {
-                if (rule instanceof ToolSafetyGuardrailRule toolSafetyGuardrail && CollectionUtils.nullSafeList(toolSafetyGuardrail.getToolNames()).contains(entry.descriptor().name())) {
-                    return toolSafetyGuardrail;
-                }
-                return null;
-            }).filter(Objects::nonNull).filter(GuardrailRule::isEnabled)
-        .toList();
-    return CollectionUtils.isEmpty(toolRules) ? created : new GuardedTool(created, entry.descriptor(), toolRules, Objects.requireNonNull(guardrailsConfig).getDefaultOnError());
+    return entry.provider().create(entry.descriptor().name(), toolConfig);
   }
 
   private static void addIfPresent(final List<BaseTool> tools, final BaseTool tool) {

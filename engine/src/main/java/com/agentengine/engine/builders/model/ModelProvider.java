@@ -1,6 +1,5 @@
 package com.agentengine.engine.builders.model;
 
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
@@ -12,13 +11,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.function.Function;
+import java.util.Map;
 
 @Singleton
 public class ModelProvider {
@@ -47,19 +45,11 @@ public class ModelProvider {
             .onEvict((_modelId, model) -> tryClose(model))
             .build();
   }
-  public BaseLlm get(final AgentModelConfig config) {
-    if (config == null || StringUtils.isBlank(config.getModelId())) {
+  public BaseLlm get(final String modelId) {
+    if (StringUtils.isBlank(modelId)) {
       throw new IllegalArgumentException("modelId cannot be blank");
     }
-    final String modelId = config.getModelId();
     return cache.getAndAcquire(modelId);
-  }
-
-  public void release(final AgentModelConfig config) {
-    if (config == null) {
-      return;
-    }
-    release(config.getModelId());
   }
 
   public void release(final String modelId) {

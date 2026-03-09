@@ -4,6 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.ResourceUtils;
 
+import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.model.DelegatingLLMModel;
 import com.agentengine.engine.agents.processors.Parser;
@@ -27,11 +28,9 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
             .toolCallingEnabled(toolCallingEnabled)
             .parseToolCallsFromText(parseToolCallsFromText)
             .build();
-    final String protocol =
-        buildProtocolMessage(responseFormatType, toolCallingEnabled, toolCallingSupported);
+    final String protocol = buildProtocolMessage(responseFormatType, toolCallingEnabled, toolCallingSupported, modelConfig.getInstructions());
     final T delegate = buildDelegate(modelConfig);
-    return new DelegatingLLMModel(
-        delegate, parser, protocol, toolCallingEnabled, parseToolCallsFromText);
+    return new DelegatingLLMModel(delegate, parser, protocol , toolCallingEnabled, parseToolCallsFromText);
   }
 
   protected abstract T buildDelegate(final ModelConfig modelConfig);
@@ -43,7 +42,7 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
   private static String buildProtocolMessage(
       final ResponseFormatType responseFormatType,
       final boolean toolCallingEnabled,
-      final boolean toolCallingSupported) {
+      final boolean toolCallingSupported, final String modelInstructions) {
     final String templateName = resolveProtocolTemplate(responseFormatType);
     final Map<String, Object> context = new HashMap<>();
     context.put("toolCallingAllowed", toolCallingEnabled);
@@ -51,7 +50,7 @@ public abstract class DelegatingModelBuilder<T extends BaseLlm>
     if (responseFormatType == ResponseFormatType.JSON) {
       context.put("response_schema", loadReasonerSchema(responseFormatType));
     }
-    return TemplateUtils.renderTemplateForName(templateName, context);
+    return TemplateUtils.renderTemplateForName(templateName, context) + "\n\n\n" + (StringUtils.isBlank(modelInstructions) ? "" : modelInstructions);
   }
 
   private static String resolveProtocolTemplate(final ResponseFormatType responseFormatType) {

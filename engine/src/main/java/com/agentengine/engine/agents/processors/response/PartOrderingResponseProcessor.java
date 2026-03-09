@@ -24,6 +24,7 @@ import java.util.Optional;
  */
 public final class PartOrderingResponseProcessor implements ResponseProcessor {
   public static final PartOrderingResponseProcessor INSTANCE = new PartOrderingResponseProcessor();
+  private PartOrderingResponseProcessor() {}
 
   private static final Comparator<Part> PART_COMPARATOR = (p1, p2) -> {
     final int o1 = getOrder(p1);

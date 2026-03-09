@@ -5,7 +5,6 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.utils.SessionStateUtils;
 import com.google.adk.tools.ToolContext;
 
 import java.util.LinkedHashMap;
@@ -16,24 +15,13 @@ import java.util.Map;
 public final class UserClarificationTool extends Tool {
   private static final String TOOL_NAME = "user_clarification";
   private static final String DEFAULT_QUESTION = "Please provide clarification to continue.";
-  private static final String REASON = "user_clarification";
+  private static final String STATUS_CONFIRMATION_UNAVAILABLE = "confirmation_unavailable";
+  private static final String PAYLOAD_REASON = "user_clarification";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(TOOL_NAME, "Request clarification from the user.", List.of(ALL), Map.of());
 
   public UserClarificationTool() {
     super(DESCRIPTOR);
-  }
-
-  public static Map<String, Object> clarifyFromUser(
-      final String question, final List<String> options) {
-    final String prompt = StringUtils.isNotBlank(question) ? question : DEFAULT_QUESTION;
-    final Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("status", "paused");
-    payload.put("clarification", prompt);
-    if (!options.isEmpty()) {
-      payload.put("options", options);
-    }
-    return Map.copyOf(payload);
   }
 
   public Map<String, Object> execute(
@@ -48,10 +36,27 @@ public final class UserClarificationTool extends Tool {
           final List<String> options) {
     final String prompt = StringUtils.isNotBlank(question) ? question : DEFAULT_QUESTION;
     final List<String> sanitized = sanitizeOptions(options);
-    if (toolContext != null && toolContext.invocationContext() != null) {
-      SessionStateUtils.pause(toolContext.invocationContext(), prompt, sanitized, REASON);
+    if (toolContext == null || toolContext.functionCallId().isEmpty()) {
+      final Map<String, Object> unavailable = new LinkedHashMap<>();
+      unavailable.put("status", STATUS_CONFIRMATION_UNAVAILABLE);
+      unavailable.put("clarification", prompt);
+      unavailable.put("reason", PAYLOAD_REASON);
+      if (!sanitized.isEmpty()) {
+        unavailable.put("options", sanitized);
+      }
+      unavailable.put(
+          "error",
+          "Confirmation context is not available for user_clarification tool call.");
+      return Map.copyOf(unavailable);
     }
-    return clarifyFromUser(prompt, sanitized);
+
+    final Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("reason", PAYLOAD_REASON);
+    if (!sanitized.isEmpty()) {
+      payload.put("options", sanitized);
+    }
+    toolContext.requestConfirmation(prompt, Map.copyOf(payload));
+    return Map.of();
   }
 
   private static List<String> sanitizeOptions(final List<String> options) {

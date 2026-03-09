@@ -1,9 +1,7 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
-import com.agentengine.engine.api.beans.config.GuardrailsConfig;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.guardrails.rules.OutputRelevanceGuardrail;
@@ -32,28 +30,16 @@ public final class OutputRelevanceGuardrailProvider
   }
 
   @Override
-  public Guardrail create(
-      final GuardrailsConfig guardrailsConfig,
-      final OutputRelevanceGuardrailRule relevanceRule) {
+  public Guardrail create(final OutputRelevanceGuardrailRule relevanceRule) {
     if (relevanceRule == null || !relevanceRule.isEnabled()) {
       return null;
     }
-    return new OutputRelevanceGuardrail(relevanceRule, new RelevanceEvaluator(resolveModel(relevanceRule.getEvaluatorModelId())));
+    return new OutputRelevanceGuardrail(relevanceRule, new RelevanceEvaluator(modelProvider, resolveModel(relevanceRule)));
   }
 
-  private BaseLlm resolveModel(final String explicitModelId) {
-    final String modelId =
-        StringUtils.isNotBlank(explicitModelId) ? explicitModelId : resolveDefaultModelId();
-    if (StringUtils.isBlank(modelId)) {
-      return null;
-    }
-    final AgentModelConfig config = new AgentModelConfig();
-    config.setModelId(modelId);
-    try {
-      return modelProvider.get(config);
-    } catch (Exception ex) {
-      return null;
-    }
+  private String resolveModel(final OutputRelevanceGuardrailRule rule ) {
+    final String evaluatorModelId = rule.getEvaluatorModelId();
+    return StringUtils.isNotBlank(evaluatorModelId) ? evaluatorModelId : resolveDefaultModelId();
   }
 
   private String resolveDefaultModelId() {

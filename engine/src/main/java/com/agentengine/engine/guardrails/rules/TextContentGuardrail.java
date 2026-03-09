@@ -6,6 +6,7 @@ import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
+import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import java.util.List;
@@ -53,27 +54,33 @@ public final class TextContentGuardrail implements Guardrail {
           rule.getAction(),
           code(stage, "length"),
           defaultMessage(stage, "length"),
-          Map.of("rule", rule.getId(), "actualLength", text.length(), "maxLength", maxTextLength));
+          Map.of(
+              GuardrailConstants.DetailKey.RULE, rule.getId(),
+              GuardrailConstants.DetailKey.ACTUAL_LENGTH, text.length(),
+              GuardrailConstants.DetailKey.MAX_LENGTH, maxTextLength));
     }
 
-    final List<String> blockedPatterns = CollectionUtils.nullSafeList(rule.getBlockedPatterns());
+    final List<String> blockedPatterns =
+        CollectionUtils.isEmpty(rule.getBlockedPatterns()) && stage == GuardrailStage.INPUT
+            ? DEFAULT_INPUT_BLOCK_PATTERNS
+            : CollectionUtils.nullSafeList(rule.getBlockedPatterns());
     if (GuardrailUtils.containsPattern(text, blockedPatterns)) {
       return GuardrailUtils.fromAction(
           rule.getAction(),
           code(stage, "pattern"),
           defaultMessage(stage, "pattern"),
-          Map.of("rule", rule.getId()));
+          Map.of(GuardrailConstants.DetailKey.RULE, rule.getId()));
     }
 
     return GuardrailDecision.allow();
   }
 
   private int resolveMaxTextLength(final GuardrailStage stage) {
-    if (stage == GuardrailStage.INPUT) {
-      return -1;
-    }
     if (rule.getMaxTextLength() != null) {
       return rule.getMaxTextLength();
+    }
+    if (stage == GuardrailStage.INPUT) {
+      return DEFAULT_MAX_INPUT;
     }
     return -1;
   }
@@ -93,7 +100,13 @@ public final class TextContentGuardrail implements Guardrail {
   }
 
   private static String code(final GuardrailStage stage, final String suffix) {
-    final String prefix = stage == GuardrailStage.INPUT ? "guardrail_input_" : "guardrail_output_";
-    return prefix + suffix;
+    if ("length".equals(suffix)) {
+      return stage == GuardrailStage.INPUT
+          ? GuardrailConstants.Code.INPUT_LENGTH
+          : GuardrailConstants.Code.OUTPUT_LENGTH;
+    }
+    return stage == GuardrailStage.INPUT
+        ? GuardrailConstants.Code.INPUT_PATTERN
+        : GuardrailConstants.Code.OUTPUT_PATTERN;
   }
 }

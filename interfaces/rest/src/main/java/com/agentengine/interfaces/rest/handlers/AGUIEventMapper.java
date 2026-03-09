@@ -13,7 +13,7 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Maps ADK events to AGUI events */
+/** Maps runtime events to AGUI events */
 public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(AGUIEventMapper.class);
   private final MapperState state;

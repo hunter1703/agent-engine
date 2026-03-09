@@ -1,14 +1,14 @@
 package com.agentengine.engine.api.builders;
 
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.ContextManagerConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
+import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
 
-public interface ContextManagerBuilder<C extends ContextManagerConfig, CM extends ContextManager> {
+public interface ContextManagerBuilder<C extends ContextStrategyConfig, CM extends ContextManager> {
 
   CM build(C contextConfig);
 
-  default CM build(final C contextConfig, final AgentConfig agentConfig) {
+  default CM build(final C contextConfig, final BaseAgentConfig agentConfig) {
     return build(contextConfig);
   }
 

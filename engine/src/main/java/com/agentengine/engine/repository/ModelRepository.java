@@ -4,6 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.ModelUtils;
+import com.agentengine.engine.validation.ConfigValidationService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -12,8 +13,8 @@ import jakarta.inject.Singleton;
 public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
 
   @Inject
-  public ModelRepository(MongoClientFactory mongoClientFactory) {
-    super(mongoClientFactory, "Model", ModelConfig.class);
+  public ModelRepository(final MongoClientFactory mongoClientFactory, ConfigValidationService configValidationService) {
+    super(mongoClientFactory, "Model", ModelConfig.class, configValidationService);
   }
 
   @Override

@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
-public class AgentAssetHandler extends NamedAssetHandler<AgentConfig> {
+public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
 
   private static final String ASSET_TYPE = "agent";
 
@@ -28,13 +28,13 @@ public class AgentAssetHandler extends NamedAssetHandler<AgentConfig> {
   }
 
   @Override
-  public PaginatedResult<AgentConfig> findAssets(AssetRequest request) {
+  public PaginatedResult<BaseAgentConfig> findAssets(AssetRequest request) {
     return agentService.findAgents(request.getQuery());
   }
 
   @Override
-  public Map<String, AgentConfig> getAssetsByIds(AssetRequest request) {
-    Map<String, AgentConfig> result = new HashMap<>();
+  public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
+    Map<String, BaseAgentConfig> result = new HashMap<>();
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return result;
     }

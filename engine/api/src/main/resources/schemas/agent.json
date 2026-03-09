@@ -5,15 +5,13 @@
     "required": [
       "id",
       "name",
-      "type",
-      "model"
+      "type"
     ],
     "properties": {
       "id": {
         "type": "string",
         "title": "Agent ID",
-        "description": "Unique identifier used to reference this agent in configs and APIs.",
-        "help": "support-assistant (kebab-case identifier)."
+        "description": "Unique identifier used to reference this agent in configs and APIs."
       },
       "name": {
         "type": "string",
@@ -25,43 +23,173 @@
         "title": "Agent Type",
         "enum": [
           "default",
-          "story",
-          "orchestrator",
-          "worker"
+          "orchestrator"
         ],
         "default": "default",
-        "description": "Agent implementation type.",
-        "help": "`default` for standard agents, `story` for story flow, `orchestrator` for manager agents, `worker` for delegated specialists."
+        "description": "Agent implementation type."
       },
-      "model": {
-        "$ref": "#/$defs/AgentModelConfig",
-        "title": "Model Configuration",
-        "description": "Language model configuration for this agent."
-      },
-      "routingModelId": {
+      "description": {
         "type": "string",
-        "title": "Routing Model ID",
-        "description": "Model config ID used for flow routing decisions. If omitted, the agent's main model is used.",
-        "help": "Use a lightweight model (e.g. `ollama-llama3`) to keep routing fast."
+        "title": "Description"
       },
-      "routingHistorySize": {
-        "type": "integer",
-        "minimum": 0,
-        "default": 0,
-        "title": "Routing History Size",
-        "description": "Number of recent session events passed to the routing model. 0 = only the last user message (default); positive = last N events."
+      "avatar": {
+        "type": "string",
+        "title": "Avatar"
+      },
+      "modelId": {
+        "type": "string",
+        "title": "Model ID",
+        "description": "Primary model used for this agent. Required for default agents and orchestrator mode TRANSFER."
+      },
+      "systemPrompt": {
+        "type": "string",
+        "title": "System Prompt",
+        "description": "Behavioral instruction for the agent."
+      },
+      "tools": {
+        "type": "array",
+        "title": "Tools",
+        "items": {
+          "$ref": "#/$defs/ToolsConfig"
+        }
+      },
+      "contextStrategy": {
+        "$ref": "#/$defs/ContextStrategyConfig",
+        "title": "Context Strategy"
+      },
+      "subAgentIds": {
+        "type": "array",
+        "title": "Sub Agents",
+        "description": "Sub-agent IDs available for native transfer routing.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "orchestrationMode": {
+        "$ref": "#/$defs/OrchestrationMode",
+        "title": "Orchestration Mode",
+        "description": "Orchestrator runtime mode: TRANSFER, SEQUENTIAL, or PARALLEL."
+      },
+      "parallel": {
+        "$ref": "#/$defs/OrchestratorParallelConfig",
+        "title": "Parallel Orchestration"
+      },
+      "sessionStore": {
+        "$ref": "#/$defs/SessionServiceConfig",
+        "title": "Session Store"
+      },
+      "runtime": {
+        "$ref": "#/$defs/AgentRuntimeConfig",
+        "title": "Runtime"
       },
       "guardrails": {
         "$ref": "#/$defs/GuardrailsConfig",
-        "title": "Guardrails",
-        "description": "Guardrail and relevance policy controls."
-      },
-      "outputEvaluation": {
-        "$ref": "#/$defs/OutputEvaluationConfig",
-        "title": "Output Evaluation",
-        "description": "Output evaluation retry loop configuration."
+        "title": "Guardrails"
       }
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "type": {
+              "const": "default"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "then": {
+          "required": [
+            "modelId"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "type": {
+              "const": "orchestrator"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "then": {
+          "allOf": [
+            {
+              "if": {
+                "not": {
+                  "properties": {
+                    "orchestrationMode": {
+                      "enum": [
+                        "SEQUENTIAL",
+                        "PARALLEL"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "orchestrationMode"
+                  ]
+                }
+              },
+              "then": {
+                "required": [
+                  "modelId"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "orchestrationMode": {
+                    "enum": [
+                      "SEQUENTIAL",
+                      "PARALLEL"
+                    ]
+                  }
+                },
+                "required": [
+                  "orchestrationMode"
+                ]
+              },
+              "then": {
+                "required": [
+                  "subAgentIds"
+                ],
+                "properties": {
+                  "subAgentIds": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "if": {
+          "not": {
+            "properties": {
+              "type": {
+                "const": "orchestrator"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          }
+        },
+        "then": {
+          "properties": {
+            "subAgentIds": {
+              "maxItems": 0
+            }
+          }
+        }
+      }
+    ],
     "$defs": {
       "SessionServiceConfig": {
         "type": "object",
@@ -82,26 +210,12 @@
             "$ref": "#/$defs/MongoSessionServiceConfig"
           }
         ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "title": "Session Store Type",
-            "description": "Session storage type.",
-            "default": "mongodb",
-            "enum": [
-              "mongodb"
-            ],
-            "help": "Use `memory` for ephemeral sessions or `mongodb` for persistence."
-          }
-        },
         "required": [
           "type"
         ]
       },
       "InMemorySessionServiceConfig": {
         "type": "object",
-        "title": "In-Memory Session Configuration",
-        "description": "Configuration for storing sessions in memory.",
         "allOf": [
           {
             "$ref": "#/$defs/SessionServiceConfig"
@@ -110,9 +224,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "const": "memory",
-            "title": "Session Store Type",
-            "description": "In-memory session storage."
+            "const": "memory"
           }
         },
         "required": [
@@ -121,8 +233,6 @@
       },
       "MongoSessionServiceConfig": {
         "type": "object",
-        "title": "MongoDB Session Configuration",
-        "description": "Configuration for storing sessions in MongoDB.",
         "allOf": [
           {
             "$ref": "#/$defs/SessionServiceConfig"
@@ -131,89 +241,210 @@
         "properties": {
           "type": {
             "type": "string",
-            "const": "mongodb",
-            "title": "Session Store Type",
-            "description": "MongoDB session storage."
+            "const": "mongodb"
           },
           "connectionString": {
-            "type": "string",
-            "title": "MongoDB Connection String",
-            "description": "MongoDB connection string for session storage.",
-            "help": "mongodb://localhost:27017/agent"
+            "type": "string"
           }
         },
         "required": [
           "type"
         ]
       },
-      "AgentModelConfig": {
+      "AgentRuntimeConfig": {
         "type": "object",
-        "title": "Agent Model Configuration",
-        "required": [
-          "modelId",
-          "systemPrompt"
-        ],
         "properties": {
-          "modelId": {
-            "type": "string",
-            "title": "Model ID",
-            "description": "Model config ID to use for this agent.",
-            "help": "Model entry ID (`ollama-llama3`)."
+          "resumable": {
+            "type": "boolean",
+            "default": true,
+            "description": "When true, paused executions can be resumed."
           },
-          "systemPrompt": {
-            "type": "string",
-            "title": "System Prompt",
-            "description": "Initial instructions prepended to each conversation.",
-            "help": "You are a helpful support agent."
+          "maxSteps": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 50,
+            "description": "Maximum model turns per invocation."
+          }
+        }
+      },
+      "OrchestrationMode": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "TRANSFER",
+          "SEQUENTIAL",
+          "PARALLEL"
+        ],
+        "default": "TRANSFER"
+      },
+      "ParallelAggregationPolicy": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "CONCATENATE",
+          "BEST_EFFORT",
+          "MAJORITY_VOTE"
+        ],
+        "default": "CONCATENATE"
+      },
+      "ParallelStoppingPolicy": {
+        "type": "string",
+        "enum": [
+          "UNKNOWN",
+          "ALL_COMPLETE",
+          "FIRST_SUCCESS",
+          "QUORUM"
+        ],
+        "default": "ALL_COMPLETE"
+      },
+      "OrchestratorParallelConfig": {
+        "type": "object",
+        "properties": {
+          "aggregationPolicy": {
+            "$ref": "#/$defs/ParallelAggregationPolicy",
+            "description": "Parallel aggregation policy. Current runtime supports CONCATENATE only."
           },
-          "role": {
-            "type": "string",
-            "title": "Message Role",
-            "description": "Role to assign to the system prompt message.",
-            "help": "Common values: `system`, `user`, `assistant`."
+          "stoppingPolicy": {
+            "$ref": "#/$defs/ParallelStoppingPolicy",
+            "description": "Parallel stopping policy. Current runtime supports ALL_COMPLETE only."
           },
-          "contextManagerConfig": {
-            "$ref": "#/$defs/ContextManagerConfig",
-            "title": "Context Manager",
-            "description": "Conversation context management configuration."
-          },
-          "tools": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/ToolsConfig"
-            },
-            "title": "Tools",
-            "description": "List of tools enabled for this model."
+          "quorum": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Reserved for quorum stopping. Current runtime requires quorum=1."
           }
         }
       },
       "ToolsConfig": {
         "type": "object",
-        "title": "Tool Configuration",
         "required": [
           "toolName"
         ],
         "properties": {
           "toolName": {
-            "type": "string",
-            "title": "Tool Name",
-            "description": "Name of the tool.",
-            "help": "Select a tool from the list"
+            "type": "string"
           },
           "configs": {
-            "type": "object",
-            "title": "Tool Configuration Params"
+            "type": "object"
           }
         }
       },
+      "ContextStrategyConfig": {
+        "type": "object",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "compaction": "#/$defs/CompactionContextStrategyConfig",
+            "last_n": "#/$defs/LastNContextStrategyConfig",
+            "none": "#/$defs/NoneContextStrategyConfig"
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/CompactionContextStrategyConfig"
+          },
+          {
+            "$ref": "#/$defs/LastNContextStrategyConfig"
+          },
+          {
+            "$ref": "#/$defs/NoneContextStrategyConfig"
+          }
+        ],
+        "required": [
+          "type"
+        ]
+      },
+      "CompactionContextStrategyConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/ContextStrategyConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "compaction"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          },
+          "tokenThreshold": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 4096
+          },
+          "eventRetentionSize": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 50
+          },
+          "overlapSize": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0
+          },
+          "modelId": {
+            "type": "string",
+            "description": "Optional compaction model ID. Falls back to infra default compaction model."
+          },
+          "promptTemplate": {
+            "type": "string",
+            "description": "Optional custom summarizer prompt used by the runtime LlmEventSummarizer."
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "LastNContextStrategyConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/ContextStrategyConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "last_n"
+          },
+          "keepLastTokens": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1024
+          }
+        },
+        "required": [
+          "type",
+          "keepLastTokens"
+        ]
+      },
+      "NoneContextStrategyConfig": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/ContextStrategyConfig"
+          }
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "none"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
       "GuardrailsConfig": {
         "type": "object",
-        "title": "Guardrails Configuration",
         "properties": {
           "enabled": {
             "type": "boolean",
-            "default": true,
-            "description": "Enable or disable guardrail checks."
+            "default": true
           },
           "executionMode": {
             "type": "string",
@@ -221,9 +452,7 @@
               "SYNC",
               "OPTIMISTIC"
             ],
-            "default": "SYNC",
-            "description": "Guardrail execution mode.",
-            "help": "`SYNC` evaluates before execution (safer). `OPTIMISTIC` runs concurrently and cancels on block (lower latency)."
+            "default": "SYNC"
           },
           "defaultOnError": {
             "type": "string",
@@ -231,9 +460,7 @@
               "FAIL_OPEN",
               "FAIL_CLOSED"
             ],
-            "default": "FAIL_CLOSED",
-            "description": "Fallback behavior when guardrail evaluation fails.",
-            "help": "`FAIL_CLOSED` blocks on guardrail runtime errors (recommended). `FAIL_OPEN` allows execution on errors."
+            "default": "FAIL_CLOSED"
           },
           "rules": {
             "type": "array",
@@ -255,8 +482,6 @@
       },
       "GuardrailRule": {
         "type": "object",
-        "title": "Guardrail Rule",
-        "description": "Common guardrail rule fields.",
         "properties": {
           "id": {
             "type": "string"
@@ -267,9 +492,7 @@
               "TEXT_CONTENT",
               "TOOL_SAFETY",
               "RELEVANCE"
-            ],
-            "description": "Guardrail rule type used to select the rule provider.",
-            "help": "`type` is required for strict typed rule deserialization."
+            ]
           },
           "stage": {
             "type": "string",
@@ -277,8 +500,7 @@
               "INPUT",
               "TOOL",
               "OUTPUT"
-            ],
-            "description": "Rule installation stage. `TEXT_CONTENT` supports INPUT/OUTPUT, `TOOL_SAFETY` uses TOOL, and `RELEVANCE` uses OUTPUT."
+            ]
           },
           "enabled": {
             "type": "boolean",
@@ -292,9 +514,7 @@
               "BLOCK",
               "ESCALATE"
             ],
-            "default": "WARN",
-            "description": "Policy action when this rule matches.",
-            "help": "`WARN` allows with signal, `BLOCK` stops, `ESCALATE` requests manual intervention."
+            "default": "WARN"
           },
           "message": {
             "type": "string"
@@ -345,8 +565,7 @@
               "HIGH",
               "CRITICAL"
             ],
-            "default": "HIGH",
-            "description": "Minimum tool risk level this rule applies to."
+            "default": "HIGH"
           },
           "toolNames": {
             "type": "array",
@@ -369,17 +588,16 @@
             "const": "RELEVANCE"
           },
           "evaluatorModelId": {
-            "type": "string",
-            "description": "Optional fast model used for relevance evaluation. If omitted, evaluator uses infra default evaluator model."
+            "type": "string"
           },
           "mode": {
             "type": "string",
             "enum": [
               "STEER_THEN_BLOCK",
-              "STEER_ONLY"
+              "STEER_ONLY",
+              "STEER_THEN_ALLOW"
             ],
-            "default": "STEER_THEN_BLOCK",
-            "help": "`STEER_THEN_BLOCK` retries then blocks, `STEER_ONLY` never blocks on relevance drift."
+            "default": "STEER_THEN_BLOCK"
           },
           "maxSteeringRetries": {
             "type": "integer",
@@ -398,8 +616,7 @@
               "RECENT_USER",
               "LATEST_USER_AND_PLAN"
             ],
-            "default": "LATEST_USER_AND_PLAN",
-            "help": "`RECENT_USER` for conversational continuity (set `recency=1` for latest-only), `LATEST_USER_AND_PLAN` for planning agents."
+            "default": "LATEST_USER_AND_PLAN"
           },
           "recency": {
             "type": "integer",
@@ -407,152 +624,6 @@
             "default": 5
           }
         }
-      },
-      "OutputEvaluationConfig": {
-        "type": "object",
-        "title": "Output Evaluation",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "default": false
-          },
-          "evaluatorModelId": {
-            "type": "string",
-            "description": "Optional fast model used for evaluator scoring. If omitted, evaluator falls back to current agent model."
-          },
-          "maxRetries": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 2
-          },
-          "minScore": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "default": 0.25
-          },
-          "stopPolicy": {
-            "type": "string",
-            "enum": [
-              "RETRY_THEN_ALLOW",
-              "RETRY_THEN_BLOCK"
-            ],
-            "default": "RETRY_THEN_ALLOW",
-            "help": "After retries are exhausted, `RETRY_THEN_ALLOW` passes latest output; `RETRY_THEN_BLOCK` returns a block message."
-          },
-          "anchorStrategy": {
-            "type": "string",
-            "enum": [
-              "RECENT_USER",
-              "LATEST_USER_AND_PLAN"
-            ],
-            "default": "LATEST_USER_AND_PLAN"
-          }
-        }
-      },
-      "ContextManagerConfig": {
-        "type": "object",
-        "title": "Context Manager Configuration",
-        "description": "Configuration for managing conversation context.",
-        "discriminator": {
-          "propertyName": "type",
-          "mapping": {
-            "summarize": "#/$defs/SummarizeContextManagerConfig",
-            "last_n": "#/$defs/LastNContextManagerConfig"
-          }
-        },
-        "oneOf": [
-          {
-            "$ref": "#/$defs/SummarizeContextManagerConfig"
-          },
-          {
-            "$ref": "#/$defs/LastNContextManagerConfig"
-          }
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "title": "Context Manager Type",
-            "description": "Context management strategy (for example, `last_n` keeps recent messages).",
-            "enum": [
-              "summarize",
-              "last_n"
-            ],
-            "default": "summarize"
-          }
-        },
-        "required": [
-          "type"
-        ]
-      },
-      "SummarizeContextManagerConfig": {
-        "type": "object",
-        "title": "Summarizing Context Configuration",
-        "description": "Compacts older context into a persisted summary while keeping recent raw context.",
-        "allOf": [
-          {
-            "$ref": "#/$defs/ContextManagerConfig"
-          }
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "summarize",
-            "title": "Context Manager Type",
-            "description": "Summarize older context and keep recent raw messages."
-          },
-          "triggerTokens": {
-            "type": "integer",
-            "minimum": 32,
-            "default": 4096,
-            "title": "Compaction Trigger",
-            "description": "Approximate token threshold where compaction starts."
-          },
-          "recencyTokens": {
-            "type": "integer",
-            "minimum": 8,
-            "default": 1024,
-            "title": "Raw Recency Window",
-            "description": "Approximate recent tokens to keep unsummarized. Must be lower than triggerTokens."
-          },
-          "summaryModelId": {
-            "type": "string",
-            "title": "Summary Model ID",
-            "description": "Optional model for compaction summaries. If omitted, infra default summary model is used; then agent model as fallback."
-          }
-        },
-        "required": [
-          "type"
-        ]
-      },
-      "LastNContextManagerConfig": {
-        "type": "object",
-        "title": "Recent Messages Context Configuration",
-        "description": "Configuration for keeping the last N tokens in context.",
-        "allOf": [
-          {
-            "$ref": "#/$defs/ContextManagerConfig"
-          }
-        ],
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "last_n",
-            "title": "Context Manager Type",
-            "description": "Keep only the most recent N messages."
-          },
-          "keepLast": {
-            "type": "integer",
-            "minimum": 1,
-            "default": 1024,
-            "title": "Messages to Keep",
-            "description": "Number of recent messages to keep in context."
-          }
-        },
-        "required": [
-          "type",
-          "keepLast"
-        ]
       }
     }
   },
@@ -563,50 +634,31 @@
       {
         "id": "identity",
         "title": "Identity",
-        "description": "Define the agent identity and base type.",
         "sections": [
           "identity"
         ]
       },
       {
         "id": "model",
-        "title": "Model & Prompt",
-        "description": "Configure primary model and prompting behavior.",
+        "title": "Model",
         "sections": [
-          "model_core"
+          "model_core",
+          "context"
         ]
       },
       {
-        "id": "memory",
-        "title": "Memory",
-        "description": "Control context retention strategy for LLM input.",
+        "id": "runtime",
+        "title": "Runtime",
         "sections": [
-          "context"
+          "runtime"
         ]
       },
       {
         "id": "guardrails",
         "title": "Guardrails",
-        "description": "Configure runtime safety and relevance protections.",
         "sections": [
           "guardrails_global",
           "guardrails_rules"
-        ]
-      },
-      {
-        "id": "quality",
-        "title": "Output Quality",
-        "description": "Configure evaluator loop quality gates.",
-        "sections": [
-          "output_evaluation"
-        ]
-      },
-      {
-        "id": "routing",
-        "title": "Routing",
-        "description": "Optional routing model controls.",
-        "sections": [
-          "routing"
         ]
       }
     ],
@@ -614,41 +666,51 @@
       {
         "id": "identity",
         "title": "Identity",
-        "description": "Core identification fields.",
         "schemaPointer": "#",
         "fields": [
           "id",
           "name",
-          "type"
+          "type",
+          "description",
+          "avatar",
+          "orchestrationMode",
+          "parallel",
+          "subAgentIds"
         ]
       },
       {
         "id": "model_core",
         "title": "Model",
-        "description": "Primary model, role, prompt and tools.",
-        "dataPath": "model",
-        "schemaPointer": "#/$defs/AgentModelConfig",
-        "layoutPath": "model",
+        "dataPath": "",
+        "schemaPointer": "#",
+        "layoutPath": "",
         "fields": [
           "modelId",
-          "role",
           "systemPrompt",
-          "contextManagerConfig",
           "tools"
         ]
       },
       {
         "id": "context",
-        "title": "Context Manager",
-        "description": "Summarize and recency controls.",
-        "dataPath": "model.contextManagerConfig",
-        "schemaPointer": "#/$defs/ContextManagerConfig",
-        "layoutPath": "model.contextManagerConfig"
+        "title": "Context Strategy",
+        "dataPath": "contextStrategy",
+        "schemaPointer": "#/$defs/ContextStrategyConfig",
+        "layoutPath": "contextStrategy"
+      },
+      {
+        "id": "runtime",
+        "title": "Runtime",
+        "dataPath": "runtime",
+        "schemaPointer": "#/$defs/AgentRuntimeConfig",
+        "layoutPath": "runtime",
+        "fields": [
+          "resumable",
+          "maxSteps"
+        ]
       },
       {
         "id": "guardrails_global",
         "title": "Guardrail Runtime",
-        "description": "Enablement, execution mode and error policy.",
         "dataPath": "guardrails",
         "schemaPointer": "#/$defs/GuardrailsConfig",
         "layoutPath": "guardrails",
@@ -661,35 +723,16 @@
       {
         "id": "guardrails_rules",
         "title": "Guardrail Rules",
-        "description": "Rule catalog for input, output, tool risk, and relevance.",
         "dataPath": "guardrails",
         "schemaPointer": "#/$defs/GuardrailsConfig",
         "layoutPath": "guardrails",
         "fields": [
           "rules"
         ]
-      },
-      {
-        "id": "output_evaluation",
-        "title": "Output Evaluation",
-        "description": "Evaluator retry loop and stop policy.",
-        "dataPath": "outputEvaluation",
-        "schemaPointer": "#/$defs/OutputEvaluationConfig",
-        "layoutPath": "outputEvaluation"
-      },
-      {
-        "id": "routing",
-        "title": "Routing",
-        "description": "Routing model and history window.",
-        "schemaPointer": "#",
-        "fields": [
-          "routingModelId",
-          "routingHistorySize"
-        ]
       }
     ],
     "fields": {
-      "routingModelId": {
+      "modelId": {
         "widget": "LOOKUP",
         "lookupRequest": {
           "url": "/catalog/list",
@@ -699,7 +742,11 @@
           }
         }
       },
-      "model": {
+      "systemPrompt": {
+        "widget": "TEXTAREA",
+        "rows": 6
+      },
+      "contextStrategy": {
         "modelId": {
           "widget": "LOOKUP",
           "lookupRequest": {
@@ -710,47 +757,35 @@
             }
           }
         },
-        "systemPrompt": {
+        "promptTemplate": {
           "widget": "TEXTAREA",
-          "rows": 6
-        },
-        "contextManagerConfig": {
-          "summaryModelId": {
+          "rows": 4
+        }
+      },
+      "tools": {
+        "items": {
+          "toolName": {
             "widget": "LOOKUP",
             "lookupRequest": {
               "url": "/catalog/list",
               "method": "POST",
               "body": {
-                "assetType": "model"
+                "assetType": "tool"
               }
             }
-          }
-        },
-        "tools": {
-          "items": {
-            "toolName": {
-              "widget": "LOOKUP",
-              "lookupRequest": {
-                "url": "/catalog/list",
-                "method": "POST",
-                "body": {
-                  "assetType": "tool"
-                }
-              }
-            },
-            "configs": {
-              "widget": "SCHEMA_LOOKUP",
-              "dependencies": [
-                "$toolName"
-              ],
-              "lookupRequest": {
-                "url": "/schemas",
-                "method": "POST",
-                "body": {
-                  "assetType": "tool_configs",
-                  "assetId": "$toolName",
-                  "agentId": "$.id"
-                }
+          },
+          "configs": {
+            "widget": "SCHEMA_LOOKUP",
+            "dependencies": [
+              "$toolName"
+            ],
+            "lookupRequest": {
+              "url": "/schemas",
+              "method": "POST",
+              "body": {
+                "assetType": "tool_configs",
+                "assetId": "$toolName",
+                "agentId": "$.id"
               }
             }
           }
@@ -765,207 +800,21 @@
             "message": {
               "widget": "TEXTAREA",
               "rows": 2
-            }
-          }
-        }
-      },
-      "outputEvaluation": {
-        "evaluatorModelId": {
-          "widget": "LOOKUP",
-          "lookupRequest": {
-            "url": "/catalog/list",
-            "method": "POST",
-            "body": {
-              "assetType": "model"
+            },
+            "evaluatorModelId": {
+              "widget": "LOOKUP",
+              "lookupRequest": {
+                "url": "/catalog/list",
+                "method": "POST",
+                "body": {
+                  "assetType": "model"
+                }
+              }
             }
           }
         }
       }
     },
-    "presets": [
-      {
-        "id": "balanced",
-        "label": "Balanced",
-        "description": "Balanced default protection and quality controls.",
-        "isDefault": true,
-        "patch": {
-          "guardrails": {
-            "enabled": true,
-            "executionMode": "SYNC",
-            "defaultOnError": "FAIL_CLOSED",
-            "rules": [
-              {
-                "type": "INPUT_RULES",
-                "stage": "INPUT",
-                "enabled": true,
-                "action": "BLOCK",
-                "maxTextLength": 16000,
-                "blockedPatterns": [
-                  "(?i)ignore\\s+previous\\s+instructions"
-                ]
-              },
-              {
-                "type": "OUTPUT_RULES",
-                "stage": "OUTPUT",
-                "enabled": true,
-                "action": "WARN",
-                "maxTextLength": 24000,
-                "blockedPatterns": []
-              },
-              {
-                "type": "TOOL_RISK",
-                "stage": "TOOL",
-                "enabled": true,
-                "action": "ESCALATE",
-                "minToolRisk": "HIGH",
-                "toolNames": []
-              },
-              {
-                "type": "RELEVANCE",
-                "stage": "OUTPUT",
-                "enabled": true,
-                "action": "WARN",
-                "llmEvaluatorEnabled": true,
-                "mode": "STEER_THEN_BLOCK",
-                "maxSteeringRetries": 2,
-                "relevanceThreshold": 0.25,
-                "anchorStrategy": "LATEST_USER_AND_PLAN",
-                "recency": 5
-              }
-            ]
-          },
-          "outputEvaluation": {
-            "enabled": true,
-            "llmEvaluatorEnabled": true,
-            "maxRetries": 2,
-            "minScore": 0.3,
-            "stopPolicy": "RETRY_THEN_ALLOW",
-            "anchorStrategy": "LATEST_USER_AND_PLAN"
-          }
-        }
-      },
-      {
-        "id": "strict",
-        "label": "Strict",
-        "description": "Higher safety and strict quality gating.",
-        "patch": {
-          "guardrails": {
-            "enabled": true,
-            "executionMode": "SYNC",
-            "defaultOnError": "FAIL_CLOSED",
-            "rules": [
-              {
-                "type": "INPUT_RULES",
-                "stage": "INPUT",
-                "enabled": true,
-                "action": "BLOCK",
-                "maxTextLength": 12000,
-                "blockedPatterns": [
-                  "(?i)ignore\\s+previous\\s+instructions"
-                ]
-              },
-              {
-                "type": "OUTPUT_RULES",
-                "stage": "OUTPUT",
-                "enabled": true,
-                "action": "BLOCK",
-                "maxTextLength": 16000,
-                "blockedPatterns": []
-              },
-              {
-                "type": "TOOL_RISK",
-                "stage": "TOOL",
-                "enabled": true,
-                "action": "ESCALATE",
-                "minToolRisk": "MEDIUM",
-                "toolNames": []
-              },
-              {
-                "type": "RELEVANCE",
-                "stage": "OUTPUT",
-                "enabled": true,
-                "action": "BLOCK",
-                "llmEvaluatorEnabled": true,
-                "mode": "STEER_THEN_BLOCK",
-                "maxSteeringRetries": 1,
-                "relevanceThreshold": 0.35,
-                "anchorStrategy": "LATEST_USER_AND_PLAN",
-                "recency": 5
-              }
-            ]
-          },
-          "outputEvaluation": {
-            "enabled": true,
-            "llmEvaluatorEnabled": true,
-            "maxRetries": 1,
-            "minScore": 0.45,
-            "stopPolicy": "RETRY_THEN_BLOCK",
-            "anchorStrategy": "LATEST_USER_AND_PLAN"
-          }
-        }
-      },
-      {
-        "id": "permissive",
-        "label": "Permissive",
-        "description": "Relaxed policy for low-friction interactions.",
-        "patch": {
-          "guardrails": {
-            "enabled": true,
-            "executionMode": "OPTIMISTIC",
-            "defaultOnError": "FAIL_OPEN",
-            "rules": [
-              {
-                "type": "INPUT_RULES",
-                "stage": "INPUT",
-                "enabled": true,
-                "action": "WARN",
-                "maxTextLength": 24000,
-                "blockedPatterns": []
-              },
-              {
-                "type": "TOOL_RISK",
-                "stage": "TOOL",
-                "enabled": true,
-                "action": "WARN",
-                "minToolRisk": "CRITICAL",
-                "toolNames": []
-              },
-              {
-                "type": "RELEVANCE",
-                "stage": "OUTPUT",
-                "enabled": true,
-                "action": "WARN",
-                "llmEvaluatorEnabled": true,
-                "mode": "STEER_ONLY",
-                "maxSteeringRetries": 3,
-                "relevanceThreshold": 0.2,
-                "anchorStrategy": "RECENT_USER",
-                "recency": 8
-              }
-            ]
-          },
-          "outputEvaluation": {
-            "enabled": false,
-            "llmEvaluatorEnabled": true,
-            "maxRetries": 1,
-            "minScore": 0.2,
-            "stopPolicy": "RETRY_THEN_ALLOW",
-            "anchorStrategy": "RECENT_USER"
-          }
-        }
-      }
-    ],
-    "validations": [
-      {
-        "id": "summarize_recency_lt_trigger",
-        "type": "lt",
-        "left": "model.contextManagerConfig.recencyTokens",
-        "right": "model.contextManagerConfig.triggerTokens",
-        "conditionPath": "model.contextManagerConfig.type",
-        "conditionEquals": "summarize",
-        "message": "Context recencyTokens must be lower than triggerTokens for summarize mode."
-      }
-    ],
     "actions": {
       "saveLabel": "Save Agent",
       "cancelLabel": "Cancel",

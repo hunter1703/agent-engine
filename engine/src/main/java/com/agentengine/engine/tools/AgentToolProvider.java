@@ -1,6 +1,5 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
@@ -55,10 +54,7 @@ public final class AgentToolProvider implements ToolProvider {
   }
 
   @Override
-  public BaseTool create(
-      final AgentContext agentContext,
-      final String toolName,
-      final Map<String, Object> toolConfig) {
+  public BaseTool create(final String toolName, final Map<String, Object> toolConfig) {
     if (StringUtils.isBlank(toolName)) {
       return null;
     }
@@ -66,14 +62,13 @@ public final class AgentToolProvider implements ToolProvider {
     if (definition == null) {
       return null;
     }
-    return instantiate(definition, agentContext, toolConfig);
+    return instantiate(definition, toolConfig);
   }
 
   private static Tool instantiate(
       final ToolDefinition definition,
-      final AgentContext agentContext,
       final Map<String, Object> toolConfig) {
-    final Object[] args = resolveArguments(definition, agentContext, toolConfig);
+    final Object[] args = resolveArguments(definition, toolConfig);
     try {
       return definition.constructor().newInstance(args);
     } catch (InstantiationException
@@ -89,7 +84,6 @@ public final class AgentToolProvider implements ToolProvider {
 
   private static Object[] resolveArguments(
       final ToolDefinition definition,
-      final AgentContext agentContext,
       final Map<String, Object> toolConfig) {
     final List<ConstructorParam> params = definition.params();
     if (CollectionUtils.isEmpty(params)) {
@@ -98,10 +92,6 @@ public final class AgentToolProvider implements ToolProvider {
     final Object[] args = new Object[params.size()];
     for (int index = 0; index < params.size(); index++) {
       final ConstructorParam param = params.get(index);
-      if (param.injectContext()) {
-        args[index] = agentContext;
-        continue;
-      }
       final Object rawValue = CollectionUtils.getValueFromMap(toolConfig, param.key());
       args[index] = convertValue(rawValue, param.type(), param.rawType());
     }
@@ -199,10 +189,7 @@ public final class AgentToolProvider implements ToolProvider {
     for (final Parameter parameter : parameters) {
       final ToolSchema annotation = parameter.getAnnotation(ToolSchema.class);
       final String key = resolveKey(parameter, annotation);
-      final boolean injectContext = AgentContext.class.isAssignableFrom(parameter.getType());
-      params.add(
-          new ConstructorParam(
-              key, parameter.getParameterizedType(), parameter.getType(), injectContext));
+      params.add(new ConstructorParam(key, parameter.getParameterizedType(), parameter.getType()));
     }
     return params;
   }
@@ -274,5 +261,5 @@ public final class AgentToolProvider implements ToolProvider {
       Constructor<? extends Tool> constructor,
       List<ConstructorParam> params) {}
 
-  private record ConstructorParam(String key, Type type, Class<?> rawType, boolean injectContext) {}
+  private record ConstructorParam(String key, Type type, Class<?> rawType) {}
 }

@@ -6,6 +6,7 @@ import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
+import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Flowable;
 
 import java.util.Objects;
@@ -40,21 +41,41 @@ public final class DelegatingLLMModel extends AbstractLLM {
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
-    final LlmRequest requestForModel =
-        ModelUtils.stripToolsFromModelRequest(
-            llmRequest, isToolCallingEnabled(), isParseToolCallsFromText());
+    final LlmRequest requestForModel = parser.normalizeRequest(llmRequest);
     final boolean useStreaming = stream && !isParseToolCallsFromText();
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
+    final Flowable<LlmResponse> normalizedResponses =
+        delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
     if (!useStreaming) {
-      return delegate.generateContent(requestForModel, false).map(ModelUtils::markTurnComplete);
+      return normalizedResponses.map(ModelUtils::markTurnComplete);
     }
-    return delegate.generateContent(requestForModel, true);
+    return normalizedResponses;
   }
 
   @Override
   public BaseLlmConnection connect(final LlmRequest llmRequest) {
     return delegate.connect(llmRequest);
+  }
+
+  private LlmResponse normalizeResponse(final LlmResponse response) {
+    if (response == null || response.content().isEmpty()) {
+      return response;
+    }
+    final Content content = response.content().orElse(null);
+    if (content == null) {
+      return response;
+    }
+    try {
+      final Content normalized = parser.parse(content);
+      if (normalized == null) {
+        return response;
+      }
+      return response.toBuilder().content(normalized).build();
+    } catch (Exception ex) {
+      LOG.debug("Failed to normalize model response; returning raw response.", ex);
+      return response;
+    }
   }
 }

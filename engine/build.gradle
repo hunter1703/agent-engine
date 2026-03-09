@@ -20,6 +20,7 @@ dependencies {
     implementation libs.quarkus.jackson
     implementation libs.quarkus.grpc
     implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.opentelemetry
     implementation libs.guava
 

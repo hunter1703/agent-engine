@@ -278,7 +278,7 @@ public final class MockAgent {
       final List<ResponseProcessor> resProcs = new ArrayList<>();
       resProcs.add(parser);
       resProcs.add(com.agentengine.engine.agents.processors.response.PlanLoopResponseProcessor.INSTANCE);
-      resProcs.add(com.agentengine.engine.agents.processors.response.RedundantToolCallsResponseProcessor.INSTANCE);
+      resProcs.add(com.agentengine.engine.agents.processors.response.ToolCallSanitizationResponseProcessor.INSTANCE);
       resProcs.addAll(defaultRes);
       resProcs.addAll(responseProcessors);
       // Remove RunCleanupResponseProcessor from MockAgent during tests so state is preserved

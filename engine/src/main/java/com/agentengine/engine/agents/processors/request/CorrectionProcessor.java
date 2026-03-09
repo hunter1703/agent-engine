@@ -32,6 +32,7 @@ public final class CorrectionProcessor implements RequestProcessor {
   public static final CorrectionProcessor INSTANCE = new CorrectionProcessor();
 
   private static final Logger LOG = LoggerFactory.getLogger(CorrectionProcessor.class);
+  private CorrectionProcessor() {}
 
   @Override
   public Single<RequestProcessingResult> processRequest(

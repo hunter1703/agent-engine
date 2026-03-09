@@ -18,7 +18,6 @@ only.
 - `maxContextLength`: context window size
 - `stopTokens`: list of stop strings
 - `instructions`: model-level guidance appended to system instructions
-- `contextManagerConfig`: optional context config object with `type`
 - `serverCommand`: OpenAI-compatible server command to launch (open_ai_compatible)
 - `apiKey`: Gemini API key (gemini)
 - `serverArgs`: list of server arguments

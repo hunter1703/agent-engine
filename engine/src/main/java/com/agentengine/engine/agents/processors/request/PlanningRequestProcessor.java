@@ -26,6 +26,7 @@ import java.util.List;
  */
 public final class PlanningRequestProcessor implements RequestProcessor {
   public static final PlanningRequestProcessor INSTANCE = new PlanningRequestProcessor();
+  private PlanningRequestProcessor() {}
 
   @Override
   public Single<RequestProcessingResult> processRequest(

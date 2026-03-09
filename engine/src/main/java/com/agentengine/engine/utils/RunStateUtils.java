@@ -1,40 +1,43 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public final class RunStateUtils {
-  private static final String RUN_STATE_KEY = "run.state";
 
   private RunStateUtils() {}
 
+  private static String runStateKey(final InvocationContext ctx) {
+    final String agentId = (ctx != null && ctx.agent() != null) ? ctx.agent().name() : "unknown";
+    return "run.state." + agentId;
+  }
+
   public static RunState getState(final InvocationContext context) {
+    final String key = runStateKey(context);
     final ConcurrentMap<String, Object> state = context.session().state();
-    final RunState runState = CollectionUtils.getValueFromMap(state, RUN_STATE_KEY);
+    final RunState runState = CollectionUtils.getValueFromMap(state, key);
     if (runState == null) {
-      state.put(RUN_STATE_KEY, new RunState());
+      state.put(key, new RunState());
     }
-    return CollectionUtils.getValueFromMap(state, RUN_STATE_KEY);
+    return CollectionUtils.getValueFromMap(state, key);
   }
 
   public static void clearState(final InvocationContext context) {
     if (context == null || context.session() == null || context.session().state() == null) {
       return;
     }
-    context.session().state().remove(RUN_STATE_KEY);
+    context.session().state().remove(runStateKey(context));
   }
 
   public static void initState(final InvocationContext context) {
     if (context == null || context.session() == null || context.session().state() == null) {
       return;
     }
+    final String key = runStateKey(context);
     final ConcurrentMap<String, Object> state = context.session().state();
-    if (!state.containsKey(RUN_STATE_KEY)) {
-      state.put(RUN_STATE_KEY, new RunState());
+    if (!state.containsKey(key)) {
+      state.put(key, new RunState());
     }
   }
 

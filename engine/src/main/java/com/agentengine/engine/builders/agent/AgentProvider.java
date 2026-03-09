@@ -1,14 +1,15 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.api.AgentContext;
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.agents.DelegatedAgent;
+import com.agentengine.engine.api.Agent;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.google.adk.agents.LlmAgent;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+
 import java.util.Map;
 import java.util.function.Function;
 
@@ -27,11 +28,10 @@ public class AgentProvider {
   }
 
   @SuppressWarnings("unchecked")
-  public <C extends AgentConfig, A extends LlmAgent> A get(
-      final C config, final AgentContext agentContext) {
+  public <C extends BaseAgentConfig, A extends Agent> A get(final C config) {
     // noinspection unchecked
     final AgentBuilder<C, A> builder =
         (AgentBuilder<C, A>) typeVsBuilder.getOrDefault(config.getType(), defaultAgentBuilder);
-    return builder.build(config, agentContext);
+    return builder.build(config);
   }
 }

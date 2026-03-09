@@ -6,7 +6,7 @@ import com.google.adk.sessions.State;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/** Utilities for working with ADK {@link Event} objects. */
+/** Utilities for working with runtime {@link Event} objects. */
 public final class EventUtils {
 
   /**

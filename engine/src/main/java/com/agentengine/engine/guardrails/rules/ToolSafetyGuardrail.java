@@ -5,8 +5,10 @@ import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
+import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
+import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import java.util.Map;
@@ -37,6 +39,11 @@ public final class ToolSafetyGuardrail implements Guardrail {
     if (descriptor == null) {
       return GuardrailDecision.allow();
     }
+    final String toolName = descriptor.name();
+    final var allowedToolNames = CollectionUtils.nullSafeList(rule.getToolNames());
+    if (!allowedToolNames.isEmpty() && !allowedToolNames.contains(toolName)) {
+      return GuardrailDecision.allow();
+    }
     final ToolRiskLevel risk = descriptor.riskLevel();
     GuardrailDecision decision = GuardrailDecision.allow();
     if (ToolRiskLevel.atLeast(risk, rule.getMinToolRisk())) {
@@ -46,15 +53,18 @@ public final class ToolSafetyGuardrail implements Guardrail {
                       : "Tool safety policy triggered for '" + descriptor.name() + "'.";
       decision = GuardrailUtils.fromAction(
               rule.getAction(),
-              "guardrail_tool_policy",
+              GuardrailConstants.Code.TOOL_POLICY,
               message,
-              Map.of("tool", descriptor.name(), "risk", risk.name(), "rule", rule.getId()));
+              Map.of(
+                  GuardrailConstants.DetailKey.TOOL, descriptor.name(),
+                  GuardrailConstants.DetailKey.RISK, risk.name(),
+                  GuardrailConstants.DetailKey.RULE, rule.getId()));
     }
 
     if (decision.action() == GuardrailAction.ALLOW
         && (risk == ToolRiskLevel.HIGH || risk == ToolRiskLevel.CRITICAL)) {
       return GuardrailDecision.escalate(
-          "guardrail_tool_escalate",
+          GuardrailConstants.Code.TOOL_ESCALATE,
           "Tool '" + descriptor.name() + "' requires human confirmation due to risk level "
               + risk.name().toLowerCase()
               + ".");

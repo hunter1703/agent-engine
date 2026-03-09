@@ -8,6 +8,7 @@ import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Operation;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.validation.ConfigValidationService;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.BaseSessionService;
@@ -18,6 +19,7 @@ import com.google.adk.sessions.Session;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,8 +38,9 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
     implements BaseSessionService {
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRepository.class);
 
-  public AgentSessionRepository(MongoClientFactory mongoClientFactory) {
-    super(mongoClientFactory, "AgentSession", AgentSession.class);
+  @Inject
+  public AgentSessionRepository(final MongoClientFactory mongoClientFactory, ConfigValidationService configValidationService) {
+    super(mongoClientFactory, "AgentSession", AgentSession.class, configValidationService);
   }
 
   @Override
@@ -82,7 +85,7 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
             .appName(session.appName())
             .userId(session.userId())
             .state(session.state())
-            // events need to be mutable so that later on the adk framework can modify,
+            // events need to be mutable so the runtime can append later events,
             // particularly when appending new events
             // (com.google.adk.sessions.BaseSessionService.appendEvent)
             .events(new ArrayList<>(events))

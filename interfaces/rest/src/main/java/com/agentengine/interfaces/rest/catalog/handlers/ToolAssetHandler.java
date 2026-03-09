@@ -40,9 +40,9 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
             ? request.getQuery().getPage()
             : new Page(0, 100);
 
-    final int total = tools.size();
-    final int start = Math.min(page.getOffset(), total);
-    final int end = Math.min(start + page.getLimit(), total);
+    final long total = tools.size();
+    final int start = (int) Math.min(page.getOffset(), total);
+    final int end = (int) Math.min(start + page.getLimit(), total);
     final List<ToolDescriptor> pagedTools = tools.subList(start, end);
 
     return PaginatedResult.create(pagedTools, page, total);

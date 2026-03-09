@@ -8,9 +8,10 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
-import com.agentengine.engine.guardrails.RelevanceEvaluator;
-import com.agentengine.engine.guardrails.RelevanceAnchorBuilder;
+import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailUtils;
+import com.agentengine.engine.guardrails.RelevanceAnchorBuilder;
+import com.agentengine.engine.guardrails.RelevanceEvaluator;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
 import java.util.Map;
@@ -43,7 +44,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
       return GuardrailDecision.allow();
     }
 
-    final String anchor = RelevanceAnchorBuilder.build(context.invocationContext(), config.getAnchorStrategy());
+    final String anchor = RelevanceAnchorBuilder.build(context.invocationContext(), config);
     final double score = evaluator.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
     final RunState runState = RunStateUtils.getState(context.invocationContext());
@@ -60,18 +61,26 @@ public final class OutputRelevanceGuardrail implements Guardrail {
     if (mode == RelevanceMode.STEER_ONLY) {
       return new GuardrailDecision(
           GuardrailAction.WARN,
-          "relevance_steer",
+          GuardrailConstants.Code.RELEVANCE_STEER,
           "Response drifted from user intent. Regenerate strictly on the active request.",
-          Map.of("score", score, "threshold", threshold, "attempt", attempt, "retry_required", true));
+          Map.of(
+              GuardrailConstants.DetailKey.SCORE, score,
+              GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt,
+              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     }
 
     if (mode == RelevanceMode.STEER_THEN_ALLOW
         && attempt <= config.getMaxSteeringRetries()) {
       return new GuardrailDecision(
           GuardrailAction.WARN,
-          "relevance_steer",
+          GuardrailConstants.Code.RELEVANCE_STEER,
           "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of("score", score, "threshold", threshold, "attempt", attempt, "retry_required", true));
+          Map.of(
+              GuardrailConstants.DetailKey.SCORE, score,
+              GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt,
+              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     } else if (mode == RelevanceMode.STEER_THEN_ALLOW) {
       runState.resetOffTopicRetries();
       return GuardrailDecision.allow();
@@ -81,15 +90,22 @@ public final class OutputRelevanceGuardrail implements Guardrail {
         && attempt <= config.getMaxSteeringRetries()) {
       return new GuardrailDecision(
           GuardrailAction.WARN,
-          "relevance_steer",
+          GuardrailConstants.Code.RELEVANCE_STEER,
           "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of("score", score, "threshold", threshold, "attempt", attempt, "retry_required", true));
+          Map.of(
+              GuardrailConstants.DetailKey.SCORE, score,
+              GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt,
+              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     }
 
     return new GuardrailDecision(
         GuardrailAction.BLOCK,
-        "relevance_block",
+        GuardrailConstants.Code.RELEVANCE_BLOCK,
         "The response repeatedly drifted from the user request and was blocked.",
-        Map.of("score", score, "threshold", threshold, "attempt", attempt));
+        Map.of(
+            GuardrailConstants.DetailKey.SCORE, score,
+            GuardrailConstants.DetailKey.THRESHOLD, threshold,
+            GuardrailConstants.DetailKey.ATTEMPT, attempt));
   }
 }

@@ -4,6 +4,7 @@ import static com.agentengine.engine.api.utils.JsonUtils.parseJsonPayload;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
@@ -13,6 +14,7 @@ import com.google.genai.types.Part;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -26,10 +28,12 @@ public final class RelevanceEvaluator {
   private static final long MODEL_TIMEOUT_SECONDS = 8L;
   private static final double MODEL_UNAVAILABLE_SCORE = 1D;
 
-  private final BaseLlm model;
+  private final ModelProvider modelProvider;
+  private final String modelId;
 
-  public RelevanceEvaluator(final BaseLlm model) {
-    this.model = model;
+  public RelevanceEvaluator(final ModelProvider modelProvider, final String modelId) {
+    this.modelProvider = modelProvider;
+    this.modelId = modelId;
   }
 
   public double score(final String anchor, final String candidate) {
@@ -38,7 +42,7 @@ public final class RelevanceEvaluator {
   }
 
   private double scoreInternal(final String anchor, final String candidate) {
-    if (model == null || StringUtils.isBlank(candidate)) {
+    if (StringUtils.isBlank(candidate)) {
       return -1D;
     }
     if (StringUtils.isBlank(anchor)) {
@@ -65,13 +69,18 @@ public final class RelevanceEvaluator {
         LlmRequest.builder()
             .contents(List.of(Content.builder().role("user").parts(Part.fromText(prompt)).build()))
             .build();
-    final LlmResponse response =
-        model
-            .generateContent(request, false)
-            .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .blockingFirst();
-    final String text = response.content().map(Content::text).orElse("");
-    return parseScore(text);
+    final BaseLlm model = modelProvider.get(modelId);
+    try {
+      final LlmResponse response =
+              model
+                      .generateContent(request, false)
+                      .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                      .blockingFirst();
+      final String text = response.content().map(Content::text).orElse("");
+      return parseScore(text);
+    } finally {
+        modelProvider.release(modelId);
+    }
   }
 
   private static int parseScore(final String raw) {

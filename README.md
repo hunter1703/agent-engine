@@ -107,7 +107,7 @@ At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./pl
 - `@AgentTool` marks auto-discoverable tools. `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
 - `@ToolParam` maps constructor params to config keys. When omitted, parameter names are used (requires compilation with `-parameters`).
 - `ToolParam.AGENT_CONTEXT` or an `AgentContext` parameter injects the current execution context.
-- `ToolSuite` describes a user-facing suite name plus `toolNames()`; selecting the suite in `model.tools` expands to the member tools at runtime.
+- `ToolSuite` describes a user-facing suite name plus `toolNames()`; selecting the suite in `tools` expands to the member tools at runtime.
 
 ### Building Plugins
 
@@ -146,16 +146,28 @@ The repository is structured to separate interface transports from the core LLM 
 
 ## 📝 Additional Notes
 
-- Agent model configs default to `contextManagerConfig.type = summarize` (trigger/recency thresholds); older turns are compacted for model input while full session history remains unchanged.
-- Compacted summaries are persisted separately in `SessionContextSummary` documents and are not written into session event history.
-- Summary model resolution order: `contextManagerConfig.summaryModelId` -> infra `default_model.summaryModelId` -> agent `model.modelId`.
-- Title model resolution order: infra `default_model.titleModelId` -> legacy infra `title_model.modelId`.
-- Enable built-in automated planning by listing `planning` under `model.tools`; the suite expands to `create_plan`, `update_plan`, `add_task`, `update_task_info`, `start_task`, `complete_task`, `finish_plan`, and `view_plan` at runtime.
-- Enable built-in multi-agent orchestration by listing `multi_agent` under `model.tools`; the suite expands to `delegate_to_agent` (manager-as-tool delegation), `handoff_to_agent` (decentralized handoff intent), and `parallel_delegate` (parallel sectioning/voting with aggregation + stopping policies).
-- `handoff_to_agent` persists handoff state and runtime auto-continues with the target agent after source completion using handoff message and next session id.
-- Handoff continuation is protected by max-hop limits (`max_handoff_hops`) and emits in-process telemetry counters (`handoff_requested`, `handoff_continued`, `handoff_loop_blocked`).
-- Output evaluation workflow is configurable via `outputEvaluation` in agent config and enforces retry/block stopping policy based on response relevance score thresholds.
+- Agent config is flattened: `modelId`, `systemPrompt`, `tools`, and `contextStrategy` are first-class agent fields.
+- Context strategy is agent-scoped; compaction affects model prompt construction, while full session event history remains intact.
+- Compaction model resolution order: `contextStrategy.modelId` -> infra `default_model.compactionModelId` -> agent `modelId`.
+- Title model resolution source: infra `default_model.titleModelId` (resolved per title-generation call).
+- Enable built-in automated planning by listing `planning` under `tools`; the suite expands to `create_plan`, `update_plan`, `add_task`, `update_task_info`, `start_task`, `complete_task`, `finish_plan`, and `view_plan` at runtime.
+- Multi-agent orchestration is runtime-native via `orchestrator` agents with `orchestrationMode=TRANSFER|SEQUENTIAL|PARALLEL`.
+- `orchestrationMode=PARALLEL` emits aggregated orchestrator output only (no raw branch passthrough).
+- Parallel branch success is strict: only terminal branches with `turnComplete=true` are counted successful.
+- Parallel stopping policies:
+  - `ALL_COMPLETE`: wait for all branches.
+  - `FIRST_SUCCESS`: stop once the first successful branch completes.
+  - `QUORUM`: stop once successful branches reach `quorum`.
+- Parallel aggregation policies:
+  - `CONCATENATE`: concatenate successful outputs in configured sub-agent order.
+  - `BEST_EFFORT`: pick deterministic best successful output (longest text, stable tie-break by sub-agent order).
+  - `MAJORITY_VOTE`: pick most frequent normalized successful output, tie-break with best-effort.
+- If `FIRST_SUCCESS`/`QUORUM` targets are not met, runtime falls back to deterministic best-effort output and records a warning violation.
+- Story pipelines are modeled as sequential orchestrators (see `configs/agents/story_orchestrator_sequential.json`).
+- Guardrails are centralized via app-level plugin callbacks (input/tool/output) with `allow/warn/block/escalate` semantics.
+- `GuardrailExecutionMode=OPTIMISTIC` is output-optimistic in this iteration: input/tool remain synchronous; output checks run asynchronously and terminate invocation on block/escalate.
 - Relevance scoring supports dual-prompt LLM evaluation (`relevance` + `irrelevance`) with combined score `(x + (100 - y)) / 2`, executed in parallel.
+- Tool confirmations use native runtime confirmation events (`requestConfirmation` / `adk_request_confirmation`) and resume text is mapped to confirmation payloads by the runtime adapter.
 - Plugin tools are discovered via Java `ServiceLoader` entries under `META-INF/services` for `ToolProvider` implementations.
 - Auto-discoverable tools use `@AgentTool` with constructor selection via `@ToolConstructor` and `@ToolParam`.
 - Prompt templates (located in `engine/src/main/resources/prompts`) are natively rendered via `Jinjava`.
@@ -168,16 +180,15 @@ Use `UNKNOWN` as parser fallback only. Do not set `UNKNOWN` intentionally in age
 
 | Enum | Values | When to use |
 |---|---|---|
-| `AgentType` | `DEFAULT`, `STORY`, `ORCHESTRATOR`, `WORKER` | `DEFAULT` for most agents, `STORY` for story flow, `ORCHESTRATOR` for manager-style delegation, `WORKER` for delegated specialists. |
-| `GuardrailExecutionMode` | `SYNC`, `OPTIMISTIC` | `SYNC` for deterministic blocking before execution, `OPTIMISTIC` to reduce latency and tripwire-cancel on block. |
+| `AgentType` | `DEFAULT`, `ORCHESTRATOR` | `DEFAULT` for most agents, `ORCHESTRATOR` for manager/coordinator agents with sub-agents. |
+| `OrchestrationMode` | `TRANSFER`, `SEQUENTIAL`, `PARALLEL` | `TRANSFER` for LLM manager + transfer/AgentTool; `SEQUENTIAL` for fixed stage pipelines; `PARALLEL` for fan-out branch execution. |
+| `GuardrailExecutionMode` | `SYNC`, `OPTIMISTIC` | `SYNC` for deterministic stage gating; `OPTIMISTIC` for asynchronous output gating with terminate-on-block/escalate. |
 | `GuardrailErrorMode` | `FAIL_CLOSED`, `FAIL_OPEN` | `FAIL_CLOSED` for safety-first production; `FAIL_OPEN` when availability is more important than strict safety. |
 | `GuardrailRuleType` | `TEXT_CONTENT`, `TOOL_SAFETY`, `RELEVANCE` | Selects guardrail strategy: `TEXT_CONTENT` for text policy checks, `TOOL_SAFETY` for tool risk gating, and `RELEVANCE` for on-topic control. |
 | `GuardrailStage` | `INPUT`, `TOOL`, `OUTPUT` | `INPUT` to filter user requests, `TOOL` to gate tool calls, `OUTPUT` to validate model responses before emission. |
 | `GuardrailAction` | `ALLOW`, `WARN`, `BLOCK`, `ESCALATE` | `ALLOW` pass-through, `WARN` pass-through with signal, `BLOCK` hard stop, `ESCALATE` human-in-the-loop intervention path. |
-| `RelevanceMode` | `STEER_THEN_BLOCK`, `STEER_ONLY`, `STRICT_BLOCK` | `STEER_THEN_BLOCK` for balanced behavior, `STEER_ONLY` for low-friction UX, `STRICT_BLOCK` for strict domain policy. |
-| `RelevanceAchoreStrategy` | `RECENT_USER`, `LATEST_USER_AND_PLAN` | `RECENT_USER` for conversational continuity (`recency=1` is latest-only), `LATEST_USER_AND_PLAN` for planning workflows. |
-| `EvaluatorStopPolicy` | `RETRY_THEN_ALLOW`, `RETRY_THEN_BLOCK` | `RETRY_THEN_ALLOW` to avoid hard failures, `RETRY_THEN_BLOCK` for quality-gated outputs. |
+| `RelevanceMode` | `STEER_THEN_BLOCK`, `STEER_ONLY`, `STEER_THEN_ALLOW` | `STEER_THEN_BLOCK` for balanced safety, `STEER_ONLY` for low-friction UX, `STEER_THEN_ALLOW` to retry briefly then continue. |
+| `RelevanceAnchorStrategy` | `RECENT_USER`, `LATEST_USER_AND_PLAN` | `RECENT_USER` for conversational continuity, `LATEST_USER_AND_PLAN` for planning workflows. |
 | `ToolRiskLevel` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Classify tools by side-effect sensitivity so `ToolSafetyGuardrail` can enforce minimum/maximum risk policy. |
-| `ParallelMode` | `SECTIONING`, `VOTING` | `SECTIONING` for independent subtasks; `VOTING` to run same prompt multiple times for consensus. |
-| `ParallelAggregationPolicy` | `CONCATENATE`, `BEST_EFFORT`, `MAJORITY_VOTE` | `CONCATENATE` keep all outputs, `BEST_EFFORT` pick one best branch output, `MAJORITY_VOTE` choose consensus response. |
-| `ParallelStoppingPolicy` | `ALL_COMPLETE`, `FIRST_SUCCESS`, `QUORUM` | `ALL_COMPLETE` for full coverage, `FIRST_SUCCESS` for latency, `QUORUM` for balanced speed/confidence. |
+| `ParallelAggregationPolicy` | `CONCATENATE`, `BEST_EFFORT`, `MAJORITY_VOTE` | `CONCATENATE` preserves all successful branch outputs in order; `BEST_EFFORT` chooses one deterministic best output; `MAJORITY_VOTE` chooses the most frequent normalized successful output. |
+| `ParallelStoppingPolicy` | `ALL_COMPLETE`, `FIRST_SUCCESS`, `QUORUM` | `ALL_COMPLETE` waits all branches; `FIRST_SUCCESS` stops at first successful branch (`turnComplete=true`); `QUORUM` stops when successful branches reach configured `quorum`. |

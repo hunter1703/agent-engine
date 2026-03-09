@@ -7,7 +7,7 @@ public class DefaultModelConfig extends InfraConfig {
   public static final String TYPE = "default_model";
 
   private String titleModelId;
-  private String summaryModelId;
+  private String compactionModelId;
   private String evaluatorModelId;
 
   public DefaultModelConfig() {
@@ -22,12 +22,12 @@ public class DefaultModelConfig extends InfraConfig {
     this.titleModelId = titleModelId;
   }
 
-  public String getSummaryModelId() {
-    return summaryModelId;
+  public String getCompactionModelId() {
+    return compactionModelId;
   }
 
-  public void setSummaryModelId(final String summaryModelId) {
-    this.summaryModelId = summaryModelId;
+  public void setCompactionModelId(final String compactionModelId) {
+    this.compactionModelId = compactionModelId;
   }
 
   public String getEvaluatorModelId() {

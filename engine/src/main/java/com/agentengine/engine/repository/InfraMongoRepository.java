@@ -6,13 +6,16 @@ import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.infra.InfraConfig;
+import com.agentengine.engine.validation.ConfigValidationService;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
-  public InfraMongoRepository(final MongoClientFactory mongoClientFactory) {
-    super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class);
+  @Inject
+  public InfraMongoRepository(final MongoClientFactory mongoClientFactory, ConfigValidationService validationService) {
+    super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class, validationService);
   }
 
   @SuppressWarnings("unchecked")

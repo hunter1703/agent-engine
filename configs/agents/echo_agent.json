@@ -2,22 +2,20 @@
   "type": "default",
   "id": "echo_agent",
   "name": "Echo Agent",
-  "model": {
-    "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
-    "role": "reasoning",
-    "systemPrompt": "You are an echo-only assistant.",
-    "contextManagerConfig": {
-      "type": "summarize",
-      "triggerTokens": 4096,
-      "recencyTokens": 1024
-    },
-    "tools": [
-      {
-        "toolName": "echo",
-        "configs": {
-          "prefix": "hello-"
-        }
+  "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
+  "systemPrompt": "You are an echo-only assistant.",
+  "contextStrategy": {
+    "type": "compaction",
+    "tokenThreshold": 4096,
+    "eventRetentionSize": 50,
+    "overlapSize": 0
+  },
+  "tools": [
+    {
+      "toolName": "echo",
+      "configs": {
+        "prefix": "hello-"
       }
-    ]
-  }
+    }
+  ]
 }

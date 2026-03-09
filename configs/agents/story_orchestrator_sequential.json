@@ -1,0 +1,21 @@
+{
+  "type": "orchestrator",
+  "id": "story_orchestrator_sequential",
+  "name": "Story Orchestrator (Sequential)",
+  "description": "Canonical 6-phase story pipeline modeled with SequentialAgent composition.",
+  "orchestrationMode": "SEQUENTIAL",
+  "subAgentIds": [
+    "story_phase_1_brief",
+    "story_phase_2_outline",
+    "story_phase_3_characters",
+    "story_phase_4_draft",
+    "story_phase_5_polish",
+    "story_phase_6_final"
+  ],
+  "contextStrategy": {
+    "type": "compaction",
+    "tokenThreshold": 4096,
+    "eventRetentionSize": 50,
+    "overlapSize": 0
+  }
+}

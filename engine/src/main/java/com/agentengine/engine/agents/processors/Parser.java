@@ -5,14 +5,9 @@ import static com.agentengine.engine.api.utils.JsonUtils.parseJsonPayload;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
- 
+
 import com.agentengine.engine.tools.ToolUtils;
-import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.engine.utils.Violation;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.adk.agents.InvocationContext;
-import com.google.adk.flows.llmflows.RequestProcessor;
-import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -20,7 +15,6 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
-import io.reactivex.rxjava3.core.Single;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -40,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Ownership: content normalization, parsing, and protocol hygiene.
  */
-public final class Parser implements RequestProcessor, ResponseProcessor {
+public final class Parser {
   private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
   private static final String FINAL_ANSWER_KEY = "finalAnswer";
   private static final Pattern TOOL_CALL_PATTERN =
@@ -68,12 +62,10 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
     return new Parser(ResponseFormatType.TEXT, false, false);
   }
 
-  @Override
-  public Single<RequestProcessingResult> processRequest(
-          final InvocationContext context, final LlmRequest request) {
+  public LlmRequest normalizeRequest(final LlmRequest request) {
     final List<Content> contents = new ArrayList<>();
     for (final Content content : CollectionUtils.nullSafeList(request.contents())) {
-        final List<Part> toolCallParts = new ArrayList<>();
+      final List<Part> toolCallParts = new ArrayList<>();
       final List<Part> toolResponseParts = new ArrayList<>();
       final List<Part> nonThoughtsPart = new ArrayList<>();
 
@@ -98,51 +90,24 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
 
       if (CollectionUtils.isNotEmpty(parts) || CollectionUtils.isNotEmpty(toolResponsePartsList)) {
         if (CollectionUtils.isNotEmpty(parts)) {
-            contents.add(content.toBuilder().parts(parts).build());
+          contents.add(content.toBuilder().parts(parts).build());
         }
         if (CollectionUtils.isNotEmpty(toolResponsePartsList)) {
           contents.add(Content.builder().role("user").parts(toolResponsePartsList).build());
         }
       }
     }
-
-    return Single.just(
-            RequestProcessingResult.create(request.toBuilder().contents(contents).build(), List.of()));
-  }
-
-  @Override
-  public Single<ResponseProcessingResult> processResponse(
-      final InvocationContext context, final LlmResponse response) {
-    if (response.content().isEmpty()) {
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    final LlmRequest normalized = request.toBuilder().contents(contents).build();
+    if (CollectionUtils.isEmpty(normalized.tools()) || (toolCallingEnabled && !parseToolCallsFromText)) {
+      return normalized;
     }
-
-    final boolean isPartial = response.partial().orElse(false);
-
-    final LlmResponse.Builder builder = response.toBuilder();
-    Content updatedContent = response.content().get();
-
-    if (isPartial) {
-      final List<Part> normalizedParts = normalizeParts(updatedContent.parts().orElse(new ArrayList<>()));
-      final boolean hasToolParts = normalizedParts.stream().anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
-      if (hasToolParts) {
-        final String toolSummary = ToolUtils.summarizeToolParts(normalizedParts);
-        final String correctionMessage = toolSummary.isBlank()
-                ? "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
-                : "Tool calls and responses are not allowed in partial responses. Emit them only in non-partial turns."
-                + " Following tool parts have been stripped : " + toolSummary + ".";
-         RunStateUtils.getState(context).addViolation(Violation.builder("partial_tool_calls")
-              .message("Tool calls in partial response")
-              .correctionMessage(correctionMessage)
-              .build());
-      }
-      updatedContent = updatedContent.toBuilder().parts(extractTextParts(normalizedParts)).build();
-    } else {
-      updatedContent = parse(updatedContent);
-    }
-
-    builder.content(updatedContent);
-    return Single.just(ResponseProcessingResult.create(builder.build(), List.of(), Optional.empty()));
+    // Strip tool declarations when the model should not receive them natively
+    final LlmRequest.Builder stripped = LlmRequest.builder()
+        .contents(normalized.contents())
+        .liveConnectConfig(normalized.liveConnectConfig());
+    normalized.model().ifPresent(stripped::model);
+    normalized.config().ifPresent(stripped::config);
+    return stripped.build();
   }
 
   public Content parse(Content content) {
@@ -331,15 +296,6 @@ public final class Parser implements RequestProcessor, ResponseProcessor {
     return normalized;
   }
 
-  private static List<Part> extractTextParts(final List<Part> parts) {
-    final List<Part> textParts = new ArrayList<>();
-    for (final Part part : parts) {
-      if (part.text().isPresent()) {
-        textParts.add(part);
-      }
-    }
-    return textParts;
-  }
 
   private List<Part> buildJsonFormatParts(List<Part> nonThoughtsPart, List<Part> toolCallParts) {
 

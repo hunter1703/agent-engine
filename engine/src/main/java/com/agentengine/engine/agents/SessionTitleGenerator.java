@@ -1,11 +1,9 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
-import com.agentengine.engine.utils.LazyLoader;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
@@ -26,32 +24,20 @@ public final class SessionTitleGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(SessionTitleGenerator.class);
   private static final int MAX_EVENTS = 30;
   private static final int MAX_TITLE_LENGTH = 80;
-  private final LazyLoader<BaseLlm> titleGeneratorModelLoader;
+  private final InfraMongoRepository infraMongoRepository;
+  private final ModelProvider modelProvider;
 
   public SessionTitleGenerator(
       InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
-    this.titleGeneratorModelLoader =
-        new LazyLoader<>(
-            () -> {
-              final AgentModelConfig agentModelConfig = new AgentModelConfig();
-              agentModelConfig.setRole("title_generator");
-              agentModelConfig.setSystemPrompt(
-                  "You are a helpful assistant that generates concise and descriptive titles for conversations based on their content. The title should capture the main topic or theme of the conversation in a clear and engaging way.");
-              final String modelId = resolveTitleModelId(infraMongoRepository);
-              if (StringUtils.isBlank(modelId)) {
-                LOG.warn("Title generator configuration not found or incomplete");
-                return null;
-              }
-              agentModelConfig.setModelId(modelId);
-              return modelProvider.get(agentModelConfig);
-            });
+    this.infraMongoRepository = infraMongoRepository;
+    this.modelProvider = modelProvider;
   }
 
-  private static String resolveTitleModelId(final InfraMongoRepository infraMongoRepository) {
+  private String resolveTitleModelId() {
     try {
       final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       if (defaults != null && StringUtils.isNotBlank(defaults.getTitleModelId())) {
-        return defaults.getTitleModelId();
+        return defaults.getTitleModelId().trim();
       }
     } catch (Exception ex) {
       LOG.warn("Failed to load default model config for title generation.");
@@ -133,26 +119,36 @@ public final class SessionTitleGenerator {
   }
 
   public Optional<String> generateTitle(final List<Event> events) {
-    final BaseLlm titleGeneratorModel = titleGeneratorModelLoader.getInstance();
-    if (titleGeneratorModel == null) {
+    final String modelId = resolveTitleModelId();
+    if (StringUtils.isBlank(modelId)) {
+      LOG.warn("Title generator configuration not found or incomplete");
       return Optional.empty();
     }
-    final List<Event> conversationEvents = filterConversationEvents(events);
-    if (conversationEvents.isEmpty()) {
-      return Optional.empty();
-    }
-    final int startIndex = Math.max(0, conversationEvents.size() - MAX_EVENTS);
-    final List<Event> recentEvents =
-        conversationEvents.subList(startIndex, conversationEvents.size());
-    final String transcript = buildTranscript(recentEvents);
-    if (StringUtils.isBlank(transcript)) {
-      return Optional.empty();
-    }
-    final String prompt = buildPrompt(transcript);
-    final Content promptContent =
-        Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
-    final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
+
+    final BaseLlm titleGeneratorModel;
     try {
+      titleGeneratorModel = modelProvider.get(modelId);
+    } catch (Exception ex) {
+      LOG.warn("Failed to acquire model for title generation. model_id={}", modelId, ex);
+      return Optional.empty();
+    }
+
+    try {
+      final List<Event> conversationEvents = filterConversationEvents(events);
+      if (conversationEvents.isEmpty()) {
+        return Optional.empty();
+      }
+      final int startIndex = Math.max(0, conversationEvents.size() - MAX_EVENTS);
+      final List<Event> recentEvents =
+          conversationEvents.subList(startIndex, conversationEvents.size());
+      final String transcript = buildTranscript(recentEvents);
+      if (StringUtils.isBlank(transcript)) {
+        return Optional.empty();
+      }
+      final String prompt = buildPrompt(transcript);
+      final Content promptContent =
+          Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
+      final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
       final LlmResponse response =
           titleGeneratorModel.generateContent(request, false).blockingFirst();
       final String rawTitle = response.content().map(Content::text).orElse(null);
@@ -160,6 +156,8 @@ public final class SessionTitleGenerator {
     } catch (Exception e) {
       LOG.warn("Failed to generate session title", e);
       return Optional.empty();
+    } finally {
+      modelProvider.release(modelId);
     }
   }
 

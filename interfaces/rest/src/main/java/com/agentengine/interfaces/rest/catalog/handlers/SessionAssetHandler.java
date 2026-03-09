@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
+import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
@@ -14,6 +15,7 @@ import com.google.adk.events.Event;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +41,9 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
     final boolean includeEvents = shouldIncludeEvents(request);
+    final Query query = resolveQuery(request, includeEvents);
     final PaginatedResult<AgentSession> result =
-        sessionService.findSessions(request.getQuery(), includeEvents);
+        sessionService.findSessions(query);
     return result.transform(
         session -> {
           final AgentSessionDTO dto =
@@ -121,5 +124,25 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
     }
     return Boolean.TRUE.equals(
         CollectionUtils.getBooleanValueFromMap(request.getOptions(), INCLUDE_EVENTS_OPTION));
+  }
+
+  private static Query resolveQuery(final AssetRequest request, final boolean includeEvents) {
+    final Query source = request == null || request.getQuery() == null ? new Query() : request.getQuery();
+    if (includeEvents) {
+      return source;
+    }
+    final Query query = new Query();
+    query.setFilter(source.getFilter());
+    query.setPage(source.getPage());
+    query.setSort(source.getSort());
+    query.setIncludeCount(source.isIncludeCount());
+    query.setIncludeFields(source.getIncludeFields());
+
+    final List<String> excluded = new ArrayList<>(CollectionUtils.nullSafeList(source.getExcludeFields()));
+    if (!excluded.contains("sessionInfo.eventsJson")) {
+      excluded.add("sessionInfo.eventsJson");
+    }
+    query.setExcludeFields(excluded);
+    return query;
   }
 }

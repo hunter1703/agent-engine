@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.local.bootstrap;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
@@ -91,7 +91,7 @@ public class Bootstrapper {
               p -> {
                 LOG.info("Found agent config file: {}", p);
                 try {
-                  AgentConfig config = JsonUtils.fromFile(p, AgentConfig.class);
+                  BaseAgentConfig config = JsonUtils.fromFile(p, BaseAgentConfig.class);
                   if (config.getId() == null) {
                     config.setId(p.getFileName().toString().replace(".json", ""));
                   }

@@ -1,6 +1,6 @@
 package com.agentengine.engine.services;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.services.AgentService;
@@ -19,31 +19,31 @@ public class AgentServiceImpl implements AgentService {
 
   @Override
   @WithSpan
-  public PaginatedResult<AgentConfig> findAgents(Query query) {
+  public PaginatedResult<BaseAgentConfig> findAgents(Query query) {
     return agentRepository.findByQuery(query);
   }
 
   @Override
   @WithSpan
-  public Optional<AgentConfig> getAgent(String id) {
+  public Optional<BaseAgentConfig> getAgent(String id) {
     return agentRepository.findById(id);
   }
 
   @Override
   @WithSpan
-  public AgentConfig createAgent(final AgentConfig agent) {
+  public BaseAgentConfig createAgent(final BaseAgentConfig agent) {
     return agentRepository.insert(agent);
   }
 
   @Override
   @WithSpan
-  public AgentConfig saveAgent(AgentConfig agent) {
+  public BaseAgentConfig saveAgent(BaseAgentConfig agent) {
     return agentRepository.save(agent);
   }
 
   @Override
   @WithSpan
-  public AgentConfig updateAgent(AgentConfig agent) {
+  public BaseAgentConfig updateAgent(BaseAgentConfig agent) {
     return agentRepository.update(agent.getId(), agent);
   }
 

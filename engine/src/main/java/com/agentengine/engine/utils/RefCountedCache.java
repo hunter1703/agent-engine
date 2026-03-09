@@ -3,7 +3,6 @@ package com.agentengine.engine.utils;
 import com.agentengine.engine.api.utils.StringUtils;
 import jakarta.annotation.PreDestroy;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -30,7 +29,7 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
 
   private final String name;
   private final long idleTimeoutMillis;
-  private final Function<K, V> creator;
+  private final Function<K, V> defaultCreator;
   private final BiConsumer<K, V> evictHandler;
   private final ConcurrentMap<K, Entry<V>> entries = new ConcurrentHashMap<>();
   private final ScheduledExecutorService cleanupExecutor;
@@ -41,13 +40,13 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
       final TimeUnit idleTimeoutUnit,
       final long cleanupInterval,
       final TimeUnit cleanupIntervalUnit,
-      final Function<K, V> creator,
+      final Function<K, V> defaultCreator,
       final BiConsumer<K, V> evictHandler) {
     this.name = StringUtils.isBlank(name) ? "ref-counted-cache" : name;
     this.idleTimeoutMillis = Math.max(1L, idleTimeoutUnit.toMillis(Math.max(1L, idleTimeout)));
     final long cleanupIntervalMillis =
         Math.max(1L, cleanupIntervalUnit.toMillis(Math.max(1L, cleanupInterval)));
-    this.creator = Objects.requireNonNull(creator, "creator cannot be null");
+    this.defaultCreator = defaultCreator;
     this.evictHandler = evictHandler == null ? (_key, _value) -> {} : evictHandler;
     this.cleanupExecutor =
         Executors.newSingleThreadScheduledExecutor(
@@ -64,13 +63,22 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
   }
 
   public V getAndAcquire(final K key) {
+    return getAndAcquire(key, null);
+  }
+
+  public V getAndAcquire(final K key, final Function<K, V> creatorOnMiss) {
+    final Function<K, V> effectiveCreator = creatorOnMiss != null ? creatorOnMiss : defaultCreator;
+    if (effectiveCreator == null) {
+      throw new IllegalStateException(
+          "No creator configured for cache '" + name + "'. Provide builder creator or on-miss creator.");
+    }
     final long now = System.currentTimeMillis();
     final Entry<V> entry =
         entries.compute(
             key,
             (_key, existing) -> {
               if (existing == null) {
-                return new Entry<>(creator.apply(key), now);
+                return new Entry<>(effectiveCreator.apply(key), now);
               }
               return existing;
             });

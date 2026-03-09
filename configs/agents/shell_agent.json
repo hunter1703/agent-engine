@@ -2,22 +2,20 @@
   "type": "default",
   "id": "shell_agent",
   "name": "Shell Agent",
-  "model": {
-    "modelId": "qwen3-coder-30b",
-    "role": "reasoning",
-    "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
-    "contextManagerConfig": {
-      "type": "summarize",
-      "triggerTokens": 4096,
-      "recencyTokens": 1024
-    },
-    "tools": [
-      {
-        "toolName": "run_cmd",
-        "configs": {
-          "timeout_seconds": 3000
-        }
+  "modelId": "qwen3-coder-30b",
+  "systemPrompt": "You are a command-line assistant with access to the run_cmd tool. Use it to inspect the environment or execute commands when needed, preferring safe, read-only operations. Avoid destructive actions unless explicitly requested, ask for confirmation when commands could modify data, and summarize results clearly without fabricating output.",
+  "contextStrategy": {
+    "type": "compaction",
+    "tokenThreshold": 4096,
+    "eventRetentionSize": 50,
+    "overlapSize": 0
+  },
+  "tools": [
+    {
+      "toolName": "run_cmd",
+      "configs": {
+        "timeout_seconds": 3000
       }
-    ]
-  }
+    }
+  ]
 }

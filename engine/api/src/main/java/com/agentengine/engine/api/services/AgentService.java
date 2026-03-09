@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.services;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.ms.MicroService;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
@@ -8,15 +8,15 @@ import java.util.Optional;
 
 @MicroService
 public interface AgentService {
-  PaginatedResult<AgentConfig> findAgents(Query query);
+  PaginatedResult<BaseAgentConfig> findAgents(Query query);
 
-  Optional<AgentConfig> getAgent(String id);
+  Optional<BaseAgentConfig> getAgent(String id);
 
-  AgentConfig createAgent(AgentConfig agent);
+  BaseAgentConfig createAgent(BaseAgentConfig agent);
 
-  AgentConfig saveAgent(AgentConfig agent);
+  BaseAgentConfig saveAgent(BaseAgentConfig agent);
 
-  AgentConfig updateAgent(AgentConfig agent);
+  BaseAgentConfig updateAgent(BaseAgentConfig agent);
 
   boolean deleteAgent(String id);
 }

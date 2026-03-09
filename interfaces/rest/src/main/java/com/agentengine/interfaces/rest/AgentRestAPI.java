@@ -7,7 +7,7 @@ import static java.util.UUID.randomUUID;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
-import com.agentengine.engine.api.beans.config.AgentConfig;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.JsonUtils;
@@ -15,6 +15,7 @@ import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
+import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
 import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
@@ -101,9 +102,9 @@ public class AgentRestAPI {
   @APIResponse(
       responseCode = "201",
       description = "Agent created",
-      content = @Content(schema = @Schema(implementation = AgentConfig.class)))
+      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
-  public AgentConfig createAgent(final AgentConfig agentConfig) {
+  public BaseAgentConfig createAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
@@ -116,8 +117,8 @@ public class AgentRestAPI {
   @APIResponse(
       responseCode = "200",
       description = "Agent created or updated",
-      content = @Content(schema = @Schema(implementation = AgentConfig.class)))
-  public AgentConfig upsertAgent(final AgentConfig agentConfig) {
+      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
@@ -130,10 +131,10 @@ public class AgentRestAPI {
   @APIResponse(
       responseCode = "200",
       description = "Agent updated",
-      content = @Content(schema = @Schema(implementation = AgentConfig.class)))
+      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "404", description = "Agent not found")
-  public AgentConfig updateAgent(
-      @PathParam("agentId") final String agentId, final AgentConfig agentConfig) {
+  public BaseAgentConfig updateAgent(
+      @PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
     if (agentConfig == null || StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent config is required", 400);
     }
@@ -147,6 +148,34 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "404", description = "Agent not found")
   public boolean deleteAgent(@PathParam("agentId") final String agentId) {
     return agentService.deleteAgent(agentId);
+  }
+
+  @POST
+  @Path("/session/{sessionId}/resume/events")
+  @Produces(SERVER_SENT_EVENTS)
+  @RestStreamElementType(APPLICATION_JSON)
+  @Operation(summary = "Resume a paused session and stream events")
+  @APIResponse(
+      responseCode = "200",
+      description = "SSE event stream in AG-UI format",
+      content =
+          @Content(
+              mediaType = SERVER_SENT_EVENTS,
+              schema = @Schema(implementation = BaseEvent.class)))
+  @APIResponse(responseCode = "404", description = "Session not found")
+  public Publisher<BaseEvent> resumeEvents(
+      @PathParam("sessionId") final String sessionId,
+      @Valid final ResumeSessionRequest resumeRequest) {
+    final var session =
+        sessionService
+            .getSession(sessionId)
+            .orElseThrow(() -> new WebApplicationException("Session not found", 404));
+    final AgentRequest request = new AgentRequest();
+    request.setType(STREAM_AGUI_EVENTS.name());
+    request.setAgentId(session.getAgentId());
+    request.setSessionId(sessionId);
+    request.setMessage(resumeRequest.getMessage());
+    return events(request);
   }
 
   @DELETE

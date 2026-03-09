@@ -7,6 +7,7 @@ import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.MongoUtils;
+import com.agentengine.engine.validation.ConfigValidationService;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -15,6 +16,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -38,28 +40,23 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   protected String collectionName;
   protected Class<T> entityClass;
   protected String databaseName;
-
-  protected AbstractMongoRepository() {
-    this.mongoClient = null;
-    this.collectionName = null;
-    this.entityClass = null;
-    this.databaseName = null;
-  }
+  protected ConfigValidationService configValidationService;
 
   public AbstractMongoRepository(
-      final MongoClientFactory mongoClientFactory, String collectionName, Class<T> entityClass) {
-    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass);
+      final MongoClientFactory mongoClientFactory, String collectionName, Class<T> entityClass, ConfigValidationService configValidationService) {
+    this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass, configValidationService);
   }
 
   public AbstractMongoRepository(
       final MongoClientFactory mongoClientFactory,
       String databaseName,
       String collectionName,
-      Class<T> entityClass) {
+      Class<T> entityClass, ConfigValidationService validationService) {
     this.mongoClient = mongoClientFactory.getClient();
     this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
+    this.configValidationService = validationService;
   }
 
   public AbstractMongoRepository(
@@ -95,6 +92,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   @Override
   public T insert(T entity) {
     try {
+      validateEntity(entity);
       if (StringUtils.isBlank(entity.getId())) {
         entity.setId(new ObjectId().toHexString());
       }
@@ -117,7 +115,12 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       final Bson updateOperation = MongoUtils.toBsonUpdate(update);
       final FindOneAndUpdateOptions options =
           new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
-      return getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
+      final T updated =
+          getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
+      if (updated != null && configValidationService != null) {
+        configValidationService.validate(updated);
+      }
+      return updated;
     } catch (Exception e) {
       LOG.error("Error updating entity: {}", id, e);
       throw new RuntimeException("Error updating entity: " + id, e);
@@ -140,6 +143,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   private T _update(final String id, final T entity, final boolean upsert) {
     try {
       entity.setId(id);
+      validateEntity(entity);
       ReplaceOptions options = new ReplaceOptions().upsert(upsert);
       getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
       return entity;
@@ -215,5 +219,14 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
   protected MongoCollection<T> getCollection() {
     return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
+  }
+
+  private void validateEntity(final T entity) {
+    if (entity == null) {
+      throw new IllegalArgumentException("Entity is required.");
+    }
+    if (configValidationService != null) {
+      configValidationService.validate(entity);
+    }
   }
 }

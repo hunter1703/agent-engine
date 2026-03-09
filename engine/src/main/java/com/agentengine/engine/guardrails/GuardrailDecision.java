@@ -13,7 +13,8 @@ public record GuardrailDecision(
   }
 
   public static GuardrailDecision allow() {
-    return new GuardrailDecision(GuardrailAction.ALLOW, "guardrail_allow", "Allowed", Map.of());
+    return new GuardrailDecision(
+        GuardrailAction.ALLOW, GuardrailConstants.Code.ALLOW, "Allowed", Map.of());
   }
 
   public static GuardrailDecision warn(final String code, final String message) {

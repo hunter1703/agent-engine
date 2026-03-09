@@ -1,22 +1,22 @@
 package com.agentengine.engine.builders.context;
 
-import com.agentengine.engine.api.beans.config.ContextManagerConfig;
-import com.agentengine.engine.api.beans.config.LastNContextManagerConfig;
+import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
+import com.agentengine.engine.api.beans.config.LastNContextStrategyConfig;
 import com.agentengine.engine.api.builders.ContextManagerBuilder;
 import com.agentengine.engine.context.LastNContextManager;
 import jakarta.inject.Singleton;
 
 @Singleton
 public class LastNContextManagerBuilder
-    implements ContextManagerBuilder<LastNContextManagerConfig, LastNContextManager> {
+    implements ContextManagerBuilder<LastNContextStrategyConfig, LastNContextManager> {
 
   @Override
-  public LastNContextManager build(final LastNContextManagerConfig contextConfig) {
-    return new LastNContextManager(contextConfig.getKeepLast());
+  public LastNContextManager build(final LastNContextStrategyConfig contextConfig) {
+    return new LastNContextManager(contextConfig.getKeepLastTokens());
   }
 
   @Override
   public String type() {
-    return ContextManagerConfig.ContextType.LAST_N.name().toLowerCase();
+    return ContextStrategyConfig.ContextStrategyType.LAST_N.name().toLowerCase();
   }
 }

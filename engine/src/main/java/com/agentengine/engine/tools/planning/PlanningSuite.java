@@ -1,6 +1,5 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.AgentContext;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
@@ -51,9 +50,7 @@ public final class PlanningSuite implements ToolProvider, ToolSuite {
   }
 
   @Override
-  public BaseTool create(
-      final AgentContext agentContext,
-      final String toolName,
+  public BaseTool create(final String toolName,
       final Map<String, Object> toolConfig) {
     if (StringUtils.isBlank(toolName)) {
       return null;
