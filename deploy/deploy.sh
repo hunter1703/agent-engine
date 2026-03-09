@@ -29,6 +29,50 @@ echo "Starting MongoDB infrastructure..."
 cd "$PROJECT_ROOT"
 docker-compose -f deploy/docker-compose.yaml up -d mongodb
 
+upsert_connections() {
+    CONNECTIONS_FILE="$PROJECT_ROOT/deploy/connections.json"
+
+    if [ ! -f "$CONNECTIONS_FILE" ]; then
+        echo "No connections file found at $CONNECTIONS_FILE. Skipping connection upsert."
+        return
+    fi
+
+    CONNECTIONS_JSON="$(cat "$CONNECTIONS_FILE")"
+    if [ -z "${CONNECTIONS_JSON//[[:space:]]/}" ]; then
+        echo "Connections file is empty. Skipping connection upsert."
+        return
+    fi
+
+    echo "Upserting connections from $CONNECTIONS_FILE..."
+    docker-compose -f deploy/docker-compose.yaml exec -T \
+      -e CONNECTIONS_JSON="$CONNECTIONS_JSON" \
+      mongodb mongosh --quiet --eval '
+const docs = JSON.parse(process.env.CONNECTIONS_JSON ?? "[]");
+if (!Array.isArray(docs)) {
+  throw new Error("connections.json must be a JSON array");
+}
+const collection = db.getSiblingDB("AGENT_ENGINE").getCollection("Connection");
+let upserts = 0;
+let skipped = 0;
+for (const doc of docs) {
+  if (!doc || typeof doc !== "object" || !doc.appName || String(doc.appName).trim() === "") {
+    skipped++;
+    continue;
+  }
+  const payload = {
+    appName: doc.appName,
+    inputs: doc.inputs && typeof doc.inputs === "object" ? doc.inputs : {}
+  };
+  collection.updateOne({ appName: doc.appName }, { $set: payload }, { upsert: true });
+  upserts++;
+}
+print(`connections_upserted=${upserts}`);
+if (skipped > 0) {
+  print(`connections_skipped=${skipped}`);
+}
+'
+}
+
 # 2. Define Bootstrap Function
 bootstrap_data() {
     API_URL="http://localhost:18080"
@@ -44,6 +88,7 @@ bootstrap_data() {
 # 3. Launch the requested environment
 if [ "$MODE" == "dev" ]; then
     echo "Starting in DEV mode (Monolith)..."
+    upsert_connections
     
     # Run bootstrap asynchronously if requested
     if [ "$BOOTSTRAP" = true ]; then
@@ -57,6 +102,7 @@ fi
 
 if [ "$MODE" == "production" ]; then
     echo "Starting in PRODUCTION mode (Separate Services)..."
+    upsert_connections
     
     cd "$PROJECT_ROOT"
     mkdir -p "$PROJECT_ROOT/logs"

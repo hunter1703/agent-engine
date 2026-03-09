@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
 import io.quarkus.runtime.StartupEvent;

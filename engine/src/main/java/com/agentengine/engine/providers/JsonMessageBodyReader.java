@@ -1,6 +1,6 @@
 package com.agentengine.engine.providers;
 
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.exceptions.JsonDeserializationException;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.ws.rs.Consumes;

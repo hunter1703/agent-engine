@@ -19,6 +19,7 @@ bin/
 !gradle/wrapper/gradle-wrapper.jar
 *.gguf
 llamacpp_models/
+deploy/connections.json
 !gradlew
 !gradlew.bat
 !gradle/wrapper/

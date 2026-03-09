@@ -7,7 +7,7 @@ Add the dependency to your project:
 ```gradle
 implementation project(':connectors:core')
 ```
-For Quarkus applications, the core components such as `ConnectorExecutor`, `RequestMaterializer`, and `TemplateResolver` are automatically produced as CDI beans via the `ConnectorCoreProducer` and can be injected directly without additional configuration.
+The core module includes `jakarta.inject` annotations, so these components can be wired by a DI container. A dedicated Quarkus adapter module is not part of this tree yet.
 
 ## Execution API
 The core entry point is `ConnectorExecutor`, providing two execution paths:
@@ -19,6 +19,7 @@ When resolving configuration templates, the framework makes the following root v
 * `input`: A user-supplied `Map` of inputs for the connector.
 * `rawPayload`: The original triggering event or raw message payload.
 * `auth`: A `Map` of resolved authentication tokens or credentials securely merged at runtime.
+* `connection`: A runtime connection object with `appName` and `inputs` (auth values). Use `connection.appName` and `connection.inputs.token`.
 * `previous`: A `Map` containing data and metadata from the previous page execution. This is primarily used for pagination template expressions.
 * `vars`: Any custom dynamic variables injected during evaluation or materialization.
 
@@ -59,7 +60,7 @@ The `GroovySandboxEvaluator` uses an aggressive AST Customizer to secure executi
 * Rejects multi-line evaluation and expressions over configured length limits.
 
 ## Examples
-Runnable configurations can be found in the [examples](./examples) director:
+Runnable configurations can be found in the [examples](./examples) directory:
 * [Simple Static GET](examples/example1.json)
 * [Dynamic JSON POST](examples/example2.json)
 * [Cursor Pagination](examples/example3.json)

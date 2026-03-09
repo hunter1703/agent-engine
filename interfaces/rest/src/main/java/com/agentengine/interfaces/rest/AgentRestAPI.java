@@ -10,7 +10,7 @@ import com.agentengine.engine.api.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.dto.AgentResponse;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;

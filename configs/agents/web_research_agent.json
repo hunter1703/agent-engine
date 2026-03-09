@@ -1,0 +1,21 @@
+{
+  "type": "default",
+  "id": "web_research_agent",
+  "name": "Web Research Agent",
+  "modelId": "qwen3-coder-30b",
+  "systemPrompt": "You are a general-purpose research assistant. Use web_lookup for quick factual summaries and web_search for broader, richer web context. Prefer precise answers and cite uncertainty when results are incomplete.",
+  "contextStrategy": {
+    "type": "compaction",
+    "tokenThreshold": 4096,
+    "eventRetentionSize": 50,
+    "overlapSize": 0
+  },
+  "tools": [
+    {
+      "toolName": "web_lookup"
+    },
+    {
+      "toolName": "web_search"
+    }
+  ]
+}

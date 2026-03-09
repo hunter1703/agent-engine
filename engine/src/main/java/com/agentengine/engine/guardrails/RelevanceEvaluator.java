@@ -1,6 +1,6 @@
 package com.agentengine.engine.guardrails;
 
-import static com.agentengine.engine.api.utils.JsonUtils.parseJsonPayload;
+import static com.agentengine.util.JsonUtils.parseJsonPayload;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;

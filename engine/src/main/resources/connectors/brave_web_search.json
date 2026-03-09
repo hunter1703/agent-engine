@@ -1,0 +1,40 @@
+{
+  "id": "brave_web_search",
+  "appName": "brave",
+  "endpoint": {
+    "method": "POST",
+    "baseUrl": "https://api.search.brave.com",
+    "path": "/res/v1/llm/context"
+  },
+  "headers": {
+    "accept": "application/json",
+    "Accept-Encoding": "gzip"
+  },
+  "auth": {
+    "type": "API_KEY_HEADER",
+    "headerName": "x-subscription-token",
+    "apiKeyTemplate": "${input.auth.token}"
+  },
+  "body": {
+    "type": "JSON",
+    "omitNulls": true,
+    "template": {
+      "q": {
+        "$expr": "input.query"
+      },
+      "country": {
+        "$expr": "input.country"
+      },
+      "search_lang": {
+        "$expr": "input.search_lang"
+      },
+      "maximum_number_of_tokens": {
+        "$expr": "input.maximum_number_of_tokens"
+      }
+    }
+  },
+  "responseMapping": {
+    "dataJsonPath": "$"
+  },
+  "strictUnresolvedVariables": true
+}

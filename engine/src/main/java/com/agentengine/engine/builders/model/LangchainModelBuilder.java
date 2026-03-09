@@ -2,7 +2,7 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.api.utils.ResourceUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.ModelUtils;

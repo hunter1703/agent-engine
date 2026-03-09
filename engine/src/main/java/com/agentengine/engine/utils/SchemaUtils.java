@@ -1,6 +1,6 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
 import io.vertx.json.schema.common.dsl.ArraySchemaBuilder;

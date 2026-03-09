@@ -1,0 +1,31 @@
+{
+  "id": "stripe-list-customers",
+  "appName": "stripe",
+  "endpoint": {
+    "method": "GET",
+    "baseUrl": "https://api.stripe.com",
+    "path": "/v1/customers"
+  },
+  "auth": {
+    "type": "BEARER_TOKEN",
+    "bearerToken": "{{ auth.stripeKey }}"
+  },
+  "query": {
+    "limit": "100"
+  },
+  "pagination": {
+    "type": "CURSOR",
+    "maxPages": 5,
+    "cursorQueryParam": "starting_after",
+    "responseCursorPath": "$.data[-1:].id",
+    "responseResultsPath": "$.data"
+  },
+  "retryPolicy": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "initialDelayMs": 1000,
+    "backoffType": "EXPONENTIAL",
+    "backoffMultiplier": 2.0,
+    "retryableStatusCodes": [429, 500, 502, 503, 504]
+  }
+}

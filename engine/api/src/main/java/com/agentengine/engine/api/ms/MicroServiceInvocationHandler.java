@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.ms;
 
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.grpc.Request;
 import com.agentengine.engine.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;

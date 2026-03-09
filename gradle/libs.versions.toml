@@ -12,6 +12,8 @@ junit = "5.10.3"
 mockito = "5.11.0"
 ag-ui = "0.0.1"
 ok-http = "4.12.0"
+okhttp = "4.12.0"
+groovy = "4.0.26"
 langchain4j-plugin = "1.8.0"
 microprofile-openapi = "3.1.1"
 protobuf = "3.25.3"
@@ -91,6 +93,9 @@ mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
 microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = "microprofile-openapi-api", version.ref = "microprofile-openapi" }
 json-path = { group = "com.jayway.jsonpath", name = "json-path", version = "2.9.0" }
+groovy = { group = "org.apache.groovy", name = "groovy", version.ref = "groovy" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 
 # gRPC & Protobuf
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }

@@ -1,7 +1,7 @@
 package com.agentengine.engine.utils;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.google.adk.agents.InvocationContext;
 import java.time.Instant;
 import java.util.List;

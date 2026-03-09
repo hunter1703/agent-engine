@@ -1,9 +1,9 @@
 package com.agentengine.engine.agents.processors;
 
-import static com.agentengine.engine.api.utils.JsonUtils.parseJsonPayload;
+import static com.agentengine.util.JsonUtils.parseJsonPayload;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 
 import com.agentengine.engine.tools.ToolUtils;

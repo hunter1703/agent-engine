@@ -1,0 +1,11 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    api libs.jackson.databind
+    api libs.jackson.dataformat.yaml
+    api libs.json.path
+    implementation libs.google.adk.core
+    implementation libs.slf4j.api
+}

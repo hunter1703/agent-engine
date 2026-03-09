@@ -1,0 +1,16 @@
+{
+  "id": "duckduckgo-instant-answer",
+  "appName": "duckduckgo",
+  "endpoint": {
+    "method": "GET",
+    "baseUrl": "https://api.duckduckgo.com",
+    "path": "/"
+  },
+  "query": {
+    "q": "${input.query}",
+    "format": "json"
+  },
+  "responseMapping": {
+    "dataJsonPath": "$.AbstractText"
+  }
+}

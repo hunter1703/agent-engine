@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    api project(':util')
     api libs.mongodb.bson
     api libs.google.adk.core
     api libs.microprofile.openapi.api

@@ -1,0 +1,19 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation project(':util')
+    implementation libs.json.path
+    implementation libs.jakarta.validation.api
+    implementation libs.jakarta.inject.api
+    implementation libs.slf4j.api
+    implementation libs.groovy
+    implementation libs.okhttp
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+    testImplementation libs.okhttp.mockwebserver
+}
