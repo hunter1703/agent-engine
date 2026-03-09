@@ -2,30 +2,56 @@ package com.agentengine.engine.api.beans.session;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.utils.JsonUtils;
+import com.google.adk.events.Event;
+import com.google.adk.sessions.Session;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 class SessionInfoTest {
 
   @Test
-  void getEventsJsonSerializesCurrentEvents() {
-    final SessionInfo info = new SessionInfo();
-    final List<Map<String, Object>> events = List.of(Map.of("id", "event-1"));
+  void shouldRoundTripSessionWhenConvertingFromAndToSession() {
+    final Event event =
+        Event.builder()
+            .id("event-1")
+            .invocationId("inv-1")
+            .author("user")
+            .timestamp(Instant.now().toEpochMilli())
+            .content(
+                Content.builder().role("user").parts(List.of(Part.fromText("hello"))).build())
+            .build();
+    final Session sourceSession =
+        Session.builder("session-1")
+            .appName("agent-a")
+            .userId("user-a")
+            .state(new ConcurrentHashMap<>(Map.of("key", "value")))
+            .events(List.of(event))
+            .lastUpdateTime(Instant.now())
+            .build();
 
-    info.setEvents(events);
+    final SessionInfo sessionInfo = SessionInfo.fromSession(sourceSession);
+    final Session restored = sessionInfo.toSession();
 
-    assertThat(info.getEventsJson()).isEqualTo(JsonUtils.toJson(events));
+    assertThat(restored.id()).isEqualTo(sourceSession.id());
+    assertThat(restored.appName()).isEqualTo(sourceSession.appName());
+    assertThat(restored.userId()).isEqualTo(sourceSession.userId());
+    assertThat(restored.state()).containsEntry("key", "value");
+    assertThat(restored.events()).hasSize(1);
+    assertThat(restored.events().getFirst().id()).isEqualTo("event-1");
   }
 
   @Test
-  void setEventsJsonHandlesInvalidPayload() {
-    final SessionInfo info = new SessionInfo();
+  void shouldFallbackToEmptyEventsWhenEventsJsonInvalid() {
+    final SessionInfo sessionInfo = new SessionInfo();
 
-    info.setEventsJson("enc::not-json");
+    sessionInfo.setEventsJson("not-json");
 
-    assertThat(info.getEvents()).isEmpty();
-    assertThat(info.getEventsJson()).isEqualTo("[]");
+    assertThat(sessionInfo.getEvents()).isEmpty();
+    assertThat(sessionInfo.getEventsJson()).isEqualTo("[]");
   }
 }

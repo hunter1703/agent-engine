@@ -29,8 +29,18 @@ dependencies {
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
     testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
     testImplementation libs.rest.assured
     testImplementation libs.hamcrest
+
+    integrationTestImplementation project(':engine')
+    integrationTestImplementation libs.quarkus.junit5
+    integrationTestImplementation libs.assertj.core
+    integrationTestImplementation libs.rest.assured
+    integrationTestImplementation libs.mockito.core
+    integrationTestImplementation libs.testcontainers.junit.jupiter
+    integrationTestImplementation libs.testcontainers.mongodb
+    integrationTestImplementation libs.testcontainers.redis
 }
 
 def isCiServer = System.getenv("CI_SERVER") != null

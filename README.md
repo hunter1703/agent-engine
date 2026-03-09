@@ -52,13 +52,35 @@ Compile the project and build executable uber-jars (skipping tests for speed):
 ./gradlew clean build -x test
 ```
 
-Run the full, production-ready test suite (automatically boots local test infrastructure via Quarkus DevServices):
+Run unit tests only:
 
 ```bash
-./gradlew clean test --no-build-cache
+./gradlew test
 ```
 
-> **Note:** Test coverage reports are generated automatically at `engine/build/reports/jacoco/test/html/index.html`.
+Run integration tests (opt-in):
+
+```bash
+./gradlew integrationTest
+```
+
+### Test Conventions
+
+- Unit tests:
+  - Source set: `src/test/java`
+  - Class naming: `<ClassName>Test`
+  - Method naming: `should<Behavior>When<Condition>`
+- Integration tests:
+  - Source set: `src/integrationTest/java`
+  - Class naming: `<FeatureName>IT` or `<FeatureName>IntegrationTest`
+  - Uses `@QuarkusTest` with container-backed resources where runtime wiring matters.
+
+### Mock vs Container Policy
+
+- Use mocks/fakes for unit tests focused on pure logic, branching, and service delegation.
+- Use real Quarkus runtime + Testcontainers for integration tests that validate persistence, transport, and end-to-end wiring.
+
+> **Note:** Test coverage reports are generated at `engine/build/reports/jacoco/test/html/index.html`.
 > **Note:** Gradle parallel execution and configuration-on-demand are enabled for faster builds; if you hit Quarkus plugin sync issues in your environment, temporarily disable them in `gradle.properties`.
 
 ---

@@ -25,6 +25,8 @@ jandex = "2.0.0"
 junit-platform = "1.10.3"
 guava = "33.2.1-jre"
 stateless4j = "2.6.0"
+testcontainers = "1.20.4"
+testcontainers-redis = "2.2.4"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
@@ -62,6 +64,7 @@ stateless4j = { group = "com.github.stateless4j", name = "stateless4j", version.
 
 assertj-core = { group = "org.assertj", name = "assertj-core", version.ref = "assertj" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { group = "org.mockito", name = "mockito-junit-jupiter", version.ref = "mockito" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
 junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 quarkus-junit5 = { group = "io.quarkus", name = "quarkus-junit5" }
@@ -69,6 +72,9 @@ quarkus-junit5-mockito = { group = "io.quarkus", name = "quarkus-junit5-mockito"
 rest-assured = { group = "io.rest-assured", name = "rest-assured", version.ref = "rest-assured" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junit-platform" }
 hamcrest = { group = "org.hamcrest", name = "hamcrest", version.ref = "hamcrest" }
+testcontainers-junit-jupiter = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
+testcontainers-mongodb = { group = "org.testcontainers", name = "mongodb", version.ref = "testcontainers" }
+testcontainers-redis = { group = "com.redis", name = "testcontainers-redis", version.ref = "testcontainers-redis" }
 
 # AG-UI
 ag-ui-core = { group = "com.ag-ui", name = "core", version.ref = "ag-ui" }

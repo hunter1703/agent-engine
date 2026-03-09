@@ -1,84 +1,130 @@
 package com.agentengine.interfaces.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.beans.config.AgentConfig;
-import com.agentengine.engine.api.beans.config.AgentModelConfig;
-import com.agentengine.engine.api.services.AgentExecutionService;
+import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
+import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
+import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.handlers.StreamAguiEventsRequestHandler;
-import com.agentengine.interfaces.rest.support.HandlerInstance;
+import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
+import com.agui.core.event.BaseEvent;
+import io.reactivex.rxjava3.core.Flowable;
 import jakarta.enterprise.inject.Instance;
-import java.util.List;
+import jakarta.ws.rs.WebApplicationException;
 import org.junit.jupiter.api.Test;
-import org.mockito.stubbing.Answer;
+import org.reactivestreams.Publisher;
 
 class AgentRestAPITest {
 
   @Test
-  void createAgentStoresConfig() {
-    final AgentService agentService = mock(AgentService.class);
-    final AgentConfig config = buildValidAgentConfig();
-    when(agentService.createAgent(config)).thenReturn(config);
+  void shouldThrowBadRequestWhenCreateAgentCalledWithNullConfig() {
+    final AgentRestAPI api =
+        new AgentRestAPI(handlerInstanceWith(new StreamEventsHandler()), mock(AgentService.class), mock(SessionService.class));
 
-    final AgentRestAPI resource =
-        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService, mock(com.agentengine.engine.api.services.SessionService.class));
-
-    final AgentConfig response = resource.createAgent(config);
-
-    assertThat(response).isInstanceOf(AgentConfig.class);
-    final AgentConfig created = response;
-    assertThat(created.getId()).isEqualTo("agent");
-    verify(agentService).createAgent(config);
+    assertThatThrownBy(() -> api.createAgent(null))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
   }
 
   @Test
-  void createAgentGeneratesIdWhenMissing() {
+  void shouldThrowBadRequestWhenUpdateAgentCalledWithBlankAgentId() {
+    final AgentRestAPI api =
+        new AgentRestAPI(handlerInstanceWith(new StreamEventsHandler()), mock(AgentService.class), mock(SessionService.class));
+
+    assertThatThrownBy(() -> api.updateAgent(" ", new DefaultAgentConfig()))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  void shouldThrowNotFoundWhenResumeEventsCalledForUnknownSession() {
+    final SessionService sessionService = mock(SessionService.class);
+    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.empty());
+
+    final AgentRestAPI api =
+        new AgentRestAPI(handlerInstanceWith(new StreamEventsHandler()), mock(AgentService.class), sessionService);
+
+    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(404);
+  }
+
+  @Test
+  void shouldUseEventsHandlerWhenResumeEventsCalledForExistingSession() {
+    final SessionService sessionService = mock(SessionService.class);
+    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
+    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
+
+    final StreamEventsHandler handler = new StreamEventsHandler();
+    final AgentRestAPI api =
+        new AgentRestAPI(handlerInstanceWith(handler), mock(AgentService.class), sessionService);
+
+    final Publisher<BaseEvent> publisher =
+        api.resumeEvents("session-1", new ResumeSessionRequest("resume message"));
+
+    assertThat(publisher).isNotNull();
+    assertThat(handler.lastRequest).isNotNull();
+    assertThat(handler.lastRequest.getSessionId()).isEqualTo("session-1");
+    assertThat(handler.lastRequest.getAgentId()).isEqualTo("agent-1");
+    assertThat(handler.lastRequest.getMessage()).isEqualTo("resume message");
+  }
+
+  @Test
+  void shouldThrowBadRequestWhenEventsCalledWithoutRegisteredHandler() {
+    final Instance<AgentRequestHandler<?>> emptyHandlers = handlerInstanceWith();
+    final AgentRestAPI api = new AgentRestAPI(emptyHandlers, mock(AgentService.class), mock(SessionService.class));
+
+    assertThatThrownBy(() -> api.events(new AgentRequest()))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  void shouldDelegateDeleteAgentWhenDeleteAgentCalled() {
     final AgentService agentService = mock(AgentService.class);
-    final AgentConfig config = buildValidAgentConfig();
-    config.setId(null);
+    when(agentService.deleteAgent("agent-1")).thenReturn(true);
+    final AgentRestAPI api =
+        new AgentRestAPI(handlerInstanceWith(new StreamEventsHandler()), agentService, mock(SessionService.class));
 
-    // Simulate ID generation
-    doAnswer(assignId("generated-id")).when(agentService).createAgent(any(AgentConfig.class));
+    final boolean deleted = api.deleteAgent("agent-1");
 
-    final AgentRestAPI resource =
-        new AgentRestAPI(buildHandlers(mock(AgentExecutionService.class)), agentService, mock(com.agentengine.engine.api.services.SessionService.class));
-
-    final AgentConfig response = resource.createAgent(config);
-
-    assertThat(response.getId()).isEqualTo("generated-id");
+    assertThat(deleted).isTrue();
+    verify(agentService).deleteAgent("agent-1");
   }
 
-  private static Instance<AgentRequestHandler<?>> buildHandlers(
-      final AgentExecutionService executionService) {
-    final StreamAguiEventsRequestHandler streamingHandler =
-        new StreamAguiEventsRequestHandler(executionService);
-    return new HandlerInstance(List.of(streamingHandler));
+  @SafeVarargs
+  @SuppressWarnings("unchecked")
+  private static Instance<AgentRequestHandler<?>> handlerInstanceWith(
+      final AgentRequestHandler<?>... handlers) {
+    final Instance<AgentRequestHandler<?>> instance = mock(Instance.class);
+    when(instance.stream()).thenReturn(java.util.stream.Stream.of(handlers));
+    return instance;
   }
 
-  private static AgentConfig buildValidAgentConfig() {
-    final AgentConfig config = new AgentConfig();
-    config.setId("agent");
-    final AgentModelConfig modelConfig = new AgentModelConfig();
-    modelConfig.setModelId("model");
-    modelConfig.setSystemPrompt("system");
-    config.setModel(modelConfig);
-    return config;
-  }
+  private static final class StreamEventsHandler implements AgentRequestHandler<Flowable<BaseEvent>> {
+    private AgentRequest lastRequest;
 
-  private static Answer<AgentConfig> assignId(final String id) {
-    return invocation -> {
-      final AgentConfig config = invocation.getArgument(0);
-      if (config.getId() == null) {
-        config.setId(id);
-      }
-      return config;
-    };
+    @Override
+    public AgentRequest.RequestType requestType() {
+      return AgentRequest.RequestType.STREAM_AGUI_EVENTS;
+    }
+
+    @Override
+    public Flowable<BaseEvent> handle(final AgentRequest request) {
+      this.lastRequest = request;
+      return Flowable.empty();
+    }
   }
 }
