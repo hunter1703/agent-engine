@@ -6,7 +6,7 @@ The current implementation is the REST transport, with shared utilities in `inte
 ## Protocol
 Interface implementations share the same logical protocol:
 - Requests are expressed with the `AgentRequest` JSON shape (agent identity, optional session,
-  and optional message content).
+  and message content).
 - Responses may be single payloads or streamed JSON events depending on transport.
 - Engine lifecycle/tool events are exposed over the REST transport.
 

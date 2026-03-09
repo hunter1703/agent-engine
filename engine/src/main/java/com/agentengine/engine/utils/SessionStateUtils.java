@@ -1,11 +1,8 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.JsonUtils;
 import com.google.adk.agents.InvocationContext;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 public final class SessionStateUtils {
@@ -15,14 +12,19 @@ public final class SessionStateUtils {
 
   public static SessionState getState(final InvocationContext context) {
     final ConcurrentMap<String, Object> state = state(context);
-    if (state == null) {
-      return new SessionState();
+    final SessionState existing =
+        TypedUtils.toType(state == null ? null : state.get(SESSION_STATE_KEY), SessionState.class);
+    if (existing != null) {
+      if (state.containsKey(SESSION_STATE_KEY)) {
+        state.put(SESSION_STATE_KEY, existing);
+      }
+      return existing;
     }
-    final SessionState sessionState = CollectionUtils.getValueFromMap(state, SESSION_STATE_KEY);
-    if (sessionState == null) {
-      state.put(SESSION_STATE_KEY, new SessionState());
+    final SessionState created = new SessionState();
+    if (state != null) {
+      state.put(SESSION_STATE_KEY, created);
     }
-    return CollectionUtils.getValueFromMap(state, SESSION_STATE_KEY);
+    return created;
   }
 
   public static void pause(

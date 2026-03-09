@@ -1,52 +1,81 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-MODE=$1
+MODE="${1:-}"
 BOOTSTRAP=true
 BUILD=false
 CLEAN=false
 
-if [ -z "$MODE" ] || [[ "$MODE" != "dev" && "$MODE" != "production" ]]; then
-    echo "Usage: ./deploy/deploy.sh [dev|production] [--build] [--clean] [--no-bootstrap]"
-    exit 1
+usage() {
+  echo "Usage: ./deploy/deploy.sh [dev|production] [--build] [--clean] [--no-bootstrap]"
+}
+
+if [[ -z "$MODE" || ("$MODE" != "dev" && "$MODE" != "production") ]]; then
+  usage
+  exit 1
 fi
 
 shift
 for arg in "$@"; do
-    case "$arg" in
-        --no-bootstrap) BOOTSTRAP=false ;;
-        --build) BUILD=true ;;
-        --clean) CLEAN=true ;;
-    esac
+  case "$arg" in
+    --no-bootstrap) BOOTSTRAP=false ;;
+    --build) BUILD=true ;;
+    --clean) CLEAN=true ;;
+    *)
+      echo "Unknown argument: $arg"
+      usage
+      exit 1
+      ;;
+  esac
 done
 
-# Get the directory where the script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
+COMPOSE_FILE="$PROJECT_ROOT/deploy/docker-compose.yaml"
 
-# 1. Start MongoDB via docker-compose automatically
-echo "Starting MongoDB infrastructure..."
-cd "$PROJECT_ROOT"
-docker-compose -f deploy/docker-compose.yaml up -d mongodb
+compose() {
+  docker-compose -f "$COMPOSE_FILE" "$@"
+}
+
+start_mongo() {
+  echo "Starting MongoDB infrastructure..."
+  compose up -d mongodb
+}
+
+wait_for_mongo() {
+  local max_attempts=60
+  local attempt=1
+
+  echo "Waiting for MongoDB to become ready..."
+  until compose exec -T mongodb mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' >/dev/null 2>&1; do
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "❌ MongoDB did not become ready in time."
+      return 1
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+}
 
 upsert_connections() {
-    CONNECTIONS_FILE="$PROJECT_ROOT/deploy/connections.json"
+  local connections_file="$PROJECT_ROOT/deploy/connections.json"
 
-    if [ ! -f "$CONNECTIONS_FILE" ]; then
-        echo "No connections file found at $CONNECTIONS_FILE. Skipping connection upsert."
-        return
-    fi
+  if [ ! -f "$connections_file" ]; then
+    echo "No connections file found at $connections_file. Skipping connection upsert."
+    return
+  fi
 
-    CONNECTIONS_JSON="$(cat "$CONNECTIONS_FILE")"
-    if [ -z "${CONNECTIONS_JSON//[[:space:]]/}" ]; then
-        echo "Connections file is empty. Skipping connection upsert."
-        return
-    fi
+  local connections_json
+  connections_json="$(cat "$connections_file")"
+  if [ -z "${connections_json//[[:space:]]/}" ]; then
+    echo "Connections file is empty. Skipping connection upsert."
+    return
+  fi
 
-    echo "Upserting connections from $CONNECTIONS_FILE..."
-    docker-compose -f deploy/docker-compose.yaml exec -T \
-      -e CONNECTIONS_JSON="$CONNECTIONS_JSON" \
-      mongodb mongosh --quiet --eval '
+  echo "Upserting connections from $connections_file..."
+  compose exec -T \
+    -e CONNECTIONS_JSON="$connections_json" \
+    mongodb mongosh --quiet --eval '
 const docs = JSON.parse(process.env.CONNECTIONS_JSON ?? "[]");
 if (!Array.isArray(docs)) {
   throw new Error("connections.json must be a JSON array");
@@ -73,96 +102,123 @@ if (skipped > 0) {
 '
 }
 
-# 2. Define Bootstrap Function
-bootstrap_data() {
-    API_URL="http://localhost:18080"
-    
-    echo "Waiting for REST API to become responsive on $API_URL..."
-    until curl -s -m 10 "$API_URL/q/openapi" > /dev/null; do
-        sleep 2
-    done
-    
-    AGENT_ENGINE_API_URL="$API_URL" "$PROJECT_ROOT/deploy/sync.sh"
+bootstrap_mongo_state() {
+  wait_for_mongo
+  upsert_connections
 }
 
-# 3. Launch the requested environment
-if [ "$MODE" == "dev" ]; then
-    echo "Starting in DEV mode (Monolith)..."
-    upsert_connections
-    
-    # Run bootstrap asynchronously if requested
-    if [ "$BOOTSTRAP" = true ]; then
-        bootstrap_data &
+wait_for_http() {
+  local url="$1"
+  local max_attempts="${2:-120}"
+  local attempt=1
+
+  until curl -s -m 10 "$url" >/dev/null; do
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "❌ Service did not become ready: $url"
+      return 1
     fi
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+}
 
-    cd "$PROJECT_ROOT"
-    ./gradlew :interfaces:local:quarkusDev
-    exit 0
-fi
+bootstrap_data() {
+  local api_url="http://localhost:18080"
+  echo "Waiting for REST API to become responsive on $api_url..."
+  wait_for_http "$api_url/q/openapi"
+  AGENT_ENGINE_API_URL="$api_url" "$PROJECT_ROOT/deploy/sync.sh"
+}
 
-if [ "$MODE" == "production" ]; then
-    echo "Starting in PRODUCTION mode (Separate Services)..."
-    upsert_connections
-    
-    cd "$PROJECT_ROOT"
-    mkdir -p "$PROJECT_ROOT/logs"
+build_production_apps() {
+  if [ "$CLEAN" != true ] && [ "$BUILD" != true ]; then
+    echo "Skipping build (use --build or --clean to rebuild)..."
+    return
+  fi
 
-    if [ "$CLEAN" = true ]; then
-        echo "Building ubers-jars in parallel (clean)..."
-        ./gradlew :engine:clean :engine:quarkusBuild -x test -x spotlessCheck > "$PROJECT_ROOT/logs/build-engine.log" 2>&1 &
-        ENGINE_BUILD_PID=$!
-        ./gradlew :interfaces:rest:clean :interfaces:rest:quarkusBuild -x test -x spotlessCheck > "$PROJECT_ROOT/logs/build-rest.log" 2>&1 &
-        REST_BUILD_PID=$!
-        FAILED=0
-        wait $ENGINE_BUILD_PID || FAILED=1
-        wait $REST_BUILD_PID || FAILED=1
-        if [ $FAILED -ne 0 ]; then
-            echo "Build failed. Check logs/build-engine.log and logs/build-rest.log"
-            exit 1
-        fi
-    elif [ "$BUILD" = true ]; then
-        echo "Building ubers-jars in parallel..."
-        ./gradlew :engine:quarkusBuild -x test -x spotlessCheck > "$PROJECT_ROOT/logs/build-engine.log" 2>&1 &
-        ENGINE_BUILD_PID=$!
-        ./gradlew :interfaces:rest:quarkusBuild -x test -x spotlessCheck > "$PROJECT_ROOT/logs/build-rest.log" 2>&1 &
-        REST_BUILD_PID=$!
-        FAILED=0
-        wait $ENGINE_BUILD_PID || FAILED=1
-        wait $REST_BUILD_PID || FAILED=1
-        if [ $FAILED -ne 0 ]; then
-            echo "Build failed. Check logs/build-engine.log and logs/build-rest.log"
-            exit 1
-        fi
-    else
-        echo "Skipping build (use --build or --clean to rebuild)..."
+  mkdir -p "$PROJECT_ROOT/logs"
+
+  local engine_cmd
+  local rest_cmd
+  if [ "$CLEAN" = true ]; then
+    echo "Building quarkus apps in parallel (clean)..."
+    engine_cmd=(./gradlew :engine:clean :engine:quarkusBuild -x test -x spotlessCheck)
+    rest_cmd=(./gradlew :interfaces:rest:clean :interfaces:rest:quarkusBuild -x test -x spotlessCheck)
+  else
+    echo "Building quarkus apps in parallel..."
+    engine_cmd=(./gradlew :engine:quarkusBuild -x test -x spotlessCheck)
+    rest_cmd=(./gradlew :interfaces:rest:quarkusBuild -x test -x spotlessCheck)
+  fi
+
+  "${engine_cmd[@]}" > "$PROJECT_ROOT/logs/build-engine.log" 2>&1 &
+  local engine_pid=$!
+  "${rest_cmd[@]}" > "$PROJECT_ROOT/logs/build-rest.log" 2>&1 &
+  local rest_pid=$!
+
+  local failed=0
+  wait "$engine_pid" || failed=1
+  wait "$rest_pid" || failed=1
+
+  if [ "$failed" -ne 0 ]; then
+    echo "❌ Build failed. Check logs/build-engine.log and logs/build-rest.log"
+    exit 1
+  fi
+}
+
+start_production() {
+  echo "Starting in PRODUCTION mode (Separate Services)..."
+  build_production_apps
+
+  mkdir -p "$PROJECT_ROOT/logs"
+
+  echo "Starting Engine (Port 18081, gRPC 19000)..."
+  nohup java --enable-preview \
+    -Dquarkus.http.port=18081 \
+    -Dquarkus.grpc.server.port=19000 \
+    -jar "$PROJECT_ROOT/engine/build/quarkus-app/quarkus-run.jar" \
+    > "$PROJECT_ROOT/logs/engine.log" 2>&1 &
+  local engine_pid=$!
+
+  echo "Starting REST (Port 18080, waiting for Engine gRPC on 19000)..."
+  until nc -z localhost 19000 2>/dev/null; do
+    if ! kill -0 "$engine_pid" 2>/dev/null; then
+      echo "❌ Engine process died unexpectedly. Check logs/engine.log"
+      exit 1
     fi
+    sleep 1
+  done
 
-    echo "Starting Engine (Port 18081, gRPC 19000)..."
-    nohup java --enable-preview -Dquarkus.http.port=18081 -Dquarkus.grpc.server.port=19000 -jar engine/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/engine.log" 2>&1 &
+  nohup java --enable-preview \
+    -Dquarkus.http.port=18080 \
+    -Dagentengine.grpc.host=localhost \
+    -Dagentengine.grpc.port=19000 \
+    -jar "$PROJECT_ROOT/interfaces/rest/build/quarkus-app/quarkus-run.jar" \
+    > "$PROJECT_ROOT/logs/rest.log" 2>&1 &
+  local rest_pid=$!
 
-    ENGINE_PID=$!
+  echo "Services started. Engine PID: $engine_pid, REST PID: $rest_pid"
+  echo "Logs: $PROJECT_ROOT/logs/engine.log, $PROJECT_ROOT/logs/rest.log"
 
-    echo "Starting REST (Port 18080, waiting for Engine gRPC on 19000)..."
-    until nc -z localhost 19000 2>/dev/null; do
-        if ! kill -0 $ENGINE_PID 2>/dev/null; then
-            echo "❌ Engine process died unexpectedly. Check logs/engine.log"
-            exit 1
-        fi
-        sleep 0.5
-    done
-    nohup java --enable-preview -Dquarkus.http.port=18080 -Dagentengine.grpc.host=localhost -Dagentengine.grpc.port=19000 -jar interfaces/rest/build/quarkus-app/quarkus-run.jar > "$PROJECT_ROOT/logs/rest.log" 2>&1 &
+  if [ "$BOOTSTRAP" = true ]; then
+    bootstrap_data &
+  fi
 
-    REST_PID=$!
+  wait
+}
 
-    echo "Services started. Engine PID: $ENGINE_PID, REST PID: $REST_PID"
-    echo "Logs are being written to logs/engine.log and logs/rest.log"
+start_dev() {
+  echo "Starting in DEV mode (Monolith)..."
+  if [ "$BOOTSTRAP" = true ]; then
+    bootstrap_data &
+  fi
+  cd "$PROJECT_ROOT"
+  exec ./gradlew :interfaces:local:quarkusDev
+}
 
-    # Run bootstrap asynchronously if requested
-    if [ "$BOOTSTRAP" = true ]; then
-        bootstrap_data &
-    fi
-    
-    # Wait for the java background processes so the script doesn't exit immediately 
-    wait
-    exit 0
-fi
+cd "$PROJECT_ROOT"
+start_mongo
+bootstrap_mongo_state
+
+case "$MODE" in
+  dev) start_dev ;;
+  production) start_production ;;
+esac

@@ -10,8 +10,6 @@ public class AgentRequest {
   @NotBlank(message = "agentId is required")
   private String agentId;
 
-  private String agentConfigPath;
-
   private String sessionId;
 
   @NotBlank(message = "message is required")
@@ -22,18 +20,16 @@ public class AgentRequest {
   private AgentRequest(
       final String type,
       final String agentId,
-      final String agentConfigPath,
       final String sessionId,
       final String message) {
     this.type = type;
     this.agentId = agentId;
-    this.agentConfigPath = agentConfigPath;
     this.sessionId = sessionId;
     this.message = message;
   }
 
   public AgentRequest withSessionId(final String sessionId) {
-    return new AgentRequest(this.type, this.agentId, this.agentConfigPath, sessionId, this.message);
+    return new AgentRequest(this.type, this.agentId, sessionId, this.message);
   }
 
   public String getType() {
@@ -50,14 +46,6 @@ public class AgentRequest {
 
   public void setAgentId(final String agentId) {
     this.agentId = agentId;
-  }
-
-  public String getAgentConfigPath() {
-    return agentConfigPath;
-  }
-
-  public void setAgentConfigPath(final String agentConfigPath) {
-    this.agentConfigPath = agentConfigPath;
   }
 
   public String getSessionId() {

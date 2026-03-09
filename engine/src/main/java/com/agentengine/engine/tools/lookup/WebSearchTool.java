@@ -4,6 +4,7 @@ import com.agentengine.connectors.core.ConnectorService;
 import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,7 +19,12 @@ public final class WebSearchTool extends Tool {
   private static final String DEFAULT_ERROR = "Unknown error";
 
   public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(TOOL_NAME, "Search the web using Brave Search API.", List.of(ALL), Map.of());
+      new ToolDescriptor(
+          TOOL_NAME,
+          "Search the web using Brave Search API.",
+          List.of(ALL),
+          Map.of(),
+          ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 

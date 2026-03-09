@@ -24,7 +24,6 @@ switch between invoking the agent or building a prompt for `POST /v1/invoke`.
 ### Request Format
 Fields:
 - `agentId`: required; selects the agent builder (and config ID if Mongo is enabled).
-- `agentConfigPath`: optional path to agent config JSON/YAML.
 - `sessionId`: optional session identifier; if omitted, one is generated.
 - `message`: required for invoke and events.
 - `type`: required for `/v1/invoke`; use `INVOKE_AGENT` or `BUILD_PROMPT`.
@@ -35,7 +34,7 @@ Fields:
   - `finalAnswer` is populated after the agent calls `submit_final_answer`; earlier text is returned in `thoughts`.
   - Build prompt response: `{ "sessionId": "...", "messages": [ { "role": "system", "content": "..." } ] }`.
 - `POST /v1/events`: SSE stream of engine events.
-  - Request body: `agentId`, `agentConfigPath`, `sessionId`, `message`.
+  - Request body: `agentId`, `sessionId`, `message`.
 - `POST /v1/responses`: SSE stream of responses API events.
 - `GET /v1/agents`: list agent configurations.
 - `GET /v1/agents/{agentId}`: retrieve agent configuration.
@@ -56,7 +55,6 @@ Invoke:
 {
   "type": "INVOKE_AGENT",
   "agentId": "shell_agent",
-  "agentConfigPath": "configs/agents/shell_agent.json",
   "message": "List files"
 }
 ```
@@ -66,7 +64,6 @@ Build prompt:
 {
   "type": "BUILD_PROMPT",
   "agentId": "shell_agent",
-  "agentConfigPath": "configs/agents/shell_agent.json",
   "sessionId": "<existing-session-id>"
 }
 ```
@@ -80,8 +77,7 @@ Events:
 }
 ```
 
-When MongoDB is configured, omit `agentConfigPath` and the service loads configs from MongoDB
-by `agentName`.
+Agent configuration is resolved from MongoDB by `agentId`.
 
 MongoDB is configured via the environment variable `MONGODB_CONNECTION_STRING` (default
 `mongodb://localhost:27017`). The database name is currently fixed to `AGENT_ENGINE`.

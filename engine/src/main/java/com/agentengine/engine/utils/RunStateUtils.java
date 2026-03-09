@@ -1,6 +1,5 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import java.util.concurrent.ConcurrentMap;
 
@@ -16,11 +15,16 @@ public final class RunStateUtils {
   public static RunState getState(final InvocationContext context) {
     final String key = runStateKey(context);
     final ConcurrentMap<String, Object> state = context.session().state();
-    final RunState runState = CollectionUtils.getValueFromMap(state, key);
-    if (runState == null) {
-      state.put(key, new RunState());
+    final RunState existing = TypedUtils.toType(state.get(key), RunState.class);
+    if (existing != null) {
+      if (state.get(key) != existing) {
+        state.put(key, existing);
+      }
+      return existing;
     }
-    return CollectionUtils.getValueFromMap(state, key);
+    final RunState created = new RunState();
+    state.put(key, created);
+    return created;
   }
 
   public static void clearState(final InvocationContext context) {

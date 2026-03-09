@@ -4,6 +4,7 @@ import com.agentengine.connectors.core.ConnectorService;
 import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
@@ -23,7 +24,8 @@ public final class WebLookupTool extends Tool {
           TOOL_NAME,
           "Look up information on the web using DuckDuckGo.",
           List.of(ALL),
-          Map.of());
+          Map.of(),
+          ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 

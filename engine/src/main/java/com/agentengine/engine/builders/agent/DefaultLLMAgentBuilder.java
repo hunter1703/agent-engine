@@ -72,7 +72,14 @@ public class DefaultLLMAgentBuilder extends Agent.Builder<DefaultLLMAgentBuilder
   @Override
   public DelegatedAgent build() {
     final String reWrittenInstructions = reWriteInstructions();
-    final LlmAgent llmAgent = LlmAgent.builder().name(name()).description(description()).subAgents(subAgents()).instruction(reWrittenInstructions).tools(tools).build();
+    final LlmAgent llmAgent =
+        llmAgentBuilder
+            .name(name())
+            .description(description())
+            .subAgents(subAgents())
+            .instruction(reWrittenInstructions)
+            .tools(tools)
+            .build();
     return new DelegatedAgent(llmAgent, agentConfig());
   }
 }
