@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.exception;
 
 import com.agentengine.engine.api.exception.AgentException;
+import com.agentengine.engine.api.exception.AssetNotFoundException;
 import com.agentengine.engine.api.exception.ConfigurationException;
 import com.agentengine.interfaces.rest.dto.ErrorResponse;
 import jakarta.ws.rs.core.Response;
@@ -16,6 +17,8 @@ public class AgentExceptionMapper implements ExceptionMapper<AgentException> {
     int status = 500;
     if (exception instanceof ConfigurationException) {
       status = 400;
+    } else if (exception instanceof AssetNotFoundException) {
+      status = 404;
     }
     String traceId = UUID.randomUUID().toString();
     return Response.status(status)

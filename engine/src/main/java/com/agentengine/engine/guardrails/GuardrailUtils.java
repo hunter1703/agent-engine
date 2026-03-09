@@ -90,23 +90,6 @@ public final class GuardrailUtils {
                   .build());
    }
 
-   public static String extractLatestUserText(final List<Content> contents) {
-      final List<Content> safeContents = CollectionUtils.nullSafeList(contents);
-      for (int i = safeContents.size() - 1; i >= 0; i--) {
-        final Content content = safeContents.get(i);
-        if (content == null) {
-          continue;
-        }
-        if (content.role().isPresent() && !"user".equalsIgnoreCase(content.role().orElse("user"))) {
-          continue;
-        }
-        if (StringUtils.isNotBlank(content.text())) {
-          return content.text().trim();
-        }
-      }
-      return "";
-   }
-
    public static LlmResponse buildGuardrailResponse(final String message) {
       final String text =
           StringUtils.isBlank(message)

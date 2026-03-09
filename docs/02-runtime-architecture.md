@@ -75,22 +75,35 @@ Cache behavior:
 
 Execution creates a `PluginGroup` containing:
 
-- `EnginePlugin`
 - `GuardrailPlugin`
+- `AgentRunLifecyclePlugin`
+- `HumanInTheLoopPlugin`
+- `ModelInvocationPipeline`
+- `ContextManagementPlugin`
 
-### EnginePlugin responsibilities
+### AgentRunLifecyclePlugin responsibilities
 
 - initialize/clear run state
+
+### ModelInvocationPipeline responsibilities
+
 - request processors:
-  - Human-in-the-loop pause/resume handling
   - correction processor
   - planning request processor
-  - context manager prompt rebuild
 - response processors:
   - tool call sanitization
   - plan loop handling
   - turn completion control
   - part ordering normalization
+
+### HumanInTheLoopPlugin responsibilities
+
+- short-circuit HITL checks before model call (same-invocation pause, missing answer)
+- resume request mapping via `HumanInTheLoopRequestProcessor`
+
+### ContextManagementPlugin responsibilities
+
+- context manager prompt rebuild
 
 ### GuardrailPlugin responsibilities
 
@@ -108,7 +121,8 @@ Context manager selection is strategy-driven:
 - `last_n`
 - `none`
 
-Context manager is applied in `EnginePlugin.beforeModelCallback`, replacing request content with a rebuilt prompt sequence.
+Context manager is applied in `ContextManagementPlugin.beforeModelCallback`, replacing request
+content with a rebuilt prompt sequence.
 
 ## 2.8 Session Persistence Contract
 

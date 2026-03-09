@@ -4,7 +4,7 @@ This document defines the runtime protocol enforced by the current codebase.
 It is normative for behavior implemented in:
 
 - `engine` request/response processors
-- `EnginePlugin` and `GuardrailPlugin`
+- `AgentRunLifecyclePlugin`, `HumanInTheLoopPlugin`, `ModelInvocationPipeline`, `ContextManagementPlugin`, and `GuardrailPlugin`
 - `ParallelOrchestratorAgent`
 - REST event mapper `AGUIEventMapper`
 
@@ -18,14 +18,15 @@ It is normative for behavior implemented in:
 
 ## 10.2 Deterministic Processing Order
 
-`EnginePlugin` applies the following order.
+The model invocation plugins apply the following order.
 
 ### Before model
 
-1. `HumanInTheLoopRequestProcessor`
-2. `CorrectionProcessor`
-3. `PlanningRequestProcessor`
-4. context manager prompt rebuild (if configured)
+1. `HumanInTheLoopPlugin` short-circuit checks
+2. `HumanInTheLoopRequestProcessor` resume mapping
+3. `CorrectionProcessor`
+4. `PlanningRequestProcessor`
+5. context manager prompt rebuild (if configured)
 
 ### After model
 
@@ -137,7 +138,7 @@ This provides stable downstream event sequencing.
 
 ## 10.4.5 Finish reason normalization
 
-After response processors, `EnginePlugin` sets finish reason to `STOP` when:
+After response processors, `ModelInvocationPipeline` sets finish reason to `STOP` when:
 
 - `turnComplete=true`
 - no tool parts remain
@@ -272,7 +273,7 @@ All violations are stored in run state and consumed by `CorrectionProcessor` on 
 
 To preserve protocol guarantees, changes should maintain:
 
-- processor ordering in `EnginePlugin`
+- processor ordering in `ModelInvocationPipeline`
 - explicit handling of partial vs finalized responses
 - deterministic part ordering
 - deterministic fallback behavior in parallel orchestration

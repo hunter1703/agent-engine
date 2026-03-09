@@ -24,10 +24,10 @@ import java.util.Map;
  * </ul>
  *
  * <p>Register plugins in logical "outer-to-inner" order. For example,
- * {@code new PluginGroup("engine", List.of(guardrailPlugin, enginePlugin))} means:
+ * {@code new PluginGroup("engine", List.of(guardrailPlugin, lifecyclePlugin, modelPipeline, contextPlugin))} means:
  * <ul>
- *   <li>Input validation: guardrail first, then engine request processing.</li>
- *   <li>Output processing: engine transforms the raw response first, then guardrail
+ *   <li>Input validation: guardrail first, then request/context processing.</li>
+ *   <li>Output processing: model pipeline transforms the raw response first, then guardrail
  *       evaluates the already-processed result.</li>
  * </ul>
  */
@@ -41,6 +41,18 @@ public final class PluginGroup extends BasePlugin {
   }
 
   // ── before* : forward order, first non-empty short-circuits ─────────────
+
+  @Override
+  public Maybe<Content> onUserMessageCallback(
+      final InvocationContext ctx, final Content userMessage) {
+    for (final BasePlugin plugin : plugins) {
+      final Content result = plugin.onUserMessageCallback(ctx, userMessage).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
+    }
+    return Maybe.empty();
+  }
 
   @Override
   public Maybe<Content> beforeRunCallback(final InvocationContext ctx) {

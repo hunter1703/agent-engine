@@ -5,6 +5,7 @@ import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailExecutionMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.utils.ContentUtils;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.SessionPauseReason;
 import com.agentengine.engine.utils.SessionStateUtils;
@@ -57,7 +58,7 @@ public final class GuardrailPlugin extends BasePlugin {
     if (CollectionUtils.isEmpty(guardrails)) {
       return Maybe.empty();
     }
-    final String text = GuardrailUtils.extractLatestUserText(llmRequestBuilder.build().contents());
+    final String text = ContentUtils.extractLatestUserText(llmRequestBuilder.build().contents());
     if (StringUtils.isBlank(text)) {
       return Maybe.empty();
     }
