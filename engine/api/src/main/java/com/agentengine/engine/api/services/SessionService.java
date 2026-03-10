@@ -4,11 +4,16 @@ import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.ms.MicroService;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
+
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 @MicroService
 public interface SessionService {
   Optional<AgentSession> getSession(String id);
+
+  Map<String, AgentSession> getSessions(Collection<String> ids);
 
   PaginatedResult<AgentSession> findSessions(Query query);
 

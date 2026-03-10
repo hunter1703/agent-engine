@@ -187,10 +187,13 @@ start_production() {
     sleep 1
   done
 
+  # agentengine.auth.jwt.secret is required when auth.enabled=true; add:
+  #   -Dagentengine.auth.jwt.secret=<your-secret>
   nohup java --enable-preview \
     -Dquarkus.http.port=18080 \
     -Dagentengine.grpc.host=localhost \
     -Dagentengine.grpc.port=19000 \
+    -Dagentengine.auth.enabled="${AGENTENGINE_AUTH_ENABLED:-false}" \
     -jar "$PROJECT_ROOT/interfaces/rest/build/quarkus-app/quarkus-run.jar" \
     > "$PROJECT_ROOT/logs/rest.log" 2>&1 &
   local rest_pid=$!

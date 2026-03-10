@@ -3,6 +3,9 @@ package com.agentengine.engine.api.update;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.agentengine.util.update.Operation;
+import com.agentengine.util.update.OperationType;
+import com.agentengine.util.update.Update;
 import org.junit.jupiter.api.Test;
 
 class UpdateTest {

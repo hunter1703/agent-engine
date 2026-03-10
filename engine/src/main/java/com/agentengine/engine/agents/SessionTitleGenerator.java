@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;

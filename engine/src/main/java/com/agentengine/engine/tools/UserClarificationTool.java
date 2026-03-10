@@ -4,7 +4,7 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.google.adk.tools.ToolContext;
 
 import java.util.LinkedHashMap;

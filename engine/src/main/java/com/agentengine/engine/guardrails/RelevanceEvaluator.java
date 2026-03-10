@@ -3,7 +3,7 @@ package com.agentengine.engine.guardrails;
 import static com.agentengine.util.JsonUtils.parseJsonPayload;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
 import com.google.adk.models.BaseLlm;
@@ -14,7 +14,6 @@ import com.google.genai.types.Part;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;

@@ -122,7 +122,7 @@ public final class RunState {
         if (violation == null) {
             return;
         }
-        violations.removeIf(existing -> Objects.equals(existing.getCode(), violation.getCode()));
+        violations.removeIf(existing -> Objects.equals(existing.code(), violation.code()));
         violations.add(violation);
     }
 

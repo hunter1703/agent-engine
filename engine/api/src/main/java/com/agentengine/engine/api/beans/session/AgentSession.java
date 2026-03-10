@@ -1,16 +1,14 @@
 package com.agentengine.engine.api.beans.session;
 
-import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.util.beans.NamedEntity;
 import com.agentengine.util.Secure;
 import com.google.adk.sessions.Session;
 
-public class AgentSession extends BaseEntity {
+public class AgentSession extends NamedEntity {
   public static final String DEFAULT_USER_ID = "default";
   public static final String FIELD_SESSION_INFO = "sessionInfo";
 
   private String agentId;
-  @Secure
-  private String title;
   private SessionInfo sessionInfo;
 
   public AgentSession() {}
@@ -20,7 +18,7 @@ public class AgentSession extends BaseEntity {
     setCreatedTime(System.currentTimeMillis());
     setUpdatedTime(System.currentTimeMillis());
     this.agentId = agentId;
-    this.title = "Untitled Session";
+    setName("Untitled Session");
     this.sessionInfo = SessionInfo.fromSession(session);
   }
 
@@ -29,7 +27,7 @@ public class AgentSession extends BaseEntity {
     setCreatedTime(other.getCreatedTime());
     setUpdatedTime(other.getUpdatedTime());
     this.agentId = other.agentId;
-    this.title = other.title;
+    setName(other.getName());
     this.sessionInfo = other.sessionInfo;
   }
 
@@ -38,7 +36,7 @@ public class AgentSession extends BaseEntity {
     setCreatedTime(System.currentTimeMillis());
     setUpdatedTime(System.currentTimeMillis());
     this.agentId = agentId;
-    this.title = title;
+    setName(title);
   }
 
   public String getAgentId() {
@@ -49,12 +47,10 @@ public class AgentSession extends BaseEntity {
     this.agentId = agentId;
   }
 
-  public String getTitle() {
-    return title;
-  }
-
-  public void setTitle(String title) {
-    this.title = title;
+  @Secure
+  @Override
+  public String getName() {
+    return super.getName();
   }
 
   public SessionInfo getSessionInfo() {

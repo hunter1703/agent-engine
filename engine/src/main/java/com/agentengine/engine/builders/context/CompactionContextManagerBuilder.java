@@ -6,7 +6,7 @@ import com.agentengine.engine.api.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.builders.ContextManagerBuilder;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.context.CompactionContextManager;
 import com.agentengine.engine.context.NoOpContextManager;

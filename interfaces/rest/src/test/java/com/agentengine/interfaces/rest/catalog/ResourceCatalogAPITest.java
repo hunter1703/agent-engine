@@ -6,9 +6,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.query.Page;
-import com.agentengine.engine.api.query.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
+import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.WebApplicationException;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,8 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     assertThatThrownBy(() -> api.listResources(new AssetRequest()))
         .isInstanceOf(WebApplicationException.class)
@@ -27,7 +29,8 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("unknown");
 
@@ -39,7 +42,8 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
 
@@ -51,12 +55,13 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
     request.setQuery(new Query().withPage(new Page(0, 10)));
 
-    final PaginatedResult<? extends NameIdEntity> result = api.listResources(request);
+    final PaginatedResult<? extends NamedEntity> result = api.listResources(request);
 
     assertThat(result.getItems()).hasSize(1);
     assertThat(result.getItems().getFirst().getId()).isEqualTo("model-1");
@@ -65,7 +70,8 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     final ModelConfig resource = api.getResource("model", "model-1", null);
 
@@ -74,7 +80,8 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
-    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     assertThatThrownBy(() -> api.getResource("model", "missing", null))
         .isInstanceOf(WebApplicationException.class)

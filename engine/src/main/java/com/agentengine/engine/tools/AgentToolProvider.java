@@ -8,7 +8,7 @@ import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.util.JsonUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;

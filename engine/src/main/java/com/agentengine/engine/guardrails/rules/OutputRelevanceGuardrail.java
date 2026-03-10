@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.beans.config.RelevanceMode;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;

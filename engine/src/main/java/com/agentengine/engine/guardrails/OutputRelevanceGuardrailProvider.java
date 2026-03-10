@@ -2,12 +2,11 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.guardrails.rules.OutputRelevanceGuardrail;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
-import com.google.adk.models.BaseLlm;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 

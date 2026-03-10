@@ -5,7 +5,7 @@ import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils.TaskOutcome;

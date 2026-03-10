@@ -1,7 +1,8 @@
 package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
+import java.util.List;
+import java.util.Map;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 
@@ -34,5 +35,25 @@ class TypedUtilsTest {
     final RunState resolved = TypedUtils.toType(raw, RunState.class);
 
     assertThat(resolved).isNull();
+  }
+
+  @Test
+  void shouldConvertDocumentToRunStateWithViolations() {
+    final Document violation =
+        new Document("code", "TEST_VIOLATION")
+            .append("message", "violation message")
+            .append("correctionMessage", "fix it")
+            .append("details", Map.of("k", "v"))
+            .append("subViolations", List.of());
+    final Document raw =
+        new Document("thinkingOpen", false)
+            .append("offTopicRetries", 0)
+            .append("violations", List.of(violation));
+
+    final RunState resolved = TypedUtils.toType(raw, RunState.class);
+
+    assertThat(resolved).isNotNull();
+    assertThat(resolved.getViolations()).hasSize(1);
+    assertThat(resolved.getViolations().getFirst().code()).isEqualTo("TEST_VIOLATION");
   }
 }

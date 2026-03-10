@@ -46,8 +46,7 @@ public final class DelegatingLLMModel extends AbstractLLM {
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
-    final Flowable<LlmResponse> normalizedResponses =
-        delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
+    final Flowable<LlmResponse> normalizedResponses = delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
     if (!useStreaming) {
       return normalizedResponses.map(ModelUtils::markTurnComplete);
     }

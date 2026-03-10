@@ -1,7 +1,7 @@
 package com.agentengine.engine.api;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.Callbacks;
 

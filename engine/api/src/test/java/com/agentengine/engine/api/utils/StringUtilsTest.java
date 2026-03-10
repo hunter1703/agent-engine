@@ -2,6 +2,7 @@ package com.agentengine.engine.api.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.StringUtils;
 import org.junit.jupiter.api.Test;
 
 class StringUtilsTest {

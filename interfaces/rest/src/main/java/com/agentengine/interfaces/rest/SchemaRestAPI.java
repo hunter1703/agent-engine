@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest;
 
-import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
+import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 import com.agentengine.util.builder.BuilderMode;
@@ -16,7 +16,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.Locale;
+
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;

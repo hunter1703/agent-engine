@@ -7,12 +7,14 @@ import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
 import java.util.List;
+
+import com.agentengine.util.validation.ValidationCollector;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigParallelRuleValidatorTest {
 
-  private final AgentConfigParallelRuleValidator validator =
-      new AgentConfigParallelRuleValidator();
+  private final AgentValidator validator =
+      new AgentValidator();
 
   @Test
   void shouldAddErrorWhenQuorumExceedsSubAgentCount() {

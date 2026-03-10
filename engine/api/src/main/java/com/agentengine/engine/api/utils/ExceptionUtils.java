@@ -1,5 +1,7 @@
 package com.agentengine.engine.api.utils;
 
+import com.agentengine.util.StringUtils;
+
 public final class ExceptionUtils {
 
   private ExceptionUtils() {}

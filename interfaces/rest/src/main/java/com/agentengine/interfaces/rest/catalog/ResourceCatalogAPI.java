@@ -1,7 +1,8 @@
 package com.agentengine.interfaces.rest.catalog;
 
-import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.query.PaginatedResult;
+import com.agentengine.util.beans.BaseEntity;
+import com.agentengine.util.beans.NamedEntity;
+import com.agentengine.util.query.PaginatedResult;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -54,7 +55,7 @@ public class ResourceCatalogAPI {
           @Content(
               mediaType = MediaType.APPLICATION_JSON,
               schema = @Schema(implementation = PaginatedResult.class)))
-  public PaginatedResult<? extends NameIdEntity> listResources(AssetRequest request) {
+  public PaginatedResult<? extends NamedEntity> listResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
       throw new WebApplicationException("Resource type is required", 400);
     }

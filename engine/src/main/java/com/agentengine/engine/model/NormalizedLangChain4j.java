@@ -1,6 +1,6 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.models.langchain4j.LangChain4j;

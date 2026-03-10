@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.engine.api.beans.NamedEntity;
+import com.agentengine.util.beans.NamedEntity;
 import com.agentengine.util.Secure;
 import com.agentengine.util.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;

@@ -1,7 +1,7 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.engine.api.beans.NamedEntity;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.beans.NamedEntity;
+import com.agentengine.util.StringUtils;
 import com.agentengine.util.Secure;
 import com.agentengine.util.builder.annotations.UiAccess;
 import com.agentengine.util.builder.annotations.UiAccessLevel;

@@ -1,6 +1,6 @@
 package com.agentengine.engine.infra;
 
-import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.util.beans.BaseEntity;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(key = "type")

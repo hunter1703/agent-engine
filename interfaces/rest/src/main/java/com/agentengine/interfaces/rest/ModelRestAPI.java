@@ -2,10 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
-import com.agentengine.util.builder.BuilderMode;
-import com.agentengine.util.builder.BuilderDefinitionUtils;
+import com.agentengine.util.StringUtils;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -32,13 +29,10 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class ModelRestAPI {
 
   private final ModelService modelService;
-  private final BuilderDefinitionService builderDefinitionService;
 
   @Inject
-  public ModelRestAPI(
-      final ModelService modelService, final BuilderDefinitionService builderDefinitionService) {
+  public ModelRestAPI(final ModelService modelService) {
     this.modelService = modelService;
-    this.builderDefinitionService = builderDefinitionService;
   }
 
   @GET
@@ -73,16 +67,7 @@ public class ModelRestAPI {
     if (modelConfig == null) {
       throw new WebApplicationException("Model config is required", 400);
     }
-    final ModelConfig sanitizedConfig =
-        BuilderDefinitionUtils.sanitize(
-            builderDefinitionService.getDefinition("model"),
-            BuilderMode.CREATE,
-            modelConfig,
-            ModelConfig.class);
-    if (StringUtils.isBlank(sanitizedConfig.getType()) || StringUtils.isBlank(sanitizedConfig.getModel())) {
-      throw new WebApplicationException("Model type and model are required", 400);
-    }
-    return modelService.createModel(sanitizedConfig);
+    return modelService.createModel(modelConfig);
   }
 
   @POST
@@ -120,16 +105,7 @@ public class ModelRestAPI {
     if (StringUtils.isNotBlank(modelConfig.getId()) && !modelId.equals(modelConfig.getId())) {
       throw new WebApplicationException("Path modelId must match payload id", 400);
     }
-    final ModelConfig sanitizedConfig =
-        BuilderDefinitionUtils.sanitize(
-            builderDefinitionService.getDefinition("model"),
-            BuilderMode.EDIT,
-            modelConfig,
-            ModelConfig.class);
-    if (StringUtils.isBlank(sanitizedConfig.getType()) || StringUtils.isBlank(sanitizedConfig.getModel())) {
-      throw new WebApplicationException("Model type and model are required", 400);
-    }
-    return modelService.updateModel(modelId, sanitizedConfig);
+    return modelService.updateModel(modelId, modelConfig);
   }
 
   @DELETE

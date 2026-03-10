@@ -1,12 +1,14 @@
 package com.agentengine.engine.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.query.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
+import com.agentengine.util.query.PaginatedResult;
+import com.agentengine.util.query.Query;
 import com.agentengine.engine.repository.ModelRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -23,14 +25,17 @@ class ModelServiceImplTest {
   @InjectMocks private ModelServiceImpl modelService;
 
   @Test
-  void shouldDelegateCreateModelWhenCreateModelCalled() {
+  void shouldSanitizeBeforeInsertWhenCreateModelCalled() {
     final ModelConfig request = new ModelConfig();
-    when(modelRepository.insert(request)).thenReturn(request);
+    request.setId("model-1");
+    request.setType("ollama");
+    request.setModel("qwen2.5");
+    when(modelRepository.insert(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
     final ModelConfig created = modelService.createModel(request);
 
-    assertThat(created).isSameAs(request);
-    verify(modelRepository).insert(request);
+    assertThat(created.getId()).isNull();
+    verify(modelRepository).insert(any(ModelConfig.class));
   }
 
   @Test
@@ -70,11 +75,29 @@ class ModelServiceImplTest {
   @Test
   void shouldDelegateUpdateModelWhenUpdateModelCalled() {
     final ModelConfig request = new ModelConfig();
-    when(modelRepository.update("model-1", request)).thenReturn(request);
+    request.setId("model-2");
+    request.setType("ollama");
+    request.setModel("qwen2.5");
+    when(modelRepository.update(eq("model-1"), any(ModelConfig.class)))
+        .thenAnswer(inv -> inv.getArgument(1));
 
     final ModelConfig updated = modelService.updateModel("model-1", request);
 
-    assertThat(updated).isSameAs(request);
-    verify(modelRepository).update("model-1", request);
+    assertThat(updated.getId()).isNull();
+    verify(modelRepository).update(eq("model-1"), any(ModelConfig.class));
+  }
+
+  @Test
+  void shouldSanitizeBeforeSaveWhenSaveModelCalled() {
+    final ModelConfig request = new ModelConfig();
+    request.setId("model-3");
+    request.setType("ollama");
+    request.setModel("qwen2.5");
+    when(modelRepository.save(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    final ModelConfig saved = modelService.saveModel(request);
+
+    assertThat(saved.getId()).isNull();
+    verify(modelRepository).save(any(ModelConfig.class));
   }
 }

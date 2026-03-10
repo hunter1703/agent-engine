@@ -1,5 +1,8 @@
 package com.agentengine.engine.server.grpc;
 
+import com.agentengine.engine.api.exception.AssetNotFoundException;
+import com.agentengine.engine.api.exception.ConfigurationException;
+import com.agentengine.engine.api.exception.DuplicateAssetException;
 import com.agentengine.engine.api.ms.MicroService;
 import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.grpc.Request;
@@ -151,9 +154,30 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
     } catch (Exception e) {
       LOG.error("Error executing {}/{}", serviceName, methodName, e);
-      responseObserver.onError(
-          Status.INTERNAL.withDescription(e.getMessage()).withCause(e).asRuntimeException());
+      responseObserver.onError(rootCauseStatus(e).asRuntimeException());
     }
+  }
+
+  private static Throwable rootCause(final Throwable throwable) {
+    Throwable current = throwable;
+    while (current.getCause() != null && current.getCause() != current) {
+      current = current.getCause();
+    }
+    return current;
+  }
+
+  private static Status rootCauseStatus(final Throwable throwable) {
+    final Throwable cause = rootCause(throwable);
+    if (cause instanceof AssetNotFoundException) {
+      return Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
+    }
+    if (cause instanceof DuplicateAssetException) {
+      return Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
+    }
+    if (cause instanceof IllegalArgumentException || cause instanceof ConfigurationException) {
+      return Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
+    }
+    return Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
   }
 
   // ── Startup helpers
@@ -218,11 +242,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
           },
           err -> {
             LOG.error("Flowable error", err);
-            observer.onError(
-                Status.INTERNAL
-                    .withDescription(err.getMessage())
-                    .withCause(err)
-                    .asRuntimeException());
+            observer.onError(rootCauseStatus(err).asRuntimeException());
           },
           () -> {
             LOG.debug("Flowable complete");

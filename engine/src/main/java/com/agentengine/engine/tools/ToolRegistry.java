@@ -7,7 +7,7 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.Cache;
 import com.google.adk.tools.BaseTool;

@@ -1,11 +1,7 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.tools.planning.beans.Plan;
-import com.agentengine.engine.tools.planning.beans.Task;
 import com.google.adk.tools.ToolContext;
 
 import java.util.List;

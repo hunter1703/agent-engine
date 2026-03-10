@@ -80,6 +80,23 @@ class HumanInTheLoopPluginTest {
     assertThat(response.content().get().text()).contains("No clarification answer was provided.");
   }
 
+  @Test
+  void shouldShortCircuitWhenToolConfirmationMissingExplicitDecisionMarker() {
+    final InvocationContext context =
+        pausedContext("inv-2", "inv-1", "tool_confirmation", "Tool confirmation required");
+    final CallbackContext callbackContext = callbackContext(context);
+    final LlmRequest.Builder requestBuilder =
+        LlmRequest.builder().contents(List.of(textContent("yes approve")));
+
+    final HumanInTheLoopPlugin plugin = new HumanInTheLoopPlugin();
+    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
+
+    verify(context).setEndInvocation(true);
+    assertThat(response.content()).isPresent();
+    assertThat(response.content().get().text())
+        .contains("Missing explicit tool confirmation decision");
+  }
+
   private static InvocationContext pausedContext(
       final String invocationId,
       final String pauseInvocationId,

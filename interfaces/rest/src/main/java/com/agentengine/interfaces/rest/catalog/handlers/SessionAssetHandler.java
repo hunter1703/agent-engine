@@ -7,7 +7,6 @@ import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
-import com.agentengine.interfaces.rest.catalog.SessionAssetSummary;
 import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.handlers.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
@@ -41,20 +40,15 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   @Override
   public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
     final boolean includeEvents = shouldIncludeEvents(request);
-    final Query query = resolveQuery(request, includeEvents);
+    final Query query = buildQuery(request, includeEvents);
     final PaginatedResult<AgentSession> result =
         sessionService.findSessions(query);
     return result.transform(
-        session -> {
-          final AgentSessionDTO dto =
-              includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
-          dto.setSessionInfo(null);
-          return dto;
-        });
+        session -> includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of()));
   }
 
   @Override
-  public PaginatedResult<SessionAssetSummary> listAssets(final AssetRequest request) {
+  public PaginatedResult<AgentSessionDTO> listAssets(final AssetRequest request) {
     final PaginatedResult<AgentSessionDTO> assets = findAssets(request);
     return assets.transform(this::toSessionAssetSummary);
   }
@@ -67,32 +61,20 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
     }
 
     final boolean includeEvents = shouldIncludeEvents(request);
-    for (final String key : request.getKeys()) {
-      sessionService
-          .getSession(key)
-          .map(
-              session -> {
-                final AgentSessionDTO dto =
-                    includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
-                dto.setSessionInfo(null);
-                return dto;
-              })
-          .ifPresent(value -> result.put(key, value));
+    final Map<String, AgentSession> sessionMap = sessionService.getSessions(request.getKeys());
+    for (final AgentSession session : sessionMap.values()) {
+      final AgentSessionDTO dto = includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
+      result.put(session.getId(), dto);
     }
 
     return result;
   }
 
-  @Override
-  protected String getName(AgentSessionDTO asset) {
-    return asset.getTitle();
-  }
-
-  private SessionAssetSummary toSessionAssetSummary(final AgentSessionDTO session) {
+  private AgentSessionDTO toSessionAssetSummary(final AgentSessionDTO session) {
     if (session == null) {
       return null;
     }
-    return SessionAssetSummary.fromSession(session, getName(session));
+    return AgentSessionDTO.summary(session);
   }
 
   private AgentSessionDTO attachEvents(final AgentSession session) {
@@ -102,7 +84,7 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
     final List<BaseEvent> events =
         mapAguiEvents(
             session.getAgentId(), session.getId(), session.getSessionInfo().toSession().events());
-    return new AgentSessionDTO(session, events);
+      return new AgentSessionDTO(session, events);
   }
 
   private static List<BaseEvent> mapAguiEvents(
@@ -126,7 +108,7 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
         CollectionUtils.getBooleanValueFromMap(request.getOptions(), INCLUDE_EVENTS_OPTION));
   }
 
-  private static Query resolveQuery(final AssetRequest request, final boolean includeEvents) {
+  private static Query buildQuery(final AssetRequest request, final boolean includeEvents) {
     final Query source = request == null || request.getQuery() == null ? new Query() : request.getQuery();
     if (includeEvents) {
       return source;

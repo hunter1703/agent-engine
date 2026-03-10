@@ -1,13 +1,11 @@
 package com.agentengine.util.builder;
 
-import com.agentengine.util.CollectionUtils;
 import com.agentengine.util.JsonUtils;
 import com.agentengine.util.Secure;
 import com.agentengine.util.SchemaUtils;
 import com.agentengine.util.builder.annotations.UiAccess;
 import com.agentengine.util.builder.annotations.UiAccessLevel;
 import com.agentengine.util.builder.annotations.UiBoolean;
-import com.agentengine.util.builder.annotations.UiConditionOperator;
 import com.agentengine.util.builder.annotations.UiDynamicSchema;
 import com.agentengine.util.builder.annotations.UiExpression;
 import com.agentengine.util.builder.annotations.UiField;
@@ -60,7 +58,7 @@ public final class BuilderDefinitionUtils {
 
   // ─── Public API ───────────────────────────────────────────────────────────
 
-  public static BuilderDefinition generate(final String assetType, final Class<?> rootType) {
+  public static BuilderDefinition generate(final Class<?> rootType) {
     final Context ctx = new Context(rootType);
     final SchemaBuilder<?, ?> schemaBuilder = buildSchemaForType(rootType, ctx, "");
     schemaBuilder.withKeyword("$schema", "https://json-schema.org/draft/2020-12/schema");
@@ -75,8 +73,7 @@ public final class BuilderDefinitionUtils {
   public static <T> T sanitize(
       final BuilderDefinition definition,
       final BuilderMode mode,
-      final T payload,
-      final Class<T> type) {
+      final T payload) {
     if (definition == null || mode == null || payload == null) {
       return payload;
     }
@@ -84,7 +81,7 @@ public final class BuilderDefinitionUtils {
     if (map == null) {
       return payload;
     }
-    for (final Map.Entry<String, LayoutField> entry : definition.ui().fields().entrySet()) {
+    for (final Map.Entry<String, LayoutField> entry : definition.layout().fields().entrySet()) {
       final String pointer = entry.getKey();
       if (pointer == null || pointer.isBlank() || pointer.indexOf('/', 1) >= 0) {
         continue;
@@ -95,7 +92,8 @@ public final class BuilderDefinitionUtils {
         map.remove(pointer.substring(1));
       }
     }
-    return JsonUtils.fromMap(map, type);
+    //noinspection unchecked
+    return (T) JsonUtils.fromMap(map, payload.getClass());
   }
 
   // ─── Schema building ──────────────────────────────────────────────────────

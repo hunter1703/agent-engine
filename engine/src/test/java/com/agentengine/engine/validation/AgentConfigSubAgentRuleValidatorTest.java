@@ -6,11 +6,13 @@ import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import java.util.List;
+
+import com.agentengine.util.validation.ValidationCollector;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigSubAgentRuleValidatorTest {
 
-  private final AgentConfigSubAgentRuleValidator validator = new AgentConfigSubAgentRuleValidator();
+  private final AgentValidator validator = new AgentValidator();
 
   @Test
   void shouldAddErrorWhenDefaultAgentContainsSubAgents() {
@@ -22,7 +24,8 @@ class AgentConfigSubAgentRuleValidatorTest {
     validator.validate(config, collector);
 
     assertThat(collector.hasErrors()).isTrue();
-    assertThat(collector.errors().getFirst()).contains("supported only for type=orchestrator");
+    assertThat(collector.errors())
+        .anyMatch(error -> error.contains("supported only for type=orchestrator"));
   }
 
   @Test
@@ -50,5 +53,19 @@ class AgentConfigSubAgentRuleValidatorTest {
     validator.validate(config, collector);
 
     assertThat(collector.hasErrors()).isFalse();
+  }
+
+  @Test
+  void shouldAddErrorWhenOrchestratorReferencesMissingSubAgents() {
+    final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
+    config.setId("agent-orchestrator");
+    config.setSubAgentIds(List.of("sub-1", "sub-2"));
+    final ValidationCollector collector = new ValidationCollector();
+
+    AgentValidator.validateOrchestratorSubAgentsExist(
+        config, subAgentId -> !"sub-2".equals(subAgentId), collector);
+
+    assertThat(collector.hasErrors()).isTrue();
+    assertThat(collector.errors().getFirst()).contains("Sub-agent(s) not found: sub-2");
   }
 }

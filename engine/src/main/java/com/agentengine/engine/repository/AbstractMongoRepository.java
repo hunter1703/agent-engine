@@ -1,6 +1,8 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.engine.api.exception.AssetNotFoundException;
+import com.agentengine.engine.api.exception.DuplicateAssetException;
 import com.agentengine.engine.api.query.Page;
 import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.query.Query;
@@ -8,6 +10,7 @@ import com.agentengine.engine.api.update.Update;
 import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.MongoUtils;
 import com.agentengine.engine.validation.ConfigValidationService;
+import com.mongodb.MongoWriteException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -16,12 +19,11 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import jakarta.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
-import dev.langchain4j.agent.tool.P;
+import java.util.*;
+
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -90,14 +92,38 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   }
 
   @Override
+  public Map<String, T> findByIds(Collection<String> ids) {
+    try {
+      final FindIterable<T> iterable = getCollection().find(Filters.in("_id", ids));
+      final Map<String, T> result = new HashMap<>();
+      for (final T doc : iterable) {
+        result.put(doc.getId(), doc);
+      }
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException("Error finding entity by IDs: " + ids, e);
+    }
+  }
+
+  @Override
   public T insert(T entity) {
     try {
       validateEntity(entity);
       if (StringUtils.isBlank(entity.getId())) {
         entity.setId(new ObjectId().toHexString());
       }
-      getCollection().insertOne(entity);
-      return entity;
+      try {
+        getCollection().insertOne(entity);
+        return entity;
+      } catch (MongoWriteException e) {
+        if (e.getError().getCode() == 11000) {
+          throw new DuplicateAssetException(entityClass.getSimpleName(), entity.getId());
+        }
+        LOG.error("Error inserting entity: {}", entity, e);
+        throw new RuntimeException("Error saving entity", e);
+      }
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Error saving entity: {}", entity, e);
       throw new RuntimeException("Error saving entity", e);
@@ -121,6 +147,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
         configValidationService.validate(updated);
       }
       return updated;
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Error updating entity: {}", id, e);
       throw new RuntimeException("Error updating entity: " + id, e);
@@ -134,6 +162,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
         return insert(entity);
       }
       return _update(entity.getId(), entity, true);
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Error saving entity: {}", entity, e);
       throw new RuntimeException("Error saving entity", e);
@@ -145,8 +175,13 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       entity.setId(id);
       validateEntity(entity);
       ReplaceOptions options = new ReplaceOptions().upsert(upsert);
-      getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
+      final UpdateResult result = getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
+      if (!upsert && result.getMatchedCount() == 0) {
+        throw new AssetNotFoundException(entityClass.getSimpleName(), id);
+      }
       return entity;
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Error saving entity: {}", entity, e);
       throw new RuntimeException("Error saving entity", e);

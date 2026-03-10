@@ -4,46 +4,34 @@
 
 package com.agentengine.engine.utils;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Violation implements Serializable {
+public record Violation(
+    String code,
+    Map<String, Object> details,
+    List<Violation> subViolations,
+    String message,
+    String correctionMessage)
+    implements Serializable {
 
-  private final String code;
-  private final Map<String, Object> details;
-  private final List<Violation> subViolations;
-  private final String message;
-  private final String correctionMessage;
-
-  private Violation(Builder builder) {
-    this.code = builder.code;
-    this.message = builder.message;
-    this.correctionMessage = builder.correctionMessage;
-    this.details = Map.copyOf(builder.details);
-    this.subViolations = List.copyOf(builder.subViolations);
-  }
-
-  public String getCode() {
-    return code;
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
-  public String getCorrectionMessage() {
-    return correctionMessage;
-  }
-
-  public Map<String, Object> getDetails() {
-    return details;
-  }
-
-  public List<Violation> getSubViolations() {
-    return subViolations;
+  @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+  public Violation(
+      @JsonProperty("code") final String code,
+      @JsonProperty("details") final Map<String, Object> details,
+      @JsonProperty("subViolations") final List<Violation> subViolations,
+      @JsonProperty("message") final String message,
+      @JsonProperty("correctionMessage") final String correctionMessage) {
+    this.code = code;
+    this.message = message;
+    this.correctionMessage = correctionMessage;
+    this.details = details == null ? Map.of() : Map.copyOf(details);
+    this.subViolations = subViolations == null ? List.of() : List.copyOf(subViolations);
   }
 
   @SuppressWarnings("unchecked")
@@ -130,7 +118,7 @@ public class Violation implements Serializable {
     }
 
     public Violation build() {
-      return new Violation(this);
+      return new Violation(code, details, subViolations, message, correctionMessage);
     }
   }
 }

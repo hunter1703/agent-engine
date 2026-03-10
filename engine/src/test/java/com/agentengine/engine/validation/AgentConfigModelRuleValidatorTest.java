@@ -3,13 +3,27 @@ package com.agentengine.engine.validation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
-import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
+import com.agentengine.util.validation.ValidationCollector;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigModelRuleValidatorTest {
 
-  private final AgentConfigModelRuleValidator validator = new AgentConfigModelRuleValidator();
+  private final AgentValidator validator = new AgentValidator();
+
+  @Test
+  void shouldAddErrorWhenAgentTypeMissing() {
+    final DefaultAgentConfig config = new DefaultAgentConfig();
+    config.setId("agent-default");
+    config.setType(" ");
+    config.setModelId("model-1");
+    final ValidationCollector collector = new ValidationCollector();
+
+    validator.validate(config, collector);
+
+    assertThat(collector.hasErrors()).isTrue();
+    assertThat(collector.errors().getFirst()).contains("Agent type is required");
+  }
 
   @Test
   void shouldAddErrorWhenDefaultAgentMissingModelId() {
@@ -21,28 +35,13 @@ class AgentConfigModelRuleValidatorTest {
     validator.validate(config, collector);
 
     assertThat(collector.hasErrors()).isTrue();
-    assertThat(collector.errors().getFirst()).contains("modelId is required");
+    assertThat(collector.errors().getFirst()).contains("Agent type and modelId are required");
   }
 
   @Test
-  void shouldAddErrorWhenTransferOrchestratorMissingModelId() {
+  void shouldNotAddErrorWhenOrchestratorMissingModelId() {
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.TRANSFER);
-    config.setModelId(null);
-    final ValidationCollector collector = new ValidationCollector();
-
-    validator.validate(config, collector);
-
-    assertThat(collector.hasErrors()).isTrue();
-    assertThat(collector.errors().getFirst()).contains("orchestrationMode=transfer");
-  }
-
-  @Test
-  void shouldNotAddErrorWhenParallelOrchestratorMissingModelId() {
-    final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
-    config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.PARALLEL);
     config.setModelId(null);
     final ValidationCollector collector = new ValidationCollector();
 

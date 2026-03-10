@@ -1,13 +1,15 @@
 package com.agentengine.engine.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
-import com.agentengine.engine.api.query.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
+import com.agentengine.util.query.PaginatedResult;
+import com.agentengine.util.query.Query;
 import com.agentengine.engine.repository.AgentRepository;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -24,14 +26,16 @@ class AgentServiceImplTest {
   @InjectMocks private AgentServiceImpl agentService;
 
   @Test
-  void shouldDelegateCreateAgentWhenCreateAgentCalled() {
+  void shouldSanitizeBeforeInsertWhenCreateAgentCalled() {
     final DefaultAgentConfig request = new DefaultAgentConfig();
-    when(agentRepository.insert(request)).thenReturn(request);
+    request.setId("agent-1");
+    request.setModelId("model-1");
+    when(agentRepository.insert(any(BaseAgentConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
     final BaseAgentConfig created = agentService.createAgent(request);
 
-    assertThat(created).isSameAs(request);
-    verify(agentRepository).insert(request);
+    assertThat(created.getId()).isNull();
+    verify(agentRepository).insert(any(BaseAgentConfig.class));
   }
 
   @Test
@@ -71,11 +75,27 @@ class AgentServiceImplTest {
   @Test
   void shouldDelegateUpdateAgentWhenUpdateAgentCalled() {
     final DefaultAgentConfig request = new DefaultAgentConfig();
-    when(agentRepository.update("agent-1", request)).thenReturn(request);
+    request.setId("agent-2");
+    request.setModelId("model-1");
+    when(agentRepository.update(eq("agent-1"), any(BaseAgentConfig.class)))
+        .thenAnswer(inv -> inv.getArgument(1));
 
     final BaseAgentConfig updated = agentService.updateAgent("agent-1", request);
 
-    assertThat(updated).isSameAs(request);
-    verify(agentRepository).update("agent-1", request);
+    assertThat(updated.getId()).isNull();
+    verify(agentRepository).update(eq("agent-1"), any(BaseAgentConfig.class));
+  }
+
+  @Test
+  void shouldSanitizeBeforeSaveWhenSaveAgentCalled() {
+    final DefaultAgentConfig request = new DefaultAgentConfig();
+    request.setId("agent-3");
+    request.setModelId("model-1");
+    when(agentRepository.save(any(BaseAgentConfig.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    final BaseAgentConfig saved = agentService.saveAgent(request);
+
+    assertThat(saved.getId()).isNull();
+    verify(agentRepository).save(any(BaseAgentConfig.class));
   }
 }

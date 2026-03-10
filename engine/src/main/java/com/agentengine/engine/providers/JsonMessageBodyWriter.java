@@ -1,8 +1,6 @@
 package com.agentengine.engine.providers;
 
 import com.agentengine.util.JsonUtils;
-import com.agentengine.engine.exceptions.JsonSerializationException;
-import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -14,7 +12,6 @@ import java.lang.reflect.Type;
 
 @Provider
 @Produces({MediaType.APPLICATION_JSON, "application/*+json"})
-@RegisterForReflection
 public class JsonMessageBodyWriter implements MessageBodyWriter<Object> {
 
   @Override
@@ -32,12 +29,11 @@ public class JsonMessageBodyWriter implements MessageBodyWriter<Object> {
       Annotation[] annotations,
       MediaType mediaType,
       MultivaluedMap<String, Object> httpHeaders,
-      OutputStream entityStream)
-      throws JsonSerializationException {
+      OutputStream entityStream) {
     try {
       JsonUtils.toStream(entityStream, o);
     } catch (Exception e) {
-      throw new JsonSerializationException(
+      throw new RuntimeException(
           String.format("Error serializing JSON with Jackson: %s", e.getMessage()), e);
     }
   }

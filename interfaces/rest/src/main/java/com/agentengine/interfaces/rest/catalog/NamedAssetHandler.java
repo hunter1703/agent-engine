@@ -1,19 +1,18 @@
 package com.agentengine.interfaces.rest.catalog;
 
-import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.beans.NamedEntity;
-import com.agentengine.engine.api.query.Page;
-import com.agentengine.engine.api.query.PaginatedResult;
+import com.agentengine.util.beans.BaseEntity;
+import com.agentengine.util.beans.NamedEntity;
+import com.agentengine.util.query.PaginatedResult;
 
 public abstract class NamedAssetHandler<T> implements AssetHandler<T> {
 
-  public PaginatedResult<? extends NameIdEntity> listAssets(final AssetRequest request) {
+  public PaginatedResult<? extends NamedEntity> listAssets(final AssetRequest request) {
     final PaginatedResult<T> assets = findAssets(request);
-    return assets.transform(this::toNameIdEntity);
+    return assets.transform(this::toNamedEntity);
   }
 
-  protected NameIdEntity toNameIdEntity(final T asset) {
-    return new NameIdEntity(getId(asset), getName(asset));
+  protected NamedEntity toNamedEntity(final T asset) {
+    return new NamedEntity(getId(asset), getName(asset));
   }
 
   protected String getId(T asset) {

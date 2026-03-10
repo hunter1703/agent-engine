@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.api.utils.ResourceUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.fasterxml.jackson.core.type.TypeReference;

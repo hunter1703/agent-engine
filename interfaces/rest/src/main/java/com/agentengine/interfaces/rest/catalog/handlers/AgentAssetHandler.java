@@ -34,15 +34,6 @@ public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
 
   @Override
   public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
-    Map<String, BaseAgentConfig> result = new HashMap<>();
-    if (request.getKeys() == null || request.getKeys().isEmpty()) {
-      return result;
-    }
-
-    for (String key : request.getKeys()) {
-      agentService.getAgent(key).ifPresent(value -> result.put(key, value));
-    }
-
-    return result;
+      return agentService.getAgents(request.getKeys());
   }
 }

@@ -2,7 +2,7 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.utils.RunStateUtils;

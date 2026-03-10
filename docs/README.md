@@ -15,6 +15,7 @@ It is intentionally independent from the existing `README.md` and `docs/` conten
 8. [`08-deployment-and-operations.md`](./08-deployment-and-operations.md)
 9. [`09-practical-recipes.md`](./09-practical-recipes.md)
 10. [`10-protocol-and-guarantees.md`](./10-protocol-and-guarantees.md)
+11. [`11-builder-contract-for-frontend.md`](./11-builder-contract-for-frontend.md)
 
 ## Scope Notes
 

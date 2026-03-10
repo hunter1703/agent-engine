@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest;
 import static com.agentengine.engine.api.AgentRequest.RequestType.STREAM_AGUI_EVENTS;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
-import static java.util.UUID.randomUUID;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.AgentRequest.RequestType;
@@ -12,14 +11,10 @@ import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.requests.ResponsesApiRequest;
+import com.agentengine.interfaces.rest.requests.ResumeSessionRequest.ConfirmationDecision;
 import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
-import com.agentengine.interfaces.rest.responses.dtos.BaseResponsesEventData;
 import com.agui.core.event.BaseEvent;
-import com.agentengine.util.builder.BuilderMode;
-import com.agentengine.util.builder.BuilderDefinitionUtils;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
@@ -37,7 +32,6 @@ import jakarta.ws.rs.core.MediaType;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,17 +54,17 @@ public class AgentRestAPI {
 
   private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
   private static final long CONFIRMATION_TIMEOUT_MILLIS = Duration.ofMinutes(15).toMillis();
+  private static final String TOOL_DECISION_MARKER = "__AE_TOOL_DECISION__:";
+  private static final String TOOL_CONFIRMATION_PAUSE_REASON = "tool_confirmation";
   private final Map<RequestType, AgentRequestHandler<?>> handlers;
   private final AgentService agentService;
   private final SessionService sessionService;
-  private final BuilderDefinitionService builderDefinitionService;
 
   @Inject
   public AgentRestAPI(
       final Instance<AgentRequestHandler<?>> handlers,
       final AgentService agentService,
-      final SessionService sessionService,
-      final BuilderDefinitionService builderDefinitionService) {
+      final SessionService sessionService) {
     this.handlers =
         handlers != null
             ? handlers.stream()
@@ -80,7 +74,6 @@ public class AgentRestAPI {
             : null;
     this.agentService = agentService;
     this.sessionService = sessionService;
-    this.builderDefinitionService = builderDefinitionService;
   }
 
   @POST
@@ -102,19 +95,7 @@ public class AgentRestAPI {
     if (agentService.getAgent(request.getAgentId()).isEmpty()) {
       throw new WebApplicationException("Agent not found: " + request.getAgentId(), 404);
     }
-    return doEvents(request);
-  }
-
-  // used by resumeEvents to avoid duplicate getAgent() call
-  private Publisher<BaseEvent> doEvents(final AgentRequest request) {
-    LOG.debug(
-        "Agent events streaming request - agent_id={} session_id={}",
-        request.getAgentId(),
-        request.getSessionId());
-    @SuppressWarnings("unchecked")
-    final AgentRequestHandler<Flowable<BaseEvent>> handler =
-        (AgentRequestHandler<Flowable<BaseEvent>>) handlerFor(STREAM_AGUI_EVENTS);
-    return handler.handle(request);
+    return _startStreaming(request);
   }
 
   @POST
@@ -129,20 +110,7 @@ public class AgentRestAPI {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
-    final BaseAgentConfig sanitizedConfig =
-        BuilderDefinitionUtils.sanitize(
-            builderDefinitionService.getDefinition("agent"),
-            BuilderMode.CREATE,
-            agentConfig,
-            BaseAgentConfig.class);
-    if (StringUtils.isBlank(sanitizedConfig.getType())) {
-      throw new WebApplicationException("Agent type is required", 400);
-    }
-    if (requiresModelId(sanitizedConfig) && StringUtils.isBlank(sanitizedConfig.getModelId())) {
-      throw new WebApplicationException("Agent type and modelId are required", 400);
-    }
-    validateOrchestratorSubAgentsExist(sanitizedConfig);
-    return agentService.createAgent(sanitizedConfig);
+    return agentService.createAgent(agentConfig);
   }
 
   @POST
@@ -159,13 +127,6 @@ public class AgentRestAPI {
     if (StringUtils.isBlank(agentConfig.getId())) {
       throw new WebApplicationException("Agent ID is required", 400);
     }
-    if (StringUtils.isBlank(agentConfig.getType())) {
-      throw new WebApplicationException("Agent type is required", 400);
-    }
-    if (requiresModelId(agentConfig) && StringUtils.isBlank(agentConfig.getModelId())) {
-      throw new WebApplicationException("Agent type and modelId are required", 400);
-    }
-    validateOrchestratorSubAgentsExist(agentConfig);
     return agentService.saveAgent(agentConfig);
   }
 
@@ -185,23 +146,7 @@ public class AgentRestAPI {
     if (StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent ID is required", 400);
     }
-    if (StringUtils.isNotBlank(agentConfig.getId()) && !agentId.equals(agentConfig.getId())) {
-      throw new WebApplicationException("Path agentId must match payload id", 400);
-    }
-    final BaseAgentConfig sanitizedConfig =
-        BuilderDefinitionUtils.sanitize(
-            builderDefinitionService.getDefinition("agent"),
-            BuilderMode.EDIT,
-            agentConfig,
-            BaseAgentConfig.class);
-    if (StringUtils.isBlank(sanitizedConfig.getType())) {
-      throw new WebApplicationException("Agent type is required", 400);
-    }
-    if (requiresModelId(sanitizedConfig) && StringUtils.isBlank(sanitizedConfig.getModelId())) {
-      throw new WebApplicationException("Agent type and modelId are required", 400);
-    }
-    validateOrchestratorSubAgentsExist(sanitizedConfig);
-    return agentService.updateAgent(agentId, sanitizedConfig);
+    return agentService.updateAgent(agentId, agentConfig);
   }
 
   @DELETE
@@ -241,18 +186,21 @@ public class AgentRestAPI {
         sessionService
             .getSession(sessionId)
             .orElseThrow(() -> new WebApplicationException("Session not found", 404));
-    if (isExpired(session.getSessionInfo() == null ? null : session.getSessionInfo().getState())) {
+    final Map<String, Object> state =
+        session.getSessionInfo() == null ? null : session.getSessionInfo().getState();
+    if (isExpired(state)) {
       throw new WebApplicationException("Session expired", 410);
     }
-    if (isConfirmationTimedOut(session.getSessionInfo() == null ? null : session.getSessionInfo().getState())) {
+    if (isConfirmationTimedOut(state)) {
       throw new WebApplicationException("Confirmation timed out", 408);
     }
+    final boolean toolConfirmationPause = isToolConfirmationPause(state);
     final AgentRequest request = new AgentRequest();
     request.setType(STREAM_AGUI_EVENTS.name());
     request.setAgentId(session.getAgentId());
     request.setSessionId(sessionId);
-    request.setMessage(resumeRequest.getMessage());
-    return doEvents(request);
+    request.setMessage(buildResumeMessage(resumeRequest, toolConfirmationPause));
+    return _startStreaming(request);
   }
 
   @DELETE
@@ -264,18 +212,19 @@ public class AgentRestAPI {
     sessionService.deleteSession(sessionId);
   }
 
-  private AgentRequestHandler<?> handlerFor(final RequestType requestType) {
-    final AgentRequestHandler<?> handler = handlers.get(requestType);
-    if (handler == null) {
-      String errorMsg = "No handler registered for request type: " + requestType;
-      LOG.error("Handler lookup failed - request_type={} error=\"{}\"", requestType, errorMsg);
-      throw new WebApplicationException(errorMsg, 400);
-    }
-    return handler;
-  }
+  @SuppressWarnings("unchecked")
+  private Publisher<BaseEvent> _startStreaming(final AgentRequest request) {
+    LOG.debug(
+            "Agent events streaming request - agent_id={} session_id={}",
+            request.getAgentId(),
+            request.getSessionId());
 
-  private static boolean requiresModelId(final BaseAgentConfig agentConfig) {
-    return agentConfig == null || !"orchestrator".equalsIgnoreCase(agentConfig.getType());
+    final AgentRequestHandler<?> handler = handlers.get(RequestType.STREAM_AGUI_EVENTS);
+    if (handler == null) {
+      throw new WebApplicationException(
+          "No handler registered for request type: " + RequestType.STREAM_AGUI_EVENTS, 400);
+    }
+    return (Publisher<BaseEvent>) handler.handle(request);
   }
 
   private static boolean isExpired(final Map<String, Object> state) {
@@ -331,23 +280,6 @@ public class AgentRestAPI {
 
   private static Map<String, Object> extractSessionState(final Map<String, Object> state) {
     return CollectionUtils.getMapFromMap(state, "sessionState");
-  }
-
-  private void validateOrchestratorSubAgentsExist(final BaseAgentConfig agentConfig) {
-    if (agentConfig == null
-        || !"orchestrator".equalsIgnoreCase(agentConfig.getType())
-        || agentConfig.getSubAgentIds() == null) {
-      return;
-    }
-    final List<String> missingSubAgents =
-        agentConfig.getSubAgentIds().stream()
-            .filter(StringUtils::isNotBlank)
-            .filter(subAgentId -> agentService.getAgent(subAgentId).isEmpty())
-            .toList();
-    if (!missingSubAgents.isEmpty()) {
-      throw new WebApplicationException(
-          "Sub-agent(s) not found: " + String.join(", ", missingSubAgents), 400);
-    }
   }
 
 }

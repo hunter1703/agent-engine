@@ -1,7 +1,7 @@
 package com.agentengine.engine.agents.processors.request;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.utils.RunStateUtils;

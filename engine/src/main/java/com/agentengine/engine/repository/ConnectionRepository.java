@@ -1,6 +1,7 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.connectors.core.runtime.Connection;
+import com.agentengine.util.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;

@@ -14,7 +14,7 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BuilderDefinition(
     Map<String, Object> schema,
-    @JsonProperty("layout") UILayout ui) {
+    UILayout layout) {
 
   public BuilderDefinition resolve(final BuilderMode mode) {
     if (mode == null) {
@@ -22,7 +22,7 @@ public record BuilderDefinition(
     }
     final Map<String, LayoutField> resolvedFields = new LinkedHashMap<>();
     final List<String> hiddenPointers = new ArrayList<>();
-    for (final Map.Entry<String, LayoutField> entry : ui.fields().entrySet()) {
+    for (final Map.Entry<String, LayoutField> entry : layout.fields().entrySet()) {
       final String pointer = entry.getKey();
       final LayoutAccessPolicy policy = entry.getValue().access();
       final UiAccessLevel access = policy == null ? UiAccessLevel.EDITABLE : policy.forMode(mode);
@@ -42,7 +42,7 @@ public record BuilderDefinition(
         resolvedSchema,
         new UILayout(
             new LinkedHashMap<>(resolvedFields),
-            ui.presets() == null || ui.presets().isEmpty() ? null : List.copyOf(ui.presets())));
+            layout.presets() == null || layout.presets().isEmpty() ? null : List.copyOf(layout.presets())));
   }
 
   private static Map<String, Object> deepCopySchema(final Map<String, Object> input) {

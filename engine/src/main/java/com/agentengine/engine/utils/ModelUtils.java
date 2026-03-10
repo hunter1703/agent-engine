@@ -2,7 +2,7 @@ package com.agentengine.engine.utils;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 

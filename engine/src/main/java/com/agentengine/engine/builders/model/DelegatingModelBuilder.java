@@ -4,7 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.ResourceUtils;
 
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.model.DelegatingLLMModel;
 import com.agentengine.engine.agents.processors.Parser;

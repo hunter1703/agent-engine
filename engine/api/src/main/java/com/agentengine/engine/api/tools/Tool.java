@@ -2,7 +2,7 @@ package com.agentengine.engine.api.tools;
 
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.api.utils.Utils;
 import com.agentengine.engine.api.utils.ToolUtils;
 import com.fasterxml.jackson.core.type.TypeReference;

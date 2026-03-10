@@ -1,1 +1,861 @@
-{"schema":{"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"avatar":{"type":"string"},"contextStrategy":{"additionalProperties":false,"properties":{"enabled":{"default":true,"type":"boolean"},"keepLastTokens":{"default":1024,"type":"integer"},"modelId":{"type":"string"},"promptTemplate":{"type":"string"},"recencyThreshold":{"default":1024,"type":"integer"},"tokenThreshold":{"default":4096,"type":"integer"},"type":{"enum":["compaction","last_n","none"],"type":"string"}},"required":["type"],"type":"object"},"createdTime":{"type":"integer"},"description":{"type":"string","writeOnly":true},"guardrails":{"additionalProperties":false,"properties":{"defaultOnError":{"default":"FAIL_OPEN","enum":["UNKNOWN","FAIL_OPEN","FAIL_CLOSED"],"type":"string"},"enabled":{"default":true,"type":"boolean"},"executionMode":{"default":"SYNC","enum":["UNKNOWN","SYNC","OPTIMISTIC"],"type":"string"},"rules":{"items":{"additionalProperties":false,"properties":{"action":{"enum":["UNKNOWN","ALLOW","WARN","BLOCK","ESCALATE"],"type":"string"},"anchorStrategy":{"default":"LATEST_USER_AND_PLAN","enum":["UNKNOWN","RECENT_USER","LATEST_USER_AND_PLAN"],"type":"string"},"blockedPatterns":{"items":{"type":"string"},"type":"array"},"enabled":{"type":"boolean"},"evaluatorModelId":{"type":"string"},"id":{"type":"string"},"maxSteeringRetries":{"default":3,"type":"integer"},"maxTextLength":{"type":"integer"},"message":{"type":"string"},"minToolRisk":{"default":"HIGH","enum":["UNKNOWN","LOW","MEDIUM","HIGH","CRITICAL"],"type":"string"},"mode":{"default":"STEER_THEN_BLOCK","enum":["UNKNOWN","STEER_ONLY","STEER_THEN_ALLOW","STEER_THEN_BLOCK"],"type":"string"},"recency":{"default":5,"type":"integer"},"relevanceThreshold":{"default":0.2,"type":"number"},"stage":{"enum":["UNKNOWN","INPUT","TOOL","OUTPUT"],"type":"string"},"toolNames":{"items":{"type":"string"},"type":"array"},"type":{"enum":["TEXT_CONTENT","TOOL_SAFETY","RELEVANCE"],"type":"string"}},"required":["type"],"type":"object"},"type":"array"}},"type":"object"},"id":{"type":"string"},"modelId":{"type":"string"},"name":{"type":"string","writeOnly":true},"orchestrationMode":{"default":"TRANSFER","enum":["UNKNOWN","TRANSFER","SEQUENTIAL","PARALLEL"],"type":"string"},"parallel":{"additionalProperties":false,"properties":{"aggregationPolicy":{"default":"CONCATENATE","enum":["UNKNOWN","CONCATENATE","BEST_EFFORT","MAJORITY_VOTE"],"type":"string"},"quorum":{"default":1,"type":"integer"},"stoppingPolicy":{"default":"ALL_COMPLETE","enum":["UNKNOWN","ALL_COMPLETE","FIRST_SUCCESS","QUORUM"],"type":"string"}},"type":"object"},"runtime":{"additionalProperties":false,"properties":{"maxSteps":{"default":50,"type":"integer"},"resumable":{"default":true,"type":"boolean"}},"type":"object"},"sessionStore":{"additionalProperties":false,"properties":{"connectionString":{"type":"string"},"type":{"enum":["memory","mongodb"],"type":"string"}},"required":["type"],"type":"object"},"subAgentIds":{"items":{"type":"string"},"type":"array"},"systemPrompt":{"type":"string","writeOnly":true},"tools":{"items":{"additionalProperties":false,"properties":{"configs":{"additionalProperties":{"type":"object"},"type":"object"},"toolName":{"type":"string"}},"type":"object"},"type":"array"},"type":{"enum":["default","orchestrator"],"type":"string"},"updatedTime":{"type":"integer"}},"required":["contextStrategy","type"],"type":"object"},"layout":{"fields":{"/avatar":{"label":"Avatar","widget":"TEXT","step":"identity","section":"identity","order":50,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/contextStrategy":{"label":"Context Strategy","step":"model","section":"context","order":30,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/description":{"label":"Description","widget":"TEXT","step":"identity","section":"identity","order":40,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"sensitive":true},"/guardrails":{"label":"Guardrails","step":"guardrails","section":"guardrails","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/guardrails/rules/*/anchorStrategy":{"label":"Anchor Strategy","widget":"SELECT","step":"general","section":"general","order":50,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["UNKNOWN","RECENT_USER","LATEST_USER_AND_PLAN"],"rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"type"},"RELEVANCE"]}}]},"/guardrails/rules/*/evaluatorModelId":{"label":"Evaluator Model ID","widget":"TEXT","step":"general","section":"general","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"type"},"RELEVANCE"]}}]},"/guardrails/rules/*/maxSteeringRetries":{"label":"Max Steering Retries","widget":"NUMBER","step":"general","section":"general","order":30,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"numberType":"integer","rules":[{"effect":"VISIBLE","expr":{"and":[{"===":[{"var":"type"},"RELEVANCE"]},{"!":{"in":[{"var":"mode"},["STEER_ONLY"]]}}]}}]},"/guardrails/rules/*/mode":{"label":"Mode","widget":"SELECT","step":"general","section":"general","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["UNKNOWN","STEER_ONLY","STEER_THEN_ALLOW","STEER_THEN_BLOCK"],"rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"type"},"RELEVANCE"]}}]},"/guardrails/rules/*/recency":{"label":"Recency","widget":"NUMBER","step":"general","section":"general","order":60,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"numberType":"integer","rules":[{"effect":"VISIBLE","expr":{"and":[{"===":[{"var":"type"},"RELEVANCE"]},{"===":[{"var":"anchorStrategy"},"RECENT_USER"]}]}}]},"/guardrails/rules/*/relevanceThreshold":{"label":"Relevance Threshold","widget":"NUMBER","step":"general","section":"general","order":40,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"numberType":"decimal","rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"type"},"RELEVANCE"]}}]},"/id":{"label":"ID","widget":"TEXT","step":"identity","section":"identity","order":0,"access":{"create":"HIDDEN","edit":"READ_ONLY","view":"READ_ONLY"}},"/modelId":{"label":"Model ID","widget":"LOOKUP","step":"model","section":"model","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"lookup":{"assetType":"model"}},"/name":{"label":"Name","widget":"TEXT","step":"identity","section":"identity","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"sensitive":true},"/orchestrationMode":{"label":"Orchestration Mode","widget":"SELECT","step":"identity","section":"identity","order":70,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["UNKNOWN","TRANSFER","SEQUENTIAL","PARALLEL"],"rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"type"},"orchestrator"]}}]},"/parallel":{"label":"Parallel Orchestration","step":"identity","section":"identity","order":80,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"rules":[{"effect":"VISIBLE","expr":{"and":[{"===":[{"var":"type"},"orchestrator"]},{"===":[{"var":"orchestrationMode"},"PARALLEL"]}]}}]},"/parallel/aggregationPolicy":{"label":"Aggregation Policy","widget":"SELECT","step":"general","section":"general","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["UNKNOWN","CONCATENATE","BEST_EFFORT","MAJORITY_VOTE"]},"/parallel/quorum":{"label":"Quorum","widget":"NUMBER","step":"general","section":"general","order":30,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"numberType":"integer","rules":[{"effect":"VISIBLE","expr":{"===":[{"var":"stoppingPolicy"},"QUORUM"]}}]},"/parallel/stoppingPolicy":{"label":"Stopping Policy","widget":"SELECT","step":"general","section":"general","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["UNKNOWN","ALL_COMPLETE","FIRST_SUCCESS","QUORUM"]},"/runtime":{"label":"Runtime","step":"runtime","section":"runtime","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/sessionStore":{"label":"Session Store","step":"runtime","section":"runtime","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/subAgentIds":{"label":"Sub Agents","widget":"LOOKUP","step":"identity","section":"identity","order":60,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"collection":true,"rules":[{"effect":"VISIBLE","expr":{"in":[{"var":"type"},["orchestrator"]]}}],"lookup":{"multiSelect":true,"assetType":"agent"}},"/systemPrompt":{"label":"System Prompt","widget":"TEXTAREA","step":"model","section":"model","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"multiline":true,"rows":6,"sensitive":true},"/tools":{"label":"Tools","step":"model","section":"model","order":40,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"collection":true},"/tools/*/configs":{"label":"Configuration","widget":"DYNAMIC_SCHEMA","step":"general","section":"general","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"dynamicSchema":{"url":"/schemas","method":"POST","body":{"assetId":"$item.toolName","assetType":"tool_configs","contextId":"$.id"}}},"/tools/*/toolName":{"label":"Tool Name","widget":"TEXT","step":"general","section":"general","order":10,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"}},"/type":{"label":"Agent Type","widget":"SELECT","step":"identity","section":"identity","order":20,"access":{"create":"EDITABLE","edit":"EDITABLE","view":"READ_ONLY"},"options":["default","orchestrator"]}}}}
+{
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "avatar": {
+        "type": "string"
+      },
+      "contextStrategy": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "keepLastTokens": {
+            "default": 1024,
+            "type": "integer"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "promptTemplate": {
+            "type": "string"
+          },
+          "recencyThreshold": {
+            "default": 1024,
+            "type": "integer"
+          },
+          "tokenThreshold": {
+            "default": 4096,
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "compaction",
+              "last_n",
+              "none"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "createdTime": {
+        "type": "integer"
+      },
+      "description": {
+        "type": "string",
+        "writeOnly": true
+      },
+      "guardrails": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultOnError": {
+            "default": "FAIL_OPEN",
+            "enum": [
+              "UNKNOWN",
+              "FAIL_OPEN",
+              "FAIL_CLOSED"
+            ],
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "executionMode": {
+            "default": "SYNC",
+            "enum": [
+              "UNKNOWN",
+              "SYNC",
+              "OPTIMISTIC"
+            ],
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "enum": [
+                    "UNKNOWN",
+                    "ALLOW",
+                    "WARN",
+                    "BLOCK",
+                    "ESCALATE"
+                  ],
+                  "type": "string"
+                },
+                "anchorStrategy": {
+                  "default": "LATEST_USER_AND_PLAN",
+                  "enum": [
+                    "UNKNOWN",
+                    "RECENT_USER",
+                    "LATEST_USER_AND_PLAN"
+                  ],
+                  "type": "string"
+                },
+                "blockedPatterns": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "evaluatorModelId": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "maxSteeringRetries": {
+                  "default": 3,
+                  "type": "integer"
+                },
+                "maxTextLength": {
+                  "type": "integer"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "minToolRisk": {
+                  "default": "HIGH",
+                  "enum": [
+                    "UNKNOWN",
+                    "LOW",
+                    "MEDIUM",
+                    "HIGH",
+                    "CRITICAL"
+                  ],
+                  "type": "string"
+                },
+                "mode": {
+                  "default": "STEER_THEN_BLOCK",
+                  "enum": [
+                    "UNKNOWN",
+                    "STEER_ONLY",
+                    "STEER_THEN_ALLOW",
+                    "STEER_THEN_BLOCK"
+                  ],
+                  "type": "string"
+                },
+                "recency": {
+                  "default": 5,
+                  "type": "integer"
+                },
+                "relevanceThreshold": {
+                  "default": 0.2,
+                  "type": "number"
+                },
+                "stage": {
+                  "enum": [
+                    "UNKNOWN",
+                    "INPUT",
+                    "TOOL",
+                    "OUTPUT"
+                  ],
+                  "type": "string"
+                },
+                "toolNames": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": {
+                  "enum": [
+                    "TEXT_CONTENT",
+                    "TOOL_SAFETY",
+                    "RELEVANCE"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "id": {
+        "type": "string"
+      },
+      "modelId": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string",
+        "writeOnly": true
+      },
+      "orchestrationMode": {
+        "default": "TRANSFER",
+        "enum": [
+          "UNKNOWN",
+          "TRANSFER",
+          "SEQUENTIAL",
+          "PARALLEL"
+        ],
+        "type": "string"
+      },
+      "parallel": {
+        "additionalProperties": false,
+        "properties": {
+          "aggregationPolicy": {
+            "default": "CONCATENATE",
+            "enum": [
+              "UNKNOWN",
+              "CONCATENATE",
+              "BEST_EFFORT",
+              "MAJORITY_VOTE"
+            ],
+            "type": "string"
+          },
+          "quorum": {
+            "default": 1,
+            "type": "integer"
+          },
+          "stoppingPolicy": {
+            "default": "ALL_COMPLETE",
+            "enum": [
+              "UNKNOWN",
+              "ALL_COMPLETE",
+              "FIRST_SUCCESS",
+              "QUORUM"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "runtime": {
+        "additionalProperties": false,
+        "properties": {
+          "maxSteps": {
+            "default": 50,
+            "type": "integer"
+          },
+          "resumable": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "sessionStore": {
+        "additionalProperties": false,
+        "properties": {
+          "connectionString": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "memory",
+              "mongodb"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "subAgentIds": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "systemPrompt": {
+        "type": "string",
+        "writeOnly": true
+      },
+      "tools": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "configs": {
+              "additionalProperties": {
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "toolName": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "type": {
+        "enum": [
+          "default",
+          "orchestrator"
+        ],
+        "type": "string"
+      },
+      "updatedTime": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "contextStrategy",
+      "type"
+    ],
+    "type": "object"
+  },
+  "layout": {
+    "fields": {
+      "/avatar": {
+        "label": "Avatar",
+        "widget": "TEXT",
+        "step": "identity",
+        "section": "identity",
+        "order": 50,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/contextStrategy": {
+        "label": "Context Strategy",
+        "step": "model",
+        "section": "context",
+        "order": 30,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/description": {
+        "label": "Description",
+        "widget": "TEXT",
+        "step": "identity",
+        "section": "identity",
+        "order": 40,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "sensitive": true
+      },
+      "/guardrails": {
+        "label": "Guardrails",
+        "step": "guardrails",
+        "section": "guardrails",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/guardrails/rules/*/anchorStrategy": {
+        "label": "Anchor Strategy",
+        "widget": "SELECT",
+        "step": "general",
+        "section": "general",
+        "order": 50,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "UNKNOWN",
+          "RECENT_USER",
+          "LATEST_USER_AND_PLAN"
+        ],
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "type"
+                },
+                "RELEVANCE"
+              ]
+            }
+          }
+        ]
+      },
+      "/guardrails/rules/*/evaluatorModelId": {
+        "label": "Evaluator Model ID",
+        "widget": "TEXT",
+        "step": "general",
+        "section": "general",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "type"
+                },
+                "RELEVANCE"
+              ]
+            }
+          }
+        ]
+      },
+      "/guardrails/rules/*/maxSteeringRetries": {
+        "label": "Max Steering Retries",
+        "widget": "NUMBER",
+        "step": "general",
+        "section": "general",
+        "order": 30,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "numberType": "integer",
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "and": [
+                {
+                  "===": [
+                    {
+                      "var": "type"
+                    },
+                    "RELEVANCE"
+                  ]
+                },
+                {
+                  "!": {
+                    "in": [
+                      {
+                        "var": "mode"
+                      },
+                      [
+                        "STEER_ONLY"
+                      ]
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "/guardrails/rules/*/mode": {
+        "label": "Mode",
+        "widget": "SELECT",
+        "step": "general",
+        "section": "general",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "UNKNOWN",
+          "STEER_ONLY",
+          "STEER_THEN_ALLOW",
+          "STEER_THEN_BLOCK"
+        ],
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "type"
+                },
+                "RELEVANCE"
+              ]
+            }
+          }
+        ]
+      },
+      "/guardrails/rules/*/recency": {
+        "label": "Recency",
+        "widget": "NUMBER",
+        "step": "general",
+        "section": "general",
+        "order": 60,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "numberType": "integer",
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "and": [
+                {
+                  "===": [
+                    {
+                      "var": "type"
+                    },
+                    "RELEVANCE"
+                  ]
+                },
+                {
+                  "===": [
+                    {
+                      "var": "anchorStrategy"
+                    },
+                    "RECENT_USER"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "/guardrails/rules/*/relevanceThreshold": {
+        "label": "Relevance Threshold",
+        "widget": "NUMBER",
+        "step": "general",
+        "section": "general",
+        "order": 40,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "numberType": "decimal",
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "type"
+                },
+                "RELEVANCE"
+              ]
+            }
+          }
+        ]
+      },
+      "/id": {
+        "label": "ID",
+        "widget": "TEXT",
+        "step": "identity",
+        "section": "identity",
+        "order": 0,
+        "access": {
+          "create": "HIDDEN",
+          "edit": "READ_ONLY",
+          "view": "READ_ONLY"
+        }
+      },
+      "/modelId": {
+        "label": "Model ID",
+        "widget": "LOOKUP",
+        "step": "model",
+        "section": "model",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "lookup": {
+          "assetType": "model"
+        }
+      },
+      "/name": {
+        "label": "Name",
+        "widget": "TEXT",
+        "step": "identity",
+        "section": "identity",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "sensitive": true
+      },
+      "/orchestrationMode": {
+        "label": "Orchestration Mode",
+        "widget": "SELECT",
+        "step": "identity",
+        "section": "identity",
+        "order": 70,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "UNKNOWN",
+          "TRANSFER",
+          "SEQUENTIAL",
+          "PARALLEL"
+        ],
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "type"
+                },
+                "orchestrator"
+              ]
+            }
+          }
+        ]
+      },
+      "/parallel": {
+        "label": "Parallel Orchestration",
+        "step": "identity",
+        "section": "identity",
+        "order": 80,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "and": [
+                {
+                  "===": [
+                    {
+                      "var": "type"
+                    },
+                    "orchestrator"
+                  ]
+                },
+                {
+                  "===": [
+                    {
+                      "var": "orchestrationMode"
+                    },
+                    "PARALLEL"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "/parallel/aggregationPolicy": {
+        "label": "Aggregation Policy",
+        "widget": "SELECT",
+        "step": "general",
+        "section": "general",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "UNKNOWN",
+          "CONCATENATE",
+          "BEST_EFFORT",
+          "MAJORITY_VOTE"
+        ]
+      },
+      "/parallel/quorum": {
+        "label": "Quorum",
+        "widget": "NUMBER",
+        "step": "general",
+        "section": "general",
+        "order": 30,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "numberType": "integer",
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "===": [
+                {
+                  "var": "stoppingPolicy"
+                },
+                "QUORUM"
+              ]
+            }
+          }
+        ]
+      },
+      "/parallel/stoppingPolicy": {
+        "label": "Stopping Policy",
+        "widget": "SELECT",
+        "step": "general",
+        "section": "general",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "UNKNOWN",
+          "ALL_COMPLETE",
+          "FIRST_SUCCESS",
+          "QUORUM"
+        ]
+      },
+      "/runtime": {
+        "label": "Runtime",
+        "step": "runtime",
+        "section": "runtime",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/sessionStore": {
+        "label": "Session Store",
+        "step": "runtime",
+        "section": "runtime",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/subAgentIds": {
+        "label": "Sub Agents",
+        "widget": "LOOKUP",
+        "step": "identity",
+        "section": "identity",
+        "order": 60,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "collection": true,
+        "rules": [
+          {
+            "effect": "VISIBLE",
+            "expr": {
+              "in": [
+                {
+                  "var": "type"
+                },
+                [
+                  "orchestrator"
+                ]
+              ]
+            }
+          }
+        ],
+        "lookup": {
+          "multiSelect": true,
+          "assetType": "agent"
+        }
+      },
+      "/systemPrompt": {
+        "label": "System Prompt",
+        "widget": "TEXTAREA",
+        "step": "model",
+        "section": "model",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "multiline": true,
+        "rows": 6,
+        "sensitive": true
+      },
+      "/tools": {
+        "label": "Tools",
+        "step": "model",
+        "section": "model",
+        "order": 40,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "collection": true
+      },
+      "/tools/*/configs": {
+        "label": "Configuration",
+        "widget": "DYNAMIC_SCHEMA",
+        "step": "general",
+        "section": "general",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "dynamicSchema": {
+          "url": "/schemas",
+          "method": "POST",
+          "body": {
+            "assetId": "$item.toolName",
+            "assetType": "tool_configs",
+            "contextId": "$.id"
+          }
+        }
+      },
+      "/tools/*/toolName": {
+        "label": "Tool Name",
+        "widget": "TEXT",
+        "step": "general",
+        "section": "general",
+        "order": 10,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        }
+      },
+      "/type": {
+        "label": "Agent Type",
+        "widget": "SELECT",
+        "step": "identity",
+        "section": "identity",
+        "order": 20,
+        "access": {
+          "create": "EDITABLE",
+          "edit": "EDITABLE",
+          "view": "READ_ONLY"
+        },
+        "options": [
+          "default",
+          "orchestrator"
+        ]
+      }
+    }
+  }
+}

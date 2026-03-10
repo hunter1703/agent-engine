@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
+import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 import com.agentengine.util.builder.BuilderDefinition;

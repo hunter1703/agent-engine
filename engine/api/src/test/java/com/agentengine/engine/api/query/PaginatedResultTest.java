@@ -35,7 +35,8 @@ class PaginatedResultTest {
 
   @Test
   void shouldTransformItemsWhenTransformCalled() {
-    final PaginatedResult<String> source = PaginatedResult.create(List.of("1", "2"), new Page(0, 2), 2L);
+    final PaginatedResult<String> source =
+        PaginatedResult.create(List.of("1", "2"), new Page(0, 2), 2L);
 
     final PaginatedResult<Integer> transformed = source.transform(Integer::parseInt);
 

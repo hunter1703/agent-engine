@@ -1,13 +1,13 @@
 package com.agentengine.engine.context;
 
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.beans.BaseEntity;
+import com.agentengine.util.beans.BaseEntity;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
-import com.agentengine.engine.api.update.Operation;
-import com.agentengine.engine.api.update.Update;
+import com.agentengine.util.update.Operation;
+import com.agentengine.util.update.Update;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.google.adk.models.BaseLlm;

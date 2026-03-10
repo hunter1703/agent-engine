@@ -4,10 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.query.Page;
-import com.agentengine.engine.api.query.Query;
-import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.testing.MongoRedisTestResource;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;

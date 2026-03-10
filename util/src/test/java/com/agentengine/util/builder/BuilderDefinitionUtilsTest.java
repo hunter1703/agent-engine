@@ -25,35 +25,35 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
     // Explicitly annotated fields are present
-    assertThat(definition.ui().fields()).containsKey("/modelId");
-    assertThat(definition.ui().fields()).containsKey("/type");
-    assertThat(definition.ui().fields()).containsKey("/subAgentIds");
+    assertThat(definition.layout().fields()).containsKey("/modelId");
+    assertThat(definition.layout().fields()).containsKey("/type");
+    assertThat(definition.layout().fields()).containsKey("/subAgentIds");
 
     // Non-annotated fields are absent
-    assertThat(definition.ui().fields()).doesNotContainKey("/unknownField");
+    assertThat(definition.layout().fields()).doesNotContainKey("/unknownField");
   }
 
   @Test
   void shouldBuildExpectedUiForBaseAgentConfig() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    assertThat(definition.ui().presets()).isNull();
-    assertThat(definition.ui().fields()).containsKeys(
+    assertThat(definition.layout().presets()).isNull();
+    assertThat(definition.layout().fields()).containsKeys(
         "/id", "/name", "/type", "/modelId", "/systemPrompt", "/subAgentIds");
 
-    assertThat(definition.ui().fields().get("/id"))
+    assertThat(definition.layout().fields().get("/id"))
         .extracting(LayoutField::label, LayoutField::widget, LayoutField::step, LayoutField::section)
         .containsExactly("ID", "TEXT", "identity", "identity");
-    assertThat(definition.ui().fields().get("/name").sensitive()).isTrue();
-    assertThat(definition.ui().fields().get("/type").options())
+    assertThat(definition.layout().fields().get("/name").sensitive()).isTrue();
+    assertThat(definition.layout().fields().get("/type").options())
         .isEqualTo(List.of("default", "orchestrator"));
-    assertThat(definition.ui().fields().get("/modelId").lookup())
+    assertThat(definition.layout().fields().get("/modelId").lookup())
         .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
         .containsExactly("model", null);
-    assertThat(definition.ui().fields().get("/systemPrompt"))
+    assertThat(definition.layout().fields().get("/systemPrompt"))
         .extracting(LayoutField::widget, LayoutField::multiline, LayoutField::rows, LayoutField::sensitive)
         .containsExactly("TEXTAREA", Boolean.TRUE, 6, Boolean.TRUE);
-    assertThat(definition.ui().fields().get("/subAgentIds").lookup())
+    assertThat(definition.layout().fields().get("/subAgentIds").lookup())
         .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
         .containsExactly("agent", Boolean.TRUE);
   }
@@ -62,8 +62,8 @@ class BuilderDefinitionUtilsTest {
   void shouldIncludeExplicitLookupMetadataForLookupFields() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    final LayoutField modelId = definition.ui().fields().get("/modelId");
-    final LayoutField subAgentIds = definition.ui().fields().get("/subAgentIds");
+    final LayoutField modelId = definition.layout().fields().get("/modelId");
+    final LayoutField subAgentIds = definition.layout().fields().get("/subAgentIds");
 
     assertThat(modelId.lookup())
         .extracting(LayoutLookup::multiSelect, LayoutLookup::assetType)
@@ -78,8 +78,8 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition agentDefinition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
     final BuilderDefinition modelDefinition = BuilderDefinitionUtils.generate("model", ModelConfig.class);
 
-    final LayoutField agentType = agentDefinition.ui().fields().get("/type");
-    final LayoutField modelType = modelDefinition.ui().fields().get("/type");
+    final LayoutField agentType = agentDefinition.layout().fields().get("/type");
+    final LayoutField modelType = modelDefinition.layout().fields().get("/type");
     final Map<String, Object> modelSchema =
         CollectionUtils.getMapFromMap(modelDefinition.schema(), "properties");
     final List<?> modelSchemaOptions =
@@ -95,23 +95,23 @@ class BuilderDefinitionUtilsTest {
   void shouldBuildExpectedUiForModelConfig() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("model", ModelConfig.class);
 
-    assertThat(definition.ui().presets())
+    assertThat(definition.layout().presets())
         .extracting(LayoutPreset::id)
         .containsExactly("balanced", "focused", "creative");
 
-    assertThat(definition.ui().fields()).containsKeys(
+    assertThat(definition.layout().fields()).containsKeys(
         "/type", "/model", "/apiKey", "/serverArgs", "/toolCallingEnabled", "/temperature");
-    assertThat(definition.ui().fields().get("/type"))
+    assertThat(definition.layout().fields().get("/type"))
         .extracting(LayoutField::label, LayoutField::widget, LayoutField::step, LayoutField::section)
         .containsExactly("Provider Type", "SELECT", "identity", "identity");
-    assertThat(definition.ui().fields().get("/type").options())
+    assertThat(definition.layout().fields().get("/type").options())
         .isEqualTo(List.of("ollama", "open_ai_compatible", "gemini"));
-    assertThat(definition.ui().fields().get("/apiKey").sensitive()).isTrue();
-    assertThat(definition.ui().fields().get("/serverArgs"))
+    assertThat(definition.layout().fields().get("/apiKey").sensitive()).isTrue();
+    assertThat(definition.layout().fields().get("/serverArgs"))
         .extracting(LayoutField::widget, LayoutField::multiline, LayoutField::rows, LayoutField::collection)
         .containsExactly("TEXTAREA", Boolean.TRUE, 3, Boolean.TRUE);
-    assertThat(definition.ui().fields().get("/toolCallingEnabled").widget()).isEqualTo("SWITCH");
-    assertThat(definition.ui().fields().get("/temperature").numberType()).isEqualTo("decimal");
+    assertThat(definition.layout().fields().get("/toolCallingEnabled").widget()).isEqualTo("SWITCH");
+    assertThat(definition.layout().fields().get("/temperature").numberType()).isEqualTo("decimal");
   }
 
   @Test
@@ -119,7 +119,7 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition definition =
         BuilderDefinitionUtils.generate("agent", OrchestratorAgentConfig.class);
 
-    final LayoutField orchestrationMode = definition.ui().fields().get("/orchestrationMode");
+    final LayoutField orchestrationMode = definition.layout().fields().get("/orchestrationMode");
 
     assertThat(orchestrationMode.widget()).isEqualTo("SELECT");
     assertThat(orchestrationMode.options())
@@ -131,8 +131,8 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition definition =
         BuilderDefinitionUtils.generate("agent", OrchestratorAgentConfig.class);
 
-    final LayoutField parallel = definition.ui().fields().get("/parallel");
-    final LayoutField subAgentIds = definition.ui().fields().get("/subAgentIds");
+    final LayoutField parallel = definition.layout().fields().get("/parallel");
+    final LayoutField subAgentIds = definition.layout().fields().get("/subAgentIds");
 
     assertThat(parallel.rules()).hasSize(1);
     assertThat(parallel.rules().getFirst().effect()).isEqualTo("VISIBLE");
@@ -151,7 +151,7 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition definition =
         BuilderDefinitionUtils.generate("agent", OrchestratorParallelConfig.class);
 
-    final LayoutField quorum = definition.ui().fields().get("/quorum");
+    final LayoutField quorum = definition.layout().fields().get("/quorum");
 
     assertThat(quorum.rules()).hasSize(1);
     final List<?> quorumArgs = (List<?>) quorum.rules().getFirst().expr().get("===");
@@ -164,8 +164,8 @@ class BuilderDefinitionUtilsTest {
     final BuilderDefinition definition =
         BuilderDefinitionUtils.generate("guardrail", OutputRelevanceGuardrailRule.class);
 
-    final LayoutField maxSteeringRetries = definition.ui().fields().get("/maxSteeringRetries");
-    final LayoutField recency = definition.ui().fields().get("/recency");
+    final LayoutField maxSteeringRetries = definition.layout().fields().get("/maxSteeringRetries");
+    final LayoutField recency = definition.layout().fields().get("/recency");
 
     assertThat(maxSteeringRetries.rules()).hasSize(1);
     @SuppressWarnings("unchecked")
@@ -186,11 +186,11 @@ class BuilderDefinitionUtilsTest {
   void shouldExposeProviderSpecificRulesForModelFields() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("model", ModelConfig.class);
 
-    final LayoutField baseUrl = definition.ui().fields().get("/baseUrl");
-    final LayoutField apiKey = definition.ui().fields().get("/apiKey");
-    final LayoutField serverCommand = definition.ui().fields().get("/serverCommand");
-    final LayoutField serverArgs = definition.ui().fields().get("/serverArgs");
-    final LayoutField serverWorkdir = definition.ui().fields().get("/serverWorkdir");
+    final LayoutField baseUrl = definition.layout().fields().get("/baseUrl");
+    final LayoutField apiKey = definition.layout().fields().get("/apiKey");
+    final LayoutField serverCommand = definition.layout().fields().get("/serverCommand");
+    final LayoutField serverArgs = definition.layout().fields().get("/serverArgs");
+    final LayoutField serverWorkdir = definition.layout().fields().get("/serverWorkdir");
 
     assertThat(baseUrl.rules()).hasSize(1);
     final List<?> baseUrlArgs = (List<?>) baseUrl.rules().getFirst().expr().get("in");
@@ -217,7 +217,7 @@ class BuilderDefinitionUtilsTest {
   void shouldExposeDynamicSchemaWidgetForDynamicSchemaFields() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("tools", ToolsConfig.class);
 
-    final LayoutField configs = definition.ui().fields().get("/configs");
+    final LayoutField configs = definition.layout().fields().get("/configs");
 
     assertThat(configs.widget()).isEqualTo("DYNAMIC_SCHEMA");
     assertThat(configs.dynamicSchema()).isNotNull();
@@ -232,32 +232,32 @@ class BuilderDefinitionUtilsTest {
   void shouldOmitWidgetForSchemaDrivenFields() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    assertThat(definition.ui().fields().get("/tools").widget()).isNull();
-    assertThat(definition.ui().fields().get("/contextStrategy").widget()).isNull();
-    assertThat(definition.ui().fields().get("/subAgentIds").widget()).isEqualTo("LOOKUP");
+    assertThat(definition.layout().fields().get("/tools").widget()).isNull();
+    assertThat(definition.layout().fields().get("/contextStrategy").widget()).isNull();
+    assertThat(definition.layout().fields().get("/subAgentIds").widget()).isEqualTo("LOOKUP");
   }
 
   @Test
   void shouldMarkCollectionFieldsAsCollection() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    assertThat(definition.ui().fields().get("/subAgentIds").collection()).isTrue();
-    assertThat(definition.ui().fields().get("/modelId").collection()).isNull();
+    assertThat(definition.layout().fields().get("/subAgentIds").collection()).isTrue();
+    assertThat(definition.layout().fields().get("/modelId").collection()).isNull();
   }
 
   @Test
   void shouldMarkSensitiveFieldsFromSecureAnnotation() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    assertThat(definition.ui().fields().get("/systemPrompt").sensitive()).isTrue();
-    assertThat(definition.ui().fields().get("/modelId").sensitive()).isNull();
+    assertThat(definition.layout().fields().get("/systemPrompt").sensitive()).isTrue();
+    assertThat(definition.layout().fields().get("/modelId").sensitive()).isNull();
   }
 
   @Test
   void shouldExposeTextareaAttributesForMultilineFields() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
 
-    final LayoutField systemPrompt = definition.ui().fields().get("/systemPrompt");
+    final LayoutField systemPrompt = definition.layout().fields().get("/systemPrompt");
 
     assertThat(systemPrompt.widget()).isEqualTo("TEXTAREA");
     assertThat(systemPrompt.multiline()).isTrue();
@@ -268,10 +268,10 @@ class BuilderDefinitionUtilsTest {
   void shouldIndexPresetsByJsonPathForRootAndNestedTypes() {
     final BuilderDefinition definition = BuilderDefinitionUtils.generate("nested", NestedPresetRoot.class);
 
-    assertThat(definition.ui().presets())
+    assertThat(definition.layout().presets())
         .extracting(LayoutPreset::id)
         .containsExactly("root-preset");
-    assertThat(definition.ui().fields().get("/nested").presets())
+    assertThat(definition.layout().fields().get("/nested").presets())
         .extracting(LayoutPreset::id)
         .containsExactly("nested-preset");
   }

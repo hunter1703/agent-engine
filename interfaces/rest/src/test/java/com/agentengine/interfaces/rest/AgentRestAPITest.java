@@ -17,10 +17,9 @@ import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
-import com.agentengine.util.builder.BuilderDefinitionUtils;
+import com.agentengine.interfaces.rest.requests.ResumeSessionRequest.ConfirmationDecision;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.enterprise.inject.Instance;
@@ -39,8 +38,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.createAgent(null))
         .isInstanceOf(WebApplicationException.class)
@@ -49,21 +47,22 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenCreateAgentMissingRequiredFields() {
+  void shouldDelegateCreateAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
+    when(agentService.createAgent(any(BaseAgentConfig.class)))
+        .thenThrow(new IllegalArgumentException("Agent type and modelId are required"));
     final AgentRestAPI api =
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
     payload.setId("agent-1");
 
     assertThatThrownBy(() -> api.createAgent(payload))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Agent type and modelId are required");
+    verify(agentService).createAgent(any(BaseAgentConfig.class));
   }
 
   @Test
@@ -72,8 +71,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.updateAgent(" ", new DefaultAgentConfig()))
         .isInstanceOf(WebApplicationException.class)
@@ -88,8 +86,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
     payload.setId("agent-2");
     payload.setType("default");
@@ -110,8 +107,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            sessionService,
-            builderDefinitionService());
+            sessionService);
 
     assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
         .isInstanceOf(WebApplicationException.class)
@@ -133,8 +129,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(handler),
             agentService,
-            sessionService,
-            builderDefinitionService());
+            sessionService);
 
     final Publisher<BaseEvent> publisher =
         api.resumeEvents("session-1", new ResumeSessionRequest("resume message"));
@@ -159,8 +154,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            sessionService,
-            builderDefinitionService());
+            sessionService);
 
     assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
         .isInstanceOf(WebApplicationException.class)
@@ -190,13 +184,60 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            sessionService,
-            builderDefinitionService());
+            sessionService);
 
     assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
         .isInstanceOf(WebApplicationException.class)
         .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
         .isEqualTo(408);
+  }
+
+  @Test
+  void shouldRequireDecisionWhenResumingToolConfirmationPause() {
+    final SessionService sessionService = mock(SessionService.class);
+    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
+    final SessionInfo sessionInfo = new SessionInfo();
+    sessionInfo.setState(
+        Map.of(
+            "sessionState",
+            Map.of("paused", true, "pauseReason", "tool_confirmation", "pauseRequestedAt", Instant.now().toEpochMilli())));
+    session.setSessionInfo(sessionInfo);
+    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
+
+    final AgentRestAPI api =
+        new AgentRestAPI(
+            handlerInstanceWith(new StreamEventsHandler()),
+            mock(AgentService.class),
+            sessionService);
+
+    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("yes")))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  void shouldEncodeDecisionMarkerWhenResumingToolConfirmationPause() {
+    final SessionService sessionService = mock(SessionService.class);
+    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
+    final SessionInfo sessionInfo = new SessionInfo();
+    sessionInfo.setState(
+        Map.of(
+            "sessionState",
+            Map.of("paused", true, "pauseReason", "tool_confirmation", "pauseRequestedAt", Instant.now().toEpochMilli())));
+    session.setSessionInfo(sessionInfo);
+    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
+
+    final AgentService agentService = mock(AgentService.class);
+    when(agentService.getAgent("agent-1")).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
+    final StreamEventsHandler handler = new StreamEventsHandler();
+    final AgentRestAPI api =
+        new AgentRestAPI(
+            handlerInstanceWith(handler), agentService, sessionService);
+
+    api.resumeEvents("session-1", new ResumeSessionRequest("", ConfirmationDecision.APPROVE));
+
+    assertThat(handler.lastRequest.getMessage()).isEqualTo("__AE_TOOL_DECISION__:APPROVE");
   }
 
   @Test
@@ -208,8 +249,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             emptyHandlers,
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.events(new AgentRequest()))
         .isInstanceOf(WebApplicationException.class)
@@ -225,8 +265,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final AgentRequest req = new AgentRequest();
     req.setType("STREAM_AGUI_EVENTS");
     req.setAgentId("ghost");
@@ -239,16 +278,15 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenUpsertOrchestratorHasMissingSubAgents() {
+  void shouldDelegateUpsertSubAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("story_phase_1_brief")).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
-    when(agentService.getAgent("missing_subagent")).thenReturn(java.util.Optional.empty());
+    when(agentService.saveAgent(any(BaseAgentConfig.class)))
+        .thenThrow(new IllegalArgumentException("Sub-agent(s) not found: missing_subagent"));
     final AgentRestAPI api =
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final OrchestratorAgentConfig payload = new OrchestratorAgentConfig();
     payload.setId("orch-1");
     payload.setType("orchestrator");
@@ -256,9 +294,9 @@ class AgentRestAPITest {
     payload.setSubAgentIds(List.of("story_phase_1_brief", "missing_subagent"));
 
     assertThatThrownBy(() -> api.upsertAgent(payload))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Sub-agent(s) not found");
+    verify(agentService).saveAgent(any(BaseAgentConfig.class));
   }
 
   @Test
@@ -269,8 +307,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final OrchestratorAgentConfig payload = new OrchestratorAgentConfig();
     payload.setId("orch-2");
     payload.setType("orchestrator");
@@ -289,8 +326,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     final boolean deleted = api.deleteAgent("agent-1");
 
@@ -306,8 +342,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.deleteAgent("agent-1"))
         .isInstanceOf(WebApplicationException.class)
@@ -322,8 +357,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
     payload.setType("default");
     payload.setModelId("model-1");
@@ -338,9 +372,10 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldReturn400WhenOrchestratorSubAgentIsMissing() {
+  void shouldDelegateCreateSubAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent(any())).thenReturn(java.util.Optional.empty());
+    when(agentService.createAgent(any(BaseAgentConfig.class)))
+        .thenThrow(new IllegalArgumentException("Sub-agent(s) not found: missing-sub"));
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("orch-1");
     config.setType("orchestrator");
@@ -349,13 +384,12 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.createAgent(config))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Sub-agent(s) not found");
+    verify(agentService).createAgent(any(BaseAgentConfig.class));
   }
 
   @Test
@@ -369,8 +403,7 @@ class AgentRestAPITest {
     new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             agentService,
-            mock(SessionService.class),
-            builderDefinitionService())
+            mock(SessionService.class))
         .createAgent(config);
     verify(agentService, never()).getAgent(any());
   }
@@ -381,8 +414,7 @@ class AgentRestAPITest {
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            mock(SessionService.class),
-            builderDefinitionService());
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.deleteAgent(" "))
         .isInstanceOf(WebApplicationException.class)
@@ -412,12 +444,5 @@ class AgentRestAPITest {
       this.lastRequest = request;
       return Flowable.empty();
     }
-  }
-
-  private static BuilderDefinitionService builderDefinitionService() {
-    final BuilderDefinitionService definitionService = mock(BuilderDefinitionService.class);
-    when(definitionService.getDefinition("agent"))
-        .thenReturn(BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class));
-    return definitionService;
   }
 }
