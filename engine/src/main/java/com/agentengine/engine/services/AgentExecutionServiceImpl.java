@@ -12,6 +12,7 @@ import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
+import com.agentengine.engine.api.exception.AssetNotFoundException;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
@@ -25,7 +26,10 @@ import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.events.SessionDeletedEvent;
 import com.agentengine.engine.guardrails.GuardrailPlugin;
 import com.agentengine.engine.guardrails.GuardrailPolicyFactory;
-import com.agentengine.engine.plugins.EnginePlugin;
+import com.agentengine.engine.plugins.AgentRunLifecyclePlugin;
+import com.agentengine.engine.plugins.ContextManagementPlugin;
+import com.agentengine.engine.plugins.HumanInTheLoopPlugin;
+import com.agentengine.engine.plugins.ModelInvocationPipeline;
 import com.agentengine.engine.plugins.PluginGroup;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.AgentSessionRepository;
@@ -154,12 +158,6 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
         final AgentSession session =
                 StringUtils.isNotBlank(sessionId) ? sessionService.getSession(sessionId).orElse(null) : null;
         final BaseAgentConfig agentConfig = getAgentConfig(agentId, session);
-        if (agentConfig == null) {
-            final String errorMsg = "agentId \"" + agentId + "\" has no resolved config";
-            LOG.error(
-                    "Agent configuration resolution failed - agent_id={} error=\"{}\"", agentId, errorMsg);
-            throw new IllegalArgumentException(errorMsg);
-        }
 
         final String resolvedSessionId =
                 StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
@@ -204,7 +202,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
         if (StringUtils.isBlank(agentId)) {
             throw new IllegalArgumentException("agentId cannot be blank");
         }
-        return agentService.getAgent(agentId).orElse(null);
+        return agentService
+                .getAgent(agentId)
+                .orElseThrow(() -> new AssetNotFoundException("agent", agentId));
     }
 
     private PluginGroup buildPluginGroup(final Agent rootAgent) {
@@ -228,7 +228,14 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
                 }
             }
         }
-        return new PluginGroup("engine", List.of(new GuardrailPlugin(policies), new EnginePlugin(contextManagers)));
+        return new PluginGroup(
+                "engine",
+                List.of(
+                        new GuardrailPlugin(policies),
+                        new AgentRunLifecyclePlugin(),
+                        new HumanInTheLoopPlugin(),
+                        new ModelInvocationPipeline(),
+                        new ContextManagementPlugin(contextManagers)));
     }
 
 }
