@@ -6,6 +6,15 @@ dependencies {
     api libs.jackson.databind
     api libs.jackson.dataformat.yaml
     api libs.json.path
-    implementation libs.google.adk.core
-    implementation libs.slf4j.api
+    api libs.google.adk.core
+    api libs.slf4j.api
+    api libs.vertx.json.schema
+    api libs.mongodb.bson
+    api libs.jakarta.inject.api
+    api libs.jakarta.enterprise.cdi.api
+    implementation libs.jakarta.validation.api
+
+    testImplementation project(':engine:api')
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
 }

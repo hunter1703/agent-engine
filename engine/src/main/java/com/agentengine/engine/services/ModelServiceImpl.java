@@ -43,8 +43,8 @@ public class ModelServiceImpl implements ModelService {
 
   @Override
   @WithSpan
-  public ModelConfig updateModel(ModelConfig model) {
-    return modelRepository.update(model.getId(), model);
+  public ModelConfig updateModel(final String id, final ModelConfig model) {
+    return modelRepository.update(id, model);
   }
 
   @Override

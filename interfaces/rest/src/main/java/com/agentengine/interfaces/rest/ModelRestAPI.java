@@ -3,6 +3,9 @@ package com.agentengine.interfaces.rest;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.interfaces.rest.contracts.BuilderDefinitionService;
+import com.agentengine.util.builder.BuilderMode;
+import com.agentengine.util.builder.BuilderDefinitionUtils;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -29,10 +32,13 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class ModelRestAPI {
 
   private final ModelService modelService;
+  private final BuilderDefinitionService builderDefinitionService;
 
   @Inject
-  public ModelRestAPI(ModelService modelService) {
+  public ModelRestAPI(
+      final ModelService modelService, final BuilderDefinitionService builderDefinitionService) {
     this.modelService = modelService;
+    this.builderDefinitionService = builderDefinitionService;
   }
 
   @GET
@@ -64,8 +70,19 @@ public class ModelRestAPI {
       content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
   public ModelConfig createModel(final ModelConfig modelConfig) {
-    modelService.createModel(modelConfig);
-    return modelConfig;
+    if (modelConfig == null) {
+      throw new WebApplicationException("Model config is required", 400);
+    }
+    final ModelConfig sanitizedConfig =
+        BuilderDefinitionUtils.sanitize(
+            builderDefinitionService.getDefinition("model"),
+            BuilderMode.CREATE,
+            modelConfig,
+            ModelConfig.class);
+    if (StringUtils.isBlank(sanitizedConfig.getType()) || StringUtils.isBlank(sanitizedConfig.getModel())) {
+      throw new WebApplicationException("Model type and model are required", 400);
+    }
+    return modelService.createModel(sanitizedConfig);
   }
 
   @POST
@@ -94,10 +111,25 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "404", description = "Model not found")
   public ModelConfig updateModel(
       @PathParam("modelId") final String modelId, final ModelConfig modelConfig) {
-    if (modelConfig == null || StringUtils.isBlank(modelId)) {
+    if (modelConfig == null) {
       throw new WebApplicationException("Model config is required", 400);
     }
-    return modelService.updateModel(modelConfig);
+    if (StringUtils.isBlank(modelId)) {
+      throw new WebApplicationException("Model ID is required", 400);
+    }
+    if (StringUtils.isNotBlank(modelConfig.getId()) && !modelId.equals(modelConfig.getId())) {
+      throw new WebApplicationException("Path modelId must match payload id", 400);
+    }
+    final ModelConfig sanitizedConfig =
+        BuilderDefinitionUtils.sanitize(
+            builderDefinitionService.getDefinition("model"),
+            BuilderMode.EDIT,
+            modelConfig,
+            ModelConfig.class);
+    if (StringUtils.isBlank(sanitizedConfig.getType()) || StringUtils.isBlank(sanitizedConfig.getModel())) {
+      throw new WebApplicationException("Model type and model are required", 400);
+    }
+    return modelService.updateModel(modelId, sanitizedConfig);
   }
 
   @DELETE

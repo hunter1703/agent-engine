@@ -16,7 +16,7 @@ public interface AgentService {
 
   BaseAgentConfig saveAgent(BaseAgentConfig agent);
 
-  BaseAgentConfig updateAgent(BaseAgentConfig agent);
+  BaseAgentConfig updateAgent(String id, BaseAgentConfig agent);
 
   boolean deleteAgent(String id);
 }

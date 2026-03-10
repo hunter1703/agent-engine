@@ -89,7 +89,7 @@ class HumanInTheLoopPluginTest {
     final SessionState sessionState = new SessionState();
     sessionState.markPaused(
         pausePrompt, List.of(), pauseReason, pauseInvocationId, Instant.now().toEpochMilli());
-    state.put("session.state", sessionState);
+    state.put("sessionState", sessionState);
     final Session session =
         Session.builder("session-1")
             .appName("agent-1")

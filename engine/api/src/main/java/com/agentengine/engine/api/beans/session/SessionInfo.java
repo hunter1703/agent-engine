@@ -1,7 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
 import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.beans.Secure;
+import com.agentengine.util.Secure;
 import com.agentengine.util.JsonUtils;
 import com.google.adk.events.Event;
 import org.bson.codecs.pojo.annotations.BsonIgnore;

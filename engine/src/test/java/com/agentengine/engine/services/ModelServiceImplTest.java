@@ -66,4 +66,15 @@ class ModelServiceImplTest {
     assertThat(deleted).isTrue();
     verify(modelRepository).deleteById("model-1");
   }
+
+  @Test
+  void shouldDelegateUpdateModelWhenUpdateModelCalled() {
+    final ModelConfig request = new ModelConfig();
+    when(modelRepository.update("model-1", request)).thenReturn(request);
+
+    final ModelConfig updated = modelService.updateModel("model-1", request);
+
+    assertThat(updated).isSameAs(request);
+    verify(modelRepository).update("model-1", request);
+  }
 }

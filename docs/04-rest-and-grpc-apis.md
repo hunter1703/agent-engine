@@ -87,7 +87,14 @@ Delete model config.
 
 ### `GET /schemas/{assetType}`
 
-Returns schema JSON resource for `assetType` when available.
+Returns generated Builder Contract V2 for `assetType` (`agent`, `model`).
+
+Optional query parameter:
+- `mode=create|edit|view` to return mode-resolved visibility/editability metadata.
+
+Caching:
+- Responses include `ETag` and `Cache-Control`.
+- Clients can send `If-None-Match` to receive `304 Not Modified`.
 
 ### `POST /schemas/`
 

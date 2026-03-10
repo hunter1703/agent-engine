@@ -17,6 +17,11 @@ The schemas are written to `interfaces/rest/build/openapi/agent-engine.json` and
 `interfaces/rest/build/openapi/agent-engine.yaml`. When running in dev mode, the spec is
 also available at `http://localhost:8080/q/openapi` (append `?format=yaml` for YAML).
 
+## Builder Contracts
+- `GET /schemas/{assetType}` serves generated Builder Contract V2 for `agent` and `model`.
+- Contracts are generated from config classes/annotations, cached in memory, and served with ETag.
+- Optional `mode` query parameter (`create`, `edit`, `view`) resolves field visibility/editability.
+
 ## Protocol
 The REST API accepts the shared `AgentRequest` JSON shape in request bodies. Use `type` to
 switch between invoking the agent or building a prompt for `POST /v1/invoke`.

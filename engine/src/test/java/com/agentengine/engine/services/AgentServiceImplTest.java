@@ -67,4 +67,15 @@ class AgentServiceImplTest {
     assertThat(deleted).isTrue();
     verify(agentRepository).deleteById("agent-1");
   }
+
+  @Test
+  void shouldDelegateUpdateAgentWhenUpdateAgentCalled() {
+    final DefaultAgentConfig request = new DefaultAgentConfig();
+    when(agentRepository.update("agent-1", request)).thenReturn(request);
+
+    final BaseAgentConfig updated = agentService.updateAgent("agent-1", request);
+
+    assertThat(updated).isSameAs(request);
+    verify(agentRepository).update("agent-1", request);
+  }
 }

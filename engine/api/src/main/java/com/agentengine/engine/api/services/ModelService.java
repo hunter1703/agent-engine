@@ -16,7 +16,7 @@ public interface ModelService {
 
   ModelConfig saveModel(ModelConfig model);
 
-  ModelConfig updateModel(ModelConfig model);
+  ModelConfig updateModel(String id, ModelConfig model);
 
   boolean deleteModel(String id);
 }

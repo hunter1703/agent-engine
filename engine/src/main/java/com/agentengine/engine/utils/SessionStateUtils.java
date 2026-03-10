@@ -6,18 +6,15 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 public final class SessionStateUtils {
-  private static final String SESSION_STATE_KEY = "session.state";
+  private static final String SESSION_STATE_KEY = "sessionState";
 
   private SessionStateUtils() {}
 
   public static SessionState getState(final InvocationContext context) {
     final ConcurrentMap<String, Object> state = state(context);
-    final SessionState existing =
-        TypedUtils.toType(state == null ? null : state.get(SESSION_STATE_KEY), SessionState.class);
+    final Object raw = state == null ? null : state.get(SESSION_STATE_KEY);
+    final SessionState existing = TypedUtils.toType(raw, SessionState.class);
     if (existing != null) {
-      if (state.containsKey(SESSION_STATE_KEY)) {
-        state.put(SESSION_STATE_KEY, existing);
-      }
       return existing;
     }
     final SessionState created = new SessionState();
@@ -47,6 +44,28 @@ public final class SessionStateUtils {
     pause(context, prompt, List.of(), reason);
   }
 
+  public static void pause(
+      final InvocationContext context,
+      final String prompt,
+      final String reason,
+      final String pendingToolName) {
+    final ConcurrentMap<String, Object> state = state(context);
+    if (state == null) {
+      return;
+    }
+    getState(context).markPaused(
+        prompt,
+        List.of(),
+        reason,
+        context.invocationId(),
+        Instant.now().toEpochMilli(),
+        pendingToolName);
+  }
+
+  public static String getPendingToolName(final InvocationContext context) {
+    return getState(context).getPendingToolName();
+  }
+
   public static void resume(final InvocationContext context) {
     final ConcurrentMap<String, Object> state = state(context);
     if (state == null) {
@@ -69,6 +88,10 @@ public final class SessionStateUtils {
 
   public static String getPauseReason(final InvocationContext context) {
     return getState(context).pauseReason();
+  }
+
+  public static String getPauseInvocationId(final InvocationContext context) {
+    return getState(context).pauseInvocationId();
   }
 
   private static ConcurrentMap<String, Object> state(final InvocationContext context) {

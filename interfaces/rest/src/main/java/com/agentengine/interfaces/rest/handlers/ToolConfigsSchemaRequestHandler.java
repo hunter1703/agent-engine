@@ -25,10 +25,7 @@ public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
 
   @Override
   public Object handle(SchemaLookupRequest request) {
-    ToolDescriptor tool = toolService.getToolById(request.agentId(), request.assetId());
-    if (tool != null && tool.configsSchema() != null) {
-      return tool.configsSchema();
-    }
-    return Collections.emptyMap();
+    final ToolDescriptor tool = toolService.getToolById(request.agentId(), request.assetId());
+    return tool == null ? Collections.emptyMap() : tool.configsSchema();
   }
 }

@@ -36,7 +36,7 @@ class HumanInTheLoopRequestProcessorTest {
         "user_clarification",
         "inv-1",
         Instant.now().toEpochMilli());
-    state.put("session.state", sessionState);
+    state.put("sessionState", sessionState);
     final Session session =
         Session.builder("session-1")
             .appName("agent-1")
@@ -80,7 +80,7 @@ class HumanInTheLoopRequestProcessorTest {
         "tool_confirmation",
         "inv-1",
         Instant.now().toEpochMilli());
-    state.put("session.state", sessionState);
+    state.put("sessionState", sessionState);
 
     final FunctionCall pendingCall =
         FunctionCall.builder()
@@ -145,7 +145,7 @@ class HumanInTheLoopRequestProcessorTest {
         "tool_confirmation",
         "inv-1",
         Instant.now().toEpochMilli());
-    state.put("session.state", sessionState);
+    state.put("sessionState", sessionState);
 
     final Session session =
         Session.builder("session-1")
@@ -176,7 +176,72 @@ class HumanInTheLoopRequestProcessorTest {
     assertThat(SessionStateUtils.isPaused(context)).isFalse();
     assertThat(result.updatedRequest().contents()).hasSize(2);
     assertThat(result.updatedRequest().contents().get(1).text())
-        .contains("Use this clarification answer: 'yes approve and continue'.");
+        .containsIgnoringCase("approved");
+  }
+
+  @Test
+  void shouldIncludePausePromptInResumeMessageWhenNoConfirmationIdFound() {
+    final InvocationContext ctx = mockContextWithPause(
+        "tool_confirmation",
+        "Awaiting approval for: run_cmd",
+        null,
+        "inv-1");
+    final LlmRequest request =
+        LlmRequest.builder()
+            .contents(List.of(
+                Content.builder().role("user").parts(List.of(Part.fromText("yes approve"))).build()))
+            .build();
+
+    final RequestProcessor.RequestProcessingResult result =
+        HumanInTheLoopRequestProcessor.INSTANCE.processRequest(ctx, request).blockingGet();
+
+    final String resumeMessage = result.updatedRequest().contents().get(1).text();
+    assertThat(resumeMessage).contains("Awaiting approval for: run_cmd");
+  }
+
+  @Test
+  void shouldBuildApprovalMessageWithToolNameWhenConfirmationApproved() {
+    final InvocationContext ctx = mockContextWithPause(
+        "tool_confirmation",
+        "Approve run_cmd?",
+        "run_cmd",
+        "inv-1");
+    final LlmRequest request =
+        LlmRequest.builder()
+            .contents(List.of(
+                Content.builder().role("user").parts(List.of(Part.fromText("yes approve"))).build()))
+            .build();
+
+    final RequestProcessor.RequestProcessingResult result =
+        HumanInTheLoopRequestProcessor.INSTANCE.processRequest(ctx, request).blockingGet();
+
+    final String msg = result.updatedRequest().contents().get(1).text();
+    assertThat(msg).contains("run_cmd");
+    assertThat(msg).containsIgnoringCase("approved");
+    assertThat(msg).containsIgnoringCase("execute");
+    assertThat(msg).containsIgnoringCase("immediately");
+  }
+
+  @Test
+  void shouldBuildRejectionMessageWithToolNameWhenConfirmationRejected() {
+    final InvocationContext ctx = mockContextWithPause(
+        "tool_confirmation",
+        "Approve run_cmd?",
+        "run_cmd",
+        "inv-1");
+    final LlmRequest request =
+        LlmRequest.builder()
+            .contents(List.of(
+                Content.builder().role("user").parts(List.of(Part.fromText("no, reject this"))).build()))
+            .build();
+
+    final RequestProcessor.RequestProcessingResult result =
+        HumanInTheLoopRequestProcessor.INSTANCE.processRequest(ctx, request).blockingGet();
+
+    final String msg = result.updatedRequest().contents().get(1).text();
+    assertThat(msg).contains("run_cmd");
+    assertThat(msg).containsIgnoringCase("rejected");
+    assertThat(msg).containsIgnoringCase("do not");
   }
 
   @Test
@@ -189,7 +254,7 @@ class HumanInTheLoopRequestProcessorTest {
         "tool_confirmation",
         "inv-1",
         Instant.now().toEpochMilli());
-    state.put("session.state", sessionState);
+    state.put("sessionState", sessionState);
 
     final FunctionCall pendingCall =
         FunctionCall.builder()
@@ -246,5 +311,44 @@ class HumanInTheLoopRequestProcessorTest {
             .response()
             .orElse(Map.of());
     assertThat(response).containsEntry("confirmed", false);
+  }
+
+  /**
+   * Creates a mock InvocationContext with a paused SessionState.
+   * No pending adk_request_confirmation function call is added to events (fallback path).
+   *
+   * @param pauseReason  the pause reason code (e.g. "tool_confirmation")
+   * @param pausePrompt  the pause prompt stored in state
+   * @param pendingToolName  the tool name to store (may be null)
+   * @param pauseInvocationId  the invocation ID at pause time
+   */
+  private static InvocationContext mockContextWithPause(
+      final String pauseReason,
+      final String pausePrompt,
+      final String pendingToolName,
+      final String pauseInvocationId) {
+    final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
+    final SessionState sessionState = new SessionState();
+    sessionState.markPaused(
+        pausePrompt,
+        List.of(),
+        pauseReason,
+        pauseInvocationId == null ? "inv-pause" : pauseInvocationId,
+        Instant.now().toEpochMilli(),
+        pendingToolName);
+    state.put("sessionState", sessionState);
+
+    final Session session =
+        Session.builder("session-mock")
+            .appName("agent-mock")
+            .userId("default")
+            .state(state)
+            .events(new ArrayList<>())
+            .lastUpdateTime(Instant.now())
+            .build();
+    final InvocationContext context = mock(InvocationContext.class);
+    when(context.invocationId()).thenReturn("inv-resume");
+    when(context.session()).thenReturn(session);
+    return context;
   }
 }

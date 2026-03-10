@@ -1,6 +1,11 @@
 package com.agentengine.interfaces.rest.exception;
 
+import com.agentengine.engine.api.exception.AgentException;
+import com.agentengine.engine.api.exception.AssetNotFoundException;
+import com.agentengine.engine.api.exception.ConfigurationException;
+import com.agentengine.engine.api.exception.DuplicateAssetException;
 import com.agentengine.interfaces.rest.dto.ErrorResponse;
+import io.grpc.StatusRuntimeException;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.validation.ValidationException;
 import jakarta.ws.rs.WebApplicationException;
@@ -31,6 +36,19 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
           .build();
     }
 
+    if (exception instanceof AgentException agentException) {
+      final int status =
+          switch (agentException) {
+            case ConfigurationException ignored -> 400;
+            case AssetNotFoundException ignored -> 404;
+            case DuplicateAssetException ignored -> 409;
+            default -> 500;
+          };
+      return Response.status(status)
+          .entity(new ErrorResponse(String.valueOf(status), agentException.getMessage(), traceId))
+          .build();
+    }
+
     if (exception instanceof ValidationException) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(
@@ -44,6 +62,25 @@ public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
           .entity(
               new ErrorResponse(
                   "400", "JSON Deserialization Error: " + exception.getMessage(), traceId))
+          .build();
+    }
+
+    if (exception instanceof StatusRuntimeException grpcEx) {
+      final var code = grpcEx.getStatus().getCode();
+      final int status =
+          switch (code) {
+            case INVALID_ARGUMENT -> 400;
+            case NOT_FOUND -> 404;
+            case ALREADY_EXISTS -> 409;
+            case UNAUTHENTICATED -> 401;
+            case PERMISSION_DENIED -> 403;
+            case RESOURCE_EXHAUSTED -> 429;
+            case UNAVAILABLE -> 503;
+            default -> 500;
+          };
+      final String message = status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
+      return Response.status(status)
+          .entity(new ErrorResponse(String.valueOf(status), message, traceId))
           .build();
     }
 

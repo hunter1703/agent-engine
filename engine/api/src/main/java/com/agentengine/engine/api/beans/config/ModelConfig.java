@@ -2,10 +2,40 @@ package com.agentengine.engine.api.beans.config;
 
 import com.agentengine.engine.api.beans.NamedEntity;
 import com.agentengine.engine.api.utils.StringUtils;
+import com.agentengine.util.Secure;
+import com.agentengine.util.builder.annotations.UiAccess;
+import com.agentengine.util.builder.annotations.UiAccessLevel;
+import com.agentengine.util.builder.annotations.UiBoolean;
+import com.agentengine.util.builder.annotations.UiConditionOperator;
+import com.agentengine.util.builder.annotations.UiField;
+import com.agentengine.util.builder.annotations.UiGroup;
+import com.agentengine.util.builder.annotations.UiNumber;
+import com.agentengine.util.builder.annotations.UiPreset;
+import com.agentengine.util.builder.annotations.UiRule;
+import com.agentengine.util.builder.annotations.UiRuleEffect;
+import com.agentengine.util.builder.annotations.UiSelect;
+import com.agentengine.util.builder.annotations.UiText;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Locale;
 
+@UiGroup(step = "identity", section = "identity", order = 0)
+@UiPreset(
+    id = "balanced",
+    label = "Balanced",
+    description = "General purpose default profile.",
+    isDefault = true,
+    preset = "{\"inference\":{\"temperature\":0.7,\"topP\":0.95,\"repeatPenalty\":1.0},\"capabilities\":{\"toolCallingEnabled\":false}}")
+@UiPreset(
+    id = "focused",
+    label = "Focused",
+    description = "Lower randomness for deterministic answers.",
+    preset = "{\"inference\":{\"temperature\":0.2,\"topP\":0.8,\"repeatPenalty\":1.1},\"capabilities\":{\"toolCallingEnabled\":true}}")
+@UiPreset(
+    id = "creative",
+    label = "Creative",
+    description = "Higher diversity and broader token exploration.",
+    preset = "{\"inference\":{\"temperature\":1.0,\"topP\":1.0,\"repeatPenalty\":1.0},\"capabilities\":{\"toolCallingEnabled\":false}}")
 public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
@@ -48,36 +78,119 @@ public class ModelConfig extends NamedEntity implements Config {
     }
   }
 
+  @UiField(label = "Provider Type", step = "identity", section = "identity", order = 20)
+  @UiSelect(enumType = Provider.class)
+  @NotBlank private String type;
+
+  @UiField(label = "Model Identifier", step = "identity", section = "identity", order = 30)
+  @UiText
+  @NotBlank private String model;
+
+  @UiField(label = "Base URL", step = "integration", section = "integration", order = 10)
+  @UiText
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "type",
+      operator = UiConditionOperator.IN,
+      values = {"ollama", "open_ai_compatible"})
   private String baseUrl;
 
-  @NotBlank private String type;
-  @NotBlank private String model;
-  private Double temperature;
-
-  private Integer topK;
-
-  private Double topP;
-
-  private Double repeatPenalty;
-
-  private Integer numPredict;
-
-  private Integer maxContextLength;
-
-  private List<String> stopTokens;
-
-  private String responseFormat;
-
+  @UiField(label = "API Key", step = "integration", section = "integration", order = 20)
+  @UiText
+  @Secure
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", values = {"gemini"})
   private String apiKey;
 
-  private boolean toolCallingEnabled = false;
-  private boolean toolCallingSupported;
+  @UiField(label = "Server Command", step = "integration", section = "integration", order = 30)
+  @UiText
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", values = {"open_ai_compatible"})
   private String serverCommand;
 
+  @UiField(label = "Server Arguments", step = "integration", section = "integration", order = 40)
+  @UiText(multiline = true, rows = 3)
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", values = {"open_ai_compatible"})
   private List<String> serverArgs;
 
+  @UiField(label = "Server Working Directory", step = "integration", section = "integration", order = 50)
+  @UiText
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", values = {"open_ai_compatible"})
   private String serverWorkdir;
+
+  @UiField(label = "Model Instructions", step = "integration", section = "integration", order = 60)
+  @UiText(multiline = true, rows = 4)
   private String instructions;
+
+  @UiField(label = "Response Format", step = "integration", section = "integration", order = 70, advanced = true)
+  @UiText
+  private String responseFormat;
+
+  @UiField(label = "Enable Tool Calling", step = "integration", section = "integration", order = 80)
+  @UiBoolean
+  private boolean toolCallingEnabled = false;
+
+  @UiField(label = "Tool Calling Supported", step = "integration", section = "integration", order = 90)
+  @UiBoolean
+  private boolean toolCallingSupported;
+
+  @UiField(label = "Temperature", step = "sampling", section = "sampling", order = 10)
+  @UiNumber
+  private Double temperature;
+
+  @UiField(label = "Max Tokens to Generate", step = "sampling", section = "sampling", order = 20)
+  @UiNumber
+  private Integer numPredict;
+
+  @UiField(label = "Top-K", step = "sampling", section = "sampling", order = 30)
+  @UiNumber
+  private Integer topK;
+
+  @UiField(label = "Top-P", step = "sampling", section = "sampling", order = 40)
+  @UiNumber
+  private Double topP;
+
+  @UiField(label = "Repeat Penalty", step = "sampling", section = "sampling", order = 50)
+  @UiNumber
+  private Double repeatPenalty;
+
+  @UiField(label = "Max Context Length", step = "sampling", section = "sampling", order = 60, advanced = true)
+  @UiNumber
+  private Integer maxContextLength;
+
+  @UiField(label = "Stop Tokens", step = "sampling", section = "sampling", order = 70, advanced = true)
+  @UiText
+  private List<String> stopTokens;
+
+  @Override
+  @UiField(label = "ID", step = "identity", section = "identity", order = 0)
+  @UiText
+  @UiAccess(
+      create = UiAccessLevel.HIDDEN,
+      edit = UiAccessLevel.READ_ONLY,
+      view = UiAccessLevel.READ_ONLY)
+  public String getId() {
+    return super.getId();
+  }
+
+  @Override
+  @UiAccess(
+      create = UiAccessLevel.HIDDEN,
+      edit = UiAccessLevel.READ_ONLY,
+      view = UiAccessLevel.READ_ONLY)
+  public void setId(final String id) {
+    super.setId(id);
+  }
+
+  @Override
+  @UiField(label = "Name", step = "identity", section = "identity", order = 10)
+  @UiText
+  public String getName() {
+    return super.getName();
+  }
+
+  @Override
+  public void setName(final String name) {
+    super.setName(name);
+  }
 
   public String getBaseUrl() {
     return baseUrl;

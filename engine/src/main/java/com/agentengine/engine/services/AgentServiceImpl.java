@@ -43,8 +43,8 @@ public class AgentServiceImpl implements AgentService {
 
   @Override
   @WithSpan
-  public BaseAgentConfig updateAgent(BaseAgentConfig agent) {
-    return agentRepository.update(agent.getId(), agent);
+  public BaseAgentConfig updateAgent(final String id, final BaseAgentConfig agent) {
+    return agentRepository.update(id, agent);
   }
 
   @Override

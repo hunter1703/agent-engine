@@ -1,7 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
 import com.agentengine.engine.api.beans.BaseEntity;
-import com.agentengine.engine.api.beans.Secure;
+import com.agentengine.util.Secure;
 import com.google.adk.sessions.Session;
 
 public class AgentSession extends BaseEntity {
