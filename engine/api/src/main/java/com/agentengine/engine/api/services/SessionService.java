@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
-@MicroService
+@MicroService("agent")
 public interface SessionService {
   Optional<AgentSession> getSession(String id);
 

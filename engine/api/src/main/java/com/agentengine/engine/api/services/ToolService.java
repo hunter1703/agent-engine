@@ -4,7 +4,7 @@ import com.agentengine.util.ms.MicroService;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import java.util.List;
 
-@MicroService
+@MicroService("agent")
 public interface ToolService {
   List<ToolDescriptor> getVisibleTools(String agentId);
 

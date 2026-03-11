@@ -5,7 +5,7 @@ import com.agentengine.util.ms.MicroService;
 import com.google.adk.events.Event;
 import io.reactivex.rxjava3.core.Flowable;
 
-@MicroService
+@MicroService("agent")
 public interface AgentExecutionService {
 
   Flowable<Event> run(AgentRequest request);

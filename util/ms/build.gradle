@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api project(':util:common')
+    api project(':util:mongodb')
     api libs.grpc.stub
     api libs.grpc.protobuf
     api libs.protobuf.java
