@@ -7,6 +7,7 @@ dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.slf4j.api
     implementation project(':engine:api')
+    implementation project(':util:common')
     implementation libs.quarkus.logging.json
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi

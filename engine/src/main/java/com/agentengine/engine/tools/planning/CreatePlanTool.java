@@ -22,7 +22,6 @@ public final class CreatePlanTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           "Create a new plan with a list of tasks. Use 'parent_id' for logical hierarchy.",
-          List.of(ALL),
           Map.of());
 
   public CreatePlanTool() {

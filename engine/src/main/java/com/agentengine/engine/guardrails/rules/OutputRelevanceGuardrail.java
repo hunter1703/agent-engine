@@ -8,30 +8,27 @@ import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
-import com.agentengine.engine.guardrails.GuardrailUtils;
-import com.agentengine.engine.guardrails.RelevanceAnchorBuilder;
-import com.agentengine.engine.guardrails.RelevanceEvaluator;
+import com.agentengine.engine.guardrails.OutputRelevanceUtils;
+import com.agentengine.engine.guardrails.RelevanceScorer;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.util.common.StringUtils;
+
 import java.util.Map;
 import java.util.Objects;
 
 public final class OutputRelevanceGuardrail implements Guardrail {
   private final OutputRelevanceGuardrailRule config;
-  private final RelevanceEvaluator evaluator;
-  private final String id;
+  private final RelevanceScorer relevanceScorer;
 
   public OutputRelevanceGuardrail(
-      final OutputRelevanceGuardrailRule config, final RelevanceEvaluator evaluator) {
+      final OutputRelevanceGuardrailRule config, final RelevanceScorer relevanceScorer) {
     this.config = Objects.requireNonNull(config);
-    this.evaluator = evaluator;
-    this.id = GuardrailUtils.resolveRuleId(config, "output_relevance");
+    this.relevanceScorer = relevanceScorer;
   }
 
   @Override
   public String id() {
-    return id;
+    return config.getId();
   }
 
   @Override
@@ -41,12 +38,12 @@ public final class OutputRelevanceGuardrail implements Guardrail {
 
   @Override
   public GuardrailDecision evaluate(final GuardrailContext context) {
-    if (context.invocationContext() == null || StringUtils.isBlank(context.text())) {
+    if (context.invocationContext() == null) {
       return GuardrailDecision.allow();
     }
 
-    final String anchor = RelevanceAnchorBuilder.build(context.invocationContext(), config);
-    final double score = evaluator.score(anchor, context.text());
+    final String anchor = OutputRelevanceUtils.buildAnchorPrompt(context.invocationContext(), config);
+    final double score = relevanceScorer.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
     final RunState runState = RunStateUtils.getState(context.invocationContext());
 
@@ -57,7 +54,9 @@ public final class OutputRelevanceGuardrail implements Guardrail {
 
     final int attempt = runState.incrementOffTopicRetries();
     final RelevanceMode mode =
-        config.getMode() == null ? RelevanceMode.STEER_THEN_BLOCK : config.getMode();
+        config.modeEnum() == RelevanceMode.UNKNOWN
+            ? RelevanceMode.STEER_THEN_BLOCK
+            : config.modeEnum();
 
     if (mode == RelevanceMode.STEER_ONLY) {
       return new GuardrailDecision(

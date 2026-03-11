@@ -1,0 +1,70 @@
+package com.agentengine.engine.guardrails;
+
+import static com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy.*;
+
+import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
+import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
+import com.agentengine.engine.tools.planning.PlanningUtils;
+import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
+import com.google.adk.agents.InvocationContext;
+import com.google.adk.events.Event;
+import com.google.genai.types.Content;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class OutputRelevanceUtils {
+  private OutputRelevanceUtils() {}
+
+  public static String buildAnchorPrompt(
+      final InvocationContext context, final OutputRelevanceGuardrailRule config) {
+    if (context == null || context.session() == null) {
+      return "";
+    }
+    RelevanceAnchorStrategy strategy = config.anchorStrategyEnum();
+    if (strategy == UNKNOWN) {
+      strategy = LATEST_USER_AND_PLAN;
+    }
+
+    final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
+    final String recentUserMessages = recentUser(context.session().events(), recency);
+    final String latestUserMessage = recentUser(context.session().events(), 1);
+    final String planAnchor = planAnchor(context);
+
+    return switch (strategy) {
+      case RECENT_USER -> recentUserMessages;
+      case LATEST_USER_AND_PLAN -> StringUtils.joinNonBlank(List.of(latestUserMessage, planAnchor));
+      case UNKNOWN -> StringUtils.joinNonBlank(List.of(latestUserMessage, recentUserMessages, planAnchor));
+    };
+  }
+
+  private static String recentUser(final List<Event> events, final int max) {
+    if (events == null || events.isEmpty()) {
+      return "";
+    }
+    final List<String> intents = new ArrayList<>();
+    for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
+      final Content content = events.get(i).content().orElse(null);
+      if (content == null || !"user".equals(content.role().orElse(""))) {
+        continue;
+      }
+      final String text = content.text();
+      if (StringUtils.isNotBlank(text)) {
+        intents.add(text);
+      }
+    }
+    return String.join("\n", intents.reversed());
+  }
+
+  private static String planAnchor(final InvocationContext context) {
+    final Plan plan = RunStateUtils.getState(context).plan();
+    if (plan == null) {
+      return "";
+    }
+    final String summary = PlanningUtils.buildPlanSummary(plan);
+    final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);
+    return StringUtils.joinNonBlank(List.of(summary, taskFocus));
+  }
+
+}

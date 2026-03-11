@@ -66,7 +66,7 @@ public final class RequestMaterializer {
         definition.auth(), context, templateResolver, strictUnresolved, headers, query);
 
     return new HttpRequestData(
-        endpoint.method(),
+        endpoint.methodEnum(),
         resolvedUrl,
         headers,
         query,
@@ -123,7 +123,7 @@ public final class RequestMaterializer {
     }
 
     final Object value = resolvedBody.value();
-    final BodyType bodyType = definition.body().type();
+    final BodyType bodyType = definition.body().typeEnum();
 
     return switch (bodyType) {
       case JSON -> writeJson(value);
@@ -141,7 +141,7 @@ public final class RequestMaterializer {
     if (definition.body().contentType() != null && !definition.body().contentType().isBlank()) {
       return definition.body().contentType();
     }
-    return switch (definition.body().type()) {
+    return switch (definition.body().typeEnum()) {
       case JSON -> JSON_CONTENT_TYPE;
       case FORM_URLENCODED -> FORM_CONTENT_TYPE;
       case TEXT -> TEXT_CONTENT_TYPE;

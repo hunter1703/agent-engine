@@ -42,23 +42,13 @@ import java.util.Locale;
 public class ModelConfig extends NamedEntity implements Config {
 
   public enum Provider {
-    UNKNOWN("unknown"),
-    OLLAMA("ollama"),
-    OPEN_AI_COMPATIBLE("open_ai_compatible"),
-    GEMINI("gemini");
-
-    private final String type;
-
-    Provider(final String type) {
-      this.type = type;
-    }
+    UNKNOWN,
+    OLLAMA,
+    OPEN_AI_COMPATIBLE,
+    GEMINI;
 
     public String type() {
-      return type;
-    }
-
-    public boolean matches(final String value) {
-      return type.equals(normalizeType(value));
+      return name();
     }
 
     public static Provider fromType(final String value) {
@@ -97,7 +87,7 @@ public class ModelConfig extends NamedEntity implements Config {
       effect = UiRuleEffect.VISIBLE,
       field = "type",
       operator = UiConditionOperator.IN,
-      values = {"ollama", "open_ai_compatible"})
+      values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
   private String baseUrl;
 
   @UiField(label = "API Key", step = "integration", section = "integration", order = 20)
@@ -106,7 +96,7 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiRule(
       effect = UiRuleEffect.VISIBLE,
       field = "type",
-      values = {"gemini"})
+      values = {"GEMINI"})
   private String apiKey;
 
   @UiField(label = "Server Command", step = "integration", section = "integration", order = 30)
@@ -114,7 +104,7 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiRule(
       effect = UiRuleEffect.VISIBLE,
       field = "type",
-      values = {"open_ai_compatible"})
+      values = {"OPEN_AI_COMPATIBLE"})
   private String serverCommand;
 
   @UiField(label = "Server Arguments", step = "integration", section = "integration", order = 40)
@@ -122,7 +112,7 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiRule(
       effect = UiRuleEffect.VISIBLE,
       field = "type",
-      values = {"open_ai_compatible"})
+      values = {"OPEN_AI_COMPATIBLE"})
   private List<String> serverArgs;
 
   @UiField(
@@ -134,7 +124,7 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiRule(
       effect = UiRuleEffect.VISIBLE,
       field = "type",
-      values = {"open_ai_compatible"})
+      values = {"OPEN_AI_COMPATIBLE"})
   private String serverWorkdir;
 
   @UiField(label = "Model Instructions", step = "integration", section = "integration", order = 60)
@@ -381,6 +371,6 @@ public class ModelConfig extends NamedEntity implements Config {
     if (type == null) {
       return null;
     }
-    return type.trim().toLowerCase(Locale.ROOT);
+    return type.trim();
   }
 }

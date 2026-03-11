@@ -5,7 +5,7 @@ import com.agentengine.engine.agents.processors.request.HumanInTheLoopUtils;
 import com.agentengine.engine.api.utils.ContentUtils;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import com.agentengine.engine.utils.SessionPauseReason;
-import com.agentengine.engine.utils.SessionStateUtils;
+import com.agentengine.engine.utils.SessionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
@@ -25,13 +25,9 @@ public final class HumanInTheLoopPlugin extends BasePlugin {
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
-    final InvocationContext context =
-        callbackContext == null ? null : callbackContext.invocationContext();
-    if (context == null) {
-      return Maybe.empty();
-    }
+    final InvocationContext context = callbackContext.invocationContext();
 
-    if (!SessionStateUtils.isPaused(context)) {
+    if (!SessionUtils.isPaused(context)) {
       return Maybe.empty();
     }
 
@@ -39,16 +35,16 @@ public final class HumanInTheLoopPlugin extends BasePlugin {
     final String userAnswer = ContentUtils.extractLatestUserText(request);
     final String pendingConfirmationId = HumanInTheLoopUtils.findPendingConfirmationId(context);
     final SessionPauseReason pauseReason =
-        SessionPauseReason.valueOfOrDefault(SessionStateUtils.getPauseReason(context));
+        SessionPauseReason.valueOfOrDefault(SessionUtils.getPauseReason(context));
     final boolean isConfirmationPause =
         pauseReason == SessionPauseReason.TOOL_CONFIRMATION
             || StringUtils.isNotBlank(pendingConfirmationId);
 
     if (isConfirmationPause
         && HumanInTheLoopUtils.isSameInvocationAsPause(
-            context, SessionStateUtils.getPauseInvocationId(context))) {
+            context, SessionUtils.getPauseInvocationId(context))) {
       context.setEndInvocation(true);
-      final String prompt = SessionStateUtils.getPausePrompt(context);
+      final String prompt = SessionUtils.getPausePrompt(context);
       final String message =
           StringUtils.isNotBlank(prompt)
               ? prompt
@@ -62,7 +58,7 @@ public final class HumanInTheLoopPlugin extends BasePlugin {
           isConfirmationPause
               ? "No confirmation answer was provided. Provide your confirmation text to continue."
               : HumanInTheLoopUtils.buildMissingAnswerMessage(
-                  SessionStateUtils.getPausePrompt(context));
+                  SessionUtils.getPausePrompt(context));
       return Maybe.just(GuardrailUtils.buildGuardrailResponse(message));
     }
     if (isConfirmationPause

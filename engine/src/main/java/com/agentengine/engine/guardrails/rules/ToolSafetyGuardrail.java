@@ -16,16 +16,14 @@ import java.util.Objects;
 
 public final class ToolSafetyGuardrail implements Guardrail {
   private final ToolSafetyGuardrailRule rule;
-  private final String id;
 
   public ToolSafetyGuardrail(final ToolSafetyGuardrailRule rule) {
     this.rule = Objects.requireNonNull(rule);
-    this.id = GuardrailUtils.resolveRuleId(rule, "tool_safety");
   }
 
   @Override
   public String id() {
-    return id;
+    return rule.getId();
   }
 
   @Override
@@ -36,24 +34,24 @@ public final class ToolSafetyGuardrail implements Guardrail {
   @Override
   public GuardrailDecision evaluate(final GuardrailContext context) {
     final ToolDescriptor descriptor = context.toolDescriptor();
-    if (descriptor == null) {
+    if (descriptor == null || CollectionUtils.isEmpty(rule.getToolNames())) {
       return GuardrailDecision.allow();
     }
     final String toolName = descriptor.name();
     final var allowedToolNames = CollectionUtils.nullSafeList(rule.getToolNames());
-    if (!allowedToolNames.isEmpty() && !allowedToolNames.contains(toolName)) {
+    if (!allowedToolNames.contains(toolName)) {
       return GuardrailDecision.allow();
     }
-    final ToolRiskLevel risk = descriptor.riskLevel();
+    final ToolRiskLevel risk = descriptor.riskLevelEnum();
     GuardrailDecision decision = GuardrailDecision.allow();
-    if (ToolRiskLevel.atLeast(risk, rule.getMinToolRisk())) {
+    if (ToolRiskLevel.atLeast(risk, rule.minToolRiskEnum())) {
       final String message =
           rule.getMessage() != null
               ? rule.getMessage()
               : "Tool safety policy triggered for '" + descriptor.name() + "'.";
       decision =
           GuardrailUtils.fromAction(
-              rule.getAction(),
+              rule.actionEnum(),
               GuardrailConstants.Code.TOOL_POLICY,
               message,
               Map.of(

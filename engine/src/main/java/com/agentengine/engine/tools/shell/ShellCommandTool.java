@@ -3,7 +3,7 @@ package com.agentengine.engine.tools.shell;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.tools.annotations.AgentTool;
+import com.agentengine.engine.api.tools.annotations.DiscoverableTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.vertx.json.schema.common.dsl.Schemas;
@@ -13,12 +13,11 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-@AgentTool
+@DiscoverableTool
 public final class ShellCommandTool extends Tool {
   private static final Pattern BLOCKED = Pattern.compile("(^|[\\s;|&()])(/bin/)?rm(\\s|$)");
   private static final int MAX_OUTPUT_CHARS = 12_000;
@@ -27,7 +26,6 @@ public final class ShellCommandTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
-          List.of(ALL),
           buildConfigSchema(),
           ToolRiskLevel.HIGH);
   private final Duration timeout;

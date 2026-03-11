@@ -15,10 +15,7 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
   private static final String TOOL_NAME = "complete_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Mark a specific task as DONE or ABANDONED with a final result.",
-          List.of(ALL),
-          Map.of());
+          TOOL_NAME, "Mark a specific task as DONE or ABANDONED with a final result.", Map.of());
 
   public CompleteTaskTool() {
     super(DESCRIPTOR);

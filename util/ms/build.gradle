@@ -15,8 +15,12 @@ dependencies {
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.quarkus.arc
+    implementation libs.quarkus.grpc
     implementation libs.rxjava
     implementation libs.slf4j.api
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
 }
 
 protobuf {

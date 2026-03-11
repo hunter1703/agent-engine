@@ -17,13 +17,13 @@ public final class AgentRunLifecyclePlugin extends BasePlugin {
 
   @Override
   public Maybe<Content> beforeAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-    RunStateUtils.initState(ctx == null ? null : ctx.invocationContext());
+    RunStateUtils.initState(ctx.invocationContext());
     return Maybe.empty();
   }
 
   @Override
   public Maybe<Content> afterAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-    RunStateUtils.clearState(ctx == null ? null : ctx.invocationContext());
+    RunStateUtils.clearState(ctx.invocationContext());
     return Maybe.empty();
   }
 }

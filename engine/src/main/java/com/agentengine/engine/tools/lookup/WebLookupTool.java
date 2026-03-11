@@ -5,14 +5,13 @@ import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.tools.annotations.AgentTool;
+import com.agentengine.engine.api.tools.annotations.DiscoverableTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.quarkus.arc.Arc;
-import java.util.List;
 import java.util.Map;
 
-@AgentTool
+@DiscoverableTool
 public final class WebLookupTool extends Tool {
   private static final String TOOL_NAME = "web_lookup";
   private static final String CONNECTOR_ID = "duckduckgo_instant_search";
@@ -20,11 +19,7 @@ public final class WebLookupTool extends Tool {
   private static final String EMPTY_RESULT = "No abstract available for this query.";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Look up information on the web using DuckDuckGo.",
-          List.of(ALL),
-          Map.of(),
-          ToolRiskLevel.LOW);
+          TOOL_NAME, "Look up information on the web using DuckDuckGo.", Map.of(), ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 

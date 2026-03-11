@@ -35,19 +35,11 @@ public class DelegatedAgent extends Agent {
 
   @Override
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
-    if (delegated == null) {
-      throw new IllegalStateException(
-          "No delegated agent present; override runAsyncImpl in subclass.");
-    }
     return delegated.runAsync(invocationContext);
   }
 
   @Override
   protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
-    if (delegated == null) {
-      throw new IllegalStateException(
-          "No delegated agent present; override runLiveImpl in subclass.");
-    }
     return delegated.runLive(invocationContext);
   }
 }

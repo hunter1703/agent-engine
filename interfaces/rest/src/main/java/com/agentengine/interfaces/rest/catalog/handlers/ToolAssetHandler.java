@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
-import com.agentengine.engine.api.services.ToolService;
+import com.agentengine.engine.api.services.ToolCatalog;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
@@ -19,11 +19,11 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
   private static final String ASSET_TYPE = "tool";
 
-  private final ToolService toolService;
+  private final ToolCatalog toolCatalog;
 
   @Inject
-  public ToolAssetHandler(ToolService toolService) {
-    this.toolService = toolService;
+  public ToolAssetHandler(ToolCatalog toolCatalog) {
+    this.toolCatalog = toolCatalog;
   }
 
   @Override
@@ -33,7 +33,7 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
   @Override
   public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
-    List<ToolDescriptor> tools = toolService.getVisibleTools(null);
+    List<ToolDescriptor> tools = toolCatalog.getTools();
 
     Page page =
         request.getQuery() != null && request.getQuery().getPage() != null
@@ -54,7 +54,7 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
       return Map.of();
     }
     return request.getKeys().stream()
-        .map(id -> toolService.getToolById(null, id))
+        .map(toolCatalog::getToolByName)
         .filter(Objects::nonNull)
         .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
   }

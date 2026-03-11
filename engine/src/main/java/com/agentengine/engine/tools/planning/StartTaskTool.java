@@ -11,10 +11,7 @@ public final class StartTaskTool extends UpdateTaskStatusTool {
   private static final String TOOL_NAME = "start_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Mark a specific task as IN_PROGRESS to begin working on it.",
-          List.of(ALL),
-          Map.of());
+          TOOL_NAME, "Mark a specific task as IN_PROGRESS to begin working on it.", Map.of());
 
   public StartTaskTool() {
     super(DESCRIPTOR);

@@ -31,8 +31,7 @@ public final class ModelInvocationPipeline extends BasePlugin {
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
-    final InvocationContext invocationContext =
-        callbackContext == null ? null : callbackContext.invocationContext();
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     LlmRequest request = requestBuilder.build();
     request = applyRequestProcessor(CorrectionProcessor.INSTANCE, invocationContext, request);
     request = applyRequestProcessor(PlanningRequestProcessor.INSTANCE, invocationContext, request);
@@ -43,8 +42,7 @@ public final class ModelInvocationPipeline extends BasePlugin {
   @Override
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext callbackContext, final LlmResponse llmResponse) {
-    final InvocationContext invocationContext =
-        callbackContext == null ? null : callbackContext.invocationContext();
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     LlmResponse response = llmResponse;
     response =
         applyResponseProcessor(

@@ -31,7 +31,7 @@ class AgentConfigSubAgentRuleValidatorTest {
   void shouldAddErrorWhenSequentialOrchestratorHasNoSubAgents() {
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.SEQUENTIAL);
+    config.setOrchestrationMode(OrchestrationMode.SEQUENTIAL.name());
     config.setSubAgentIds(List.of());
     final ValidationCollector collector = new ValidationCollector();
 
@@ -45,7 +45,20 @@ class AgentConfigSubAgentRuleValidatorTest {
   void shouldNotAddErrorWhenTransferOrchestratorHasNoSubAgents() {
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.TRANSFER);
+    config.setOrchestrationMode(OrchestrationMode.TRANSFER.name());
+    config.setSubAgentIds(List.of());
+    final ValidationCollector collector = new ValidationCollector();
+
+    validator.validate(config, collector);
+
+    assertThat(collector.hasErrors()).isFalse();
+  }
+
+  @Test
+  void shouldNotAddErrorWhenManagerOrchestratorHasNoSubAgents() {
+    final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
+    config.setId("agent-orchestrator");
+    config.setOrchestrationMode(OrchestrationMode.MANAGER.name());
     config.setSubAgentIds(List.of());
     final ValidationCollector collector = new ValidationCollector();
 

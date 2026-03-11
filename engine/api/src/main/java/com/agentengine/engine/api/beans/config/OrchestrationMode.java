@@ -6,8 +6,10 @@ import java.util.Locale;
 public enum OrchestrationMode {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,
-  /** LLM manager pattern with native transfer and AgentTool exposure. */
+  /** Handoff-capable manager pattern. */
   TRANSFER,
+  /** Manager pattern with sub-agents exposed only as tools; control always returns. */
+  MANAGER,
   /** Deterministic sequential execution over sub-agents. */
   SEQUENTIAL,
   /** Deterministic parallel execution over sub-agents. */

@@ -73,7 +73,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
       final ConnectorDefinition definition, final RequestContext context) {
     validator.validateOrThrow(definition);
 
-    final PaginationType paginationType = definition.pagination().type();
+    final PaginationType paginationType = definition.pagination().typeEnum();
     if (paginationType == PaginationType.NONE) {
       final ConnectorExecutionResult singleResult = executeOnce(definition, context);
       return new PaginatedExecutionResult(
@@ -81,7 +81,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     }
 
     final PaginationStrategy paginationStrategy =
-        paginationRegistry.resolve(definition.pagination().type());
+        paginationRegistry.resolve(definition.pagination().typeEnum());
     PaginationState paginationState = paginationStrategy.initialState(definition.pagination());
 
     final List<ConnectorExecutionResult> pageResults = new ArrayList<>();
@@ -175,7 +175,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
       return 0L;
     }
 
-    if (definition.retryPolicy().backoffType() == RetryBackoffType.EXPONENTIAL) {
+    if (definition.retryPolicy().backoffTypeEnum() == RetryBackoffType.EXPONENTIAL) {
       final long nextDelay =
           Math.round(currentDelayMs * definition.retryPolicy().backoffMultiplier());
       return Math.min(nextDelay, definition.retryPolicy().maxDelayMs());

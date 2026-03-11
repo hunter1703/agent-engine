@@ -10,11 +10,21 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Map;
 
 public final class Utils {
   public static final ObjectMapper OBJECT_MAPPER = JsonBaseModel.getMapper();
 
   private Utils() {}
+
+  public static Class<?> getClass(final Type type) {
+    if (type instanceof Class<?> clazz) {
+      return clazz;
+    } else if (type instanceof ParameterizedType parameterizedType) {
+      return (Class<?>) parameterizedType.getRawType();
+    }
+    throw new IllegalArgumentException(String.format("Unsupported type %s", type));
+  }
 
   public static boolean isSimpleType(final Class<?> type) {
     if (type == null) {
@@ -86,6 +96,21 @@ public final class Utils {
 
   public static <T> T convertValue(final Object rawValue, final Class<T> targetType) {
     return OBJECT_MAPPER.convertValue(rawValue, targetType);
+  }
+
+  public static <T> T toType(final Object value, final Class<T> type) {
+    if (value == null || type == null) {
+      return null;
+    }
+    if (type.isInstance(value)) {
+      return type.cast(value);
+    }
+    if (value instanceof Map<?, ?> rawMap) {
+      @SuppressWarnings("unchecked")
+      final Map<String, Object> mapValue = (Map<String, Object>) rawMap;
+      return JsonUtils.fromMap(mapValue, type);
+    }
+    return null;
   }
 
   public static <T> T convertValue(final Object rawValue, final TypeReference<T> typeReference) {

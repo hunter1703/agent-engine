@@ -45,18 +45,15 @@ public final class CorrectionProcessor implements RequestProcessor {
 
     LOG.info("Gathered {} violation(s) for correction", violations.size());
 
-    for (Violation v : violations) {
-      LOG.info(
-          "Violation: code={} message={} correction={}",
-          v.code(),
-          v.message(),
-          v.correctionMessage());
-    }
-
     final List<Event> correctiveEvents = new ArrayList<>();
     final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
 
     for (final Violation violation : violations) {
+      LOG.debug(
+              "Violation: code={} message={} correction={}",
+              violation.code(),
+              violation.message(),
+              violation.correctionMessage());
       final String correctionMessage = violation.correctionMessage();
       if (StringUtils.isBlank(correctionMessage)) {
         continue;
@@ -66,14 +63,8 @@ public final class CorrectionProcessor implements RequestProcessor {
       correctiveEvent.content().ifPresent(contents::add);
       correctiveEvents.add(correctiveEvent);
     }
-
     runState.clearViolations();
-    if (correctiveEvents.isEmpty()) {
-      return Single.just(RequestProcessingResult.create(request, List.of()));
-    }
-
     final LlmRequest updatedRequest = request.toBuilder().contents(contents).build();
-
     return Single.just(RequestProcessingResult.create(updatedRequest, correctiveEvents));
   }
 }

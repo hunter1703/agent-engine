@@ -5,10 +5,10 @@ import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.utils.ContentUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
+import com.agentengine.engine.factories.model.ModelProvider;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.repository.AgentSessionRepository;
-import com.agentengine.engine.utils.Cache;
+import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.update.Operation;
@@ -185,7 +185,7 @@ public final class CompactionContextManager implements ContextManager {
                 List.of(
                     Content.builder().role("user").parts(List.of(Part.fromText(prompt))).build()))
             .build();
-    final BaseLlm model = modelProvider.get(modelId);
+    final BaseLlm model = modelProvider.acquire(modelId);
     try {
       final LlmResponse response = model.generateContent(request, false).blockingFirst();
       return response.content().map(Content::text).orElse(null);

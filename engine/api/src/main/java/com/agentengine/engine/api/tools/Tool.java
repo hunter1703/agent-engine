@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 /** All tools must have one method named "execute". The method can have any parameters. */
 public abstract class Tool extends BaseTool {
-  public static final String ALL = "ALL";
 
   private static final Logger LOG = LoggerFactory.getLogger(Tool.class);
   private static final String DEFAULT_METHOD = "execute";

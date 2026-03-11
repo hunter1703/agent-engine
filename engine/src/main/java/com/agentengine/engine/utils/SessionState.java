@@ -1,89 +1,143 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.StringUtils;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class SessionState {
-  private boolean paused;
-  private String pauseReason;
-  private String pausePrompt;
-  private List<String> pauseOptions = new ArrayList<>();
-  private String pauseInvocationId;
-  private Long pauseRequestedAt;
+  private PauseState pause = new PauseState();
+  private ActiveRunState activeRun;
 
   public SessionState() {}
 
+  public PauseState pause() {
+    return ensurePause();
+  }
+
+  public ActiveRunState activeRun() {
+    return activeRun;
+  }
+
+  public PauseState getPause() {
+    return ensurePause();
+  }
+
+  public void setPause(final PauseState pause) {
+    this.pause = pause == null ? new PauseState() : pause;
+  }
+
+  public ActiveRunState getActiveRun() {
+    return activeRun;
+  }
+
+  public void setActiveRun(final ActiveRunState activeRun) {
+    this.activeRun = activeRun;
+  }
+
   public boolean paused() {
-    return paused;
+    return ensurePause().paused();
   }
 
   public String pauseReason() {
-    return pauseReason;
+    return ensurePause().reason();
   }
 
   public String pausePrompt() {
-    return pausePrompt;
+    return ensurePause().prompt();
   }
 
   public List<String> pauseOptions() {
-    return List.copyOf(pauseOptions);
+    return ensurePause().options();
   }
 
   public String pauseInvocationId() {
-    return pauseInvocationId;
+    return ensurePause().invocationId();
   }
 
   public Long pauseRequestedAt() {
-    return pauseRequestedAt;
+    return ensurePause().requestedAt();
   }
 
   public boolean isPaused() {
-    return paused;
+    return ensurePause().isPaused();
   }
 
   public void setPaused(final boolean paused) {
-    this.paused = paused;
+    ensurePause().setPaused(paused);
   }
 
   public String getPauseReason() {
-    return pauseReason;
+    return ensurePause().getReason();
   }
 
   public void setPauseReason(final String pauseReason) {
-    this.pauseReason = pauseReason;
+    ensurePause().setReason(pauseReason);
   }
 
   public String getPausePrompt() {
-    return pausePrompt;
+    return ensurePause().getPrompt();
   }
 
   public void setPausePrompt(final String pausePrompt) {
-    this.pausePrompt = pausePrompt;
+    ensurePause().setPrompt(pausePrompt);
   }
 
   public List<String> getPauseOptions() {
-    return List.copyOf(pauseOptions);
+    return ensurePause().getOptions();
   }
 
   public void setPauseOptions(final List<String> pauseOptions) {
-    this.pauseOptions = sanitizeOptions(pauseOptions);
+    ensurePause().setOptions(pauseOptions);
   }
 
   public String getPauseInvocationId() {
-    return pauseInvocationId;
+    return ensurePause().getInvocationId();
   }
 
   public void setPauseInvocationId(final String pauseInvocationId) {
-    this.pauseInvocationId = pauseInvocationId;
+    ensurePause().setInvocationId(pauseInvocationId);
   }
 
   public Long getPauseRequestedAt() {
-    return pauseRequestedAt;
+    return ensurePause().getRequestedAt();
   }
 
   public void setPauseRequestedAt(final Long pauseRequestedAt) {
-    this.pauseRequestedAt = pauseRequestedAt;
+    ensurePause().setRequestedAt(pauseRequestedAt);
+  }
+
+  public String pendingToolName() {
+    return ensurePause().pendingToolName();
+  }
+
+  public String getPendingToolName() {
+    return ensurePause().getPendingToolName();
+  }
+
+  public void setPendingToolName(final String pendingToolName) {
+    ensurePause().setPendingToolName(pendingToolName);
+  }
+
+  public String pendingConfirmationId() {
+    return ensurePause().pendingConfirmationId();
+  }
+
+  public String getPendingConfirmationId() {
+    return ensurePause().getPendingConfirmationId();
+  }
+
+  public void setPendingConfirmationId(final String pendingConfirmationId) {
+    ensurePause().setPendingConfirmationId(pendingConfirmationId);
+  }
+
+  public String approvedToolName() {
+    return ensurePause().approvedToolName();
+  }
+
+  public String getApprovedToolName() {
+    return ensurePause().getApprovedToolName();
+  }
+
+  public void setApprovedToolName(final String approvedToolName) {
+    ensurePause().setApprovedToolName(approvedToolName);
   }
 
   public void markPaused(
@@ -92,33 +146,54 @@ public final class SessionState {
       final String reason,
       final String invocationId,
       final long requestedAt) {
-    paused = true;
-    pausePrompt = StringUtils.isBlank(prompt) ? null : prompt;
-    pauseOptions = sanitizeOptions(options);
-    pauseReason = StringUtils.isBlank(reason) ? null : reason;
-    pauseInvocationId = StringUtils.isBlank(invocationId) ? null : invocationId;
-    pauseRequestedAt = requestedAt;
+    ensurePause().markPaused(prompt, options, reason, invocationId, requestedAt);
+  }
+
+  public void markPaused(
+      final String prompt,
+      final List<String> options,
+      final String reason,
+      final String invocationId,
+      final long requestedAt,
+      final String pendingToolName) {
+    ensurePause().markPaused(prompt, options, reason, invocationId, requestedAt, pendingToolName);
+  }
+
+  public void markPaused(
+      final String prompt,
+      final List<String> options,
+      final String reason,
+      final String invocationId,
+      final long requestedAt,
+      final String pendingToolName,
+      final String pendingConfirmationId) {
+    ensurePause()
+        .markPaused(
+            prompt,
+            options,
+            reason,
+            invocationId,
+            requestedAt,
+            pendingToolName,
+            pendingConfirmationId);
   }
 
   public void clearPause() {
-    paused = false;
-    pauseReason = null;
-    pausePrompt = null;
-    pauseOptions = new ArrayList<>();
-    pauseInvocationId = null;
-    pauseRequestedAt = null;
+    ensurePause().clearPause();
   }
 
-  private static List<String> sanitizeOptions(final List<String> options) {
-    if (options == null || options.isEmpty()) {
-      return new ArrayList<>();
+  public void markToolApproved(final String toolName) {
+    ensurePause().markToolApproved(toolName);
+  }
+
+  public boolean consumeApprovedTool(final String toolName) {
+    return ensurePause().consumeApprovedTool(toolName);
+  }
+
+  private PauseState ensurePause() {
+    if (pause == null) {
+      pause = new PauseState();
     }
-    return options.stream()
-        .filter(StringUtils::isNotBlank)
-        .map(String::trim)
-        .filter(StringUtils::isNotBlank)
-        .distinct()
-        .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    return pause;
   }
 }
-

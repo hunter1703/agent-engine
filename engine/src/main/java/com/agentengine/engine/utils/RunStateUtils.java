@@ -1,5 +1,6 @@
 package com.agentengine.engine.utils;
 
+import com.agentengine.util.common.Utils;
 import com.google.adk.agents.InvocationContext;
 import java.util.concurrent.ConcurrentMap;
 
@@ -15,7 +16,7 @@ public final class RunStateUtils {
   public static RunState getState(final InvocationContext context) {
     final String key = runStateKey(context);
     final ConcurrentMap<String, Object> state = context.session().state();
-    final RunState existing = TypedUtils.toType(state.get(key), RunState.class);
+    final RunState existing = Utils.toType(state.get(key), RunState.class);
     if (existing != null) {
       if (state.get(key) != existing) {
         state.put(key, existing);

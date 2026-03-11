@@ -1,12 +1,11 @@
 package com.agentengine.engine.api.tools;
 
 import com.google.adk.tools.BaseTool;
-import java.util.List;
 import java.util.Map;
 
 public interface ToolProvider {
 
-  List<ToolDescriptor> tools();
+  ToolDescriptor descriptor();
 
-  BaseTool create(String toolName, Map<String, Object> toolConfig);
+  BaseTool create(Map<String, Object> toolConfig);
 }

@@ -1,18 +1,17 @@
 package com.agentengine.engine.guardrails;
 
-import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailExecutionMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.engine.api.tools.Tool;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.api.utils.ContentUtils;
-import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.utils.SessionPauseReason;
-import com.agentengine.engine.utils.SessionStateUtils;
+import com.agentengine.engine.utils.SessionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
-import com.google.adk.events.EventActions;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
@@ -21,7 +20,6 @@ import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Maybe;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +41,8 @@ public final class GuardrailPlugin extends BasePlugin {
 
   private final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policyByAgentId;
 
-  public GuardrailPlugin(final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policyByAgentId) {
+  public GuardrailPlugin(
+      final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policyByAgentId) {
     super(NAME);
     this.policyByAgentId = CollectionUtils.nullSafeMap(policyByAgentId);
   }
@@ -51,8 +50,7 @@ public final class GuardrailPlugin extends BasePlugin {
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder llmRequestBuilder) {
-    final InvocationContext invocationContext =
-        callbackContext == null ? null : callbackContext.invocationContext();
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     final GuardrailPolicyFactory.GuardrailPolicy policy = resolvePolicy(invocationContext);
     final List<Guardrail> guardrails = policy.guardrails(GuardrailStage.INPUT);
     if (CollectionUtils.isEmpty(guardrails)) {
@@ -67,26 +65,40 @@ public final class GuardrailPlugin extends BasePlugin {
             GuardrailContext.builder().invocationContext(invocationContext).text(text).build(),
             guardrails,
             policy.errorMode());
+    if (effectiveExecutionMode(policy) == GuardrailExecutionMode.OPTIMISTIC) {
+      if (decision.action() != GuardrailAction.ALLOW) {
+        GuardrailUtils.recordViolation(invocationContext, optimisticFlagDecision(decision));
+      }
+      return Maybe.empty();
+    }
     return handleInputDecision(invocationContext, decision);
   }
 
   @Override
   public Maybe<Map<String, Object>> beforeToolCallback(
       final BaseTool tool, final Map<String, Object> toolArgs, final ToolContext toolContext) {
-    final InvocationContext invocationContext =
-        toolContext == null ? null : toolContext.invocationContext();
+    final InvocationContext invocationContext = toolContext.invocationContext();
+    if (tool != null && SessionUtils.consumeApprovedTool(invocationContext, tool.name())) {
+      return Maybe.empty();
+    }
     final GuardrailPolicyFactory.GuardrailPolicy policy = resolvePolicy(invocationContext);
     final List<Guardrail> guardrails = policy.guardrails(GuardrailStage.TOOL);
     if (CollectionUtils.isEmpty(guardrails) || tool == null) {
       return Maybe.empty();
     }
     final GuardrailDecision decision =
-            GuardrailUtils.evaluateTool(
-                    invocationContext,
-                    GuardrailUtils.resolveToolDescriptor(tool),
-                    toolArgs,
-                    guardrails,
-                    policy.errorMode());
+        GuardrailUtils.evaluateTool(
+            invocationContext,
+                ((Tool) tool).descriptor(),
+            toolArgs,
+            guardrails,
+            policy.errorMode());
+    if (effectiveExecutionMode(policy) == GuardrailExecutionMode.OPTIMISTIC) {
+      if (decision.action() != GuardrailAction.ALLOW) {
+        GuardrailUtils.recordViolation(invocationContext, optimisticFlagDecision(decision));
+      }
+      return Maybe.empty();
+    }
     if (decision.action() == GuardrailAction.ALLOW || decision.action() == GuardrailAction.WARN) {
       if (decision.action() == GuardrailAction.WARN) {
         GuardrailUtils.recordViolation(invocationContext, decision);
@@ -95,48 +107,55 @@ public final class GuardrailPlugin extends BasePlugin {
     }
     GuardrailUtils.recordViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.ESCALATE) {
-      if (toolContext == null || toolContext.functionCallId().isEmpty()) {
+      if (StringUtils.isBlank(toolContext.functionCallId().orElse(null))) {
         return Maybe.empty();
       }
       final String prompt =
-              StringUtils.isBlank(decision.message())
-                      ? "Tool execution requires confirmation."
-                      : decision.message();
+          StringUtils.isBlank(decision.message())
+              ? "Tool execution requires confirmation."
+              : decision.message();
       toolContext.requestConfirmation(
-              prompt,
-              Map.of(
-                      GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
-                      StringUtils.isBlank(decision.code())
-                              ? GuardrailConstants.Code.TOOL_ESCALATE
-                              : decision.code()));
-      SessionStateUtils.pause(invocationContext, prompt, SessionPauseReason.TOOL_CONFIRMATION.code());
+          prompt,
+          Map.of(
+              GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
+              StringUtils.isBlank(decision.code())
+                  ? GuardrailConstants.Code.TOOL_ESCALATE
+                  : decision.code()));
+      SessionUtils.pause(
+          invocationContext,
+          prompt,
+          SessionPauseReason.TOOL_CONFIRMATION.code(),
+          tool.name(),
+          toolContext.functionCallId().orElse(null));
       return Maybe.just(
-              Map.of(
-                      GuardrailConstants.ToolResultKey.STATUS, GuardrailConstants.ToolResultStatus.CONFIRMATION_REQUESTED,
-                      GuardrailConstants.ToolResultKey.MESSAGE, prompt,
-                      GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
-                      StringUtils.isBlank(decision.code())
-                              ? GuardrailConstants.Code.TOOL_ESCALATE
-                              : decision.code()));
+          Map.of(
+              GuardrailConstants.ToolResultKey.STATUS,
+              GuardrailConstants.ToolResultStatus.CONFIRMATION_REQUESTED,
+              GuardrailConstants.ToolResultKey.MESSAGE,
+              prompt,
+              GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
+              StringUtils.isBlank(decision.code())
+                  ? GuardrailConstants.Code.TOOL_ESCALATE
+                  : decision.code()));
     }
     return Maybe.just(
-            Map.of(
-                    GuardrailConstants.ToolResultKey.STATUS, GuardrailConstants.ToolResultStatus.BLOCKED,
-                    GuardrailConstants.ToolResultKey.ERROR,
-                    StringUtils.isBlank(decision.message())
-                            ? "Tool execution blocked by policy."
-                            : decision.message(),
-                    GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
-                    StringUtils.isBlank(decision.code())
-                            ? GuardrailConstants.Code.TOOL_BLOCK
-                            : decision.code()));
+        Map.of(
+            GuardrailConstants.ToolResultKey.STATUS,
+            GuardrailConstants.ToolResultStatus.BLOCKED,
+            GuardrailConstants.ToolResultKey.ERROR,
+            StringUtils.isBlank(decision.message())
+                ? "Tool execution blocked by policy."
+                : decision.message(),
+            GuardrailConstants.ToolResultKey.GUARDRAIL_CODE,
+            StringUtils.isBlank(decision.code())
+                ? GuardrailConstants.Code.TOOL_BLOCK
+                : decision.code()));
   }
 
   @Override
   public Maybe<LlmResponse> afterModelCallback(
       final CallbackContext callbackContext, final LlmResponse llmResponse) {
-    final InvocationContext invocationContext =
-        callbackContext == null ? null : callbackContext.invocationContext();
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     final GuardrailPolicyFactory.GuardrailPolicy policy = resolvePolicy(invocationContext);
     final List<Guardrail> guardrails = policy.guardrails(GuardrailStage.OUTPUT);
     if (llmResponse == null
@@ -157,14 +176,18 @@ public final class GuardrailPlugin extends BasePlugin {
 
     final GuardrailDecision decision =
         GuardrailUtils.evaluate(
-            GuardrailContext.builder().invocationContext(invocationContext).text(content.text()).build(),
+            GuardrailContext.builder()
+                .invocationContext(invocationContext)
+                .text(content.text())
+                .build(),
             guardrails,
             policy.errorMode());
     return handleOutputDecision(invocationContext, llmResponse, content, decision);
   }
 
   @Override
-  public Maybe<Event> onEventCallback(final InvocationContext invocationContext, final Event event) {
+  public Maybe<Event> onEventCallback(
+      final InvocationContext invocationContext, final Event event) {
     final GuardrailPolicyFactory.GuardrailPolicy policy = resolvePolicy(invocationContext);
     if (effectiveExecutionMode(policy) != GuardrailExecutionMode.OPTIMISTIC) {
       return Maybe.empty();
@@ -184,27 +207,8 @@ public final class GuardrailPlugin extends BasePlugin {
     if (decision.action() == GuardrailAction.ALLOW) {
       return Maybe.empty();
     }
-    GuardrailUtils.recordViolation(invocationContext, decision);
-    if (decision.action() == GuardrailAction.WARN) {
-      return Maybe.empty();
-    }
-
-    if (invocationContext != null) {
-      invocationContext.setEndInvocation(true);
-    }
-    final String blockMessage =
-        StringUtils.isNotBlank(decision.message())
-            ? decision.message()
-            : "The response was blocked by guardrail policy.";
-    final EventActions actions =
-        event.actions()
-            .toBuilder()
-            .endInvocation(true)
-            .escalate(decision.action() == GuardrailAction.ESCALATE)
-            .build();
-    final Content content =
-        Content.builder().role("model").parts(List.of(Part.fromText(blockMessage))).build();
-    return Maybe.just(event.toBuilder().content(Optional.of(content)).actions(actions).build());
+    GuardrailUtils.recordViolation(invocationContext, optimisticFlagDecision(decision));
+    return Maybe.empty();
   }
 
   private static Maybe<LlmResponse> handleInputDecision(
@@ -217,7 +221,7 @@ public final class GuardrailPlugin extends BasePlugin {
     }
     GuardrailUtils.recordViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.ESCALATE) {
-      SessionStateUtils.pause(invocationContext, decision.message(), decision.code());
+      SessionUtils.pause(invocationContext, decision.message(), decision.code());
     }
     return Maybe.just(GuardrailUtils.buildGuardrailResponse(decision.message()));
   }
@@ -244,7 +248,7 @@ public final class GuardrailPlugin extends BasePlugin {
     }
 
     if (decision.action() == GuardrailAction.ESCALATE) {
-      SessionStateUtils.pause(invocationContext, decision.message(), decision.code());
+      SessionUtils.pause(invocationContext, decision.message(), decision.code());
     }
     final String blockMessage =
         StringUtils.isNotBlank(decision.message())
@@ -287,7 +291,16 @@ public final class GuardrailPlugin extends BasePlugin {
         : mode;
   }
 
-  private GuardrailPolicyFactory.GuardrailPolicy resolvePolicy(final InvocationContext invocationContext) {
+  private static GuardrailDecision optimisticFlagDecision(final GuardrailDecision decision) {
+    final Map<String, Object> details = new LinkedHashMap<>(decision.details());
+    details.put("executionMode", GuardrailExecutionMode.OPTIMISTIC.name());
+    details.put("async", true);
+    return new GuardrailDecision(
+        GuardrailAction.WARN, decision.code(), decision.message(), details);
+  }
+
+  private GuardrailPolicyFactory.GuardrailPolicy resolvePolicy(
+      final InvocationContext invocationContext) {
     if (invocationContext == null || invocationContext.agent() == null) {
       return GuardrailPolicyFactory.GuardrailPolicy.disabled();
     }
@@ -338,7 +351,8 @@ public final class GuardrailPlugin extends BasePlugin {
   }
 
   private static void setOptimisticFuture(
-      final InvocationContext invocationContext, final CompletableFuture<GuardrailDecision> future) {
+      final InvocationContext invocationContext,
+      final CompletableFuture<GuardrailDecision> future) {
     final ConcurrentMap<String, Object> state = state(invocationContext);
     if (state == null || future == null) {
       return;

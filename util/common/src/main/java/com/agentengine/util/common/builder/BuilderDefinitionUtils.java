@@ -187,7 +187,7 @@ public final class BuilderDefinitionUtils {
     for (final JsonSubTypes.Type sub : subTypes.value()) {
       final String name =
           sub.name() == null || sub.name().isBlank()
-              ? sub.value().getSimpleName().toLowerCase(Locale.ROOT)
+              ? sub.value().getSimpleName()
               : sub.name();
       subtypesByName.put(name, sub.value());
     }
@@ -339,8 +339,7 @@ public final class BuilderDefinitionUtils {
             ? (textAnn != null && textAnn.rows() > 0 ? textAnn.rows() : 4)
             : null;
     final String numberType = widget == Widget.NUMBER ? inferNumberType(field) : null;
-    final List<Object> options =
-        widget == Widget.SELECT ? buildSelectOptions(selectAnn, field, fieldSchema) : null;
+    final List<Object> options = widget == Widget.SELECT ? buildSelectOptions(selectAnn) : null;
     final LayoutLookup lookup =
         widget == Widget.LOOKUP && lookupAnn != null
             ? new LayoutLookup(collection ? Boolean.TRUE : null, lookupAnn.assetType())
@@ -457,18 +456,11 @@ public final class BuilderDefinitionUtils {
 
   // ─── Select options ───────────────────────────────────────────────────────
 
-  private static List<Object> buildSelectOptions(
-      final UiSelect ann, final Field field, final Map<String, Object> fieldSchema) {
-    // Explicit enum source
-    if (ann != null && !UiSelect.NoEnum.class.equals(ann.enumType())) {
-      return enumOptions(ann.enumType());
+  private static List<Object> buildSelectOptions(final UiSelect ann) {
+    if (ann == null) {
+      return List.of();
     }
-    // Fall back to schema enum values (covers enum-typed fields)
-    final Object enumValues = fieldSchema.get("enum");
-    if (enumValues instanceof List<?> list) {
-      return new ArrayList<>(list);
-    }
-    return List.of();
+    return enumOptions(ann.enumType());
   }
 
   private static List<Object> enumOptions(final Class<? extends Enum<?>> enumType) {
@@ -492,7 +484,7 @@ public final class BuilderDefinitionUtils {
         return v;
       }
     }
-    return constant.name().toLowerCase(Locale.ROOT);
+    return constant.name();
   }
 
   private static boolean isValidOption(final Object value) {
@@ -699,7 +691,7 @@ public final class BuilderDefinitionUtils {
   private static void applySchemaOverrides(
       final Class<?> owner, final Field field, final SchemaBuilder<?, ?> schema) {
     final UiSelect select = find(owner, field, UiSelect.class);
-    if (select == null || UiSelect.NoEnum.class.equals(select.enumType())) {
+    if (select == null) {
       return;
     }
     schema.withKeyword("enum", enumOptions(select.enumType()));

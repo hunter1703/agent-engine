@@ -44,7 +44,7 @@ class ModelRestAPITest {
     final ModelService modelService = mock(ModelService.class);
     final ModelRestAPI api = new ModelRestAPI(modelService);
     final ModelConfig model = new ModelConfig();
-    model.setType("ollama");
+    model.setType("OLLAMA");
     model.setModel("qwen2.5");
     when(modelService.createModel(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -85,7 +85,7 @@ class ModelRestAPITest {
     final ModelRestAPI api = new ModelRestAPI(modelService);
     final ModelConfig model = new ModelConfig();
     model.setId("model-2");
-    model.setType("ollama");
+    model.setType("OLLAMA");
     model.setModel("qwen2.5");
 
     assertThatThrownBy(() -> api.updateModel("model-1", model))
@@ -99,7 +99,7 @@ class ModelRestAPITest {
     final ModelService modelService = mock(ModelService.class);
     final ModelRestAPI api = new ModelRestAPI(modelService);
     final ModelConfig model = new ModelConfig();
-    model.setType("ollama");
+    model.setType("OLLAMA");
     model.setModel("qwen2.5");
     when(modelService.updateModel(eq("model-1"), any(ModelConfig.class)))
         .thenAnswer(inv -> inv.getArgument(1));
@@ -115,7 +115,7 @@ class ModelRestAPITest {
   void shouldNotCallGetModelBeforeCreateModel() {
     final ModelService svc = mock(ModelService.class);
     final ModelConfig config = new ModelConfig();
-    config.setType("ollama");
+    config.setType("OLLAMA");
     config.setModel("qwen2.5");
     when(svc.createModel(any())).thenReturn(config);
     new ModelRestAPI(svc).createModel(config);

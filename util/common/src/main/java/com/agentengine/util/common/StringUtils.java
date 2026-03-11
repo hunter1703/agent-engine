@@ -1,5 +1,7 @@
 package com.agentengine.util.common;
 
+import java.util.List;
+
 public final class StringUtils {
 
   private StringUtils() {}
@@ -51,4 +53,11 @@ public final class StringUtils {
       }
       return Math.max(1, text.trim().split("\\s+").length);
     }
+
+  public static String joinNonBlank(final List<String> values) {
+    return values.stream()
+        .filter(StringUtils::isNotBlank)
+        .reduce((a, b) -> a + "\n" + b)
+        .orElse("");
+  }
 }

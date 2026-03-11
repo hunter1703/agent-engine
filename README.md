@@ -124,8 +124,8 @@ At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./pl
 
 ### Tooling Model
 
-- A tool implements `com.agentengine.engine.api.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, scope, and config schema.
-- `ToolDescriptor.agentIds` is a scope filter: empty or `ALL` means globally available; otherwise the tool is scoped to the listed agent IDs.
+- A tool implements `com.agentengine.engine.api.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, risk, and config schema.
+- All registered tools are globally visible to all agents.
 - `@AgentTool` marks auto-discoverable tools. `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
 - `@ToolParam` maps constructor params to config keys. When omitted, parameter names are used (requires compilation with `-parameters`).
 - `ToolParam.AGENT_CONTEXT` or an `AgentContext` parameter injects the current execution context.

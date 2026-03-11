@@ -1,9 +1,9 @@
 package com.agentengine.interfaces.rest.exception;
 
 import com.agentengine.engine.api.exception.AgentException;
-import com.agentengine.engine.api.exception.AssetNotFoundException;
-import com.agentengine.engine.api.exception.ConfigurationException;
-import com.agentengine.engine.api.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.ConfigurationException;
+import com.agentengine.util.common.exception.DuplicateAssetException;
 import io.grpc.StatusRuntimeException;
 import jakarta.validation.ValidationException;
 import jakarta.ws.rs.WebApplicationException;
@@ -33,16 +33,27 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           .build();
     }
 
+    if (exception instanceof AssetNotFoundException) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(new ErrorResponse("404", exception.getMessage(), traceId))
+          .build();
+    }
+
+    if (exception instanceof DuplicateAssetException) {
+      return Response.status(Response.Status.CONFLICT)
+          .entity(new ErrorResponse("409", exception.getMessage(), traceId))
+          .build();
+    }
+
+    if (exception instanceof ConfigurationException configurationException) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(new ErrorResponse("400", configurationException.getMessage(), traceId))
+          .build();
+    }
+
     if (exception instanceof AgentException agentException) {
-      final int status =
-          switch (agentException) {
-            case ConfigurationException ignored -> 400;
-            case AssetNotFoundException ignored -> 404;
-            case DuplicateAssetException ignored -> 409;
-            default -> 500;
-          };
-      return Response.status(status)
-          .entity(new ErrorResponse(String.valueOf(status), agentException.getMessage(), traceId))
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(new ErrorResponse("500", agentException.getMessage(), traceId))
           .build();
     }
 
@@ -81,7 +92,8 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
             case UNAVAILABLE -> 503;
             default -> 500;
           };
-      final String message = status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
+      final String message =
+          status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
       return Response.status(status)
           .entity(new ErrorResponse(String.valueOf(status), message, traceId))
           .build();
@@ -92,5 +104,5 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
         .build();
   }
 
-    public record ErrorResponse(String code, String message, String traceId) {}
+  public record ErrorResponse(String code, String message, String traceId) {}
 }

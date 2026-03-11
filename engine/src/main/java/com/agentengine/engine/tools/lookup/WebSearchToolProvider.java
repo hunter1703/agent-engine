@@ -6,7 +6,6 @@ import com.agentengine.engine.api.tools.ToolProvider;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.List;
 import java.util.Map;
 
 @Singleton
@@ -20,12 +19,12 @@ public class WebSearchToolProvider implements ToolProvider {
   }
 
   @Override
-  public List<ToolDescriptor> tools() {
-    return List.of(WebSearchTool.DESCRIPTOR);
+  public ToolDescriptor descriptor() {
+    return WebSearchTool.DESCRIPTOR;
   }
 
   @Override
-  public BaseTool create(final String toolName, final Map<String, Object> toolConfig) {
+  public BaseTool create(final Map<String, Object> toolConfig) {
     return new WebSearchTool(connectorService);
   }
 }

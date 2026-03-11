@@ -17,12 +17,12 @@ class AgentConfigParallelRuleValidatorTest {
   @Test
   void shouldAddErrorWhenQuorumExceedsSubAgentCount() {
     final OrchestratorParallelConfig parallel = new OrchestratorParallelConfig();
-    parallel.setStoppingPolicy(ParallelStoppingPolicy.QUORUM);
+    parallel.setStoppingPolicy(ParallelStoppingPolicy.QUORUM.name());
     parallel.setQuorum(3);
 
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.PARALLEL);
+    config.setOrchestrationMode(OrchestrationMode.PARALLEL.name());
     config.setParallel(parallel);
     config.setSubAgentIds(List.of("sub-1", "sub-2"));
 
@@ -37,12 +37,12 @@ class AgentConfigParallelRuleValidatorTest {
   @Test
   void shouldNotAddErrorWhenQuorumWithinSubAgentCount() {
     final OrchestratorParallelConfig parallel = new OrchestratorParallelConfig();
-    parallel.setStoppingPolicy(ParallelStoppingPolicy.QUORUM);
+    parallel.setStoppingPolicy(ParallelStoppingPolicy.QUORUM.name());
     parallel.setQuorum(2);
 
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.PARALLEL);
+    config.setOrchestrationMode(OrchestrationMode.PARALLEL.name());
     config.setParallel(parallel);
     config.setSubAgentIds(List.of("sub-1", "sub-2", "sub-3"));
 
@@ -57,7 +57,7 @@ class AgentConfigParallelRuleValidatorTest {
   void shouldIgnoreValidationWhenAgentNotParallelOrchestrator() {
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("agent-orchestrator");
-    config.setOrchestrationMode(OrchestrationMode.TRANSFER);
+    config.setOrchestrationMode(OrchestrationMode.TRANSFER.name());
     config.setSubAgentIds(List.of("sub-1"));
 
     final ValidationCollector collector = new ValidationCollector();

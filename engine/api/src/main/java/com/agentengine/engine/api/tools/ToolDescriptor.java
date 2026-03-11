@@ -7,20 +7,29 @@ import java.util.Map;
 public record ToolDescriptor(
     String name,
     String description,
-    List<String> agentIds,
     Map<String, Object> configsSchema,
-    ToolRiskLevel riskLevel) {
+    String riskLevel) {
   public ToolDescriptor {
-    agentIds = CollectionUtils.nullSafeList(agentIds);
     configsSchema = CollectionUtils.nullSafeMap(configsSchema);
-    riskLevel = riskLevel == null ? ToolRiskLevel.UNKNOWN : riskLevel;
+    riskLevel = riskLevel == null || riskLevel.isBlank() ? ToolRiskLevel.UNKNOWN.name() : riskLevel;
   }
 
   public ToolDescriptor(
       final String name,
       final String description,
-      final List<String> agentIds,
       final Map<String, Object> configsSchema) {
-    this(name, description, agentIds, configsSchema, ToolRiskLevel.UNKNOWN);
+    this(name, description, configsSchema, ToolRiskLevel.UNKNOWN.name());
+  }
+
+  public ToolDescriptor(
+      final String name,
+      final String description,
+      final Map<String, Object> configsSchema,
+      final ToolRiskLevel riskLevel) {
+    this(name, description, configsSchema, riskLevel == null ? null : riskLevel.name());
+  }
+
+  public ToolRiskLevel riskLevelEnum() {
+    return ToolRiskLevel.valueOfOrDefault(riskLevel);
   }
 }

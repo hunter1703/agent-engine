@@ -46,7 +46,7 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
       return;
     }
 
-    if (endpoint.method() == null || endpoint.method() == HttpMethod.UNKNOWN) {
+    if (endpoint.methodEnum() == HttpMethod.UNKNOWN) {
       issues.add(ValidationIssue.error("endpoint.method", "HTTP method is required"));
     }
 
@@ -86,14 +86,14 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
       return;
     }
 
-    final HttpMethod method = endpoint == null ? HttpMethod.UNKNOWN : endpoint.method();
-    if (method != null && !method.supportsBody()) {
+    final HttpMethod method = endpoint == null ? HttpMethod.UNKNOWN : endpoint.methodEnum();
+    if (!method.supportsBody()) {
       issues.add(
           ValidationIssue.error(
               "body", "Request body is not allowed for method " + method.name().toUpperCase()));
     }
 
-    if (bodyConfig.type() == BodyType.UNKNOWN) {
+    if (bodyConfig.typeEnum() == BodyType.UNKNOWN) {
       issues.add(
           ValidationIssue.error("body.type", "Body type is required when body is configured"));
     }
@@ -101,16 +101,16 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
   private static void validatePagination(
       final PaginationConfig pagination, final List<ValidationIssue> issues) {
-    if (pagination == null || pagination.type() == PaginationType.NONE) {
+    if (pagination == null || pagination.typeEnum() == PaginationType.NONE) {
       return;
     }
 
-    if (pagination.type() == PaginationType.UNKNOWN) {
+    if (pagination.typeEnum() == PaginationType.UNKNOWN) {
       issues.add(ValidationIssue.error("pagination.type", "Pagination type is required"));
       return;
     }
 
-    switch (pagination.type()) {
+    switch (pagination.typeEnum()) {
       case PAGE -> {
         requireField(
             issues, pagination.pageParam(), "pagination.pageParam", "pageParam is required");

@@ -28,7 +28,7 @@ class ModelServiceImplTest {
   void shouldSanitizeBeforeInsertWhenCreateModelCalled() {
     final ModelConfig request = new ModelConfig();
     request.setId("model-1");
-    request.setType("ollama");
+    request.setType("OLLAMA");
     request.setModel("qwen2.5");
     when(modelRepository.insert(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -76,7 +76,7 @@ class ModelServiceImplTest {
   void shouldDelegateUpdateModelWhenUpdateModelCalled() {
     final ModelConfig request = new ModelConfig();
     request.setId("model-2");
-    request.setType("ollama");
+    request.setType("OLLAMA");
     request.setModel("qwen2.5");
     when(modelRepository.update(eq("model-1"), any(ModelConfig.class)))
         .thenAnswer(inv -> inv.getArgument(1));
@@ -91,7 +91,7 @@ class ModelServiceImplTest {
   void shouldSanitizeBeforeSaveWhenSaveModelCalled() {
     final ModelConfig request = new ModelConfig();
     request.setId("model-3");
-    request.setType("ollama");
+    request.setType("OLLAMA");
     request.setModel("qwen2.5");
     when(modelRepository.save(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 

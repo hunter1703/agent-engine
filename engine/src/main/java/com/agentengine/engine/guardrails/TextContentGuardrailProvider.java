@@ -17,7 +17,7 @@ public final class TextContentGuardrailProvider
 
   @Override
   public Guardrail create(final TextContentGuardrailRule rule) {
-    if (rule == null || rule.getStage() == GuardrailStage.TOOL) {
+    if (rule == null || rule.stageEnum() == GuardrailStage.TOOL) {
       return null;
     }
     return new TextContentGuardrail(rule);

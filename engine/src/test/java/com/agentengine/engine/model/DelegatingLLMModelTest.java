@@ -41,10 +41,7 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             delegate,
-            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build(),
-            "protocol",
-            true,
-            true);
+            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build());
 
     model.generateContent(request, false).blockingFirst();
 
@@ -73,13 +70,28 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             delegate,
-            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build(),
-            "protocol",
-            true,
-            true);
+            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build());
 
     assertThatThrownBy(
             () -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
         .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void shouldNotForceTurnCompletionInModelLayer() {
+    final BaseLlm delegate = mock(BaseLlm.class);
+    when(delegate.model()).thenReturn("mock-model");
+    when(delegate.generateContent(any(), eq(false)))
+        .thenReturn(
+            Flowable.just(
+                LlmResponse.builder()
+                    .content(Content.builder().role("model").parts(List.of(Part.fromText("ok"))).build())
+                    .build()));
+
+    final DelegatingLLMModel model = new DelegatingLLMModel(delegate, Parser.create());
+
+    final LlmResponse response = model.generateContent(LlmRequest.builder().build(), false).blockingFirst();
+
+    assertThat(response.turnComplete()).isEmpty();
   }
 }

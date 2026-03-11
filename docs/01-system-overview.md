@@ -49,10 +49,10 @@ A single agent request follows this shape:
 ## 1.4 Primary Runtime Capabilities
 
 - Default and orchestrator agents
-- Orchestrator modes: `TRANSFER`, `SEQUENTIAL`, `PARALLEL`
+- Orchestrator modes: `TRANSFER`, `MANAGER`, `SEQUENTIAL`, `PARALLEL`
 - Context strategies: `compaction`, `last_n`, `none`
 - Guardrail stages: `INPUT`, `TOOL`, `OUTPUT`
-- Tool registry with per-agent visibility/scoping and suite expansion
+- Tool registry with globally visible tools and suite expansion
 - Session pause/resume for confirmation/HITL-style flows
 - Optional plugin loading from external JARs (`PLUGIN_DIR`)
 

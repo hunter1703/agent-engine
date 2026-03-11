@@ -58,7 +58,7 @@ public final class AuthStrategyRegistry {
                 Map.of())
             : authConfig;
     final AuthType effectiveType =
-        effectiveConfig.type() == null ? AuthType.NONE : effectiveConfig.type();
+        effectiveConfig.typeEnum() == AuthType.UNKNOWN ? AuthType.NONE : effectiveConfig.typeEnum();
     final AuthStrategy strategy =
         strategies.getOrDefault(effectiveType, strategies.get(AuthType.NONE));
     if (strategy == null) {

@@ -15,15 +15,14 @@ import java.util.Objects;
 
 public final class TextContentGuardrail implements Guardrail {
   private static final int DEFAULT_MAX_INPUT = 12_000;
-  private static final List<String> DEFAULT_INPUT_BLOCK_PATTERNS =
-      List.of("ignore previous instructions", "reveal system prompt", "jailbreak", "bypass safety");
+  private static final List<String> DEFAULT_INPUT_BLOCK_PATTERNS = List.of();
 
   private final TextContentGuardrailRule rule;
   private final String id;
 
   public TextContentGuardrail(final TextContentGuardrailRule rule) {
     this.rule = Objects.requireNonNull(rule);
-    this.id = GuardrailUtils.resolveRuleId(rule, "text_content");
+    this.id = rule.getId();
   }
 
   @Override
@@ -33,21 +32,18 @@ public final class TextContentGuardrail implements Guardrail {
 
   @Override
   public GuardrailStage stage() {
-    return rule.getStage();
+    return rule.stageEnum();
   }
 
   @Override
   public GuardrailDecision evaluate(final GuardrailContext context) {
     final String text = context.text();
-    if (StringUtils.isBlank(text)) {
-      return GuardrailDecision.allow();
-    }
 
     final GuardrailStage stage = stage();
     final int maxTextLength = resolveMaxTextLength(stage);
     if (maxTextLength > 0 && text.length() > maxTextLength) {
       return GuardrailUtils.fromAction(
-          rule.getAction(),
+          rule.actionEnum(),
           code(stage, "length"),
           defaultMessage(stage, "length"),
           Map.of(
@@ -62,7 +58,7 @@ public final class TextContentGuardrail implements Guardrail {
             : CollectionUtils.nullSafeList(rule.getBlockedPatterns());
     if (GuardrailUtils.containsPattern(text, blockedPatterns)) {
       return GuardrailUtils.fromAction(
-          rule.getAction(),
+          rule.actionEnum(),
           code(stage, "pattern"),
           defaultMessage(stage, "pattern"),
           Map.of(GuardrailConstants.DetailKey.RULE, rule.getId()));

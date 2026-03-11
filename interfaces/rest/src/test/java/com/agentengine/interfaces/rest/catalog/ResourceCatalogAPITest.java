@@ -144,7 +144,7 @@ class ResourceCatalogAPITest {
     final ModelConfig config = new ModelConfig();
     config.setId(id);
     config.setName(name);
-    config.setType("ollama");
+    config.setType("OLLAMA");
     config.setModel("qwen");
     return config;
   }

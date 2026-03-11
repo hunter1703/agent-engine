@@ -6,6 +6,7 @@ dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
 
     api project(':util:common')
+    api libs.mongodb.bson
     api libs.mongodb.driver.sync
 
     implementation libs.quarkus.mongodb.client

@@ -10,7 +10,11 @@ import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.beans.config.ToolsConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.builder.annotations.UiAccessLevel;
 import com.agentengine.util.common.builder.annotations.UiPreset;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.adk.JsonBaseModel;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,10 +24,15 @@ import org.junit.jupiter.api.Test;
 
 class BuilderDefinitionUtilsTest {
 
+  private static final ObjectMapper EXAMPLE_JSON_MAPPER =
+      JsonBaseModel.getMapper()
+          .copy()
+          .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+
   @Test
   void shouldOnlyExposeAnnotatedFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     // Explicitly annotated fields are present
     assertThat(definition.layout().fields()).containsKey("/modelId");
@@ -37,7 +46,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldBuildExpectedUiForBaseAgentConfig() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     assertThat(definition.layout().presets()).isNull();
     assertThat(definition.layout().fields())
@@ -49,7 +58,7 @@ class BuilderDefinitionUtilsTest {
         .containsExactly("ID", "TEXT", "identity", "identity");
     assertThat(definition.layout().fields().get("/name").sensitive()).isTrue();
     assertThat(definition.layout().fields().get("/type").options())
-        .isEqualTo(List.of("default", "orchestrator"));
+        .isEqualTo(List.of("DEFAULT", "ORCHESTRATOR"));
     assertThat(definition.layout().fields().get("/modelId").lookup())
         .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
         .containsExactly("model", null);
@@ -65,7 +74,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldIncludeExplicitLookupMetadataForLookupFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     final LayoutField modelId = definition.layout().fields().get("/modelId");
     final LayoutField subAgentIds = definition.layout().fields().get("/subAgentIds");
@@ -81,9 +90,9 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldUseEnumBackedOptionsForStringSelectFields() {
     final BuilderDefinition agentDefinition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
     final BuilderDefinition modelDefinition =
-        BuilderDefinitionUtils.generate("model", ModelConfig.class);
+        BuilderDefinitionUtils.generate(ModelConfig.class);
 
     final LayoutField agentType = agentDefinition.layout().fields().get("/type");
     final LayoutField modelType = modelDefinition.layout().fields().get("/type");
@@ -93,15 +102,17 @@ class BuilderDefinitionUtilsTest {
         CollectionUtils.getValueFromMap(
             CollectionUtils.getMapFromMap(modelSchema, "type"), "enum", List.class);
 
-    assertThat(agentType.options()).isEqualTo(List.of("default", "orchestrator"));
-    assertThat(modelType.options()).isEqualTo(List.of("ollama", "open_ai_compatible", "gemini"));
-    assertThat(modelSchemaOptions).isEqualTo(List.of("ollama", "open_ai_compatible", "gemini"));
+    assertThat(agentType.options()).isEqualTo(List.of("DEFAULT", "ORCHESTRATOR"));
+    assertThat(modelType.options())
+        .isEqualTo(List.of("OLLAMA", "OPEN_AI_COMPATIBLE", "GEMINI"));
+    assertThat(modelSchemaOptions)
+        .isEqualTo(List.of("OLLAMA", "OPEN_AI_COMPATIBLE", "GEMINI"));
   }
 
   @Test
   void shouldBuildExpectedUiForModelConfig() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("model", ModelConfig.class);
+        BuilderDefinitionUtils.generate(ModelConfig.class);
 
     assertThat(definition.layout().presets())
         .extracting(LayoutPreset::id)
@@ -115,7 +126,7 @@ class BuilderDefinitionUtilsTest {
             LayoutField::label, LayoutField::widget, LayoutField::step, LayoutField::section)
         .containsExactly("Provider Type", "SELECT", "identity", "identity");
     assertThat(definition.layout().fields().get("/type").options())
-        .isEqualTo(List.of("ollama", "open_ai_compatible", "gemini"));
+        .isEqualTo(List.of("OLLAMA", "OPEN_AI_COMPATIBLE", "GEMINI"));
     assertThat(definition.layout().fields().get("/apiKey").sensitive()).isTrue();
     assertThat(definition.layout().fields().get("/serverArgs"))
         .extracting(
@@ -127,21 +138,21 @@ class BuilderDefinitionUtilsTest {
   }
 
   @Test
-  void shouldInferOptionsForEnumSelectFields() {
+  void shouldExposeExplicitOptionsForEnumSelectFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", OrchestratorAgentConfig.class);
+        BuilderDefinitionUtils.generate(OrchestratorAgentConfig.class);
 
     final LayoutField orchestrationMode = definition.layout().fields().get("/orchestrationMode");
 
     assertThat(orchestrationMode.widget()).isEqualTo("SELECT");
     assertThat(orchestrationMode.options())
-        .isEqualTo(List.of("UNKNOWN", "TRANSFER", "SEQUENTIAL", "PARALLEL"));
+        .isEqualTo(List.of("TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL"));
   }
 
   @Test
   void shouldExposeBuilderRulesForConditionalFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", OrchestratorAgentConfig.class);
+        BuilderDefinitionUtils.generate(OrchestratorAgentConfig.class);
 
     final LayoutField parallel = definition.layout().fields().get("/parallel");
     final LayoutField subAgentIds = definition.layout().fields().get("/subAgentIds");
@@ -155,13 +166,13 @@ class BuilderDefinitionUtilsTest {
     assertThat(subAgentIds.rules()).hasSize(1);
     final List<?> subAgentArgs = (List<?>) subAgentIds.rules().getFirst().expr().get("in");
     assertThat(subAgentArgs.get(0)).isEqualTo(Map.of("var", "type"));
-    assertThat(subAgentArgs.get(1)).isEqualTo(List.of("orchestrator"));
+    assertThat(subAgentArgs.get(1)).isEqualTo(List.of("ORCHESTRATOR"));
   }
 
   @Test
   void shouldExposeNestedRulesForParallelConfig() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", OrchestratorParallelConfig.class);
+        BuilderDefinitionUtils.generate(OrchestratorParallelConfig.class);
 
     final LayoutField quorum = definition.layout().fields().get("/quorum");
 
@@ -172,9 +183,77 @@ class BuilderDefinitionUtilsTest {
   }
 
   @Test
+  void shouldExposeNestedContextRuntimeAndGuardrailFieldsForBaseAgentConfig() {
+    final BuilderDefinition definition =
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+
+    assertThat(definition.layout().fields())
+        .containsKeys(
+            "/contextStrategy/type",
+            "/contextStrategy/enabled",
+            "/contextStrategy/keepLastTokens",
+            "/guardrails/enabled",
+            "/guardrails/executionMode",
+            "/guardrails/defaultOnError",
+            "/guardrails/rules",
+            "/guardrails/rules/*/id",
+            "/guardrails/rules/*/type",
+            "/runtime/resumable",
+            "/runtime/maxSteps");
+
+    assertThat(definition.layout().fields().get("/contextStrategy/type").options())
+        .isEqualTo(List.of("COMPACTION", "LAST_N"));
+    assertThat(definition.layout().fields().get("/contextStrategy/enabled").widget())
+        .isEqualTo("SWITCH");
+    assertThat(definition.layout().fields().get("/contextStrategy/keepLastTokens").widget())
+        .isEqualTo("NUMBER");
+    assertThat(definition.layout().fields().get("/guardrails/enabled").widget())
+        .isEqualTo("SWITCH");
+    assertThat(definition.layout().fields().get("/guardrails/executionMode").widget())
+        .isEqualTo("SELECT");
+    assertThat(definition.layout().fields().get("/guardrails/executionMode").options())
+        .isEqualTo(List.of("SYNC", "OPTIMISTIC"));
+    assertThat(definition.layout().fields().get("/guardrails/defaultOnError").widget())
+        .isEqualTo("SELECT");
+    assertThat(definition.layout().fields().get("/guardrails/defaultOnError").options())
+        .isEqualTo(List.of("FAIL_OPEN", "FAIL_CLOSED"));
+    assertThat(definition.layout().fields().get("/guardrails/rules").collection()).isTrue();
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/type").options())
+        .isEqualTo(List.of("TEXT_CONTENT", "TOOL_SAFETY", "RELEVANCE"));
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/stage").options())
+        .isEqualTo(List.of("INPUT", "TOOL", "OUTPUT"));
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/action").options())
+        .isEqualTo(List.of("ALLOW", "WARN", "BLOCK", "ESCALATE"));
+    assertThat(definition.layout().fields().get("/runtime/resumable").widget())
+        .isEqualTo("SWITCH");
+    assertThat(definition.layout().fields().get("/runtime/maxSteps").numberType())
+        .isEqualTo("integer");
+
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/id").access())
+        .extracting(LayoutAccessPolicy::create, LayoutAccessPolicy::edit, LayoutAccessPolicy::view)
+        .containsExactly(UiAccessLevel.EDITABLE, UiAccessLevel.EDITABLE, UiAccessLevel.READ_ONLY);
+  }
+
+  @Test
+  void shouldUseLookupWidgetsForNestedAssetReferenceFields() {
+    final BuilderDefinition definition =
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+
+    assertThat(definition.layout().fields().get("/contextStrategy/modelId").lookup())
+        .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
+        .containsExactly("model", null);
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/evaluatorModelId").lookup())
+        .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
+        .containsExactly("model", null);
+    assertThat(definition.layout().fields().get("/guardrails/rules/*/toolNames").lookup())
+        .extracting(LayoutLookup::assetType, LayoutLookup::multiSelect)
+        .containsExactly("tool", Boolean.TRUE);
+  }
+
+  @Test
   void shouldExposeGuardrailRulesForConditionalFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("guardrail", OutputRelevanceGuardrailRule.class);
+        BuilderDefinitionUtils.generate(OutputRelevanceGuardrailRule.class);
 
     final LayoutField maxSteeringRetries = definition.layout().fields().get("/maxSteeringRetries");
     final LayoutField recency = definition.layout().fields().get("/recency");
@@ -197,7 +276,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldExposeProviderSpecificRulesForModelFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("model", ModelConfig.class);
+        BuilderDefinitionUtils.generate(ModelConfig.class);
 
     final LayoutField baseUrl = definition.layout().fields().get("/baseUrl");
     final LayoutField apiKey = definition.layout().fields().get("/apiKey");
@@ -208,28 +287,28 @@ class BuilderDefinitionUtilsTest {
     assertThat(baseUrl.rules()).hasSize(1);
     final List<?> baseUrlArgs = (List<?>) baseUrl.rules().getFirst().expr().get("in");
     assertThat(baseUrlArgs.get(0)).isEqualTo(Map.of("var", "type"));
-    assertThat(baseUrlArgs.get(1)).isEqualTo(List.of("ollama", "open_ai_compatible"));
+    assertThat(baseUrlArgs.get(1)).isEqualTo(List.of("OLLAMA", "OPEN_AI_COMPATIBLE"));
 
     assertThat(apiKey.rules()).hasSize(1);
     final List<?> apiKeyArgs = (List<?>) apiKey.rules().getFirst().expr().get("===");
     assertThat(apiKeyArgs.get(0)).isEqualTo(Map.of("var", "type"));
-    assertThat(apiKeyArgs.get(1)).isEqualTo("gemini");
+    assertThat(apiKeyArgs.get(1)).isEqualTo("GEMINI");
 
     assertThat(serverCommand.rules()).hasSize(1);
     assertThat(serverArgs.rules()).hasSize(1);
     assertThat(serverWorkdir.rules()).hasSize(1);
     assertThat(((List<?>) serverCommand.rules().getFirst().expr().get("===")).get(1))
-        .isEqualTo("open_ai_compatible");
+        .isEqualTo("OPEN_AI_COMPATIBLE");
     assertThat(((List<?>) serverArgs.rules().getFirst().expr().get("===")).get(1))
-        .isEqualTo("open_ai_compatible");
+        .isEqualTo("OPEN_AI_COMPATIBLE");
     assertThat(((List<?>) serverWorkdir.rules().getFirst().expr().get("===")).get(1))
-        .isEqualTo("open_ai_compatible");
+        .isEqualTo("OPEN_AI_COMPATIBLE");
   }
 
   @Test
   void shouldExposeDynamicSchemaWidgetForDynamicSchemaFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("tools", ToolsConfig.class);
+        BuilderDefinitionUtils.generate(ToolsConfig.class);
 
     final LayoutField configs = definition.layout().fields().get("/configs");
 
@@ -243,9 +322,38 @@ class BuilderDefinitionUtilsTest {
   }
 
   @Test
+  void shouldMarkOnlySemanticallyRequiredFieldsAsRequiredInSchema() {
+    final BuilderDefinition modelDefinition =
+        BuilderDefinitionUtils.generate(ModelConfig.class);
+    final BuilderDefinition toolsDefinition =
+        BuilderDefinitionUtils.generate(ToolsConfig.class);
+    final BuilderDefinition agentDefinition =
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+
+    assertThat(requiredFields(modelDefinition.schema())).containsExactlyInAnyOrder("type", "model");
+    assertThat(requiredFields(toolsDefinition.schema()))
+        .containsExactly("toolName");
+
+    final Map<String, Object> agentProperties =
+        CollectionUtils.getMapFromMap(agentDefinition.schema(), "properties");
+    final Map<String, Object> contextStrategySchema =
+        CollectionUtils.getMapFromMap(agentProperties, "contextStrategy");
+    final Map<String, Object> guardrailsSchema =
+        CollectionUtils.getMapFromMap(agentProperties, "guardrails");
+    final Map<String, Object> guardrailsProperties =
+        CollectionUtils.getMapFromMap(guardrailsSchema, "properties");
+    final Map<String, Object> rulesSchema =
+        CollectionUtils.getMapFromMap(guardrailsProperties, "rules");
+    final Map<String, Object> ruleItemSchema = CollectionUtils.getMapFromMap(rulesSchema, "items");
+
+    assertThat(requiredFields(contextStrategySchema)).containsExactly("type");
+    assertThat(requiredFields(ruleItemSchema)).containsExactlyInAnyOrder("id", "type");
+  }
+
+  @Test
   void shouldOmitWidgetForSchemaDrivenFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     assertThat(definition.layout().fields().get("/tools").widget()).isNull();
     assertThat(definition.layout().fields().get("/contextStrategy").widget()).isNull();
@@ -255,7 +363,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldMarkCollectionFieldsAsCollection() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     assertThat(definition.layout().fields().get("/subAgentIds").collection()).isTrue();
     assertThat(definition.layout().fields().get("/modelId").collection()).isNull();
@@ -264,7 +372,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldMarkSensitiveFieldsFromSecureAnnotation() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     assertThat(definition.layout().fields().get("/systemPrompt").sensitive()).isTrue();
     assertThat(definition.layout().fields().get("/modelId").sensitive()).isNull();
@@ -273,7 +381,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldExposeTextareaAttributesForMultilineFields() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class);
+        BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
     final LayoutField systemPrompt = definition.layout().fields().get("/systemPrompt");
 
@@ -285,7 +393,7 @@ class BuilderDefinitionUtilsTest {
   @Test
   void shouldIndexPresetsByJsonPathForRootAndNestedTypes() {
     final BuilderDefinition definition =
-        BuilderDefinitionUtils.generate("nested", NestedPresetRoot.class);
+        BuilderDefinitionUtils.generate(NestedPresetRoot.class);
 
     assertThat(definition.layout().presets())
         .extracting(LayoutPreset::id)
@@ -297,19 +405,41 @@ class BuilderDefinitionUtilsTest {
 
   @Test
   void shouldGenerateBuilderUiExampleJsonSnapshots() throws IOException {
-    writeExampleJson("agent.json", BuilderDefinitionUtils.generate("agent", BaseAgentConfig.class));
-    writeExampleJson("model.json", BuilderDefinitionUtils.generate("model", ModelConfig.class));
+    writeExampleJson("agent.json", BuilderDefinitionUtils.generate(BaseAgentConfig.class));
+    writeExampleJson("model.json", BuilderDefinitionUtils.generate(ModelConfig.class));
   }
 
   private static void writeExampleJson(final String fileName, final BuilderDefinition definition)
       throws IOException {
-    final Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
+    final Path repoRoot = findRepoRoot();
     final Path path = repoRoot.resolve("docs/examples").resolve(fileName);
     Files.createDirectories(path.getParent());
-    final String json = JsonUtils.toStableJson(definition);
+    final String json =
+        EXAMPLE_JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(definition);
     Files.writeString(path, json);
 
     assertThat(Files.readString(path)).isEqualTo(json);
+  }
+
+  private static List<String> requiredFields(final Map<String, Object> schema) {
+    @SuppressWarnings("unchecked")
+    final List<Object> raw = CollectionUtils.getValueFromMap(schema, "required", List.class);
+    if (raw == null) {
+      return List.of();
+    }
+    return raw.stream().map(String::valueOf).toList();
+  }
+
+  private static Path findRepoRoot() {
+    Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+    while (current != null) {
+      if (Files.isDirectory(current.resolve(".git"))) {
+        return current;
+      }
+      current = current.getParent();
+    }
+    throw new IllegalStateException(
+        "Unable to locate repository root from " + System.getProperty("user.dir"));
   }
 
   @UiPreset(id = "root-preset", label = "Root Preset", preset = "{\"nested\":{\"value\":\"root\"}}")

@@ -6,9 +6,9 @@ import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.engine.utils.StructuredConcurrencyUtils;
-import com.agentengine.engine.utils.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.common.StructuredConcurrencyUtils;
+import com.agentengine.util.common.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
@@ -41,11 +41,11 @@ public final class ParallelOrchestratorAgent extends Agent {
 
   public ParallelOrchestratorAgent(final ParallelOrchestratorAgentBuilder builder) {
     super(builder);
-    this.aggregationPolicy = normalizeAggregationPolicy(builder.aggregationPolicy());
-    this.stoppingPolicy = normalizeStoppingPolicy(builder.stoppingPolicy());
+    this.aggregationPolicy = builder.aggregationPolicy();
+    this.stoppingPolicy = builder.stoppingPolicy();
     this.quorum = Math.max(1, builder.quorum());
     this.branchSpecs = buildBranchSpecs();
-    this.requiredSuccesses = requiredSuccesses(branchSpecs.size());
+    this.requiredSuccesses = requiredSuccesses(stoppingPolicy, quorum, branchSpecs.size());
   }
 
   @Override
@@ -115,13 +115,10 @@ public final class ParallelOrchestratorAgent extends Agent {
   }
 
   private List<BranchSpec> buildBranchSpecs() {
-    final List<? extends BaseAgent> currentSubAgents = CollectionUtils.nullSafeList(subAgents());
-    final List<BranchSpec> branchSpecs = new ArrayList<>(currentSubAgents.size());
-    for (int index = 0; index < currentSubAgents.size(); index++) {
-      final BaseAgent subAgent = currentSubAgents.get(index);
-      if (subAgent == null || StringUtils.isBlank(subAgent.name())) {
-        continue;
-      }
+    final List<? extends BaseAgent> subAgents = CollectionUtils.nullSafeList(subAgents());
+    final List<BranchSpec> branchSpecs = new ArrayList<>(subAgents.size());
+    for (int index = 0; index < subAgents.size(); index++) {
+      final BaseAgent subAgent = subAgents.get(index);
       branchSpecs.add(new BranchSpec(index, subAgent.name(), subAgent));
     }
     return branchSpecs;
@@ -263,7 +260,7 @@ public final class ParallelOrchestratorAgent extends Agent {
         .toList();
   }
 
-  private int requiredSuccesses(final int branchCount) {
+  private static int requiredSuccesses(final ParallelStoppingPolicy stoppingPolicy, final int quorum, final int branchCount) {
     if (branchCount <= 0) {
       return 0;
     }

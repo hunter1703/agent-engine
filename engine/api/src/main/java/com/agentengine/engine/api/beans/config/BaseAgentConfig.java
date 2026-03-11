@@ -6,6 +6,7 @@ import com.agentengine.util.common.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +19,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     oneOf = {DefaultAgentConfig.class, OrchestratorAgentConfig.class},
     discriminatorProperty = "type",
     discriminatorMapping = {
-      @DiscriminatorMapping(value = "default", schema = DefaultAgentConfig.class),
-      @DiscriminatorMapping(value = "orchestrator", schema = OrchestratorAgentConfig.class)
+      @DiscriminatorMapping(value = "DEFAULT", schema = DefaultAgentConfig.class),
+      @DiscriminatorMapping(value = "ORCHESTRATOR", schema = OrchestratorAgentConfig.class)
     })
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
@@ -27,8 +28,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     property = "type",
     visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "default"),
-  @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "orchestrator")
+  @JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "DEFAULT"),
+  @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")
 })
 @BsonDiscriminator(key = "type")
 @UiGroup(step = "identity", section = "identity", order = 0)
@@ -36,6 +37,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "Agent Type", step = "identity", section = "identity", order = 20)
   @UiSelect(enumType = AgentType.class)
+  @NotBlank
   private String type;
 
   @UiField(label = "Description", step = "identity", section = "identity", order = 40)
@@ -54,6 +56,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   @UiField(label = "System Prompt", step = "model", section = "model", order = 20)
   @UiText(multiline = true, rows = 6)
   @Secure
+  @NotBlank
   private String systemPrompt;
 
   @UiField(label = "Context Strategy", step = "model", section = "context", order = 30)
@@ -70,7 +73,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
       effect = UiRuleEffect.VISIBLE,
       field = "type",
       operator = UiConditionOperator.IN,
-      values = {"orchestrator"})
+      values = {"ORCHESTRATOR"})
   private List<String> subAgentIds = new ArrayList<>();
 
   @UiField(label = "Guardrails", step = "guardrails", section = "guardrails", order = 10)
@@ -80,7 +83,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   private AgentRuntimeConfig runtime = new AgentRuntimeConfig();
 
   protected BaseAgentConfig(final AgentType agentType) {
-    this.type = agentType.name().toLowerCase(Locale.ROOT);
+    this.type = agentType.type();
   }
 
   protected BaseAgentConfig() {
@@ -207,6 +210,10 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     UNKNOWN,
     DEFAULT,
     ORCHESTRATOR;
+
+    public String type() {
+      return name();
+    }
 
     public static AgentType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

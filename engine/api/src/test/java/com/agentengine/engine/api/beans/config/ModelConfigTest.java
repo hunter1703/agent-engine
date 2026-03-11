@@ -13,7 +13,7 @@ class ModelConfigTest {
 
     modelConfig.setType("  OPEN_AI_COMPATIBLE  ");
 
-    assertThat(modelConfig.getType()).isEqualTo("open_ai_compatible");
+    assertThat(modelConfig.getType()).isEqualTo("OPEN_AI_COMPATIBLE");
   }
 
   @Test
@@ -32,10 +32,5 @@ class ModelConfigTest {
     assertThatThrownBy(() -> ModelConfig.Provider.fromType("unsupported"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported model provider");
-  }
-
-  @Test
-  void shouldMatchProviderWhenTypeNormalized() {
-    assertThat(ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches("OPEN_AI_COMPATIBLE")).isTrue();
   }
 }

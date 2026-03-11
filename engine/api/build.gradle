@@ -3,15 +3,12 @@ plugins {
 }
 
 dependencies {
-    api project(':util')
-    api libs.mongodb.bson
     api libs.google.adk.core
     api libs.microprofile.openapi.api
-    api libs.json.path
-    api libs.annotations.api
     api libs.jakarta.inject.api
     api libs.jakarta.enterprise.cdi.api
-    api libs.stateless4j
+
+    implementation project(':util')
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.quarkus.arc
@@ -21,6 +18,10 @@ dependencies {
     implementation libs.jinjava
     implementation libs.slf4j.api
     implementation libs.rxjava
+    implementation libs.mongodb.bson
+    implementation libs.json.path
+    implementation libs.annotations.api
+    implementation libs.stateless4j
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

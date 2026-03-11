@@ -7,7 +7,8 @@ import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.GuardrailsConfig;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.engine.plugins.PluginLoader;
+import com.agentengine.util.common.PluginLoader;
+import com.agentengine.util.common.ServiceUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -20,20 +21,20 @@ import org.slf4j.LoggerFactory;
 public final class GuardrailPolicyFactory {
   private static final Logger LOG = LoggerFactory.getLogger(GuardrailPolicyFactory.class);
 
-  private final Map<GuardrailRuleType, GuardrailProvider<?>> typeVsProvider;
+  private final Map<GuardrailRuleType, GuardrailProvider<? super GuardrailRule>> typeVsProvider;
 
   @Inject
-  public GuardrailPolicyFactory(final @Any Instance<GuardrailProvider<?>> providerInstances) {
-    this(collectProviders(providerInstances, PluginLoader.getClassLoader()));
+  public GuardrailPolicyFactory(final @Any Instance<GuardrailProvider<? super GuardrailRule>> providerInstances) {
+    this(ServiceUtils.loadServicesForType(providerInstances, GuardrailProvider.class));
   }
 
-  public GuardrailPolicyFactory(final List<GuardrailProvider<?>> providers) {
+  public GuardrailPolicyFactory(final List<GuardrailProvider<? super GuardrailRule>> providers) {
     this.typeVsProvider =
         CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> provider);
   }
 
   public GuardrailPolicy build(final GuardrailsConfig config) {
-    if (config == null || !config.isEnabled()) {
+    if (config == null ) {
       return GuardrailPolicy.disabled();
     }
     final Map<GuardrailStage, List<Guardrail>> stageVsGuardRails =
@@ -44,12 +45,12 @@ public final class GuardrailPolicyFactory {
         continue;
       }
       final GuardrailRuleType type = GuardrailRuleType.valueOfOrDefault(rule.getType());
-      final GuardrailProvider<?> provider = typeVsProvider.get(type);
+      final GuardrailProvider<? super GuardrailRule> provider = typeVsProvider.get(type);
       if (provider == null) {
         LOG.warn("No guardrail provider registered for rule type '{}'.", type);
         continue;
       }
-      final Guardrail created = createGuardrail(provider, rule);
+      final Guardrail created = provider.create(rule);
       if (created != null) {
         stageVsGuardRails
             .computeIfAbsent(created.stage(), ignored -> new ArrayList<>())
@@ -57,39 +58,14 @@ public final class GuardrailPolicyFactory {
       }
     }
     final GuardrailErrorMode errorMode =
-        config.getDefaultOnError() == null
+        config.defaultOnErrorEnum() == GuardrailErrorMode.UNKNOWN
             ? GuardrailErrorMode.FAIL_OPEN
-            : config.getDefaultOnError();
+            : config.defaultOnErrorEnum();
     final GuardrailExecutionMode executionMode =
-        config.getExecutionMode() == null ? GuardrailExecutionMode.SYNC : config.getExecutionMode();
-    return new GuardrailPolicy(true, errorMode, executionMode, stageVsGuardRails);
-  }
-
-  private static List<GuardrailProvider<?>> collectProviders(
-      final Instance<GuardrailProvider<?>> providers, final ClassLoader pluginLoader) {
-    final List<GuardrailProvider<?>> allProviders = new ArrayList<>();
-    for (final GuardrailProvider<?> provider : providers) {
-      if (provider != null) {
-        allProviders.add(provider);
-      }
-    }
-    if (pluginLoader != Thread.currentThread().getContextClassLoader()) {
-      //noinspection rawtypes
-      final ServiceLoader<GuardrailProvider> loader =
-          ServiceLoader.load(GuardrailProvider.class, pluginLoader);
-      for (final GuardrailProvider<?> provider : loader) {
-        if (provider != null) {
-          allProviders.add(provider);
-        }
-      }
-    }
-    return allProviders;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Guardrail createGuardrail(
-      final GuardrailProvider<?> provider, final GuardrailRule rule) {
-    return ((GuardrailProvider<GuardrailRule>) provider).create(rule);
+        config.executionModeEnum() == GuardrailExecutionMode.UNKNOWN
+            ? GuardrailExecutionMode.SYNC
+            : config.executionModeEnum();
+    return new GuardrailPolicy(config.isEnabled(), errorMode, executionMode, stageVsGuardRails);
   }
 
   public record GuardrailPolicy(

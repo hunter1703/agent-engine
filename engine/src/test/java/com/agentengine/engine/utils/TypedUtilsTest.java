@@ -2,6 +2,7 @@ package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.Utils;
 import java.util.List;
 import java.util.Map;
 import org.bson.Document;
@@ -14,7 +15,7 @@ class TypedUtilsTest {
     final SessionState sessionState = new SessionState();
     sessionState.setPaused(true);
 
-    final SessionState resolved = TypedUtils.toType(sessionState, SessionState.class);
+    final SessionState resolved = Utils.toType(sessionState, SessionState.class);
 
     assertThat(resolved).isSameAs(sessionState);
   }
@@ -23,7 +24,7 @@ class TypedUtilsTest {
   void shouldConvertDocumentToTypedObject() {
     final Document raw = new Document("thinkingOpen", true).append("offTopicRetries", 1);
 
-    final RunState resolved = TypedUtils.toType(raw, RunState.class);
+    final RunState resolved = Utils.toType(raw, RunState.class);
 
     assertThat(resolved.isThinkingOpen()).isTrue();
     assertThat(resolved.getOffTopicRetries()).isEqualTo(1);
@@ -33,7 +34,7 @@ class TypedUtilsTest {
   void shouldReturnNullForUnknownType() {
     final Object raw = "not-a-map";
 
-    final RunState resolved = TypedUtils.toType(raw, RunState.class);
+    final RunState resolved = Utils.toType(raw, RunState.class);
 
     assertThat(resolved).isNull();
   }
@@ -51,7 +52,7 @@ class TypedUtilsTest {
             .append("offTopicRetries", 0)
             .append("violations", List.of(violation));
 
-    final RunState resolved = TypedUtils.toType(raw, RunState.class);
+    final RunState resolved = Utils.toType(raw, RunState.class);
 
     assertThat(resolved).isNotNull();
     assertThat(resolved.getViolations()).hasSize(1);

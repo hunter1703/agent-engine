@@ -17,10 +17,7 @@ public final class AddTaskTool extends Tool {
   private static final String TOOL_NAME = "add_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Add a new task to the current plan, optionally under a parent task.",
-          List.of(ALL),
-          Map.of());
+          TOOL_NAME, "Add a new task to the current plan, optionally under a parent task.", Map.of());
 
   public AddTaskTool() {
     super(DESCRIPTOR);

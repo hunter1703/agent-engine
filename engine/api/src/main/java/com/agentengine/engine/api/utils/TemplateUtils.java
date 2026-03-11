@@ -1,6 +1,7 @@
 package com.agentengine.engine.api.utils;
 
 import com.hubspot.jinjava.Jinjava;
+import com.agentengine.util.common.ResourceUtils;
 import java.util.Map;
 
 public final class TemplateUtils {

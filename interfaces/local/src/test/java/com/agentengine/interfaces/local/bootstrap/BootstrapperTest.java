@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.engine.infra.DefaultModelConfig;
-import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.DefaultModelConfig;
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;

@@ -31,14 +31,15 @@ Runtime cache behavior:
 
 ## 2.3 Agent Construction
 
-`AgentProvider` selects `AgentBuilder` by agent type.
+`AgentProvider` selects `AgentFactory` by agent type.
 
 - `default` -> standard LLM agent (`DelegatedAgent` around ADK `LlmAgent`)
-- `orchestrator` -> `OrchestratorAgentBuilder`
+- `orchestrator` -> `OrchestratorAgentFactory`
 
 Orchestrator branches:
 
-- `TRANSFER`: manager agent with `AgentTool` wrappers around sub-agents
+- `TRANSFER`: handoff-capable manager agent with native transfer targets plus `AgentTool` wrappers
+- `MANAGER`: manager agent with sub-agents exposed only as `AgentTool` wrappers
 - `SEQUENTIAL`: ADK `SequentialAgent`
 - `PARALLEL`: custom `ParallelOrchestratorAgent`
 
@@ -62,7 +63,7 @@ If policy target cannot be satisfied, runtime falls back to deterministic best-e
 
 ## 2.5 Model Provisioning
 
-`ModelProvider` resolves model config from `ModelRepository`, picks a `ModelBuilder` by model type, and caches instantiated model clients.
+`ModelProvider` resolves model config from `ModelRepository`, picks a `ModelFactory` by model type, and caches instantiated model clients.
 
 Cache behavior:
 

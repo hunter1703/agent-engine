@@ -7,13 +7,14 @@ import com.agentengine.util.common.builder.annotations.UiSelect;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeName("orchestrator")
-@BsonDiscriminator(value = "orchestrator")
+@JsonTypeName("ORCHESTRATOR")
+@BsonDiscriminator(value = "ORCHESTRATOR")
 public class OrchestratorAgentConfig extends BaseAgentConfig {
+  private static final String DEFAULT_ORCHESTRATION_MODE = OrchestrationMode.TRANSFER.name();
 
   @UiField(label = "Orchestration Mode", step = "identity", section = "identity", order = 70)
-  @UiSelect
-  private OrchestrationMode orchestrationMode = OrchestrationMode.TRANSFER;
+  @UiSelect(enumType = OrchestrationMode.class)
+  private String orchestrationMode = DEFAULT_ORCHESTRATION_MODE;
 
   @UiField(label = "Parallel Orchestration", step = "identity", section = "identity", order = 80)
   @UiRule(
@@ -26,13 +27,19 @@ public class OrchestratorAgentConfig extends BaseAgentConfig {
     super(AgentType.ORCHESTRATOR);
   }
 
-  public OrchestrationMode getOrchestrationMode() {
+  public String getOrchestrationMode() {
     return orchestrationMode;
   }
 
-  public void setOrchestrationMode(final OrchestrationMode orchestrationMode) {
+  public void setOrchestrationMode(final String orchestrationMode) {
     this.orchestrationMode =
-        orchestrationMode == null ? OrchestrationMode.TRANSFER : orchestrationMode;
+        orchestrationMode == null || orchestrationMode.isBlank()
+            ? DEFAULT_ORCHESTRATION_MODE
+            : orchestrationMode;
+  }
+
+  public OrchestrationMode orchestrationModeEnum() {
+    return OrchestrationMode.valueOfOrDefault(orchestrationMode);
   }
 
   public OrchestratorParallelConfig getParallel() {

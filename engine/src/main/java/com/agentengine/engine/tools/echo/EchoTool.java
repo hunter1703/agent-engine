@@ -2,20 +2,18 @@ package com.agentengine.engine.tools.echo;
 
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.annotations.AgentTool;
+import com.agentengine.engine.api.tools.annotations.DiscoverableTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.util.common.StringUtils;
 import io.vertx.json.schema.common.dsl.Schemas;
-import java.util.List;
 import java.util.Map;
 
-@AgentTool
+@DiscoverableTool
 public final class EchoTool extends Tool {
   private static final String TOOL_NAME = "echo";
   public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(
-          TOOL_NAME, "Echoes input text with an optional prefix.", List.of(ALL), configsSchema());
+      new ToolDescriptor(TOOL_NAME, "Echoes input text with an optional prefix.", configsSchema());
   private final String prefix;
 
   public EchoTool() {

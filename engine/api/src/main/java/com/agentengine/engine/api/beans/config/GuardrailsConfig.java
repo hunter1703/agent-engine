@@ -1,12 +1,28 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.util.common.builder.annotations.UiBoolean;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiSelect;
 import java.util.ArrayList;
 import java.util.List;
 
 public class GuardrailsConfig {
+  private static final String DEFAULT_EXECUTION_MODE = GuardrailExecutionMode.SYNC.name();
+  private static final String DEFAULT_ON_ERROR = GuardrailErrorMode.FAIL_OPEN.name();
+
+  @UiField(label = "Enabled", order = 10)
+  @UiBoolean
   private boolean enabled = true;
-  private GuardrailExecutionMode executionMode = GuardrailExecutionMode.SYNC;
-  private GuardrailErrorMode defaultOnError = GuardrailErrorMode.FAIL_OPEN;
+
+  @UiField(label = "Execution Mode", order = 20)
+  @UiSelect(enumType = GuardrailExecutionMode.class)
+  private String executionMode = DEFAULT_EXECUTION_MODE;
+
+  @UiField(label = "Default On Error", order = 30)
+  @UiSelect(enumType = GuardrailErrorMode.class)
+  private String defaultOnError = DEFAULT_ON_ERROR;
+
+  @UiField(label = "Rules", order = 40)
   private List<GuardrailRule> rules = new ArrayList<>();
 
   public boolean isEnabled() {
@@ -17,20 +33,30 @@ public class GuardrailsConfig {
     this.enabled = enabled;
   }
 
-  public GuardrailExecutionMode getExecutionMode() {
+  public String getExecutionMode() {
     return executionMode;
   }
 
-  public void setExecutionMode(final GuardrailExecutionMode executionMode) {
-    this.executionMode = executionMode;
+  public void setExecutionMode(final String executionMode) {
+    this.executionMode =
+        executionMode == null || executionMode.isBlank() ? DEFAULT_EXECUTION_MODE : executionMode;
   }
 
-  public GuardrailErrorMode getDefaultOnError() {
+  public GuardrailExecutionMode executionModeEnum() {
+    return GuardrailExecutionMode.valueOfOrDefault(executionMode);
+  }
+
+  public String getDefaultOnError() {
     return defaultOnError;
   }
 
-  public void setDefaultOnError(final GuardrailErrorMode defaultOnError) {
-    this.defaultOnError = defaultOnError;
+  public void setDefaultOnError(final String defaultOnError) {
+    this.defaultOnError =
+        defaultOnError == null || defaultOnError.isBlank() ? DEFAULT_ON_ERROR : defaultOnError;
+  }
+
+  public GuardrailErrorMode defaultOnErrorEnum() {
+    return GuardrailErrorMode.valueOfOrDefault(defaultOnError);
   }
 
   public List<GuardrailRule> getRules() {
@@ -38,6 +64,6 @@ public class GuardrailsConfig {
   }
 
   public void setRules(final List<GuardrailRule> rules) {
-    this.rules = rules;
+    this.rules = rules == null ? new ArrayList<>() : new ArrayList<>(rules);
   }
 }

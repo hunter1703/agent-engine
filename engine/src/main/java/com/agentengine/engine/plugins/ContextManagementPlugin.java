@@ -29,8 +29,7 @@ public final class ContextManagementPlugin extends BasePlugin {
   @Override
   public Maybe<LlmResponse> beforeModelCallback(
       final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
-    final InvocationContext invocationContext =
-        callbackContext == null ? null : callbackContext.invocationContext();
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     final LlmRequest request = requestBuilder.build();
     final LlmRequest updatedRequest = applyContextManager(request, invocationContext);
     requestBuilder.contents(updatedRequest.contents());
@@ -39,11 +38,7 @@ public final class ContextManagementPlugin extends BasePlugin {
 
   private LlmRequest applyContextManager(
       final LlmRequest request, final InvocationContext invocationContext) {
-    if (request == null || invocationContext == null) {
-      return request;
-    }
-    final String agentId =
-        invocationContext.agent() == null ? null : invocationContext.agent().name();
+    final String agentId = invocationContext.agent().name();
     final ContextManager contextManager = contextManagerByAgentId.get(agentId);
     if (contextManager == null) {
       return request;
@@ -57,7 +52,7 @@ public final class ContextManagementPlugin extends BasePlugin {
       LOG.warn(
           "Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.",
           agentId,
-          invocationContext.session() == null ? null : invocationContext.session().id(),
+          invocationContext.session().id(),
           ex);
       return request;
     }

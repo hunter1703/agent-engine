@@ -1,11 +1,15 @@
 package com.agentengine.engine.api.beans.config;
 
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiNumber;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeName("last_n")
-@BsonDiscriminator(value = "last_n")
+@JsonTypeName("LAST_N")
+@BsonDiscriminator(value = "LAST_N")
 public class LastNContextStrategyConfig extends ContextStrategyConfig {
+  @UiField(label = "Keep Last Tokens", order = 20)
+  @UiNumber
   private int keepLastTokens = 1024;
 
   public LastNContextStrategyConfig() {

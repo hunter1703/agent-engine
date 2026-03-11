@@ -4,7 +4,6 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
-import com.google.adk.models.LlmResponse;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
@@ -52,7 +51,8 @@ public final class ModelUtils {
     }
 
     // Only generate for open_ai_compatible models
-    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(modelConfig.getType())) {
+    if (ModelConfig.Provider.valueOfOrDefault(modelConfig.getType())
+        != ModelConfig.Provider.OPEN_AI_COMPATIBLE) {
       return false;
     }
 
@@ -138,7 +138,8 @@ public final class ModelUtils {
     if (config == null) {
       return;
     }
-    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(config.getType())) {
+    if (ModelConfig.Provider.valueOfOrDefault(config.getType())
+        != ModelConfig.Provider.OPEN_AI_COMPATIBLE) {
       return;
     }
     final ServerAddress address = resolveAddress(config.getBaseUrl());
@@ -300,13 +301,6 @@ public final class ModelUtils {
     } catch (Exception ex) {
       return false;
     }
-  }
-
-  public static LlmResponse markTurnComplete(final LlmResponse response) {
-    if (response == null) {
-      return null;
-    }
-    return response.toBuilder().turnComplete(true).build();
   }
 
   public static LlmRequest stripToolsFromModelRequest(

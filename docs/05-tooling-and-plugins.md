@@ -7,10 +7,16 @@ Tool API is defined in `engine:api`:
 - `Tool` (base class over ADK `BaseTool`)
 - `ToolDescriptor`
 - `ToolProvider`
-- `ToolSuite`
+- `ToolsetProvider`
 - annotations: `@AgentTool`, `@ToolConstructor`, `@ToolSchema`
 
 All tools are expected to expose an `execute(...)` method.
+
+Runtime composition uses ADK's native tool union model:
+
+- `ToolProvider` creates one `BaseTool`
+- `ToolsetProvider` creates one `BaseToolset`
+- `LlmAgent` canonicalizes mixed `BaseTool`/`BaseToolset` lists at runtime
 
 ## 5.2 Tool Loading and Visibility
 
@@ -18,23 +24,29 @@ All tools are expected to expose an `execute(...)` method.
 
 - CDI `ToolProvider` beans
 - plugin `ToolProvider` implementations loaded via `ServiceLoader`
-- `ToolSuite` registrations from CDI, providers, and plugin classloader
+- CDI `ToolsetProvider` beans
+- plugin `ToolsetProvider` implementations loaded via `ServiceLoader`
+- auto-discovered annotated tools via `AnnotatedToolProviders`
 
 Visibility rules:
 
-- if descriptor `agentIds` is empty -> visible to all
-- if includes `ALL` -> visible to all
-- else tool is visible only to listed agent IDs
+- all registered tools are visible to all agents
+- toolsets are shown as visible entries
+- tools covered by toolsets are hidden from the top-level visible list to reduce duplication
 
 Catalog behavior:
 
-- cached per agent ID
-- suites are shown as visible entries
-- tools covered by suites are hidden from top-level visible list to reduce duplication
+- built once for the runtime
 
-## 5.3 Auto-Discovered Tools (`AgentToolProvider`)
+Runtime behavior:
 
-`AgentToolProvider` scans CDI `Tool` beans for `@AgentTool`.
+- selecting a standalone tool yields one `BaseTool`
+- selecting a toolset yields one `BaseToolset`
+- the engine does not expand toolsets into individual tools before passing them to ADK
+
+## 5.3 Auto-Discovered Tools (`AnnotatedToolProviders`)
+
+`AnnotatedToolProviders` scans CDI `Tool` beans for `@AgentTool`.
 
 Constructor selection rules:
 
@@ -92,7 +104,7 @@ All `*.jar` files in plugin directory are added to a dedicated `URLClassLoader`.
 Plugin-extensible areas include:
 
 - `ToolProvider`
-- `ToolSuite`
+- `ToolsetProvider`
 - `GuardrailProvider`
 
 via Java `ServiceLoader` on plugin classloader.

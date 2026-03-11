@@ -35,6 +35,12 @@ class EnumValueOfOrDefaultTest {
   }
 
   @Test
+  void shouldParseManagerOrchestrationModeWhenValueValid() {
+    assertThat(OrchestrationMode.valueOfOrDefault("manager"))
+        .isEqualTo(OrchestrationMode.MANAGER);
+  }
+
+  @Test
   void shouldParseParallelStoppingPolicyWhenValueValid() {
     assertThat(ParallelStoppingPolicy.valueOfOrDefault("quorum"))
         .isEqualTo(ParallelStoppingPolicy.QUORUM);

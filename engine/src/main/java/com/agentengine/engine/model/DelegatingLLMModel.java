@@ -1,7 +1,6 @@
 package com.agentengine.engine.model;
 
 import com.agentengine.engine.agents.processors.Parser;
-import com.agentengine.engine.utils.ModelUtils;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
@@ -15,42 +14,22 @@ import org.slf4j.LoggerFactory;
 public final class DelegatingLLMModel extends AbstractLLM {
   private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
   private final BaseLlm delegate;
-  private final Parser parser;
 
-  public DelegatingLLMModel(
-      final BaseLlm delegate,
-      final Parser parser,
-      final String protocol,
-      final boolean toolCallingEnabled,
-      final boolean parseToolCallsFromText) {
+  public DelegatingLLMModel(final BaseLlm delegate, final Parser parser) {
     super(
         Objects.requireNonNull(delegate, "delegate cannot be null").model(),
-        parser,
-        protocol,
-        toolCallingEnabled,
-        parseToolCallsFromText);
+        parser);
     this.delegate = delegate;
-    this.parser = parser;
-  }
-
-  @Override
-  public Parser getParser() {
-    return parser;
   }
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final LlmRequest requestForModel = parser.normalizeRequest(llmRequest);
-    final boolean useStreaming = stream && !isParseToolCallsFromText();
+    final boolean useStreaming = stream && !parser.isParseToolCallsFromText();
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
-    final Flowable<LlmResponse> normalizedResponses =
-        delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
-    if (!useStreaming) {
-      return normalizedResponses.map(ModelUtils::markTurnComplete);
-    }
-    return normalizedResponses;
+    return delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
   }
 
   @Override

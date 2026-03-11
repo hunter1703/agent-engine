@@ -44,7 +44,7 @@ Validation rules enforced by `ConfigValidationService` + custom validators:
 
 `OrchestratorAgentConfig` adds:
 
-- `orchestrationMode`: `TRANSFER`, `SEQUENTIAL`, `PARALLEL`
+- `orchestrationMode`: `TRANSFER`, `MANAGER`, `SEQUENTIAL`, `PARALLEL`
 - `parallel` (`OrchestratorParallelConfig`):
   - `aggregationPolicy`
   - `stoppingPolicy`

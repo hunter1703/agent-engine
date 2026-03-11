@@ -60,7 +60,7 @@ class RepositoryPersistenceIT {
   void shouldPreserveGeneratedServerConfigWhenUpdatingOpenAiCompatibleModel() {
     final ModelConfig initial = new ModelConfig();
     initial.setName("OpenAI Compatible Model");
-    initial.setType("open_ai_compatible");
+    initial.setType("OPEN_AI_COMPATIBLE");
     initial.setModel("/models/model.gguf");
 
     final ModelConfig created = modelRepository.insert(initial);
@@ -71,7 +71,7 @@ class RepositoryPersistenceIT {
 
     final ModelConfig update = new ModelConfig();
     update.setName("OpenAI Compatible Model");
-    update.setType("open_ai_compatible");
+    update.setType("OPEN_AI_COMPATIBLE");
     update.setModel("/models/model.gguf");
 
     final ModelConfig saved = modelRepository.update(created.getId(), update);

@@ -10,10 +10,7 @@ public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
   private static final String TOOL_NAME = "update_task_info";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Update fields on a specific task in the current plan.",
-          List.of(ALL),
-          Map.of());
+          TOOL_NAME, "Update fields on a specific task in the current plan.", Map.of());
 
   public UpdateTaskInfoTool() {
     super(DESCRIPTOR);

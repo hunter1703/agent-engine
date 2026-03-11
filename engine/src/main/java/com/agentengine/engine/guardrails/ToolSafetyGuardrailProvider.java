@@ -17,7 +17,7 @@ public final class ToolSafetyGuardrailProvider
 
   @Override
   public Guardrail create(final ToolSafetyGuardrailRule rule) {
-    if (rule == null || rule.getStage() != GuardrailStage.TOOL) {
+    if (rule == null || rule.stageEnum() != GuardrailStage.TOOL) {
       return null;
     }
     return new ToolSafetyGuardrail(rule);

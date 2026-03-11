@@ -15,7 +15,6 @@ public final class ViewPlanTool extends Tool {
       new ToolDescriptor(
           TOOL_NAME,
           "View the complete plan including all tasks, their statuses, and results.",
-          List.of(ALL),
           Map.of());
 
   public ViewPlanTool() {

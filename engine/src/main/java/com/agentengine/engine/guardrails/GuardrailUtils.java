@@ -2,14 +2,13 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.GuardrailRule;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
-import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
@@ -18,6 +17,9 @@ import com.google.genai.types.Part;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,14 +62,6 @@ public final class GuardrailUtils {
         errorMode);
   }
 
-  public static ToolDescriptor resolveToolDescriptor(final BaseTool tool) {
-    if (tool instanceof Tool runtimeTool) {
-      return runtimeTool.descriptor();
-    }
-    return new ToolDescriptor(
-        tool.name(), tool.description(), List.of(Tool.ALL), Map.of(), ToolRiskLevel.UNKNOWN);
-  }
-
   public static void recordViolation(
       final InvocationContext invocationContext, final GuardrailDecision decision) {
     if (invocationContext == null || decision == null) {
@@ -101,14 +95,6 @@ public final class GuardrailUtils {
     return LlmResponse.builder().content(content).turnComplete(true).build();
   }
 
-  public static String resolveRuleId(final GuardrailRule rule, final String fallbackPrefix) {
-    if (rule != null && StringUtils.isNotBlank(rule.getId())) {
-      return rule.getId();
-    }
-    final String prefix = StringUtils.isNotBlank(fallbackPrefix) ? fallbackPrefix : "guardrail";
-    return prefix + "_" + Integer.toHexString(System.identityHashCode(rule));
-  }
-
   private static GuardrailDecision fallbackForError(
       final GuardrailErrorMode errorMode, final String guardrailId, final Exception ex) {
     final String message = "Guardrail '" + guardrailId + "' failed: " + ex.getMessage();
@@ -121,12 +107,13 @@ public final class GuardrailUtils {
     if (StringUtils.isBlank(text)) {
       return false;
     }
-    final String normalized = text.toLowerCase(Locale.ROOT);
     for (final String pattern : CollectionUtils.nullSafeList(patterns)) {
       if (StringUtils.isBlank(pattern)) {
         continue;
       }
-      if (normalized.contains(pattern.toLowerCase(Locale.ROOT))) {
+      final Pattern compile = Pattern.compile(pattern);
+      final Matcher matcher = compile.matcher(text);
+      if (matcher.find()) {
         return true;
       }
     }

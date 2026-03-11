@@ -1,8 +1,8 @@
 package com.agentengine.engine.services;
 
-import com.agentengine.engine.infra.EncryptionInfraConfig;
-import com.agentengine.engine.repository.InfraMongoRepository;
 import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.mongodb.infra.EncryptionInfraConfig;
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;

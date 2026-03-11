@@ -31,37 +31,27 @@ public final class PlanningRequestProcessor implements RequestProcessor {
   public Single<RequestProcessingResult> processRequest(
       final InvocationContext context, final LlmRequest request) {
     final Plan plan = RunStateUtils.getState(context).plan();
-    if (plan == null) {
+    if (plan == null || plan.getStatus().isTerminal()) {
       return Single.just(RequestProcessingResult.create(request, List.of()));
     }
 
     final List<Content> appended = new ArrayList<>();
-
     // 1. High-level plan summary
     final String summary = PlanningUtils.buildPlanSummary(plan);
-    if (StringUtils.isNotBlank(summary)) {
-      appended.add(Content.builder().role("user").parts(List.of(Part.fromText(summary))).build());
-    }
+    appended.add(Content.builder().role("user").parts(List.of(Part.fromText(summary))).build());
 
     // 2. Low-level task focus (structural anchor).
-    if (PlanningUtils.hasOpenTask(plan)) {
-      final StringBuilder taskPrompt = new StringBuilder(PlanningUtils.buildTaskFocusPrompt(plan));
-      if (!taskPrompt.isEmpty()) {
-        final String anchorText =
+      final String taskPrompt = PlanningUtils.buildTaskFocusPrompt(plan);
+    final String anchorText =
             "### STRUCTURAL ANCHOR (STRICT FOCUS)\n"
-                + "Active Task: ["
-                + PlanningUtils.getTaskIdValue(PlanningUtils.getOpenTask(plan))
-                + "]\n"
-                + taskPrompt
-                + "\n\nFollow the structural thought protocol and your current plan strictly.";
-        appended.add(
+                    + "Active Task: ["
+                    + PlanningUtils.getTaskIdValue(PlanningUtils.getOpenTask(plan))
+                    + "]\n"
+                    + taskPrompt
+                    + "\n\nFollow the structural thought protocol and your current plan strictly.";
+    appended.add(
             Content.builder().role("user").parts(List.of(Part.fromText(anchorText))).build());
-      }
-    }
 
-    if (appended.isEmpty()) {
-      return Single.just(RequestProcessingResult.create(request, List.of()));
-    }
     final LlmRequest updated =
         request.toBuilder().contents(CollectionUtils.append(request.contents(), appended)).build();
     return Single.just(RequestProcessingResult.create(updated, List.of()));

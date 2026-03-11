@@ -7,7 +7,6 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class WebSearchTool extends Tool {
@@ -20,11 +19,7 @@ public final class WebSearchTool extends Tool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
-          "Search the web using Brave Search API.",
-          List.of(ALL),
-          Map.of(),
-          ToolRiskLevel.LOW);
+          TOOL_NAME, "Search the web using Brave Search API.", Map.of(), ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 

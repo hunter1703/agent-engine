@@ -1,9 +1,9 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.builders.model.ModelProvider;
-import com.agentengine.engine.infra.DefaultModelConfig;
-import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.engine.factories.model.ModelProvider;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.mongodb.infra.DefaultModelConfig;
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
@@ -31,12 +31,12 @@ public final class SessionTitleGenerator {
     this.modelProvider = modelProvider;
   }
 
-  private String resolveTitleModelId() {
+  private String getModelId() {
     try {
       final DefaultModelConfig defaults =
           infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       if (defaults != null && StringUtils.isNotBlank(defaults.getTitleModelId())) {
-        return defaults.getTitleModelId().trim();
+        return defaults.getTitleModelId();
       }
     } catch (Exception ex) {
       LOG.warn("Failed to load default model config for title generation.");
@@ -118,7 +118,7 @@ public final class SessionTitleGenerator {
   }
 
   public Optional<String> generateTitle(final List<Event> events) {
-    final String modelId = resolveTitleModelId();
+    final String modelId = getModelId();
     if (StringUtils.isBlank(modelId)) {
       LOG.warn("Title generator configuration not found or incomplete");
       return Optional.empty();
@@ -126,7 +126,7 @@ public final class SessionTitleGenerator {
 
     final BaseLlm titleGeneratorModel;
     try {
-      titleGeneratorModel = modelProvider.get(modelId);
+      titleGeneratorModel = modelProvider.acquire(modelId);
     } catch (Exception ex) {
       LOG.warn("Failed to acquire model for title generation. model_id={}", modelId, ex);
       return Optional.empty();

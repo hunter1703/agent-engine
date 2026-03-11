@@ -53,7 +53,8 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
 
   private static void applyServerConfigIfMissing(
       final ModelConfig update, final ModelConfig existingModel) {
-    if (!ModelConfig.Provider.OPEN_AI_COMPATIBLE.matches(existingModel.getType())) {
+    if (ModelConfig.Provider.valueOfOrDefault(existingModel.getType())
+        != ModelConfig.Provider.OPEN_AI_COMPATIBLE) {
       return;
     }
     if (StringUtils.isBlank(update.getBaseUrl())) {

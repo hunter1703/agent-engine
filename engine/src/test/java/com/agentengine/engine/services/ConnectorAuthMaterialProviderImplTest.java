@@ -3,8 +3,8 @@ package com.agentengine.engine.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.connectors.core.repository.ConnectionRepository;
 import com.agentengine.connectors.core.runtime.Connection;
-import com.agentengine.engine.repository.ConnectionRepository;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

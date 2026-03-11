@@ -7,6 +7,7 @@ plugins {
 dependencies {
     api project(':engine:api')
     api project(':connectors:core')
+    implementation project(':util')
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation platform(libs.langchain4j.bom)
@@ -19,7 +20,6 @@ dependencies {
     implementation libs.vertx.json.schema
     implementation libs.quarkus.smallrye.fault.tolerance
     implementation libs.quarkus.jackson
-    implementation libs.quarkus.grpc
     implementation libs.quarkus.arc
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.opentelemetry

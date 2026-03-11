@@ -14,8 +14,7 @@ import java.util.Map;
 public final class UpdatePlanTool extends Tool {
   private static final String TOOL_NAME = "update_plan";
   public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(
-          TOOL_NAME, "Update the general information of the current plan.", List.of(ALL), Map.of());
+      new ToolDescriptor(TOOL_NAME, "Update the general information of the current plan.", Map.of());
 
   public UpdatePlanTool() {
     super(DESCRIPTOR);

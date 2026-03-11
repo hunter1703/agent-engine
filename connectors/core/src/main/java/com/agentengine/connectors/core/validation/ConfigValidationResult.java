@@ -9,7 +9,7 @@ public record ConfigValidationResult(List<ValidationIssue> issues) {
   }
 
   public boolean hasErrors() {
-    return issues.stream().anyMatch(issue -> issue.severity() == ValidationSeverity.ERROR);
+    return issues.stream().anyMatch(issue -> issue.severityEnum() == ValidationSeverity.ERROR);
   }
 
   public boolean isValid() {
@@ -17,6 +17,8 @@ public record ConfigValidationResult(List<ValidationIssue> issues) {
   }
 
   public List<ValidationIssue> errors() {
-    return issues.stream().filter(issue -> issue.severity() == ValidationSeverity.ERROR).toList();
+    return issues.stream()
+        .filter(issue -> issue.severityEnum() == ValidationSeverity.ERROR)
+        .toList();
   }
 }

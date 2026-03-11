@@ -13,7 +13,7 @@ class ModelUtilsTest {
   @Test
   void shouldGenerateServerConfigWhenOpenAiCompatibleModelMissingServerSettings() {
     final ModelConfig model = new ModelConfig();
-    model.setType("open_ai_compatible");
+    model.setType("OPEN_AI_COMPATIBLE");
     model.setModel("/models/qwen.gguf");
 
     final boolean generated = ModelUtils.generateServerConfig(model);
@@ -28,7 +28,7 @@ class ModelUtilsTest {
   @Test
   void shouldNotGenerateServerConfigWhenProviderNotOpenAiCompatible() {
     final ModelConfig model = new ModelConfig();
-    model.setType("ollama");
+    model.setType("OLLAMA");
     model.setModel("qwen");
 
     final boolean generated = ModelUtils.generateServerConfig(model);
