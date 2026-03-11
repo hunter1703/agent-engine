@@ -6,7 +6,7 @@ import com.agentengine.engine.api.beans.config.GuardrailRule;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
 import com.agentengine.util.common.StringUtils;

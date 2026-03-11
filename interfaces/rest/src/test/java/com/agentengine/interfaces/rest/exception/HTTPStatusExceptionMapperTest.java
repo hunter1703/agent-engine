@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.engine.api.exception.ConfigurationException;
 import com.agentengine.interfaces.rest.dto.ErrorResponse;
 import io.grpc.Status;

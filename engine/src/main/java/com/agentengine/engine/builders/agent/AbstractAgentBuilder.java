@@ -5,7 +5,7 @@ import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.model.AbstractLLM;
 import com.agentengine.engine.repository.ModelRepository;

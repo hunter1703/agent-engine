@@ -1,3 +1,0 @@
-plugins {
-    id 'com.agentengine.java-library-conventions'
-}

@@ -1,0 +1,35 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+    alias(libs.plugins.protobuf)
+}
+
+dependencies {
+    api project(':util:common')
+    api libs.grpc.stub
+    api libs.grpc.protobuf
+    api libs.protobuf.java
+    api libs.annotations.api
+    api libs.jakarta.inject.api
+    api libs.jakarta.enterprise.cdi.api
+
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation libs.quarkus.arc
+    implementation libs.rxjava
+    implementation libs.slf4j.api
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${libs.versions.grpc.get()}"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}

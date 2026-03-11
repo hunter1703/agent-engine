@@ -3,7 +3,7 @@ package com.agentengine.engine.builders.agent;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;

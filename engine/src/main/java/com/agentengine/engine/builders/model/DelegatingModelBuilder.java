@@ -3,7 +3,7 @@ package com.agentengine.engine.builders.model;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
-import com.agentengine.engine.api.utils.ResourceUtils;
+import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.model.DelegatingLLMModel;
 import com.agentengine.util.common.StringUtils;

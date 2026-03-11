@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents.processors.response;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.tools.ToolUtils;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;

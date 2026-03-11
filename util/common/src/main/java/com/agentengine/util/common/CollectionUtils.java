@@ -239,4 +239,20 @@ public final class CollectionUtils {
     }
     return map;
   }
+
+  public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(
+      final Collection<T> collection,
+      final Function<T, K> keyFunction,
+      final Function<T, V> valueFunction) {
+    final Map<K, List<V>> map = new HashMap<>();
+    for (final T item : collection) {
+      final K key = keyFunction.apply(item);
+      if (key == null) {
+        continue;
+      }
+      final V value = valueFunction.apply(item);
+      map.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
+    }
+    return map;
+  }
 }

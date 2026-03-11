@@ -6,7 +6,7 @@ import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.validation.ValidationCollector;
 import com.agentengine.util.common.validation.Validator;

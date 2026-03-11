@@ -2,7 +2,7 @@ package com.agentengine.engine.guardrails.rules;
 
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailContext;

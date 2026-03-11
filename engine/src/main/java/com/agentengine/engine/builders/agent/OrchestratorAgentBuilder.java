@@ -9,7 +9,7 @@ import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;

@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.services;
 
-import com.agentengine.engine.api.ms.MicroService;
+import com.agentengine.util.ms.MicroService;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import java.util.List;
 

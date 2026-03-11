@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.utils;
+package com.agentengine.util.common;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,7 +12,7 @@ public final class ResourceUtils {
   private ResourceUtils() {}
 
   public static String loadResourceAsString(final String path) {
-    try (InputStream stream = TemplateUtils.class.getResourceAsStream(path)) {
+    try (InputStream stream = ResourceUtils.class.getResourceAsStream(path)) {
       if (stream == null) {
         return "";
       }

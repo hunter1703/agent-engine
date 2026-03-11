@@ -2,7 +2,7 @@ package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.builder.BuilderDefinition;

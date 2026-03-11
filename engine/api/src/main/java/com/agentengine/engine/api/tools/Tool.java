@@ -1,11 +1,11 @@
 package com.agentengine.engine.api.tools;
 
-import static com.agentengine.engine.api.utils.Utils.OBJECT_MAPPER;
+import static com.agentengine.util.common.Utils.OBJECT_MAPPER;
 
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.api.utils.ToolUtils;
-import com.agentengine.engine.api.utils.Utils;
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;

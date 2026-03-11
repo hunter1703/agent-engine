@@ -1,8 +1,8 @@
 package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.ResourceUtils;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.util.common.JsonUtils;

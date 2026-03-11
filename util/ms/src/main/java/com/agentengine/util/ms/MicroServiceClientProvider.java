@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.ms;
+package com.agentengine.util.ms;
 
 public interface MicroServiceClientProvider {
 

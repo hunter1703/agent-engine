@@ -2,7 +2,7 @@ package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.tools.ToolUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;

@@ -1,6 +1,6 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;

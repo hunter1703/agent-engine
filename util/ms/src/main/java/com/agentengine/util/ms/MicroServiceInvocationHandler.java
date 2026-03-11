@@ -1,11 +1,10 @@
-package com.agentengine.engine.api.ms;
+package com.agentengine.util.ms;
 
-import com.agentengine.engine.grpc.Request;
-import com.agentengine.engine.grpc.ServiceGrpc;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.ms.grpc.Request;
+import com.agentengine.util.ms.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.reactivex.rxjava3.core.Flowable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -33,17 +32,6 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   public MicroServiceInvocationHandler(Class<?> serviceClass, ManagedChannel channel) {
     this.serviceClass = serviceClass;
     this.stub = ServiceGrpc.newBlockingStub(channel);
-  }
-
-  /** Convenience constructor that connects to the configured gRPC host and port. */
-  public MicroServiceInvocationHandler(Class<?> serviceClass) {
-    this(
-        serviceClass,
-        ManagedChannelBuilder.forAddress(
-                System.getProperty("agentengine.grpc.host", "localhost"),
-                Integer.getInteger("agentengine.grpc.port", 9000))
-            .usePlaintext()
-            .build());
   }
 
   @Override

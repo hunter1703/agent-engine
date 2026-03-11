@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.tools;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import java.util.List;
 import java.util.Map;
 

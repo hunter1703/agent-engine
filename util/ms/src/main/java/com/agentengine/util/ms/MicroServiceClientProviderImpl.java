@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.ms;
+package com.agentengine.util.ms;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -7,6 +7,7 @@ import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InjectableBean;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.inject.Any;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.reflect.Proxy;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +29,12 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceClientProviderImpl.class);
 
   private final ConcurrentMap<Class<?>, ManagedChannel> channels = new ConcurrentHashMap<>();
+  private final MicroServiceEndpointResolver endpointResolver;
+
+  @Inject
+  public MicroServiceClientProviderImpl(MicroServiceEndpointResolver endpointResolver) {
+    this.endpointResolver = endpointResolver;
+  }
 
   @Override
   public <T> T get(Class<T> serviceClass) {
@@ -55,12 +62,12 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
     ManagedChannel channel =
         channels.computeIfAbsent(
             serviceClass,
-            _ ->
-                ManagedChannelBuilder.forAddress(
-                        System.getProperty("agentengine.grpc.host", "localhost"),
-                        Integer.getInteger("agentengine.grpc.port", 9000))
-                    .usePlaintext()
-                    .build());
+            cls -> {
+              MicroServiceEndpoint endpoint = endpointResolver.resolve(cls);
+              return ManagedChannelBuilder.forAddress(endpoint.host(), endpoint.port())
+                  .usePlaintext()
+                  .build();
+            });
 
     // noinspection unchecked
     return (T)

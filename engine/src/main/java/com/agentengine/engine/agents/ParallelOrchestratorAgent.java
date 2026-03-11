@@ -3,7 +3,7 @@ package com.agentengine.engine.agents;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;

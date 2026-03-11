@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents.processors.request;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.api.utils.CorrectionUtils;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;

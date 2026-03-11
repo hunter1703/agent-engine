@@ -1,7 +1,7 @@
 package com.agentengine.engine.plugins;
 
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;

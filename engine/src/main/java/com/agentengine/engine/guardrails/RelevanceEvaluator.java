@@ -2,7 +2,7 @@ package com.agentengine.engine.guardrails;
 
 import static com.agentengine.util.common.JsonUtils.parseJsonPayload;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
 import com.agentengine.util.common.StringUtils;

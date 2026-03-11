@@ -1,6 +1,6 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.SchemaUtils;
 import com.google.adk.models.LlmResponse;

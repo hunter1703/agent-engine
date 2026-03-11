@@ -5,5 +5,5 @@ plugins {
 dependencies {
     api project(':util:common')
     api project(':util:mongodb')
-    implementation project(':util:grpc')
+    api project(':util:ms')
 }

@@ -2,11 +2,11 @@ package com.agentengine.engine.server.grpc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.api.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.engine.api.exception.ConfigurationException;
-import com.agentengine.engine.api.ms.MicroService;
-import com.agentengine.engine.grpc.Request;
-import com.agentengine.engine.grpc.Response;
+import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.grpc.Request;
+import com.agentengine.util.ms.grpc.Response;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
@@ -23,7 +23,10 @@ class GRPCServerImplTest {
   void shouldMapIllegalArgumentExceptionToInvalidArgumentStatus() throws Exception {
     final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new ThrowingServiceImpl()));
     final Request request =
-        Request.newBuilder().setService(ThrowingService.class.getSimpleName()).setMethod("fail").build();
+        Request.newBuilder()
+            .setService(ThrowingService.class.getSimpleName())
+            .setMethod("fail")
+            .build();
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
@@ -90,7 +93,8 @@ class GRPCServerImplTest {
 
   @Test
   void shouldMapConfigurationExceptionToInvalidArgumentStatus() throws Exception {
-    final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new ConfigurationExceptionServiceImpl()));
+    final GRPCServerImpl grpcServer =
+        new GRPCServerImpl(List.of(new ConfigurationExceptionServiceImpl()));
     final Request request =
         Request.newBuilder()
             .setService(ConfigurationExceptionService.class.getSimpleName())
@@ -126,7 +130,8 @@ class GRPCServerImplTest {
 
   @Test
   void shouldMapFlowableAssetNotFoundExceptionToNotFoundStatus() throws Exception {
-    final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new FlowableAssetNotFoundServiceImpl()));
+    final GRPCServerImpl grpcServer =
+        new GRPCServerImpl(List.of(new FlowableAssetNotFoundServiceImpl()));
     final Request request =
         Request.newBuilder()
             .setService(FlowableAssetNotFoundService.class.getSimpleName())

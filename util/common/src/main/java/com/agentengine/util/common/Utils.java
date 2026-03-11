@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.utils;
+package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;

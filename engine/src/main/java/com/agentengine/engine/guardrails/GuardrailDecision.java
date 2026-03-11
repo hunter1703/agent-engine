@@ -1,7 +1,7 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 
 public record GuardrailDecision(

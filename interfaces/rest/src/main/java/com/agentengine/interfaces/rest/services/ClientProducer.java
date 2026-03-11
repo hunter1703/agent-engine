@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.engine.api.ms.MicroServiceClientProvider;
+import com.agentengine.util.ms.MicroServiceClientProvider;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.ModelService;

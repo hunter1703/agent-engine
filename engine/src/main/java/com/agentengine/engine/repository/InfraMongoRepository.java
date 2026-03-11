@@ -1,6 +1,6 @@
 package com.agentengine.engine.repository;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.infra.InfraConfig;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;

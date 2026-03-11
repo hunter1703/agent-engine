@@ -1,14 +1,14 @@
 package com.agentengine.engine.server.grpc;
 
-import com.agentengine.engine.api.exception.AssetNotFoundException;
 import com.agentengine.engine.api.exception.ConfigurationException;
-import com.agentengine.engine.api.exception.DuplicateAssetException;
-import com.agentengine.engine.api.ms.MicroService;
-import com.agentengine.util.JsonUtils;
-import com.agentengine.engine.grpc.Request;
-import com.agentengine.engine.grpc.Response;
-import com.agentengine.engine.grpc.ServiceGrpc;
+import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.grpc.Request;
+import com.agentengine.util.ms.grpc.Response;
+import com.agentengine.util.ms.grpc.ServiceGrpc;
 import com.agentengine.engine.utils.ThreadUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -19,7 +19,6 @@ import io.quarkus.grpc.GrpcService;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Any;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -39,7 +38,8 @@ import org.slf4j.LoggerFactory;
 public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private static final String NAME_PREFIX = "agent-grpc-vt-";
 
-  private static final ExecutorService EXECUTOR_SERVICE = ThreadUtils.newVirtualThreadExecutor(NAME_PREFIX);
+  private static final ExecutorService EXECUTOR_SERVICE =
+      ThreadUtils.newVirtualThreadExecutor(NAME_PREFIX);
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
 
   /**

@@ -1,7 +1,7 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;

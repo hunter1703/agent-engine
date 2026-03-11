@@ -2,7 +2,7 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.utils.RefCountedCache;
 import com.agentengine.util.common.StringUtils;

@@ -1,7 +1,7 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import java.util.Map;
 

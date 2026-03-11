@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.utils;
+package com.agentengine.util.common;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

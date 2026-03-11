@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.utils;
 
-import static com.agentengine.engine.api.utils.Utils.*;
+import static com.agentengine.util.common.Utils.*;
 
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;

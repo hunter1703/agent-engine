@@ -1,6 +1,6 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.utils.CollectionUtils;
+import com.agentengine.util.common.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
