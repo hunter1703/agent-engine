@@ -1,5 +1,6 @@
 package com.agentengine.engine.api.utils;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
@@ -50,5 +51,12 @@ public final class ContentUtils {
       }
     }
     return -1;
+  }
+
+  public static int estimateTokens(final Content content) {
+    if (content == null) {
+      return 0;
+    }
+    return StringUtils.estimateTextContent(content.text());
   }
 }
