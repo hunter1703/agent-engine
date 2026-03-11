@@ -14,9 +14,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Rebuilds model prompt contents using configured context managers per agent.
- */
+/** Rebuilds model prompt contents using configured context managers per agent. */
 public final class ContextManagementPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(ContextManagementPlugin.class);
   private static final String NAME = "context_management";

@@ -7,8 +7,8 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
-import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailConstants;
+import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import java.util.Map;
@@ -48,10 +48,11 @@ public final class ToolSafetyGuardrail implements Guardrail {
     GuardrailDecision decision = GuardrailDecision.allow();
     if (ToolRiskLevel.atLeast(risk, rule.getMinToolRisk())) {
       final String message =
-              rule.getMessage() != null
-                      ? rule.getMessage()
-                      : "Tool safety policy triggered for '" + descriptor.name() + "'.";
-      decision = GuardrailUtils.fromAction(
+          rule.getMessage() != null
+              ? rule.getMessage()
+              : "Tool safety policy triggered for '" + descriptor.name() + "'.";
+      decision =
+          GuardrailUtils.fromAction(
               rule.getAction(),
               GuardrailConstants.Code.TOOL_POLICY,
               message,
@@ -65,12 +66,13 @@ public final class ToolSafetyGuardrail implements Guardrail {
         && (risk == ToolRiskLevel.HIGH || risk == ToolRiskLevel.CRITICAL)) {
       return GuardrailDecision.escalate(
           GuardrailConstants.Code.TOOL_ESCALATE,
-          "Tool '" + descriptor.name() + "' requires human confirmation due to risk level "
+          "Tool '"
+              + descriptor.name()
+              + "' requires human confirmation due to risk level "
               + risk.name().toLowerCase()
               + ".");
     }
 
     return decision;
   }
-
 }

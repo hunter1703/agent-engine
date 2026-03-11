@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Guardrail execution style.
- */
+/** Guardrail execution style. */
 public enum GuardrailExecutionMode {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

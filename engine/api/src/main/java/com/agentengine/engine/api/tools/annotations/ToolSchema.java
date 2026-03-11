@@ -9,7 +9,12 @@ import java.lang.annotation.Target;
 /** Describes tool schemas for methods, parameters, and object fields. */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.RECORD_COMPONENT})
+@Target({
+  ElementType.METHOD,
+  ElementType.PARAMETER,
+  ElementType.FIELD,
+  ElementType.RECORD_COMPONENT
+})
 public @interface ToolSchema {
   String name() default "";
 

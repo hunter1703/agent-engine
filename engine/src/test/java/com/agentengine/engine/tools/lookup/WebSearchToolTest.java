@@ -20,7 +20,8 @@ class WebSearchToolTest {
 
   @Test
   void usesDefaultsWhenOptionalArgumentsAreMissing() {
-    final CapturingConnectorService connector = new CapturingConnectorService(success(Map.of("ok", true)));
+    final CapturingConnectorService connector =
+        new CapturingConnectorService(success(Map.of("ok", true)));
     final WebSearchTool tool = new WebSearchTool(connector);
 
     final Map<String, Object> result = tool.execute("mediterranean sea", null, null, null);
@@ -36,7 +37,8 @@ class WebSearchToolTest {
 
   @Test
   void forwardsExplicitArguments() {
-    final CapturingConnectorService connector = new CapturingConnectorService(success(Map.of("ok", true)));
+    final CapturingConnectorService connector =
+        new CapturingConnectorService(success(Map.of("ok", true)));
     final WebSearchTool tool = new WebSearchTool(connector);
 
     tool.execute("query", "AE", "ar", 4096);
@@ -78,9 +80,11 @@ class WebSearchToolTest {
         true);
   }
 
-  private record StubConnectorService(ConnectorExecutionResult response) implements ConnectorService {
+  private record StubConnectorService(ConnectorExecutionResult response)
+      implements ConnectorService {
     @Override
-    public ConnectorExecutionResult execute(final String connectorId, final Map<String, Object> input) {
+    public ConnectorExecutionResult execute(
+        final String connectorId, final Map<String, Object> input) {
       return response;
     }
   }
@@ -95,7 +99,8 @@ class WebSearchToolTest {
     }
 
     @Override
-    public ConnectorExecutionResult execute(final String connectorId, final Map<String, Object> input) {
+    public ConnectorExecutionResult execute(
+        final String connectorId, final Map<String, Object> input) {
       this.lastConnectorId = connectorId;
       this.lastInput = input;
       return response;

@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Runtime orchestration strategy for orchestrator agents.
- */
+/** Runtime orchestration strategy for orchestrator agents. */
 public enum OrchestrationMode {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

@@ -1,7 +1,7 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.connectors.core.runtime.Connection;
-import com.agentengine.util.mongo.MongoClientFactory;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
@@ -31,9 +31,7 @@ public class ConnectionRepository {
     }
     final Object inputsObj = doc.get("inputs");
     final Map<String, Object> inputs =
-        inputsObj instanceof Map<?, ?> map
-            ? (Map<String, Object>) map
-            : Map.of();
+        inputsObj instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
     return new Connection(doc.getString("appName"), inputs);
   }
 

@@ -1,10 +1,10 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.util.builder.annotations.UiField;
-import com.agentengine.util.builder.annotations.UiNumber;
-import com.agentengine.util.builder.annotations.UiRule;
-import com.agentengine.util.builder.annotations.UiRuleEffect;
-import com.agentengine.util.builder.annotations.UiSelect;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiNumber;
+import com.agentengine.util.common.builder.annotations.UiRule;
+import com.agentengine.util.common.builder.annotations.UiRuleEffect;
+import com.agentengine.util.common.builder.annotations.UiSelect;
 
 public class OrchestratorParallelConfig {
 
@@ -18,7 +18,10 @@ public class OrchestratorParallelConfig {
 
   @UiField(label = "Quorum", order = 30)
   @UiNumber
-  @UiRule(effect = UiRuleEffect.VISIBLE, field = "stoppingPolicy", values = {"QUORUM"})
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "stoppingPolicy",
+      values = {"QUORUM"})
   private int quorum = 1;
 
   public ParallelAggregationPolicy getAggregationPolicy() {

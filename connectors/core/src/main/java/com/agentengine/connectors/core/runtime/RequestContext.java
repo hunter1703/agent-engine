@@ -21,7 +21,8 @@ public record RequestContext(
   }
 
   public static RequestContext empty() {
-    return new RequestContext(Map.of(), null, Map.of(), new Connection(null, Map.of()), Map.of(), Map.of());
+    return new RequestContext(
+        Map.of(), null, Map.of(), new Connection(null, Map.of()), Map.of(), Map.of());
   }
 
   public Map<String, Object> toTemplateVariables() {

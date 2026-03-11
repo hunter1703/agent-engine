@@ -45,7 +45,6 @@ public final class ApiKeyHeaderAuthStrategy implements AuthStrategy {
     }
 
     headers.put(
-        headerName == null || headerName.isBlank() ? DEFAULT_HEADER : headerName,
-        apiKey.trim());
+        headerName == null || headerName.isBlank() ? DEFAULT_HEADER : headerName, apiKey.trim());
   }
 }

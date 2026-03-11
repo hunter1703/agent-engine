@@ -1,13 +1,12 @@
 package com.agentengine.connectors.core.pagination;
 
 import com.agentengine.connectors.core.config.PaginationType;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 
 @Singleton
 public final class PaginationStrategyRegistry {

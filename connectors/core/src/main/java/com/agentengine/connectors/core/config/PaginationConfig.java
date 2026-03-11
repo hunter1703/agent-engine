@@ -25,6 +25,7 @@ public record PaginationConfig(
   }
 
   public static PaginationConfig none() {
-    return new PaginationConfig(PaginationType.NONE, 1, null, 1, null, 100, null, 0, null, 100, null, null, null);
+    return new PaginationConfig(
+        PaginationType.NONE, 1, null, 1, null, 100, null, 0, null, 100, null, null, null);
   }
 }

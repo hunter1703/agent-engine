@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.util.validation.ValidationCollector;
-import com.agentengine.util.validation.ValidationService;
-import com.agentengine.util.validation.Validator;
+import com.agentengine.util.common.validation.ValidationCollector;
+import com.agentengine.util.common.validation.ValidationService;
+import com.agentengine.util.common.validation.Validator;
 import jakarta.enterprise.inject.Instance;
 import jakarta.validation.Validation;
 import jakarta.validation.constraints.NotBlank;

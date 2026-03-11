@@ -4,12 +4,11 @@ import com.agentengine.connectors.core.config.AuthConfig;
 import com.agentengine.connectors.core.config.AuthType;
 import com.agentengine.connectors.core.runtime.RequestContext;
 import com.agentengine.connectors.core.template.TemplateResolver;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 
 @Singleton
 public final class AuthStrategyRegistry {
@@ -40,9 +39,28 @@ public final class AuthStrategyRegistry {
       final boolean strictUnresolvedVariables,
       final Map<String, String> headers,
       final Map<String, String> queryParams) {
-    final AuthConfig effectiveConfig = authConfig == null ? new AuthConfig(AuthType.NONE, null, null, null, null, null, null, null, null, null, null, null, null, Map.of()) : authConfig;
-    final AuthType effectiveType = effectiveConfig.type() == null ? AuthType.NONE : effectiveConfig.type();
-    final AuthStrategy strategy = strategies.getOrDefault(effectiveType, strategies.get(AuthType.NONE));
+    final AuthConfig effectiveConfig =
+        authConfig == null
+            ? new AuthConfig(
+                AuthType.NONE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Map.of())
+            : authConfig;
+    final AuthType effectiveType =
+        effectiveConfig.type() == null ? AuthType.NONE : effectiveConfig.type();
+    final AuthStrategy strategy =
+        strategies.getOrDefault(effectiveType, strategies.get(AuthType.NONE));
     if (strategy == null) {
       throw new AuthStrategyException("No auth strategy available for type: " + effectiveType);
     }

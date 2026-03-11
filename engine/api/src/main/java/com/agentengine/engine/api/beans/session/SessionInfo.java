@@ -1,10 +1,9 @@
 package com.agentengine.engine.api.beans.session;
 
-import com.agentengine.util.beans.BaseEntity;
-import com.agentengine.util.Secure;
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.google.adk.events.Event;
-import org.bson.codecs.pojo.annotations.BsonIgnore;
 import com.google.adk.sessions.Session;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.bson.codecs.pojo.annotations.BsonId;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,8 +25,7 @@ public class SessionInfo extends BaseEntity {
   private String appName;
   private String userId;
   private Map<String, Object> state = new HashMap<>();
-  @BsonIgnore
-  private List<Map<String, Object>> events = new ArrayList<>();
+  @BsonIgnore private List<Map<String, Object>> events = new ArrayList<>();
   private Long lastUpdateTime;
 
   public SessionInfo() {}
@@ -48,7 +47,7 @@ public class SessionInfo extends BaseEntity {
     } else {
       sessionInfo.setEvents(new ArrayList<>());
     }
-    
+
     sessionInfo.setLastUpdateTime(session.lastUpdateTime().toEpochMilli());
     return sessionInfo;
   }
@@ -120,9 +119,9 @@ public class SessionInfo extends BaseEntity {
 
   @BsonIgnore
   public void setEvents(final List<Map<String, Object>> events) {
-      this.events = events == null ? new ArrayList<>() : events;
+    this.events = events == null ? new ArrayList<>() : events;
   }
-  
+
   @Secure
   public String getEventsJson() {
     return JsonUtils.toJson(events == null ? List.of() : events);

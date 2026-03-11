@@ -19,11 +19,9 @@ import java.util.stream.Collectors;
 /**
  * Sanitizes tool calls in model responses.
  *
- * <p>Responsibilities:
- * - Partial responses: detect and strip tool call/response parts; emit a protocol violation so the
- *   model is corrected on its next turn.
- * - Full responses: detect and strip redundant tool-call sequences (same calls as the previous
- *   turn); emit a redundancy violation.
+ * <p>Responsibilities: - Partial responses: detect and strip tool call/response parts; emit a
+ * protocol violation so the model is corrected on its next turn. - Full responses: detect and strip
+ * redundant tool-call sequences (same calls as the previous turn); emit a redundancy violation.
  *
  * <p>Ownership: tool-call protocol enforcement across partial and full responses.
  */
@@ -131,8 +129,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
             .filter(p -> p.functionCall().map(call -> !redundant.contains(call)).orElse(true))
             .toList();
     return pass(
-        response
-            .toBuilder()
+        response.toBuilder()
             .content(response.content().get().toBuilder().parts(filtered).build())
             .turnComplete(false)
             .build());

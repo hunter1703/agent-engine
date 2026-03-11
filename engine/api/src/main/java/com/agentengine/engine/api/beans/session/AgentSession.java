@@ -1,7 +1,7 @@
 package com.agentengine.engine.api.beans.session;
 
-import com.agentengine.util.beans.NamedEntity;
-import com.agentengine.util.Secure;
+import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.beans.NamedEntity;
 import com.google.adk.sessions.Session;
 
 public class AgentSession extends NamedEntity {

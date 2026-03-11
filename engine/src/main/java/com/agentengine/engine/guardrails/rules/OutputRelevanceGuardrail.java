@@ -4,16 +4,16 @@ import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.beans.config.RelevanceMode;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
+import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
-import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import com.agentengine.engine.guardrails.RelevanceAnchorBuilder;
 import com.agentengine.engine.guardrails.RelevanceEvaluator;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
 import java.util.Map;
 import java.util.Objects;
 
@@ -22,7 +22,8 @@ public final class OutputRelevanceGuardrail implements Guardrail {
   private final RelevanceEvaluator evaluator;
   private final String id;
 
-  public OutputRelevanceGuardrail(final OutputRelevanceGuardrailRule config, final RelevanceEvaluator evaluator) {
+  public OutputRelevanceGuardrail(
+      final OutputRelevanceGuardrailRule config, final RelevanceEvaluator evaluator) {
     this.config = Objects.requireNonNull(config);
     this.evaluator = evaluator;
     this.id = GuardrailUtils.resolveRuleId(config, "output_relevance");
@@ -70,8 +71,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
               GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     }
 
-    if (mode == RelevanceMode.STEER_THEN_ALLOW
-        && attempt <= config.getMaxSteeringRetries()) {
+    if (mode == RelevanceMode.STEER_THEN_ALLOW && attempt <= config.getMaxSteeringRetries()) {
       return new GuardrailDecision(
           GuardrailAction.WARN,
           GuardrailConstants.Code.RELEVANCE_STEER,
@@ -86,8 +86,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
       return GuardrailDecision.allow();
     }
 
-    if (mode == RelevanceMode.STEER_THEN_BLOCK
-        && attempt <= config.getMaxSteeringRetries()) {
+    if (mode == RelevanceMode.STEER_THEN_BLOCK && attempt <= config.getMaxSteeringRetries()) {
       return new GuardrailDecision(
           GuardrailAction.WARN,
           GuardrailConstants.Code.RELEVANCE_STEER,

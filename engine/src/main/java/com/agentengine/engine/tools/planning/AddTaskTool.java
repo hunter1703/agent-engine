@@ -3,11 +3,11 @@ package com.agentengine.engine.tools.planning;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,9 +35,7 @@ public final class AddTaskTool extends Tool {
               optional = true)
           String parentId,
       @ToolSchema(name = "name", description = "Short name for the new task") String name,
-      @ToolSchema(
-              name = "goal",
-              description = "The goal or expected result of this task")
+      @ToolSchema(name = "goal", description = "The goal or expected result of this task")
           String goal,
       @ToolSchema(
               name = "description",

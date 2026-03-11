@@ -7,17 +7,15 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.plugins.PluginLoader;
 import com.agentengine.engine.utils.Cache;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.common.cache.CacheBuilder;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,6 +27,8 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public final class ToolRegistry implements ToolService {
@@ -54,13 +54,13 @@ public final class ToolRegistry implements ToolService {
     final List<BaseTool> tools = new ArrayList<>();
     final String cacheKey = Objects.requireNonNullElse(agentId, Tool.ALL);
     final ToolCatalog catalog = catalogCache.get(cacheKey);
- 
+
     final List<String> catalogTools = new ArrayList<>(catalog.toolEntries().keySet());
- 
+
     if (CollectionUtils.isEmpty(toolsConfig)) {
       return tools;
     }
- 
+
     for (final ToolsConfig config : toolsConfig) {
       final List<BaseTool> toolsForConfigs = getToolsForConfig(catalog, config);
       if (CollectionUtils.isNotEmpty(toolsForConfigs)) {
@@ -69,7 +69,11 @@ public final class ToolRegistry implements ToolService {
     }
 
     final List<String> loadedToolNames = tools.stream().map(BaseTool::name).toList();
-    LOG.info("loadTools - agentId={} catalogTools={} loadedTools={}", agentId, catalogTools, loadedToolNames);
+    LOG.info(
+        "loadTools - agentId={} catalogTools={} loadedTools={}",
+        agentId,
+        catalogTools,
+        loadedToolNames);
     return tools;
   }
 
@@ -230,7 +234,8 @@ public final class ToolRegistry implements ToolService {
     return visible;
   }
 
-  private static List<BaseTool> getToolsForConfig(final ToolCatalog catalog, final ToolsConfig config) {
+  private static List<BaseTool> getToolsForConfig(
+      final ToolCatalog catalog, final ToolsConfig config) {
     if (config == null) {
       return Collections.emptyList();
     }

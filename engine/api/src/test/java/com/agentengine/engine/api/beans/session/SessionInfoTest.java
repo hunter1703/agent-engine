@@ -22,8 +22,7 @@ class SessionInfoTest {
             .invocationId("inv-1")
             .author("user")
             .timestamp(Instant.now().toEpochMilli())
-            .content(
-                Content.builder().role("user").parts(List.of(Part.fromText("hello"))).build())
+            .content(Content.builder().role("user").parts(List.of(Part.fromText("hello"))).build())
             .build();
     final Session sourceSession =
         Session.builder("session-1")

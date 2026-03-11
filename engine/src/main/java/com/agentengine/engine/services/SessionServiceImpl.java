@@ -1,20 +1,19 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.util.query.PaginatedResult;
-import com.agentengine.util.query.Query;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.util.update.Operation;
-import com.agentengine.util.update.Update;
 import com.agentengine.engine.events.SessionDeletedEvent;
 import com.agentengine.engine.repository.AgentSessionRepository;
-import com.agentengine.util.EncryptionService;
+import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.update.Operation;
+import com.agentengine.util.common.update.Update;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +66,7 @@ public class SessionServiceImpl implements SessionService {
   @Override
   @WithSpan
   public void updateTitle(final String id, final String title) {
-    sessionRepository.update(id, Update.of(Operation.set("title", encryptionService.encrypt(title))));
+    sessionRepository.update(
+        id, Update.of(Operation.set("title", encryptionService.encrypt(title))));
   }
 }

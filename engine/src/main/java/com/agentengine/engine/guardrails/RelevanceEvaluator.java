@@ -1,11 +1,11 @@
 package com.agentengine.engine.guardrails;
 
-import static com.agentengine.util.JsonUtils.parseJsonPayload;
+import static com.agentengine.util.common.JsonUtils.parseJsonPayload;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -71,14 +71,14 @@ public final class RelevanceEvaluator {
     final BaseLlm model = modelProvider.get(modelId);
     try {
       final LlmResponse response =
-              model
-                      .generateContent(request, false)
-                      .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                      .blockingFirst();
+          model
+              .generateContent(request, false)
+              .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+              .blockingFirst();
       final String text = response.content().map(Content::text).orElse("");
       return parseScore(text);
     } finally {
-        modelProvider.release(modelId);
+      modelProvider.release(modelId);
     }
   }
 

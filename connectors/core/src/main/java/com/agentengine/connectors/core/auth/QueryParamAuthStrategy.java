@@ -44,6 +44,7 @@ public final class QueryParamAuthStrategy implements AuthStrategy {
       throw new AuthStrategyException("Auth value is required for QUERY_PARAM auth");
     }
 
-    queryParams.put(paramName == null || paramName.isBlank() ? DEFAULT_QUERY_PARAM : paramName, value);
+    queryParams.put(
+        paramName == null || paramName.isBlank() ? DEFAULT_QUERY_PARAM : paramName, value);
   }
 }

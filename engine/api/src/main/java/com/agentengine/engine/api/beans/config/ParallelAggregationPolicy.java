@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Aggregation strategy for merging outputs from parallel branches.
- */
+/** Aggregation strategy for merging outputs from parallel branches. */
 public enum ParallelAggregationPolicy {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

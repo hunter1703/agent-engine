@@ -1,8 +1,8 @@
 package com.agentengine.engine.builders.agent;
 
+import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.agents.ParallelOrchestratorAgent;
 import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
@@ -10,10 +10,10 @@ import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.tools.ToolRegistry;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.tools.AgentTool;
 import com.google.adk.tools.BaseTool;
@@ -27,6 +27,7 @@ import java.util.List;
 @Singleton
 public class OrchestratorAgentBuilder extends AbstractAgentBuilder<OrchestratorAgentConfig, Agent> {
   private final AgentService agentService;
+
   @Inject
   public OrchestratorAgentBuilder(
       final ModelProvider modelProvider,
@@ -60,13 +61,18 @@ public class OrchestratorAgentBuilder extends AbstractAgentBuilder<OrchestratorA
       if (StringUtils.isBlank(subAgentId)) {
         continue;
       }
-      final BaseAgentConfig subAgent = agentService.getAgent(subAgentId).orElseThrow(() -> new IllegalArgumentException("Sub agent not found for id: " + subAgentId));
-        subAgents.add(agentProvider.get().get(subAgent));
+      final BaseAgentConfig subAgent =
+          agentService
+              .getAgent(subAgentId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Sub agent not found for id: " + subAgentId));
+      subAgents.add(agentProvider.get().get(subAgent));
     }
     return subAgents;
   }
 
-  private DelegatedAgent buildTransfer(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+  private DelegatedAgent buildTransfer(
+      final BaseAgentConfig config, final List<? extends Agent> subAgents) {
     final DefaultLLMAgentBuilder builder = getBuilder(config);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       builder.subAgents(subAgents);
@@ -82,7 +88,8 @@ public class OrchestratorAgentBuilder extends AbstractAgentBuilder<OrchestratorA
     return builder.build();
   }
 
-  private DelegatedAgent buildSequential(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+  private DelegatedAgent buildSequential(
+      final BaseAgentConfig config, final List<? extends Agent> subAgents) {
     if (CollectionUtils.isEmpty(subAgents)) {
       throw new IllegalArgumentException(
           "orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id="
@@ -91,13 +98,15 @@ public class OrchestratorAgentBuilder extends AbstractAgentBuilder<OrchestratorA
     return new SequentialAgentBuilder().agentConfig(config).subAgents(subAgents).build();
   }
 
-  private static ParallelOrchestratorAgent buildParallel(final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {
+  private static ParallelOrchestratorAgent buildParallel(
+      final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {
     final OrchestratorParallelConfig parallel = config.getParallel();
     return new ParallelOrchestratorAgentBuilder()
         .subAgents(subAgents)
         .aggregationPolicy(parallel.getAggregationPolicy())
         .stoppingPolicy(parallel.getStoppingPolicy())
-        .quorum(parallel.getQuorum()).agentConfig(config)
+        .quorum(parallel.getQuorum())
+        .agentConfig(config)
         .build();
   }
 

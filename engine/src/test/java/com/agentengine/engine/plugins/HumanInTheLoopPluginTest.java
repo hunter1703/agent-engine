@@ -41,7 +41,8 @@ class HumanInTheLoopPluginTest {
         LlmRequest.builder().contents(List.of(textContent("hello")));
 
     final HumanInTheLoopPlugin plugin = new HumanInTheLoopPlugin();
-    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
+    final LlmResponse response =
+        plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
 
     assertThat(response).isNull();
     assertThat(requestBuilder.build().contents()).hasSize(1);
@@ -57,7 +58,8 @@ class HumanInTheLoopPluginTest {
         LlmRequest.builder().contents(List.of(textContent("run command now")));
 
     final HumanInTheLoopPlugin plugin = new HumanInTheLoopPlugin();
-    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
+    final LlmResponse response =
+        plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
 
     verify(context).setEndInvocation(true);
     assertThat(response.content()).isPresent();
@@ -73,7 +75,8 @@ class HumanInTheLoopPluginTest {
         LlmRequest.builder().contents(List.of(textContent("   ")));
 
     final HumanInTheLoopPlugin plugin = new HumanInTheLoopPlugin();
-    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
+    final LlmResponse response =
+        plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
 
     verify(context).setEndInvocation(true);
     assertThat(response.content()).isPresent();
@@ -89,7 +92,8 @@ class HumanInTheLoopPluginTest {
         LlmRequest.builder().contents(List.of(textContent("yes approve")));
 
     final HumanInTheLoopPlugin plugin = new HumanInTheLoopPlugin();
-    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
+    final LlmResponse response =
+        plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
 
     verify(context).setEndInvocation(true);
     assertThat(response.content()).isPresent();

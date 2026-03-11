@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Action a guardrail rule can request when a policy condition is matched.
- */
+/** Action a guardrail rule can request when a policy condition is matched. */
 public enum GuardrailAction {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.catalog;
 
-import com.agentengine.engine.api.query.Query;
+import com.agentengine.util.common.query.Query;
 import java.util.List;
 import java.util.Map;
 

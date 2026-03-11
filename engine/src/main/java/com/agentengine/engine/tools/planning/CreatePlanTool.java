@@ -3,12 +3,12 @@ package com.agentengine.engine.tools.planning;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,8 @@ public final class CreatePlanTool extends Tool {
   public Map<String, Object> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(name = "title", description = "Short, descriptive title of the plan") String title,
+      @ToolSchema(name = "title", description = "Short, descriptive title of the plan")
+          String title,
       @ToolSchema(name = "goal", description = "Description of what this plan accomplishes")
           String goal,
       @ToolSchema(
@@ -45,7 +46,10 @@ public final class CreatePlanTool extends Tool {
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();
       if (!status.isTerminal()) {
-        return Map.of("error", "Active plan already exists; finish it before creating a new plan.\n" + PlanningUtils.buildPlanSummary(existingPlan));
+        return Map.of(
+            "error",
+            "Active plan already exists; finish it before creating a new plan.\n"
+                + PlanningUtils.buildPlanSummary(existingPlan));
       }
     }
     final Plan currentPlan = new Plan(title, goal, tasks);
@@ -60,6 +64,10 @@ public final class CreatePlanTool extends Tool {
     LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return Map.of(
         "status",
-        "Success. Plan '" + title + "' has been created and saved with " + tasks.size() + " tasks. ");
+        "Success. Plan '"
+            + title
+            + "' has been created and saved with "
+            + tasks.size()
+            + " tasks. ");
   }
 }

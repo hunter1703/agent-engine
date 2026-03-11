@@ -2,9 +2,9 @@ package com.agentengine.engine.api;
 
 import com.google.genai.types.Content;
 import java.util.List;
-import java.util.function.UnaryOperator;
 
 public interface ContextManager {
 
-  List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents);
+  List<Content> buildPrompt(
+      final String agentId, final String sessionId, final List<Content> contents);
 }

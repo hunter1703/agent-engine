@@ -1,6 +1,6 @@
 package com.agentengine.engine.providers;
 
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;

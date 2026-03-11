@@ -1,6 +1,6 @@
 package com.agentengine.engine.api.utils;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import java.util.List;

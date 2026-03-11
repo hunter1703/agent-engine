@@ -16,7 +16,8 @@ final class NoPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(
+      final PaginationConfig config, final PaginationState state) {
     return PaginationDirective.empty();
   }
 

@@ -1,13 +1,12 @@
 package com.agentengine.engine.api.ms;
 
-import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.grpc.Request;
 import com.agentengine.engine.grpc.ServiceGrpc;
+import com.agentengine.util.common.JsonUtils;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.reactivex.rxjava3.core.Flowable;
-import io.quarkus.logging.Log;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -71,11 +70,19 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
     if (args != null && args.length > 0) {
       final String requestId = MDC.get("requestId");
-      LOG.info("[{}] Serializing args for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
+      LOG.info(
+          "[{}] Serializing args for {}.{}",
+          requestId,
+          serviceClass.getSimpleName(),
+          method.getName());
       final long start = System.currentTimeMillis();
       final String json = JsonUtils.toJson(args);
       final long end = System.currentTimeMillis();
-      LOG.info("[{}] Serialization took {}ms, payload size: {}", requestId, (end - start), json.length());
+      LOG.info(
+          "[{}] Serialization took {}ms, payload size: {}",
+          requestId,
+          (end - start),
+          json.length());
       builder.setPayload(ByteString.copyFromUtf8(json));
     }
     return builder.build();
@@ -83,9 +90,17 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private Object blockingCall(Request request, Method method) {
     final String requestId = MDC.get("requestId");
-    LOG.info("[{}] Initiating gRPC blocking call for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
+    LOG.info(
+        "[{}] Initiating gRPC blocking call for {}.{}",
+        requestId,
+        serviceClass.getSimpleName(),
+        method.getName());
     var responseIterator = stub.execute(request);
-    LOG.info("[{}] gRPC call returned for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
+    LOG.info(
+        "[{}] gRPC call returned for {}.{}",
+        requestId,
+        serviceClass.getSimpleName(),
+        method.getName());
     if (!responseIterator.hasNext()) {
       // No payload from the server — return Optional.empty() for Optional return
       // types

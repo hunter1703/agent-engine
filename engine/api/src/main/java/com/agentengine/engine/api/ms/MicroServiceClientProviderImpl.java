@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
  * Resolves {@link MicroService} dependencies, preferring a local CDI bean when available and
  * falling back to a transparent gRPC proxy for remote services.
  *
- * <p>Channels are cached per service class to avoid leaking gRPC connections. All channels are
- * shut down gracefully on application shutdown via {@link PreDestroy}.
+ * <p>Channels are cached per service class to avoid leaking gRPC connections. All channels are shut
+ * down gracefully on application shutdown via {@link PreDestroy}.
  */
 @Singleton
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {

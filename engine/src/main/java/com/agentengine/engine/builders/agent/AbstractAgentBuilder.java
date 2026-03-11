@@ -1,6 +1,5 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
@@ -15,7 +14,6 @@ import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Instance;
-
 import java.util.List;
 
 public abstract class AbstractAgentBuilder<C extends BaseAgentConfig, A extends Agent>
@@ -51,7 +49,8 @@ public abstract class AbstractAgentBuilder<C extends BaseAgentConfig, A extends 
     }
 
     final LlmAgent.Builder builder = LlmAgent.builder();
-    builder.disallowTransferToParent(false)
+    builder
+        .disallowTransferToParent(false)
         .disallowTransferToPeers(false)
         .maxSteps(resolveMaxSteps(config))
         .model(model);
@@ -65,7 +64,10 @@ public abstract class AbstractAgentBuilder<C extends BaseAgentConfig, A extends 
         defaultLLMAgentBuilder.appendTools(tools);
       }
     }
-    return defaultLLMAgentBuilder.agentConfig(config).protocolInstructions(agentModel.getProtocol()).systemInstructions(config.getSystemPrompt());
+    return defaultLLMAgentBuilder
+        .agentConfig(config)
+        .protocolInstructions(agentModel.getProtocol())
+        .systemInstructions(config.getSystemPrompt());
   }
 
   private static int resolveMaxSteps(final BaseAgentConfig config) {

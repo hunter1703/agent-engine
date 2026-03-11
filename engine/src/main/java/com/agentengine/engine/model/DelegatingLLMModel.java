@@ -8,7 +8,6 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Flowable;
-
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,8 @@ public final class DelegatingLLMModel extends AbstractLLM {
     LOG.debug(
         "Delegating LLM generateContent using {} mode",
         useStreaming ? "streaming" : "non-streaming");
-    final Flowable<LlmResponse> normalizedResponses = delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
+    final Flowable<LlmResponse> normalizedResponses =
+        delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
     if (!useStreaming) {
       return normalizedResponses.map(ModelUtils::markTurnComplete);
     }

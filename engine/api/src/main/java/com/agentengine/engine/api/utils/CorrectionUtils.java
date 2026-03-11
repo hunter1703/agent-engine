@@ -1,13 +1,12 @@
 package com.agentengine.engine.api.utils;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
+import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
-import com.google.adk.agents.InvocationContext;
 import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,7 +39,8 @@ public final class CorrectionUtils {
     if (event == null || event.actions() == null) {
       return false;
     }
-    return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(event.actions().stateDelta(), CORRECTION_KEY));
+    return Boolean.TRUE.equals(
+        CollectionUtils.getBooleanValueFromMap(event.actions().stateDelta(), CORRECTION_KEY));
   }
 
   public static CorrectionMetadata extractCorrectionMetadata(final Event event) {
@@ -50,17 +50,15 @@ public final class CorrectionUtils {
     final Map<String, Object> stateDelta = event.actions().stateDelta();
     final String type = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_TYPE_KEY);
     final String code = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_CODE_KEY);
-    final String message = CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_MESSAGE_KEY);
+    final String message =
+        CollectionUtils.getStringValueFromMap(stateDelta, CORRECTION_MESSAGE_KEY);
     return new CorrectionMetadata(type, code, message);
   }
 
   public static Event buildCorrectiveEvent(
       final InvocationContext context, final String code, final String message) {
     final Content correctiveContent =
-        Content.builder()
-            .role("user")
-            .parts(List.of(Part.fromText(message)))
-            .build();
+        Content.builder().role("user").parts(List.of(Part.fromText(message))).build();
 
     return Event.builder()
         .id(Event.generateEventId())

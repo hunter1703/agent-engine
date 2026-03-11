@@ -16,7 +16,8 @@ public final class NextPageUrlPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(
+      final PaginationConfig config, final PaginationState state) {
     return new PaginationDirective(java.util.Map.of(), state.nextPageUrl());
   }
 

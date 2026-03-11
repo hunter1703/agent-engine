@@ -11,14 +11,20 @@ import java.util.List;
 /**
  * Engine wrapper over ADK {@link BaseAgent} with config and optional delegation support.
  *
- * <p>Runtime behavior is forwarded to the delegated agent. Subclasses may override
- * {@link #runAsyncImpl} and {@link #runLiveImpl} directly instead.
+ * <p>Runtime behavior is forwarded to the delegated agent. Subclasses may override {@link
+ * #runAsyncImpl} and {@link #runLiveImpl} directly instead.
  */
 public class DelegatedAgent extends Agent {
   private final BaseAgent delegated;
 
   public DelegatedAgent(final BaseAgent delegated, final BaseAgentConfig agentConfig) {
-    super(delegated.name(), delegated.description(), delegated.subAgents(), agentConfig, delegated.beforeAgentCallback(), delegated.afterAgentCallback());
+    super(
+        delegated.name(),
+        delegated.description(),
+        delegated.subAgents(),
+        agentConfig,
+        delegated.beforeAgentCallback(),
+        delegated.afterAgentCallback());
     this.delegated = delegated;
   }
 
@@ -30,7 +36,8 @@ public class DelegatedAgent extends Agent {
   @Override
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
     if (delegated == null) {
-      throw new IllegalStateException("No delegated agent present; override runAsyncImpl in subclass.");
+      throw new IllegalStateException(
+          "No delegated agent present; override runAsyncImpl in subclass.");
     }
     return delegated.runAsync(invocationContext);
   }
@@ -38,7 +45,8 @@ public class DelegatedAgent extends Agent {
   @Override
   protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
     if (delegated == null) {
-      throw new IllegalStateException("No delegated agent present; override runLiveImpl in subclass.");
+      throw new IllegalStateException(
+          "No delegated agent present; override runLiveImpl in subclass.");
     }
     return delegated.runLive(invocationContext);
   }

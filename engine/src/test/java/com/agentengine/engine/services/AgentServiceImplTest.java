@@ -8,9 +8,9 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
-import com.agentengine.util.query.PaginatedResult;
-import com.agentengine.util.query.Query;
 import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -22,7 +22,6 @@ import com.agentengine.connectors.core.validation.ConnectorConfigValidator;
 import com.agentengine.connectors.core.validation.DefaultConnectorConfigValidator;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -43,8 +42,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     this(
         new DefaultConnectorConfigValidator(),
         new RequestMaterializer(
-            new DefaultTemplateResolver(new GroovySandboxEvaluator()),
-            new AuthStrategyRegistry()),
+            new DefaultTemplateResolver(new GroovySandboxEvaluator()), new AuthStrategyRegistry()),
         new OkHttpTransport(),
         new PaginationStrategyRegistry(),
         createDefaultResponseMapper());
@@ -79,10 +77,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     if (paginationType == PaginationType.NONE) {
       final ConnectorExecutionResult singleResult = executeOnce(definition, context);
       return new PaginatedExecutionResult(
-          List.of(singleResult),
-          asItems(singleResult.mappedData()),
-          false,
-          1);
+          List.of(singleResult), asItems(singleResult.mappedData()), false, 1);
     }
 
     final PaginationStrategy paginationStrategy =
@@ -97,7 +92,8 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     while (!paginationState.done() && guard < definition.pagination().maxPages()) {
       final PaginationDirective directive =
           paginationStrategy.buildRequest(definition.pagination(), paginationState);
-      final ConnectorExecutionResult pageResult = executeWithRetry(definition, currentContext, directive);
+      final ConnectorExecutionResult pageResult =
+          executeWithRetry(definition, currentContext, directive);
 
       pageResults.add(pageResult);
       aggregatedItems.addAll(asItems(pageResult.mappedData()));
@@ -113,7 +109,8 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     }
 
     final boolean truncated = !paginationState.done();
-    return new PaginatedExecutionResult(pageResults, aggregatedItems, truncated, pageResults.size());
+    return new PaginatedExecutionResult(
+        pageResults, aggregatedItems, truncated, pageResults.size());
   }
 
   private ConnectorExecutionResult executeWithRetry(
@@ -121,7 +118,8 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
       final RequestContext context,
       final PaginationDirective paginationDirective) {
     final boolean retriesEnabled = definition.retryPolicy().enabled();
-    final int maxAttempts = retriesEnabled ? Math.max(1, definition.retryPolicy().maxAttempts()) : 1;
+    final int maxAttempts =
+        retriesEnabled ? Math.max(1, definition.retryPolicy().maxAttempts()) : 1;
     long currentDelayMs = definition.retryPolicy().initialDelayMs();
 
     RuntimeException lastException = null;
@@ -132,12 +130,10 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
         final HttpResponseData responseData = transport.execute(requestData);
         final ConnectorExecutionResult mappedResult =
             responseMapper.map(
-                definition,
-                responseData,
-                requestData.url(),
-                requestData.method().name());
+                definition, responseData, requestData.url(), requestData.method().name());
 
-        if (mappedResult.success() || !shouldRetry(definition, mappedResult, attempt, maxAttempts)) {
+        if (mappedResult.success()
+            || !shouldRetry(definition, mappedResult, attempt, maxAttempts)) {
           return mappedResult;
         }
       } catch (RuntimeException ex) {
@@ -185,7 +181,8 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
       return Math.min(nextDelay, definition.retryPolicy().maxDelayMs());
     }
 
-    return Math.min(definition.retryPolicy().initialDelayMs(), definition.retryPolicy().maxDelayMs());
+    return Math.min(
+        definition.retryPolicy().initialDelayMs(), definition.retryPolicy().maxDelayMs());
   }
 
   private static void sleep(final long delayMs) {
@@ -225,6 +222,7 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
 
   private static DefaultResponseMapper createDefaultResponseMapper() {
     final ResponseExtractor responseExtractor = new JsonPathResponseExtractor();
-    return new DefaultResponseMapper(responseExtractor, new DefaultErrorClassifier(responseExtractor));
+    return new DefaultResponseMapper(
+        responseExtractor, new DefaultErrorClassifier(responseExtractor));
   }
 }

@@ -28,7 +28,8 @@ class DefaultConnectorServiceTest {
 
     assertThat(executor.capturedContext.auth()).containsEntry("token", "secret-token");
     assertThat(executor.capturedContext.connection().appName()).isEqualTo("test-app");
-    assertThat(executor.capturedContext.connection().inputs()).containsEntry("token", "secret-token");
+    assertThat(executor.capturedContext.connection().inputs())
+        .containsEntry("token", "secret-token");
     assertThat(executor.capturedContext.input())
         .containsEntry("query", "hello")
         .containsEntry("auth", Map.of("token", "secret-token"));
@@ -50,7 +51,8 @@ class DefaultConnectorServiceTest {
         .containsEntry("token", "repo-token")
         .containsEntry("tenant", "alpha");
 
-    final Map<String, Object> inputAuth = (Map<String, Object>) executor.capturedContext.input().get("auth");
+    final Map<String, Object> inputAuth =
+        (Map<String, Object>) executor.capturedContext.input().get("auth");
     assertThat(inputAuth)
         .containsEntry("token", "repo-token")
         .containsEntry("tenant", "alpha")
@@ -61,7 +63,8 @@ class DefaultConnectorServiceTest {
     return new ConnectorDefinition(
         "test",
         "test-app",
-        new EndpointConfig(HttpMethod.GET, "https://example.com", null, "/", null, null, null, null, true, true),
+        new EndpointConfig(
+            HttpMethod.GET, "https://example.com", null, "/", null, null, null, null, true, true),
         Map.of(),
         Map.of(),
         null,
@@ -81,7 +84,17 @@ class DefaultConnectorServiceTest {
         final ConnectorDefinition definition, final RequestContext context) {
       this.capturedContext = context;
       return new ConnectorExecutionResult(
-          200, true, "https://example.com", "GET", Map.of(), Map.of(), null, null, null, null, false);
+          200,
+          true,
+          "https://example.com",
+          "GET",
+          Map.of(),
+          Map.of(),
+          null,
+          null,
+          null,
+          null,
+          false);
     }
 
     @Override

@@ -15,12 +15,14 @@ public final class FinishPlanTool extends Tool {
   private static final String TOOL_NAME = "finish_plan";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME, "Mark the entire plan as finished with a final result.", List.of(ALL), Map.of());
+          TOOL_NAME,
+          "Mark the entire plan as finished with a final result.",
+          List.of(ALL),
+          Map.of());
 
-    public FinishPlanTool() {
-        super(DESCRIPTOR);
-    }
-
+  public FinishPlanTool() {
+    super(DESCRIPTOR);
+  }
 
   public Map<String, Object> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)

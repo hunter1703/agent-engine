@@ -78,7 +78,19 @@ class DefaultConnectorConfigValidatorTest {
             null,
             null,
             new PaginationConfig(
-                PaginationType.CURSOR, 10, null, 1, null, 100, null, 0, null, 100, null, null, null),
+                PaginationType.CURSOR,
+                10,
+                null,
+                1,
+                null,
+                100,
+                null,
+                0,
+                null,
+                100,
+                null,
+                null,
+                null),
             null,
             null,
             true);
@@ -128,8 +140,7 @@ class DefaultConnectorConfigValidatorTest {
         true);
   }
 
-  private static ConnectorDefinition withId(
-      final ConnectorDefinition definition, final String id) {
+  private static ConnectorDefinition withId(final ConnectorDefinition definition, final String id) {
     return new ConnectorDefinition(
         id,
         definition.appName(),
@@ -146,6 +157,7 @@ class DefaultConnectorConfigValidatorTest {
   }
 
   private static EndpointConfig endpoint(final HttpMethod method, final String baseUrl) {
-    return new EndpointConfig(method, baseUrl, null, "/v1/test", null, 1_000L, 1_000L, 1_000L, true, true);
+    return new EndpointConfig(
+        method, baseUrl, null, "/v1/test", null, 1_000L, 1_000L, 1_000L, true, true);
   }
 }

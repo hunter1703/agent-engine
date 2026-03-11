@@ -4,9 +4,8 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +44,7 @@ public final class UserClarificationTool extends Tool {
         unavailable.put("options", sanitized);
       }
       unavailable.put(
-          "error",
-          "Confirmation context is not available for user_clarification tool call.");
+          "error", "Confirmation context is not available for user_clarification tool call.");
       return Map.copyOf(unavailable);
     }
 

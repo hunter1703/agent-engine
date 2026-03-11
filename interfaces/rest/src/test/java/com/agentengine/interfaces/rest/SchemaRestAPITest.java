@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
-import com.agentengine.util.builder.BuilderDefinition;
-import com.agentengine.util.builder.UILayout;
+import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
+import com.agentengine.util.common.builder.BuilderDefinition;
+import com.agentengine.util.common.builder.UILayout;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
@@ -21,17 +21,15 @@ class SchemaRestAPITest {
   void shouldReturnSchemaWhenGetSchemaCalledForKnownAssetType() {
     final BuilderDefinitionService definitionService = mock(BuilderDefinitionService.class);
     when(definitionService.getDefinition("model"))
-        .thenReturn(
-            new BuilderDefinition(
-                Map.of("type", "object"),
-                new UILayout(Map.of(), null)));
+        .thenReturn(new BuilderDefinition(Map.of("type", "object"), new UILayout(Map.of(), null)));
 
     final SchemaRestAPI api = new SchemaRestAPI(definitionService, handlerInstanceWith());
     final Response response = api.getSchema("model", null);
 
     assertThat(response.getStatus()).isEqualTo(200);
     assertThat(response.getEntity()).isInstanceOf(BuilderDefinition.class);
-    assertThat(((BuilderDefinition) response.getEntity()).schema()).isEqualTo(Map.of("type", "object"));
+    assertThat(((BuilderDefinition) response.getEntity()).schema())
+        .isEqualTo(Map.of("type", "object"));
   }
 
   @Test
@@ -49,7 +47,8 @@ class SchemaRestAPITest {
 
   @Test
   void shouldReturnBadRequestWhenSchemaModeIsUnsupported() {
-    final SchemaRestAPI api = new SchemaRestAPI(mock(BuilderDefinitionService.class), handlerInstanceWith());
+    final SchemaRestAPI api =
+        new SchemaRestAPI(mock(BuilderDefinitionService.class), handlerInstanceWith());
 
     final Response response = api.getSchema("model", "unsupported");
 
@@ -60,9 +59,11 @@ class SchemaRestAPITest {
   @Test
   void shouldReturnBadRequestWhenResolveSchemaCalledForUnsupportedAssetType() {
     final SchemaRestAPI api =
-        new SchemaRestAPI(mock(BuilderDefinitionService.class), handlerInstanceWith(new ToolConfigsHandler()));
+        new SchemaRestAPI(
+            mock(BuilderDefinitionService.class), handlerInstanceWith(new ToolConfigsHandler()));
 
-    final Response response = api.resolveSchema(new SchemaLookupRequest("unsupported", "id-1", "agent-1"));
+    final Response response =
+        api.resolveSchema(new SchemaLookupRequest("unsupported", "id-1", "agent-1"));
 
     assertThat(response.getStatus()).isEqualTo(400);
     assertThat(response.getEntity().toString()).contains("Unsupported assetType");
@@ -71,9 +72,11 @@ class SchemaRestAPITest {
   @Test
   void shouldReturnResolvedSchemaWhenHandlerRegistered() {
     final SchemaRestAPI api =
-        new SchemaRestAPI(mock(BuilderDefinitionService.class), handlerInstanceWith(new ToolConfigsHandler()));
+        new SchemaRestAPI(
+            mock(BuilderDefinitionService.class), handlerInstanceWith(new ToolConfigsHandler()));
 
-    final Response response = api.resolveSchema(new SchemaLookupRequest("tool_configs", "id-1", "agent-1"));
+    final Response response =
+        api.resolveSchema(new SchemaLookupRequest("tool_configs", "id-1", "agent-1"));
 
     assertThat(response.getStatus()).isEqualTo(200);
     assertThat(response.getEntity()).isEqualTo(Map.of("schema", "resolved"));

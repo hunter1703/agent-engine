@@ -17,18 +17,21 @@ import java.util.Map;
 
 /**
  * Composes an ordered list of plugins with middleware semantics:
+ *
  * <ul>
- *   <li><b>before*</b> callbacks run in forward order (A → B → …); first non-empty short-circuits.</li>
- *   <li><b>after*</b> callbacks run in reverse order (… → B → A); each stage receives the
- *       output of the previous, forming a sequential pipeline.</li>
+ *   <li><b>before*</b> callbacks run in forward order (A → B → …); first non-empty short-circuits.
+ *   <li><b>after*</b> callbacks run in reverse order (… → B → A); each stage receives the output of
+ *       the previous, forming a sequential pipeline.
  * </ul>
  *
- * <p>Register plugins in logical "outer-to-inner" order. For example,
- * {@code new PluginGroup("engine", List.of(guardrailPlugin, lifecyclePlugin, modelPipeline, contextPlugin))} means:
+ * <p>Register plugins in logical "outer-to-inner" order. For example, {@code new
+ * PluginGroup("engine", List.of(guardrailPlugin, lifecyclePlugin, modelPipeline, contextPlugin))}
+ * means:
+ *
  * <ul>
- *   <li>Input validation: guardrail first, then request/context processing.</li>
+ *   <li>Input validation: guardrail first, then request/context processing.
  *   <li>Output processing: model pipeline transforms the raw response first, then guardrail
- *       evaluates the already-processed result.</li>
+ *       evaluates the already-processed result.
  * </ul>
  */
 public final class PluginGroup extends BasePlugin {
@@ -92,7 +95,8 @@ public final class PluginGroup extends BasePlugin {
   public Maybe<Map<String, Object>> beforeToolCallback(
       final BaseTool tool, final Map<String, Object> args, final ToolContext toolContext) {
     for (final BasePlugin plugin : plugins) {
-      final Map<String, Object> result = plugin.beforeToolCallback(tool, args, toolContext).blockingGet();
+      final Map<String, Object> result =
+          plugin.beforeToolCallback(tool, args, toolContext).blockingGet();
       if (result != null) {
         return Maybe.just(result);
       }
@@ -114,15 +118,15 @@ public final class PluginGroup extends BasePlugin {
 
   @Override
   public Maybe<Map<String, Object>> afterToolCallback(
-          final BaseTool tool,
-          final Map<String, Object> args,
-          final ToolContext toolContext,
-          final Map<String, Object> toolResult) {
+      final BaseTool tool,
+      final Map<String, Object> args,
+      final ToolContext toolContext,
+      final Map<String, Object> toolResult) {
     boolean changed = false;
     Map<String, Object> current = toolResult;
     for (final BasePlugin plugin : plugins.reversed()) {
       final Map<String, Object> result =
-              plugin.afterToolCallback(tool, args, toolContext, current).blockingGet();
+          plugin.afterToolCallback(tool, args, toolContext, current).blockingGet();
       if (result != null) {
         current = result;
         changed = true;
@@ -133,7 +137,7 @@ public final class PluginGroup extends BasePlugin {
 
   @Override
   public Maybe<LlmResponse> afterModelCallback(
-          final CallbackContext ctx, final LlmResponse llmResponse) {
+      final CallbackContext ctx, final LlmResponse llmResponse) {
     boolean changed = false;
     LlmResponse current = llmResponse;
     for (final BasePlugin plugin : plugins.reversed()) {

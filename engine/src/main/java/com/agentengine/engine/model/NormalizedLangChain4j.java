@@ -1,6 +1,6 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.models.langchain4j.LangChain4j;
@@ -48,9 +48,7 @@ public final class NormalizedLangChain4j extends LangChain4j {
       if (!responseState.fullText.isEmpty()) {
         // If we have accumulated text, emit it as a partial response before the tool call
         final LlmResponse textResponse =
-            markPartial(
-                responseState.lastTextResponse,
-                responseState.fullText.toString());
+            markPartial(responseState.lastTextResponse, responseState.fullText.toString());
         result = Flowable.just(textResponse, markFinalWithIds(response));
         responseState.fullText.setLength(0);
         responseState.lastTextResponse = null;
@@ -165,11 +163,7 @@ public final class NormalizedLangChain4j extends LangChain4j {
     }
 
     final Content updatedContent = content.toBuilder().parts(updatedParts).build();
-    return response.toBuilder()
-        .content(updatedContent)
-        .partial(false)
-        .turnComplete(true)
-        .build();
+    return response.toBuilder().content(updatedContent).partial(false).turnComplete(true).build();
   }
 
   private static LlmResponse markPartial(final LlmResponse response, final String fullText) {

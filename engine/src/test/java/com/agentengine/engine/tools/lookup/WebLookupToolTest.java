@@ -20,7 +20,8 @@ class WebLookupToolTest {
 
   @Test
   void returnsMappedResultWhenConnectorSucceeds() {
-    final WebLookupTool tool = new WebLookupTool(new StubConnectorService(success("Richard Feynman")));
+    final WebLookupTool tool =
+        new WebLookupTool(new StubConnectorService(success("Richard Feynman")));
     final Map<String, Object> result = tool.execute("richard feynman");
 
     assertThat(result).containsEntry("result", "Richard Feynman");
@@ -63,9 +64,11 @@ class WebLookupToolTest {
         true);
   }
 
-  private record StubConnectorService(ConnectorExecutionResult response) implements ConnectorService {
+  private record StubConnectorService(ConnectorExecutionResult response)
+      implements ConnectorService {
     @Override
-    public ConnectorExecutionResult execute(final String connectorId, final Map<String, Object> input) {
+    public ConnectorExecutionResult execute(
+        final String connectorId, final Map<String, Object> input) {
       assertThat(connectorId).isEqualTo("duckduckgo_instant_search");
       assertThat(input).containsKey("query");
       return response;

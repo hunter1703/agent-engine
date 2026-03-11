@@ -1,12 +1,11 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.JsonUtils;
-import com.agentengine.util.SchemaUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.SchemaUtils;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,27 +54,19 @@ public final class ToolUtils {
     return SchemaUtils.toJsonSchema(null);
   }
 
- 
-
   public static boolean hasToolParts(final LlmResponse response) {
-    return response.content()
-        .flatMap(Content::parts)
-        .stream()
+    return response.content().flatMap(Content::parts).stream()
         .flatMap(List::stream)
         .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
   }
 
   public static List<FunctionCall> extractToolCalls(final LlmResponse response) {
-    return response.content()
-        .flatMap(Content::parts)
-        .stream()
+    return response.content().flatMap(Content::parts).stream()
         .flatMap(List::stream)
         .map(Part::functionCall)
         .flatMap(Optional::stream)
         .toList();
   }
-
- 
 
   public static String summarizeToolParts(final List<Part> parts) {
     if (CollectionUtils.isEmpty(parts)) {
@@ -85,7 +76,8 @@ public final class ToolUtils {
     final List<String> responses = new ArrayList<>();
     for (final Part part : parts) {
       part.functionCall().ifPresent(call -> calls.add(call.name().orElse("unknown")));
-      part.functionResponse().ifPresent(response -> responses.add(response.name().orElse("unknown")));
+      part.functionResponse()
+          .ifPresent(response -> responses.add(response.name().orElse("unknown")));
     }
     final List<String> segments = new ArrayList<>();
     final String callSummary = summarizeNames(calls);
@@ -103,10 +95,8 @@ public final class ToolUtils {
     if (CollectionUtils.isEmpty(names)) {
       return "";
     }
-    final List<String> unique = names.stream()
-        .filter(name -> name != null && !name.isBlank())
-        .distinct()
-        .toList();
+    final List<String> unique =
+        names.stream().filter(name -> name != null && !name.isBlank()).distinct().toList();
     if (unique.isEmpty()) {
       return "";
     }

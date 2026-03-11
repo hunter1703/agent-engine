@@ -56,16 +56,19 @@ public final class WebSearchTool extends Tool {
 
     final Map<String, Object> connectorInput = new LinkedHashMap<>();
     connectorInput.put("query", query.trim());
-    connectorInput.put("country", country == null || country.isBlank() ? DEFAULT_COUNTRY : country.trim());
     connectorInput.put(
-        "search_lang", searchLang == null || searchLang.isBlank() ? DEFAULT_LANGUAGE : searchLang.trim());
+        "country", country == null || country.isBlank() ? DEFAULT_COUNTRY : country.trim());
+    connectorInput.put(
+        "search_lang",
+        searchLang == null || searchLang.isBlank() ? DEFAULT_LANGUAGE : searchLang.trim());
     connectorInput.put(
         "maximum_number_of_tokens",
         maximumNumberOfTokens == null || maximumNumberOfTokens <= 0
             ? DEFAULT_MAX_TOKENS
             : maximumNumberOfTokens);
 
-    final ConnectorExecutionResult result = connectorService.execute(CONNECTOR_ID, Map.copyOf(connectorInput));
+    final ConnectorExecutionResult result =
+        connectorService.execute(CONNECTOR_ID, Map.copyOf(connectorInput));
     if (!result.success()) {
       return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
     }

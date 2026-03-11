@@ -3,19 +3,19 @@ package com.agentengine.engine.builders.model;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.builders.ModelBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.engine.utils.RefCountedCache;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.BaseLlm;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.function.Function;
-import java.util.Map;
 
 @Singleton
 public class ModelProvider {
@@ -36,7 +36,8 @@ public class ModelProvider {
             allBuilders.stream().toList(), ModelBuilder::type, Function.identity());
     this.defaultBuilder = openAIModelBuilder;
     this.modelRepository = modelRepository;
-    this.cache = RefCountedCache.<String, BaseLlm>builder()
+    this.cache =
+        RefCountedCache.<String, BaseLlm>builder()
             .name("model-provider")
             .idleTimeout(15, TimeUnit.MINUTES)
             .cleanupInterval(60, TimeUnit.SECONDS)
@@ -44,6 +45,7 @@ public class ModelProvider {
             .onEvict((_modelId, model) -> tryClose(model))
             .build();
   }
+
   public BaseLlm get(final String modelId) {
     if (StringUtils.isBlank(modelId)) {
       throw new IllegalArgumentException("modelId cannot be blank");

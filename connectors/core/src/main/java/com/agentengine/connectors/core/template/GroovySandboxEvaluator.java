@@ -4,6 +4,7 @@ import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import groovy.lang.MissingMethodException;
 import groovy.lang.MissingPropertyException;
+import jakarta.inject.Singleton;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -20,8 +21,6 @@ import java.util.concurrent.TimeoutException;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.codehaus.groovy.control.customizers.SecureASTCustomizer;
-
-import jakarta.inject.Singleton;
 
 @Singleton
 public final class GroovySandboxEvaluator {
@@ -160,7 +159,8 @@ public final class GroovySandboxEvaluator {
   private static Object wrapValue(final Object value) {
     if (value instanceof Map<?, ?> mapValue) {
       final Map<String, Object> wrapped = new LinkedHashMap<>();
-      mapValue.forEach((key, entryValue) -> wrapped.put(String.valueOf(key), wrapValue(entryValue)));
+      mapValue.forEach(
+          (key, entryValue) -> wrapped.put(String.valueOf(key), wrapValue(entryValue)));
       return new StrictMap(wrapped);
     }
     if (value instanceof List<?> listValue) {

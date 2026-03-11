@@ -35,13 +35,19 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
     }
 
     final Object codeValue =
-        responseExtractor.extract(responseData.body(), definition.responseMapping().errorCodeJsonPath());
+        responseExtractor.extract(
+            responseData.body(), definition.responseMapping().errorCodeJsonPath());
     final Object messageValue =
-        responseExtractor.extract(responseData.body(), definition.responseMapping().errorMessageJsonPath());
-    final String code = codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
+        responseExtractor.extract(
+            responseData.body(), definition.responseMapping().errorMessageJsonPath());
+    final String code =
+        codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
     final String message =
-        messageValue == null ? "Connector request failed with status " + responseData.statusCode() : String.valueOf(messageValue);
-    final boolean retryable = definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
+        messageValue == null
+            ? "Connector request failed with status " + responseData.statusCode()
+            : String.valueOf(messageValue);
+    final boolean retryable =
+        definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
     return new ClassifiedError(code, message, retryable);
   }
 

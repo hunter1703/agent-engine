@@ -18,10 +18,7 @@ public class AgentRequest {
   public AgentRequest() {}
 
   private AgentRequest(
-      final String type,
-      final String agentId,
-      final String sessionId,
-      final String message) {
+      final String type, final String agentId, final String sessionId, final String message) {
     this.type = type;
     this.agentId = agentId;
     this.sessionId = sessionId;

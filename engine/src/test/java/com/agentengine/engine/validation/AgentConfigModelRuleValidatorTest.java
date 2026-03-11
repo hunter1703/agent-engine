@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
-import com.agentengine.util.validation.ValidationCollector;
+import com.agentengine.util.common.validation.ValidationCollector;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigModelRuleValidatorTest {

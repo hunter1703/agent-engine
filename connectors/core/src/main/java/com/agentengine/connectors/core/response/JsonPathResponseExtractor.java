@@ -2,7 +2,6 @@ package com.agentengine.connectors.core.response;
 
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
-
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -10,8 +9,7 @@ import jakarta.inject.Singleton;
 public final class JsonPathResponseExtractor implements ResponseExtractor {
 
   @Inject
-  public JsonPathResponseExtractor() {
-  }
+  public JsonPathResponseExtractor() {}
 
   @Override
   public Object extract(final String responseBody, final String jsonPath) {

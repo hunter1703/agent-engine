@@ -47,7 +47,7 @@ public abstract class BaseJavaConventionsPlugin {
                 "src/main/java/**/*.java",
                 "src/test/java/**/*.java",
                 "src/integrationTest/java/**/*.java");
-            java.googleJavaFormat();
+            java.googleJavaFormat("1.29.0");
             java.removeUnusedImports();
           });
 

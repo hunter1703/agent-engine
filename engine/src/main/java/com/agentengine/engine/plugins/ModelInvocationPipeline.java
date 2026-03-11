@@ -1,5 +1,7 @@
 package com.agentengine.engine.plugins;
 
+import static com.google.genai.types.FinishReason.Known.STOP;
+
 import com.agentengine.engine.agents.processors.request.CorrectionProcessor;
 import com.agentengine.engine.agents.processors.request.PlanningRequestProcessor;
 import com.agentengine.engine.agents.processors.response.PartOrderingResponseProcessor;
@@ -18,11 +20,7 @@ import com.google.genai.types.FinishReason;
 import io.reactivex.rxjava3.core.Maybe;
 import java.util.Optional;
 
-import static com.google.genai.types.FinishReason.Known.STOP;
-
-/**
- * Executes request/response transformations around each model call.
- */
+/** Executes request/response transformations around each model call. */
 public final class ModelInvocationPipeline extends BasePlugin {
   private static final String NAME = "model_invocation_pipeline";
 
@@ -51,11 +49,15 @@ public final class ModelInvocationPipeline extends BasePlugin {
     response =
         applyResponseProcessor(
             ToolCallSanitizationResponseProcessor.INSTANCE, invocationContext, response);
-    response = applyResponseProcessor(PlanLoopResponseProcessor.INSTANCE, invocationContext, response);
     response =
-        applyResponseProcessor(TurnCompletionResponseProcessor.INSTANCE, invocationContext, response);
-    response = applyResponseProcessor(PartOrderingResponseProcessor.INSTANCE, invocationContext, response);
-    final boolean isRunFinished = response.turnComplete().orElse(false) && !ToolUtils.hasToolParts(response);
+        applyResponseProcessor(PlanLoopResponseProcessor.INSTANCE, invocationContext, response);
+    response =
+        applyResponseProcessor(
+            TurnCompletionResponseProcessor.INSTANCE, invocationContext, response);
+    response =
+        applyResponseProcessor(PartOrderingResponseProcessor.INSTANCE, invocationContext, response);
+    final boolean isRunFinished =
+        response.turnComplete().orElse(false) && !ToolUtils.hasToolParts(response);
     final FinishReason finishReason =
         isRunFinished ? response.finishReason().orElse(new FinishReason(STOP)) : null;
     return Maybe.just(response.toBuilder().finishReason(Optional.ofNullable(finishReason)).build());

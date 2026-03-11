@@ -1,9 +1,9 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
@@ -11,11 +11,9 @@ import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +33,8 @@ public final class SessionTitleGenerator {
 
   private String resolveTitleModelId() {
     try {
-      final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+      final DefaultModelConfig defaults =
+          infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       if (defaults != null && StringUtils.isNotBlank(defaults.getTitleModelId())) {
         return defaults.getTitleModelId().trim();
       }

@@ -1,19 +1,18 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.util.query.PaginatedResult;
-import com.agentengine.util.query.Query;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.repository.ModelRepository;
-import com.agentengine.util.builder.BuilderDefinition;
-import com.agentengine.util.builder.BuilderDefinitionUtils;
-import com.agentengine.util.builder.BuilderMode;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.builder.BuilderDefinition;
+import com.agentengine.util.common.builder.BuilderDefinitionUtils;
+import com.agentengine.util.common.builder.BuilderMode;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;

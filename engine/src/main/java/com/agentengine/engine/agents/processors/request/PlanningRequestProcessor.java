@@ -1,10 +1,10 @@
 package com.agentengine.engine.agents.processors.request;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.models.LlmRequest;
@@ -17,15 +17,14 @@ import java.util.List;
 /**
  * Injects planning context into the request.
  *
- * <p>Responsibilities:
- * - Add a high-level plan summary to request content.
- * - Inject an active-task focus anchor into content when a task is open.
- * - No-op when no plan is present.
+ * <p>Responsibilities: - Add a high-level plan summary to request content. - Inject an active-task
+ * focus anchor into content when a task is open. - No-op when no plan is present.
  *
  * <p>Ownership: planning context and task focus injection.
  */
 public final class PlanningRequestProcessor implements RequestProcessor {
   public static final PlanningRequestProcessor INSTANCE = new PlanningRequestProcessor();
+
   private PlanningRequestProcessor() {}
 
   @Override
@@ -55,7 +54,8 @@ public final class PlanningRequestProcessor implements RequestProcessor {
                 + "]\n"
                 + taskPrompt
                 + "\n\nFollow the structural thought protocol and your current plan strictly.";
-        appended.add(Content.builder().role("user").parts(List.of(Part.fromText(anchorText))).build());
+        appended.add(
+            Content.builder().role("user").parts(List.of(Part.fromText(anchorText))).build());
       }
     }
 

@@ -38,7 +38,7 @@ public final class CollectionUtils {
   }
 
   public static <T> List<T> append(final List<T> one, T element, final List<T> toAppend) {
-      final List<T> newList = new ArrayList<>(CollectionUtils.nullSafeList(one));
+    final List<T> newList = new ArrayList<>(CollectionUtils.nullSafeList(one));
     newList.add(element);
     newList.addAll(CollectionUtils.nullSafeList(toAppend));
     return newList;
@@ -246,9 +246,9 @@ public final class CollectionUtils {
   }
 
   public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(
-          final Collection<T> collection,
-          final Function<T, K> keyFunction,
-          final Function<T, V> valueFunction) {
+      final Collection<T> collection,
+      final Function<T, K> keyFunction,
+      final Function<T, V> valueFunction) {
     final Map<K, List<V>> map = new HashMap<>();
     for (final T item : collection) {
       final K key = keyFunction.apply(item);

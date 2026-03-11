@@ -12,5 +12,8 @@ public interface PaginationStrategy {
   PaginationDirective buildRequest(PaginationConfig config, PaginationState state);
 
   PaginationState updateState(
-      PaginationConfig config, PaginationState currentState, String responseBody, Object mappedData);
+      PaginationConfig config,
+      PaginationState currentState,
+      String responseBody,
+      Object mappedData);
 }

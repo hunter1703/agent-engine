@@ -18,12 +18,12 @@ import com.agentengine.engine.utils.SessionStateUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
+import com.google.adk.events.Event;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
-import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.time.Instant;
@@ -58,9 +58,11 @@ class GuardrailPluginTest {
     final CallbackContext callbackContext = mock(CallbackContext.class);
     when(callbackContext.invocationContext()).thenReturn(invocationContext);
     final LlmRequest.Builder requestBuilder =
-        LlmRequest.builder().contents(List.of(textContent("please process f040_forbidden payload")));
+        LlmRequest.builder()
+            .contents(List.of(textContent("please process f040_forbidden payload")));
 
-    final boolean empty = plugin.beforeModelCallback(callbackContext, requestBuilder).isEmpty().blockingGet();
+    final boolean empty =
+        plugin.beforeModelCallback(callbackContext, requestBuilder).isEmpty().blockingGet();
 
     assertThat(empty).isTrue();
     assertThat(RunStateUtils.getState(invocationContext).violations())
@@ -206,7 +208,10 @@ class GuardrailPluginTest {
     when(tool.description()).thenReturn("run command");
 
     final boolean empty =
-        plugin.beforeToolCallback(tool, Map.of("command", "echo approved"), toolContext).isEmpty().blockingGet();
+        plugin
+            .beforeToolCallback(tool, Map.of("command", "echo approved"), toolContext)
+            .isEmpty()
+            .blockingGet();
 
     assertThat(empty).isTrue();
     assertThat(SessionStateUtils.isPaused(invocationContext)).isFalse();

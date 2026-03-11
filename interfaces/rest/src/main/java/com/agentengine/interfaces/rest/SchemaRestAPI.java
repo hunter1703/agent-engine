@@ -1,9 +1,9 @@
 package com.agentengine.interfaces.rest;
 
-import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
-import com.agentengine.util.builder.BuilderMode;
+import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
+import com.agentengine.util.common.builder.BuilderMode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -16,7 +16,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -30,7 +29,8 @@ public class SchemaRestAPI {
 
   @Inject
   public SchemaRestAPI(
-      final BuilderDefinitionService definitionService, final Instance<SchemaRequestHandler> handlers) {
+      final BuilderDefinitionService definitionService,
+      final Instance<SchemaRequestHandler> handlers) {
     this.definitionService = definitionService;
     this.handlers =
         handlers.stream()
@@ -41,8 +41,7 @@ public class SchemaRestAPI {
   @Path("/{assetType}")
   @Produces(MediaType.APPLICATION_JSON)
   public Response getSchema(
-      @PathParam("assetType") final String assetType,
-      @QueryParam("mode") final String mode) {
+      @PathParam("assetType") final String assetType, @QueryParam("mode") final String mode) {
     final BuilderMode requestedMode = BuilderMode.fromString(mode);
     if (mode != null && requestedMode == null) {
       return Response.status(Response.Status.BAD_REQUEST)

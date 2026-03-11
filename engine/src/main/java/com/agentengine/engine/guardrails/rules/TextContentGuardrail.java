@@ -3,12 +3,12 @@ package com.agentengine.engine.guardrails.rules;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.guardrails.Guardrail;
-import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailConstants;
+import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
+import com.agentengine.util.common.StringUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,11 +16,7 @@ import java.util.Objects;
 public final class TextContentGuardrail implements Guardrail {
   private static final int DEFAULT_MAX_INPUT = 12_000;
   private static final List<String> DEFAULT_INPUT_BLOCK_PATTERNS =
-      List.of(
-          "ignore previous instructions",
-          "reveal system prompt",
-          "jailbreak",
-          "bypass safety");
+      List.of("ignore previous instructions", "reveal system prompt", "jailbreak", "bypass safety");
 
   private final TextContentGuardrailRule rule;
   private final String id;

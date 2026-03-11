@@ -1,13 +1,12 @@
 package com.agentengine.interfaces.rest.catalog.handlers;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.query.PaginatedResult;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
+import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.HashMap;
 import java.util.Map;
 
 @Singleton
@@ -34,6 +33,6 @@ public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
 
   @Override
   public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
-      return agentService.getAgents(request.getKeys());
+    return agentService.getAgents(request.getKeys());
   }
 }

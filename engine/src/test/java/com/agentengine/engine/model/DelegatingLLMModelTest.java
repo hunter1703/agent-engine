@@ -78,7 +78,8 @@ class DelegatingLLMModelTest {
             true,
             true);
 
-    assertThatThrownBy(() -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
+    assertThatThrownBy(
+            () -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
         .isInstanceOf(NullPointerException.class);
   }
 }

@@ -1,7 +1,6 @@
 package com.agentengine.interfaces.rest.catalog;
 
-import com.agentengine.util.query.PaginatedResult;
-
+import com.agentengine.util.common.query.PaginatedResult;
 import java.util.Map;
 
 /** Interface for asset handlers that process requests for specific asset types */

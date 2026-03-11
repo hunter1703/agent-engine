@@ -1,6 +1,5 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 
 public interface EventMapper<S, T> {

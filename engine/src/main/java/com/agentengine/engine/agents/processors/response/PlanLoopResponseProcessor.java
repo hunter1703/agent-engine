@@ -20,18 +20,16 @@ import java.util.Optional;
 /**
  * Enforces plan/task completion before the final answer.
  *
- * <p>Responsibilities:
- * - Reject final-answer signals when the plan is incomplete.
- * - Surface active task status violations on non-tool turns.
- * - Strip invalid final-answer signals when plan validation fails.
+ * <p>Responsibilities: - Reject final-answer signals when the plan is incomplete. - Surface active
+ * task status violations on non-tool turns. - Strip invalid final-answer signals when plan
+ * validation fails.
  *
  * <p>Ownership: plan/task completion validation and enforcement.
  */
 public final class PlanLoopResponseProcessor implements ResponseProcessor {
   public static final PlanLoopResponseProcessor INSTANCE = new PlanLoopResponseProcessor();
 
-  private PlanLoopResponseProcessor() {
-  }
+  private PlanLoopResponseProcessor() {}
 
   @Override
   public Single<ResponseProcessingResult> processResponse(
@@ -43,8 +41,14 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
     final RunState runState = RunStateUtils.getState(context);
     final Plan plan = runState.plan();
     final Content content = response.content().orElse(null);
-    final boolean hasTools = content != null && content.parts().orElse(List.of()).stream().anyMatch(p -> p.functionCall().isPresent());
-    final boolean hasText = content != null && content.parts().orElse(List.of()).stream().anyMatch(p -> p.text().isPresent() && !p.thought().orElse(false));
+    final boolean hasTools =
+        content != null
+            && content.parts().orElse(List.of()).stream()
+                .anyMatch(p -> p.functionCall().isPresent());
+    final boolean hasText =
+        content != null
+            && content.parts().orElse(List.of()).stream()
+                .anyMatch(p -> p.text().isPresent() && !p.thought().orElse(false));
     final boolean isFinishing = hasText && !hasTools;
 
     if (!isFinishing) {
@@ -57,27 +61,36 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
       }
       final String taskId = PlanningUtils.getTaskIdValue(activeTask);
       final String status = PlanningUtils.getTaskStatusValue(activeTask);
-      final String msg = "System Reminder: Task [" + taskId + "] is still " + status + ". "
-          + "Please complete the work or update the task status before concluding.";
-      runState.addViolation(Violation.builder("incomplete_task")
-          .message("Task " + taskId + " is still " + status)
-          .correctionMessage(msg)
-          .build());
+      final String msg =
+          "System Reminder: Task ["
+              + taskId
+              + "] is still "
+              + status
+              + ". "
+              + "Please complete the work or update the task status before concluding.";
+      runState.addViolation(
+          Violation.builder("incomplete_task")
+              .message("Task " + taskId + " is still " + status)
+              .correctionMessage(msg)
+              .build());
 
       final LlmResponse updatedResponse = response.toBuilder().turnComplete(false).build();
-      return Single.just(ResponseProcessingResult.create(updatedResponse, List.of(), Optional.empty()));
+      return Single.just(
+          ResponseProcessingResult.create(updatedResponse, List.of(), Optional.empty()));
     }
 
     final String planViolation = PlanningValidator.canSubmitFinalAnswerOrError(plan);
     if (planViolation != null) {
       final String toolSummary = ToolUtils.summarizeToolParts(content.parts().orElse(List.of()));
-      final String correctionMessage = toolSummary.isBlank()
-          ? planViolation
-          : planViolation + " Stripped tool parts: " + toolSummary + ".";
-      runState.addViolation(Violation.builder("final_answer_validation")
-          .message(planViolation)
-          .correctionMessage(correctionMessage)
-          .build());
+      final String correctionMessage =
+          toolSummary.isBlank()
+              ? planViolation
+              : planViolation + " Stripped tool parts: " + toolSummary + ".";
+      runState.addViolation(
+          Violation.builder("final_answer_validation")
+              .message(planViolation)
+              .correctionMessage(correctionMessage)
+              .build());
       final List<Part> stripped =
           content.parts().orElse(List.of()).stream()
               .map(

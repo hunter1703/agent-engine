@@ -1,6 +1,6 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;

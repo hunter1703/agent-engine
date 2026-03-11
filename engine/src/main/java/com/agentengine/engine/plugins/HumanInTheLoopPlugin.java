@@ -3,10 +3,10 @@ package com.agentengine.engine.plugins;
 import com.agentengine.engine.agents.processors.request.HumanInTheLoopRequestProcessor;
 import com.agentengine.engine.agents.processors.request.HumanInTheLoopUtils;
 import com.agentengine.engine.api.utils.ContentUtils;
-import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.engine.guardrails.GuardrailUtils;
 import com.agentengine.engine.utils.SessionPauseReason;
 import com.agentengine.engine.utils.SessionStateUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
@@ -14,9 +14,7 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
 import io.reactivex.rxjava3.core.Maybe;
 
-/**
- * Handles short-circuit HITL semantics before model invocation.
- */
+/** Handles short-circuit HITL semantics before model invocation. */
 public final class HumanInTheLoopPlugin extends BasePlugin {
   private static final String NAME = "human_in_the_loop";
 
@@ -66,6 +64,13 @@ public final class HumanInTheLoopPlugin extends BasePlugin {
               : HumanInTheLoopUtils.buildMissingAnswerMessage(
                   SessionStateUtils.getPausePrompt(context));
       return Maybe.just(GuardrailUtils.buildGuardrailResponse(message));
+    }
+    if (isConfirmationPause
+        && !HumanInTheLoopRequestProcessor.hasExplicitToolDecisionMarker(userAnswer)) {
+      context.setEndInvocation(true);
+      return Maybe.just(
+          GuardrailUtils.buildGuardrailResponse(
+              "Missing explicit tool confirmation decision. Resume with decision APPROVE or REJECT."));
     }
     final LlmRequest updated =
         HumanInTheLoopRequestProcessor.INSTANCE

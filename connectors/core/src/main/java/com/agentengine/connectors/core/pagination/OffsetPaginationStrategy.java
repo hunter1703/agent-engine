@@ -17,7 +17,8 @@ public final class OffsetPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(
+      final PaginationConfig config, final PaginationState state) {
     return new PaginationDirective(
         Map.of(
             config.offsetParam(), String.valueOf(state.offset()),

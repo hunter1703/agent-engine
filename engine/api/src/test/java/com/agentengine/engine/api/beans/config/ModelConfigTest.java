@@ -23,7 +23,8 @@ class ModelConfigTest {
 
   @Test
   void shouldReturnProviderWhenTypeKnown() {
-    assertThat(ModelConfig.Provider.valueOfOrDefault("ollama")).isEqualTo(ModelConfig.Provider.OLLAMA);
+    assertThat(ModelConfig.Provider.valueOfOrDefault("ollama"))
+        .isEqualTo(ModelConfig.Provider.OLLAMA);
   }
 
   @Test

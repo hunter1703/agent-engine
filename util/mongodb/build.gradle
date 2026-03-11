@@ -1,0 +1,13 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation(enforcedPlatform(libs.quarkus.bom))
+
+    api project(':util:common')
+    api libs.mongodb.driver.sync
+
+    implementation libs.quarkus.mongodb.client
+    implementation libs.slf4j.api
+}

@@ -2,9 +2,7 @@ package com.agentengine.engine.api.tools;
 
 import java.util.Locale;
 
-/**
- * Relative risk classification for tools used by tool guardrails and policy rules.
- */
+/** Relative risk classification for tools used by tool guardrails and policy rules. */
 public enum ToolRiskLevel {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

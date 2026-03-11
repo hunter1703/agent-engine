@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Early-stopping strategy for parallel branch execution.
- */
+/** Early-stopping strategy for parallel branch execution. */
 public enum ParallelStoppingPolicy {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

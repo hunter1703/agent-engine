@@ -7,8 +7,8 @@ import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.JsonUtils;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.BaseTool;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -66,8 +66,7 @@ public final class AgentToolProvider implements ToolProvider {
   }
 
   private static Tool instantiate(
-      final ToolDefinition definition,
-      final Map<String, Object> toolConfig) {
+      final ToolDefinition definition, final Map<String, Object> toolConfig) {
     final Object[] args = resolveArguments(definition, toolConfig);
     try {
       return definition.constructor().newInstance(args);
@@ -83,8 +82,7 @@ public final class AgentToolProvider implements ToolProvider {
   }
 
   private static Object[] resolveArguments(
-      final ToolDefinition definition,
-      final Map<String, Object> toolConfig) {
+      final ToolDefinition definition, final Map<String, Object> toolConfig) {
     final List<ConstructorParam> params = definition.params();
     if (CollectionUtils.isEmpty(params)) {
       return new Object[0];
@@ -176,7 +174,9 @@ public final class AgentToolProvider implements ToolProvider {
       resolved = CollectionUtils.getFirst(constructors);
     } else {
       throw new IllegalStateException(
-          "Multiple constructors found for " + toolClass.getName() + "; annotate one with @ToolConstructor");
+          "Multiple constructors found for "
+              + toolClass.getName()
+              + "; annotate one with @ToolConstructor");
     }
     Objects.requireNonNull(resolved).setAccessible(true);
     return resolved;
@@ -247,8 +247,7 @@ public final class AgentToolProvider implements ToolProvider {
 
   private static ToolDescriptor validateDescriptor(
       final Class<? extends Tool> toolClass, final ToolDescriptor descriptor) {
-    Objects.requireNonNull(
-        descriptor, "Tool descriptor is required for " + toolClass.getName());
+    Objects.requireNonNull(descriptor, "Tool descriptor is required for " + toolClass.getName());
     if (StringUtils.isBlank(descriptor.name())) {
       throw new IllegalStateException(
           "Tool descriptor name is required for " + toolClass.getName());

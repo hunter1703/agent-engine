@@ -1,10 +1,9 @@
 package com.agentengine.engine.api;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.Callbacks;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -13,10 +12,22 @@ public abstract class Agent extends BaseAgent {
   private final BaseAgentConfig agentConfig;
 
   protected Agent(Builder<?, ?> builder) {
-    this(builder.name(), builder.description(), builder.subAgents(), builder.agentConfig(), builder.beforeAgentCallback(), builder.afterAgentCallback());
+    this(
+        builder.name(),
+        builder.description(),
+        builder.subAgents(),
+        builder.agentConfig(),
+        builder.beforeAgentCallback(),
+        builder.afterAgentCallback());
   }
 
-  protected Agent(String name, String description, List<? extends BaseAgent> subAgents, BaseAgentConfig agentConfig, List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallbacks, List<? extends Callbacks.AfterAgentCallback> afterAgentCallbacks) {
+  protected Agent(
+      String name,
+      String description,
+      List<? extends BaseAgent> subAgents,
+      BaseAgentConfig agentConfig,
+      List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallbacks,
+      List<? extends Callbacks.AfterAgentCallback> afterAgentCallbacks) {
     super(name, description, subAgents, beforeAgentCallbacks, afterAgentCallbacks);
     this.agentConfig = agentConfig;
   }
@@ -25,40 +36,43 @@ public abstract class Agent extends BaseAgent {
     return agentConfig;
   }
 
-  public static abstract class Builder<B extends Builder<?, ?>, A extends Agent> {
+  public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {
     private BaseAgentConfig agentConfig;
     private List<? extends Agent> subAgents = List.of();
 
     public String name() {
-        return agentConfig.getId();
+      return agentConfig.getId();
     }
 
     public String description() {
       final String description = agentConfig.getDescription();
-        return StringUtils.isNotBlank(description) ? description : "Agent with id: " + agentConfig.getId();
+      return StringUtils.isNotBlank(description)
+          ? description
+          : "Agent with id: " + agentConfig.getId();
     }
 
     public B subAgents(List<? extends Agent> subAgents) {
-        this.subAgents = subAgents;
-        //noinspection unchecked
-        return (B) this;
+      this.subAgents = subAgents;
+      //noinspection unchecked
+      return (B) this;
     }
 
     public List<? extends Agent> subAgents() {
-        return subAgents;
+      return subAgents;
     }
 
     public B agentConfig(BaseAgentConfig agentConfig) {
-        this.agentConfig = agentConfig;
-        //noinspection unchecked
-        return (B) this;
+      this.agentConfig = agentConfig;
+      //noinspection unchecked
+      return (B) this;
     }
 
     public BaseAgentConfig agentConfig() {
-        return agentConfig;
+      return agentConfig;
     }
 
-    public B beforeAgentCallback(List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallback) {
+    public B beforeAgentCallback(
+        List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallback) {
       //noinspection unchecked
       return (B) this;
     }
@@ -77,6 +91,5 @@ public abstract class Agent extends BaseAgent {
     }
 
     public abstract A build();
-
   }
 }

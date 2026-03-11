@@ -3,13 +3,13 @@ package com.agentengine.engine.agents;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
-import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
+import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils;
 import com.agentengine.engine.utils.StructuredConcurrencyUtils.TaskOutcome;
 import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Policy-aware parallel orchestrator that emits only aggregated orchestrator output.
  *
- * <p>Branch success is strict: a branch is successful only when a terminal event has
- * {@code turnComplete=true}.
+ * <p>Branch success is strict: a branch is successful only when a terminal event has {@code
+ * turnComplete=true}.
  */
 public final class ParallelOrchestratorAgent extends Agent {
   private final ParallelAggregationPolicy aggregationPolicy;
@@ -102,7 +102,9 @@ public final class ParallelOrchestratorAgent extends Agent {
       tasks.add(() -> runBranch(invocationContext, branchSpec));
     }
 
-    final List<TaskOutcome<BranchExecution>> outcomes = StructuredConcurrencyUtils.runConcurrentlyUntil(tasks, subtask -> shouldStopSubtasks(subtask, successes, requiredSuccesses));
+    final List<TaskOutcome<BranchExecution>> outcomes =
+        StructuredConcurrencyUtils.runConcurrentlyUntil(
+            tasks, subtask -> shouldStopSubtasks(subtask, successes, requiredSuccesses));
 
     final List<BranchExecution> executions = collectExecutions(outcomes);
     final int successful = countSuccessful(executions);
@@ -125,7 +127,10 @@ public final class ParallelOrchestratorAgent extends Agent {
     return branchSpecs;
   }
 
-  private boolean shouldStopSubtasks(final Subtask<? extends BranchExecution> subtask, final AtomicInteger successes, final int requiredSuccesses) {
+  private boolean shouldStopSubtasks(
+      final Subtask<? extends BranchExecution> subtask,
+      final AtomicInteger successes,
+      final int requiredSuccesses) {
     if (stoppingPolicy == ParallelStoppingPolicy.ALL_COMPLETE || requiredSuccesses <= 0) {
       return false;
     }
@@ -139,27 +144,33 @@ public final class ParallelOrchestratorAgent extends Agent {
     return successes.incrementAndGet() >= requiredSuccesses;
   }
 
-  private List<BranchExecution> collectExecutions(final List<TaskOutcome<BranchExecution>> outcomes) {
+  private List<BranchExecution> collectExecutions(
+      final List<TaskOutcome<BranchExecution>> outcomes) {
     final List<BranchExecution> executions = new ArrayList<>(branchSpecs.size());
     for (final TaskOutcome<BranchExecution> outcome : CollectionUtils.nullSafeList(outcomes)) {
       final BranchSpec branchSpec = branchSpecs.get(outcome.index());
       switch (outcome.state()) {
         case SUCCESS -> executions.add(outcome.value());
-        case FAILED -> executions.add(BranchExecution.failed(branchSpec.order(), branchSpec.subAgentId()));
-        case UNAVAILABLE -> executions.add(BranchExecution.unavailable(branchSpec.order(), branchSpec.subAgentId()));
+        case FAILED ->
+            executions.add(BranchExecution.failed(branchSpec.order(), branchSpec.subAgentId()));
+        case UNAVAILABLE ->
+            executions.add(
+                BranchExecution.unavailable(branchSpec.order(), branchSpec.subAgentId()));
       }
     }
     executions.sort(Comparator.comparingInt(BranchExecution::order));
     return executions;
   }
 
-  private static BranchExecution runBranch(final InvocationContext invocationContext, final BranchSpec branchSpec) {
+  private static BranchExecution runBranch(
+      final InvocationContext invocationContext, final BranchSpec branchSpec) {
     try {
       final List<Event> events =
           CollectionUtils.nullSafeList(
               branchSpec.subAgent().runAsync(invocationContext).toList().blockingGet());
       final Event terminalEvent = resolveTerminalEvent(events);
-      final boolean successful = terminalEvent != null && terminalEvent.turnComplete().orElse(false);
+      final boolean successful =
+          terminalEvent != null && terminalEvent.turnComplete().orElse(false);
       final String outputText = extractLatestText(events);
       return BranchExecution.completed(
           branchSpec.order(), branchSpec.subAgentId(), outputText, successful);
@@ -237,7 +248,8 @@ public final class ParallelOrchestratorAgent extends Agent {
         .toList();
   }
 
-  private static List<BranchExecution> successfulExecutions(final List<BranchExecution> executions) {
+  private static List<BranchExecution> successfulExecutions(
+      final List<BranchExecution> executions) {
     return CollectionUtils.nullSafeList(executions).stream()
         .filter(BranchExecution::successful)
         .filter(execution -> StringUtils.isNotBlank(execution.outputText()))
@@ -328,7 +340,8 @@ public final class ParallelOrchestratorAgent extends Agent {
     return policy;
   }
 
-  private static ParallelStoppingPolicy normalizeStoppingPolicy(final ParallelStoppingPolicy policy) {
+  private static ParallelStoppingPolicy normalizeStoppingPolicy(
+      final ParallelStoppingPolicy policy) {
     if (policy == null || policy == ParallelStoppingPolicy.UNKNOWN) {
       return ParallelStoppingPolicy.ALL_COMPLETE;
     }
@@ -338,7 +351,11 @@ public final class ParallelOrchestratorAgent extends Agent {
   private record BranchSpec(int order, String subAgentId, BaseAgent subAgent) {}
 
   private record Result(
-      String outputText, boolean fallbackUsed, int requiredSuccesses, int successful, int completed) {}
+      String outputText,
+      boolean fallbackUsed,
+      int requiredSuccesses,
+      int successful,
+      int completed) {}
 
   private enum BranchStatus {
     COMPLETED,
@@ -354,7 +371,11 @@ public final class ParallelOrchestratorAgent extends Agent {
         final String outputText,
         final boolean successful) {
       return new BranchExecution(
-          order, subAgentId, StringUtils.isBlank(outputText) ? "" : outputText.trim(), successful, BranchStatus.COMPLETED);
+          order,
+          subAgentId,
+          StringUtils.isBlank(outputText) ? "" : outputText.trim(),
+          successful,
+          BranchStatus.COMPLETED);
     }
 
     private static BranchExecution failed(final int order, final String subAgentId) {

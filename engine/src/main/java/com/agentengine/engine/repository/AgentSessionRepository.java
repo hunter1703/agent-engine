@@ -2,13 +2,15 @@ package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
-import com.agentengine.engine.api.query.Filter;
-import com.agentengine.engine.api.query.Filters;
-import com.agentengine.engine.api.query.Query;
-import com.agentengine.engine.api.update.Operation;
-import com.agentengine.engine.api.update.Update;
-import com.agentengine.engine.api.utils.StringUtils;
-import com.agentengine.engine.validation.ConfigValidationService;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.query.Filter;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.update.Operation;
+import com.agentengine.util.common.update.Update;
+import com.agentengine.util.common.validation.ValidationService;
+import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.BaseSessionService;
@@ -39,8 +41,9 @@ public class AgentSessionRepository extends AbstractMongoRepository<AgentSession
   private static final Logger LOG = LoggerFactory.getLogger(AgentSessionRepository.class);
 
   @Inject
-  public AgentSessionRepository(final MongoClientFactory mongoClientFactory, ConfigValidationService configValidationService) {
-    super(mongoClientFactory, "AgentSession", AgentSession.class, configValidationService);
+  public AgentSessionRepository(
+      final MongoClientFactory mongoClientFactory, ValidationService validationService) {
+    super(mongoClientFactory, "AgentSession", AgentSession.class, validationService);
   }
 
   @Override

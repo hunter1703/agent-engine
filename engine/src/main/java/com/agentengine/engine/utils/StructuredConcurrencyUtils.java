@@ -1,7 +1,6 @@
 package com.agentengine.engine.utils;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -24,11 +23,12 @@ public final class StructuredConcurrencyUtils {
     return results;
   }
 
-  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(final List<? extends Callable<T>> tasks, final Predicate<Subtask<? extends T>> stopCondition) {
+  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(
+      final List<? extends Callable<T>> tasks,
+      final Predicate<Subtask<? extends T>> stopCondition) {
     if (CollectionUtils.isEmpty(tasks)) {
       return List.of();
     }
-
 
     final Joiner<T, Stream<Subtask<T>>> joiner = Joiner.allUntil(stopCondition);
 
@@ -72,6 +72,5 @@ public final class StructuredConcurrencyUtils {
     throw new IllegalStateException("Structured subtask did not complete successfully.");
   }
 
-  public record TaskOutcome<T>(
-      int index, Subtask.State state, T value, Throwable error) {}
+  public record TaskOutcome<T>(int index, Subtask.State state, T value, Throwable error) {}
 }

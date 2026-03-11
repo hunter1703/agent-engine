@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.AgentRequest;
 import com.agentengine.engine.api.services.AgentExecutionService;
@@ -19,7 +19,8 @@ class StreamAguiEventsRequestHandlerTest {
   void shouldAssignSessionIdWhenMissing() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
     when(executionService.run(any())).thenReturn(Flowable.empty());
-    final StreamAguiEventsRequestHandler handler = new StreamAguiEventsRequestHandler(executionService);
+    final StreamAguiEventsRequestHandler handler =
+        new StreamAguiEventsRequestHandler(executionService);
 
     final AgentRequest request = new AgentRequest();
     request.setType(AgentRequest.RequestType.STREAM_AGUI_EVENTS.name());
@@ -35,7 +36,8 @@ class StreamAguiEventsRequestHandlerTest {
   void shouldKeepProvidedSessionId() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
     when(executionService.run(any())).thenReturn(Flowable.empty());
-    final StreamAguiEventsRequestHandler handler = new StreamAguiEventsRequestHandler(executionService);
+    final StreamAguiEventsRequestHandler handler =
+        new StreamAguiEventsRequestHandler(executionService);
 
     final AgentRequest request = new AgentRequest();
     request.setType(AgentRequest.RequestType.STREAM_AGUI_EVENTS.name());

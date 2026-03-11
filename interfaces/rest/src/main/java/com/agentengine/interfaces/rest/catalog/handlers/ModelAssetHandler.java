@@ -4,10 +4,9 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.interfaces.rest.catalog.AssetRequest;
 import com.agentengine.interfaces.rest.catalog.NamedAssetHandler;
-import com.agentengine.util.query.PaginatedResult;
+import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Map;
 
 @Singleton
@@ -34,6 +33,6 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
 
   @Override
   public Map<String, ModelConfig> getAssetsByIds(AssetRequest request) {
-      return modelService.getModels(request.getKeys());
+    return modelService.getModels(request.getKeys());
   }
 }

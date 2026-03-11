@@ -31,7 +31,8 @@ class ConnectorAuthMaterialProviderImplTest {
   @Test
   void shouldReturnInputsWhenConnectionFound() {
     final Connection connection =
-        new Connection("brave", Map.of("token", "token-value", "apiKey", "api-key-value", "region", "US"));
+        new Connection(
+            "brave", Map.of("token", "token-value", "apiKey", "api-key-value", "region", "US"));
     when(connectionRepository.findByAppName("brave")).thenReturn(connection);
 
     final Map<String, Object> result = provider.resolve("brave");

@@ -1,9 +1,9 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.util.builder.annotations.UiField;
-import com.agentengine.util.builder.annotations.UiRule;
-import com.agentengine.util.builder.annotations.UiRuleEffect;
-import com.agentengine.util.builder.annotations.UiSelect;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiRule;
+import com.agentengine.util.common.builder.annotations.UiRuleEffect;
+import com.agentengine.util.common.builder.annotations.UiSelect;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
@@ -16,7 +16,10 @@ public class OrchestratorAgentConfig extends BaseAgentConfig {
   private OrchestrationMode orchestrationMode = OrchestrationMode.TRANSFER;
 
   @UiField(label = "Parallel Orchestration", step = "identity", section = "identity", order = 80)
-  @UiRule(effect = UiRuleEffect.VISIBLE, field = "orchestrationMode", values = {"PARALLEL"})
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "orchestrationMode",
+      values = {"PARALLEL"})
   private OrchestratorParallelConfig parallel = new OrchestratorParallelConfig();
 
   public OrchestratorAgentConfig() {

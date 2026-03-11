@@ -1,6 +1,6 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.ArrayList;

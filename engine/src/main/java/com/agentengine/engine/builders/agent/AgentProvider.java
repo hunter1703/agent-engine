@@ -1,6 +1,5 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.builders.AgentBuilder;
@@ -9,7 +8,6 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Map;
 import java.util.function.Function;
 

@@ -1,6 +1,6 @@
 package com.agentengine.engine.providers;
 
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -32,7 +32,8 @@ public class JsonMessageBodyReader implements MessageBodyReader<Object> {
     try {
       return JsonUtils.fromStream(entityStream, type);
     } catch (Exception e) {
-      throw new IllegalArgumentException(String.format("Error deserializing JSON with Jackson: %s", e.getMessage()), e);
+      throw new IllegalArgumentException(
+          String.format("Error deserializing JSON with Jackson: %s", e.getMessage()), e);
     }
   }
 }

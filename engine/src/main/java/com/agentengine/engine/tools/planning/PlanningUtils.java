@@ -1,11 +1,11 @@
 package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.util.common.StringUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -17,39 +17,35 @@ import java.util.stream.Collectors;
 public final class PlanningUtils {
   private static final int MAX_SECTION_ITEMS = 5;
   private static final int MAX_FOCUS_TASKS = 1;
+
   private PlanningUtils() {}
 
   /**
-   * Builds a tree-like string representation of the root plan and its current task hierarchy.
-   * This summary is injected into the LLM context to help the agent track progress.
+   * Builds a tree-like string representation of the root plan and its current task hierarchy. This
+   * summary is injected into the LLM context to help the agent track progress.
    *
-   * Example prompt output:
+   * <p>Example prompt output:
    *
-   * PLAN CONTEXT
-   * Title: Refactor API layer
-   * Status: in_progress
-   * Goal: Migrate all endpoints to flat Task models to resolve recursion issues.
-   * Task IDs: Use the IDs below when updating tasks.
+   * <p>PLAN CONTEXT Title: Refactor API layer Status: in_progress Goal: Migrate all endpoints to
+   * flat Task models to resolve recursion issues. Task IDs: Use the IDs below when updating tasks.
    *
-   * Progress: 1/5 completed (1 in progress, 3 pending)
+   * <p>Progress: 1/5 completed (1 in progress, 3 pending)
    *
-   * CURRENT FOCUS:
-   * - Refactor API layer > Update Plan bean (id: task-2, parent: none) [in_progress] | goal: Update Plan model
+   * <p>CURRENT FOCUS: - Refactor API layer > Update Plan bean (id: task-2, parent: none)
+   * [in_progress] | goal: Update Plan model
    *
-   * NEXT ITEMS:
-   * - Refactor API layer > Define Task bean (id: task-1, parent: none) [todo] | goal: Create Task model
-   * - Refactor API layer > Remove subtasks field (id: task-3, parent: task-2) [todo] | goal: Drop recursion
-   * - Refactor API layer > Add tasks field (id: task-4, parent: task-2) [todo] | goal: Flat list
+   * <p>NEXT ITEMS: - Refactor API layer > Define Task bean (id: task-1, parent: none) [todo] |
+   * goal: Create Task model - Refactor API layer > Remove subtasks field (id: task-3, parent:
+   * task-2) [todo] | goal: Drop recursion - Refactor API layer > Add tasks field (id: task-4,
+   * parent: task-2) [todo] | goal: Flat list
    *
-   * RECENT COMPLETED:
-   * - Refactor API layer > Verify llama-server fix (id: task-5, parent: none) [done] | result: Smoke tested
+   * <p>RECENT COMPLETED: - Refactor API layer > Verify llama-server fix (id: task-5, parent: none)
+   * [done] | result: Smoke tested
    *
-   * Plan Tree (compact):
-   * - [todo] Define Task bean (id: task-1, parent: none)
-   * - [in_progress] Update Plan bean (id: task-2, parent: none)
-   *   - [todo] Remove subtasks field (id: task-3, parent: task-2)
-   *   - [todo] Add tasks field (id: task-4, parent: task-2)
-   * - [done] Verify llama-server recursion fix (id: task-5, parent: none)
+   * <p>Plan Tree (compact): - [todo] Define Task bean (id: task-1, parent: none) - [in_progress]
+   * Update Plan bean (id: task-2, parent: none) - [todo] Remove subtasks field (id: task-3, parent:
+   * task-2) - [todo] Add tasks field (id: task-4, parent: task-2) - [done] Verify llama-server
+   * recursion fix (id: task-5, parent: none)
    *
    * @param plan the root Plan to summarize
    * @return a formatted hierarchical string
@@ -141,8 +137,7 @@ public final class PlanningUtils {
     return CollectionUtils.getFirst(collectOpenTasks(plan));
   }
 
-  private static void appendProgressSummary(
-      final StringBuilder builder, final List<Task> tasks) {
+  private static void appendProgressSummary(final StringBuilder builder, final List<Task> tasks) {
     if (CollectionUtils.isEmpty(tasks)) {
       builder.append("Progress: No subtasks defined yet.\n");
       return;
@@ -173,8 +168,7 @@ public final class PlanningUtils {
     return (int) tasks.stream().filter(task -> getTaskStatusEnum(task) == status).count();
   }
 
-  private static List<Task> filterByStatus(
-      final List<Task> tasks, final TaskStatus status) {
+  private static List<Task> filterByStatus(final List<Task> tasks, final TaskStatus status) {
     if (CollectionUtils.isEmpty(tasks)) {
       return List.of();
     }
@@ -201,7 +195,9 @@ public final class PlanningUtils {
     for (int i = 0; i < limit; i++) {
       builder
           .append("- ")
-          .append(formatTaskLine(items.get(i), includeGoal, includeResult, rootTitle, tasksById, ancestorMap))
+          .append(
+              formatTaskLine(
+                  items.get(i), includeGoal, includeResult, rootTitle, tasksById, ancestorMap))
           .append("\n");
     }
     if (items.size() > maxItems) {
@@ -218,9 +214,7 @@ public final class PlanningUtils {
     final List<Task> level = CollectionUtils.nullSafeList(taskTree.get(parentId));
     for (Task task : level) {
       final String taskId = getTaskIdValue(task);
-      sb.append("  ".repeat(Math.max(0, depth)))
-          .append("- ")
-          .append(taskLabel(task));
+      sb.append("  ".repeat(Math.max(0, depth))).append("- ").append(taskLabel(task));
 
       final List<Task> children = taskTree.get(taskId);
       if (CollectionUtils.isNotEmpty(children)) {
@@ -236,7 +230,8 @@ public final class PlanningUtils {
     }
   }
 
-  private static int countAllDescendants(final String parentId, final Map<String, List<Task>> taskTree) {
+  private static int countAllDescendants(
+      final String parentId, final Map<String, List<Task>> taskTree) {
     int count = 0;
     final List<Task> children = taskTree.get(parentId);
     if (children != null) {
@@ -249,7 +244,9 @@ public final class PlanningUtils {
   }
 
   private static Set<String> collectRelevantTaskIds(
-      final Plan plan, final Map<String, Task> tasksById, final Map<String, List<Task>> ancestorMap) {
+      final Plan plan,
+      final Map<String, Task> tasksById,
+      final Map<String, List<Task>> ancestorMap) {
     final Set<String> relevant = new HashSet<>();
     final List<Task> inProgress =
         plan.getTasks().stream()
@@ -275,7 +272,15 @@ public final class PlanningUtils {
     final String name = getTaskName(task);
     final String id = getTaskId(task);
     final String parentId = getTaskParent(task);
-    return "[" + getTaskStatusValue(task) + "] " + name + " (id: " + id + ", parent: " + parentId + ")";
+    return "["
+        + getTaskStatusValue(task)
+        + "] "
+        + name
+        + " (id: "
+        + id
+        + ", parent: "
+        + parentId
+        + ")";
   }
 
   private static String planTitle(final Plan plan) {
@@ -483,13 +488,16 @@ public final class PlanningUtils {
       appendAncestorMap(root, List.of(), taskTree, ancestorMap, visited);
     }
     for (Task task : CollectionUtils.nullSafeList(plan.getTasks())) {
-      appendAncestorMap(task, resolveAncestors(task.getParentId(), tasksById), taskTree, ancestorMap, visited);
+      appendAncestorMap(
+          task, resolveAncestors(task.getParentId(), tasksById), taskTree, ancestorMap, visited);
     }
     return ancestorMap;
   }
 
   static List<Task> getAncestors(
-      final Task task, final Map<String, Task> tasksById, final Map<String, List<Task>> ancestorMap) {
+      final Task task,
+      final Map<String, Task> tasksById,
+      final Map<String, List<Task>> ancestorMap) {
     final String taskId = getTaskIdValue(task);
     if (StringUtils.isNotBlank(taskId)) {
       final List<Task> cached = ancestorMap.get(taskId);
@@ -579,7 +587,8 @@ public final class PlanningUtils {
     return status != null && status.isTerminal();
   }
 
-  public static boolean isTerminalStatus(final com.agentengine.engine.tools.planning.beans.PlanStatus status) {
+  public static boolean isTerminalStatus(
+      final com.agentengine.engine.tools.planning.beans.PlanStatus status) {
     return status != null && status.isTerminal();
   }
 
@@ -591,7 +600,8 @@ public final class PlanningUtils {
     return getStatusesByTerminalFlag(enumClass, false);
   }
 
-  private static String getStatusesByTerminalFlag(final Class<? extends Enum<?>> enumClass, boolean terminal) {
+  private static String getStatusesByTerminalFlag(
+      final Class<? extends Enum<?>> enumClass, boolean terminal) {
     final List<String> values = new ArrayList<>();
     if (enumClass == TaskStatus.class) {
       for (TaskStatus s : TaskStatus.values()) {
@@ -600,8 +610,10 @@ public final class PlanningUtils {
         }
       }
     } else if (enumClass == com.agentengine.engine.tools.planning.beans.PlanStatus.class) {
-      for (com.agentengine.engine.tools.planning.beans.PlanStatus s : com.agentengine.engine.tools.planning.beans.PlanStatus.values()) {
-        if (s != com.agentengine.engine.tools.planning.beans.PlanStatus.UNKNOWN && s.isTerminal() == terminal) {
+      for (com.agentengine.engine.tools.planning.beans.PlanStatus s :
+          com.agentengine.engine.tools.planning.beans.PlanStatus.values()) {
+        if (s != com.agentengine.engine.tools.planning.beans.PlanStatus.UNKNOWN
+            && s.isTerminal() == terminal) {
           values.add(s.getValue());
         }
       }

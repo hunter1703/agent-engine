@@ -2,11 +2,8 @@ package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.builders.AgentBuilder;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.tools.ToolUtils;
-import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;
 import java.util.ArrayList;
@@ -54,7 +51,8 @@ public class DefaultLLMAgentBuilder extends Agent.Builder<DefaultLLMAgentBuilder
   public String reWriteInstructions() {
     final String fullToolInstructions =
         parseToolCallsFromText ? "# TOOLS\n" + ToolUtils.buildToolMessage(tools) : "";
-    return String.format("""
+    return String.format(
+        """
     # YOUR MANDATE:
     %s
 
@@ -66,7 +64,8 @@ public class DefaultLLMAgentBuilder extends Agent.Builder<DefaultLLMAgentBuilder
     ---
 
     %s
-    """, systemInstructions, protocolInstructions, fullToolInstructions);
+    """,
+        systemInstructions, protocolInstructions, fullToolInstructions);
   }
 
   @Override

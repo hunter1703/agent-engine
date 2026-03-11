@@ -7,7 +7,8 @@ import com.agentengine.engine.guardrails.rules.TextContentGuardrail;
 import jakarta.inject.Singleton;
 
 @Singleton
-public final class TextContentGuardrailProvider implements GuardrailProvider<TextContentGuardrailRule> {
+public final class TextContentGuardrailProvider
+    implements GuardrailProvider<TextContentGuardrailRule> {
 
   @Override
   public GuardrailRuleType type() {

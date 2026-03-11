@@ -1,12 +1,14 @@
 package com.agentengine.engine.repository;
 
-import com.agentengine.engine.api.query.Filters;
-import com.agentengine.engine.api.query.Page;
-import com.agentengine.engine.api.query.PaginatedResult;
-import com.agentengine.engine.api.query.Query;
 import com.agentengine.engine.api.utils.CollectionUtils;
 import com.agentengine.engine.infra.InfraConfig;
-import com.agentengine.engine.validation.ConfigValidationService;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.validation.ValidationService;
+import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -14,7 +16,8 @@ import jakarta.inject.Singleton;
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
   @Inject
-  public InfraMongoRepository(final MongoClientFactory mongoClientFactory, ConfigValidationService validationService) {
+  public InfraMongoRepository(
+      final MongoClientFactory mongoClientFactory, ValidationService validationService) {
     super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class, validationService);
   }
 

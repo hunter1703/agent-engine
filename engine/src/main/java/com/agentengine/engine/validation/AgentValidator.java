@@ -7,9 +7,9 @@ import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
-import com.agentengine.util.validation.ValidationCollector;
-import com.agentengine.util.validation.Validator;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.validation.ValidationCollector;
+import com.agentengine.util.common.validation.Validator;
 import jakarta.inject.Singleton;
 import java.util.List;
 import java.util.function.Predicate;
@@ -84,7 +84,8 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
             .toList();
 
     if (type != BaseAgentConfig.AgentType.ORCHESTRATOR && !subAgents.isEmpty()) {
-      errors.add("subAgentIds are supported only for type=orchestrator; agent_id=" + config.getId());
+      errors.add(
+          "subAgentIds are supported only for type=orchestrator; agent_id=" + config.getId());
     }
     if (type == BaseAgentConfig.AgentType.ORCHESTRATOR
         && (orchestrationMode == OrchestrationMode.SEQUENTIAL

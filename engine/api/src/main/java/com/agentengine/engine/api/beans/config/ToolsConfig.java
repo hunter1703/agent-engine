@@ -1,8 +1,8 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.util.builder.annotations.UiDynamicSchema;
-import com.agentengine.util.builder.annotations.UiField;
-import com.agentengine.util.builder.annotations.UiText;
+import com.agentengine.util.common.builder.annotations.UiDynamicSchema;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiText;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +13,10 @@ public final class ToolsConfig {
   private String toolName;
 
   @UiField(label = "Configuration", order = 20)
-  @UiDynamicSchema(assetType = "tool_configs", assetIdExpr = "$item.toolName", contextIdExpr = "$.id")
+  @UiDynamicSchema(
+      assetType = "tool_configs",
+      assetIdExpr = "$item.toolName",
+      contextIdExpr = "$.id")
   private Map<String, Object> configs;
 
   public ToolsConfig() {}

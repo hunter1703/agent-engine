@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Strategy used to build topic anchors for relevance checks.
- */
+/** Strategy used to build topic anchors for relevance checks. */
 public enum RelevanceAnchorStrategy {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Runtime stage at which a guardrail rule is evaluated.
- */
+/** Runtime stage at which a guardrail rule is evaluated. */
 public enum GuardrailStage {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

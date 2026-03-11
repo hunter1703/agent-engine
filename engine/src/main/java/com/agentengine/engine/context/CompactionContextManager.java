@@ -1,15 +1,15 @@
 package com.agentengine.engine.context;
 
 import com.agentengine.engine.api.ContextManager;
-import com.agentengine.util.beans.BaseEntity;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
-import com.agentengine.util.update.Operation;
-import com.agentengine.util.update.Update;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.repository.AgentSessionRepository;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.update.Operation;
+import com.agentengine.util.common.update.Update;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -24,14 +24,14 @@ import org.slf4j.LoggerFactory;
  * Compacts conversation history once it exceeds a token threshold, keeping a recent window
  * untouched and summarizing older content via an LLM call.
  *
- * <p>The summary is stored in session state (separate from raw events), so user-facing
- * applications retain the full event history while the LLM receives only compacted context.
+ * <p>The summary is stored in session state (separate from raw events), so user-facing applications
+ * retain the full event history while the LLM receives only compacted context.
  */
 public final class CompactionContextManager implements ContextManager {
   private static final Logger LOG = LoggerFactory.getLogger(CompactionContextManager.class);
   private static final String SUMMARY_STATE_KEY_PREFIX = "context_summary_";
   private static final String DEFAULT_PROMPT_TEMPLATE =
-          """
+      """
                   Summarize the following conversation history concisely, preserving all key facts, decisions, tool calls, and outcomes:
 
                   {context}
@@ -93,17 +93,15 @@ public final class CompactionContextManager implements ContextManager {
     }
 
     LOG.warn(
-        "Compaction failed for agent_id={} session_id={}; using full context.",
-        agentId,
-        sessionId);
+        "Compaction failed for agent_id={} session_id={}; using full context.", agentId, sessionId);
     return withSummaryPrefix(existingSummary, contents);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
   /**
-   * Returns the index at which the "recent" window starts, keeping the last
-   * {@code recencyThreshold} tokens intact.
+   * Returns the index at which the "recent" window starts, keeping the last {@code
+   * recencyThreshold} tokens intact.
    */
   private static int findRecentSplitIndex(final List<Content> contents, final int recencyTokens) {
     int consumed = 0;
@@ -132,8 +130,7 @@ public final class CompactionContextManager implements ContextManager {
     return result;
   }
 
-  private static String buildSummaryInput(
-      final String existingSummary, final List<Content> older) {
+  private static String buildSummaryInput(final String existingSummary, final List<Content> older) {
     final StringBuilder sb = new StringBuilder();
     if (StringUtils.isNotBlank(existingSummary)) {
       sb.append("[Previous Summary]\n").append(existingSummary).append("\n\n");
@@ -181,10 +178,7 @@ public final class CompactionContextManager implements ContextManager {
         LlmRequest.builder()
             .contents(
                 List.of(
-                    Content.builder()
-                        .role("user")
-                        .parts(List.of(Part.fromText(prompt)))
-                        .build()))
+                    Content.builder().role("user").parts(List.of(Part.fromText(prompt))).build()))
             .build();
     final BaseLlm model = modelProvider.get(modelId);
     try {

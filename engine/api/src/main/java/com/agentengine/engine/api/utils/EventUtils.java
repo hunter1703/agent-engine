@@ -12,8 +12,8 @@ public final class EventUtils {
   /**
    * Key used to mark an event as internal (pipeline-only).
    *
-   * <p>Uses the {@link State#TEMP_PREFIX} so the value is not merged into session state, but
-   * is preserved in the event's {@code stateDelta} through serialisation round-trips.
+   * <p>Uses the {@link State#TEMP_PREFIX} so the value is not merged into session state, but is
+   * preserved in the event's {@code stateDelta} through serialisation round-trips.
    */
   public static final String INTERNAL_KEY = State.TEMP_PREFIX + "internal";
 

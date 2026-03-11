@@ -1,6 +1,6 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import jakarta.annotation.PreDestroy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,7 +70,9 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
     final Function<K, V> effectiveCreator = creatorOnMiss != null ? creatorOnMiss : defaultCreator;
     if (effectiveCreator == null) {
       throw new IllegalStateException(
-          "No creator configured for cache '" + name + "'. Provide builder creator or on-miss creator.");
+          "No creator configured for cache '"
+              + name
+              + "'. Provide builder creator or on-miss creator.");
     }
     final long now = System.currentTimeMillis();
     final Entry<V> entry =
@@ -206,15 +208,13 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
 
     public Builder<K, V> idleTimeout(final long idleTimeout, final TimeUnit unit) {
       this.idleTimeout = idleTimeout;
-      this.idleTimeoutUnit =
-          unit == null ? DEFAULT_IDLE_TIMEOUT_UNIT : unit;
+      this.idleTimeoutUnit = unit == null ? DEFAULT_IDLE_TIMEOUT_UNIT : unit;
       return this;
     }
 
     public Builder<K, V> cleanupInterval(final long cleanupInterval, final TimeUnit unit) {
       this.cleanupInterval = cleanupInterval;
-      this.cleanupIntervalUnit =
-          unit == null ? DEFAULT_CLEANUP_INTERVAL_UNIT : unit;
+      this.cleanupIntervalUnit = unit == null ? DEFAULT_CLEANUP_INTERVAL_UNIT : unit;
       return this;
     }
 

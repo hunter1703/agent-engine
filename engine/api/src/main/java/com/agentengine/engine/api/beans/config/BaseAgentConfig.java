@@ -1,8 +1,8 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.util.beans.NamedEntity;
-import com.agentengine.util.Secure;
-import com.agentengine.util.builder.annotations.*;
+import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;
@@ -40,7 +40,8 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "Description", step = "identity", section = "identity", order = 40)
   @UiText
-  @Secure private String description;
+  @Secure
+  private String description;
 
   @UiField(label = "Avatar", step = "identity", section = "identity", order = 50)
   @UiText
@@ -52,21 +53,25 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "System Prompt", step = "model", section = "model", order = 20)
   @UiText(multiline = true, rows = 6)
-  @Secure private String systemPrompt;
+  @Secure
+  private String systemPrompt;
 
   @UiField(label = "Context Strategy", step = "model", section = "context", order = 30)
-  @Valid @NotNull private ContextStrategyConfig contextStrategy = new CompactionContextStrategyConfig();
+  @Valid
+  @NotNull
+  private ContextStrategyConfig contextStrategy = new CompactionContextStrategyConfig();
 
   @UiField(label = "Tools", step = "model", section = "model", order = 40)
   private List<ToolsConfig> tools = new ArrayList<>();
 
   @UiField(label = "Sub Agents", step = "identity", section = "identity", order = 60)
   @UiLookup(assetType = "agent")
-  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", operator = UiConditionOperator.IN, values = {"orchestrator"})
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "type",
+      operator = UiConditionOperator.IN,
+      values = {"orchestrator"})
   private List<String> subAgentIds = new ArrayList<>();
-
-  @UiField(label = "Session Store", step = "runtime", section = "runtime", order = 20)
-  private SessionServiceConfig sessionStore = new MongoSessionServiceConfig();
 
   @UiField(label = "Guardrails", step = "guardrails", section = "guardrails", order = 10)
   private GuardrailsConfig guardrails = new GuardrailsConfig();
@@ -180,14 +185,6 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   public void setSubAgentIds(final List<String> subAgentIds) {
     this.subAgentIds = subAgentIds == null ? new ArrayList<>() : new ArrayList<>(subAgentIds);
-  }
-
-  public SessionServiceConfig getSessionStore() {
-    return sessionStore;
-  }
-
-  public void setSessionStore(final SessionServiceConfig sessionStore) {
-    this.sessionStore = sessionStore;
   }
 
   public GuardrailsConfig getGuardrails() {

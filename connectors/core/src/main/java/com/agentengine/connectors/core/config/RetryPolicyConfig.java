@@ -18,7 +18,9 @@ public record RetryPolicyConfig(
     backoffMultiplier = backoffMultiplier <= 0 ? 1.0 : backoffMultiplier;
     backoffType = backoffType == null ? RetryBackoffType.UNKNOWN : backoffType;
     retryableStatusCodes =
-        retryableStatusCodes == null ? List.of(429, 500, 502, 503, 504) : List.copyOf(retryableStatusCodes);
+        retryableStatusCodes == null
+            ? List.of(429, 500, 502, 503, 504)
+            : List.copyOf(retryableStatusCodes);
   }
 
   public static RetryPolicyConfig disabled() {

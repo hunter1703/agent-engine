@@ -9,7 +9,6 @@ import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.quarkus.arc.Arc;
-
 import java.util.List;
 import java.util.Map;
 

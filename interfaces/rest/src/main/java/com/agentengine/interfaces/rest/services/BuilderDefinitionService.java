@@ -2,11 +2,11 @@ package com.agentengine.interfaces.rest.services;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.util.common.builder.BuilderDefinition;
+import com.agentengine.util.common.builder.BuilderDefinitionUtils;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Singleton;
-import com.agentengine.util.builder.BuilderDefinition;
-import com.agentengine.util.builder.BuilderDefinitionUtils;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 

@@ -7,7 +7,6 @@ import com.agentengine.engine.api.tools.annotations.AgentTool;
 import com.agentengine.engine.api.tools.annotations.ToolConstructor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import io.vertx.json.schema.common.dsl.Schemas;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -51,7 +50,8 @@ public final class ShellCommandTool extends Tool {
   public Map<String, Object> execute(
       @ToolSchema(
               name = "command",
-              description = "The shell command to execute. Can include pipes, redirects, and logic operators.")
+              description =
+                  "The shell command to execute. Can include pipes, redirects, and logic operators.")
           final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");

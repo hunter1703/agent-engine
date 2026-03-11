@@ -32,7 +32,9 @@ class ContextManagementPluginTest {
     final ContextManagementPlugin plugin =
         new ContextManagementPlugin(Map.of("agent-1", contextManager));
 
-    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
+    plugin
+        .beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder)
+        .blockingGet();
     final String text = requestBuilder.build().contents().getFirst().text();
     assertThat(text).isEqualTo("agent-1:session-1");
   }
@@ -41,14 +43,17 @@ class ContextManagementPluginTest {
   void shouldKeepOriginalContentsWhenContextManagerFails() {
     final LlmRequest.Builder requestBuilder =
         LlmRequest.builder().contents(List.of(textContent("original")));
-    final ContextManager contextManager = (agentId, sessionId, contents) -> {
-      throw new IllegalStateException("boom");
-    };
+    final ContextManager contextManager =
+        (agentId, sessionId, contents) -> {
+          throw new IllegalStateException("boom");
+        };
 
     final ContextManagementPlugin plugin =
         new ContextManagementPlugin(Map.of("agent-1", contextManager));
 
-    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
+    plugin
+        .beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder)
+        .blockingGet();
     final String text = requestBuilder.build().contents().getFirst().text();
     assertThat(text).isEqualTo("original");
   }

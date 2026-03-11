@@ -10,14 +10,13 @@ import com.agentengine.connectors.core.template.ResolvedValue;
 import com.agentengine.connectors.core.template.ResolvedValueStatus;
 import com.agentengine.connectors.core.template.TemplateResolutionOptions;
 import com.agentengine.connectors.core.template.TemplateResolver;
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 
 @Singleton
 public final class RequestMaterializer {
@@ -31,8 +30,7 @@ public final class RequestMaterializer {
 
   @Inject
   public RequestMaterializer(
-      final TemplateResolver templateResolver,
-      final AuthStrategyRegistry authStrategyRegistry) {
+      final TemplateResolver templateResolver, final AuthStrategyRegistry authStrategyRegistry) {
     this.templateResolver = templateResolver;
     this.authRegistry = authStrategyRegistry;
   }
@@ -45,7 +43,8 @@ public final class RequestMaterializer {
     final boolean strictUnresolved = definition.strictUnresolvedVariables();
 
     final String baseUrl =
-        resolveStringValue(endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
+        resolveStringValue(
+            endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
     final String resolvedPath =
         resolveStringValue(endpoint.path(), endpoint.pathTemplate(), context, strictUnresolved);
 
@@ -86,9 +85,7 @@ public final class RequestMaterializer {
       final boolean omitNulls) {
     final ResolvedValue resolvedValue =
         templateResolver.resolve(
-            mapTemplate,
-            context,
-            new TemplateResolutionOptions(strictUnresolved, omitNulls));
+            mapTemplate, context, new TemplateResolutionOptions(strictUnresolved, omitNulls));
 
     if (resolvedValue.status() == ResolvedValueStatus.NULL_VALUE || resolvedValue.value() == null) {
       return new LinkedHashMap<>();
@@ -132,7 +129,8 @@ public final class RequestMaterializer {
       case JSON -> writeJson(value);
       case FORM_URLENCODED -> toFormEncoded(value);
       case TEXT -> value == null ? null : String.valueOf(value);
-      case UNKNOWN -> throw new ConnectorExecutionException("Body type is required when body is present");
+      case UNKNOWN ->
+          throw new ConnectorExecutionException("Body type is required when body is present");
     };
   }
 
@@ -190,9 +188,7 @@ public final class RequestMaterializer {
     if (templateValue != null && !templateValue.isBlank()) {
       final ResolvedValue resolvedValue =
           templateResolver.resolve(
-              templateValue,
-              context,
-              new TemplateResolutionOptions(strictUnresolved, false));
+              templateValue, context, new TemplateResolutionOptions(strictUnresolved, false));
       return resolvedValue.value() == null ? null : String.valueOf(resolvedValue.value());
     }
     return staticValue;

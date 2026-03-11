@@ -4,10 +4,9 @@ import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolProvider;
 import com.agentengine.engine.api.tools.ToolSuite;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,8 @@ import java.util.function.Supplier;
 @Singleton
 public final class PlanningSuite implements ToolProvider, ToolSuite {
   private static final ToolDescriptor SUITE_DESCRIPTOR =
-      new ToolDescriptor("planning", "Tools for agent planning and task management.", List.of(Tool.ALL), Map.of());
+      new ToolDescriptor(
+          "planning", "Tools for agent planning and task management.", List.of(Tool.ALL), Map.of());
   private static final Map<String, Supplier<Tool>> TOOL_FACTORIES =
       Map.of(
           CreatePlanTool.DESCRIPTOR.name(), CreatePlanTool::new,
@@ -50,8 +50,7 @@ public final class PlanningSuite implements ToolProvider, ToolSuite {
   }
 
   @Override
-  public BaseTool create(final String toolName,
-      final Map<String, Object> toolConfig) {
+  public BaseTool create(final String toolName, final Map<String, Object> toolConfig) {
     if (StringUtils.isBlank(toolName)) {
       return null;
     }

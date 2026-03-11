@@ -14,7 +14,8 @@ class GroovySandboxEvaluatorTest {
   @Test
   void evaluatesSimpleExpressions() {
     assertThat(evaluator.evaluate("a + b", Map.of("a", 10, "b", 5))).isEqualTo(15);
-    assertThat(evaluator.evaluate("text.toUpperCase()", Map.of("text", "hello"))).isEqualTo("HELLO");
+    assertThat(evaluator.evaluate("text.toUpperCase()", Map.of("text", "hello")))
+        .isEqualTo("HELLO");
     assertThat(evaluator.evaluate("user.id", Map.of("user", Map.of("id", 42)))).isEqualTo(42);
   }
 
@@ -30,7 +31,8 @@ class GroovySandboxEvaluatorTest {
 
   @Test
   void rejectsExpressionsLongerThanLimit() {
-    final GroovySandboxEvaluator shortEvaluator = new GroovySandboxEvaluator(Duration.ofMillis(500), 5);
+    final GroovySandboxEvaluator shortEvaluator =
+        new GroovySandboxEvaluator(Duration.ofMillis(500), 5);
     assertThatThrownBy(() -> shortEvaluator.evaluate("123456", Map.of()))
         .isInstanceOf(TemplateResolutionException.class)
         .hasMessageContaining("max length");

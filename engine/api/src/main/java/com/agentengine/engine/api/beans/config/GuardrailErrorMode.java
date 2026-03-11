@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Fallback behavior when guardrail evaluation fails unexpectedly.
- */
+/** Fallback behavior when guardrail evaluation fails unexpectedly. */
 public enum GuardrailErrorMode {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

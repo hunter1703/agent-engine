@@ -29,6 +29,7 @@ guava = "33.2.1-jre"
 stateless4j = "2.6.0"
 testcontainers = "1.20.4"
 testcontainers-redis = "2.2.4"
+mongodb = "5.7.0-beta0"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
@@ -89,7 +90,8 @@ ag-ui-ok-http = { group = "com.ag-ui", name = "ok-http", version.ref = "ok-http"
 jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
 jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
-mongodb-bson = { group = "org.mongodb", name = "bson", version = "5.7.0-beta0" }
+mongodb-bson = { group = "org.mongodb", name = "bson", version.ref = "mongodb" }
+mongodb-driver-sync = { group = "org.mongodb", name = "mongodb-driver-sync", version.ref = "mongodb" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
 microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = "microprofile-openapi-api", version.ref = "microprofile-openapi" }
 json-path = { group = "com.jayway.jsonpath", name = "json-path", version = "2.9.0" }

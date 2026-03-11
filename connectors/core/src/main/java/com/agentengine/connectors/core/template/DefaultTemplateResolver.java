@@ -3,7 +3,6 @@ package com.agentengine.connectors.core.template;
 import com.agentengine.connectors.core.runtime.RequestContext;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,8 +32,10 @@ public final class DefaultTemplateResolver implements TemplateResolver {
       final Object template,
       final RequestContext context,
       final TemplateResolutionOptions options) {
-    final Map<String, Object> variables = context == null ? Map.of() : context.toTemplateVariables();
-    return resolveInternal(template, variables, options == null ? TemplateResolutionOptions.strict() : options);
+    final Map<String, Object> variables =
+        context == null ? Map.of() : context.toTemplateVariables();
+    return resolveInternal(
+        template, variables, options == null ? TemplateResolutionOptions.strict() : options);
   }
 
   @SuppressWarnings("unchecked")
@@ -159,7 +160,8 @@ public final class DefaultTemplateResolver implements TemplateResolver {
       return resolveExpression(fullCurlyMatcher.group(1), variables, options);
     }
 
-    final ResolvedString curlyResolved = replaceInlineExpressions(template, CURLY_EXPRESSION, variables, options);
+    final ResolvedString curlyResolved =
+        replaceInlineExpressions(template, CURLY_EXPRESSION, variables, options);
     if (curlyResolved.status() == ResolvedValueStatus.UNRESOLVED) {
       return ResolvedValue.unresolved();
     }
@@ -206,7 +208,8 @@ public final class DefaultTemplateResolver implements TemplateResolver {
       return value == null ? ResolvedValue.nullValue() : ResolvedValue.resolved(value);
     } catch (UnresolvedVariableException ex) {
       if (options.strictUnresolvedVariables()) {
-        throw new TemplateResolutionException("Unresolved variable in expression: " + expression, ex);
+        throw new TemplateResolutionException(
+            "Unresolved variable in expression: " + expression, ex);
       }
       return ResolvedValue.unresolved();
     }

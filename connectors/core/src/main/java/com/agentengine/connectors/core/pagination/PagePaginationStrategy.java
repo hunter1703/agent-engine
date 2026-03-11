@@ -17,7 +17,8 @@ public final class PagePaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(
+      final PaginationConfig config, final PaginationState state) {
     return new PaginationDirective(
         Map.of(
             config.pageParam(), String.valueOf(state.pageNumber()),

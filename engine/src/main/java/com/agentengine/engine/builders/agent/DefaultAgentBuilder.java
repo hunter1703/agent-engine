@@ -1,7 +1,7 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.agents.DelegatedAgent;
+import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.builders.model.ModelProvider;

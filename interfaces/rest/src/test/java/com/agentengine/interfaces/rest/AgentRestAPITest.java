@@ -122,14 +122,12 @@ class AgentRestAPITest {
     when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
 
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("agent-1")).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
+    when(agentService.getAgent("agent-1"))
+        .thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
 
     final StreamEventsHandler handler = new StreamEventsHandler();
     final AgentRestAPI api =
-        new AgentRestAPI(
-            handlerInstanceWith(handler),
-            agentService,
-            sessionService);
+        new AgentRestAPI(handlerInstanceWith(handler), agentService, sessionService);
 
     final Publisher<BaseEvent> publisher =
         api.resumeEvents("session-1", new ResumeSessionRequest("resume message"));
@@ -200,7 +198,13 @@ class AgentRestAPITest {
     sessionInfo.setState(
         Map.of(
             "sessionState",
-            Map.of("paused", true, "pauseReason", "tool_confirmation", "pauseRequestedAt", Instant.now().toEpochMilli())));
+            Map.of(
+                "paused",
+                true,
+                "pauseReason",
+                "tool_confirmation",
+                "pauseRequestedAt",
+                Instant.now().toEpochMilli())));
     session.setSessionInfo(sessionInfo);
     when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
 
@@ -224,16 +228,22 @@ class AgentRestAPITest {
     sessionInfo.setState(
         Map.of(
             "sessionState",
-            Map.of("paused", true, "pauseReason", "tool_confirmation", "pauseRequestedAt", Instant.now().toEpochMilli())));
+            Map.of(
+                "paused",
+                true,
+                "pauseReason",
+                "tool_confirmation",
+                "pauseRequestedAt",
+                Instant.now().toEpochMilli())));
     session.setSessionInfo(sessionInfo);
     when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
 
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("agent-1")).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
+    when(agentService.getAgent("agent-1"))
+        .thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
     final StreamEventsHandler handler = new StreamEventsHandler();
     final AgentRestAPI api =
-        new AgentRestAPI(
-            handlerInstanceWith(handler), agentService, sessionService);
+        new AgentRestAPI(handlerInstanceWith(handler), agentService, sessionService);
 
     api.resumeEvents("session-1", new ResumeSessionRequest("", ConfirmationDecision.APPROVE));
 
@@ -246,10 +256,7 @@ class AgentRestAPITest {
     when(agentService.getAgent(any())).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
     final Instance<AgentRequestHandler<?>> emptyHandlers = handlerInstanceWith();
     final AgentRestAPI api =
-        new AgentRestAPI(
-            emptyHandlers,
-            agentService,
-            mock(SessionService.class));
+        new AgentRestAPI(emptyHandlers, agentService, mock(SessionService.class));
 
     assertThatThrownBy(() -> api.events(new AgentRequest()))
         .isInstanceOf(WebApplicationException.class)
@@ -431,7 +438,8 @@ class AgentRestAPITest {
     return instance;
   }
 
-  private static final class StreamEventsHandler implements AgentRequestHandler<Flowable<BaseEvent>> {
+  private static final class StreamEventsHandler
+      implements AgentRequestHandler<Flowable<BaseEvent>> {
     private AgentRequest lastRequest;
 
     @Override

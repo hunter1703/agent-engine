@@ -3,7 +3,7 @@ package com.agentengine.connectors.core.template;
 import java.util.Map;
 
 public enum TemplateDirective {
-  UNKNOWN("") ,
+  UNKNOWN(""),
   EXPR("$expr"),
   TEMPLATE("$template"),
   OPTIONAL("$optional"),
@@ -44,7 +44,8 @@ public enum TemplateDirective {
     return Map.of(EXPR.key(), expression, OPTIONAL.key(), true);
   }
 
-  public static Map<String, Object> includeIf(final String conditionExpression, final Object template) {
+  public static Map<String, Object> includeIf(
+      final String conditionExpression, final Object template) {
     return Map.of(INCLUDE_IF.key(), conditionExpression, TEMPLATE.key(), template);
   }
 }

@@ -2,11 +2,11 @@ package com.agentengine.engine.builders.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.JsonUtils;
 import com.agentengine.engine.api.utils.ResourceUtils;
-import com.agentengine.util.StringUtils;
-import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
+import com.agentengine.engine.utils.ModelUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
 import dev.langchain4j.model.chat.ChatModel;

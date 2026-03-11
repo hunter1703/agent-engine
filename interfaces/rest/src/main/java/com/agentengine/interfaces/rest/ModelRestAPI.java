@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;

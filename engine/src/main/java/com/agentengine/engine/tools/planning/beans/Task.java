@@ -4,9 +4,7 @@ import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import java.util.UUID;
 
 public class Task {
-  @ToolSchema(
-      description = "Unique identifier for the task",
-      optional = true)
+  @ToolSchema(description = "Unique identifier for the task", optional = true)
   private String taskId = UUID.randomUUID().toString();
 
   @ToolSchema(

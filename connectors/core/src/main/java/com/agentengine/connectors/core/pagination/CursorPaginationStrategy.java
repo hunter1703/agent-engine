@@ -18,7 +18,8 @@ public final class CursorPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(
+      final PaginationConfig config, final PaginationState state) {
     final Map<String, String> queryParams = new LinkedHashMap<>();
     if (config.pageSizeParam() != null && !config.pageSizeParam().isBlank()) {
       queryParams.put(config.pageSizeParam(), String.valueOf(config.pageSize()));

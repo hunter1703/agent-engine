@@ -3,11 +3,11 @@ package com.agentengine.engine.api.utils;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class StateMachine<S, T, V>
-    extends com.github.oxo42.stateless4j.StateMachine<S, T> {
+public class StateMachine<S, T, V> extends com.github.oxo42.stateless4j.StateMachine<S, T> {
   private final StateMachineConfiguration<S, T, V> stateConfiguration;
 
-  public StateMachine(final S initState, final StateMachineConfiguration<S, T, V> stateConfiguration) {
+  public StateMachine(
+      final S initState, final StateMachineConfiguration<S, T, V> stateConfiguration) {
     super(initState, stateConfiguration);
     this.stateConfiguration = stateConfiguration;
   }

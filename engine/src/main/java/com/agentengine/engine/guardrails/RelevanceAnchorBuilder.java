@@ -1,23 +1,24 @@
 package com.agentengine.engine.guardrails;
 
-import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
+import static com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy.*;
+
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
-import com.agentengine.util.StringUtils;
+import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy.*;
-
 public final class RelevanceAnchorBuilder {
   private RelevanceAnchorBuilder() {}
 
-  public static String build(final InvocationContext context, final RelevanceAnchorStrategy strategy) {
+  public static String build(
+      final InvocationContext context, final RelevanceAnchorStrategy strategy) {
     final OutputRelevanceGuardrailRule config = new OutputRelevanceGuardrailRule();
     config.setAnchorStrategy(strategy);
     return build(context, config);
@@ -89,6 +90,9 @@ public final class RelevanceAnchorBuilder {
   }
 
   private static String joinNonBlank(final List<String> values) {
-    return values.stream().filter(StringUtils::isNotBlank).reduce((a, b) -> a + "\n" + b).orElse("");
+    return values.stream()
+        .filter(StringUtils::isNotBlank)
+        .reduce((a, b) -> a + "\n" + b)
+        .orElse("");
   }
 }

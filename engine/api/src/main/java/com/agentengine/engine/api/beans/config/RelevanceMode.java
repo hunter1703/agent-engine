@@ -2,9 +2,7 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/**
- * Controls how response-relevance drift is handled across retries.
- */
+/** Controls how response-relevance drift is handled across retries. */
 public enum RelevanceMode {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

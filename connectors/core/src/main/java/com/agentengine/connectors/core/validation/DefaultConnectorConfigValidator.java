@@ -33,7 +33,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
     validateTemplateSyntax("headers", definition.headers(), issues);
     validateTemplateSyntax("query", definition.query(), issues);
-    validateTemplateSyntax("body", definition.body() == null ? null : definition.body().template(), issues);
+    validateTemplateSyntax(
+        "body", definition.body() == null ? null : definition.body().template(), issues);
 
     return new ConfigValidationResult(issues);
   }
@@ -55,7 +56,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
     if (!hasBaseUrl && !hasBaseTemplate) {
       issues.add(
           ValidationIssue.error(
-              "endpoint.baseUrl", "Either endpoint.baseUrl or endpoint.baseUrlTemplate is required"));
+              "endpoint.baseUrl",
+              "Either endpoint.baseUrl or endpoint.baseUrlTemplate is required"));
     }
 
     if (hasBaseUrl && hasBaseTemplate) {
@@ -71,7 +73,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
         && !endpoint.pathTemplate().isBlank()) {
       issues.add(
           ValidationIssue.error(
-              "endpoint.pathTemplate", "Only one of endpoint.path or endpoint.pathTemplate is allowed"));
+              "endpoint.pathTemplate",
+              "Only one of endpoint.path or endpoint.pathTemplate is allowed"));
     }
   }
 
@@ -91,7 +94,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
     }
 
     if (bodyConfig.type() == BodyType.UNKNOWN) {
-      issues.add(ValidationIssue.error("body.type", "Body type is required when body is configured"));
+      issues.add(
+          ValidationIssue.error("body.type", "Body type is required when body is configured"));
     }
   }
 
@@ -108,7 +112,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
     switch (pagination.type()) {
       case PAGE -> {
-        requireField(issues, pagination.pageParam(), "pagination.pageParam", "pageParam is required");
+        requireField(
+            issues, pagination.pageParam(), "pagination.pageParam", "pageParam is required");
         requireField(
             issues,
             pagination.pageSizeParam(),
@@ -118,7 +123,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
       case OFFSET -> {
         requireField(
             issues, pagination.offsetParam(), "pagination.offsetParam", "offsetParam is required");
-        requireField(issues, pagination.limitParam(), "pagination.limitParam", "limitParam is required");
+        requireField(
+            issues, pagination.limitParam(), "pagination.limitParam", "limitParam is required");
       }
       case CURSOR -> {
         requireField(
@@ -172,9 +178,7 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
   @SuppressWarnings("unchecked")
   private static void validateTemplateSyntax(
-      final String path,
-      final Object value,
-      final List<ValidationIssue> issues) {
+      final String path, final Object value, final List<ValidationIssue> issues) {
     if (value == null) {
       return;
     }
@@ -182,7 +186,8 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
     if (value instanceof String stringValue) {
       if (!hasBalancedTemplateDelimiters(stringValue)) {
         issues.add(
-            ValidationIssue.error(path, "Template delimiters are unbalanced for value: " + stringValue));
+            ValidationIssue.error(
+                path, "Template delimiters are unbalanced for value: " + stringValue));
       }
       return;
     }

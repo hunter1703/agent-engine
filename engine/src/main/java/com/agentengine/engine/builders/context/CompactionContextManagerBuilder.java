@@ -6,13 +6,13 @@ import com.agentengine.engine.api.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.builders.ContextManagerBuilder;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.context.CompactionContextManager;
 import com.agentengine.engine.context.NoOpContextManager;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -60,8 +60,7 @@ public class CompactionContextManagerBuilder
     if (StringUtils.isNotBlank(config.getModelId())) {
       return config.getModelId();
     }
-    final DefaultModelConfig defaults =
-        infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+    final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
     if (defaults != null && StringUtils.isNotBlank(defaults.getCompactionModelId())) {
       return defaults.getCompactionModelId();
     }

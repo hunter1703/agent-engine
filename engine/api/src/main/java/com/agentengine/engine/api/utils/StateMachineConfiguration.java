@@ -10,10 +10,12 @@ public class StateMachineConfiguration<S, T, V> extends StateMachineConfig<S, T>
 
   @Override
   public TransitionConfiguration<S, T, V> configure(final S state) {
-    return configurations.computeIfAbsent(state, value -> {
-      super.configure(value);
-      return new TransitionConfiguration<>(this, value);
-    });
+    return configurations.computeIfAbsent(
+        state,
+        value -> {
+          super.configure(value);
+          return new TransitionConfiguration<>(this, value);
+        });
   }
 
   public Supplier<V> getHandler(final S from, final T trigger) {

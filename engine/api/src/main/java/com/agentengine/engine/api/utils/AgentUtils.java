@@ -13,10 +13,4 @@ public final class AgentUtils {
     }
     return agentConfig.getContextStrategy();
   }
-
-  public static ContextStrategyConfig.ContextStrategyType resolveContextStrategyType(
-      final BaseAgentConfig agentConfig) {
-    final ContextStrategyConfig strategy = resolveContextStrategy(agentConfig);
-    return ContextStrategyConfig.ContextStrategyType.valueOfOrDefault(strategy.getType());
-  }
 }

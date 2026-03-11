@@ -1,12 +1,12 @@
 package com.agentengine.engine.api.beans.config;
 
-import com.agentengine.util.builder.annotations.UiConditionOperator;
-import com.agentengine.util.builder.annotations.UiField;
-import com.agentengine.util.builder.annotations.UiNumber;
-import com.agentengine.util.builder.annotations.UiRule;
-import com.agentengine.util.builder.annotations.UiRuleEffect;
-import com.agentengine.util.builder.annotations.UiSelect;
-import com.agentengine.util.builder.annotations.UiText;
+import com.agentengine.util.common.builder.annotations.UiConditionOperator;
+import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiNumber;
+import com.agentengine.util.common.builder.annotations.UiRule;
+import com.agentengine.util.common.builder.annotations.UiRuleEffect;
+import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.common.builder.annotations.UiText;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
@@ -41,7 +41,10 @@ public class OutputRelevanceGuardrailRule extends GuardrailRule {
 
   @UiField(label = "Recency", order = 60)
   @UiNumber
-  @UiRule(effect = UiRuleEffect.VISIBLE, field = "anchorStrategy", values = {"RECENT_USER"})
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "anchorStrategy",
+      values = {"RECENT_USER"})
   private int recency = 5;
 
   public OutputRelevanceGuardrailRule() {

@@ -1,11 +1,11 @@
 package com.agentengine.engine.tools.planning;
 
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.PlanStatus;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.util.common.StringUtils;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -46,7 +46,9 @@ public final class PlanningValidator {
     }
     final Map<String, List<Task>> parentVsTasks = PlanningUtils.groupTasksByParent(plan);
     final Task openTask = findFirstOpenTask(plan);
-    if (plan.getStatus() != null && plan.getStatus() != PlanStatus.IN_PROGRESS && openTask != null) {
+    if (plan.getStatus() != null
+        && plan.getStatus() != PlanStatus.IN_PROGRESS
+        && openTask != null) {
       return planLabel
           + " is "
           + describePlanStatus(plan)
@@ -56,7 +58,8 @@ public final class PlanningValidator {
           + describeTaskStatus(openTask)
           + ".";
     }
-    if (!PlanningUtils.isTerminalStatus(plan.getStatus()) && StringUtils.isNotBlank(plan.getResult())) {
+    if (!PlanningUtils.isTerminalStatus(plan.getStatus())
+        && StringUtils.isNotBlank(plan.getResult())) {
       return planLabel + " is " + describePlanStatus(plan) + " but has a result.";
     }
     if (PlanningUtils.isTerminalStatus(plan.getStatus()) && StringUtils.isBlank(plan.getResult())) {
@@ -113,7 +116,9 @@ public final class PlanningValidator {
       return describePlan(plan)
           + " is "
           + describePlanStatus(plan)
-          + "; must be " + PlanStatus.IN_PROGRESS.getValue() + " to add tasks.";
+          + "; must be "
+          + PlanStatus.IN_PROGRESS.getValue()
+          + " to add tasks.";
     }
     if (task == null) {
       return "Task is required for " + describePlan(plan) + ".";
@@ -154,7 +159,9 @@ public final class PlanningValidator {
         return describePlan(plan)
             + " is "
             + describePlanStatus(plan)
-            + "; must be " + PlanStatus.IN_PROGRESS.getValue() + " before starting tasks.";
+            + "; must be "
+            + PlanStatus.IN_PROGRESS.getValue()
+            + " before starting tasks.";
       }
       final String ancestorError = validateAncestorsInProgress(task, tasksById);
       if (ancestorError != null) {
@@ -165,7 +172,8 @@ public final class PlanningValidator {
       if (lineageError != null) {
         return lineageError;
       }
-      return validateInProgressOrder(plan, tasksById, PlanningUtils.groupTasksByParent(plan), inProgressTasks);
+      return validateInProgressOrder(
+          plan, tasksById, PlanningUtils.groupTasksByParent(plan), inProgressTasks);
     }
     return null;
   }
@@ -182,13 +190,17 @@ public final class PlanningValidator {
       return "The 'result' field is required when marking a task as " + newStatus.getValue() + ".";
     }
     if (!PlanningUtils.isTerminalStatus(newStatus) && StringUtils.isNotBlank(result)) {
-      return "The 'result' field can only be set when marking a task as " + PlanningUtils.getTerminalStatuses(TaskStatus.class) + ".";
+      return "The 'result' field can only be set when marking a task as "
+          + PlanningUtils.getTerminalStatuses(TaskStatus.class)
+          + ".";
     }
     if (PlanningUtils.isTerminalStatus(plan.getStatus())) {
       return describePlan(plan)
           + " is "
           + describePlanStatus(plan)
-          + "; must be " + PlanStatus.IN_PROGRESS.getValue() + " to update tasks.";
+          + "; must be "
+          + PlanStatus.IN_PROGRESS.getValue()
+          + " to update tasks.";
     }
     final TaskStatus currentStatus = PlanningUtils.getTaskStatusEnum(task);
     if (currentStatus == TaskStatus.IN_PROGRESS && newStatus == TaskStatus.TODO) {
@@ -199,11 +211,9 @@ public final class PlanningValidator {
           + TaskStatus.TODO.getValue()
           + ".";
     }
-    if (PlanningUtils.isTerminalStatus(currentStatus) && !PlanningUtils.isTerminalStatus(newStatus)) {
-      return describeTask(task)
-          + " is "
-          + currentStatus.getValue()
-          + "; cannot reopen it.";
+    if (PlanningUtils.isTerminalStatus(currentStatus)
+        && !PlanningUtils.isTerminalStatus(newStatus)) {
+      return describeTask(task) + " is " + currentStatus.getValue() + "; cannot reopen it.";
     }
 
     final Map<String, Task> tasksById = PlanningUtils.getTasksById(plan);
@@ -214,7 +224,9 @@ public final class PlanningValidator {
         return describePlan(plan)
             + " is "
             + describePlanStatus(plan)
-            + "; must be " + PlanStatus.IN_PROGRESS.getValue() + " before starting tasks.";
+            + "; must be "
+            + PlanStatus.IN_PROGRESS.getValue()
+            + " before starting tasks.";
       }
       final String ancestorError = validateAncestorsInProgress(task, tasksById);
       if (ancestorError != null) {
@@ -253,7 +265,10 @@ public final class PlanningValidator {
             + ").";
       }
       if (StringUtils.isBlank(result)) {
-        return describeTask(task) + " is being marked " + newStatus.getValue() + " but is missing a result.";
+        return describeTask(task)
+            + " is being marked "
+            + newStatus.getValue()
+            + " but is missing a result.";
       }
     }
 
@@ -266,12 +281,12 @@ public final class PlanningValidator {
   }
 
   @Deprecated
-  public static String canUpdateTask(
-      final Plan plan, final Task task, final TaskStatus newStatus) {
+  public static String canUpdateTask(final Plan plan, final Task task, final TaskStatus newStatus) {
     return canUpdateTask(plan, task, newStatus, null);
   }
 
-  public static String canFinishPlan(final Plan plan, final PlanStatus newStatus, final String result) {
+  public static String canFinishPlan(
+      final Plan plan, final PlanStatus newStatus, final String result) {
     if (plan == null || newStatus == null) {
       return null;
     }
@@ -279,18 +294,22 @@ public final class PlanningValidator {
       return describePlan(plan) + " has unknown status.";
     }
     if (!PlanningUtils.isTerminalStatus(newStatus)) {
-      return "The '" + newStatus + "' is not a terminal status. Allowed values are [" + PlanningUtils.getTerminalStatuses(PlanStatus.class) + "].";
+      return "The '"
+          + newStatus
+          + "' is not a terminal status. Allowed values are ["
+          + PlanningUtils.getTerminalStatuses(PlanStatus.class)
+          + "].";
     }
     final Task openTask = findFirstOpenTask(plan);
     if (openTask != null) {
       return describePlan(plan)
-              + " cannot be marked "
-              + newStatus.getValue()
-              + " while "
-              + describeTask(openTask)
-              + " is "
-              + describeTaskStatus(openTask)
-              + ".";
+          + " cannot be marked "
+          + newStatus.getValue()
+          + " while "
+          + describeTask(openTask)
+          + " is "
+          + describeTaskStatus(openTask)
+          + ".";
     }
     if (StringUtils.isBlank(result)) {
       return "The 'result' field is required when marking a plan as " + newStatus.getValue() + ".";
@@ -306,9 +325,7 @@ public final class PlanningValidator {
     if (!PlanningUtils.isTerminalStatus(status)) {
       final Task openTask = findFirstOpenTask(plan);
       final String openTaskMessage =
-          openTask == null
-              ? ""
-              : " and has open tasks (e.g., " + describeTask(openTask) + ")";
+          openTask == null ? "" : " and has open tasks (e.g., " + describeTask(openTask) + ")";
       return "Cannot submit final answer while "
           + describePlan(plan)
           + " is "
@@ -349,7 +366,9 @@ public final class PlanningValidator {
       if (PlanningUtils.getTaskStatusEnum(parent) != TaskStatus.IN_PROGRESS) {
         return "Parent "
             + describeTask(parent)
-            + " must be " + TaskStatus.IN_PROGRESS.getValue() + " before starting child "
+            + " must be "
+            + TaskStatus.IN_PROGRESS.getValue()
+            + " before starting child "
             + describeTask(task)
             + ".";
       }
@@ -409,7 +428,6 @@ public final class PlanningValidator {
         + ".";
   }
 
-
   private static String validateInProgressOrder(
       final Plan plan,
       final Map<String, Task> tasksById,
@@ -440,7 +458,6 @@ public final class PlanningValidator {
     }
     return null;
   }
-
 
   private static List<Task> collectInProgressTasks(
       final Plan plan,
@@ -494,8 +511,7 @@ public final class PlanningValidator {
     return null;
   }
 
-  private static Task findDeepestTask(
-      final List<Task> tasks, final Map<String, Task> tasksById) {
+  private static Task findDeepestTask(final List<Task> tasks, final Map<String, Task> tasksById) {
     Task deepest = null;
     int maxDepth = -1;
     for (Task task : tasks) {
@@ -523,8 +539,7 @@ public final class PlanningValidator {
     return depth;
   }
 
-  private static Set<String> collectLineageIds(
-      final Task task, final Map<String, Task> tasksById) {
+  private static Set<String> collectLineageIds(final Task task, final Map<String, Task> tasksById) {
     final Set<String> lineage = new HashSet<>();
     Task current = task;
     while (current != null) {

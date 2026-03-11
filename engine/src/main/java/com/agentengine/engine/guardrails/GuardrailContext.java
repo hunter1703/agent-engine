@@ -46,11 +46,7 @@ public record GuardrailContext(
     }
 
     public GuardrailContext build() {
-      return new GuardrailContext(
-          text,
-          toolDescriptor,
-          toolArgs,
-          invocationContext);
+      return new GuardrailContext(text, toolDescriptor, toolArgs, invocationContext);
     }
   }
 }

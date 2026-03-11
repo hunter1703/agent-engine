@@ -1,7 +1,7 @@
 package com.agentengine.connectors.core.load;
 
 import com.agentengine.connectors.core.config.ConnectorDefinition;
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
 import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +17,8 @@ public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader
       final String content = Files.readString(path);
       return parse(path.getFileName().toString(), content);
     } catch (IOException ex) {
-      throw new ConnectorConfigLoadException("Failed to load connector config from path: " + path, ex);
+      throw new ConnectorConfigLoadException(
+          "Failed to load connector config from path: " + path, ex);
     }
   }
 

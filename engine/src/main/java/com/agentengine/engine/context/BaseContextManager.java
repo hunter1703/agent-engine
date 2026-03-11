@@ -13,7 +13,8 @@ public abstract class BaseContextManager implements ContextManager {
   }
 
   @Override
-  public List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents) {
+  public List<Content> buildPrompt(
+      final String agentId, final String sessionId, final List<Content> contents) {
     return promptBuilder.apply(contents);
   }
 }

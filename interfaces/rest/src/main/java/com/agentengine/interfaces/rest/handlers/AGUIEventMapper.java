@@ -1,17 +1,15 @@
 package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.api.utils.*;
-import com.agentengine.util.JsonUtils;
 import com.agentengine.interfaces.rest.dto.CorrectionEvent;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agui.core.event.*;
 import com.agui.core.message.Role;
 import com.google.adk.events.Event;
 import com.google.genai.types.*;
 import io.reactivex.rxjava3.core.Flowable;
-
 import java.util.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +24,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   @Override
   public Flowable<BaseEvent> map(final Event event) {
-    LOG.debug("Input event received for mapping - eventId={}, author={}", event.id(), event.author());
+    LOG.debug(
+        "Input event received for mapping - eventId={}, author={}", event.id(), event.author());
 
     Flowable<BaseEvent> eventFlow = Flowable.empty();
     if (state.runId == null) {
@@ -36,7 +35,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       startEvent.setThreadId(state.sessionId);
 
       decorateEvent(startEvent);
-      LOG.debug("Generated output event - eventType=RunStartedEvent, runId={}", startEvent.getRunId());
+      LOG.debug(
+          "Generated output event - eventType=RunStartedEvent, runId={}", startEvent.getRunId());
 
       eventFlow = eventFlow.concatWith(Flowable.just(startEvent));
     }
@@ -51,7 +51,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
           final Flowable<BaseEvent> flowable = finishStepIfNeeded(true);
           final RunFinishedEvent event = buildRunFinished(state.runId);
           decorateEvent(event);
-          LOG.debug("Generated output event in onComplete - eventType=RunFinishedEvent, runId={}", event.getRunId());
+          LOG.debug(
+              "Generated output event in onComplete - eventType=RunFinishedEvent, runId={}",
+              event.getRunId());
           return flowable.concatWith(Flowable.just(event));
         });
   }
@@ -133,7 +135,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final StepStartedEvent stepEvent = new StepStartedEvent();
     stepEvent.setStepName(state.currentStepName);
     decorateEvent(stepEvent);
-    LOG.debug("Generated output event - eventType=StepStartedEvent, stepName={}", stepEvent.getStepName());
+    LOG.debug(
+        "Generated output event - eventType=StepStartedEvent, stepName={}",
+        stepEvent.getStepName());
     return Flowable.just(stepEvent);
   }
 
@@ -181,13 +185,12 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       state.thoughtsBuffer.append(text);
     }
     return emitThoughtContentIfNeeded(text, partial);
-
   }
 
   private Flowable<BaseEvent> endThinkingMessageIfNeeded(final boolean partial) {
     if (partial) {
-        LOG.debug("Partial thinking message, skipping ThinkingTextMessageEndEvent generation");
-        return Flowable.empty();
+      LOG.debug("Partial thinking message, skipping ThinkingTextMessageEndEvent generation");
+      return Flowable.empty();
     }
     final ThinkingTextMessageEndEvent event = new ThinkingTextMessageEndEvent();
     decorateEvent(event);
@@ -219,7 +222,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final TextMessageStartEvent start = new TextMessageStartEvent();
     start.setMessageId(state.currentTextMessageId);
     decorateEvent(start);
-    LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.getMessageId());
+    LOG.debug(
+        "Generated output event - eventType=TextMessageStartEvent, msgId={}", start.getMessageId());
     return Flowable.just(start);
   }
 
@@ -227,14 +231,17 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (StringUtils.isBlank(text)) {
       return Flowable.empty();
     }
-    LOG.debug("Processing message mapping - msgId={}, partial={}", state.currentTextMessageId, partial);
+    LOG.debug(
+        "Processing message mapping - msgId={}, partial={}", state.currentTextMessageId, partial);
     if (partial) {
       state.textBuffer.append(text);
       final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
       chunk.setMessageId(state.currentTextMessageId);
       chunk.setDelta(text);
       decorateEvent(chunk);
-      LOG.debug("Generated output event - eventType=TextMessageChunkEvent, msgId={}", chunk.getMessageId());
+      LOG.debug(
+          "Generated output event - eventType=TextMessageChunkEvent, msgId={}",
+          chunk.getMessageId());
       return Flowable.just(chunk);
     } else {
       state.textBuffer = new StringBuilder(text);
@@ -244,8 +251,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   private Flowable<TextMessageEndEvent> endTextMessageIfNeeded(final boolean partial) {
     if (partial) {
-        LOG.debug("Partial message, skipping TextMessageEndEvent generation");
-        return Flowable.empty();
+      LOG.debug("Partial message, skipping TextMessageEndEvent generation");
+      return Flowable.empty();
     }
     return emitTextMessageEnd();
   }
@@ -263,7 +270,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
     Flowable<BaseEvent> flowable = Flowable.empty();
     if (state.thinkingMessageOpen) {
-      flowable = emitThoughtContentIfNeeded(state.thoughtsBuffer.toString(), false).concatWith(endThinkingMessageIfNeeded(false));
+      flowable =
+          emitThoughtContentIfNeeded(state.thoughtsBuffer.toString(), false)
+              .concatWith(endThinkingMessageIfNeeded(false));
     }
     return flowable.concatWith(endThinkingIfNeeded());
   }
@@ -279,7 +288,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     decorateEvent(content);
     state.finalAnswer = bufferedText;
     state.textMessageContentEmitted = true;
-    LOG.debug("Generated output event - eventType=TextMessageContentEvent, msgId={}", content.getMessageId());
+    LOG.debug(
+        "Generated output event - eventType=TextMessageContentEvent, msgId={}",
+        content.getMessageId());
     return Flowable.just(content);
   }
 
@@ -301,7 +312,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final TextMessageEndEvent end = new TextMessageEndEvent();
     end.setMessageId(state.currentTextMessageId);
     decorateEvent(end);
-    LOG.debug("Generated output event - eventType=TextMessageEndEvent, msgId={}", end.getMessageId());
+    LOG.debug(
+        "Generated output event - eventType=TextMessageEndEvent, msgId={}", end.getMessageId());
     resetTextMessageState();
     return Flowable.just(end);
   }
@@ -333,7 +345,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
     Flowable<BaseEvent> flowable = Flowable.empty();
     if (state.isThinking) {
-        flowable = flowable.concatWith(finalizeThinkingIfNeeded());
+      flowable = flowable.concatWith(finalizeThinkingIfNeeded());
     } else if (state.currentTextMessageId != null) {
       flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
     }
@@ -342,27 +354,26 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   private Flowable<StepFinishedEvent> finishStep() {
     return Flowable.defer(
-            () -> {
-              final String stepName = state.currentStepName;
-              state.currentStepName = null;
-              final StepFinishedEvent stepEvent = new StepFinishedEvent();
-              stepEvent.setStepName(stepName);
-              decorateEvent(stepEvent);
-              LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", stepEvent.getStepName());
-              return Flowable.just(stepEvent);
-            });
+        () -> {
+          final String stepName = state.currentStepName;
+          state.currentStepName = null;
+          final StepFinishedEvent stepEvent = new StepFinishedEvent();
+          stepEvent.setStepName(stepName);
+          decorateEvent(stepEvent);
+          LOG.debug(
+              "Generated output event - eventType=StepFinishedEvent, stepName={}",
+              stepEvent.getStepName());
+          return Flowable.just(stepEvent);
+        });
   }
 
   private Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
     final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
     final String toolName = call.name().orElse("unknown");
     final Map<String, Object> args = call.args().orElse(Map.of());
- 
+
     Flowable<BaseEvent> flowable = Flowable.empty();
-    LOG.debug(
-            "Processing tool call mapping - callId='{}', toolName='{}'",
-            callId,
-            toolName);
+    LOG.debug("Processing tool call mapping - callId='{}', toolName='{}'", callId, toolName);
     final ToolCallStartEvent start = new ToolCallStartEvent();
     start.setToolCallId(callId);
     start.setToolCallName(toolName);
@@ -382,9 +393,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     final String callId = response.id().orElse(UUID.randomUUID().toString());
     final String contentResult = JsonUtils.toJson(response.response().orElse(Map.of()));
 
-    LOG.debug(
-        "Processing tool response mapping - callId='{}'",
-        callId);
+    LOG.debug("Processing tool response mapping - callId='{}'", callId);
 
     final ToolCallResultEvent result = new ToolCallResultEvent();
     result.setToolCallId(callId);
@@ -392,10 +401,11 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     result.setRole(Role.tool);
 
     final BaseEvent decoratedResult = decorateEvent(result);
-    LOG.debug("Generated output event - eventType=ToolCallResultEvent, callId={}", result.getToolCallId());
+    LOG.debug(
+        "Generated output event - eventType=ToolCallResultEvent, callId={}",
+        result.getToolCallId());
     return Flowable.just(decoratedResult);
   }
-
 
   private RunFinishedEvent buildRunFinished(final String runId) {
     final RunFinishedEvent event = new RunFinishedEvent();
@@ -404,17 +414,15 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (state.finalAnswer != null) {
       event.setResult(state.finalAnswer);
     }
-    LOG.debug(
-        "Building RunFinishedEvent - runId='{}', sessionId='{}'",
-        runId,
-        state.sessionId);
+    LOG.debug("Building RunFinishedEvent - runId='{}', sessionId='{}'", runId, state.sessionId);
     return event;
   }
 
   private <T extends BaseEvent> T decorateEvent(final T event) {
     event.setTimestamp(System.currentTimeMillis());
     //noinspection unchecked
-    final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.getRawEvent());
+    final Map<String, Object> rawEvent =
+        CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.getRawEvent());
     event.setRawEvent(null);
     rawEvent.putAll(JsonUtils.toMap(event));
     rawEvent.put("agentId", state.agentId);

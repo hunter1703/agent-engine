@@ -2,10 +2,9 @@ package com.agentengine.engine.utils;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.util.StringUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
-
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;

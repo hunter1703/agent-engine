@@ -43,7 +43,8 @@ public final class OkHttpTransport implements HttpTransport {
     try (Response response = effectiveClient.newCall(requestBuilder.build()).execute()) {
       final ResponseBody responseBody = response.body();
       final String body = responseBody == null ? "" : responseBody.string();
-      return new HttpResponseData(response.code(), toHeaderMap(response.headers().toMultimap()), body);
+      return new HttpResponseData(
+          response.code(), toHeaderMap(response.headers().toMultimap()), body);
     } catch (IOException ex) {
       throw new HttpTransportException("HTTP request failed", ex);
     }

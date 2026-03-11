@@ -3,7 +3,7 @@ package com.agentengine.engine.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.engine.testing.MongoRedisTestResource;
-import com.agentengine.util.mongo.MongoClientFactory;
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.GetSessionConfig;
 import com.google.adk.sessions.Session;
@@ -70,13 +70,13 @@ class AgentSessionRepositoryIT {
             .invocationId("inv-1")
             .author("agent")
             .timestamp(Instant.now().toEpochMilli())
-            .content(
-                Content.builder().role("model").parts(List.of(Part.fromText("hello"))).build())
+            .content(Content.builder().role("model").parts(List.of(Part.fromText("hello"))).build())
             .build();
 
     agentSessionRepository.appendEvent(created, event).blockingGet();
 
-    final var response = agentSessionRepository.listEvents("agent-1", "user-1", "session-1").blockingGet();
+    final var response =
+        agentSessionRepository.listEvents("agent-1", "user-1", "session-1").blockingGet();
     assertThat(response.events()).hasSize(1);
     assertThat(response.events().getFirst().id()).isEqualTo("event-1");
 

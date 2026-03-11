@@ -1,6 +1,6 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.util.JsonUtils;
+import com.agentengine.util.common.JsonUtils;
 import java.util.Map;
 
 public final class TypedUtils {

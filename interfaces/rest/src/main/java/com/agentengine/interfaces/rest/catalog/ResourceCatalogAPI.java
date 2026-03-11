@@ -1,8 +1,8 @@
 package com.agentengine.interfaces.rest.catalog;
 
-import com.agentengine.util.beans.BaseEntity;
-import com.agentengine.util.beans.NamedEntity;
-import com.agentengine.util.query.PaginatedResult;
+import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.query.PaginatedResult;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;

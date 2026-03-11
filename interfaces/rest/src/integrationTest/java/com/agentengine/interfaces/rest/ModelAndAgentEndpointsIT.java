@@ -2,7 +2,8 @@ package com.agentengine.interfaces.rest;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
-import com.agentengine.engine.repository.MongoClientFactory;
+
+import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -198,12 +199,7 @@ class ModelAndAgentEndpointsIT {
         .statusCode(200)
         .body("name", equalTo("Agent IT Updated"));
 
-    given()
-        .when()
-        .delete("/v1/agent/agent/agent-it")
-        .then()
-        .statusCode(200)
-        .body(equalTo("true"));
+    given().when().delete("/v1/agent/agent/agent-it").then().statusCode(200).body(equalTo("true"));
   }
 
   @Test
@@ -271,11 +267,7 @@ class ModelAndAgentEndpointsIT {
 
   @Test
   void shouldReturnNotFoundWhenDeletingMissingAgent() {
-    given()
-        .when()
-        .delete("/v1/agent/agent/missing-agent-delete-it")
-        .then()
-        .statusCode(404);
+    given().when().delete("/v1/agent/agent/missing-agent-delete-it").then().statusCode(404);
   }
 
   @Test

@@ -22,7 +22,24 @@ public record ConnectorDefinition(
     headers = headers == null ? Map.of() : Map.copyOf(headers);
     query = query == null ? Map.of() : Map.copyOf(query);
     body = body == null ? new BodyConfig(BodyType.UNKNOWN, null, null, true) : body;
-    auth = auth == null ? new AuthConfig(AuthType.NONE, null, null, null, null, null, null, null, null, null, null, null, null, Map.of()) : auth;
+    auth =
+        auth == null
+            ? new AuthConfig(
+                AuthType.NONE,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                Map.of())
+            : auth;
     retryPolicy = retryPolicy == null ? RetryPolicyConfig.disabled() : retryPolicy;
     pagination = pagination == null ? PaginationConfig.none() : pagination;
     responseMapping =

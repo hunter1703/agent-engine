@@ -4,7 +4,6 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.google.adk.tools.ToolContext;
-
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +23,8 @@ public final class StartTaskTool extends UpdateTaskStatusTool {
   public Map<String, Object> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(name = "task_id", description = "ID of the specific task to start") String taskId) {
+      @ToolSchema(name = "task_id", description = "ID of the specific task to start")
+          String taskId) {
     return _execute(toolContext, taskId, null, null, null, TaskStatus.IN_PROGRESS, null);
   }
 }

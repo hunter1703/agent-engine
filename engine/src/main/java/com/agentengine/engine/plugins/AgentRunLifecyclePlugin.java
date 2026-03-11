@@ -7,9 +7,7 @@ import com.google.adk.plugins.BasePlugin;
 import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Maybe;
 
-/**
- * Initializes and clears per-run state for each agent invocation.
- */
+/** Initializes and clears per-run state for each agent invocation. */
 public final class AgentRunLifecyclePlugin extends BasePlugin {
   private static final String NAME = "agent_run_lifecycle";
 

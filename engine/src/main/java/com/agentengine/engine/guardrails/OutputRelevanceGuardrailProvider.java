@@ -2,11 +2,11 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
-import com.agentengine.util.StringUtils;
 import com.agentengine.engine.builders.model.ModelProvider;
 import com.agentengine.engine.guardrails.rules.OutputRelevanceGuardrail;
 import com.agentengine.engine.infra.DefaultModelConfig;
 import com.agentengine.engine.repository.InfraMongoRepository;
+import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
@@ -33,17 +33,19 @@ public final class OutputRelevanceGuardrailProvider
     if (relevanceRule == null || !relevanceRule.isEnabled()) {
       return null;
     }
-    return new OutputRelevanceGuardrail(relevanceRule, new RelevanceEvaluator(modelProvider, resolveModel(relevanceRule)));
+    return new OutputRelevanceGuardrail(
+        relevanceRule, new RelevanceEvaluator(modelProvider, resolveModel(relevanceRule)));
   }
 
-  private String resolveModel(final OutputRelevanceGuardrailRule rule ) {
+  private String resolveModel(final OutputRelevanceGuardrailRule rule) {
     final String evaluatorModelId = rule.getEvaluatorModelId();
     return StringUtils.isNotBlank(evaluatorModelId) ? evaluatorModelId : resolveDefaultModelId();
   }
 
   private String resolveDefaultModelId() {
     try {
-      final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+      final DefaultModelConfig defaults =
+          infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       return defaults == null ? null : defaults.getEvaluatorModelId();
     } catch (Exception ex) {
       return null;

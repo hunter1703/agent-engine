@@ -3,7 +3,6 @@ package com.agentengine.engine.tools.planning;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
-
 import java.util.List;
 import java.util.Map;
 
@@ -20,28 +19,16 @@ public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
     super(DESCRIPTOR);
   }
 
-
   public Map<String, Object> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(name = "task_id", description = "ID of the specific task to update") String taskId,
-      @ToolSchema(
-              name = "name",
-              description = "Updated task name",
-              optional = true)
-          String name,
-      @ToolSchema(
-              name = "goal",
-              description = "Updated task goal",
-              optional = true)
-          String goal,
-      @ToolSchema(
-              name = "description",
-              description = "Updated task description",
-              optional = true)
+      @ToolSchema(name = "task_id", description = "ID of the specific task to update")
+          String taskId,
+      @ToolSchema(name = "name", description = "Updated task name", optional = true) String name,
+      @ToolSchema(name = "goal", description = "Updated task goal", optional = true) String goal,
+      @ToolSchema(name = "description", description = "Updated task description", optional = true)
           String description) {
 
     return _execute(toolContext, taskId, name, goal, description, null, null);
   }
-
 }
