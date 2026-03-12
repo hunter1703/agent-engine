@@ -15,31 +15,99 @@ and REST) for interacting with agents.
   agent configs.
 - Offer lightweight interface modules (CLI and REST) to validate and extend the agent ecosystem.
 
+## Commands
+
+```bash
+# Build (skip tests)
+./gradlew clean build -x test
+
+# Run tests
+./gradlew test
+
+# Integration tests (opt-in, requires Docker)
+./gradlew integrationTest
+
+# Start dev mode (hot-reload, auto-provisions MongoDB via Docker Compose)
+./deploy/deploy.sh dev [--bootstrap] [--clean]
+
+# Start production microservices (engine on 8081/9000, REST on 8080)
+./deploy/deploy.sh production [--bootstrap] [--clean]
+
+# Stop all services
+./deploy/stop.sh
+```
+
+## Module Structure
+
+| Module              | Purpose                                                         |
+|---------------------|-----------------------------------------------------------------|
+| `engine/`           | Core LLM execution: config, state, context, LangChain4j wiring |
+| `engine/api/`       | Shared API beans, service interfaces, and event model           |
+| `interfaces/rest/`  | REST gateway (port 8080); user-facing HTTP endpoints            |
+| `interfaces/local/` | CLI interface for local agent interaction                       |
+| `util/common/`      | Cross-module utility classes                                    |
+| `util/mongodb/`     | MongoDB client factory, codec registry, encryption              |
+| `util/ms/`          | Microservice transport utilities                                |
+| `connectors/core/`  | Outbound HTTP transport and auth strategies                     |
+| `configs/`          | Agent and model registry JSON/YAML definitions                  |
+| `deploy/`           | Docker Compose resources and the unified deploy script          |
+
+## Testing Conventions
+
+- Unit tests: `src/test/java`, class `<ClassName>Test`, method `should<Behavior>When<Condition>`
+- Integration tests: `src/integrationTest/java`, class `<Feature>IT`; use `@QuarkusTest` with container-backed resources
+- Use mocks/fakes for pure logic; use real containers (Testcontainers) when runtime wiring matters
+- Bug fix workflow: write a failing test first → fix → verify passing
+
+## Key Gotchas
+
+- **llama.cpp chat template bug**: Some `.gguf` models (e.g. `qwen3-coder-30b`) cause `500` errors on nested JSON schemas. Fix: pass `--chat-template-file` pointing to the safe template in `configs/models/templates/`.
+- **Compaction model resolution order**: `contextStrategy.modelId` → infra `default_model.compactionModelId` → agent `modelId`.
+- **Encrypted fields** (`@Secure`): `SessionInfo.eventsJson` is AES/GCM-encrypted. Classes with `@BsonDiscriminator` must use `.conventions(conventions)` in `ClassModel.builder(...)` or encryption is bypassed.
+- **Deferred work**: record follow-ups in `TODO.md`, not inline comments.
+- **Enum rule**: all enums must include `UNKNOWN` and a `valueOfOrDefault` parser.
+
+## Code Quality Philosophy
+
+Write code that is **beautiful, easy to read, and architecturally elegant** — without sacrificing performance.
+Aim for the solution that is simultaneously the simplest, the clearest, and the most efficient. Design for
+the reader and the runtime equally.
+
+- **Clarity over cleverness**: code should reveal its intent immediately; a reader unfamiliar with the method
+  should understand what it does and why.
+- **Earn every abstraction**: introduce an abstraction only when it has a clear name, a single responsibility,
+  and removes genuine duplication or hides genuine complexity. An abstraction that requires explanation is not
+  yet the right abstraction.
+- **Minimal surface, maximum cohesion**: each class and method should do one thing well. If you cannot describe
+  a class's responsibility in one sentence, split it.
+- **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used
+  once and adds no clarity, inline it.
+- **Extensibility by design**: structure code so new behaviour is added by adding new types, not by modifying
+  existing ones. Favour composition and plugin points over switch-on-type logic.
+- **No accidental complexity**: do not build infrastructure for hypothetical future needs. Solve the problem
+  at hand with the minimum structure required, and refactor when real new requirements arrive.
+- **Performance is a first-class concern**: prefer efficient data structures and algorithms from the start;
+  avoid unnecessary allocations, redundant iterations, and blocking in hot paths. Use virtual threads and
+  async patterns where latency or throughput matters.
+
 ## Development Guidelines
-1. Follow established software development best practices.
-2. Maintain high coding standards throughout the codebase.
-3. Prefer simple, straightforward solutions over cleverness.
-4. Keep code readable and easy to maintain.
-5. Ensure the code remains testable.
-6. For any new feature, bug fix, or behavior change, add or update corresponding tests.
-7. Keep implementations efficient.
-8. Favor small, focused changes and avoid unnecessary refactors.
-9. Update relevant documentation when behavior changes.
-10. Keep code extensible with clear responsibilities and boundaries; add abstractions only when
-    they clarify ownership and reduce duplication.
-11. Use `final` wherever possible to emphasize immutability.
-12. Prefer `static` methods for utility semantics.
-13. Make an explicit choice to treat classes as singleton services or utility classes.
-14. Reuse existing utility methods instead of reimplementing similar logic in private methods.
-15. Create new utility classes or extend existing ones when it improves reuse.
-16. When fixing a bug, first write a unit test that reproduces the bug and fails, then implement the fix, then rerun the test to verify it passes.
-17. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
-18. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin rather than repeating snippets in module build files.
-19. Avoid redundant or low-value tests that do not exercise functional behavior.
-20. Document REST endpoints with MicroProfile OpenAPI annotations.
-21. Avoid qualified class names; add explicit imports instead.
-22. Avoid methods with long argument lists. Avoid side-effect methods wherever possible; use them only when it makes sense in the context of the abstraction.
-23. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-24. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
-25. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
-26. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
+
+1. For any new feature, bug fix, or behavior change, add or update corresponding tests.
+2. Favor small, focused changes; avoid unnecessary refactors.
+3. Update relevant documentation when behavior changes.
+4. Add abstractions only when they clarify ownership and reduce duplication.
+5. Use `final` wherever possible to emphasize immutability.
+6. Prefer `static` methods for utility semantics.
+7. Make an explicit choice to treat classes as singleton services or utility classes.
+8. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
+9. When fixing a bug, first write a failing unit test, then fix, then verify passing.
+10. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
+11. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
+12. Avoid redundant or low-value tests that do not exercise functional behavior.
+13. Document REST endpoints with MicroProfile OpenAPI annotations.
+14. Avoid qualified class names; add explicit imports instead.
+15. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
+16. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
+17. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
+18. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+19. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.

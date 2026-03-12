@@ -126,11 +126,19 @@ public final class CollectionUtils {
     return null;
   }
 
-  public static <T> T getFirst(final Collection<T> collection) {
-    if (CollectionUtils.isEmpty(collection)) {
+  public static <T> T getFirst(final List<T> list) {
+    if (CollectionUtils.isEmpty(list)) {
       return null;
     }
-    return collection.iterator().next();
+    return list.getFirst();
+  }
+
+
+  public static <T> T getLast(final List<T> list) {
+    if (CollectionUtils.isEmpty(list)) {
+      return null;
+    }
+    return list.getLast();
   }
 
   public static Long getLongValueFromMap(final Map<String, Object> map, final String key) {

@@ -32,7 +32,7 @@
             "type" : "integer"
           },
           "type" : {
-            "enum" : [ "compaction", "last_n" ],
+            "enum" : [ "COMPACTION", "LAST_N" ],
             "type" : "string"
           }
         },
@@ -51,7 +51,7 @@
         "properties" : {
           "defaultOnError" : {
             "default" : "FAIL_OPEN",
-            "enum" : [ "UNKNOWN", "FAIL_OPEN", "FAIL_CLOSED" ],
+            "enum" : [ "FAIL_OPEN", "FAIL_CLOSED" ],
             "type" : "string"
           },
           "enabled" : {
@@ -60,7 +60,7 @@
           },
           "executionMode" : {
             "default" : "SYNC",
-            "enum" : [ "UNKNOWN", "SYNC", "OPTIMISTIC" ],
+            "enum" : [ "SYNC", "OPTIMISTIC" ],
             "type" : "string"
           },
           "rules" : {
@@ -68,12 +68,12 @@
               "additionalProperties" : false,
               "properties" : {
                 "action" : {
-                  "enum" : [ "UNKNOWN", "ALLOW", "WARN", "BLOCK", "ESCALATE" ],
+                  "enum" : [ "ALLOW", "WARN", "BLOCK", "ESCALATE" ],
                   "type" : "string"
                 },
                 "anchorStrategy" : {
                   "default" : "LATEST_USER_AND_PLAN",
-                  "enum" : [ "UNKNOWN", "RECENT_USER", "LATEST_USER_AND_PLAN" ],
+                  "enum" : [ "RECENT_USER", "LATEST_USER_AND_PLAN" ],
                   "type" : "string"
                 },
                 "blockedPatterns" : {
@@ -103,12 +103,12 @@
                 },
                 "minToolRisk" : {
                   "default" : "HIGH",
-                  "enum" : [ "UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL" ],
+                  "enum" : [ "LOW", "MEDIUM", "HIGH", "CRITICAL" ],
                   "type" : "string"
                 },
                 "mode" : {
                   "default" : "STEER_THEN_BLOCK",
-                  "enum" : [ "UNKNOWN", "STEER_ONLY", "STEER_THEN_ALLOW", "STEER_THEN_BLOCK" ],
+                  "enum" : [ "STEER_ONLY", "STEER_THEN_ALLOW", "STEER_THEN_BLOCK" ],
                   "type" : "string"
                 },
                 "recency" : {
@@ -120,7 +120,7 @@
                   "type" : "number"
                 },
                 "stage" : {
-                  "enum" : [ "UNKNOWN", "INPUT", "TOOL", "OUTPUT" ],
+                  "enum" : [ "INPUT", "TOOL", "OUTPUT" ],
                   "type" : "string"
                 },
                 "toolNames" : {
@@ -134,7 +134,7 @@
                   "type" : "string"
                 }
               },
-              "required" : [ "type" ],
+              "required" : [ "id", "type" ],
               "type" : "object"
             },
             "type" : "array"
@@ -154,7 +154,7 @@
       },
       "orchestrationMode" : {
         "default" : "TRANSFER",
-        "enum" : [ "UNKNOWN", "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
+        "enum" : [ "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
         "type" : "string"
       },
       "parallel" : {
@@ -162,7 +162,7 @@
         "properties" : {
           "aggregationPolicy" : {
             "default" : "CONCATENATE",
-            "enum" : [ "UNKNOWN", "CONCATENATE", "BEST_EFFORT", "MAJORITY_VOTE" ],
+            "enum" : [ "CONCATENATE", "BEST_EFFORT", "MAJORITY_VOTE" ],
             "type" : "string"
           },
           "quorum" : {
@@ -171,7 +171,7 @@
           },
           "stoppingPolicy" : {
             "default" : "ALL_COMPLETE",
-            "enum" : [ "UNKNOWN", "ALL_COMPLETE", "FIRST_SUCCESS", "QUORUM" ],
+            "enum" : [ "ALL_COMPLETE", "FIRST_SUCCESS", "QUORUM" ],
             "type" : "string"
           }
         },
@@ -221,14 +221,14 @@
         "type" : "array"
       },
       "type" : {
-        "enum" : [ "default", "orchestrator" ],
+        "enum" : [ "DEFAULT", "ORCHESTRATOR" ],
         "type" : "string"
       },
       "updatedTime" : {
         "type" : "integer"
       }
     },
-    "required" : [ "contextStrategy", "type" ],
+    "required" : [ "systemPrompt", "contextStrategy", "type" ],
     "type" : "object"
   },
   "layout" : {
@@ -272,7 +272,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "compaction" ]
+            }, "COMPACTION" ]
           }
         } ]
       },
@@ -293,7 +293,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "last_n" ]
+            }, "LAST_N" ]
           }
         } ]
       },
@@ -313,7 +313,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "compaction" ]
+            }, "COMPACTION" ]
           }
         } ],
         "lookup" : {
@@ -338,7 +338,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "compaction" ]
+            }, "COMPACTION" ]
           }
         } ]
       },
@@ -359,7 +359,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "compaction" ]
+            }, "COMPACTION" ]
           }
         } ]
       },
@@ -380,7 +380,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "compaction" ]
+            }, "COMPACTION" ]
           }
         } ]
       },
@@ -395,7 +395,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "compaction", "last_n" ]
+        "options" : [ "COMPACTION", "LAST_N" ]
       },
       "/description" : {
         "label" : "Description",
@@ -432,7 +432,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "FAIL_OPEN", "FAIL_CLOSED" ]
+        "options" : [ "FAIL_OPEN", "FAIL_CLOSED" ]
       },
       "/guardrails/enabled" : {
         "label" : "Enabled",
@@ -457,7 +457,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "SYNC", "OPTIMISTIC" ]
+        "options" : [ "SYNC", "OPTIMISTIC" ]
       },
       "/guardrails/rules" : {
         "label" : "Rules",
@@ -482,7 +482,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "ALLOW", "WARN", "BLOCK", "ESCALATE" ]
+        "options" : [ "ALLOW", "WARN", "BLOCK", "ESCALATE" ]
       },
       "/guardrails/rules/*/anchorStrategy" : {
         "label" : "Anchor Strategy",
@@ -495,7 +495,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "RECENT_USER", "LATEST_USER_AND_PLAN" ],
+        "options" : [ "RECENT_USER", "LATEST_USER_AND_PLAN" ],
         "rules" : [ {
           "effect" : "VISIBLE",
           "expr" : {
@@ -650,7 +650,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL" ],
+        "options" : [ "LOW", "MEDIUM", "HIGH", "CRITICAL" ],
         "rules" : [ {
           "effect" : "VISIBLE",
           "expr" : {
@@ -671,7 +671,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "STEER_ONLY", "STEER_THEN_ALLOW", "STEER_THEN_BLOCK" ],
+        "options" : [ "STEER_ONLY", "STEER_THEN_ALLOW", "STEER_THEN_BLOCK" ],
         "rules" : [ {
           "effect" : "VISIBLE",
           "expr" : {
@@ -741,7 +741,7 @@
           "view" : "READ_ONLY"
         },
         "advanced" : true,
-        "options" : [ "UNKNOWN", "INPUT", "TOOL", "OUTPUT" ]
+        "options" : [ "INPUT", "TOOL", "OUTPUT" ]
       },
       "/guardrails/rules/*/toolNames" : {
         "label" : "Restricted Tools",
@@ -832,13 +832,13 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
+        "options" : [ "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
         "rules" : [ {
           "effect" : "VISIBLE",
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "orchestrator" ]
+            }, "ORCHESTRATOR" ]
           }
         } ]
       },
@@ -858,7 +858,7 @@
             "and" : [ {
               "===" : [ {
                 "var" : "type"
-              }, "orchestrator" ]
+              }, "ORCHESTRATOR" ]
             }, {
               "===" : [ {
                 "var" : "orchestrationMode"
@@ -878,7 +878,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "CONCATENATE", "BEST_EFFORT", "MAJORITY_VOTE" ]
+        "options" : [ "CONCATENATE", "BEST_EFFORT", "MAJORITY_VOTE" ]
       },
       "/parallel/quorum" : {
         "label" : "Quorum",
@@ -912,7 +912,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "UNKNOWN", "ALL_COMPLETE", "FIRST_SUCCESS", "QUORUM" ]
+        "options" : [ "ALL_COMPLETE", "FIRST_SUCCESS", "QUORUM" ]
       },
       "/runtime" : {
         "label" : "Runtime",
@@ -967,7 +967,7 @@
           "expr" : {
             "in" : [ {
               "var" : "type"
-            }, [ "orchestrator" ] ]
+            }, [ "ORCHESTRATOR" ] ]
           }
         } ],
         "lookup" : {
@@ -1046,7 +1046,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "default", "orchestrator" ]
+        "options" : [ "DEFAULT", "ORCHESTRATOR" ]
       }
     }
   }

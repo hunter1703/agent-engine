@@ -9,9 +9,9 @@ dependencies {
     api libs.grpc.stub
     api libs.grpc.protobuf
     api libs.protobuf.java
-    api libs.annotations.api
-    api libs.jakarta.inject.api
-    api libs.jakarta.enterprise.cdi.api
+    implementation libs.annotations.api
+    implementation libs.jakarta.inject.api
+    implementation libs.jakarta.enterprise.cdi.api
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.quarkus.arc

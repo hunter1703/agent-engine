@@ -1,5 +1,6 @@
 package com.agentengine.connectors.core.runtime;
 
+import com.agentengine.connectors.core.auth.AuthRequestContext;
 import com.agentengine.connectors.core.auth.AuthStrategyRegistry;
 import com.agentengine.connectors.core.config.BodyType;
 import com.agentengine.connectors.core.config.ConnectorDefinition;
@@ -63,7 +64,8 @@ public final class RequestMaterializer {
     final String contentType = resolveContentType(definition);
 
     authRegistry.apply(
-        definition.auth(), context, templateResolver, strictUnresolved, headers, query);
+        new AuthRequestContext(
+            definition.auth(), context, templateResolver, strictUnresolved, headers, query));
 
     return new HttpRequestData(
         endpoint.methodEnum(),

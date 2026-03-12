@@ -8,7 +8,7 @@ import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.services.AgentService;
-import com.agentengine.engine.builders.agent.LlmAgentBuilder;
+import com.agentengine.engine.builders.agent.BaseLlmAgentBuilder;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.builders.agent.SequentialAgentBuilder;
 import com.agentengine.engine.factories.model.ModelProvider;
@@ -51,7 +51,8 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       case MANAGER -> buildManager(config, subAgents);
       case SEQUENTIAL -> buildSequential(config, subAgents);
       case PARALLEL -> buildParallel(config, subAgents);
-      case TRANSFER, UNKNOWN -> buildTransfer(config, subAgents);
+      case TRANSFER -> buildTransfer(config, subAgents);
+        default -> throw new IllegalStateException("Unexpected value: " + mode);
     };
   }
 
@@ -98,7 +99,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
 
   private DelegatedAgent buildManager(
       final BaseAgentConfig config, final List<? extends Agent> subAgents) {
-    final LlmAgentBuilder builder =
+    final BaseLlmAgentBuilder builder =
         createLlmAgentBuilder(config).disallowTransferToParent(true).disallowTransferToPeers(true);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       for (final BaseAgent subAgent : subAgents) {
@@ -110,7 +111,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
 
   private DelegatedAgent buildTransfer(
       final BaseAgentConfig config, final List<? extends Agent> subAgents) {
-    final LlmAgentBuilder builder = createLlmAgentBuilder(config);
+    final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       builder.subAgents(subAgents);
     }

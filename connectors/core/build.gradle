@@ -3,7 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation project(':util')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
     implementation libs.json.path
     implementation libs.jakarta.validation.api
     implementation libs.jakarta.inject.api

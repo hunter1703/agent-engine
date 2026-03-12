@@ -48,7 +48,7 @@ public final class FinishPlanTool extends Tool {
 
     currentPlan.finish(newStatus, result);
 
-    runState.updatePlan(currentPlan);
+    runState.updatePlan(currentPlan, toolContext);
     return Map.of("status", "success", "final_state", status);
   }
 }

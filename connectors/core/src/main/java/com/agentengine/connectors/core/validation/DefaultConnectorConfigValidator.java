@@ -8,10 +8,12 @@ import com.agentengine.connectors.core.config.HttpMethod;
 import com.agentengine.connectors.core.config.PaginationConfig;
 import com.agentengine.connectors.core.config.PaginationType;
 import com.agentengine.connectors.core.config.ResponseMappingConfig;
+import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Singleton
 public final class DefaultConnectorConfigValidator implements ConnectorConfigValidator {
 
   @Override

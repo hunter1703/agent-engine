@@ -1,119 +1,107 @@
 package com.agentengine.engine.utils;
 
 import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.api.utils.EventUtils;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.google.adk.agents.BaseAgentState;
+import com.google.adk.events.Event;
+import com.google.adk.events.EventActions;
+import com.google.adk.sessions.State;
+import com.google.adk.tools.ToolContext;
+import com.google.genai.types.FunctionCall;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-public final class RunState {
-  private boolean thinkingOpen;
-  private String lastThoughtText;
+public final class RunState extends BaseAgentState {
+  public static final String PLAN_KEY = State.APP_PREFIX + "run.plan";
+
   private Plan plan;
-  private String lastToolCall;
+  private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
+  private boolean continuationRequested;
   private int offTopicRetries;
   private final List<Violation> violations = new ArrayList<>();
 
   public RunState() {}
 
-  // Record-style accessors used throughout the codebase
-  public boolean thinkingOpen() {
-    return thinkingOpen;
+  /**
+   * Reconstructs persisted RunState fields from the session event log.
+   *
+   * <p>Persisted fields (plan, lastToolCalls, continuationRequested) are rebuilt from event
+   * history. Transient fields (violations, offTopicRetries, thinkingOpen) always start fresh.
+   */
+  public static RunState buildFrom(final List<Event> events) {
+    if (CollectionUtils.isEmpty(events)) {
+      return new RunState();
+    }
+    final RunState state = new RunState();
+    state.updatePlan(readLatestPlanSnapshot(events));
+    state.updateLastToolCalls(readLastToolCalls(events));
+    return state;
   }
 
-  public String lastThoughtText() {
-    return lastThoughtText;
+  @SuppressWarnings("unchecked")
+  private static Plan readLatestPlanSnapshot(final List<Event> events) {
+    final Object value = EventUtils.latestDeltaValue(events, PLAN_KEY);
+    if (!(value instanceof Map<?, ?>)) {
+      return null;
+    }
+    return JsonUtils.fromMap((Map<String, Object>) value, Plan.class);
+  }
+
+  private static List<ToolCallSignature> readLastToolCalls(final List<Event> events) {
+    for (int i = events.size() - 1; i >= 0; i--) {
+      final List<FunctionCall> calls = events.get(i).functionCalls();
+      if (!calls.isEmpty()) {
+        return calls.stream()
+            .map(c -> new ToolCallSignature(c.name().orElse(null), c.args().orElse(Map.of())))
+            .toList();
+      }
+    }
+    return List.of();
   }
 
   public Plan plan() {
     return plan;
   }
 
-  public String lastToolCall() {
-    return lastToolCall;
+  public List<ToolCallSignature> lastToolCalls() {
+    return List.copyOf(lastToolCalls);
   }
 
   public List<Violation> violations() {
     return List.copyOf(violations);
   }
 
-  public int offTopicRetries() {
-    return offTopicRetries;
-  }
-
-  public boolean isThinkingOpen() {
-    return thinkingOpen;
-  }
-
-  public void setThinkingOpen(final boolean thinkingOpen) {
-    this.thinkingOpen = thinkingOpen;
-  }
-
-  public String getLastThoughtText() {
-    return lastThoughtText;
-  }
-
-  public void setLastThoughtText(final String text) {
-    this.lastThoughtText = text;
-  }
-
-  public Plan getPlan() {
-    return plan;
-  }
-
-  public void setPlan(final Plan plan) {
-    this.plan = plan;
-  }
-
-  public String getLastToolCall() {
-    return lastToolCall;
-  }
-
-  public void setLastToolCall(final String lastToolCall) {
-    this.lastToolCall = lastToolCall;
-  }
-
-  public int getOffTopicRetries() {
-    return offTopicRetries;
-  }
-
-  public void setOffTopicRetries(final int offTopicRetries) {
-    this.offTopicRetries = offTopicRetries;
-  }
-
-  public List<Violation> getViolations() {
-    return List.copyOf(violations);
-  }
-
-  public void setViolations(final List<Violation> violations) {
-    this.violations.clear();
-    addViolations(violations);
-  }
-
-  public void markThinkingOpen() {
-    this.thinkingOpen = true;
-  }
-
-  public void markThinkingClosed() {
-    this.thinkingOpen = false;
-    this.lastThoughtText = null;
-  }
-
-  public void updateLastThoughtText(final String text) {
-    if (StringUtils.isNotBlank(text)) {
-      this.lastThoughtText = text;
-    }
-  }
-
   public void updatePlan(final Plan plan) {
     this.plan = plan;
   }
 
-  public void updateLastToolCall(final String toolCallSummary) {
-    if (StringUtils.isBlank(toolCallSummary)) {
-      this.lastToolCall = null;
-    } else {
-      this.lastToolCall = toolCallSummary;
+  public void updatePlan(final Plan plan, final ToolContext toolContext) {
+    this.plan = plan;
+    if (toolContext == null || plan == null) {
+      return;
+    }
+    final ConcurrentMap<String, Object> delta = new ConcurrentHashMap<>();
+    delta.put(PLAN_KEY, JsonUtils.toMap(plan));
+    toolContext.setActions(EventActions.builder().stateDelta(delta).build());
+  }
+
+  public void updateLastToolCalls(final List<ToolCallSignature> toolCalls) {
+    lastToolCalls.clear();
+    if (CollectionUtils.isEmpty(toolCalls)) {
+      return;
+    }
+    for (final ToolCallSignature call : toolCalls) {
+      if (call != null) {
+        lastToolCalls.add(call);
+      }
     }
   }
 
@@ -145,5 +133,26 @@ public final class RunState {
 
   public void resetOffTopicRetries() {
     offTopicRetries = 0;
+  }
+
+  public void requestContinuation() {
+    this.continuationRequested = true;
+  }
+
+  public boolean hasContinuationRequested() {
+    return continuationRequested;
+  }
+
+  public boolean consumeContinuation() {
+    final boolean was = continuationRequested;
+    continuationRequested = false;
+    return was;
+  }
+
+  public record ToolCallSignature(String name, Map<String, Object> args) {
+    public ToolCallSignature {
+      name = StringUtils.isBlank(name) ? "unknown" : name;
+      args = args == null ? Map.of() : Map.copyOf(new HashMap<>(args));
+    }
   }
 }

@@ -2,6 +2,8 @@ package com.agentengine.engine.agents.processors.response;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.tools.ToolUtils;
+import com.agentengine.engine.utils.ResponseUtils;
+import com.agentengine.engine.utils.RunState.ToolCallSignature;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
 import com.google.adk.agents.InvocationContext;
@@ -13,15 +15,16 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Sanitizes tool calls in model responses.
  *
  * <p>Responsibilities: - Partial responses: detect and strip tool call/response parts; emit a
- * protocol violation so the model is corrected on its next turn. - Full responses: detect and strip
- * redundant tool-call sequences (same calls as the previous turn); emit a redundancy violation.
+ * protocol violation so the model is corrected on its next turn. - Full responses: detect and
+ * strip redundant tool-call sequences (same calls as the previous turn); emit a redundancy
+ * violation.
  *
  * <p>Ownership: tool-call protocol enforcement across partial and full responses.
  */
@@ -45,7 +48,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
       final InvocationContext context, final LlmResponse response) {
     final Content content = response.content().orElse(null);
     if (content == null) {
-      return pass(response);
+      return ResponseUtils.single(response);
     }
     final List<Part> parts = content.parts().orElse(List.of());
     final List<Part> toolParts =
@@ -53,7 +56,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
             .filter(p -> p.functionCall().isPresent() || p.functionResponse().isPresent())
             .toList();
     if (toolParts.isEmpty()) {
-      return pass(response);
+      return ResponseUtils.single(response);
     }
 
     final String toolSummary = ToolUtils.summarizeToolParts(toolParts);
@@ -77,7 +80,8 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
         parts.stream()
             .filter(p -> p.functionCall().isEmpty() && p.functionResponse().isEmpty())
             .toList();
-    return pass(response.toBuilder().content(content.toBuilder().parts(textOnly).build()).build());
+    return ResponseUtils.single(
+        response.toBuilder().content(content.toBuilder().parts(textOnly).build()).build());
   }
 
   // ── Full ─────────────────────────────────────────────────────────────────
@@ -85,25 +89,27 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
   private static Single<ResponseProcessingResult> handleFull(
       final InvocationContext context, final LlmResponse response) {
     if (response.content().isEmpty()) {
-      return pass(response);
+      return ResponseUtils.single(response);
     }
     final List<FunctionCall> toolCalls = ToolUtils.extractToolCalls(response);
     if (CollectionUtils.isEmpty(toolCalls)) {
-      return pass(response);
+      return ResponseUtils.single(response);
     }
 
-    final String lastTools = RunStateUtils.getState(context).lastToolCall();
+    final Set<ToolCallSignature> previousCalls = Set.copyOf(RunStateUtils.getState(context).lastToolCalls());
     final List<FunctionCall> redundant =
         toolCalls.stream()
-            .filter(call -> lastTools != null && lastTools.contains(summarizeCall(call)))
+            .filter(call -> previousCalls.contains(toSignature(call)))
             .toList();
 
     if (CollectionUtils.isNotEmpty(redundant)) {
       return buildRedundancyResponse(context, response, redundant);
     }
 
-    RunStateUtils.getState(context).updateLastToolCall(summarizeCalls(toolCalls));
-    return pass(response);
+    final List<ToolCallSignature> currentCalls =
+        toolCalls.stream().map(ToolCallSanitizationResponseProcessor::toSignature).toList();
+    RunStateUtils.getState(context).updateLastToolCalls(currentCalls);
+    return ResponseUtils.single(response);
   }
 
   private static Single<ResponseProcessingResult> buildRedundancyResponse(
@@ -128,26 +134,21 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
         response.content().flatMap(Content::parts).orElse(List.of()).stream()
             .filter(p -> p.functionCall().map(call -> !redundant.contains(call)).orElse(true))
             .toList();
-    return pass(
-        response.toBuilder()
-            .content(response.content().get().toBuilder().parts(filtered).build())
-            .turnComplete(false)
-            .build());
+    final Content filteredContent = response.content().get().toBuilder().parts(filtered).build();
+    final LlmResponse filteredResponse = response.toBuilder().content(filteredContent).build();
+    final boolean hasRemainingToolParts =
+        filtered.stream()
+            .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+    if (hasRemainingToolParts) {
+      return ResponseUtils.single(filteredResponse);
+    }
+    RunStateUtils.getState(context).requestContinuation();
+    return ResponseUtils.single(filteredResponse);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  private static String summarizeCall(final FunctionCall call) {
-    return call.name().orElse("") + call.args().orElse(Map.of());
-  }
-
-  private static String summarizeCalls(final List<FunctionCall> calls) {
-    return calls.stream()
-        .map(ToolCallSanitizationResponseProcessor::summarizeCall)
-        .collect(Collectors.joining("|"));
-  }
-
-  private static Single<ResponseProcessingResult> pass(final LlmResponse response) {
-    return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+  private static ToolCallSignature toSignature(final FunctionCall call) {
+    return new ToolCallSignature(call.name().orElse(null), call.args().orElse(Map.of()));
   }
 }

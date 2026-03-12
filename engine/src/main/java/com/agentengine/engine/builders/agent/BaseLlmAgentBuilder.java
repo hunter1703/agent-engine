@@ -1,6 +1,8 @@
 package com.agentengine.engine.builders.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
+import com.agentengine.engine.agents.BaseAgent;
+import com.agentengine.engine.tools.HumanInTheLoopTool;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
@@ -8,34 +10,33 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-public class LlmAgentBuilder extends Agent.Builder<LlmAgentBuilder, DelegatedAgent> {
+public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, DelegatedAgent> {
   private String systemInstructions;
   private final List<BaseTool> tools = new ArrayList<>();
   private final List<BaseToolset> toolSets = new ArrayList<>();
   private final LlmAgent.Builder llmAgentBuilder;
 
-  public LlmAgentBuilder(final LlmAgent.Builder llmAgentBuilder) {
+  public BaseLlmAgentBuilder(final LlmAgent.Builder llmAgentBuilder) {
     this.llmAgentBuilder = llmAgentBuilder;
   }
 
-  public LlmAgentBuilder systemInstructions(final String systemInstructions) {
+  public BaseLlmAgentBuilder systemInstructions(final String systemInstructions) {
     this.systemInstructions = systemInstructions;
     return this;
   }
 
-  public LlmAgentBuilder disallowTransferToParent(final boolean disallowTransferToParent) {
+  public BaseLlmAgentBuilder disallowTransferToParent(final boolean disallowTransferToParent) {
     llmAgentBuilder.disallowTransferToParent(disallowTransferToParent);
     return this;
   }
 
-  public LlmAgentBuilder disallowTransferToPeers(final boolean disallowTransferToPeers) {
+  public BaseLlmAgentBuilder disallowTransferToPeers(final boolean disallowTransferToPeers) {
     llmAgentBuilder.disallowTransferToPeers(disallowTransferToPeers);
     return this;
   }
 
-  public LlmAgentBuilder appendTools(final List<BaseTool> additionalTools) {
+  public BaseLlmAgentBuilder appendTools(final List<BaseTool> additionalTools) {
     if (CollectionUtils.isEmpty(additionalTools)) {
       return this;
     }
@@ -43,7 +44,7 @@ public class LlmAgentBuilder extends Agent.Builder<LlmAgentBuilder, DelegatedAge
     return this;
   }
 
-  public LlmAgentBuilder appendToolSets(final List<BaseToolset> additionalToolSets) {
+  public BaseLlmAgentBuilder appendToolSets(final List<BaseToolset> additionalToolSets) {
     if (CollectionUtils.isEmpty(additionalToolSets)) {
       return this;
     }
@@ -53,16 +54,18 @@ public class LlmAgentBuilder extends Agent.Builder<LlmAgentBuilder, DelegatedAge
 
   @Override
   public DelegatedAgent build() {
-    final List<Object> toolsAndToolsets = new ArrayList<>(tools);
+    final List<Object> toolsAndToolsets = new ArrayList<>();
+    toolsAndToolsets.add(new HumanInTheLoopTool());
+    toolsAndToolsets.addAll(tools);
     toolsAndToolsets.addAll(toolSets);
-    final LlmAgent llmAgent =
+    final LlmAgent.Builder builder =
         llmAgentBuilder
             .name(name())
             .description(description())
             .subAgents(subAgents())
             .instruction(systemInstructions)
-            .tools(toolsAndToolsets)
-            .build();
+            .tools(toolsAndToolsets);
+    final LlmAgent llmAgent = new BaseAgent(builder);
     return new DelegatedAgent(llmAgent, agentConfig());
   }
 }

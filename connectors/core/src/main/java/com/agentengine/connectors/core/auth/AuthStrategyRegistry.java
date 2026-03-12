@@ -2,12 +2,13 @@ package com.agentengine.connectors.core.auth;
 
 import com.agentengine.connectors.core.config.AuthConfig;
 import com.agentengine.connectors.core.config.AuthType;
-import com.agentengine.connectors.core.runtime.RequestContext;
-import com.agentengine.connectors.core.template.TemplateResolver;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 @Singleton
@@ -16,31 +17,20 @@ public final class AuthStrategyRegistry {
   private final Map<AuthType, AuthStrategy> strategies;
 
   @Inject
-  public AuthStrategyRegistry() {
-    this(
-        java.util.List.of(
-            new NoAuthStrategy(),
-            new ApiKeyHeaderAuthStrategy(),
-            new BearerTokenAuthStrategy(),
-            new BasicAuthStrategy(),
-            new QueryParamAuthStrategy()));
+  public AuthStrategyRegistry(final Instance<AuthStrategy> strategies) {
+    this(toCollection(strategies));
   }
 
   public AuthStrategyRegistry(final Collection<AuthStrategy> customStrategies) {
     final Map<AuthType, AuthStrategy> strategyMap = new EnumMap<>(AuthType.class);
     customStrategies.forEach(strategy -> strategyMap.put(strategy.type(), strategy));
-    strategies = Map.copyOf(strategyMap);
+    this.strategies = Map.copyOf(strategyMap);
   }
 
-  public void apply(
-      final AuthConfig authConfig,
-      final RequestContext context,
-      final TemplateResolver templateResolver,
-      final boolean strictUnresolvedVariables,
-      final Map<String, String> headers,
-      final Map<String, String> queryParams) {
+  public void apply(final AuthRequestContext requestContext) {
+    final AuthConfig configured = requestContext.authConfig();
     final AuthConfig effectiveConfig =
-        authConfig == null
+        configured == null
             ? new AuthConfig(
                 AuthType.NONE,
                 null,
@@ -56,7 +46,7 @@ public final class AuthStrategyRegistry {
                 null,
                 null,
                 Map.of())
-            : authConfig;
+            : configured;
     final AuthType effectiveType =
         effectiveConfig.typeEnum() == AuthType.UNKNOWN ? AuthType.NONE : effectiveConfig.typeEnum();
     final AuthStrategy strategy =
@@ -65,11 +55,18 @@ public final class AuthStrategyRegistry {
       throw new AuthStrategyException("No auth strategy available for type: " + effectiveType);
     }
     strategy.apply(
-        effectiveConfig,
-        context,
-        templateResolver,
-        strictUnresolvedVariables,
-        headers,
-        queryParams);
+        new AuthRequestContext(
+            effectiveConfig,
+            requestContext.requestContext(),
+            requestContext.templateResolver(),
+            requestContext.strictUnresolvedVariables(),
+            requestContext.headers(),
+            requestContext.queryParams()));
+  }
+
+  private static Collection<AuthStrategy> toCollection(final Instance<AuthStrategy> strategies) {
+    final List<AuthStrategy> resolved = new ArrayList<>();
+    strategies.forEach(resolved::add);
+    return resolved;
   }
 }

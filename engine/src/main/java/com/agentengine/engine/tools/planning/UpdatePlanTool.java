@@ -43,7 +43,7 @@ public final class UpdatePlanTool extends Tool {
       currentPlan.setGoal(goal);
     }
 
-    runState.updatePlan(currentPlan);
+    runState.updatePlan(currentPlan, toolContext);
     return Map.of("status", "success");
   }
 }

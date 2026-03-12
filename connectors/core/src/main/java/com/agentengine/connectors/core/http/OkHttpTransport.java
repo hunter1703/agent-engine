@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import jakarta.inject.Singleton;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -14,6 +15,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
+@Singleton
 public final class OkHttpTransport implements HttpTransport {
 
   private static final MediaType DEFAULT_JSON_TYPE = MediaType.parse("application/json");

@@ -2,6 +2,8 @@ package com.agentengine.engine.api.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;

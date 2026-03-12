@@ -58,9 +58,12 @@ public class SessionServiceImpl implements SessionService {
 
   @Override
   @WithSpan
-  public void deleteSession(String id) {
-    sessionRepository.deleteById(id);
-    sessionDeletedEvent.fire(new SessionDeletedEvent(id));
+  public boolean deleteSession(String id) {
+    final boolean deleted = sessionRepository.deleteById(id);
+    if (deleted) {
+      sessionDeletedEvent.fire(new SessionDeletedEvent(id));
+    }
+    return deleted;
   }
 
   @Override

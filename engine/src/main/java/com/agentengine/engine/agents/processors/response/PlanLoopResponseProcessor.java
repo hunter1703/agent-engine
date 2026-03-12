@@ -1,19 +1,16 @@
 package com.agentengine.engine.agents.processors.response;
 
-import com.agentengine.engine.tools.ToolUtils;
 import com.agentengine.engine.tools.planning.PlanningValidator;
 import com.agentengine.engine.tools.planning.beans.Plan;
+import com.agentengine.engine.utils.ResponseUtils;
 import com.agentengine.engine.utils.RunState;
 import com.agentengine.engine.utils.RunStateUtils;
 import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
-import com.google.genai.types.Content;
-import com.google.genai.types.FinishReason;
 import io.reactivex.rxjava3.core.Single;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Enforces plan/task completion before the final answer.
@@ -33,34 +30,31 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
   public Single<ResponseProcessingResult> processResponse(
       final InvocationContext context, final LlmResponse response) {
     if (response.partial().orElse(false)) {
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+      return ResponseUtils.single(response);
     }
 
     final RunState runState = RunStateUtils.getState(context);
     final Plan plan = runState.plan();
-    final Content content = response.content().orElse(Content.builder().build());
 
     if (plan == null || plan.getStatus().isTerminal()) {
       // no plan or completed plan
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+      return ResponseUtils.single(response);
     }
 
-    if (response.finishReason().isEmpty()) {
-      return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    if (!ResponseUtils.isFinalAnswer(response)) {
+      return ResponseUtils.single(response);
     }
 
     final String planViolation = PlanningValidator.getPrematureCompleteViolation(plan);
-    final String toolSummary = ToolUtils.summarizeToolParts(content.parts().orElse(List.of()));
-    final String correctionMessage =
-            toolSummary.isBlank()
-                    ? planViolation
-                    : planViolation + " Stripped tool parts: " + toolSummary + ".";
+    if (StringUtils.isBlank(planViolation)) {
+      return ResponseUtils.single(response);
+    }
     runState.addViolation(
-            Violation.builder("final_answer_validation")
-                    .message(planViolation)
-                    .correctionMessage(correctionMessage)
-                    .build());
-    final LlmResponse updated = response.toBuilder().finishReason(Optional.empty()).build();
-    return Single.just(ResponseProcessingResult.create(updated, List.of(), Optional.empty()));
+        Violation.builder("final_answer_validation")
+            .message(planViolation)
+            .correctionMessage(planViolation)
+            .build());
+    runState.requestContinuation();
+    return ResponseUtils.single(response);
   }
 }

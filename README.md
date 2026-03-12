@@ -102,7 +102,7 @@ Interact with your agents using the unified REST API:
 - **Stream SSE Events**:
   `POST /agent/events` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
 - **Resume Paused Session (SSE)**:
-  `POST /agent/session/{sessionId}/resume/events` with `{ "message": "human clarification" }`
+  `POST /agent/session/{sessionId}/resume/events` with either `{ "decision": "ALLOW" }` for binary confirmations or `{ "answer": "human clarification" }` for text input
 - **Codex CLI Compatible Stream**:
   `POST /agent/responses` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
 - **Bootstrap Upserts**:
@@ -189,7 +189,7 @@ The repository is structured to separate interface transports from the core LLM 
 - Guardrails are centralized via app-level plugin callbacks (input/tool/output) with `allow/warn/block/escalate` semantics.
 - `GuardrailExecutionMode=OPTIMISTIC` is output-optimistic in this iteration: input/tool remain synchronous; output checks run asynchronously and terminate invocation on block/escalate.
 - Relevance scoring supports dual-prompt LLM evaluation (`relevance` + `irrelevance`) with combined score `(x + (100 - y)) / 2`, executed in parallel.
-- Tool confirmations use native runtime confirmation events (`requestConfirmation` / `adk_request_confirmation`) and resume text is mapped to confirmation payloads by the runtime adapter.
+- Tool confirmations and clarification resumes use native runtime confirmation events (`requestConfirmation` / `adk_request_confirmation`). The REST resume endpoint sends native `FunctionResponse` payloads directly; no marker text protocol exists.
 - Plugin tools are discovered via Java `ServiceLoader` entries under `META-INF/services` for `ToolProvider` implementations.
 - Auto-discoverable tools use `@AgentTool` with constructor selection via `@ToolConstructor` and `@ToolParam`.
 - Prompt templates (located in `engine/src/main/resources/prompts`) are natively rendered via `Jinjava`.

@@ -12,7 +12,6 @@ only.
 ## Optional Fields
 - `baseUrl`: backend base URL
 - `toolCallingEnabled`: enable native tool calling (defaults to false)
-- `toolCallingSupported`: provider supports native tool calling (defaults to false)
 - `temperature`, `topK`, `topP`, `repeatPenalty`
 - `numPredict`: maximum tokens to generate
 - `maxContextLength`: context window size
@@ -52,8 +51,7 @@ are omitted from the model configuration.
   "type": "gemini",
   "model": "gemini-2.0-flash",
   "apiKey": "YOUR_API_KEY",
-  "toolCallingEnabled": true,
-  "toolCallingSupported": true
+  "toolCallingEnabled": true
 }
 ```
 

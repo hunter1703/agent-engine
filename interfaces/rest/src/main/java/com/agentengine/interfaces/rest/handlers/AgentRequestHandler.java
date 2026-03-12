@@ -1,11 +1,11 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.api.AgentRequest;
-import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
+import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
 
-public interface AgentRequestHandler<T> {
+public interface AgentRequestHandler<Request extends AgentRequest, Response> {
 
   RequestType requestType();
 
-  T handle(AgentRequest request);
+  Response handle(Request request);
 }

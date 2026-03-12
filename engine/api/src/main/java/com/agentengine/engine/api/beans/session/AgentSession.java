@@ -3,6 +3,7 @@ package com.agentengine.engine.api.beans.session;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.google.adk.sessions.Session;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 public class AgentSession extends NamedEntity {
   public static final String DEFAULT_USER_ID = "default";

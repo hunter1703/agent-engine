@@ -70,7 +70,7 @@ public final class AddTaskTool extends Tool {
     }
     currentPlan.getTasks().add(task);
 
-    runState.updatePlan(currentPlan);
+    runState.updatePlan(currentPlan, toolContext);
     return Map.of("status", "success", "task_id", task.getTaskId());
   }
 }

@@ -16,7 +16,7 @@ public interface SessionService {
 
   PaginatedResult<AgentSession> findSessions(Query query);
 
-  void deleteSession(String id);
+  boolean deleteSession(String id);
 
   void updateTitle(String id, String title);
 }

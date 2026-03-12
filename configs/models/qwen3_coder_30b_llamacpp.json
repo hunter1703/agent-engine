@@ -16,7 +16,6 @@
   "topK": 40,
   "topP": 0.85,
   "repeatPenalty": 1.05,
-  "toolCallingEnabled": true,
-  "toolCallingSupported": true,
+  "toolCallingEnabled": false,
   "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call. Never repeat or restate previously emitted text; always continue from where you left off without re-sending earlier content."
 }

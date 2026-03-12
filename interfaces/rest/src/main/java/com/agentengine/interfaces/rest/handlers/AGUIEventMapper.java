@@ -79,7 +79,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
 
     final boolean partial = event.partial().orElse(false);
-    final boolean turnComplete = event.turnComplete().orElse(false);
 
     final Optional<Content> content = event.content();
     if (content.isPresent()) {
@@ -90,7 +89,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
         if (part.thought().orElse(false) || internal) {
           final String thoughtText = part.text().orElse("");
           if (StringUtils.isNotEmpty(thoughtText)) {
-            flowable = state.currentTextMessageId != null ? finishStepIfNeeded(true) : flowable;
+            if (state.currentTextMessageId != null) {
+              flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
+            }
             flowable =
                 flowable
                     .concatWith(startThinkingIfNeeded())
@@ -341,8 +342,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return StringUtils.isNotBlank(state.currentStepName);
   }
 
-  private Flowable<BaseEvent> finishStepIfNeeded(boolean turnComplete) {
-    if (!turnComplete || !hasStepStarted()) {
+  private Flowable<BaseEvent> finishStepIfNeeded(final Event event) {
+    if (!event.turnComplete().orElse(false) || !hasStepStarted()) {
       return Flowable.empty();
     }
     Flowable<BaseEvent> flowable = Flowable.empty();

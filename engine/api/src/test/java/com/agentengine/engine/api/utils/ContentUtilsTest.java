@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ContentUtilsTest {
@@ -43,5 +45,27 @@ class ContentUtilsTest {
             .build();
 
     assertThat(ContentUtils.extractLatestUserText(request)).isEqualTo("answer");
+  }
+
+  @Test
+  void shouldTreatBlankTextOnlyContentAsEmpty() {
+    final Content content =
+        Content.builder().role("user").parts(List.of(Part.fromText("   "))).build();
+
+    assertThat(ContentUtils.isEmptyPart(content)).isTrue();
+  }
+
+  @Test
+  void shouldTreatFunctionCallPartAsNonEmpty() {
+    final Part part =
+        Part.builder()
+            .functionCall(FunctionCall.builder().name("search").args(Map.of("q", "weather")).build())
+            .build();
+
+    assertThat(ContentUtils.isEmptyPart(part)).isFalse();
+    assertThat(
+            ContentUtils.isEmptyPart(
+                Content.builder().role("model").parts(List.of(part)).build()))
+        .isFalse();
   }
 }

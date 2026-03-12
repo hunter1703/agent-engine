@@ -41,7 +41,7 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             delegate,
-            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build());
+            new Parser("", true));
 
     model.generateContent(request, false).blockingFirst();
 
@@ -70,7 +70,7 @@ class DelegatingLLMModelTest {
     final DelegatingLLMModel model =
         new DelegatingLLMModel(
             delegate,
-            Parser.builder().toolCallingEnabled(true).parseToolCallsFromText(true).build());
+            new Parser("", true));
 
     assertThatThrownBy(
             () -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
@@ -88,7 +88,7 @@ class DelegatingLLMModelTest {
                     .content(Content.builder().role("model").parts(List.of(Part.fromText("ok"))).build())
                     .build()));
 
-    final DelegatingLLMModel model = new DelegatingLLMModel(delegate, Parser.create());
+    final DelegatingLLMModel model = new DelegatingLLMModel(delegate, new Parser("", true));
 
     final LlmResponse response = model.generateContent(LlmRequest.builder().build(), false).blockingFirst();
 

@@ -46,7 +46,7 @@ class OrchestratorAgentFactoryTest {
     assertThat(llmAgent.disallowTransferToParent()).isTrue();
     assertThat(llmAgent.disallowTransferToPeers()).isTrue();
     assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name)
-        .containsExactly("sub-agent");
+        .containsExactly("request_human_input", "sub-agent");
   }
 
   @Test
@@ -61,7 +61,9 @@ class OrchestratorAgentFactoryTest {
     assertThat(agent.subAgents()).extracting(BaseAgent::name).containsExactly("sub-agent");
     assertThat(llmAgent.disallowTransferToParent()).isFalse();
     assertThat(llmAgent.disallowTransferToPeers()).isFalse();
-    assertThat(llmAgent.tools().blockingGet()).isEmpty();
+    assertThat(llmAgent.tools().blockingGet())
+        .extracting(com.google.adk.tools.BaseTool::name)
+        .containsExactly("request_human_input");
   }
 
   private static LlmAgent extractDelegatedLlmAgent(final DelegatedAgent agent) {
@@ -151,7 +153,7 @@ class OrchestratorAgentFactoryTest {
 
   private static final class StubModel extends AbstractLLM {
     private StubModel(final String modelId) {
-      super(modelId, Parser.create());
+      super(modelId, new Parser("", true));
     }
 
     @Override

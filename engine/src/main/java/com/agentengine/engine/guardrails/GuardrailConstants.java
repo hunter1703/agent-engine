@@ -17,7 +17,6 @@ public final class GuardrailConstants {
 
     public static final String TOOL_POLICY = "guardrail_tool_policy";
     public static final String TOOL_ESCALATE = "guardrail_tool_escalate";
-    public static final String TOOL_BLOCK = "guardrail_tool_block";
 
     public static final String RELEVANCE_STEER = "relevance_steer";
     public static final String RELEVANCE_BLOCK = "relevance_block";
@@ -40,18 +39,8 @@ public final class GuardrailConstants {
   }
 
   public static final class ToolResultKey {
-    public static final String STATUS = "status";
     public static final String MESSAGE = "message";
-    public static final String ERROR = "error";
-    public static final String GUARDRAIL_CODE = "guardrail_code";
 
     private ToolResultKey() {}
-  }
-
-  public static final class ToolResultStatus {
-    public static final String CONFIRMATION_REQUESTED = "confirmation_requested";
-    public static final String BLOCKED = "blocked";
-
-    private ToolResultStatus() {}
   }
 }

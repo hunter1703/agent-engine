@@ -62,10 +62,6 @@
         "default" : false,
         "type" : "boolean"
       },
-      "toolCallingSupported" : {
-        "default" : false,
-        "type" : "boolean"
-      },
       "topK" : {
         "type" : "integer"
       },
@@ -73,7 +69,7 @@
         "type" : "number"
       },
       "type" : {
-        "enum" : [ "ollama", "open_ai_compatible", "gemini" ],
+        "enum" : [ "OLLAMA", "OPEN_AI_COMPATIBLE", "GEMINI" ],
         "type" : "string"
       },
       "updatedTime" : {
@@ -101,7 +97,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "gemini" ]
+            }, "GEMINI" ]
           }
         } ],
         "sensitive" : true
@@ -122,7 +118,7 @@
           "expr" : {
             "in" : [ {
               "var" : "type"
-            }, [ "ollama", "open_ai_compatible" ] ]
+            }, [ "OLLAMA", "OPEN_AI_COMPATIBLE" ] ]
           }
         } ]
       },
@@ -248,7 +244,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "open_ai_compatible" ]
+            }, "OPEN_AI_COMPATIBLE" ]
           }
         } ]
       },
@@ -268,7 +264,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "open_ai_compatible" ]
+            }, "OPEN_AI_COMPATIBLE" ]
           }
         } ]
       },
@@ -288,7 +284,7 @@
           "expr" : {
             "===" : [ {
               "var" : "type"
-            }, "open_ai_compatible" ]
+            }, "OPEN_AI_COMPATIBLE" ]
           }
         } ]
       },
@@ -325,18 +321,6 @@
         "step" : "integration",
         "section" : "integration",
         "order" : 80,
-        "access" : {
-          "create" : "EDITABLE",
-          "edit" : "EDITABLE",
-          "view" : "READ_ONLY"
-        }
-      },
-      "/toolCallingSupported" : {
-        "label" : "Tool Calling Supported",
-        "widget" : "SWITCH",
-        "step" : "integration",
-        "section" : "integration",
-        "order" : 90,
         "access" : {
           "create" : "EDITABLE",
           "edit" : "EDITABLE",
@@ -380,7 +364,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "ollama", "open_ai_compatible", "gemini" ]
+        "options" : [ "OLLAMA", "OPEN_AI_COMPATIBLE", "GEMINI" ]
       }
     },
     "presets" : [ {

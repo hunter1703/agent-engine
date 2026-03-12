@@ -3,11 +3,14 @@ package com.agentengine.engine.tools;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.SchemaUtils;
+import com.google.adk.events.Event;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -102,5 +105,37 @@ public final class ToolUtils {
     }
     final String joined = unique.stream().limit(3).collect(Collectors.joining(", "));
     return unique.size() > 3 ? joined + ", ..." : joined;
+  }
+
+  public static String originalToolName(final FunctionCall functionCall) {
+    if (functionCall == null) {
+      return null;
+    }
+    final Map<String, Object> args = functionCall.args().orElse(Map.of());
+    final Object original = args.get("originalFunctionCall");
+    if (!(original instanceof Map<?, ?> originalMap)) {
+      return null;
+    }
+    final Object name = originalMap.get("name");
+    return name == null ? null : String.valueOf(name);
+  }
+
+  public static boolean isHumanInTheLoopToolCall(final FunctionCall functionCall) {
+    return HumanInTheLoopTool.TOOL_NAME.equals(functionCall.name().orElse(null));
+  }
+
+  public static boolean isHumanInTheLoopToolEvent(final Event event) {
+    if (event == null) {
+      return false;
+    }
+    if (event.functionCalls().stream().anyMatch(ToolUtils::isHumanInTheLoopToolCall)) {
+      return true;
+    }
+    if (event.functionResponses().stream()
+        .anyMatch(response -> HumanInTheLoopTool.TOOL_NAME.equals(response.name().orElse(null)))) {
+      return true;
+    }
+    return Functions.getAskUserConfirmationFunctionCalls(event).stream()
+        .anyMatch(call -> HumanInTheLoopTool.TOOL_NAME.equals(originalToolName(call)));
   }
 }

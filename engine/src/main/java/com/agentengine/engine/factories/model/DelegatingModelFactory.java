@@ -17,23 +17,14 @@ public abstract class DelegatingModelFactory<T extends BaseLlm>
 
   @Override
   public final DelegatingLLMModel build(final ModelConfig modelConfig) {
-    final boolean toolCallingSupported = modelConfig.isToolCallingSupported();
     final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-    final boolean parseToolCallsFromText = toolCallingEnabled && !toolCallingSupported;
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final String protocol =
         buildProtocolMessage(
             responseFormatType,
             toolCallingEnabled,
-            toolCallingSupported,
             modelConfig.getInstructions());
-    final Parser parser =
-        Parser.builder()
-            .withResponseFormat(responseFormatType)
-            .toolCallingEnabled(toolCallingEnabled)
-            .parseToolCallsFromText(parseToolCallsFromText)
-            .protocol(protocol)
-            .build();
+    final Parser parser = new Parser(protocol, toolCallingEnabled);
     final T delegate = buildDelegate(modelConfig);
     return new DelegatingLLMModel(delegate, parser);
   }
@@ -47,12 +38,10 @@ public abstract class DelegatingModelFactory<T extends BaseLlm>
   private static String buildProtocolMessage(
       final ResponseFormatType responseFormatType,
       final boolean toolCallingEnabled,
-      final boolean toolCallingSupported,
       final String modelInstructions) {
     final String templateName = resolveProtocolTemplate(responseFormatType);
     final Map<String, Object> context = new HashMap<>();
     context.put("toolCallingAllowed", toolCallingEnabled);
-    context.put("parseToolCallsFromText", !toolCallingSupported);
     if (responseFormatType == ResponseFormatType.JSON) {
       context.put("response_schema", loadReasonerSchema(responseFormatType));
     }

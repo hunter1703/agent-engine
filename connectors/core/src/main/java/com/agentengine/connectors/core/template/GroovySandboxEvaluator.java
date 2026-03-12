@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +39,10 @@ public final class GroovySandboxEvaluator {
           "@grab");
   private static final ExecutorService EVALUATION_EXECUTOR =
       java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+
+  static {
+    Runtime.getRuntime().addShutdownHook(new Thread(EVALUATION_EXECUTOR::shutdownNow));
+  }
 
   private final Duration timeout;
   private final int maxExpressionLength;
@@ -81,7 +84,7 @@ public final class GroovySandboxEvaluator {
     final Future<Object> task =
         EVALUATION_EXECUTOR.submit(
             () -> {
-              final Binding binding = new Binding(new HashMap<>(wrapVariables(variables)));
+              final Binding binding = new Binding(wrapVariables(variables));
               final GroovyShell shell = new GroovyShell(binding, compilerConfiguration);
               return shell.evaluate(trimmed);
             });

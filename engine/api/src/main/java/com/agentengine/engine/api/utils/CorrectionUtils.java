@@ -68,7 +68,6 @@ public final class CorrectionUtils {
         .branch(context.branch())
         .actions(buildCorrectionActions("violation", code, message))
         .content(correctiveContent)
-        .turnComplete(false)
         .build();
   }
 }

@@ -11,7 +11,6 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,12 +27,29 @@ public final class ToolCatalogImpl implements ToolCatalog {
       final @Any Instance<ToolProvider> providers,
       final @Any Instance<ToolsetProvider> toolsets,
       final DiscoveredToolProviders discoveredToolProviders) {
-    final List<ToolProvider> toolProviders = CollectionUtils.nullSafeMutableList(ServiceUtils.loadServices(providers, ToolProvider.class));
+    final List<ToolProvider> toolProviders =
+        CollectionUtils.nullSafeMutableList(ServiceUtils.loadServices(providers, ToolProvider.class));
     toolProviders.addAll(discoveredToolProviders.providers());
     final List<ToolsetProvider> toolsetProviders = ServiceUtils.loadServices(toolsets, ToolsetProvider.class);
     final Map<String, ToolDescriptor> nameVsDescriptor = getNameVsDescriptor(toolProviders, toolsetProviders);
-    this.toolNameVsEntry = toolProviders.stream().collect(Collectors.toMap(toolProvider -> toolProvider.descriptor().name(), provider -> new ToolEntry(provider.descriptor(), provider), (a, b) -> a));
-    this.toolsetNameVsEntry = toolsetProviders.stream().collect(Collectors.toMap(toolsetProvider -> toolsetProvider.descriptor().name(), provider -> new ToolsetEntry(provider.descriptor(), provider), (a, b) -> a));
+    this.toolNameVsEntry =
+        toolProviders.stream()
+            .filter(toolProvider -> toolProvider.descriptor() != null)
+            .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name()))
+            .collect(
+                Collectors.toMap(
+                    toolProvider -> toolProvider.descriptor().name(),
+                    provider -> new ToolEntry(provider.descriptor(), provider),
+                    (a, b) -> a));
+    this.toolsetNameVsEntry =
+        toolsetProviders.stream()
+            .filter(toolsetProvider -> toolsetProvider.descriptor() != null)
+            .filter(toolsetProvider -> StringUtils.isNotBlank(toolsetProvider.descriptor().name()))
+            .collect(
+                Collectors.toMap(
+                    toolsetProvider -> toolsetProvider.descriptor().name(),
+                    provider -> new ToolsetEntry(provider.descriptor(), provider),
+                    (a, b) -> a));
     this.allTools = List.copyOf(nameVsDescriptor.values());
   }
 
@@ -44,10 +60,15 @@ public final class ToolCatalogImpl implements ToolCatalog {
 
   @Override
   public ToolDescriptor getToolByName(final String toolName) {
-    if (StringUtils.isBlank(toolName) || !toolNameVsEntry.containsKey(toolName)) {
+    if (StringUtils.isBlank(toolName)) {
       return null;
     }
-    return toolNameVsEntry.get(toolName).descriptor();
+    final ToolEntry toolEntry = toolNameVsEntry.get(toolName);
+    if (toolEntry != null) {
+      return toolEntry.descriptor();
+    }
+    final ToolsetEntry toolsetEntry = toolsetNameVsEntry.get(toolName);
+    return toolsetEntry == null ? null : toolsetEntry.descriptor();
   }
 
   @Override
@@ -60,7 +81,7 @@ public final class ToolCatalogImpl implements ToolCatalog {
 
   @Override
   public ToolsetProvider getToolsetProvider(final String toolsetName) {
-    if (StringUtils.isBlank(toolsetName) || !toolNameVsEntry.containsKey(toolsetName)) {
+    if (StringUtils.isBlank(toolsetName) || !toolsetNameVsEntry.containsKey(toolsetName)) {
       return null;
     }
     return toolsetNameVsEntry.get(toolsetName).provider();
@@ -71,10 +92,16 @@ public final class ToolCatalogImpl implements ToolCatalog {
     final Map<String, ToolDescriptor> nameVsDescriptor = new LinkedHashMap<>();
     for (final ToolProvider toolProvider : toolProviders) {
       final ToolDescriptor descriptor = toolProvider.descriptor();
+      if (descriptor == null || StringUtils.isBlank(descriptor.name())) {
+        continue;
+      }
       nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
     }
     for (final ToolsetProvider toolsetProvider : toolsetProviders) {
       final ToolDescriptor descriptor = toolsetProvider.descriptor();
+      if (descriptor == null || StringUtils.isBlank(descriptor.name())) {
+        continue;
+      }
       nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
     }
     return nameVsDescriptor;

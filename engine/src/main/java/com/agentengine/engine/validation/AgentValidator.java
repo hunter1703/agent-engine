@@ -1,21 +1,31 @@
 package com.agentengine.engine.validation;
 
-import com.agentengine.engine.api.beans.config.*;
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
+import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
+import com.agentengine.engine.api.beans.config.OrchestrationMode;
+import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
+import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
+import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
+import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.validation.ValidationCollector;
 import com.agentengine.util.common.validation.Validator;
-import dev.langchain4j.store.embedding.filter.logical.Or;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Singleton;
-
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
 
 @Singleton
 public class AgentValidator implements Validator<BaseAgentConfig> {
 
-  @Override
+  private final Predicate<String> subAgentExistsPredicate;
+
+    public AgentValidator(Instance<AgentService> agentService) {
+        this.subAgentExistsPredicate = id -> agentService.get().getAgent(id).isPresent();
+    }
+
+    @Override
   public Class<BaseAgentConfig> targetType() {
     return BaseAgentConfig.class;
   }
@@ -27,17 +37,30 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
 
   @Override
   public void validate(final BaseAgentConfig config, final ValidationCollector errors) {
-    if (requiresModelId(config) && StringUtils.isBlank(config.getModelId())) {
+    if (config == null || errors == null) {
+      return;
+    }
+    if (StringUtils.isBlank(config.getType())) {
+      errors.add("Agent type is required");
+    }
+    if (config instanceof DefaultAgentConfig && StringUtils.isBlank(config.getModelId())) {
       errors.add("Agent type and modelId are required");
+    }
+    if (!(config instanceof OrchestratorAgentConfig) && CollectionUtils.isNotEmpty(config.getSubAgentIds())) {
+      errors.add("subAgentIds are supported only for type=orchestrator; agent_id=" + config.getId());
     }
 
     if (config instanceof OrchestratorAgentConfig orchestratorAgentConfig) {
       final List<String> subAgentIds = config.getSubAgentIds();
-      if (CollectionUtils.isEmpty(subAgentIds)) {
+      final OrchestrationMode orchestrationMode = orchestratorAgentConfig.orchestrationModeEnum();
+      if ((orchestrationMode == OrchestrationMode.SEQUENTIAL
+              || orchestrationMode == OrchestrationMode.PARALLEL)
+          && CollectionUtils.isEmpty(subAgentIds)) {
         errors.add("orchestrator agent requires non-empty subAgentIds; agent_id=" + config.getId());
       }
       final OrchestratorParallelConfig parallel = orchestratorAgentConfig.getParallel();
-      if (orchestratorAgentConfig.orchestrationModeEnum() == OrchestrationMode.PARALLEL
+      if (orchestrationMode == OrchestrationMode.PARALLEL
+          && parallel != null
           && parallel.stoppingPolicyEnum() == ParallelStoppingPolicy.QUORUM
           && parallel.getQuorum() > subAgentIds.size()) {
         errors.add(
@@ -49,18 +72,25 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
                 + " agent_id="
                 + config.getId());
       }
+
+      validateOrchestratorSubAgentsExist(orchestratorAgentConfig, subAgentExistsPredicate, errors);
     }
   }
 
-  public static boolean requiresModelId(final BaseAgentConfig config) {
-    if (config instanceof DefaultAgentConfig) {
-      return true;
+  public static void validateOrchestratorSubAgentsExist(
+      final OrchestratorAgentConfig config,
+      final Predicate<String> subAgentExists,
+      final ValidationCollector errors) {
+    if (config == null || errors == null || CollectionUtils.isEmpty(config.getSubAgentIds())) {
+      return;
     }
-    if (config instanceof OrchestratorAgentConfig orchestratorAgentConfig) {
-      final OrchestrationMode orchestrationMode = orchestratorAgentConfig.orchestrationModeEnum();
-      return orchestrationMode == OrchestrationMode.TRANSFER
-          || orchestrationMode == OrchestrationMode.MANAGER;
+    final List<String> missing =
+        config.getSubAgentIds().stream()
+            .filter(StringUtils::isNotBlank)
+            .filter(subAgentId -> subAgentExists == null || !subAgentExists.test(subAgentId))
+            .toList();
+    if (!missing.isEmpty()) {
+      errors.add("Sub-agent(s) not found: " + String.join(", ", missing));
     }
-    return false;
   }
 }

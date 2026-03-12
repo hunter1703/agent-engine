@@ -1,9 +1,12 @@
 package com.agentengine.engine.api.utils;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
 import com.google.adk.sessions.State;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -19,6 +22,15 @@ public final class EventUtils {
   public static final String INTERNAL_KEY = State.TEMP_PREFIX + "internal";
 
   private EventUtils() {}
+
+  // not adding condition on  event.finishReason() as ADK agentic loop ignores this for termination detection
+  public static boolean isTerminal(final Event event) {
+    if (event == null) {
+      return false;
+    }
+    final boolean endInvocation = event.actions() != null && event.actions().endInvocation().orElse(false);
+    return event.finalResponse() || endInvocation;
+  }
 
   /**
    * Marks an event as internal so it is excluded from end-user-facing output (e.g. AG-UI events)
@@ -47,5 +59,28 @@ public final class EventUtils {
     }
     return Boolean.TRUE.equals(
         CollectionUtils.getBooleanValueFromMap(event.actions().stateDelta(), INTERNAL_KEY));
+  }
+
+  /**
+   * Scans events in reverse chronological order and returns the most recent value for {@code key}.
+   * Returns {@code null} if the key has never been set or was explicitly removed via {@link
+   * State#REMOVED}.
+   */
+  public static Object latestDeltaValue(final List<Event> events, final String key) {
+    if (CollectionUtils.isEmpty(events) || StringUtils.isBlank(key)) {
+      return null;
+    }
+    for (final Event event : events.reversed()) {
+      if (event == null || event.actions() == null) {
+        continue;
+      }
+      final Map<String, Object> delta = event.actions().stateDelta();
+      if (CollectionUtils.isEmpty(delta) || !delta.containsKey(key)) {
+        continue;
+      }
+      final Object value = delta.get(key);
+      return State.REMOVED.equals(value) ? null : value;
+    }
+    return null;
   }
 }

@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api project(':util:common')
-    api project(':util:mongodb')
-    api project(':util:ms')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation project(':util:ms')
 }

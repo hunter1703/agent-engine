@@ -9,24 +9,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.AgentRequest;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
-import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
-import com.agentengine.interfaces.rest.requests.ResumeSessionRequest.ConfirmationDecision;
+import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.WebApplicationException;
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 
@@ -80,8 +76,10 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenUpdateAgentIdMismatch() {
+  void shouldDelegateUpdateAgentIdMismatchValidationToService() {
     final AgentService agentService = mock(AgentService.class);
+    when(agentService.updateAgent(eq("agent-1"), any(BaseAgentConfig.class)))
+        .thenThrow(new IllegalArgumentException("Agent ID in path and payload must match"));
     final AgentRestAPI api =
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
@@ -89,174 +87,82 @@ class AgentRestAPITest {
             mock(SessionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
     payload.setId("agent-2");
-    payload.setType("default");
+    payload.setType("DEFAULT");
     payload.setModelId("model-1");
 
     assertThatThrownBy(() -> api.updateAgent("agent-1", payload))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must match");
+    verify(agentService).updateAgent(eq("agent-1"), any(BaseAgentConfig.class));
   }
 
   @Test
-  void shouldThrowNotFoundWhenResumeEventsCalledForUnknownSession() {
-    final SessionService sessionService = mock(SessionService.class);
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.empty());
-
+  void shouldUseResumeHandlerWhenResumeEventsCalled() {
+    final ResumeEventsHandler handler = new ResumeEventsHandler();
     final AgentRestAPI api =
         new AgentRestAPI(
-            handlerInstanceWith(new StreamEventsHandler()),
+            handlerInstanceWith(new StreamEventsHandler(), handler),
             mock(AgentService.class),
-            sessionService);
+            mock(SessionService.class));
+    final ResumeSessionRequest request = new ResumeSessionRequest("Paris");
+    request.setSessionId("session-request-1");
 
-    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(404);
-  }
-
-  @Test
-  void shouldUseEventsHandlerWhenResumeEventsCalledForExistingSession() {
-    final SessionService sessionService = mock(SessionService.class);
-    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
-
-    final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("agent-1"))
-        .thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
-
-    final StreamEventsHandler handler = new StreamEventsHandler();
-    final AgentRestAPI api =
-        new AgentRestAPI(handlerInstanceWith(handler), agentService, sessionService);
-
-    final Publisher<BaseEvent> publisher =
-        api.resumeEvents("session-1", new ResumeSessionRequest("resume message"));
+    final Publisher<BaseEvent> publisher = api.resumeEvents("session-path-ignored", request);
 
     assertThat(publisher).isNotNull();
-    assertThat(handler.lastRequest).isNotNull();
-    assertThat(handler.lastRequest.getSessionId()).isEqualTo("session-1");
-    assertThat(handler.lastRequest.getAgentId()).isEqualTo("agent-1");
-    assertThat(handler.lastRequest.getMessage()).isEqualTo("resume message");
+    assertThat(handler.lastRequest).isSameAs(request);
+    assertThat(handler.lastRequest.getSessionId()).isEqualTo("session-request-1");
   }
 
   @Test
-  void shouldRejectResumeWhenSessionIsExpired() {
-    final SessionService sessionService = mock(SessionService.class);
-    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
-    final SessionInfo sessionInfo = new SessionInfo();
-    sessionInfo.setState(Map.of("expiresAt", Instant.parse("2000-01-01T00:00:00Z").toString()));
-    session.setSessionInfo(sessionInfo);
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
+  void shouldUseEventsHandlerWhenEventsCalledForExistingAgent() {
+    final AgentService agentService = mock(AgentService.class);
+    when(agentService.getAgent("agent-1"))
+        .thenReturn(Optional.of(new DefaultAgentConfig()));
 
+    final StreamEventsHandler handler = new StreamEventsHandler();
+    final AgentRestAPI api =
+        new AgentRestAPI(
+            handlerInstanceWith(handler),
+            agentService,
+            mock(SessionService.class));
+    final AgentRequest request = new AgentRequest();
+    request.setType("STREAM_AGUI_EVENTS");
+    request.setAgentId("agent-1");
+    request.setMessage("hello");
+
+    final Publisher<BaseEvent> publisher = api.events(request);
+
+    assertThat(publisher).isNotNull();
+    assertThat(handler.lastRequest).isSameAs(request);
+  }
+
+  @Test
+  void shouldThrowBadRequestWhenResumeEventsCalledWithoutRegisteredHandler() {
     final AgentRestAPI api =
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
             mock(AgentService.class),
-            sessionService);
+            mock(SessionService.class));
+    final ResumeSessionRequest request = new ResumeSessionRequest("Paris");
+    request.setSessionId("session-1");
 
-    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(410);
-  }
-
-  @Test
-  void shouldRejectResumeWhenToolConfirmationIsTimedOut() {
-    final SessionService sessionService = mock(SessionService.class);
-    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
-    final SessionInfo sessionInfo = new SessionInfo();
-    sessionInfo.setState(
-        Map.of(
-            "sessionState",
-            Map.of(
-                "paused",
-                true,
-                "pauseReason",
-                "tool_confirmation",
-                "pauseRequestedAt",
-                Instant.now().minusSeconds(3_600).toEpochMilli())));
-    session.setSessionInfo(sessionInfo);
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
-
-    final AgentRestAPI api =
-        new AgentRestAPI(
-            handlerInstanceWith(new StreamEventsHandler()),
-            mock(AgentService.class),
-            sessionService);
-
-    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("resume")))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(408);
-  }
-
-  @Test
-  void shouldRequireDecisionWhenResumingToolConfirmationPause() {
-    final SessionService sessionService = mock(SessionService.class);
-    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
-    final SessionInfo sessionInfo = new SessionInfo();
-    sessionInfo.setState(
-        Map.of(
-            "sessionState",
-            Map.of(
-                "paused",
-                true,
-                "pauseReason",
-                "tool_confirmation",
-                "pauseRequestedAt",
-                Instant.now().toEpochMilli())));
-    session.setSessionInfo(sessionInfo);
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
-
-    final AgentRestAPI api =
-        new AgentRestAPI(
-            handlerInstanceWith(new StreamEventsHandler()),
-            mock(AgentService.class),
-            sessionService);
-
-    assertThatThrownBy(() -> api.resumeEvents("session-1", new ResumeSessionRequest("yes")))
+    assertThatThrownBy(() -> api.resumeEvents("session-path-ignored", request))
         .isInstanceOf(WebApplicationException.class)
         .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
         .isEqualTo(400);
-  }
-
-  @Test
-  void shouldEncodeDecisionMarkerWhenResumingToolConfirmationPause() {
-    final SessionService sessionService = mock(SessionService.class);
-    final AgentSession session = new AgentSession("session-1", "agent-1", "title");
-    final SessionInfo sessionInfo = new SessionInfo();
-    sessionInfo.setState(
-        Map.of(
-            "sessionState",
-            Map.of(
-                "paused",
-                true,
-                "pauseReason",
-                "tool_confirmation",
-                "pauseRequestedAt",
-                Instant.now().toEpochMilli())));
-    session.setSessionInfo(sessionInfo);
-    when(sessionService.getSession("session-1")).thenReturn(java.util.Optional.of(session));
-
-    final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("agent-1"))
-        .thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
-    final StreamEventsHandler handler = new StreamEventsHandler();
-    final AgentRestAPI api =
-        new AgentRestAPI(handlerInstanceWith(handler), agentService, sessionService);
-
-    api.resumeEvents("session-1", new ResumeSessionRequest("", ConfirmationDecision.APPROVE));
-
-    assertThat(handler.lastRequest.getMessage()).isEqualTo("__AE_TOOL_DECISION__:APPROVE");
   }
 
   @Test
   void shouldThrowBadRequestWhenEventsCalledWithoutRegisteredHandler() {
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent(any())).thenReturn(java.util.Optional.of(new DefaultAgentConfig()));
-    final Instance<AgentRequestHandler<?>> emptyHandlers = handlerInstanceWith();
+    when(agentService.getAgent(any())).thenReturn(Optional.of(new DefaultAgentConfig()));
+    final Instance<AgentRequestHandler<?, ?>> emptyHandlers = handlerInstanceWith();
     final AgentRestAPI api =
-        new AgentRestAPI(emptyHandlers, agentService, mock(SessionService.class));
+        new AgentRestAPI(
+            emptyHandlers,
+            agentService,
+            mock(SessionService.class));
 
     assertThatThrownBy(() -> api.events(new AgentRequest()))
         .isInstanceOf(WebApplicationException.class)
@@ -267,7 +173,7 @@ class AgentRestAPITest {
   @Test
   void shouldThrowNotFoundWhenEventsCalledWithUnknownAgentId() {
     final AgentService agentService = mock(AgentService.class);
-    when(agentService.getAgent("ghost")).thenReturn(java.util.Optional.empty());
+    when(agentService.getAgent("ghost")).thenReturn(Optional.empty());
     final AgentRestAPI api =
         new AgentRestAPI(
             handlerInstanceWith(new StreamEventsHandler()),
@@ -296,7 +202,7 @@ class AgentRestAPITest {
             mock(SessionService.class));
     final OrchestratorAgentConfig payload = new OrchestratorAgentConfig();
     payload.setId("orch-1");
-    payload.setType("orchestrator");
+    payload.setType("ORCHESTRATOR");
     payload.setModelId("model-1");
     payload.setSubAgentIds(List.of("story_phase_1_brief", "missing_subagent"));
 
@@ -317,7 +223,7 @@ class AgentRestAPITest {
             mock(SessionService.class));
     final OrchestratorAgentConfig payload = new OrchestratorAgentConfig();
     payload.setId("orch-2");
-    payload.setType("orchestrator");
+    payload.setType("ORCHESTRATOR");
     payload.setSubAgentIds(List.of());
 
     final BaseAgentConfig saved = api.upsertAgent(payload);
@@ -366,7 +272,7 @@ class AgentRestAPITest {
             agentService,
             mock(SessionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
-    payload.setType("default");
+    payload.setType("DEFAULT");
     payload.setModelId("model-1");
     when(agentService.updateAgent(eq("agent-1"), any(BaseAgentConfig.class)))
         .thenAnswer(inv -> inv.getArgument(1));
@@ -385,7 +291,7 @@ class AgentRestAPITest {
         .thenThrow(new IllegalArgumentException("Sub-agent(s) not found: missing-sub"));
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("orch-1");
-    config.setType("orchestrator");
+    config.setType("ORCHESTRATOR");
     config.setSubAgentIds(java.util.List.of("missing-sub"));
     final AgentRestAPI api =
         new AgentRestAPI(
@@ -404,7 +310,7 @@ class AgentRestAPITest {
     final AgentService agentService = mock(AgentService.class);
     final DefaultAgentConfig config = new DefaultAgentConfig();
     config.setId("a-1");
-    config.setType("default");
+    config.setType("DEFAULT");
     config.setModelId("model-1");
     when(agentService.createAgent(any())).thenReturn(config);
     new AgentRestAPI(
@@ -431,15 +337,16 @@ class AgentRestAPITest {
 
   @SafeVarargs
   @SuppressWarnings("unchecked")
-  private static Instance<AgentRequestHandler<?>> handlerInstanceWith(
-      final AgentRequestHandler<?>... handlers) {
-    final Instance<AgentRequestHandler<?>> instance = mock(Instance.class);
+  private static Instance<AgentRequestHandler<?, ?>> handlerInstanceWith(
+      final AgentRequestHandler<?, ?>... handlers) {
+    final Instance<AgentRequestHandler<?, ?>> instance = mock(Instance.class);
     when(instance.stream()).thenReturn(java.util.stream.Stream.of(handlers));
+    when(instance.isUnsatisfied()).thenReturn(handlers.length == 0);
     return instance;
   }
 
   private static final class StreamEventsHandler
-      implements AgentRequestHandler<Flowable<BaseEvent>> {
+      implements AgentRequestHandler<AgentRequest, Flowable<BaseEvent>> {
     private AgentRequest lastRequest;
 
     @Override
@@ -449,6 +356,22 @@ class AgentRestAPITest {
 
     @Override
     public Flowable<BaseEvent> handle(final AgentRequest request) {
+      this.lastRequest = request;
+      return Flowable.empty();
+    }
+  }
+
+  private static final class ResumeEventsHandler
+      implements AgentRequestHandler<ResumeSessionRequest, Flowable<BaseEvent>> {
+    private ResumeSessionRequest lastRequest;
+
+    @Override
+    public AgentRequest.RequestType requestType() {
+      return AgentRequest.RequestType.RESUME_SESSION;
+    }
+
+    @Override
+    public Flowable<BaseEvent> handle(final ResumeSessionRequest request) {
       this.lastRequest = request;
       return Flowable.empty();
     }

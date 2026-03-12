@@ -1,25 +1,17 @@
 package com.agentengine.connectors.core.runtime;
 
-import com.agentengine.connectors.core.auth.AuthStrategyRegistry;
 import com.agentengine.connectors.core.config.ConnectorDefinition;
 import com.agentengine.connectors.core.config.PaginationType;
 import com.agentengine.connectors.core.config.RetryBackoffType;
 import com.agentengine.connectors.core.http.HttpRequestData;
 import com.agentengine.connectors.core.http.HttpResponseData;
 import com.agentengine.connectors.core.http.HttpTransport;
-import com.agentengine.connectors.core.http.OkHttpTransport;
 import com.agentengine.connectors.core.pagination.PaginationDirective;
 import com.agentengine.connectors.core.pagination.PaginationState;
 import com.agentengine.connectors.core.pagination.PaginationStrategy;
 import com.agentengine.connectors.core.pagination.PaginationStrategyRegistry;
-import com.agentengine.connectors.core.response.DefaultErrorClassifier;
 import com.agentengine.connectors.core.response.DefaultResponseMapper;
-import com.agentengine.connectors.core.response.JsonPathResponseExtractor;
-import com.agentengine.connectors.core.response.ResponseExtractor;
-import com.agentengine.connectors.core.template.DefaultTemplateResolver;
-import com.agentengine.connectors.core.template.GroovySandboxEvaluator;
 import com.agentengine.connectors.core.validation.ConnectorConfigValidator;
-import com.agentengine.connectors.core.validation.DefaultConnectorConfigValidator;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
@@ -38,16 +30,6 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
   private final DefaultResponseMapper responseMapper;
 
   @Inject
-  public DefaultConnectorExecutor() {
-    this(
-        new DefaultConnectorConfigValidator(),
-        new RequestMaterializer(
-            new DefaultTemplateResolver(new GroovySandboxEvaluator()), new AuthStrategyRegistry()),
-        new OkHttpTransport(),
-        new PaginationStrategyRegistry(),
-        createDefaultResponseMapper());
-  }
-
   public DefaultConnectorExecutor(
       final ConnectorConfigValidator connectorConfigValidator,
       final RequestMaterializer requestMaterializer,
@@ -218,11 +200,5 @@ public final class DefaultConnectorExecutor implements ConnectorExecutor {
     previous.put("errorMessage", pageResult.errorMessage());
     previous.put("retryable", pageResult.retryable());
     return previous;
-  }
-
-  private static DefaultResponseMapper createDefaultResponseMapper() {
-    final ResponseExtractor responseExtractor = new JsonPathResponseExtractor();
-    return new DefaultResponseMapper(
-        responseExtractor, new DefaultErrorClassifier(responseExtractor));
   }
 }

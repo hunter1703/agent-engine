@@ -3,8 +3,10 @@ package com.agentengine.engine.api.beans.session;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,13 +17,9 @@ import java.util.concurrent.ConcurrentMap;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @BsonDiscriminator(value = "session_info")
 public class SessionInfo extends BaseEntity {
-  private static final Logger LOG = LoggerFactory.getLogger(SessionInfo.class);
-
   private String appName;
   private String userId;
   private Map<String, Object> state = new HashMap<>();
@@ -57,25 +55,12 @@ public class SessionInfo extends BaseEntity {
     if (state != null) {
       sessionState.putAll(state);
     }
-    final List<Event> sessionEvents = new ArrayList<>();
-    if (events != null) {
-      for (final Map<String, Object> map : events) {
-        if (map == null) {
-          continue;
-        }
-        try {
-          sessionEvents.add(JsonUtils.fromJacksonMap(map, Event.class));
-        } catch (IllegalArgumentException ex) {
-          LOG.debug("Skipping invalid event payload", ex);
-        }
-      }
-    }
     final Session.Builder builder =
         Session.builder(getId())
             .appName(appName)
             .userId(userId)
             .state(sessionState)
-            .events(sessionEvents);
+            .events(JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {}));
     if (lastUpdateTime != null) {
       builder.lastUpdateTime(Instant.ofEpochMilli(lastUpdateTime));
     }
@@ -113,8 +98,9 @@ public class SessionInfo extends BaseEntity {
   }
 
   @BsonIgnore
-  public List<Map<String, Object>> getEvents() {
-    return events;
+  public List<Event> getEvents() {
+    final List<Event> parsed = JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {});
+    return parsed == null ? List.of() : parsed;
   }
 
   @BsonIgnore
@@ -128,18 +114,13 @@ public class SessionInfo extends BaseEntity {
   }
 
   @Secure
-  @SuppressWarnings("unchecked")
   public void setEventsJson(final String json) {
-    if (json == null || json.isEmpty()) {
-      this.events = new ArrayList<>();
-    } else {
-      try {
-        this.events = (List<Map<String, Object>>) JsonUtils.fromJson(json, List.class);
-      } catch (RuntimeException ex) {
-        LOG.debug("Failed to deserialize eventsJson payload; defaulting to empty events.", ex);
-        this.events = new ArrayList<>();
-      }
+    if (json == null || json.isBlank()) {
+      setEvents(new ArrayList<>());
+      return;
     }
+    final List<Map<String, Object>> parsedEvents = JsonUtils.fromJson(json, new TypeReference<>() {});
+    setEvents(parsedEvents == null ? new ArrayList<>() : parsedEvents);
   }
 
   public Long getLastUpdateTime() {

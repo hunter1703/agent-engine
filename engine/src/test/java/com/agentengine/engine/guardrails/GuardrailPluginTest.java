@@ -1,6 +1,8 @@
 package com.agentengine.engine.guardrails;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,19 +17,19 @@ import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.guardrails.rules.TextContentGuardrail;
-import com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail;
+import com.agentengine.engine.tools.HumanInTheLoopTool;
 import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.engine.utils.SessionUtils;
 import com.google.adk.agents.BaseAgent;
+import com.google.adk.agents.BaseAgentState;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
-import com.google.adk.events.Event;
+import com.google.adk.events.ToolConfirmation;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.sessions.Session;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,27 +44,12 @@ class GuardrailPluginTest {
 
   @Test
   void shouldAllowThroughInputViolationWhenExecutionModeIsOptimistic() {
-    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
-    rule.setId("f040-input-opt-rule");
-    rule.setStage(GuardrailStage.INPUT.name());
-    rule.setAction(GuardrailAction.BLOCK.name());
-    rule.setMessage("blocked in sync mode");
-    rule.setBlockedPatterns(List.of("f040_forbidden"));
-
-    final GuardrailPolicyFactory.GuardrailPolicy policy =
-        new GuardrailPolicyFactory.GuardrailPolicy(
-            true,
-            GuardrailErrorMode.FAIL_OPEN,
-            GuardrailExecutionMode.OPTIMISTIC,
-            Map.of(GuardrailStage.INPUT, List.of(new TextContentGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
-
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", optimisticInputPolicy()));
     final InvocationContext invocationContext = invocationContext("agent-1", "session-1");
     final CallbackContext callbackContext = mock(CallbackContext.class);
     when(callbackContext.invocationContext()).thenReturn(invocationContext);
     final LlmRequest.Builder requestBuilder =
-        LlmRequest.builder()
-            .contents(List.of(textContent("please process f040_forbidden payload")));
+        LlmRequest.builder().contents(List.of(textContent("please process f040_forbidden payload")));
 
     final boolean empty =
         plugin.beforeModelCallback(callbackContext, requestBuilder).isEmpty().blockingGet();
@@ -74,31 +61,47 @@ class GuardrailPluginTest {
   }
 
   @Test
-  void shouldAllowThroughToolViolationWhenExecutionModeIsOptimistic() {
-    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
-    rule.setId("f042-tool-opt-rule");
-    rule.setAction(GuardrailAction.BLOCK.name());
-    rule.setMessage("blocked in sync mode");
-    rule.setToolNames(List.of("run_cmd"));
-    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
+  void shouldEmitInternalHumanDecisionToolCallForInputEscalation() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousInputEscalationPolicy()));
+    final InvocationContext invocationContext = invocationContext("agent-1", "session-input-escalate");
+    final CallbackContext callbackContext = mock(CallbackContext.class);
+    when(callbackContext.invocationContext()).thenReturn(invocationContext);
 
+    final LlmResponse response =
+        plugin
+            .beforeModelCallback(
+                callbackContext,
+                LlmRequest.builder().contents(List.of(textContent("please process forbidden-input"))))
+            .blockingGet();
+
+    assertThat(response).isNotNull();
+    final FunctionCall functionCall =
+        response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
+    assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
+    assertThat(functionCall.args().orElseThrow())
+        .containsEntry("kind", "DECISION")
+        .containsEntry("options", List.of("ALLOW", "DISALLOW"));
+  }
+
+  @Test
+  void shouldAllowThroughToolViolationWhenExecutionModeIsOptimistic() {
+    final ToolSafetyGuardrailRule rule = toolRule(GuardrailAction.BLOCK, "blocked in sync mode");
     final GuardrailPolicyFactory.GuardrailPolicy policy =
         new GuardrailPolicyFactory.GuardrailPolicy(
             true,
             GuardrailErrorMode.FAIL_OPEN,
             GuardrailExecutionMode.OPTIMISTIC,
-            Map.of(GuardrailStage.TOOL, List.of(new ToolSafetyGuardrail(rule))));
+            Map.of(GuardrailStage.TOOL, List.of(new com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail(rule))));
     final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
 
     final InvocationContext invocationContext = invocationContext("agent-1", "session-2");
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.invocationContext()).thenReturn(invocationContext);
-
-    final Tool tool = runtimeTool("run_cmd", "run command");
+    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
 
     final boolean empty =
         plugin
-            .beforeToolCallback(tool, Map.of("command", "echo F042"), toolContext)
+            .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo F042"), toolContext)
             .isEmpty()
             .blockingGet();
 
@@ -109,147 +112,149 @@ class GuardrailPluginTest {
   }
 
   @Test
-  void shouldAllowThroughOutputViolationWhenExecutionModeIsOptimistic() {
-    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
-    rule.setId("f044-output-opt-rule");
-    rule.setStage(GuardrailStage.OUTPUT.name());
-    rule.setAction(GuardrailAction.BLOCK.name());
-    rule.setMessage("blocked in sync mode");
-    rule.setBlockedPatterns(List.of("f044_forbidden"));
-
-    final GuardrailPolicyFactory.GuardrailPolicy policy =
-        new GuardrailPolicyFactory.GuardrailPolicy(
-            true,
-            GuardrailErrorMode.FAIL_OPEN,
-            GuardrailExecutionMode.OPTIMISTIC,
-            Map.of(GuardrailStage.OUTPUT, List.of(new TextContentGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
-
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-3");
-    when(invocationContext.invocationId()).thenReturn("inv-1");
-    final CallbackContext callbackContext = mock(CallbackContext.class);
-    when(callbackContext.invocationContext()).thenReturn(invocationContext);
-
-    final LlmResponse llmResponse =
-        LlmResponse.builder().content(textContent("f044_forbidden")).turnComplete(true).build();
-
-    final boolean afterModelEmpty =
-        plugin.afterModelCallback(callbackContext, llmResponse).isEmpty().blockingGet();
-    final Event terminalEvent =
-        Event.builder().id("event-1").author("agent-1").turnComplete(true).build();
-    final boolean onEventEmpty =
-        plugin.onEventCallback(invocationContext, terminalEvent).isEmpty().blockingGet();
-
-    assertThat(afterModelEmpty).isTrue();
-    assertThat(onEventEmpty).isTrue();
-    assertThat(RunStateUtils.getState(invocationContext).violations())
-        .extracting(violation -> violation.code())
-        .contains(GuardrailConstants.Code.OUTPUT_PATTERN);
-  }
-
-  @Test
-  void shouldStorePendingToolNameWhenEscalating() {
-    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
-    rule.setId("f023-escalate-rule");
-    rule.setAction(GuardrailAction.ESCALATE.name());
-    rule.setMessage("Tool execution requires confirmation.");
-    rule.setToolNames(List.of("run_cmd"));
-    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
-
-    final GuardrailPolicyFactory.GuardrailPolicy policy =
-        new GuardrailPolicyFactory.GuardrailPolicy(
-            true,
-            GuardrailErrorMode.FAIL_OPEN,
-            GuardrailExecutionMode.SYNC,
-            Map.of(GuardrailStage.TOOL, List.of(new ToolSafetyGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
-
+  void shouldRequestConfirmationWhenEscalatingToolCall() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
     final InvocationContext invocationContext = invocationContext("agent-1", "session-escalate");
-    when(invocationContext.invocationId()).thenReturn("inv-escalate");
-
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.invocationContext()).thenReturn(invocationContext);
     when(toolContext.functionCallId()).thenReturn(Optional.of("call-123"));
+    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
 
-    final Tool tool = runtimeTool("run_cmd", "run command");
-
-    plugin.beforeToolCallback(tool, Map.of("command", "echo hello"), toolContext).blockingGet();
-
-    assertThat(SessionUtils.getPendingToolName(invocationContext)).isEqualTo("run_cmd");
-  }
-
-  @Test
-  void shouldNotEscalateWhenFunctionCallIdIsBlank() {
-    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
-    rule.setId("f023-blank-call-id-rule");
-    rule.setAction(GuardrailAction.ESCALATE.name());
-    rule.setMessage("Tool execution requires confirmation.");
-    rule.setToolNames(List.of("run_cmd"));
-    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
-
-    final GuardrailPolicyFactory.GuardrailPolicy policy =
-        new GuardrailPolicyFactory.GuardrailPolicy(
-            true,
-            GuardrailErrorMode.FAIL_OPEN,
-            GuardrailExecutionMode.SYNC,
-            Map.of(GuardrailStage.TOOL, List.of(new ToolSafetyGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
-
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-blank-id");
-    final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.invocationContext()).thenReturn(invocationContext);
-    when(toolContext.functionCallId()).thenReturn(Optional.of(""));
-
-    final Tool tool = runtimeTool("run_cmd", "run command");
-
-    final boolean empty =
-        plugin.beforeToolCallback(tool, Map.of("command", "echo hello"), toolContext).isEmpty()
+    final Map<String, Object> result =
+        plugin
+            .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo hello"), toolContext)
             .blockingGet();
 
-    assertThat(empty).isTrue();
-    assertThat(SessionUtils.isPaused(invocationContext)).isFalse();
-    verify(toolContext, never()).requestConfirmation(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any());
+    assertThat(result)
+        .containsEntry(GuardrailConstants.ToolResultKey.MESSAGE, "Tool execution requires confirmation.")
+        .hasSize(1);
+    verify(toolContext).requestConfirmation(anyString(), any());
   }
 
   @Test
-  void shouldBypassEscalationForPreviouslyApprovedTool() {
-    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
-    rule.setId("f023-approved-bypass-rule");
-    rule.setAction(GuardrailAction.ESCALATE.name());
-    rule.setMessage("Tool execution requires confirmation.");
-    rule.setToolNames(List.of("run_cmd"));
-    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
+  void shouldBlockRejectedToolReplayWithoutReEscalating() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
+    final InvocationContext invocationContext = invocationContext("agent-1", "session-rejected");
+    final ToolContext toolContext = mock(ToolContext.class);
+    when(toolContext.invocationContext()).thenReturn(invocationContext);
+    when(toolContext.toolConfirmation())
+        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
 
-    final GuardrailPolicyFactory.GuardrailPolicy policy =
-        new GuardrailPolicyFactory.GuardrailPolicy(
-            true,
-            GuardrailErrorMode.FAIL_OPEN,
-            GuardrailExecutionMode.SYNC,
-            Map.of(GuardrailStage.TOOL, List.of(new ToolSafetyGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
+    final Map<String, Object> result =
+        plugin
+            .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo no"), toolContext)
+            .blockingGet();
 
+    assertThat(result)
+        .containsEntry(GuardrailConstants.ToolResultKey.MESSAGE, "Tool execution was cancelled by the user.")
+        .hasSize(1);
+    verify(toolContext, never()).requestConfirmation(anyString(), any());
+  }
+
+  @Test
+  void shouldBypassEscalationForConfirmedToolReplay() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
     final InvocationContext invocationContext = invocationContext("agent-1", "session-approved");
-    SessionUtils.markToolApproved(invocationContext, "run_cmd");
-
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.invocationContext()).thenReturn(invocationContext);
     when(toolContext.functionCallId()).thenReturn(Optional.of("call-123"));
-
-    final Tool tool = runtimeTool("run_cmd", "run command");
+    when(toolContext.toolConfirmation())
+        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(true).build()));
 
     final boolean empty =
         plugin
-            .beforeToolCallback(tool, Map.of("command", "echo approved"), toolContext)
+            .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo approved"), toolContext)
             .isEmpty()
             .blockingGet();
 
     assertThat(empty).isTrue();
-    assertThat(SessionUtils.isPaused(invocationContext)).isFalse();
-    assertThat(SessionUtils.getState(invocationContext).getApprovedToolName()).isNull();
+    verify(toolContext, never()).requestConfirmation(anyString(), any());
+  }
+
+  @Test
+  void shouldEmitInternalHumanDecisionToolCallForOutputEscalation() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousOutputEscalationPolicy()));
+    final InvocationContext invocationContext = invocationContext("agent-1", "session-output-escalate");
+    final CallbackContext callbackContext = mock(CallbackContext.class);
+    when(callbackContext.invocationContext()).thenReturn(invocationContext);
+    final LlmResponse llmResponse = LlmResponse.builder().content(textContent("forbidden-output")).build();
+
+    final LlmResponse response = plugin.afterModelCallback(callbackContext, llmResponse).blockingGet();
+
+    assertThat(response).isNotNull();
+    final FunctionCall functionCall =
+        response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
+    assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
+    assertThat(functionCall.args().orElseThrow())
+        .containsEntry("kind", "DECISION")
+        .containsEntry("options", List.of("ALLOW", "DISALLOW"));
+  }
+
+  private static GuardrailPolicyFactory.GuardrailPolicy optimisticInputPolicy() {
+    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
+    rule.setId("f040-input-opt-rule");
+    rule.setStage(GuardrailStage.INPUT.name());
+    rule.setAction(GuardrailAction.BLOCK.name());
+    rule.setMessage("blocked in sync mode");
+    rule.setBlockedPatterns(List.of("f040_forbidden"));
+    return new GuardrailPolicyFactory.GuardrailPolicy(
+        true,
+        GuardrailErrorMode.FAIL_OPEN,
+        GuardrailExecutionMode.OPTIMISTIC,
+        Map.of(GuardrailStage.INPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
+  }
+
+  private static GuardrailPolicyFactory.GuardrailPolicy synchronousInputEscalationPolicy() {
+    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
+    rule.setId("input-escalate");
+    rule.setStage(GuardrailStage.INPUT.name());
+    rule.setAction(GuardrailAction.ESCALATE.name());
+    rule.setMessage("Input needs approval.");
+    rule.setBlockedPatterns(List.of("forbidden-input"));
+    return new GuardrailPolicyFactory.GuardrailPolicy(
+        true,
+        GuardrailErrorMode.FAIL_OPEN,
+        GuardrailExecutionMode.SYNC,
+        Map.of(GuardrailStage.INPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
+  }
+
+  private static GuardrailPolicyFactory.GuardrailPolicy synchronousOutputEscalationPolicy() {
+    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
+    rule.setId("output-escalate");
+    rule.setStage(GuardrailStage.OUTPUT.name());
+    rule.setAction(GuardrailAction.ESCALATE.name());
+    rule.setMessage("Output needs approval.");
+    rule.setBlockedPatterns(List.of("forbidden-output"));
+    return new GuardrailPolicyFactory.GuardrailPolicy(
+        true,
+        GuardrailErrorMode.FAIL_OPEN,
+        GuardrailExecutionMode.SYNC,
+        Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
+  }
+
+  private static GuardrailPolicyFactory.GuardrailPolicy synchronousToolEscalationPolicy() {
+    final ToolSafetyGuardrailRule rule = toolRule(GuardrailAction.ESCALATE, "Tool execution requires confirmation.");
+    return new GuardrailPolicyFactory.GuardrailPolicy(
+        true,
+        GuardrailErrorMode.FAIL_OPEN,
+        GuardrailExecutionMode.SYNC,
+        Map.of(GuardrailStage.TOOL, List.of(new com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail(rule))));
+  }
+
+  private static ToolSafetyGuardrailRule toolRule(
+      final GuardrailAction action, final String message) {
+    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
+    rule.setId("tool-rule-" + action.name().toLowerCase());
+    rule.setAction(action.name());
+    rule.setMessage(message);
+    rule.setToolNames(List.of("run_cmd"));
+    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
+    return rule;
   }
 
   private static InvocationContext invocationContext(final String agentId, final String sessionId) {
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
+    final Map<String, BaseAgentState> agentStates = new ConcurrentHashMap<>();
     final Session session =
         Session.builder(sessionId)
             .appName(agentId)
@@ -264,6 +269,7 @@ class GuardrailPluginTest {
     final InvocationContext invocationContext = mock(InvocationContext.class);
     when(invocationContext.agent()).thenReturn(invocationAgent);
     when(invocationContext.session()).thenReturn(session);
+    when(invocationContext.agentStates()).thenReturn(agentStates);
     return invocationContext;
   }
 

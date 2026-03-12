@@ -144,14 +144,6 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiBoolean
   private boolean toolCallingEnabled = false;
 
-  @UiField(
-      label = "Tool Calling Supported",
-      step = "integration",
-      section = "integration",
-      order = 90)
-  @UiBoolean
-  private boolean toolCallingSupported;
-
   @UiField(label = "Temperature", step = "sampling", section = "sampling", order = 10)
   @UiNumber
   private Double temperature;
@@ -325,14 +317,6 @@ public class ModelConfig extends NamedEntity implements Config {
 
   public void setToolCallingEnabled(final boolean toolCallingEnabled) {
     this.toolCallingEnabled = toolCallingEnabled;
-  }
-
-  public boolean isToolCallingSupported() {
-    return toolCallingSupported;
-  }
-
-  public void setToolCallingSupported(final boolean toolCallingSupported) {
-    this.toolCallingSupported = toolCallingSupported;
   }
 
   public String getServerCommand() {

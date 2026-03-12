@@ -9,7 +9,6 @@ import com.google.genai.types.Part;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class NormalizedLangChain4j extends LangChain4j {
@@ -24,10 +23,10 @@ public final class NormalizedLangChain4j extends LangChain4j {
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final Flowable<LlmResponse> responses = super.generateContent(llmRequest, stream);
-    return stream ? normalize(responses) : responses;
+    return stream ? normalizeStreamingResponses(responses) : responses;
   }
 
-  private static Flowable<LlmResponse> normalize(final Flowable<LlmResponse> responses) {
+  static Flowable<LlmResponse> normalizeStreamingResponses(final Flowable<LlmResponse> responses) {
     return Flowable.defer(
         () -> {
           final ResponseState state = new ResponseState();
@@ -44,21 +43,19 @@ public final class NormalizedLangChain4j extends LangChain4j {
       return Flowable.empty();
     }
     if (hasToolParts(response)) {
-      Flowable<LlmResponse> result = Flowable.just(markFinalWithIds(response));
+      final LlmResponse toolResponse = markNonPartial(response);
+      Flowable<LlmResponse> result = Flowable.just(toolResponse);
       if (!responseState.fullText.isEmpty()) {
-        // If we have accumulated text, emit it as a partial response before the tool call
+        // Flush buffered text before surfacing the terminal tool-call chunk.
         final LlmResponse textResponse =
             markPartial(responseState.lastTextResponse, responseState.fullText.toString());
-        result = Flowable.just(textResponse, markFinalWithIds(response));
+        result = Flowable.just(textResponse, toolResponse);
         responseState.fullText.setLength(0);
         responseState.lastTextResponse = null;
       }
       return result;
     }
-    // null if no content or non-text content part is present
     final String delta = extractTextDelta(response);
-    // if current response has function calls, return as is i.e. consider it as
-    // "complete" and no need to add partial information
     if (delta == null) {
       return Flowable.just(response);
     }
@@ -85,7 +82,7 @@ public final class NormalizedLangChain4j extends LangChain4j {
   }
 
   private static LlmResponse markPartial(final LlmResponse response) {
-    return response.toBuilder().partial(true).turnComplete(false).build();
+    return response.toBuilder().partial(true).build();
   }
 
   private static String extractTextDelta(final LlmResponse response) {
@@ -121,54 +118,16 @@ public final class NormalizedLangChain4j extends LangChain4j {
 
   private static LlmResponse markFinal(final LlmResponse response, final String fullText) {
     final Content content = Content.builder().role("model").parts(Part.fromText(fullText)).build();
-    return response.toBuilder().content(content).partial(false).turnComplete(true).build();
+    return response.toBuilder().content(content).partial(false).build();
   }
 
-  private static LlmResponse markFinal(final LlmResponse response) {
-    return response.toBuilder().partial(false).turnComplete(true).build();
-  }
-
-  private static LlmResponse markFinalWithIds(final LlmResponse response) {
-    if (response == null) {
-      return null;
-    }
-    final Content content = response.content().orElse(null);
-    if (content == null) {
-      return markFinal(response);
-    }
-    final List<Part> parts = content.parts().orElse(List.of());
-    if (parts.isEmpty()) {
-      return markFinal(response);
-    }
-
-    final List<Part> updatedParts = new ArrayList<>();
-    boolean modified = false;
-
-    for (final Part part : parts) {
-      final com.google.genai.types.FunctionCall call = part.functionCall().orElse(null);
-      if (call != null && call.id().isEmpty()) {
-        final com.google.genai.types.FunctionCall updatedCall =
-            call.toBuilder()
-                .id(com.google.adk.flows.llmflows.Functions.generateClientFunctionCallId())
-                .build();
-        updatedParts.add(part.toBuilder().functionCall(updatedCall).build());
-        modified = true;
-      } else {
-        updatedParts.add(part);
-      }
-    }
-
-    if (!modified) {
-      return markFinal(response);
-    }
-
-    final Content updatedContent = content.toBuilder().parts(updatedParts).build();
-    return response.toBuilder().content(updatedContent).partial(false).turnComplete(true).build();
+  private static LlmResponse markNonPartial(final LlmResponse response) {
+    return response.toBuilder().partial(false).build();
   }
 
   private static LlmResponse markPartial(final LlmResponse response, final String fullText) {
     final Content content = Content.builder().role("model").parts(Part.fromText(fullText)).build();
-    return response.toBuilder().content(content).partial(true).turnComplete(false).build();
+    return response.toBuilder().content(content).partial(true).build();
   }
 
   private static boolean hasToolParts(final LlmResponse response) {

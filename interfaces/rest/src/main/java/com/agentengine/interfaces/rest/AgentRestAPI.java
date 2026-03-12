@@ -1,25 +1,22 @@
 package com.agentengine.interfaces.rest;
 
-import static com.agentengine.engine.api.AgentRequest.RequestType.STREAM_AGUI_EVENTS;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.engine.api.AgentRequest;
-import com.agentengine.engine.api.AgentRequest.RequestType;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
+import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.engine.api.utils.CollectionUtils;
-import com.agentengine.engine.api.utils.StringUtils;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.requests.ResumeSessionRequest.ConfirmationDecision;
 import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
+import com.agentengine.util.common.StringUtils;
 import com.agui.core.event.BaseEvent;
-import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
@@ -29,9 +26,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -42,8 +36,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -51,27 +43,18 @@ import org.slf4j.LoggerFactory;
 @Tag(name = "Agent", description = "Agent Management and Execution APIs")
 @RunOnVirtualThread
 public class AgentRestAPI {
-
-  private static final Logger LOG = LoggerFactory.getLogger(AgentRestAPI.class);
-  private static final long CONFIRMATION_TIMEOUT_MILLIS = Duration.ofMinutes(15).toMillis();
-  private static final String TOOL_DECISION_MARKER = "__AE_TOOL_DECISION__:";
-  private static final String TOOL_CONFIRMATION_PAUSE_REASON = "tool_confirmation";
-  private final Map<RequestType, AgentRequestHandler<?>> handlers;
+  private final Map<RequestType, AgentRequestHandler<?, ?>> handlers;
   private final AgentService agentService;
   private final SessionService sessionService;
 
   @Inject
   public AgentRestAPI(
-      final Instance<AgentRequestHandler<?>> handlers,
+      final Instance<AgentRequestHandler<?, ?>> handlers,
       final AgentService agentService,
       final SessionService sessionService) {
     this.handlers =
-        handlers != null
-            ? handlers.stream()
-                .collect(
-                    Collectors.toUnmodifiableMap(
-                        AgentRequestHandler::requestType, Function.identity()))
-            : null;
+        handlers.stream()
+            .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
     this.agentService = agentService;
     this.sessionService = sessionService;
   }
@@ -95,7 +78,8 @@ public class AgentRestAPI {
     if (agentService.getAgent(request.getAgentId()).isEmpty()) {
       throw new WebApplicationException("Agent not found: " + request.getAgentId(), 404);
     }
-    return _startStreaming(request);
+    final AgentRequestHandler<AgentRequest, Publisher<BaseEvent>> handler = getHandler(RequestType.STREAM_AGUI_EVENTS);
+    return handler.handle(request);
   }
 
   @POST
@@ -177,30 +161,15 @@ public class AgentRestAPI {
           @Content(
               mediaType = SERVER_SENT_EVENTS,
               schema = @Schema(implementation = BaseEvent.class)))
+  @APIResponse(responseCode = "400", description = "Invalid resume payload")
   @APIResponse(responseCode = "404", description = "Session not found")
-  @APIResponse(responseCode = "410", description = "Session expired")
+  @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
   public Publisher<BaseEvent> resumeEvents(
       @PathParam("sessionId") final String sessionId,
-      @Valid final ResumeSessionRequest resumeRequest) {
-    final var session =
-        sessionService
-            .getSession(sessionId)
-            .orElseThrow(() -> new WebApplicationException("Session not found", 404));
-    final Map<String, Object> state =
-        session.getSessionInfo() == null ? null : session.getSessionInfo().getState();
-    if (isExpired(state)) {
-      throw new WebApplicationException("Session expired", 410);
-    }
-    if (isConfirmationTimedOut(state)) {
-      throw new WebApplicationException("Confirmation timed out", 408);
-    }
-    final boolean toolConfirmationPause = isToolConfirmationPause(state);
-    final AgentRequest request = new AgentRequest();
-    request.setType(STREAM_AGUI_EVENTS.name());
-    request.setAgentId(session.getAgentId());
-    request.setSessionId(sessionId);
-    request.setMessage(buildResumeMessage(resumeRequest, toolConfirmationPause));
-    return _startStreaming(request);
+      @Valid @NotNull final ResumeSessionRequest resumeRequest) {
+    final AgentRequestHandler<ResumeSessionRequest, Publisher<BaseEvent>> handler =
+        getHandler(RequestType.RESUME_SESSION);
+    return handler.handle(resumeRequest);
   }
 
   @DELETE
@@ -212,74 +181,13 @@ public class AgentRestAPI {
     sessionService.deleteSession(sessionId);
   }
 
-  @SuppressWarnings("unchecked")
-  private Publisher<BaseEvent> _startStreaming(final AgentRequest request) {
-    LOG.debug(
-            "Agent events streaming request - agent_id={} session_id={}",
-            request.getAgentId(),
-            request.getSessionId());
-
-    final AgentRequestHandler<?> handler = handlers.get(RequestType.STREAM_AGUI_EVENTS);
+  private <Request extends AgentRequest, Response> AgentRequestHandler<Request, Response> getHandler(
+      final RequestType type) {
+    final AgentRequestHandler<?, ?> handler = handlers.get(type);
     if (handler == null) {
-      throw new WebApplicationException(
-          "No handler registered for request type: " + RequestType.STREAM_AGUI_EVENTS, 400);
+      throw new WebApplicationException("No handler registered for request type: " + type, 400);
     }
-    return (Publisher<BaseEvent>) handler.handle(request);
+    //noinspection unchecked
+    return (AgentRequestHandler<Request, Response>) handler;
   }
-
-  private static boolean isExpired(final Map<String, Object> state) {
-    if (state == null || state.isEmpty()) {
-      return false;
-    }
-    final Object expiresAt = state.get("expiresAt");
-    if (expiresAt == null) {
-      return false;
-    }
-    final Instant expiry = parseExpiry(expiresAt);
-    return expiry != null && expiry.isBefore(Instant.now());
-  }
-
-  private static Instant parseExpiry(final Object expiresAt) {
-    if (expiresAt instanceof Number value) {
-      return Instant.ofEpochMilli(value.longValue());
-    }
-    if (expiresAt instanceof String text && StringUtils.isNotBlank(text)) {
-      try {
-        return Instant.parse(text);
-      } catch (DateTimeParseException ignored) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static boolean isConfirmationTimedOut(final Map<String, Object> state) {
-    if (state == null || state.isEmpty()) {
-      return false;
-    }
-    final Map<String, Object> sessionState = extractSessionState(state);
-    if (sessionState == null) {
-      return false;
-    }
-    final Object paused = sessionState.get("paused");
-    final Object pauseReason = sessionState.get("pauseReason");
-    if (!(paused instanceof Boolean isPaused)
-        || !isPaused
-        || !(pauseReason instanceof String reason)
-        || !"tool_confirmation".equalsIgnoreCase(reason)) {
-      return false;
-    }
-    final Object requestedAt = sessionState.get("pauseRequestedAt");
-    if (!(requestedAt instanceof Number requestedAtValue)) {
-      return false;
-    }
-    final long ageMillis = System.currentTimeMillis() - requestedAtValue.longValue();
-    return ageMillis > CONFIRMATION_TIMEOUT_MILLIS;
-  }
-
-  private static Map<String, Object> extractSessionState(final Map<String, Object> state) {
-    return CollectionUtils.getMapFromMap(state, "sessionState");
-  }
-
 }

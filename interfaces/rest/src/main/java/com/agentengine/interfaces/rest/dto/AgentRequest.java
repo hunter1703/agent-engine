@@ -1,4 +1,4 @@
-package com.agentengine.engine.api;
+package com.agentengine.interfaces.rest.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import java.util.Locale;
@@ -63,7 +63,8 @@ public class AgentRequest {
 
   public enum RequestType {
     UNKNOWN,
-    STREAM_AGUI_EVENTS;
+    STREAM_AGUI_EVENTS,
+    RESUME_SESSION;
 
     public static RequestType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

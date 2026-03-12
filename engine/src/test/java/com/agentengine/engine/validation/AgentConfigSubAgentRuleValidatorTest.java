@@ -1,17 +1,24 @@
 package com.agentengine.engine.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
+import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.util.common.validation.ValidationCollector;
+import jakarta.enterprise.inject.Instance;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class AgentConfigSubAgentRuleValidatorTest {
 
-  private final AgentValidator validator = new AgentValidator();
+  private final AgentValidator validator = validatorWithAllSubAgentsPresent();
 
   @Test
   void shouldAddErrorWhenDefaultAgentContainsSubAgents() {
@@ -79,5 +86,14 @@ class AgentConfigSubAgentRuleValidatorTest {
 
     assertThat(collector.hasErrors()).isTrue();
     assertThat(collector.errors().getFirst()).contains("Sub-agent(s) not found: sub-2");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static AgentValidator validatorWithAllSubAgentsPresent() {
+    final AgentService agentService = mock(AgentService.class);
+    when(agentService.getAgent(anyString())).thenReturn(Optional.of(mock(BaseAgentConfig.class)));
+    final Instance<AgentService> agentServices = mock(Instance.class);
+    when(agentServices.get()).thenReturn(agentService);
+    return new AgentValidator(agentServices);
   }
 }

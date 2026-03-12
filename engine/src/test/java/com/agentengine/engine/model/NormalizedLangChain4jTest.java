@@ -23,7 +23,7 @@ class NormalizedLangChain4jTest {
 
     assertThat(responses).hasSize(3);
     assertThat(responses.getFirst().partial()).contains(true);
-    assertThat(responses.getFirst().turnComplete()).contains(false);
+    assertThat(responses.getFirst().turnComplete()).isEmpty();
 
     final LlmResponse finalResponse = responses.getLast();
     assertThat(finalResponse.partial()).contains(false);

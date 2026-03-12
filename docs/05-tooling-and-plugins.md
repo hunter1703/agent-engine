@@ -8,7 +8,7 @@ Tool API is defined in `engine:api`:
 - `ToolDescriptor`
 - `ToolProvider`
 - `ToolsetProvider`
-- annotations: `@AgentTool`, `@ToolConstructor`, `@ToolSchema`
+- annotations: `@DiscoverableTool`, `@ToolConstructor`, `@ToolSchema`
 
 All tools are expected to expose an `execute(...)` method.
 
@@ -20,13 +20,13 @@ Runtime composition uses ADK's native tool union model:
 
 ## 5.2 Tool Loading and Visibility
 
-`ToolRegistry` composes tool catalogs from:
+`ToolCatalog` composes the visible tool catalog from:
 
 - CDI `ToolProvider` beans
 - plugin `ToolProvider` implementations loaded via `ServiceLoader`
 - CDI `ToolsetProvider` beans
 - plugin `ToolsetProvider` implementations loaded via `ServiceLoader`
-- auto-discovered annotated tools via `AnnotatedToolProviders`
+- auto-discovered annotated tools via `DiscoveredToolProviders`
 
 Visibility rules:
 
@@ -38,15 +38,15 @@ Catalog behavior:
 
 - built once for the runtime
 
-Runtime behavior:
+`ToolFactory` handles runtime construction:
 
 - selecting a standalone tool yields one `BaseTool`
 - selecting a toolset yields one `BaseToolset`
 - the engine does not expand toolsets into individual tools before passing them to ADK
 
-## 5.3 Auto-Discovered Tools (`AnnotatedToolProviders`)
+## 5.3 Auto-Discovered Tools (`DiscoveredToolProviders`)
 
-`AnnotatedToolProviders` scans CDI `Tool` beans for `@AgentTool`.
+`DiscoveredToolProviders` scans CDI `Tool` beans for `@DiscoverableTool`.
 
 Constructor selection rules:
 
@@ -78,7 +78,7 @@ Descriptor resolution:
   - `complete_task`
   - `finish_plan`
   - `view_plan`
-- `user_clarification` tool for pause/clarification flow
+- internal `request_human_input` tool for ADK-native human input replay (auto-injected, not user-configurable)
 
 ## 5.5 Example: Shell Tool Safety Surface
 

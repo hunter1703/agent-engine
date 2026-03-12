@@ -4,14 +4,14 @@ This document defines the runtime protocol enforced by the current codebase.
 It is normative for behavior implemented in:
 
 - `engine` request/response processors
-- `AgentRunLifecyclePlugin`, `HumanInTheLoopPlugin`, `ModelInvocationPipeline`, `ContextManagementPlugin`, and `GuardrailPlugin`
+- `EngineFlow`, `ContextManagementPlugin`, and `GuardrailPlugin`
 - `ParallelOrchestratorAgent`
 - REST event mapper `AGUIEventMapper`
 
 ## 10.1 Terms
 
 - **Run**: One ADK invocation (`invocationId`), may contain multiple model turns.
-- **Turn**: A model response cycle with optional tools and completion signal.
+- **Turn**: A model response cycle with optional tools and ADK-owned terminal semantics.
 - **Partial response**: A streaming chunk with `partial=true`.
 - **Finalized response**: A non-partial response (`partial=false`).
 - **Violation**: Structured runtime correction signal (`Violation`) stored in run state.
@@ -22,42 +22,32 @@ The model invocation plugins apply the following order.
 
 ### Before model
 
-1. `HumanInTheLoopPlugin` short-circuit checks
-2. `HumanInTheLoopRequestProcessor` resume mapping
-3. `CorrectionProcessor`
-4. `PlanningRequestProcessor`
-5. context manager prompt rebuild (if configured)
+1. ADK `RequestConfirmationLlmRequestProcessor` replay handling
+2. `CorrectionProcessor`
+3. `PlanningRequestProcessor`
+4. context manager prompt rebuild (if configured)
+5. guardrail plugin short-circuit, if a guardrail returns a synthetic human-input tool call
 
 ### After model
 
 1. `ToolCallSanitizationResponseProcessor`
 2. `PlanLoopResponseProcessor`
-3. `TurnCompletionResponseProcessor`
-4. `PartOrderingResponseProcessor`
-5. finish-reason normalization (`STOP` if run is complete and no tools remain)
 
 This order is part of runtime semantics. Reordering changes behavior.
 
 ## 10.3 Request Protocol Guarantees
 
-## 10.3.1 Human-in-the-loop pause/resume
+## 10.3.1 Human input pause/resume
 
-If session is paused (`SessionStateUtils.isPaused`):
+Human input is represented only through unresolved `adk_request_confirmation` events.
 
-- For `TOOL_CONFIRMATION` (or pending `adk_request_confirmation` call ID exists):
-  - missing user answer: invocation ends immediately with a model event asking for confirmation
-  - missing pending confirmation ID: invocation ends immediately with a model event explaining no pending confirmation exists
-  - valid answer: pause is cleared, latest user content is replaced with a function-response payload for `adk_request_confirmation`
-
-- For non-tool-confirmation pause:
-  - missing answer: invocation ends immediately with a clarification-required model event
-  - valid answer: pause is cleared and a synthesized resume content is appended to request contents
-
-Pause reasons currently recognized:
-
-- `user_clarification`
-- `tool_confirmation`
-- `guardrail_escalation`
+Guarantees:
+- actual tool confirmations replay the original tool call through ADK
+- non-tool human input is requested through the internal `request_human_input` tool
+- REST resume sends a native `FunctionResponse` for `adk_request_confirmation`
+- binary confirmations use `ALLOW` / `DISALLOW` at the API boundary and map to `confirmed=true|false`
+- text confirmations use `answer` and map to `confirmed=true` plus `payload.answer`
+- no marker text protocol exists
 
 ## 10.3.2 Violation correction injection
 
@@ -96,7 +86,7 @@ If tool calls are exact repeats of prior-turn summarized calls:
 
 - redundant calls are stripped
 - violation `redundant_tool_calls` is recorded
-- `turnComplete` is forced to `false`
+- when no tool payload remains, the response is converted into a continuation (`partial=true`) so the model must continue without submitting the same call set again
 
 ## 10.4.2 Plan-loop enforcement
 
@@ -104,44 +94,11 @@ For finalized responses, when model appears to finish by text (text present, no 
 
 - if plan validation fails (`PlanningValidator.canSubmitFinalAnswerOrError`):
   - violation `final_answer_validation` is recorded
-  - non-thought text parts are converted into `thought=true`
-  - `turnComplete` is forced to `false`
+  - non-thought text parts are stripped from the visible response
+  - the response is converted into a continuation (`partial=true`) so the model must keep working
 
-For non-finishing non-tool turns with active open task:
-
-- violation `incomplete_task` is recorded
-- `turnComplete` is forced to `false`
-
-## 10.4.3 Turn completion synthesis
-
-For non-partial responses without explicit `turnComplete`:
-
-`turnComplete` is set true if any condition holds:
-
-- tool parts exist
-- non-thought text exists
-- model has finish reason
-
-Otherwise false.
-
-## 10.4.4 Canonical part ordering
-
-Final response parts are sorted into fixed order:
-
-1. thought parts
-2. regular text parts
-3. function-call parts
-4. function-response parts
-5. anything else
-
-This provides stable downstream event sequencing.
-
-## 10.4.5 Finish reason normalization
-
-After response processors, `ModelInvocationPipeline` sets finish reason to `STOP` when:
-
-- `turnComplete=true`
-- no tool parts remain
+The engine does not synthesize `turnComplete` or reorder parts. ADK owns response terminality via
+`Event.finalResponse()` and `EventActions.endInvocation()`.
 
 ## 10.5 Guardrail Enforcement Protocol
 
@@ -153,7 +110,7 @@ After response processors, `ModelInvocationPipeline` sets finish reason to `STOP
 - `ALLOW`: continue
 - `WARN`: continue and record violation
 - `BLOCK`: return guardrail response immediately
-- `ESCALATE`: pause session and return guardrail response
+- `ESCALATE`: emit an internal `request_human_input(kind=DECISION)` tool call and let ADK own the pause
 
 ## 10.5.2 Tool stage (`beforeToolCallback`)
 
@@ -163,7 +120,6 @@ After response processors, `ModelInvocationPipeline` sets finish reason to `STOP
 - `BLOCK`: return blocked tool result payload
 - `ESCALATE`:
   - requests native confirmation through tool context
-  - pauses session with reason `tool_confirmation`
   - returns confirmation-requested payload
 
 ## 10.5.3 Output stage (`afterModelCallback` + `onEventCallback`)
@@ -214,7 +170,7 @@ Core codes (from `GuardrailConstants`):
 
 `ParallelOrchestratorAgent` rules:
 
-- success is strict: branch is successful only when terminal event has `turnComplete=true`
+- success is strict: branch is successful only when the terminal event satisfies ADK terminal semantics (`Event.finalResponse()` or `EventActions.endInvocation()`)
 - only aggregated orchestrator output is emitted (single final event)
 - stopping policies:
   - `ALL_COMPLETE`
@@ -241,7 +197,7 @@ When required success target is not met:
 
 - emits `RunStartedEvent` once at first mapped runtime event
 - starts step automatically when no step exists
-- step finishes only when incoming runtime event has `turnComplete=true`
+- step finishes only when incoming runtime event is terminal under ADK semantics (`Event.finalResponse()` or `EventActions.endInvocation()`)
 - `onComplete()` always emits `RunFinishedEvent` (and closes pending step)
 - `onError()` emits `RunErrorEvent`
 
@@ -273,7 +229,7 @@ All violations are stored in run state and consumed by `CorrectionProcessor` on 
 
 To preserve protocol guarantees, changes should maintain:
 
-- processor ordering in `ModelInvocationPipeline`
+- processor ordering in the engine flow class (`EngineFlow`)
 - explicit handling of partial vs finalized responses
 - deterministic part ordering
 - deterministic fallback behavior in parallel orchestration

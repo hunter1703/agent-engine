@@ -92,7 +92,7 @@ public final class GuardrailUtils {
             : message.trim();
     final Content content =
         Content.builder().role("model").parts(List.of(Part.fromText(text))).build();
-    return LlmResponse.builder().content(content).turnComplete(true).build();
+    return LlmResponse.builder().content(content).build();
   }
 
   private static GuardrailDecision fallbackForError(

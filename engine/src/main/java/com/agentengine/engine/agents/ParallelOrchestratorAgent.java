@@ -3,6 +3,7 @@ package com.agentengine.engine.agents;
 import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
+import com.agentengine.engine.api.utils.EventUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.utils.RunStateUtils;
@@ -29,13 +30,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Policy-aware parallel orchestrator that emits only aggregated orchestrator output.
  *
- * <p>Branch success is strict: a branch is successful only when a terminal event has {@code
- * turnComplete=true}.
+ * <p>Branch success is based on terminal flow signals from branch output events.
  */
 public final class ParallelOrchestratorAgent extends Agent {
   private final ParallelAggregationPolicy aggregationPolicy;
   private final ParallelStoppingPolicy stoppingPolicy;
-  private final int quorum;
   private final List<BranchSpec> branchSpecs;
   private final int requiredSuccesses;
 
@@ -43,7 +42,7 @@ public final class ParallelOrchestratorAgent extends Agent {
     super(builder);
     this.aggregationPolicy = builder.aggregationPolicy();
     this.stoppingPolicy = builder.stoppingPolicy();
-    this.quorum = Math.max(1, builder.quorum());
+    final int quorum = Math.max(1, builder.quorum());
     this.branchSpecs = buildBranchSpecs();
     this.requiredSuccesses = requiredSuccesses(stoppingPolicy, quorum, branchSpecs.size());
   }
@@ -90,7 +89,6 @@ public final class ParallelOrchestratorAgent extends Agent {
             .author(name())
             .branch(invocationContext.branch())
             .content(content)
-            .turnComplete(true)
             .build();
     return Flowable.just(event);
   }
@@ -165,9 +163,7 @@ public final class ParallelOrchestratorAgent extends Agent {
       final List<Event> events =
           CollectionUtils.nullSafeList(
               branchSpec.subAgent().runAsync(invocationContext).toList().blockingGet());
-      final Event terminalEvent = resolveTerminalEvent(events);
-      final boolean successful =
-          terminalEvent != null && terminalEvent.turnComplete().orElse(false);
+      final boolean successful = EventUtils.isTerminal(CollectionUtils.getLast(events));
       final String outputText = extractLatestText(events);
       return BranchExecution.completed(
           branchSpec.order(), branchSpec.subAgentId(), outputText, successful);
@@ -291,22 +287,6 @@ public final class ParallelOrchestratorAgent extends Agent {
     return count;
   }
 
-  private static Event resolveTerminalEvent(List<Event> events) {
-    events = CollectionUtils.nullSafeList(events);
-    for (int index = events.size() - 1; index >= 0; index--) {
-      final Event event = events.get(index);
-      if (event == null) {
-        continue;
-      }
-      if (event.turnComplete().orElse(false)
-          || event.finalResponse()
-          || event.actions().endInvocation().orElse(false)) {
-        return event;
-      }
-    }
-    return events.isEmpty() ? null : events.getLast();
-  }
-
   private static String extractLatestText(final List<Event> events) {
     final List<Event> safeEvents = CollectionUtils.nullSafeList(events);
     for (int index = safeEvents.size() - 1; index >= 0; index--) {
@@ -327,22 +307,6 @@ public final class ParallelOrchestratorAgent extends Agent {
       return "";
     }
     return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
-  }
-
-  private static ParallelAggregationPolicy normalizeAggregationPolicy(
-      final ParallelAggregationPolicy policy) {
-    if (policy == null || policy == ParallelAggregationPolicy.UNKNOWN) {
-      return ParallelAggregationPolicy.CONCATENATE;
-    }
-    return policy;
-  }
-
-  private static ParallelStoppingPolicy normalizeStoppingPolicy(
-      final ParallelStoppingPolicy policy) {
-    if (policy == null || policy == ParallelStoppingPolicy.UNKNOWN) {
-      return ParallelStoppingPolicy.ALL_COMPLETE;
-    }
-    return policy;
   }
 
   private record BranchSpec(int order, String subAgentId, BaseAgent subAgent) {}

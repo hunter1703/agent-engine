@@ -24,36 +24,14 @@ public final class DelegatingLLMModel extends AbstractLLM {
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
-    final LlmRequest requestForModel = parser.normalizeRequest(llmRequest);
-    final boolean useStreaming = stream && !parser.isParseToolCallsFromText();
+    final LlmRequest requestForModel = parser.preProcess(llmRequest);
     LOG.debug(
-        "Delegating LLM generateContent using {} mode",
-        useStreaming ? "streaming" : "non-streaming");
-    return delegate.generateContent(requestForModel, useStreaming).map(this::normalizeResponse);
+        "Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
+    return delegate.generateContent(requestForModel, stream).map(parser::postProcess);
   }
 
   @Override
   public BaseLlmConnection connect(final LlmRequest llmRequest) {
     return delegate.connect(llmRequest);
-  }
-
-  private LlmResponse normalizeResponse(final LlmResponse response) {
-    if (response == null || response.content().isEmpty()) {
-      return response;
-    }
-    final Content content = response.content().orElse(null);
-    if (content == null) {
-      return response;
-    }
-    try {
-      final Content normalized = parser.parse(content);
-      if (normalized == null) {
-        return response;
-      }
-      return response.toBuilder().content(normalized).build();
-    } catch (Exception ex) {
-      LOG.debug("Failed to normalize model response; returning raw response.", ex);
-      return response;
-    }
   }
 }

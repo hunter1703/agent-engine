@@ -77,30 +77,21 @@ Cache behavior:
 Execution creates a `PluginGroup` containing:
 
 - `GuardrailPlugin`
-- `AgentRunLifecyclePlugin`
-- `HumanInTheLoopPlugin`
-- `ModelInvocationPipeline`
 - `ContextManagementPlugin`
 
-### AgentRunLifecyclePlugin responsibilities
+Request/response processors now live in the engine-owned ADK flow class `EngineFlow` rather than in a plugin-owned model pipeline.
 
-- initialize/clear run state
+Flow-owned request processors:
+- `CorrectionProcessor`
+- `PlanningRequestProcessor`
 
-### ModelInvocationPipeline responsibilities
+Flow-owned response processors:
+- `ToolCallSanitizationResponseProcessor`
+- `PlanLoopResponseProcessor`
 
-- request processors:
-  - correction processor
-  - planning request processor
-- response processors:
-  - tool call sanitization
-  - plan loop handling
-  - turn completion control
-  - part ordering normalization
-
-### HumanInTheLoopPlugin responsibilities
-
-- short-circuit HITL checks before model call (same-invocation pause, missing answer)
-- resume request mapping via `HumanInTheLoopRequestProcessor`
+Terminal step/run semantics now follow ADK event semantics directly:
+- terminal event = `Event.finalResponse()` or `EventActions.endInvocation()`
+- the engine no longer synthesizes `turnComplete` or reorders response parts after the model
 
 ### ContextManagementPlugin responsibilities
 
@@ -112,7 +103,7 @@ Execution creates a `PluginGroup` containing:
 - tool guardrails before tool call execution
 - output guardrails post-model generation
 - optimistic mode support with async output guardrail futures
-- pause/escalate behavior for tool confirmations and policy escalation
+- native escalation behavior for tool confirmations and synthetic internal human-input tool calls
 
 ## 2.7 Context Management
 

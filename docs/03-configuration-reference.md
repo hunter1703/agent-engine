@@ -117,7 +117,7 @@ Common optional fields:
 - `stopTokens`
 - `responseFormat`
 - `instructions`
-- `toolCallingEnabled`, `toolCallingSupported`
+- `toolCallingEnabled`
 - `apiKey`
 - `serverCommand`, `serverArgs`, `serverWorkdir`
 
@@ -133,7 +133,8 @@ Each configured tool entry:
 - `toolName`
 - `configs` (`Map<String,Object>`) passed to tool provider during creation
 
-Tool suites are expanded at runtime by `ToolRegistry`.
+`ToolCatalog` exposes visible tool metadata, and `ToolFactory` builds configured `BaseTool` and
+`BaseToolset` runtime instances without expanding toolsets into individual tools.
 
 ## 3.10 Config Bootstrap
 

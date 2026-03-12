@@ -54,7 +54,7 @@ public abstract class UpdateTaskStatusTool extends Tool {
     }
     task.setStatus(newStatus);
     task.setResult(result);
-    runState.updatePlan(currentPlan);
+    runState.updatePlan(currentPlan, toolContext);
     return Map.of("status", "success", "task_id", taskId, "new_status", newStatus.getValue());
   }
 }

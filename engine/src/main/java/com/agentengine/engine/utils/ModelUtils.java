@@ -303,24 +303,6 @@ public final class ModelUtils {
     }
   }
 
-  public static LlmRequest stripToolsFromModelRequest(
-      final LlmRequest llmRequest,
-      final boolean toolCallingEnabled,
-      final boolean parseToolCallsFromText) {
-    if (llmRequest == null
-        || CollectionUtils.isEmpty(llmRequest.tools())
-        || (toolCallingEnabled && !parseToolCallsFromText)) {
-      return llmRequest;
-    }
-    final LlmRequest.Builder builder =
-        LlmRequest.builder()
-            .contents(llmRequest.contents())
-            .liveConnectConfig(llmRequest.liveConnectConfig());
-    llmRequest.model().ifPresent(builder::model);
-    llmRequest.config().ifPresent(builder::config);
-    return builder.build();
-  }
-
   record ServerAddress(String baseUrl, String host, int port) {}
 
   record ManagedServer(String baseUrl, Process process, List<String> command) {}

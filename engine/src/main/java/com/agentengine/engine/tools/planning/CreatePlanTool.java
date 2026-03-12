@@ -58,7 +58,7 @@ public final class CreatePlanTool extends Tool {
       return Map.of("error", validationError);
     }
 
-    runState.updatePlan(currentPlan);
+    runState.updatePlan(currentPlan, toolContext);
 
     LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return Map.of(

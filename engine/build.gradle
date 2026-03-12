@@ -6,8 +6,9 @@ plugins {
 
 dependencies {
     api project(':engine:api')
-    api project(':connectors:core')
-    implementation project(':util')
+    implementation project(':connectors:core')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation platform(libs.langchain4j.bom)

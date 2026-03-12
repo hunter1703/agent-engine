@@ -2,6 +2,7 @@ package com.agentengine.engine.api.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.CollectionUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

@@ -317,7 +317,7 @@ public final class PlanningValidator {
     return null;
   }
 
-  public static String canSubmitFinalAnswerOrError(final Plan plan) {
+  public static String getPrematureCompleteViolation(final Plan plan) {
     if (plan == null) {
       return null;
     }

@@ -1,30 +1,41 @@
 package com.agentengine.engine.agents.processors.response;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.agentengine.engine.utils.RunState;
+import com.agentengine.engine.utils.RunStateUtils;
+import com.google.adk.agents.BaseAgent;
+import com.google.adk.agents.BaseAgentState;
+import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmResponse;
+import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
-import java.util.List;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 class TurnCompletionResponseProcessorTest {
 
   @Test
-  void shouldMarkNonPartialToolResponsesCompleteWhenMissingTurnCompletion() {
+  void shouldConsumeContinuationOnNonPartialNonFinalResponses() {
+    final InvocationContext context = invocationContext("agent-1", "session-1");
+    RunStateUtils.getState(context).requestContinuation();
     final LlmResponse response =
         LlmResponse.builder()
             .content(
                 Content.builder()
                     .role("model")
                     .parts(
-                        List.of(
+                        java.util.List.of(
                             Part.builder()
                                 .functionCall(
                                     FunctionCall.builder()
-                                        .id("call-1")
                                         .name("search")
                                         .args(Map.of("query", "weather"))
                                         .build())
@@ -34,10 +45,53 @@ class TurnCompletionResponseProcessorTest {
 
     final LlmResponse updated =
         TurnCompletionResponseProcessor.INSTANCE
-            .processResponse(null, response)
+            .processResponse(context, response)
             .blockingGet()
             .updatedResponse();
 
-    assertThat(updated.turnComplete()).contains(true);
+    assertThat(updated.turnComplete().orElse(false)).isTrue();
+    assertThat(updated.finishReason()).isEmpty();
+    assertThat(RunStateUtils.getState(context).hasContinuationRequested()).isFalse();
+  }
+
+  @Test
+  void shouldSetStopFinishReasonOnFinalAnswerWhenContinuationNotRequested() {
+    final InvocationContext context = invocationContext("agent-1", "session-1");
+    final LlmResponse response =
+        LlmResponse.builder()
+            .content(Content.builder().role("model").parts(java.util.List.of(Part.fromText("done"))).build())
+            .build();
+
+    final LlmResponse updated =
+        TurnCompletionResponseProcessor.INSTANCE
+            .processResponse(context, response)
+            .blockingGet()
+            .updatedResponse();
+
+    assertThat(updated.turnComplete().orElse(false)).isTrue();
+    assertThat(updated.finishReason()).isPresent();
+  }
+
+  private static InvocationContext invocationContext(
+      final String agentId, final String sessionId) {
+    final Session session =
+        Session.builder(sessionId)
+            .appName(agentId)
+            .userId("default")
+            .state(new ConcurrentHashMap<>())
+            .events(new ArrayList<>())
+            .lastUpdateTime(Instant.now())
+            .build();
+    final BaseAgent agent = mock(BaseAgent.class);
+    when(agent.name()).thenReturn(agentId);
+
+    final Map<String, BaseAgentState> agentStates = new ConcurrentHashMap<>();
+    agentStates.put(agentId, new RunState());
+
+    final InvocationContext context = mock(InvocationContext.class);
+    when(context.agent()).thenReturn(agent);
+    when(context.session()).thenReturn(session);
+    when(context.agentStates()).thenReturn(agentStates);
+    return context;
   }
 }

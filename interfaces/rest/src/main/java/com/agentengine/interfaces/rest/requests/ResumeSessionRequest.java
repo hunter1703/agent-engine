@@ -1,22 +1,33 @@
 package com.agentengine.interfaces.rest.requests;
 
-import jakarta.validation.constraints.NotBlank;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
+import com.agentengine.engine.api.beans.ConfirmationDecision;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
-public class ResumeSessionRequest {
-  @NotBlank(message = "message is required")
-  private String message;
+public class ResumeSessionRequest extends AgentRequest {
+  private String decision;
 
   public ResumeSessionRequest() {}
 
-  public ResumeSessionRequest(final String message) {
-    this.message = message;
+  public ResumeSessionRequest(final String answer) {
+    this(answer, null);
   }
 
-  public String getMessage() {
-    return message;
+  public ResumeSessionRequest(final String answer, final ConfirmationDecision decision) {
+    setMessage(answer);
+    this.decision = decision == null ? null : decision.name();
   }
 
-  public void setMessage(final String message) {
-    this.message = message;
+  public String getDecision() {
+    return decision;
+  }
+
+  @JsonIgnore
+  public ConfirmationDecision getDecisionEnum() {
+    return ConfirmationDecision.valueOfOrDefault(decision);
+  }
+
+  public void setDecision(final String decision) {
+    this.decision = decision;
   }
 }
