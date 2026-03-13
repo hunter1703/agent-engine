@@ -3,11 +3,10 @@ package com.agentengine.engine.hitl;
 import com.agentengine.util.common.StringUtils;
 import java.util.List;
 
-public record SessionPause(SessionPauseKind kind, String prompt, List<String> options, String confirmationId) {
+public record SessionPause(SessionPauseKind kind, String confirmationId) {
 
   public SessionPause {
     kind = kind == null ? SessionPauseKind.UNKNOWN : kind;
-    options = options == null ? List.of() : List.copyOf(options);
   }
 
   public boolean isPaused() {

@@ -8,11 +8,11 @@ import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 public final class ToolUtils {
 
@@ -125,5 +125,17 @@ public final class ToolUtils {
     }
     return Functions.getAskUserConfirmationFunctionCalls(event).stream()
         .anyMatch(call -> HumanInTheLoopTool.TOOL_NAME.equals(originalToolName(call)));
+  }
+
+  public static Set<String> findRespondedConfirmationIds(final List<Event> events) {
+    final Set<String> ids = new HashSet<>();
+    for (final Event event : events) {
+      if (event == null) {
+        continue;
+      }
+      event.functionResponses().stream().filter(r -> REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(r.name().orElse(null)))
+          .flatMap(r -> r.id().stream()).forEach(ids::add);
+    }
+    return ids;
   }
 }
