@@ -178,7 +178,7 @@ public final class GuardrailPlugin extends BasePlugin {
 
     GuardrailUtils.recordViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.ESCALATE) {
-      return Maybe.just(ResponseUtils.requestHumanInTheLoop(decision.message()));
+      return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
     }
     return Maybe.just(GuardrailUtils.buildGuardrailResponse(decision.message()));
   }
@@ -198,7 +198,7 @@ public final class GuardrailPlugin extends BasePlugin {
     }
 
     if (decision.action() == GuardrailAction.ESCALATE) {
-      return Maybe.just(ResponseUtils.requestHumanInTheLoop(decision.message()));
+      return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
     }
     final String blockMessage = StringUtils.isNotBlank(decision.message())
         ? decision.message()

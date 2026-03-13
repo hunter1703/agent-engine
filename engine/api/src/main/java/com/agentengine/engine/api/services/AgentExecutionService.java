@@ -9,5 +9,5 @@ public interface AgentExecutionService {
 
   Flowable<Event> run(String agentId, String sessionId, String text);
 
-  Flowable<Event> resumeSession(String agentId, String sessionId, String decision, String answer);
+  Flowable<Event> resumeSession(String agentId, String sessionId, Boolean confirmed, String answer);
 }

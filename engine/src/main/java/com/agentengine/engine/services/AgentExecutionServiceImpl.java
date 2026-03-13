@@ -18,14 +18,15 @@ import com.agentengine.engine.factories.agent.AgentProvider;
 import com.agentengine.engine.factories.context.ContextManagerProvider;
 import com.agentengine.engine.guardrails.GuardrailPlugin;
 import com.agentengine.engine.guardrails.GuardrailPolicyFactory;
-import com.agentengine.engine.hitl.ConfirmationDecision;
-import com.agentengine.engine.hitl.SessionPauseView;
+import com.agentengine.engine.hitl.SessionPause;
 import com.agentengine.engine.plugin.Agent;
 import com.agentengine.engine.plugin.ContextManager;
 import com.agentengine.engine.plugins.ContextManagementPlugin;
 import com.agentengine.engine.plugins.PluginGroup;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.engine.utils.ResponseUtils;
+import com.agentengine.engine.utils.SessionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -34,6 +35,7 @@ import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.apps.ResumabilityConfig;
 import com.google.adk.events.Event;
+import com.google.adk.events.ToolConfirmation;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
@@ -95,20 +97,19 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   @Override
-  public Flowable<Event> resumeSession(final String agentId, final String sessionId, final String decisionStr, final String answer) {
-    final ConfirmationDecision decision = ConfirmationDecision.valueOfOrDefault(decisionStr);
+  public Flowable<Event> resumeSession(final String agentId, final String sessionId, final Boolean confirmed, final String answer) {
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("sessionId is required");
     }
     final AgentSession session = sessionService.getSession(sessionId).orElseThrow(() -> new AssetNotFoundException("session", sessionId));
-    final SessionPauseView pauseView = SessionPauseView.from(session.getSessionInfo().getEvents());
-    if (pauseView == null || !pauseView.isPaused() || !pauseView.hasConfirmationId()) {
+    final SessionPause pauseView = SessionUtils.pauseView(session.getSessionInfo().getEvents());
+    if (!pauseView.isPaused() || !pauseView.hasConfirmationId()) {
       throw new IllegalStateException("Session is not waiting for user input");
     }
-    final Map<String, Object> response = ResponseUtils.buildResumeResponse(pauseView.kind(), decision, answer);
+    final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(pauseView.kind(), confirmed, answer);
 
     final FunctionResponse functionResponse = FunctionResponse.builder().id(pauseView.confirmationId())
-        .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(response).build();
+        .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(JsonUtils.toMap(toolConfirmation)).build();
     final Content content = Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build()))
         .build();
     return runContent(agentId, sessionId, content);

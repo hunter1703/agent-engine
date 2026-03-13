@@ -99,26 +99,4 @@ class AGUIEventMapperTest {
     assertThat(mapped).anyMatch(RunFinishedEvent.class::isInstance);
   }
 
-  @Test
-  void shouldNotEmitRunFinishedOnCompleteWithoutFinishReason() {
-    final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
-    final Event event = Event.builder().content(Content.builder().role("model").parts(List.of(Part.fromText("not done"))).build()).build();
-    mapper.map(event).toList().blockingGet();
-
-    final List<BaseEvent> completionEvents = mapper.onComplete().toList().blockingGet();
-
-    assertThat(completionEvents).noneMatch(RunFinishedEvent.class::isInstance);
-  }
-
-  @Test
-  void shouldNotEmitDuplicateRunFinishedOnCompleteAfterFinishReason() {
-    final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
-    final Event event = Event.builder().finishReason(new FinishReason(FinishReason.Known.STOP))
-        .content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build()).build();
-    mapper.map(event).toList().blockingGet();
-
-    final List<BaseEvent> completionEvents = mapper.onComplete().toList().blockingGet();
-
-    assertThat(completionEvents).noneMatch(RunFinishedEvent.class::isInstance);
-  }
 }

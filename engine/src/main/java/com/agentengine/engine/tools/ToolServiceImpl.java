@@ -27,15 +27,15 @@ public final class ToolServiceImpl implements ToolService {
     final List<ToolProvider> toolProviders = CollectionUtils.nullSafeMutableList(ServiceUtils.loadServices(providers, ToolProvider.class));
     toolProviders.addAll(discoveredToolProviders.providers());
     final List<ToolsetProvider> toolsetProviders = ServiceUtils.loadServices(toolsets, ToolsetProvider.class);
-    final Map<String, ToolDescriptor> nameVsDescriptor = getNameVsDescriptor(toolProviders, toolsetProviders);
     this.toolNameVsEntry = toolProviders.stream().filter(toolProvider -> toolProvider.descriptor() != null)
-        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name())).collect(Collectors.toMap(
-            toolProvider -> toolProvider.descriptor().name(), provider -> new ToolEntry(provider.descriptor(), provider), (a, b) -> a));
+        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name()))
+        .collect(Collectors.toMap(toolProvider -> toolProvider.descriptor().name(),
+            provider -> new ToolEntry(provider.descriptor(), provider), (a, b) -> a));
     this.toolsetNameVsEntry = toolsetProviders.stream().filter(toolsetProvider -> toolsetProvider.descriptor() != null)
         .filter(toolsetProvider -> StringUtils.isNotBlank(toolsetProvider.descriptor().name()))
         .collect(Collectors.toMap(toolsetProvider -> toolsetProvider.descriptor().name(),
             provider -> new ToolsetEntry(provider.descriptor(), provider), (a, b) -> a));
-    this.allTools = List.copyOf(nameVsDescriptor.values());
+    this.allTools = List.copyOf(buildAllDescriptors(toolProviders, toolsetProviders));
   }
 
   @Override
@@ -72,24 +72,22 @@ public final class ToolServiceImpl implements ToolService {
     return toolsetNameVsEntry.get(toolsetName).provider();
   }
 
-  private static Map<String, ToolDescriptor> getNameVsDescriptor(final List<ToolProvider> toolProviders,
+  private static List<ToolDescriptor> buildAllDescriptors(final List<ToolProvider> toolProviders,
       final List<ToolsetProvider> toolsetProviders) {
     final Map<String, ToolDescriptor> nameVsDescriptor = new LinkedHashMap<>();
     for (final ToolProvider toolProvider : toolProviders) {
       final ToolDescriptor descriptor = toolProvider.descriptor();
-      if (descriptor == null || StringUtils.isBlank(descriptor.name())) {
-        continue;
+      if (descriptor != null && StringUtils.isNotBlank(descriptor.name())) {
+        nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
       }
-      nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
     }
     for (final ToolsetProvider toolsetProvider : toolsetProviders) {
       final ToolDescriptor descriptor = toolsetProvider.descriptor();
-      if (descriptor == null || StringUtils.isBlank(descriptor.name())) {
-        continue;
+      if (descriptor != null && StringUtils.isNotBlank(descriptor.name())) {
+        nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
       }
-      nameVsDescriptor.putIfAbsent(descriptor.name(), descriptor);
     }
-    return nameVsDescriptor;
+    return List.copyOf(nameVsDescriptor.values());
   }
 
   private record ToolEntry(ToolDescriptor descriptor, ToolProvider provider) {

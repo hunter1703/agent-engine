@@ -47,7 +47,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
 
   @Override
   public Flowable<BaseEvent> onComplete() {
-    return Flowable.defer(() -> runFinishedIfNeeded(null));
+    return Flowable.empty();
   }
 
   @Override
@@ -113,12 +113,9 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> runFinishedIfNeeded(final Event event) {
-    final boolean shouldFinishRun = !state.runFinishedEmitted && (event.finishReason().isPresent() || state.finishReasonObserved);
-    if (!shouldFinishRun) {
+    if (event.finishReason().isEmpty()) {
       return Flowable.empty();
     }
-    state.finishReasonObserved = true;
-    state.runFinishedEmitted = true;
     final RunFinishedEvent finishedEvent = buildRunFinished(state.runId);
     decorateEvent(finishedEvent);
     LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.getRunId());
@@ -331,13 +328,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (!event.turnComplete().orElse(false) || !hasStepStarted()) {
       return Flowable.empty();
     }
-    Flowable<BaseEvent> flowable = Flowable.empty();
-    if (state.isThinking) {
-      flowable = flowable.concatWith(finalizeThinkingIfNeeded());
-    } else if (state.currentTextMessageId != null) {
-      flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
-    }
-    return flowable.concatWith(finishStep());
+    return finalizeThinkingIfNeeded().concatWith(finalizeTextMessageIfNeeded()).concatWith(finishStep());
   }
 
   private Flowable<StepFinishedEvent> finishStep() {
@@ -460,8 +451,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private StringBuilder textBuffer = new StringBuilder();
     private boolean textMessageContentEmitted;
     private StringBuilder thoughtsBuffer = new StringBuilder();
-    private boolean finishReasonObserved;
-    private boolean runFinishedEmitted;
 
     private MapperState(final String sessionId, final String agentId) {
       this.sessionId = sessionId;

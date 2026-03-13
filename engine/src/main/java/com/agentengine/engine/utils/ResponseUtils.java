@@ -2,7 +2,6 @@ package com.agentengine.engine.utils;
 
 import com.agentengine.engine.hitl.SessionPauseKind;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
@@ -69,12 +68,10 @@ public final class ResponseUtils {
     return builder.build();
   }
 
-  public static LlmResponse requestHumanInTheLoop(final String prompt) {
+  public static LlmResponse requestHumanToDecide(final String prompt) {
     final String message = StringUtils.isBlank(prompt) ? "User confirmation is required to continue." : prompt.trim();
     final FunctionCall functionCall = FunctionCall.builder().id(Functions.generateClientFunctionCallId()).name(HumanInTheLoopTool.TOOL_NAME)
-        .args(Map.of(HumanInTheLoopTool.ARG_PROMPT, message, HumanInTheLoopTool.ARG_KIND, SessionPauseKind.DECISION.name(),
-            HumanInTheLoopTool.ARG_OPTIONS, HumanInTheLoopTool.DECISION_OPTIONS))
-        .build();
+        .args(Map.of(HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, SessionPauseKind.DECISION.name())).build();
     final Content content = Content.builder().role("model").parts(List.of(Part.builder().functionCall(functionCall).build())).build();
     return LlmResponse.builder().content(content).turnComplete(true).build();
   }
