@@ -4,7 +4,8 @@ import java.util.List;
 
 public final class StringUtils {
 
-  private StringUtils() {}
+  private StringUtils() {
+  }
 
   public static boolean isEmpty(final String str) {
     return str == null || str.isEmpty();
@@ -47,17 +48,14 @@ public final class StringUtils {
     return str.substring(start, end);
   }
 
-    public static int estimateTextContent(final String text) {
-      if (isBlank(text)) {
-        return 1;
-      }
-      return Math.max(1, text.trim().split("\\s+").length);
+  public static int estimateTextContent(final String text) {
+    if (isBlank(text)) {
+      return 1;
     }
+    return Math.max(1, text.trim().split("\\s+").length);
+  }
 
   public static String joinNonBlank(final List<String> values) {
-    return values.stream()
-        .filter(StringUtils::isNotBlank)
-        .reduce((a, b) -> a + "\n" + b)
-        .orElse("");
+    return values.stream().filter(StringUtils::isNotBlank).reduce((a, b) -> a + "\n" + b).orElse("");
   }
 }

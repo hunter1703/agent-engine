@@ -24,21 +24,9 @@ import org.codehaus.groovy.control.customizers.SecureASTCustomizer;
 @Singleton
 public final class GroovySandboxEvaluator {
 
-  private static final List<String> BLOCKED_SUBSTRINGS =
-      List.of(
-          "classloader",
-          "metaclass",
-          "class.forname",
-          "runtime.",
-          "system.",
-          "thread.",
-          "processbuilder",
-          "new file",
-          "new url",
-          "import ",
-          "@grab");
-  private static final ExecutorService EVALUATION_EXECUTOR =
-      java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+  private static final List<String> BLOCKED_SUBSTRINGS = List.of("classloader", "metaclass", "class.forname", "runtime.", "system.",
+      "thread.", "processbuilder", "new file", "new url", "import ", "@grab");
+  private static final ExecutorService EVALUATION_EXECUTOR = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(EVALUATION_EXECUTOR::shutdownNow));
@@ -65,8 +53,7 @@ public final class GroovySandboxEvaluator {
 
     final String trimmed = expression.trim();
     if (trimmed.length() > maxExpressionLength) {
-      throw new TemplateResolutionException(
-          "Expression exceeds max length of " + maxExpressionLength + " characters");
+      throw new TemplateResolutionException("Expression exceeds max length of " + maxExpressionLength + " characters");
     }
 
     if (trimmed.contains(";") || trimmed.contains("\n")) {
@@ -76,18 +63,15 @@ public final class GroovySandboxEvaluator {
     final String normalized = trimmed.toLowerCase();
     for (String blockedSubstring : BLOCKED_SUBSTRINGS) {
       if (normalized.contains(blockedSubstring)) {
-        throw new TemplateResolutionException(
-            "Expression contains blocked token: " + blockedSubstring);
+        throw new TemplateResolutionException("Expression contains blocked token: " + blockedSubstring);
       }
     }
 
-    final Future<Object> task =
-        EVALUATION_EXECUTOR.submit(
-            () -> {
-              final Binding binding = new Binding(wrapVariables(variables));
-              final GroovyShell shell = new GroovyShell(binding, compilerConfiguration);
-              return shell.evaluate(trimmed);
-            });
+    final Future<Object> task = EVALUATION_EXECUTOR.submit(() -> {
+      final Binding binding = new Binding(wrapVariables(variables));
+      final GroovyShell shell = new GroovyShell(binding, compilerConfiguration);
+      return shell.evaluate(trimmed);
+    });
     try {
       return task.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
     } catch (TimeoutException ex) {
@@ -120,33 +104,10 @@ public final class GroovySandboxEvaluator {
     secureASTCustomizer.setStarImportsWhitelist(List.of());
     secureASTCustomizer.setStaticImportsWhitelist(List.of());
     secureASTCustomizer.setStaticStarImportsWhitelist(List.of());
-    secureASTCustomizer.setConstantTypesClassesWhiteList(
-        List.of(
-            String.class,
-            Integer.class,
-            Long.class,
-            Double.class,
-            Float.class,
-            BigDecimal.class,
-            BigInteger.class,
-            Boolean.class,
-            Map.class,
-            List.class,
-            Object.class));
-    secureASTCustomizer.setReceiversClassesWhiteList(
-        List.of(
-            Object.class,
-            String.class,
-            Number.class,
-            Integer.class,
-            Long.class,
-            Double.class,
-            Float.class,
-            BigDecimal.class,
-            BigInteger.class,
-            Boolean.class,
-            Map.class,
-            List.class));
+    secureASTCustomizer.setConstantTypesClassesWhiteList(List.of(String.class, Integer.class, Long.class, Double.class, Float.class,
+        BigDecimal.class, BigInteger.class, Boolean.class, Map.class, List.class, Object.class));
+    secureASTCustomizer.setReceiversClassesWhiteList(List.of(Object.class, String.class, Number.class, Integer.class, Long.class,
+        Double.class, Float.class, BigDecimal.class, BigInteger.class, Boolean.class, Map.class, List.class));
 
     configuration.addCompilationCustomizers(secureASTCustomizer);
     return configuration;
@@ -162,8 +123,7 @@ public final class GroovySandboxEvaluator {
   private static Object wrapValue(final Object value) {
     if (value instanceof Map<?, ?> mapValue) {
       final Map<String, Object> wrapped = new LinkedHashMap<>();
-      mapValue.forEach(
-          (key, entryValue) -> wrapped.put(String.valueOf(key), wrapValue(entryValue)));
+      mapValue.forEach((key, entryValue) -> wrapped.put(String.valueOf(key), wrapValue(entryValue)));
       return new StrictMap(wrapped);
     }
     if (value instanceof List<?> listValue) {

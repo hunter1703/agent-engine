@@ -26,11 +26,14 @@ public class Bootstrapper {
   @ConfigProperty(name = "agent.engine.bootstrap.dir", defaultValue = "configs")
   String bootstrapDir;
 
-  @Inject AgentService agentService;
+  @Inject
+  AgentService agentService;
 
-  @Inject ModelService modelService;
+  @Inject
+  ModelService modelService;
 
-  @Inject InfraMongoRepository infraMongoRepository;
+  @Inject
+  InfraMongoRepository infraMongoRepository;
 
   void onStart(@Observes StartupEvent ev) {
     LOG.info("Starting data bootstrapping from directory: {}", bootstrapDir);
@@ -39,8 +42,7 @@ public class Bootstrapper {
     if (!Files.exists(root)) {
       // Try resolving relative to current working directory or upward
       Path current = Paths.get("").toAbsolutePath();
-      LOG.info(
-          "Bootstrap directory {} not found in {}, searching upward...", bootstrapDir, current);
+      LOG.info("Bootstrap directory {} not found in {}, searching upward...", bootstrapDir, current);
 
       Path candidate = current;
       while (candidate != null) {
@@ -69,8 +71,7 @@ public class Bootstrapper {
 
   private void bootstrapInfraConfigs() {
     LOG.info("Bootstrapping infrastructure configurations...");
-    DefaultModelConfig defaultModelConfig =
-        infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+    DefaultModelConfig defaultModelConfig = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
     if (defaultModelConfig == null) {
       LOG.info("Inserting default DefaultModelConfig...");
       defaultModelConfig = new DefaultModelConfig();
@@ -82,50 +83,46 @@ public class Bootstrapper {
   }
 
   private void bootstrapAgents(Path path) {
-    if (!Files.exists(path)) return;
+    if (!Files.exists(path))
+      return;
     LOG.info("Bootstrapping agents from: {}", path);
     try (var stream = Files.list(path)) {
-      stream
-          .filter(p -> p.toString().endsWith(".json"))
-          .forEach(
-              p -> {
-                LOG.info("Found agent config file: {}", p);
-                try {
-                  BaseAgentConfig config = JsonUtils.fromFile(p, BaseAgentConfig.class);
-                  if (config.getId() == null) {
-                    config.setId(p.getFileName().toString().replace(".json", ""));
-                  }
-                  agentService.saveAgent(config);
-                  LOG.info("Bootstrapped agent: {}", config.getId());
+      stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+        LOG.info("Found agent config file: {}", p);
+        try {
+          BaseAgentConfig config = JsonUtils.fromFile(p, BaseAgentConfig.class);
+          if (config.getId() == null) {
+            config.setId(p.getFileName().toString().replace(".json", ""));
+          }
+          agentService.saveAgent(config);
+          LOG.info("Bootstrapped agent: {}", config.getId());
 
-                } catch (Exception e) {
-                  LOG.error("Failed to bootstrap agent from file: {}", p, e);
-                }
-              });
+        } catch (Exception e) {
+          LOG.error("Failed to bootstrap agent from file: {}", p, e);
+        }
+      });
     } catch (Exception e) {
       LOG.error("Failed to list agent bootstrap directory: {}", path, e);
     }
   }
 
   private void bootstrapModels(Path path) {
-    if (!Files.exists(path)) return;
+    if (!Files.exists(path))
+      return;
     LOG.info("Bootstrapping models from: {}", path);
     try (var stream = Files.list(path)) {
-      stream
-          .filter(p -> p.toString().endsWith(".json"))
-          .forEach(
-              p -> {
-                try {
-                  ModelConfig config = JsonUtils.fromFile(p, ModelConfig.class);
-                  if (config.getId() == null) {
-                    config.setId(p.getFileName().toString().replace(".json", ""));
-                  }
-                  modelService.saveModel(config);
-                  LOG.info("Bootstrapped model: {}", config.getId());
-                } catch (Exception e) {
-                  LOG.error("Failed to bootstrap model from file: {}", p, e);
-                }
-              });
+      stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+        try {
+          ModelConfig config = JsonUtils.fromFile(p, ModelConfig.class);
+          if (config.getId() == null) {
+            config.setId(p.getFileName().toString().replace(".json", ""));
+          }
+          modelService.saveModel(config);
+          LOG.info("Bootstrapped model: {}", config.getId());
+        } catch (Exception e) {
+          LOG.error("Failed to bootstrap model from file: {}", p, e);
+        }
+      });
     } catch (Exception e) {
       LOG.error("Failed to list model bootstrap directory: {}", path, e);
     }

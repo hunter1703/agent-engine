@@ -118,13 +118,13 @@ Interact with your agents using the unified REST API:
 
 ## 🧩 Plugins & Custom Tools
 
-Agent Engine's power comes from its modular architecture. Tools are provided by `com.agentengine.engine.api.tools.ToolProvider` implementations. Built-in providers include the auto-discovery provider for `@AgentTool` classes, while plugins register providers via `META-INF/services`.
+Agent Engine's power comes from its modular architecture. Tools are provided by `com.agentengine.engine.plugin.tools.ToolProvider` implementations. Built-in providers include the auto-discovery provider for `@AgentTool` classes, while plugins register providers via `META-INF/services`.
 
 At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./plugins` by default).
 
 ### Tooling Model
 
-- A tool implements `com.agentengine.engine.api.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, risk, and config schema.
+- A tool implements `com.agentengine.engine.plugin.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, risk, and config schema.
 - All registered tools are globally visible to all agents.
 - `@AgentTool` marks auto-discoverable tools. `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
 - `@ToolParam` maps constructor params to config keys. When omitted, parameter names are used (requires compilation with `-parameters`).

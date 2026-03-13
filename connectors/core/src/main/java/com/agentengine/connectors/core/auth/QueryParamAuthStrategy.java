@@ -17,28 +17,15 @@ public final class QueryParamAuthStrategy implements AuthStrategy {
   @Override
   public void apply(final AuthRequestContext requestContext) {
     final AuthConfig authConfig = requestContext.authConfig();
-    final String paramName =
-        AuthTemplateUtils.resolveString(
-            authConfig.queryParamName(),
-            authConfig.queryParamNameTemplate(),
-            requestContext.requestContext(),
-            requestContext.templateResolver(),
-            requestContext.strictUnresolvedVariables(),
-            "queryParamName");
-    final String value =
-        AuthTemplateUtils.resolveString(
-            authConfig.apiKey(),
-            authConfig.apiKeyTemplate(),
-            requestContext.requestContext(),
-            requestContext.templateResolver(),
-            requestContext.strictUnresolvedVariables(),
-            "apiKey");
+    final String paramName = AuthTemplateUtils.resolveString(authConfig.queryParamName(), authConfig.queryParamNameTemplate(),
+        requestContext.requestContext(), requestContext.templateResolver(), requestContext.strictUnresolvedVariables(), "queryParamName");
+    final String value = AuthTemplateUtils.resolveString(authConfig.apiKey(), authConfig.apiKeyTemplate(), requestContext.requestContext(),
+        requestContext.templateResolver(), requestContext.strictUnresolvedVariables(), "apiKey");
 
     if (value == null || value.isBlank()) {
       throw new AuthStrategyException("Auth value is required for QUERY_PARAM auth");
     }
 
-    requestContext.queryParams().put(
-        paramName == null || paramName.isBlank() ? DEFAULT_QUERY_PARAM : paramName, value);
+    requestContext.queryParams().put(paramName == null || paramName.isBlank() ? DEFAULT_QUERY_PARAM : paramName, value);
   }
 }

@@ -15,22 +15,12 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-@Schema(
-    oneOf = {DefaultAgentConfig.class, OrchestratorAgentConfig.class},
-    discriminatorProperty = "type",
-    discriminatorMapping = {
-      @DiscriminatorMapping(value = "DEFAULT", schema = DefaultAgentConfig.class),
-      @DiscriminatorMapping(value = "ORCHESTRATOR", schema = OrchestratorAgentConfig.class)
-    })
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "type",
-    visible = true)
-@JsonSubTypes({
-  @JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "DEFAULT"),
-  @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")
-})
+@Schema(oneOf = {DefaultAgentConfig.class, OrchestratorAgentConfig.class}, discriminatorProperty = "type", discriminatorMapping = {
+    @DiscriminatorMapping(value = "DEFAULT", schema = DefaultAgentConfig.class),
+    @DiscriminatorMapping(value = "ORCHESTRATOR", schema = OrchestratorAgentConfig.class)})
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
+@JsonSubTypes({@JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "DEFAULT"),
+    @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")})
 @BsonDiscriminator(key = "type")
 @UiGroup(step = "identity", section = "identity", order = 0)
 public abstract class BaseAgentConfig extends NamedEntity implements Config {
@@ -69,11 +59,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "Sub Agents", step = "identity", section = "identity", order = 60)
   @UiLookup(assetType = "agent")
-  @UiRule(
-      effect = UiRuleEffect.VISIBLE,
-      field = "type",
-      operator = UiConditionOperator.IN,
-      values = {"ORCHESTRATOR"})
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", operator = UiConditionOperator.IN, values = {"ORCHESTRATOR"})
   private List<String> subAgentIds = new ArrayList<>();
 
   @UiField(label = "Guardrails", step = "guardrails", section = "guardrails", order = 10)
@@ -93,19 +79,13 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   @Override
   @UiField(label = "ID", step = "identity", section = "identity", order = 0)
   @UiText
-  @UiAccess(
-      create = UiAccessLevel.HIDDEN,
-      edit = UiAccessLevel.READ_ONLY,
-      view = UiAccessLevel.READ_ONLY)
+  @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
   public String getId() {
     return super.getId();
   }
 
   @Override
-  @UiAccess(
-      create = UiAccessLevel.HIDDEN,
-      edit = UiAccessLevel.READ_ONLY,
-      view = UiAccessLevel.READ_ONLY)
+  @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
   public void setId(final String id) {
     super.setId(id);
   }
@@ -170,8 +150,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   }
 
   public void setContextStrategy(final ContextStrategyConfig contextStrategy) {
-    this.contextStrategy =
-        contextStrategy == null ? new CompactionContextStrategyConfig() : contextStrategy;
+    this.contextStrategy = contextStrategy == null ? new CompactionContextStrategyConfig() : contextStrategy;
   }
 
   public List<ToolsConfig> getTools() {
@@ -207,9 +186,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   }
 
   public enum AgentType {
-    UNKNOWN,
-    DEFAULT,
-    ORCHESTRATOR;
+    UNKNOWN, DEFAULT, ORCHESTRATOR;
 
     public String type() {
       return name();

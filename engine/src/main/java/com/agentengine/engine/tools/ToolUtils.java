@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 
 public final class ToolUtils {
 
-  private ToolUtils() {}
+  private ToolUtils() {
+  }
 
   public static String buildToolMessage(final List<BaseTool> tools) {
     if (tools == null || tools.isEmpty()) {
@@ -31,14 +32,8 @@ public final class ToolUtils {
       if (tool.description() != null && !tool.description().isBlank()) {
         line += " - " + tool.description();
       }
-      final FunctionDeclaration declaration =
-          tool.declaration().orElse(FunctionDeclaration.builder().build());
-      builder
-          .append(line)
-          .append("\n\t-")
-          .append("tool args schema - ")
-          .append(renderSchema(declaration))
-          .append("\n");
+      final FunctionDeclaration declaration = tool.declaration().orElse(FunctionDeclaration.builder().build());
+      builder.append(line).append("\n\t-").append("tool args schema - ").append(renderSchema(declaration)).append("\n");
     }
     builder.append("</AVAILABLE_TOOLS>");
     return builder.toString();
@@ -58,16 +53,12 @@ public final class ToolUtils {
   }
 
   public static boolean hasToolParts(final LlmResponse response) {
-    return response.content().flatMap(Content::parts).stream()
-        .flatMap(List::stream)
+    return response.content().flatMap(Content::parts).stream().flatMap(List::stream)
         .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
   }
 
   public static List<FunctionCall> extractToolCalls(final LlmResponse response) {
-    return response.content().flatMap(Content::parts).stream()
-        .flatMap(List::stream)
-        .map(Part::functionCall)
-        .flatMap(Optional::stream)
+    return response.content().flatMap(Content::parts).stream().flatMap(List::stream).map(Part::functionCall).flatMap(Optional::stream)
         .toList();
   }
 
@@ -79,8 +70,7 @@ public final class ToolUtils {
     final List<String> responses = new ArrayList<>();
     for (final Part part : parts) {
       part.functionCall().ifPresent(call -> calls.add(call.name().orElse("unknown")));
-      part.functionResponse()
-          .ifPresent(response -> responses.add(response.name().orElse("unknown")));
+      part.functionResponse().ifPresent(response -> responses.add(response.name().orElse("unknown")));
     }
     final List<String> segments = new ArrayList<>();
     final String callSummary = summarizeNames(calls);
@@ -98,8 +88,7 @@ public final class ToolUtils {
     if (CollectionUtils.isEmpty(names)) {
       return "";
     }
-    final List<String> unique =
-        names.stream().filter(name -> name != null && !name.isBlank()).distinct().toList();
+    final List<String> unique = names.stream().filter(name -> name != null && !name.isBlank()).distinct().toList();
     if (unique.isEmpty()) {
       return "";
     }
@@ -131,8 +120,7 @@ public final class ToolUtils {
     if (event.functionCalls().stream().anyMatch(ToolUtils::isHumanInTheLoopToolCall)) {
       return true;
     }
-    if (event.functionResponses().stream()
-        .anyMatch(response -> HumanInTheLoopTool.TOOL_NAME.equals(response.name().orElse(null)))) {
+    if (event.functionResponses().stream().anyMatch(response -> HumanInTheLoopTool.TOOL_NAME.equals(response.name().orElse(null)))) {
       return true;
     }
     return Functions.getAskUserConfirmationFunctionCalls(event).stream()

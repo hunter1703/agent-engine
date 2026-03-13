@@ -3,7 +3,6 @@ package com.agentengine.engine.api.beans.session;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.google.adk.sessions.Session;
-import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 public class AgentSession extends NamedEntity {
   public static final String DEFAULT_USER_ID = "default";
@@ -12,7 +11,8 @@ public class AgentSession extends NamedEntity {
   private String agentId;
   private SessionInfo sessionInfo;
 
-  public AgentSession() {}
+  public AgentSession() {
+  }
 
   public AgentSession(final String id, final String agentId, final Session session) {
     setId(id);
@@ -30,14 +30,6 @@ public class AgentSession extends NamedEntity {
     this.agentId = other.agentId;
     setName(other.getName());
     this.sessionInfo = other.sessionInfo;
-  }
-
-  public AgentSession(final String id, final String agentId, final String title) {
-    setId(id);
-    setCreatedTime(System.currentTimeMillis());
-    setUpdatedTime(System.currentTimeMillis());
-    this.agentId = agentId;
-    setName(title);
   }
 
   public String getAgentId() {

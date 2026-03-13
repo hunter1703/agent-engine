@@ -3,6 +3,7 @@ package com.agentengine.engine.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,8 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,9 +23,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ModelServiceImplTest {
 
-  @Mock private ModelRepository modelRepository;
+  @Mock
+  private ModelRepository modelRepository;
 
-  @InjectMocks private ModelServiceImpl modelService;
+  @InjectMocks
+  private ModelServiceImpl modelService;
 
   @Test
   void shouldSanitizeBeforeInsertWhenCreateModelCalled() {
@@ -63,6 +68,22 @@ class ModelServiceImplTest {
   }
 
   @Test
+  void shouldReturnEmptyMapWhenGetModelsCalledWithNullIds() {
+    final Map<String, ModelConfig> models = modelService.getModels(null);
+
+    assertThat(models).isEmpty();
+    verify(modelRepository, never()).findByIds(any());
+  }
+
+  @Test
+  void shouldReturnEmptyMapWhenGetModelsCalledWithEmptyIds() {
+    final Map<String, ModelConfig> models = modelService.getModels(List.of());
+
+    assertThat(models).isEmpty();
+    verify(modelRepository, never()).findByIds(any());
+  }
+
+  @Test
   void shouldDelegateDeleteModelWhenDeleteModelCalled() {
     when(modelRepository.deleteById("model-1")).thenReturn(true);
 
@@ -78,8 +99,7 @@ class ModelServiceImplTest {
     request.setId("model-2");
     request.setType("OLLAMA");
     request.setModel("qwen2.5");
-    when(modelRepository.update(eq("model-1"), any(ModelConfig.class)))
-        .thenAnswer(inv -> inv.getArgument(1));
+    when(modelRepository.update(eq("model-1"), any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(1));
 
     final ModelConfig updated = modelService.updateModel("model-1", request);
 

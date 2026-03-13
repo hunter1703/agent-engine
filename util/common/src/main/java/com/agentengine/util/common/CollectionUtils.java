@@ -12,7 +12,8 @@ import java.util.function.Function;
 
 public final class CollectionUtils {
 
-  private CollectionUtils() {}
+  private CollectionUtils() {
+  }
 
   public static <T> Set<T> union(final Collection<T> one, final Collection<T> two) {
     final Set<T> setOne = CollectionUtils.nullSafeMutableSet(one);
@@ -114,8 +115,7 @@ public final class CollectionUtils {
     return value == null ? null : value.toString();
   }
 
-  public static <T> T getValueFromMap(
-      final Map<String, Object> map, final String key, final Class<T> type) {
+  public static <T> T getValueFromMap(final Map<String, Object> map, final String key, final Class<T> type) {
     if (CollectionUtils.isEmpty(map) || type == null) {
       return null;
     }
@@ -132,7 +132,6 @@ public final class CollectionUtils {
     }
     return list.getFirst();
   }
-
 
   public static <T> T getLast(final List<T> list) {
     if (CollectionUtils.isEmpty(list)) {
@@ -216,10 +215,8 @@ public final class CollectionUtils {
     return !isEmpty(map);
   }
 
-  public static <T, K, V> Map<K, V> transformToMultiKeyMap(
-      final Collection<T> collection,
-      final Function<T, ? extends Collection<K>> keysFunction,
-      final Function<T, V> valueFunction) {
+  public static <T, K, V> Map<K, V> transformToMultiKeyMap(final Collection<T> collection,
+      final Function<T, ? extends Collection<K>> keysFunction, final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     for (final T item : collection) {
       final Collection<K> keys = keysFunction.apply(item);
@@ -234,9 +231,7 @@ public final class CollectionUtils {
     return map;
   }
 
-  public static <T, K, V> Map<K, V> transformToMap(
-      final Collection<T> collection,
-      final Function<T, K> keyFunction,
+  public static <T, K, V> Map<K, V> transformToMap(final Collection<T> collection, final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
     final Map<K, V> map = new HashMap<>();
     if (CollectionUtils.isEmpty(collection)) {
@@ -248,9 +243,7 @@ public final class CollectionUtils {
     return map;
   }
 
-  public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(
-      final Collection<T> collection,
-      final Function<T, K> keyFunction,
+  public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(final Collection<T> collection, final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
     final Map<K, List<V>> map = new HashMap<>();
     for (final T item : collection) {

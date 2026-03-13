@@ -6,12 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Resolves gRPC endpoints by looking up per-server config stored in the {@code MicroServiceConfig}
- * collection of the {@code INFRA} MongoDB database.
+ * Resolves gRPC endpoints by looking up per-server config stored in the
+ * {@code MicroServiceConfig} collection of the {@code INFRA} MongoDB database.
  *
- * <p>The server ID is read from the {@link MicroService#value()} annotation on the service
- * interface, so all services sharing the same server resolve to the same endpoint. Falls back to
- * {@code localhost:9000} when no config document is found.
+ * <p>
+ * The server ID is read from the {@link MicroService#value()} annotation on the
+ * service interface, so all services sharing the same server resolve to the
+ * same endpoint. Falls back to {@code localhost:9000} when no config document
+ * is found.
  */
 @Singleton
 public class MicroServiceEndpointResolverImpl implements MicroServiceEndpointResolver {

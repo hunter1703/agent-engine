@@ -37,31 +37,21 @@ public class ModelRestAPI {
 
   @GET
   @Path("/model/{modelId}")
-  @Operation(
-      summary = "Get a model",
-      description = "Retrieves a specific model configuration by ID.")
-  @APIResponse(
-      responseCode = "200",
-      description = "Model configuration found",
-      content = @Content(schema = @Schema(implementation = ModelConfig.class)))
+  @Operation(summary = "Get a model", description = "Retrieves a specific model configuration by ID.")
+  @APIResponse(responseCode = "200", description = "Model configuration found", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
   public ModelConfig getModel(@PathParam("modelId") final String modelId) {
     if (StringUtils.isBlank(modelId)) {
       throw new WebApplicationException("Model ID is required", 400);
     }
 
-    return modelService
-        .getModel(modelId)
-        .orElseThrow(() -> new WebApplicationException("Model not found", 404));
+    return modelService.getModel(modelId).orElseThrow(() -> new WebApplicationException("Model not found", 404));
   }
 
   @POST
   @Path("/model")
   @Operation(summary = "Create a model", description = "Creates a new model configuration.")
-  @APIResponse(
-      responseCode = "201",
-      description = "Model created",
-      content = @Content(schema = @Schema(implementation = ModelConfig.class)))
+  @APIResponse(responseCode = "201", description = "Model created", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
   public ModelConfig createModel(final ModelConfig modelConfig) {
     if (modelConfig == null) {
@@ -72,13 +62,8 @@ public class ModelRestAPI {
 
   @POST
   @Path("/model/upsert")
-  @Operation(
-      summary = "Upsert a model",
-      description = "Creates a new model configuration or updates an existing one.")
-  @APIResponse(
-      responseCode = "200",
-      description = "Model created or updated",
-      content = @Content(schema = @Schema(implementation = ModelConfig.class)))
+  @Operation(summary = "Upsert a model", description = "Creates a new model configuration or updates an existing one.")
+  @APIResponse(responseCode = "200", description = "Model created or updated", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   public ModelConfig upsertModel(final ModelConfig modelConfig) {
     if (modelConfig == null) {
       throw new WebApplicationException("Model config is required", 400);
@@ -89,13 +74,9 @@ public class ModelRestAPI {
   @PUT
   @Path("/model/{modelId}")
   @Operation(summary = "Update a model", description = "Updates an existing model configuration.")
-  @APIResponse(
-      responseCode = "200",
-      description = "Model updated",
-      content = @Content(schema = @Schema(implementation = ModelConfig.class)))
+  @APIResponse(responseCode = "200", description = "Model updated", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
-  public ModelConfig updateModel(
-      @PathParam("modelId") final String modelId, final ModelConfig modelConfig) {
+  public ModelConfig updateModel(@PathParam("modelId") final String modelId, final ModelConfig modelConfig) {
     if (modelConfig == null) {
       throw new WebApplicationException("Model config is required", 400);
     }
@@ -118,6 +99,8 @@ public class ModelRestAPI {
       throw new WebApplicationException("Model ID is required", 400);
     }
 
-    modelService.deleteModel(modelId);
+    if (!modelService.deleteModel(modelId)) {
+      throw new WebApplicationException("Model not found", 404);
+    }
   }
 }

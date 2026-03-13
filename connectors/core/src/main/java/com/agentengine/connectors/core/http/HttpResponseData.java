@@ -11,10 +11,7 @@ public record HttpResponseData(int statusCode, Map<String, List<String>> headers
   }
 
   public Map<String, String> flattenHeaders() {
-    return headers.entrySet().stream()
-        .filter(entry -> !entry.getValue().isEmpty())
-        .collect(
-            java.util.stream.Collectors.toMap(
-                Map.Entry::getKey, entry -> entry.getValue().getFirst(), (left, right) -> left));
+    return headers.entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
+        .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getFirst(), (left, right) -> left));
   }
 }

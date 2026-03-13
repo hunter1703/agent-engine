@@ -13,10 +13,8 @@ import java.util.regex.Pattern;
 @Singleton
 public final class DefaultTemplateResolver implements TemplateResolver {
 
-  private static final Pattern FULL_DOLLAR_EXPRESSION =
-      Pattern.compile("^\\s*\\$\\{([^}]+)}\\s*$", Pattern.DOTALL);
-  private static final Pattern FULL_CURLY_EXPRESSION =
-      Pattern.compile("^\\s*\\{\\{\\s*(.+?)\\s*}}\\s*$", Pattern.DOTALL);
+  private static final Pattern FULL_DOLLAR_EXPRESSION = Pattern.compile("^\\s*\\$\\{([^}]+)}\\s*$", Pattern.DOTALL);
+  private static final Pattern FULL_CURLY_EXPRESSION = Pattern.compile("^\\s*\\{\\{\\s*(.+?)\\s*}}\\s*$", Pattern.DOTALL);
   private static final Pattern DOLLAR_EXPRESSION = Pattern.compile("\\$\\{([^}]+)}");
   private static final Pattern CURLY_EXPRESSION = Pattern.compile("\\{\\{\\s*(.+?)\\s*}}");
 
@@ -28,20 +26,13 @@ public final class DefaultTemplateResolver implements TemplateResolver {
   }
 
   @Override
-  public ResolvedValue resolve(
-      final Object template,
-      final RequestContext context,
-      final TemplateResolutionOptions options) {
-    final Map<String, Object> variables =
-        context == null ? Map.of() : context.toTemplateVariables();
-    return resolveInternal(
-        template, variables, options == null ? TemplateResolutionOptions.strict() : options);
+  public ResolvedValue resolve(final Object template, final RequestContext context, final TemplateResolutionOptions options) {
+    final Map<String, Object> variables = context == null ? Map.of() : context.toTemplateVariables();
+    return resolveInternal(template, variables, options == null ? TemplateResolutionOptions.strict() : options);
   }
 
   @SuppressWarnings("unchecked")
-  private ResolvedValue resolveInternal(
-      final Object template,
-      final Map<String, Object> variables,
+  private ResolvedValue resolveInternal(final Object template, final Map<String, Object> variables,
       final TemplateResolutionOptions options) {
     if (template == null) {
       return ResolvedValue.nullValue();
@@ -104,31 +95,26 @@ public final class DefaultTemplateResolver implements TemplateResolver {
     return ResolvedValue.resolved(template);
   }
 
-  private ResolvedValue resolveDirective(
-      final Map<String, Object> directiveTemplate,
-      final Map<String, Object> variables,
+  private ResolvedValue resolveDirective(final Map<String, Object> directiveTemplate, final Map<String, Object> variables,
       final TemplateResolutionOptions options) {
     if (directiveTemplate.containsKey(TemplateDirective.INCLUDE_IF.key())) {
       final Object includeValue = directiveTemplate.get(TemplateDirective.INCLUDE_IF.key());
-      final ResolvedValue includeResolved =
-          includeValue instanceof String includeExpression
-              ? resolveExpression(includeExpression, variables, options)
-              : resolveInternal(includeValue, variables, options);
+      final ResolvedValue includeResolved = includeValue instanceof String includeExpression
+          ? resolveExpression(includeExpression, variables, options)
+          : resolveInternal(includeValue, variables, options);
       if (!toBoolean(includeResolved.value())) {
         return ResolvedValue.omitted();
       }
     }
 
-    final boolean optional =
-        directiveTemplate.containsKey(TemplateDirective.OPTIONAL.key())
-            && toBoolean(directiveTemplate.get(TemplateDirective.OPTIONAL.key()));
+    final boolean optional = directiveTemplate.containsKey(TemplateDirective.OPTIONAL.key())
+        && toBoolean(directiveTemplate.get(TemplateDirective.OPTIONAL.key()));
 
     final Object expressionValue = directiveTemplate.get(TemplateDirective.EXPR.key());
     final Object templateValue = directiveTemplate.get(TemplateDirective.TEMPLATE.key());
 
     final ResolvedValue resolved;
-    final TemplateResolutionOptions effectiveOptions =
-        optional ? new TemplateResolutionOptions(false, options.omitNulls()) : options;
+    final TemplateResolutionOptions effectiveOptions = optional ? new TemplateResolutionOptions(false, options.omitNulls()) : options;
     if (expressionValue != null) {
       resolved = resolveExpression(String.valueOf(expressionValue), variables, effectiveOptions);
     } else if (templateValue != null) {
@@ -137,19 +123,14 @@ public final class DefaultTemplateResolver implements TemplateResolver {
       resolved = ResolvedValue.resolved(directiveTemplate);
     }
 
-    if (optional
-        && (resolved.status() == ResolvedValueStatus.UNRESOLVED
-            || resolved.status() == ResolvedValueStatus.NULL_VALUE)) {
+    if (optional && (resolved.status() == ResolvedValueStatus.UNRESOLVED || resolved.status() == ResolvedValueStatus.NULL_VALUE)) {
       return ResolvedValue.omitted();
     }
 
     return resolved;
   }
 
-  private ResolvedValue resolveString(
-      final String template,
-      final Map<String, Object> variables,
-      final TemplateResolutionOptions options) {
+  private ResolvedValue resolveString(final String template, final Map<String, Object> variables, final TemplateResolutionOptions options) {
     final Matcher fullDollarMatcher = FULL_DOLLAR_EXPRESSION.matcher(template);
     if (fullDollarMatcher.matches()) {
       return resolveExpression(fullDollarMatcher.group(1), variables, options);
@@ -160,14 +141,12 @@ public final class DefaultTemplateResolver implements TemplateResolver {
       return resolveExpression(fullCurlyMatcher.group(1), variables, options);
     }
 
-    final ResolvedString curlyResolved =
-        replaceInlineExpressions(template, CURLY_EXPRESSION, variables, options);
+    final ResolvedString curlyResolved = replaceInlineExpressions(template, CURLY_EXPRESSION, variables, options);
     if (curlyResolved.status() == ResolvedValueStatus.UNRESOLVED) {
       return ResolvedValue.unresolved();
     }
 
-    final ResolvedString dollarResolved =
-        replaceInlineExpressions(curlyResolved.value(), DOLLAR_EXPRESSION, variables, options);
+    final ResolvedString dollarResolved = replaceInlineExpressions(curlyResolved.value(), DOLLAR_EXPRESSION, variables, options);
     if (dollarResolved.status() == ResolvedValueStatus.UNRESOLVED) {
       return ResolvedValue.unresolved();
     }
@@ -175,11 +154,8 @@ public final class DefaultTemplateResolver implements TemplateResolver {
     return ResolvedValue.resolved(dollarResolved.value());
   }
 
-  private ResolvedString replaceInlineExpressions(
-      final String template,
-      final Pattern expressionPattern,
-      final Map<String, Object> variables,
-      final TemplateResolutionOptions options) {
+  private ResolvedString replaceInlineExpressions(final String template, final Pattern expressionPattern,
+      final Map<String, Object> variables, final TemplateResolutionOptions options) {
     final Matcher matcher = expressionPattern.matcher(template);
     final StringBuilder builder = new StringBuilder();
     int cursor = 0;
@@ -199,26 +175,21 @@ public final class DefaultTemplateResolver implements TemplateResolver {
     return new ResolvedString(ResolvedValueStatus.RESOLVED, builder.toString());
   }
 
-  private ResolvedValue resolveExpression(
-      final String expression,
-      final Map<String, Object> variables,
+  private ResolvedValue resolveExpression(final String expression, final Map<String, Object> variables,
       final TemplateResolutionOptions options) {
     try {
       final Object value = evaluator.evaluate(expression, variables);
       return value == null ? ResolvedValue.nullValue() : ResolvedValue.resolved(value);
     } catch (UnresolvedVariableException ex) {
       if (options.strictUnresolvedVariables()) {
-        throw new TemplateResolutionException(
-            "Unresolved variable in expression: " + expression, ex);
+        throw new TemplateResolutionException("Unresolved variable in expression: " + expression, ex);
       }
       return ResolvedValue.unresolved();
     }
   }
 
   private static boolean isDirectiveObject(final Map<?, ?> mapTemplate) {
-    return mapTemplate.keySet().stream()
-        .map(String::valueOf)
-        .map(TemplateDirective::fromKey)
+    return mapTemplate.keySet().stream().map(String::valueOf).map(TemplateDirective::fromKey)
         .anyMatch(directive -> directive != TemplateDirective.UNKNOWN);
   }
 
@@ -235,5 +206,6 @@ public final class DefaultTemplateResolver implements TemplateResolver {
     return "true".equalsIgnoreCase(String.valueOf(value).trim());
   }
 
-  private record ResolvedString(ResolvedValueStatus status, String value) {}
+  private record ResolvedString(ResolvedValueStatus status, String value) {
+  }
 }

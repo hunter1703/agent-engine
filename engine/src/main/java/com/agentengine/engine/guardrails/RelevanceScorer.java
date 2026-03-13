@@ -48,11 +48,8 @@ public final class RelevanceScorer {
       return 1D;
     }
     try {
-      final List<Integer> scores =
-          StructuredConcurrencyUtils.runConcurrently(
-              List.of(
-                  () -> askScore(relevancePrompt(anchor, candidate)),
-                  () -> askScore(irrelevancePrompt(anchor, candidate))));
+      final List<Integer> scores = StructuredConcurrencyUtils.runConcurrently(
+          List.of(() -> askScore(relevancePrompt(anchor, candidate)), () -> askScore(irrelevancePrompt(anchor, candidate))));
       final int x = clampScore(scores.get(0));
       final int y = clampScore(scores.get(1));
       final double combined = (x + (MAX_SCORE - y)) / 2.0;
@@ -64,17 +61,11 @@ public final class RelevanceScorer {
   }
 
   private int askScore(final String prompt) {
-    final LlmRequest request =
-        LlmRequest.builder()
-            .contents(List.of(Content.builder().role("user").parts(Part.fromText(prompt)).build()))
-            .build();
+    final LlmRequest request = LlmRequest.builder().contents(List.of(Content.builder().role("user").parts(Part.fromText(prompt)).build()))
+        .build();
     final BaseLlm model = modelProvider.acquire(modelId);
     try {
-      final LlmResponse response =
-          model
-              .generateContent(request, false)
-              .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-              .blockingFirst();
+      final LlmResponse response = model.generateContent(request, false).timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS).blockingFirst();
       final String text = response.content().map(Content::text).orElse("");
       return parseScore(text);
     } finally {
@@ -128,8 +119,7 @@ public final class RelevanceScorer {
         %s
 
         Return strict JSON only: {"score": <0..100 integer>}
-        """
-        .formatted(anchor, candidate);
+        """.formatted(anchor, candidate);
   }
 
   private static String irrelevancePrompt(final String anchor, final String candidate) {
@@ -142,7 +132,6 @@ public final class RelevanceScorer {
         %s
 
         Return strict JSON only: {"score": <0..100 integer>}
-        """
-        .formatted(anchor, candidate);
+        """.formatted(anchor, candidate);
   }
 }

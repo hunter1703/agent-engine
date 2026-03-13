@@ -5,12 +5,12 @@ import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
+import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 import java.util.Objects;
 
@@ -42,33 +42,20 @@ public final class ToolSafetyGuardrail implements Guardrail {
     if (!allowedToolNames.contains(toolName)) {
       return GuardrailDecision.allow();
     }
-    final ToolRiskLevel risk = descriptor.riskLevelEnum();
+    final ToolRiskLevel risk = descriptor.riskLevel();
     GuardrailDecision decision = GuardrailDecision.allow();
     if (ToolRiskLevel.atLeast(risk, rule.minToolRiskEnum())) {
-      final String message =
-          rule.getMessage() != null
-              ? rule.getMessage()
-              : "Tool safety policy triggered for '" + descriptor.name() + "'.";
-      decision =
-          GuardrailUtils.fromAction(
-              rule.actionEnum(),
-              GuardrailConstants.Code.TOOL_POLICY,
-              message,
-              Map.of(
-                  GuardrailConstants.DetailKey.TOOL, descriptor.name(),
-                  GuardrailConstants.DetailKey.RISK, risk.name(),
-                  GuardrailConstants.DetailKey.RULE, rule.getId()));
+      final String message = rule.getMessage() != null
+          ? rule.getMessage()
+          : "Tool safety policy triggered for '" + descriptor.name() + "'.";
+      decision = GuardrailUtils.fromAction(rule.actionEnum(), GuardrailConstants.Code.TOOL_POLICY, message,
+          Map.of(GuardrailConstants.DetailKey.TOOL, descriptor.name(), GuardrailConstants.DetailKey.RISK, risk.name(),
+              GuardrailConstants.DetailKey.RULE, rule.getId()));
     }
 
-    if (decision.action() == GuardrailAction.ALLOW
-        && (risk == ToolRiskLevel.HIGH || risk == ToolRiskLevel.CRITICAL)) {
-      return GuardrailDecision.escalate(
-          GuardrailConstants.Code.TOOL_ESCALATE,
-          "Tool '"
-              + descriptor.name()
-              + "' requires human confirmation due to risk level "
-              + risk.name().toLowerCase()
-              + ".");
+    if (decision.action() == GuardrailAction.ALLOW && (risk == ToolRiskLevel.HIGH || risk == ToolRiskLevel.CRITICAL)) {
+      return GuardrailDecision.escalate(GuardrailConstants.Code.TOOL_ESCALATE,
+          "Tool '" + descriptor.name() + "' requires human confirmation due to risk level " + risk.name().toLowerCase() + ".");
     }
 
     return decision;

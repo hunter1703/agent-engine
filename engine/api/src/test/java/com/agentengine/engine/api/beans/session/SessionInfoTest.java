@@ -18,22 +18,10 @@ class SessionInfoTest {
 
   @Test
   void shouldRoundTripSessionWhenConvertingFromAndToSession() {
-    final Event event =
-        Event.builder()
-            .id("event-1")
-            .invocationId("inv-1")
-            .author("user")
-            .timestamp(Instant.now().toEpochMilli())
-            .content(Content.builder().role("user").parts(List.of(Part.fromText("hello"))).build())
-            .build();
-    final Session sourceSession =
-        Session.builder("session-1")
-            .appName("agent-a")
-            .userId("user-a")
-            .state(new ConcurrentHashMap<>(Map.of("key", "value")))
-            .events(List.of(event))
-            .lastUpdateTime(Instant.now())
-            .build();
+    final Event event = Event.builder().id("event-1").invocationId("inv-1").author("user").timestamp(Instant.now().toEpochMilli())
+        .content(Content.builder().role("user").parts(List.of(Part.fromText("hello"))).build()).build();
+    final Session sourceSession = Session.builder("session-1").appName("agent-a").userId("user-a")
+        .state(new ConcurrentHashMap<>(Map.of("key", "value"))).events(List.of(event)).lastUpdateTime(Instant.now()).build();
 
     final SessionInfo sessionInfo = SessionInfo.fromSession(sourceSession);
     final Session restored = sessionInfo.toSession();
@@ -59,15 +47,9 @@ class SessionInfoTest {
 
   @Test
   void shouldResolveDecisionPauseFromPendingToolConfirmationEvent() {
-    final SessionInfo sessionInfo =
-        SessionInfo.fromSession(
-            Session.builder("session-1")
-                .appName("agent-a")
-                .userId("user-a")
-                .state(new ConcurrentHashMap<>())
-                .events(List.of(toolConfirmationEvent("run_cmd", null, System.currentTimeMillis() - 1_000L)))
-                .lastUpdateTime(Instant.now())
-                .build());
+    final SessionInfo sessionInfo = SessionInfo.fromSession(Session.builder("session-1").appName("agent-a").userId("user-a")
+        .state(new ConcurrentHashMap<>()).events(List.of(toolConfirmationEvent("run_cmd", null, System.currentTimeMillis() - 1_000L)))
+        .lastUpdateTime(Instant.now()).build());
 
     final SessionPauseView pauseView = sessionInfo.getSessionPauseView();
 
@@ -80,23 +62,11 @@ class SessionInfoTest {
   @Test
   void shouldResolveTextPauseFromInternalHumanInputConfirmationEvent() {
     final long requestedAt = System.currentTimeMillis();
-    final SessionInfo sessionInfo =
-        SessionInfo.fromSession(
-            Session.builder("session-1")
-                .appName("agent-a")
-                .userId("user-a")
-                .state(new ConcurrentHashMap<>())
-                .events(
-                    List.of(
-                        toolConfirmationEvent(
-                            "request_human_input",
-                            Map.of(
-                                "prompt", "Which city?",
-                                "kind", "TEXT",
-                                "options", List.of("Paris", "Dubai")),
-                            requestedAt)))
-                .lastUpdateTime(Instant.now())
-                .build());
+    final SessionInfo sessionInfo = SessionInfo
+        .fromSession(Session.builder("session-1").appName("agent-a").userId("user-a").state(new ConcurrentHashMap<>())
+            .events(List.of(toolConfirmationEvent("request_human_input",
+                Map.of("prompt", "Which city?", "kind", "TEXT", "options", List.of("Paris", "Dubai")), requestedAt)))
+            .lastUpdateTime(Instant.now()).build());
 
     final SessionPauseView pauseView = sessionInfo.getSessionPauseView();
 
@@ -110,73 +80,34 @@ class SessionInfoTest {
   @Test
   void shouldIgnoreRespondedConfirmationEvents() {
     final Event confirmationEvent = toolConfirmationEvent("run_cmd", null, System.currentTimeMillis());
-    final Event responseEvent =
-        Event.builder()
-            .id("response-1")
-            .invocationId("inv-1")
-            .author("user")
-            .timestamp(System.currentTimeMillis())
-            .content(
-                Content.builder()
-                    .role("user")
-                    .parts(
-                        List.of(
-                            Part.builder()
-                                .functionResponse(
-                                    com.google.genai.types.FunctionResponse.builder()
-                                        .id("confirm-1")
-                                        .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
-                                        .response(Map.of("confirmed", true))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    final Event responseEvent = Event.builder().id("response-1").invocationId("inv-1").author("user").timestamp(System.currentTimeMillis())
+        .content(
+            Content.builder().role("user")
+                .parts(List.of(Part.builder()
+                    .functionResponse(com.google.genai.types.FunctionResponse.builder().id("confirm-1")
+                        .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(Map.of("confirmed", true)).build())
+                    .build()))
+                .build())
+        .build();
 
-    final SessionInfo sessionInfo =
-        SessionInfo.fromSession(
-            Session.builder("session-1")
-                .appName("agent-a")
-                .userId("user-a")
-                .state(new ConcurrentHashMap<>())
-                .events(List.of(confirmationEvent, responseEvent))
-                .lastUpdateTime(Instant.now())
-                .build());
+    final SessionInfo sessionInfo = SessionInfo.fromSession(Session.builder("session-1").appName("agent-a").userId("user-a")
+        .state(new ConcurrentHashMap<>()).events(List.of(confirmationEvent, responseEvent)).lastUpdateTime(Instant.now()).build());
 
     assertThat(sessionInfo.getSessionPauseView().isPaused()).isFalse();
   }
 
-  private static Event toolConfirmationEvent(
-      final String toolName,
-      final Map<String, Object> originalArgs,
-      final long requestedAt) {
-    final Map<String, Object> originalFunctionCall =
-        originalArgs == null || originalArgs.isEmpty()
-            ? Map.of("name", toolName)
-            : Map.of("name", toolName, "args", originalArgs);
-    final FunctionCall confirmationCall =
-        FunctionCall.builder()
-            .id("confirm-1")
-            .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
-            .args(
-                Map.of(
-                    "originalFunctionCall", originalFunctionCall,
-                    "toolConfirmation",
-                        originalArgs == null || originalArgs.isEmpty()
-                            ? Map.of("hint", "Approve this action?")
-                            : Map.of(
-                                "hint", originalArgs.get("prompt"),
-                                "payload", Map.of("kind", originalArgs.get("kind"), "options", originalArgs.get("options")))))
-            .build();
-    return Event.builder()
-        .id("event-1")
-        .invocationId("inv-1")
-        .author("agent-a")
-        .timestamp(requestedAt)
-        .content(
-            Content.builder()
-                .role("model")
-                .parts(List.of(Part.builder().functionCall(confirmationCall).build()))
-                .build())
+  private static Event toolConfirmationEvent(final String toolName, final Map<String, Object> originalArgs, final long requestedAt) {
+    final Map<String, Object> originalFunctionCall = originalArgs == null || originalArgs.isEmpty()
+        ? Map.of("name", toolName)
+        : Map.of("name", toolName, "args", originalArgs);
+    final FunctionCall confirmationCall = FunctionCall.builder().id("confirm-1").name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
+        .args(Map.of("originalFunctionCall", originalFunctionCall, "toolConfirmation",
+            originalArgs == null || originalArgs.isEmpty()
+                ? Map.of("hint", "Approve this action?")
+                : Map.of("hint", originalArgs.get("prompt"), "payload",
+                    Map.of("kind", originalArgs.get("kind"), "options", originalArgs.get("options")))))
         .build();
+    return Event.builder().id("event-1").invocationId("inv-1").author("agent-a").timestamp(requestedAt)
+        .content(Content.builder().role("model").parts(List.of(Part.builder().functionCall(confirmationCall).build())).build()).build();
   }
 }

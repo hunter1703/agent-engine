@@ -6,6 +6,7 @@ rootProject.name = 'agent-engine'
 
 include 'engine'
 include 'engine:api'
+include 'engine:plugin'
 include 'util'
 include 'util:common'
 include 'util:mongodb'

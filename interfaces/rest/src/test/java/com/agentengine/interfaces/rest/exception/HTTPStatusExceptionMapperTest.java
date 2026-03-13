@@ -2,9 +2,9 @@ package com.agentengine.interfaces.rest.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.interfaces.rest.exception.HTTPStatusExceptionMapper.ErrorResponse;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
-import com.agentengine.interfaces.rest.exception.HTTPStatusExceptionMapper.ErrorResponse;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import jakarta.ws.rs.core.Response;
@@ -15,8 +15,7 @@ class HTTPStatusExceptionMapperTest {
   @Test
   void shouldMapGrpcInvalidArgumentToHttp400() {
     final HTTPStatusExceptionMapper mapper = new HTTPStatusExceptionMapper();
-    final StatusRuntimeException exception =
-        Status.INVALID_ARGUMENT.withDescription("bad request payload").asRuntimeException();
+    final StatusRuntimeException exception = Status.INVALID_ARGUMENT.withDescription("bad request payload").asRuntimeException();
 
     final Response response = mapper.toResponse(exception);
 
@@ -30,8 +29,7 @@ class HTTPStatusExceptionMapperTest {
   @Test
   void shouldMapGrpcUnavailableToHttp503() {
     final HTTPStatusExceptionMapper mapper = new HTTPStatusExceptionMapper();
-    final StatusRuntimeException exception =
-        Status.UNAVAILABLE.withDescription("engine unavailable").asRuntimeException();
+    final StatusRuntimeException exception = Status.UNAVAILABLE.withDescription("engine unavailable").asRuntimeException();
 
     final Response response = mapper.toResponse(exception);
 

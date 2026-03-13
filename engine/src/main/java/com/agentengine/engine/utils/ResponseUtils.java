@@ -1,8 +1,7 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.api.beans.ConfirmationDecision;
-import com.agentengine.engine.api.beans.session.SessionPauseKind;
-import com.agentengine.engine.api.utils.ContentUtils;
+import com.agentengine.engine.hitl.ConfirmationDecision;
+import com.agentengine.engine.hitl.SessionPauseKind;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.flows.llmflows.Functions;
@@ -12,16 +11,18 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Single;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** Shared flow helpers for event termination and response continuation shaping. */
+/**
+ * Shared flow helpers for event termination and response continuation shaping.
+ */
 public final class ResponseUtils {
 
-  private ResponseUtils() {}
+  private ResponseUtils() {
+  }
 
   /* Mirrors {@code Event.finalResponse()} semantics at the LLM-response level. */
   public static boolean isFinalAnswer(final LlmResponse response) {
@@ -36,9 +37,8 @@ public final class ResponseUtils {
       return true;
     }
     final List<Part> parts = content.parts().orElse(List.of());
-    final boolean hasFunctionPayloads =
-            parts.stream()
-                    .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
+    final boolean hasFunctionPayloads = parts.stream()
+        .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
     return !hasFunctionPayloads;
   }
 
@@ -53,9 +53,11 @@ public final class ResponseUtils {
     return ContentUtils.hasVisibleText(response.content().orElse(null));
   }
 
-  // the shape must match exactly com.google.adk.events.ToolConfirmation as adk deserializes map into it
-  public static Map<String, Object> buildResumeResponse(
-          final SessionPauseKind pauseKind, final ConfirmationDecision decision, final String answer) {
+  // the shape must match exactly com.google.adk.events.ToolConfirmation as adk
+  // deserializes map
+  // into it
+  public static Map<String, Object> buildResumeResponse(final SessionPauseKind pauseKind, final ConfirmationDecision decision,
+      final String answer) {
     final Map<String, Object> response = new LinkedHashMap<>();
     switch (pauseKind == null ? SessionPauseKind.UNKNOWN : pauseKind) {
       case DECISION -> {
@@ -77,28 +79,12 @@ public final class ResponseUtils {
   }
 
   public static LlmResponse requestHumanInTheLoop(final String prompt) {
-    final String message =
-        StringUtils.isBlank(prompt)
-            ? "User confirmation is required to continue."
-            : prompt.trim();
-    final FunctionCall functionCall =
-        FunctionCall.builder()
-            .id(Functions.generateClientFunctionCallId())
-            .name(HumanInTheLoopTool.TOOL_NAME)
-            .args(
-                Map.of(
-                    HumanInTheLoopTool.ARG_PROMPT,
-                    message,
-                    HumanInTheLoopTool.ARG_KIND,
-                    SessionPauseKind.DECISION.name(),
-                    HumanInTheLoopTool.ARG_OPTIONS,
-                    List.of("ALLOW", "DISALLOW")))
-            .build();
-    final Content content =
-        Content.builder()
-            .role("model")
-            .parts(List.of(Part.builder().functionCall(functionCall).build()))
-            .build();
+    final String message = StringUtils.isBlank(prompt) ? "User confirmation is required to continue." : prompt.trim();
+    final FunctionCall functionCall = FunctionCall.builder().id(Functions.generateClientFunctionCallId()).name(HumanInTheLoopTool.TOOL_NAME)
+        .args(Map.of(HumanInTheLoopTool.ARG_PROMPT, message, HumanInTheLoopTool.ARG_KIND, SessionPauseKind.DECISION.name(),
+            HumanInTheLoopTool.ARG_OPTIONS, HumanInTheLoopTool.DECISION_OPTIONS))
+        .build();
+    final Content content = Content.builder().role("model").parts(List.of(Part.builder().functionCall(functionCall).build())).build();
     return LlmResponse.builder().content(content).turnComplete(true).build();
   }
 }

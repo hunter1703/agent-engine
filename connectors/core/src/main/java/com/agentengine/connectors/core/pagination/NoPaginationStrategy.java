@@ -16,23 +16,14 @@ final class NoPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(
-      final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
     return PaginationDirective.empty();
   }
 
   @Override
-  public PaginationState updateState(
-      final PaginationConfig config,
-      final PaginationState currentState,
-      final String responseBody,
+  public PaginationState updateState(final PaginationConfig config, final PaginationState currentState, final String responseBody,
       final Object mappedData) {
-    return new PaginationState(
-        currentState.iteration() + 1,
-        currentState.pageNumber(),
-        currentState.offset(),
-        currentState.cursor(),
-        currentState.nextPageUrl(),
-        true);
+    return new PaginationState(currentState.iteration() + 1, currentState.pageNumber(), currentState.offset(), currentState.cursor(),
+        currentState.nextPageUrl(), true);
   }
 }

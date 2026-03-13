@@ -35,14 +35,12 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
     validateTemplateSyntax("headers", definition.headers(), issues);
     validateTemplateSyntax("query", definition.query(), issues);
-    validateTemplateSyntax(
-        "body", definition.body() == null ? null : definition.body().template(), issues);
+    validateTemplateSyntax("body", definition.body() == null ? null : definition.body().template(), issues);
 
     return new ConfigValidationResult(issues);
   }
 
-  private static void validateEndpoint(
-      final EndpointConfig endpoint, final List<ValidationIssue> issues) {
+  private static void validateEndpoint(final EndpointConfig endpoint, final List<ValidationIssue> issues) {
     if (endpoint == null) {
       issues.add(ValidationIssue.error("endpoint", "Endpoint config is required"));
       return;
@@ -53,56 +51,37 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
     }
 
     final boolean hasBaseUrl = endpoint.baseUrl() != null && !endpoint.baseUrl().isBlank();
-    final boolean hasBaseTemplate =
-        endpoint.baseUrlTemplate() != null && !endpoint.baseUrlTemplate().isBlank();
+    final boolean hasBaseTemplate = endpoint.baseUrlTemplate() != null && !endpoint.baseUrlTemplate().isBlank();
     if (!hasBaseUrl && !hasBaseTemplate) {
-      issues.add(
-          ValidationIssue.error(
-              "endpoint.baseUrl",
-              "Either endpoint.baseUrl or endpoint.baseUrlTemplate is required"));
+      issues.add(ValidationIssue.error("endpoint.baseUrl", "Either endpoint.baseUrl or endpoint.baseUrlTemplate is required"));
     }
 
     if (hasBaseUrl && hasBaseTemplate) {
       issues.add(
-          ValidationIssue.error(
-              "endpoint.baseUrlTemplate",
-              "Only one of endpoint.baseUrl or endpoint.baseUrlTemplate can be configured"));
+          ValidationIssue.error("endpoint.baseUrlTemplate", "Only one of endpoint.baseUrl or endpoint.baseUrlTemplate can be configured"));
     }
 
-    if (endpoint.path() != null
-        && !endpoint.path().isBlank()
-        && endpoint.pathTemplate() != null
-        && !endpoint.pathTemplate().isBlank()) {
-      issues.add(
-          ValidationIssue.error(
-              "endpoint.pathTemplate",
-              "Only one of endpoint.path or endpoint.pathTemplate is allowed"));
+    if (endpoint.path() != null && !endpoint.path().isBlank() && endpoint.pathTemplate() != null && !endpoint.pathTemplate().isBlank()) {
+      issues.add(ValidationIssue.error("endpoint.pathTemplate", "Only one of endpoint.path or endpoint.pathTemplate is allowed"));
     }
   }
 
-  private static void validateBody(
-      final EndpointConfig endpoint,
-      final BodyConfig bodyConfig,
-      final List<ValidationIssue> issues) {
+  private static void validateBody(final EndpointConfig endpoint, final BodyConfig bodyConfig, final List<ValidationIssue> issues) {
     if (bodyConfig == null || bodyConfig.template() == null) {
       return;
     }
 
     final HttpMethod method = endpoint == null ? HttpMethod.UNKNOWN : endpoint.methodEnum();
     if (!method.supportsBody()) {
-      issues.add(
-          ValidationIssue.error(
-              "body", "Request body is not allowed for method " + method.name().toUpperCase()));
+      issues.add(ValidationIssue.error("body", "Request body is not allowed for method " + method.name().toUpperCase()));
     }
 
     if (bodyConfig.typeEnum() == BodyType.UNKNOWN) {
-      issues.add(
-          ValidationIssue.error("body.type", "Body type is required when body is configured"));
+      issues.add(ValidationIssue.error("body.type", "Body type is required when body is configured"));
     }
   }
 
-  private static void validatePagination(
-      final PaginationConfig pagination, final List<ValidationIssue> issues) {
+  private static void validatePagination(final PaginationConfig pagination, final List<ValidationIssue> issues) {
     if (pagination == null || pagination.typeEnum() == PaginationType.NONE) {
       return;
     }
@@ -114,82 +93,53 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
 
     switch (pagination.typeEnum()) {
       case PAGE -> {
-        requireField(
-            issues, pagination.pageParam(), "pagination.pageParam", "pageParam is required");
-        requireField(
-            issues,
-            pagination.pageSizeParam(),
-            "pagination.pageSizeParam",
-            "pageSizeParam is required");
+        requireField(issues, pagination.pageParam(), "pagination.pageParam", "pageParam is required");
+        requireField(issues, pagination.pageSizeParam(), "pagination.pageSizeParam", "pageSizeParam is required");
       }
       case OFFSET -> {
-        requireField(
-            issues, pagination.offsetParam(), "pagination.offsetParam", "offsetParam is required");
-        requireField(
-            issues, pagination.limitParam(), "pagination.limitParam", "limitParam is required");
+        requireField(issues, pagination.offsetParam(), "pagination.offsetParam", "offsetParam is required");
+        requireField(issues, pagination.limitParam(), "pagination.limitParam", "limitParam is required");
       }
       case CURSOR -> {
-        requireField(
-            issues, pagination.cursorParam(), "pagination.cursorParam", "cursorParam is required");
-        requireField(
-            issues,
-            pagination.nextCursorJsonPath(),
-            "pagination.nextCursorJsonPath",
-            "nextCursorJsonPath is required");
+        requireField(issues, pagination.cursorParam(), "pagination.cursorParam", "cursorParam is required");
+        requireField(issues, pagination.nextCursorJsonPath(), "pagination.nextCursorJsonPath", "nextCursorJsonPath is required");
       }
       case NEXT_URL ->
-          requireField(
-              issues,
-              pagination.nextPageUrlJsonPath(),
-              "pagination.nextPageUrlJsonPath",
-              "nextPageUrlJsonPath is required");
+        requireField(issues, pagination.nextPageUrlJsonPath(), "pagination.nextPageUrlJsonPath", "nextPageUrlJsonPath is required");
       default -> {
         // no-op
       }
     }
   }
 
-  private static void validateResponseMapping(
-      final ResponseMappingConfig mappingConfig, final List<ValidationIssue> issues) {
+  private static void validateResponseMapping(final ResponseMappingConfig mappingConfig, final List<ValidationIssue> issues) {
     if (mappingConfig == null) {
       return;
     }
 
-    mappingConfig
-        .successStatusCodes()
-        .forEach(
-            statusCode -> {
-              if (statusCode == null || statusCode < 100 || statusCode > 599) {
-                issues.add(
-                    ValidationIssue.error(
-                        "responseMapping.successStatusCodes",
-                        "Invalid HTTP status code in successStatusCodes: " + statusCode));
-              }
-            });
+    mappingConfig.successStatusCodes().forEach(statusCode -> {
+      if (statusCode == null || statusCode < 100 || statusCode > 599) {
+        issues.add(
+            ValidationIssue.error("responseMapping.successStatusCodes", "Invalid HTTP status code in successStatusCodes: " + statusCode));
+      }
+    });
   }
 
-  private static void requireField(
-      final List<ValidationIssue> issues,
-      final String value,
-      final String path,
-      final String message) {
+  private static void requireField(final List<ValidationIssue> issues, final String value, final String path, final String message) {
     if (value == null || value.isBlank()) {
       issues.add(ValidationIssue.error(path, message));
     }
   }
 
   @SuppressWarnings("unchecked")
-  private static void validateTemplateSyntax(
-      final String path, final Object value, final List<ValidationIssue> issues) {
+  private static void validateTemplateSyntax(final String path, final Object value, final List<ValidationIssue> issues) {
     if (value == null) {
       return;
     }
 
     if (value instanceof String stringValue) {
       if (!hasBalancedTemplateDelimiters(stringValue)) {
-        issues.add(
-            ValidationIssue.error(
-                path, "Template delimiters are unbalanced for value: " + stringValue));
+        issues.add(ValidationIssue.error(path, "Template delimiters are unbalanced for value: " + stringValue));
       }
       return;
     }

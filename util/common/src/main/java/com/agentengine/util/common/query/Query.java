@@ -11,7 +11,8 @@ public class Query {
   private List<String> excludeFields = new ArrayList<>();
   private boolean includeCount = false;
 
-  public Query() {}
+  public Query() {
+  }
 
   public Filter getFilter() {
     return filter;

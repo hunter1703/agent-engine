@@ -11,14 +11,16 @@ import java.util.Optional;
 /**
  * Generic repository interface providing basic CRUD operations
  *
- * @param <T> the entity type
+ * @param <T>
+ *          the entity type
  */
 public interface Repository<T extends BaseEntity> {
 
   /**
    * Find an entity by its ID
    *
-   * @param id the entity ID
+   * @param id
+   *          the entity ID
    * @return the entity wrapped in an Optional, or empty if not found
    */
   Optional<T> findById(String id);
@@ -32,8 +34,10 @@ public interface Repository<T extends BaseEntity> {
   /**
    * Apply a partial update to an entity.
    *
-   * @param id the entity ID
-   * @param update the update operations
+   * @param id
+   *          the entity ID
+   * @param update
+   *          the update operations
    * @return the updated entity
    */
   T update(String id, Update update);
@@ -41,7 +45,8 @@ public interface Repository<T extends BaseEntity> {
   /**
    * Save an entity. If the entity already exists, it will be updated.
    *
-   * @param entity the entity to save
+   * @param entity
+   *          the entity to save
    * @return the saved entity
    */
   T save(T entity);
@@ -49,7 +54,8 @@ public interface Repository<T extends BaseEntity> {
   /**
    * Delete an entity by its ID
    *
-   * @param id the entity ID
+   * @param id
+   *          the entity ID
    * @return true if the entity was deleted, false if it didn't exist
    */
   boolean deleteById(String id);

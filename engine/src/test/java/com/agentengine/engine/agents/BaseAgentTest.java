@@ -43,19 +43,12 @@ class BaseAgentTest {
     assertThat(requestProcessors(agent)).anyMatch(AgentTransfer.class::isInstance);
   }
 
-  private static BaseAgent buildAgent(
-      final boolean disallowTransferToParent,
-      final boolean disallowTransferToPeers,
+  private static BaseAgent buildAgent(final boolean disallowTransferToParent, final boolean disallowTransferToPeers,
       final List<? extends com.google.adk.agents.BaseAgent> subAgents) {
     final BaseLlm model = mock(BaseLlm.class);
     when(model.model()).thenReturn("mock-model");
-    final LlmAgent.Builder builder =
-        LlmAgent.builder()
-            .name("agent")
-            .model(model)
-            .disallowTransferToParent(disallowTransferToParent)
-            .disallowTransferToPeers(disallowTransferToPeers)
-            .subAgents(subAgents);
+    final LlmAgent.Builder builder = LlmAgent.builder().name("agent").model(model).disallowTransferToParent(disallowTransferToParent)
+        .disallowTransferToPeers(disallowTransferToPeers).subAgents(subAgents);
     return new BaseAgent(builder);
   }
 

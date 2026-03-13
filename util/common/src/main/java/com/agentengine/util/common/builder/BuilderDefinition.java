@@ -35,22 +35,17 @@ public record BuilderDefinition(Map<String, Object> schema, UILayout layout) {
       removeHiddenPropertyFromSchema(resolvedSchema, pointer);
     }
 
-    return new BuilderDefinition(
-        resolvedSchema,
-        new UILayout(
-            new LinkedHashMap<>(resolvedFields),
-            layout.presets() == null || layout.presets().isEmpty()
-                ? null
-                : List.copyOf(layout.presets())));
+    return new BuilderDefinition(resolvedSchema, new UILayout(new LinkedHashMap<>(resolvedFields),
+        layout.presets() == null || layout.presets().isEmpty() ? null : List.copyOf(layout.presets())));
   }
 
   private static Map<String, Object> deepCopySchema(final Map<String, Object> input) {
     final String json = JsonUtils.toStableJson(input);
-    return JsonUtils.fromJson(json, new TypeReference<>() {});
+    return JsonUtils.fromJson(json, new TypeReference<>() {
+    });
   }
 
-  private static void removeHiddenPropertyFromSchema(
-      final Map<String, Object> resolved, final String pointer) {
+  private static void removeHiddenPropertyFromSchema(final Map<String, Object> resolved, final String pointer) {
     if (pointer == null || pointer.isBlank() || pointer.indexOf('/', 1) >= 0) {
       return;
     }
@@ -58,8 +53,7 @@ public record BuilderDefinition(Map<String, Object> schema, UILayout layout) {
     removePropertyRecursive(resolved, property);
   }
 
-  private static void removePropertyRecursive(
-      final Map<String, Object> node, final String property) {
+  private static void removePropertyRecursive(final Map<String, Object> node, final String property) {
     if (node == null || property == null) {
       return;
     }

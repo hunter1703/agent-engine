@@ -2,12 +2,12 @@ package com.agentengine.engine.guardrails.rules;
 
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.guardrails.Guardrail;
 import com.agentengine.engine.guardrails.GuardrailConstants;
 import com.agentengine.engine.guardrails.GuardrailContext;
 import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.GuardrailUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import java.util.List;
 import java.util.Map;
@@ -42,25 +42,16 @@ public final class TextContentGuardrail implements Guardrail {
     final GuardrailStage stage = stage();
     final int maxTextLength = resolveMaxTextLength(stage);
     if (maxTextLength > 0 && text.length() > maxTextLength) {
-      return GuardrailUtils.fromAction(
-          rule.actionEnum(),
-          code(stage, "length"),
-          defaultMessage(stage, "length"),
-          Map.of(
-              GuardrailConstants.DetailKey.RULE, rule.getId(),
-              GuardrailConstants.DetailKey.ACTUAL_LENGTH, text.length(),
+      return GuardrailUtils.fromAction(rule.actionEnum(), code(stage, "length"), defaultMessage(stage, "length"),
+          Map.of(GuardrailConstants.DetailKey.RULE, rule.getId(), GuardrailConstants.DetailKey.ACTUAL_LENGTH, text.length(),
               GuardrailConstants.DetailKey.MAX_LENGTH, maxTextLength));
     }
 
-    final List<String> blockedPatterns =
-        CollectionUtils.isEmpty(rule.getBlockedPatterns()) && stage == GuardrailStage.INPUT
-            ? DEFAULT_INPUT_BLOCK_PATTERNS
-            : CollectionUtils.nullSafeList(rule.getBlockedPatterns());
+    final List<String> blockedPatterns = CollectionUtils.isEmpty(rule.getBlockedPatterns()) && stage == GuardrailStage.INPUT
+        ? DEFAULT_INPUT_BLOCK_PATTERNS
+        : CollectionUtils.nullSafeList(rule.getBlockedPatterns());
     if (GuardrailUtils.containsPattern(text, blockedPatterns)) {
-      return GuardrailUtils.fromAction(
-          rule.actionEnum(),
-          code(stage, "pattern"),
-          defaultMessage(stage, "pattern"),
+      return GuardrailUtils.fromAction(rule.actionEnum(), code(stage, "pattern"), defaultMessage(stage, "pattern"),
           Map.of(GuardrailConstants.DetailKey.RULE, rule.getId()));
     }
 
@@ -82,23 +73,15 @@ public final class TextContentGuardrail implements Guardrail {
       return rule.getMessage();
     }
     if ("length".equals(kind)) {
-      return stage == GuardrailStage.INPUT
-          ? "Input exceeded the configured max length."
-          : "Output exceeded the configured max length.";
+      return stage == GuardrailStage.INPUT ? "Input exceeded the configured max length." : "Output exceeded the configured max length.";
     }
-    return stage == GuardrailStage.INPUT
-        ? "Input matched a blocked pattern."
-        : "Output matched a blocked pattern.";
+    return stage == GuardrailStage.INPUT ? "Input matched a blocked pattern." : "Output matched a blocked pattern.";
   }
 
   private static String code(final GuardrailStage stage, final String suffix) {
     if ("length".equals(suffix)) {
-      return stage == GuardrailStage.INPUT
-          ? GuardrailConstants.Code.INPUT_LENGTH
-          : GuardrailConstants.Code.OUTPUT_LENGTH;
+      return stage == GuardrailStage.INPUT ? GuardrailConstants.Code.INPUT_LENGTH : GuardrailConstants.Code.OUTPUT_LENGTH;
     }
-    return stage == GuardrailStage.INPUT
-        ? GuardrailConstants.Code.INPUT_PATTERN
-        : GuardrailConstants.Code.OUTPUT_PATTERN;
+    return stage == GuardrailStage.INPUT ? GuardrailConstants.Code.INPUT_PATTERN : GuardrailConstants.Code.OUTPUT_PATTERN;
   }
 }

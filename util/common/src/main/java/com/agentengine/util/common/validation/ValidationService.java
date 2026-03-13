@@ -15,12 +15,9 @@ public class ValidationService {
   private final List<Validator<?>> ruleValidators;
 
   @Inject
-  public ValidationService(
-      final jakarta.validation.Validator validator,
-      final @Any Instance<Validator<?>> allRuleValidators) {
+  public ValidationService(final jakarta.validation.Validator validator, final @Any Instance<Validator<?>> allRuleValidators) {
     this.validator = validator;
-    this.ruleValidators =
-        allRuleValidators.stream().sorted(Comparator.comparingInt(Validator::order)).toList();
+    this.ruleValidators = allRuleValidators.stream().sorted(Comparator.comparingInt(Validator::order)).toList();
   }
 
   public <T> void validate(final T value) {
@@ -33,14 +30,12 @@ public class ValidationService {
     if (!errors.hasErrors()) {
       return;
     }
-    throw new IllegalArgumentException(
-        "Config validation failed: " + String.join("; ", errors.errors()));
+    throw new IllegalArgumentException("Config validation failed: " + String.join("; ", errors.errors()));
   }
 
   private <T> void collectBeanValidationErrors(final T value, final ValidationCollector errors) {
     for (final ConstraintViolation<T> violation : validator.validate(value)) {
-      final String path =
-          violation.getPropertyPath() == null ? "" : violation.getPropertyPath().toString();
+      final String path = violation.getPropertyPath() == null ? "" : violation.getPropertyPath().toString();
       final String message = violation.getMessage();
       if (StringUtils.isBlank(path)) {
         errors.add(message);

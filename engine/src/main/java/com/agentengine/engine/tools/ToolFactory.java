@@ -1,11 +1,9 @@
 package com.agentengine.engine.tools;
 
 import com.agentengine.engine.api.beans.config.ToolsConfig;
-import com.agentengine.engine.api.services.ToolCatalog;
-import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.ToolsetProvider;
+import com.agentengine.engine.plugin.tools.ToolProvider;
+import com.agentengine.engine.plugin.tools.ToolsetProvider;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import jakarta.inject.Inject;
@@ -17,11 +15,11 @@ import java.util.Map;
 @Singleton
 public final class ToolFactory {
 
-  private final ToolCatalog toolCatalog;
+  private final ToolService toolService;
 
   @Inject
-  public ToolFactory(final ToolCatalog toolCatalog) {
-    this.toolCatalog = toolCatalog;
+  public ToolFactory(final ToolService toolService) {
+    this.toolService = toolService;
   }
 
   public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {
@@ -30,7 +28,7 @@ public final class ToolFactory {
     }
     final List<BaseTool> tools = new ArrayList<>(toolConfigs.size());
     for (final ToolsConfig toolConfig : toolConfigs) {
-      final ToolProvider provider = toolCatalog.getToolProvider(toolConfig.getToolName());
+      final ToolProvider provider = toolService.getToolProvider(toolConfig.getToolName());
       if (provider == null) {
         continue;
       }
@@ -48,7 +46,7 @@ public final class ToolFactory {
     }
     final List<BaseToolset> toolsets = new ArrayList<>(toolConfigs.size());
     for (final ToolsConfig toolConfig : toolConfigs) {
-      final ToolsetProvider provider = toolCatalog.getToolsetProvider(toolConfig.getToolName());
+      final ToolsetProvider provider = toolService.getToolsetProvider(toolConfig.getToolName());
       if (provider == null) {
         continue;
       }

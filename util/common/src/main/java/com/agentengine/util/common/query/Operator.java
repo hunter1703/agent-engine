@@ -3,21 +3,7 @@ package com.agentengine.util.common.query;
 import java.util.Locale;
 
 public enum Operator {
-  UNKNOWN(false),
-  AND(true),
-  NOT(true),
-  OR(true),
-  EQ,
-  NE,
-  GT,
-  GTE,
-  LT,
-  LTE,
-  IN,
-  NIN,
-  CONTAINS,
-  EXISTS,
-  NOT_EXISTS;
+  UNKNOWN(false), AND(true), NOT(true), OR(true), EQ, NE, GT, GTE, LT, LTE, IN, NIN, CONTAINS, EXISTS, NOT_EXISTS;
 
   private final boolean compound;
 

@@ -15,7 +15,8 @@ import org.junit.jupiter.api.Test;
 @QuarkusTestResource(com.agentengine.interfaces.rest.testing.MongoRedisTestResource.class)
 class SchemaAndCatalogEndpointsIT {
 
-  @Inject MongoClientFactory mongoClientFactory;
+  @Inject
+  MongoClientFactory mongoClientFactory;
 
   @BeforeEach
   void shouldResetDatabaseWhenTestStarts() {
@@ -23,80 +24,44 @@ class SchemaAndCatalogEndpointsIT {
       client.getDatabase("AGENT_ENGINE").drop();
     }
 
-    given()
-        .contentType("application/json")
-        .body(
-            """
-            {
-              "id": "model-catalog",
-              "name": "Model Catalog",
-              "type": "ollama",
-              "model": "qwen2.5"
-            }
-            """)
-        .when()
-        .post("/v1/model/upsert")
-        .then()
-        .statusCode(200);
+    given().contentType("application/json").body("""
+        {
+          "id": "model-catalog",
+          "name": "Model Catalog",
+          "type": "ollama",
+          "model": "qwen2.5"
+        }
+        """).when().post("/v1/model/upsert").then().statusCode(200);
 
-    given()
-        .contentType("application/json")
-        .body(
-            """
-            {
-              "id": "agent-catalog",
-              "type": "default",
-              "name": "Agent Catalog",
-              "modelId": "model-catalog"
-            }
-            """)
-        .when()
-        .post("/v1/agent/agent")
-        .then()
-        .statusCode(200);
+    given().contentType("application/json").body("""
+        {
+          "id": "agent-catalog",
+          "type": "default",
+          "name": "Agent Catalog",
+          "modelId": "model-catalog"
+        }
+        """).when().post("/v1/agent/agent").then().statusCode(200);
   }
 
   @Test
   void shouldReturnSchemaWhenSchemaEndpointCalledForKnownAssetType() {
-    given()
-        .when()
-        .get("/schemas/model")
-        .then()
-        .statusCode(200)
-        .body("size()", greaterThanOrEqualTo(1));
+    given().when().get("/schemas/model").then().statusCode(200).body("size()", greaterThanOrEqualTo(1));
   }
 
   @Test
   void shouldReturnBadRequestWhenSchemaLookupUnsupportedAssetType() {
-    given()
-        .contentType("application/json")
-        .body("{\"assetType\":\"unsupported\",\"assetId\":\"x\",\"agentId\":\"a\"}")
-        .when()
-        .post("/schemas/")
-        .then()
-        .statusCode(400);
+    given().contentType("application/json").body("{\"assetType\":\"unsupported\",\"assetId\":\"x\",\"agentId\":\"a\"}").when()
+        .post("/schemas/").then().statusCode(400);
   }
 
   @Test
   void shouldListModelsWhenCatalogListEndpointCalled() {
-    given()
-        .contentType("application/json")
-        .body("{\"assetType\":\"model\"}")
-        .when()
-        .post("/v1/catalog/list")
-        .then()
-        .statusCode(200)
+    given().contentType("application/json").body("{\"assetType\":\"model\"}").when().post("/v1/catalog/list").then().statusCode(200)
         .body("items.size()", greaterThanOrEqualTo(1));
   }
 
   @Test
   void shouldReturnBadRequestWhenCatalogListUnsupportedType() {
-    given()
-        .contentType("application/json")
-        .body("{\"assetType\":\"unsupported\"}")
-        .when()
-        .post("/v1/catalog/list")
-        .then()
-        .statusCode(400);
+    given().contentType("application/json").body("{\"assetType\":\"unsupported\"}").when().post("/v1/catalog/list").then().statusCode(400);
   }
 }

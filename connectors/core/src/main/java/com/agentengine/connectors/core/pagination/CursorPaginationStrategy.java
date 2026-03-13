@@ -18,8 +18,7 @@ public final class CursorPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationDirective buildRequest(
-      final PaginationConfig config, final PaginationState state) {
+  public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
     final Map<String, String> queryParams = new LinkedHashMap<>();
     if (config.pageSizeParam() != null && !config.pageSizeParam().isBlank()) {
       queryParams.put(config.pageSizeParam(), String.valueOf(config.pageSize()));
@@ -31,31 +30,17 @@ public final class CursorPaginationStrategy implements PaginationStrategy {
   }
 
   @Override
-  public PaginationState updateState(
-      final PaginationConfig config,
-      final PaginationState currentState,
-      final String responseBody,
+  public PaginationState updateState(final PaginationConfig config, final PaginationState currentState, final String responseBody,
       final Object mappedData) {
     final int nextIteration = currentState.iteration() + 1;
     if (PaginationStrategySupport.reachedMaxPages(nextIteration, config.maxPages())) {
-      return new PaginationState(
-          nextIteration,
-          currentState.pageNumber(),
-          currentState.offset(),
-          currentState.cursor(),
-          currentState.nextPageUrl(),
-          true);
+      return new PaginationState(nextIteration, currentState.pageNumber(), currentState.offset(), currentState.cursor(),
+          currentState.nextPageUrl(), true);
     }
 
-    final String nextCursor =
-        PaginationStrategySupport.extractString(config.nextCursorJsonPath(), responseBody);
+    final String nextCursor = PaginationStrategySupport.extractString(config.nextCursorJsonPath(), responseBody);
     final boolean done = nextCursor == null || nextCursor.isBlank();
-    return new PaginationState(
-        nextIteration,
-        currentState.pageNumber(),
-        currentState.offset(),
-        nextCursor,
-        currentState.nextPageUrl(),
+    return new PaginationState(nextIteration, currentState.pageNumber(), currentState.offset(), nextCursor, currentState.nextPageUrl(),
         done);
   }
 }

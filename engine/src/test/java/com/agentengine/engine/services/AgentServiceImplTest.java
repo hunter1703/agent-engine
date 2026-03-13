@@ -21,9 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AgentServiceImplTest {
 
-  @Mock private AgentRepository agentRepository;
+  @Mock
+  private AgentRepository agentRepository;
 
-  @InjectMocks private AgentServiceImpl agentService;
+  @InjectMocks
+  private AgentServiceImpl agentService;
 
   @Test
   void shouldSanitizeBeforeInsertWhenCreateAgentCalled() {
@@ -77,8 +79,7 @@ class AgentServiceImplTest {
     final DefaultAgentConfig request = new DefaultAgentConfig();
     request.setId("agent-2");
     request.setModelId("model-1");
-    when(agentRepository.update(eq("agent-1"), any(BaseAgentConfig.class)))
-        .thenAnswer(inv -> inv.getArgument(1));
+    when(agentRepository.update(eq("agent-1"), any(BaseAgentConfig.class))).thenAnswer(inv -> inv.getArgument(1));
 
     final BaseAgentConfig updated = agentService.updateAgent("agent-1", request);
 

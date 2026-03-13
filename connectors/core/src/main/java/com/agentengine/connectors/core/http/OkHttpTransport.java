@@ -1,12 +1,12 @@
 package com.agentengine.connectors.core.http;
 
 import com.agentengine.connectors.core.config.HttpMethod;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import jakarta.inject.Singleton;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -45,8 +45,7 @@ public final class OkHttpTransport implements HttpTransport {
     try (Response response = effectiveClient.newCall(requestBuilder.build()).execute()) {
       final ResponseBody responseBody = response.body();
       final String body = responseBody == null ? "" : responseBody.string();
-      return new HttpResponseData(
-          response.code(), toHeaderMap(response.headers().toMultimap()), body);
+      return new HttpResponseData(response.code(), toHeaderMap(response.headers().toMultimap()), body);
     } catch (IOException ex) {
       throw new HttpTransportException("HTTP request failed", ex);
     }
@@ -78,18 +77,15 @@ public final class OkHttpTransport implements HttpTransport {
   }
 
   private static RequestBody createRequestBody(final HttpRequestData requestData) {
-    if (requestData.method() == HttpMethod.GET
-        || requestData.method() == HttpMethod.DELETE
-        || requestData.method() == HttpMethod.HEAD
+    if (requestData.method() == HttpMethod.GET || requestData.method() == HttpMethod.DELETE || requestData.method() == HttpMethod.HEAD
         || requestData.method() == HttpMethod.OPTIONS) {
       return null;
     }
 
     final String body = requestData.body() == null ? "" : requestData.body();
-    final MediaType mediaType =
-        requestData.contentType() == null || requestData.contentType().isBlank()
-            ? DEFAULT_JSON_TYPE
-            : MediaType.parse(requestData.contentType());
+    final MediaType mediaType = requestData.contentType() == null || requestData.contentType().isBlank()
+        ? DEFAULT_JSON_TYPE
+        : MediaType.parse(requestData.contentType());
     final MediaType effectiveMediaType = mediaType == null ? DEFAULT_JSON_TYPE : mediaType;
     return RequestBody.create(body, effectiveMediaType);
   }

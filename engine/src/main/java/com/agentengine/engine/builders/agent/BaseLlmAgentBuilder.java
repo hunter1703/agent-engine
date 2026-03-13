@@ -1,9 +1,9 @@
 package com.agentengine.engine.builders.agent;
 
-import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.agents.BaseAgent;
+import com.agentengine.engine.agents.DelegatedAgent;
+import com.agentengine.engine.plugin.Agent;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;
@@ -58,13 +58,8 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
     toolsAndToolsets.add(new HumanInTheLoopTool());
     toolsAndToolsets.addAll(tools);
     toolsAndToolsets.addAll(toolSets);
-    final LlmAgent.Builder builder =
-        llmAgentBuilder
-            .name(name())
-            .description(description())
-            .subAgents(subAgents())
-            .instruction(systemInstructions)
-            .tools(toolsAndToolsets);
+    final LlmAgent.Builder builder = llmAgentBuilder.name(name()).description(description()).subAgents(subAgents())
+        .instruction(systemInstructions).tools(toolsAndToolsets);
     final LlmAgent llmAgent = new BaseAgent(builder);
     return new DelegatedAgent(llmAgent, agentConfig());
   }

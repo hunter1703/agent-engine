@@ -1,16 +1,16 @@
 package com.agentengine.engine.agents;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.ParallelAggregationPolicy;
 import com.agentengine.engine.api.beans.config.ParallelStoppingPolicy;
-import com.agentengine.engine.api.utils.EventUtils;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.plugin.Agent;
+import com.agentengine.engine.utils.EventUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils.TaskOutcome;
-import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -28,9 +28,11 @@ import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Policy-aware parallel orchestrator that emits only aggregated orchestrator output.
+ * Policy-aware parallel orchestrator that emits only aggregated orchestrator
+ * output.
  *
- * <p>Branch success is based on terminal flow signals from branch output events.
+ * <p>
+ * Branch success is based on terminal flow signals from branch output events.
  */
 public final class ParallelOrchestratorAgent extends Agent {
   private final ParallelAggregationPolicy aggregationPolicy;
@@ -56,40 +58,23 @@ public final class ParallelOrchestratorAgent extends Agent {
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
     final Result result = executeBranches(invocationContext);
     if (result.fallbackUsed()) {
-      RunStateUtils.getState(invocationContext)
-          .addViolation(
-              Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
-                  .message(ParallelOrchestrationConstants.Message.FALLBACK)
-                  .correctionMessage(ParallelOrchestrationConstants.Message.FALLBACK)
-                  .details(
-                      Map.of(
-                          ParallelOrchestrationConstants.DetailKey.STOPPING_POLICY,
-                          stoppingPolicy.name(),
-                          ParallelOrchestrationConstants.DetailKey.AGGREGATION_POLICY,
-                          aggregationPolicy.name(),
-                          ParallelOrchestrationConstants.DetailKey.REQUIRED_SUCCESSES,
-                          result.requiredSuccesses(),
-                          ParallelOrchestrationConstants.DetailKey.SUCCESS_COUNT,
-                          result.successful(),
-                          ParallelOrchestrationConstants.DetailKey.COMPLETED_COUNT,
-                          result.completed()))
-                  .build());
+      RunUtils.getState(invocationContext)
+          .addViolation(Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
+              .message(ParallelOrchestrationConstants.Message.FALLBACK).correctionMessage(ParallelOrchestrationConstants.Message.FALLBACK)
+              .details(Map.of(ParallelOrchestrationConstants.DetailKey.STOPPING_POLICY, stoppingPolicy.name(),
+                  ParallelOrchestrationConstants.DetailKey.AGGREGATION_POLICY, aggregationPolicy.name(),
+                  ParallelOrchestrationConstants.DetailKey.REQUIRED_SUCCESSES, result.requiredSuccesses(),
+                  ParallelOrchestrationConstants.DetailKey.SUCCESS_COUNT, result.successful(),
+                  ParallelOrchestrationConstants.DetailKey.COMPLETED_COUNT, result.completed()))
+              .build());
     }
 
-    final String text =
-        StringUtils.isNotBlank(result.outputText())
-            ? result.outputText()
-            : ParallelOrchestrationConstants.Message.EMPTY_RESULT;
-    final Content content =
-        Content.builder().role("model").parts(List.of(Part.fromText(text))).build();
-    final Event event =
-        Event.builder()
-            .id(Event.generateEventId())
-            .invocationId(invocationContext.invocationId())
-            .author(name())
-            .branch(invocationContext.branch())
-            .content(content)
-            .build();
+    final String text = StringUtils.isNotBlank(result.outputText())
+        ? result.outputText()
+        : ParallelOrchestrationConstants.Message.EMPTY_RESULT;
+    final Content content = Content.builder().role("model").parts(List.of(Part.fromText(text))).build();
+    final Event event = Event.builder().id(Event.generateEventId()).invocationId(invocationContext.invocationId()).author(name())
+        .branch(invocationContext.branch()).content(content).build();
     return Flowable.just(event);
   }
 
@@ -100,16 +85,14 @@ public final class ParallelOrchestratorAgent extends Agent {
       tasks.add(() -> runBranch(invocationContext, branchSpec));
     }
 
-    final List<TaskOutcome<BranchExecution>> outcomes =
-        StructuredConcurrencyUtils.runConcurrentlyUntil(
-            tasks, subtask -> shouldStopSubtasks(subtask, successes, requiredSuccesses));
+    final List<TaskOutcome<BranchExecution>> outcomes = StructuredConcurrencyUtils.runConcurrentlyUntil(tasks,
+        subtask -> shouldStopSubtasks(subtask, successes, requiredSuccesses));
 
     final List<BranchExecution> executions = collectExecutions(outcomes);
     final int successful = countSuccessful(executions);
     final boolean fallbackUsed = successful < requiredSuccesses;
     final String outputText = fallbackUsed ? bestEffort(executions) : aggregateByPolicy(executions);
-    return new Result(
-        outputText, fallbackUsed, requiredSuccesses, successful, countCompleted(executions));
+    return new Result(outputText, fallbackUsed, requiredSuccesses, successful, countCompleted(executions));
   }
 
   private List<BranchSpec> buildBranchSpecs() {
@@ -122,9 +105,7 @@ public final class ParallelOrchestratorAgent extends Agent {
     return branchSpecs;
   }
 
-  private boolean shouldStopSubtasks(
-      final Subtask<? extends BranchExecution> subtask,
-      final AtomicInteger successes,
+  private boolean shouldStopSubtasks(final Subtask<? extends BranchExecution> subtask, final AtomicInteger successes,
       final int requiredSuccesses) {
     if (stoppingPolicy == ParallelStoppingPolicy.ALL_COMPLETE || requiredSuccesses <= 0) {
       return false;
@@ -139,34 +120,26 @@ public final class ParallelOrchestratorAgent extends Agent {
     return successes.incrementAndGet() >= requiredSuccesses;
   }
 
-  private List<BranchExecution> collectExecutions(
-      final List<TaskOutcome<BranchExecution>> outcomes) {
+  private List<BranchExecution> collectExecutions(final List<TaskOutcome<BranchExecution>> outcomes) {
     final List<BranchExecution> executions = new ArrayList<>(branchSpecs.size());
     for (final TaskOutcome<BranchExecution> outcome : CollectionUtils.nullSafeList(outcomes)) {
       final BranchSpec branchSpec = branchSpecs.get(outcome.index());
       switch (outcome.state()) {
         case SUCCESS -> executions.add(outcome.value());
-        case FAILED ->
-            executions.add(BranchExecution.failed(branchSpec.order(), branchSpec.subAgentId()));
-        case UNAVAILABLE ->
-            executions.add(
-                BranchExecution.unavailable(branchSpec.order(), branchSpec.subAgentId()));
+        case FAILED -> executions.add(BranchExecution.failed(branchSpec.order(), branchSpec.subAgentId()));
+        case UNAVAILABLE -> executions.add(BranchExecution.unavailable(branchSpec.order(), branchSpec.subAgentId()));
       }
     }
     executions.sort(Comparator.comparingInt(BranchExecution::order));
     return executions;
   }
 
-  private static BranchExecution runBranch(
-      final InvocationContext invocationContext, final BranchSpec branchSpec) {
+  private static BranchExecution runBranch(final InvocationContext invocationContext, final BranchSpec branchSpec) {
     try {
-      final List<Event> events =
-          CollectionUtils.nullSafeList(
-              branchSpec.subAgent().runAsync(invocationContext).toList().blockingGet());
+      final List<Event> events = CollectionUtils.nullSafeList(branchSpec.subAgent().runAsync(invocationContext).toList().blockingGet());
       final boolean successful = EventUtils.isTerminal(CollectionUtils.getLast(events));
       final String outputText = extractLatestText(events);
-      return BranchExecution.completed(
-          branchSpec.order(), branchSpec.subAgentId(), outputText, successful);
+      return BranchExecution.completed(branchSpec.order(), branchSpec.subAgentId(), outputText, successful);
     } catch (Exception ignored) {
       return BranchExecution.failed(branchSpec.order(), branchSpec.subAgentId());
     }
@@ -190,21 +163,16 @@ public final class ParallelOrchestratorAgent extends Agent {
 
   private static String bestEffort(final List<BranchExecution> executions) {
     final List<BranchExecution> successfulCandidates = successfulExecutions(executions);
-    final List<BranchExecution> source =
-        successfulCandidates.isEmpty() ? textExecutions(executions) : successfulCandidates;
-    return source.stream()
-        .filter(execution -> StringUtils.isNotBlank(execution.outputText()))
-        .max(
-            Comparator.comparingInt((BranchExecution execution) -> execution.outputText().length())
-                .thenComparingInt(execution -> -execution.order()))
-        .map(BranchExecution::outputText)
-        .orElse("");
+    final List<BranchExecution> source = successfulCandidates.isEmpty() ? textExecutions(executions) : successfulCandidates;
+    return source
+        .stream().filter(execution -> StringUtils.isNotBlank(execution.outputText())).max(Comparator
+            .comparingInt((BranchExecution execution) -> execution.outputText().length()).thenComparingInt(execution -> -execution.order()))
+        .map(BranchExecution::outputText).orElse("");
   }
 
   private static String majorityVote(final List<BranchExecution> executions) {
     final List<BranchExecution> successfulCandidates = successfulExecutions(executions);
-    final List<BranchExecution> source =
-        successfulCandidates.isEmpty() ? textExecutions(executions) : successfulCandidates;
+    final List<BranchExecution> source = successfulCandidates.isEmpty() ? textExecutions(executions) : successfulCandidates;
     if (source.isEmpty()) {
       return "";
     }
@@ -226,8 +194,7 @@ public final class ParallelOrchestratorAgent extends Agent {
         bestGroup = currentGroup;
         continue;
       }
-      if (currentGroup.size() == bestGroup.size()
-          && bestEffort(currentGroup).length() > bestEffort(bestGroup).length()) {
+      if (currentGroup.size() == bestGroup.size() && bestEffort(currentGroup).length() > bestEffort(bestGroup).length()) {
         bestGroup = currentGroup;
       }
     }
@@ -235,25 +202,17 @@ public final class ParallelOrchestratorAgent extends Agent {
   }
 
   private static List<String> successfulTexts(final List<BranchExecution> executions) {
-    return successfulExecutions(executions).stream()
-        .map(BranchExecution::outputText)
-        .filter(StringUtils::isNotBlank)
-        .toList();
+    return successfulExecutions(executions).stream().map(BranchExecution::outputText).filter(StringUtils::isNotBlank).toList();
   }
 
-  private static List<BranchExecution> successfulExecutions(
-      final List<BranchExecution> executions) {
-    return CollectionUtils.nullSafeList(executions).stream()
-        .filter(BranchExecution::successful)
-        .filter(execution -> StringUtils.isNotBlank(execution.outputText()))
-        .toList();
+  private static List<BranchExecution> successfulExecutions(final List<BranchExecution> executions) {
+    return CollectionUtils.nullSafeList(executions).stream().filter(BranchExecution::successful)
+        .filter(execution -> StringUtils.isNotBlank(execution.outputText())).toList();
   }
 
   private static List<BranchExecution> textExecutions(final List<BranchExecution> executions) {
-    return CollectionUtils.nullSafeList(executions).stream()
-        .filter(BranchExecution::completed)
-        .filter(execution -> StringUtils.isNotBlank(execution.outputText()))
-        .toList();
+    return CollectionUtils.nullSafeList(executions).stream().filter(BranchExecution::completed)
+        .filter(execution -> StringUtils.isNotBlank(execution.outputText())).toList();
   }
 
   private static int requiredSuccesses(final ParallelStoppingPolicy stoppingPolicy, final int quorum, final int branchCount) {
@@ -309,33 +268,19 @@ public final class ParallelOrchestratorAgent extends Agent {
     return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
   }
 
-  private record BranchSpec(int order, String subAgentId, BaseAgent subAgent) {}
-
-  private record Result(
-      String outputText,
-      boolean fallbackUsed,
-      int requiredSuccesses,
-      int successful,
-      int completed) {}
-
-  private enum BranchStatus {
-    COMPLETED,
-    FAILED,
-    UNAVAILABLE
+  private record BranchSpec(int order, String subAgentId, BaseAgent subAgent) {
   }
 
-  private record BranchExecution(
-      int order, String subAgentId, String outputText, boolean successful, BranchStatus status) {
-    private static BranchExecution completed(
-        final int order,
-        final String subAgentId,
-        final String outputText,
-        final boolean successful) {
-      return new BranchExecution(
-          order,
-          subAgentId,
-          StringUtils.isBlank(outputText) ? "" : outputText.trim(),
-          successful,
+  private record Result(String outputText, boolean fallbackUsed, int requiredSuccesses, int successful, int completed) {
+  }
+
+  private enum BranchStatus {
+    COMPLETED, FAILED, UNAVAILABLE
+  }
+
+  private record BranchExecution(int order, String subAgentId, String outputText, boolean successful, BranchStatus status) {
+    private static BranchExecution completed(final int order, final String subAgentId, final String outputText, final boolean successful) {
+      return new BranchExecution(order, subAgentId, StringUtils.isBlank(outputText) ? "" : outputText.trim(), successful,
           BranchStatus.COMPLETED);
     }
 

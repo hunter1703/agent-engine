@@ -9,8 +9,9 @@ import java.lang.annotation.Target;
 /**
  * Declares mode-specific access rules for a builder field.
  *
- * <p>The generated builder definition uses these values to control whether a field is hidden,
- * read-only, editable, or required in create, edit, and view flows.
+ * <p>
+ * The generated builder definition uses these values to control whether a field
+ * is hidden, read-only, editable, or required in create, edit, and view flows.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

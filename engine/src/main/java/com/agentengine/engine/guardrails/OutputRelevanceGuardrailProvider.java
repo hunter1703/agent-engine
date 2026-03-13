@@ -11,14 +11,12 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 @Singleton
-public final class OutputRelevanceGuardrailProvider
-    implements GuardrailProvider<OutputRelevanceGuardrailRule> {
+public final class OutputRelevanceGuardrailProvider implements GuardrailProvider<OutputRelevanceGuardrailRule> {
   private final ModelProvider modelProvider;
   private final InfraMongoRepository infraMongoRepository;
 
   @Inject
-  public OutputRelevanceGuardrailProvider(
-      final ModelProvider modelProvider, final InfraMongoRepository infraMongoRepository) {
+  public OutputRelevanceGuardrailProvider(final ModelProvider modelProvider, final InfraMongoRepository infraMongoRepository) {
     this.modelProvider = modelProvider;
     this.infraMongoRepository = infraMongoRepository;
   }
@@ -33,8 +31,7 @@ public final class OutputRelevanceGuardrailProvider
     if (relevanceRule == null || !relevanceRule.isEnabled()) {
       return null;
     }
-    return new OutputRelevanceGuardrail(
-        relevanceRule, new RelevanceScorer(modelProvider, resolveModel(relevanceRule)));
+    return new OutputRelevanceGuardrail(relevanceRule, new RelevanceScorer(modelProvider, resolveModel(relevanceRule)));
   }
 
   private String resolveModel(final OutputRelevanceGuardrailRule rule) {
@@ -44,8 +41,7 @@ public final class OutputRelevanceGuardrailProvider
 
   private String resolveDefaultModelId() {
     try {
-      final DefaultModelConfig defaults =
-          infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+      final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       return defaults == null ? null : defaults.getEvaluatorModelId();
     } catch (Exception ex) {
       return null;

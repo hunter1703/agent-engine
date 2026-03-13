@@ -7,7 +7,8 @@ import java.util.List;
 public class AgentSessionDTO extends AgentSession {
   private List<BaseEvent> events;
 
-  public AgentSessionDTO() {}
+  public AgentSessionDTO() {
+  }
 
   public AgentSessionDTO(final AgentSession session, final List<BaseEvent> events) {
     super(session);

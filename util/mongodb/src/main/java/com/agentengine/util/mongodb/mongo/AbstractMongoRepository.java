@@ -2,14 +2,14 @@ package com.agentengine.util.mongodb.mongo;
 
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
@@ -34,7 +34,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Abstract MongoDB repository implementation providing generic CRUD operations
  *
- * @param <T> the entity type
+ * @param <T>
+ *          the entity type
  */
 public abstract class AbstractMongoRepository<T extends BaseEntity> implements Repository<T> {
 
@@ -46,20 +47,13 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   protected String databaseName;
   protected ValidationService validationService;
 
-  public AbstractMongoRepository(
-      final MongoClientFactory mongoClientFactory,
-      final String collectionName,
-      final Class<T> entityClass,
+  public AbstractMongoRepository(final MongoClientFactory mongoClientFactory, final String collectionName, final Class<T> entityClass,
       final ValidationService validationService) {
     this(mongoClientFactory, "AGENT_ENGINE", collectionName, entityClass, validationService);
   }
 
-  public AbstractMongoRepository(
-      final MongoClientFactory mongoClientFactory,
-      final String databaseName,
-      final String collectionName,
-      final Class<T> entityClass,
-      final ValidationService validationService) {
+  public AbstractMongoRepository(final MongoClientFactory mongoClientFactory, final String databaseName, final String collectionName,
+      final Class<T> entityClass, final ValidationService validationService) {
     this.mongoClient = mongoClientFactory.getClient();
     this.databaseName = databaseName;
     this.collectionName = collectionName;
@@ -67,33 +61,22 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     this.validationService = validationService;
   }
 
-  public AbstractMongoRepository(
-      final MongoClient mongoClient, final String collectionName, final Class<T> entityClass) {
+  public AbstractMongoRepository(final MongoClient mongoClient, final String collectionName, final Class<T> entityClass) {
     this(mongoClient, "AGENT_ENGINE", collectionName, entityClass, null);
   }
 
-  public AbstractMongoRepository(
-      final MongoClient mongoClient,
-      final String collectionName,
-      final Class<T> entityClass,
+  public AbstractMongoRepository(final MongoClient mongoClient, final String collectionName, final Class<T> entityClass,
       final ValidationService validationService) {
     this(mongoClient, "AGENT_ENGINE", collectionName, entityClass, validationService);
   }
 
-  public AbstractMongoRepository(
-      final MongoClient mongoClient,
-      final String databaseName,
-      final String collectionName,
+  public AbstractMongoRepository(final MongoClient mongoClient, final String databaseName, final String collectionName,
       final Class<T> entityClass) {
     this(mongoClient, databaseName, collectionName, entityClass, null);
   }
 
-  public AbstractMongoRepository(
-      final MongoClient mongoClient,
-      final String databaseName,
-      final String collectionName,
-      final Class<T> entityClass,
-      final ValidationService validationService) {
+  public AbstractMongoRepository(final MongoClient mongoClient, final String databaseName, final String collectionName,
+      final Class<T> entityClass, final ValidationService validationService) {
     this.mongoClient = mongoClient;
     this.databaseName = databaseName;
     this.collectionName = collectionName;
@@ -163,10 +146,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   public T update(String id, Update update) {
     try {
       final Bson updateOperation = MongoUtils.toBsonUpdate(update);
-      final FindOneAndUpdateOptions options =
-          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
-      final T updated =
-          getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
+      final FindOneAndUpdateOptions options = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
+      final T updated = getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
       if (updated != null && validationService != null) {
         validationService.validate(updated);
       }
@@ -199,8 +180,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       entity.setId(id);
       validateEntity(entity);
       ReplaceOptions options = new ReplaceOptions().upsert(upsert);
-      final UpdateResult result =
-          getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
+      final UpdateResult result = getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
       if (!upsert && result.getMatchedCount() == 0) {
         throw new AssetNotFoundException(entityClass.getSimpleName(), id);
       }
@@ -251,8 +231,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
       return PaginatedResult.create(entities, page, total);
     } catch (Exception e) {
-      LOG.error(
-          "Error finding all entities in collection: {} with query: {}", collectionName, query, e);
+      LOG.error("Error finding all entities in collection: {} with query: {}", collectionName, query, e);
       throw new RuntimeException("Error finding all entities in " + collectionName, e);
     }
   }

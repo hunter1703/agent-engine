@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.plugin.ContextManager;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
@@ -24,50 +24,34 @@ class ContextManagementPluginTest {
 
   @Test
   void shouldReplaceRequestContentsFromContextManager() {
-    final LlmRequest.Builder requestBuilder =
-        LlmRequest.builder().contents(List.of(textContent("original")));
-    final ContextManager contextManager =
-        (agentId, sessionId, contents) -> List.of(textContent(agentId + ":" + sessionId));
+    final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(textContent("original")));
+    final ContextManager contextManager = (agentId, sessionId, contents) -> List.of(textContent(agentId + ":" + sessionId));
 
-    final ContextManagementPlugin plugin =
-        new ContextManagementPlugin(Map.of("agent-1", contextManager));
+    final ContextManagementPlugin plugin = new ContextManagementPlugin(Map.of("agent-1", contextManager));
 
-    plugin
-        .beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder)
-        .blockingGet();
+    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
     final String text = requestBuilder.build().contents().getFirst().text();
     assertThat(text).isEqualTo("agent-1:session-1");
   }
 
   @Test
   void shouldKeepOriginalContentsWhenContextManagerFails() {
-    final LlmRequest.Builder requestBuilder =
-        LlmRequest.builder().contents(List.of(textContent("original")));
-    final ContextManager contextManager =
-        (agentId, sessionId, contents) -> {
-          throw new IllegalStateException("boom");
-        };
+    final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(textContent("original")));
+    final ContextManager contextManager = (agentId, sessionId, contents) -> {
+      throw new IllegalStateException("boom");
+    };
 
-    final ContextManagementPlugin plugin =
-        new ContextManagementPlugin(Map.of("agent-1", contextManager));
+    final ContextManagementPlugin plugin = new ContextManagementPlugin(Map.of("agent-1", contextManager));
 
-    plugin
-        .beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder)
-        .blockingGet();
+    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
     final String text = requestBuilder.build().contents().getFirst().text();
     assertThat(text).isEqualTo("original");
   }
 
   private static CallbackContext callbackContext(final String agentId, final String sessionId) {
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
-    final Session session =
-        Session.builder(sessionId)
-            .appName(agentId)
-            .userId("default")
-            .state(state)
-            .events(new ArrayList<>())
-            .lastUpdateTime(Instant.now())
-            .build();
+    final Session session = Session.builder(sessionId).appName(agentId).userId("default").state(state).events(new ArrayList<>())
+        .lastUpdateTime(Instant.now()).build();
     final BaseAgent invocationAgent = mock(BaseAgent.class);
     when(invocationAgent.name()).thenReturn(agentId);
 

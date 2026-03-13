@@ -1,10 +1,10 @@
 package com.agentengine.engine.tools;
 
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.plugin.annotations.ToolConstructor;
+import com.agentengine.engine.plugin.annotations.ToolSchema;
+import com.agentengine.engine.plugin.tools.Tool;
+import com.agentengine.engine.plugin.tools.ToolProvider;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -33,8 +33,7 @@ public final class DiscoveredToolProviders {
     for (final Tool tool : tools) {
       try {
         final ToolDefinition definition = buildDefinition(tool.getClass());
-        resolvedProviders.putIfAbsent(
-            definition.descriptor().name(), new DiscoveredToolProvider(definition));
+        resolvedProviders.putIfAbsent(definition.descriptor().name(), new DiscoveredToolProvider(definition));
       } finally {
         tools.destroy(tool);
       }
@@ -49,22 +48,19 @@ public final class DiscoveredToolProviders {
     return new ToolDefinition(descriptor, constructor, params);
   }
 
-  private static Constructor<? extends Tool> resolveConstructor(
-          final Class<? extends Tool> toolClass) {
+  private static Constructor<? extends Tool> resolveConstructor(final Class<? extends Tool> toolClass) {
     final List<Constructor<? extends Tool>> constructors = new ArrayList<>();
     final List<Constructor<? extends Tool>> annotated = new ArrayList<>();
     for (final Constructor<?> constructor : toolClass.getDeclaredConstructors()) {
       @SuppressWarnings("unchecked")
-      final Constructor<? extends Tool> typedConstructor =
-              (Constructor<? extends Tool>) constructor;
+      final Constructor<? extends Tool> typedConstructor = (Constructor<? extends Tool>) constructor;
       constructors.add(typedConstructor);
       if (constructor.isAnnotationPresent(ToolConstructor.class)) {
         annotated.add(typedConstructor);
       }
     }
     if (annotated.size() > 1) {
-      throw new IllegalStateException(
-              "Multiple @ToolConstructor annotations found for " + toolClass.getName());
+      throw new IllegalStateException("Multiple @ToolConstructor annotations found for " + toolClass.getName());
     }
     final Constructor<? extends Tool> resolved;
     if (annotated.size() == 1) {
@@ -72,17 +68,13 @@ public final class DiscoveredToolProviders {
     } else if (constructors.size() == 1) {
       resolved = CollectionUtils.getFirst(constructors);
     } else {
-      throw new IllegalStateException(
-              "Multiple constructors found for "
-                      + toolClass.getName()
-                      + "; annotate one with @ToolConstructor");
+      throw new IllegalStateException("Multiple constructors found for " + toolClass.getName() + "; annotate one with @ToolConstructor");
     }
     Objects.requireNonNull(resolved).setAccessible(true);
     return resolved;
   }
 
-  private static List<ConstructorParam> resolveParameters(
-          final Constructor<? extends Tool> constructor) {
+  private static List<ConstructorParam> resolveParameters(final Constructor<? extends Tool> constructor) {
     final Parameter[] parameters = constructor.getParameters();
     final List<ConstructorParam> params = new ArrayList<>(parameters.length);
     for (final Parameter parameter : parameters) {
@@ -109,7 +101,6 @@ public final class DiscoveredToolProviders {
     return providers;
   }
 
-
   private static ToolDescriptor getDescriptor(final Class<? extends Tool> toolClass) {
     try {
       final Constructor<? extends Tool> constructor = toolClass.getDeclaredConstructor();
@@ -117,24 +108,17 @@ public final class DiscoveredToolProviders {
       final Tool tool = constructor.newInstance();
       return tool.descriptor();
     } catch (NoSuchMethodException exception) {
-      throw new IllegalStateException(
-          "No-arg constructor required for descriptor resolution in " + toolClass.getName(),
-          exception);
-    } catch (InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException exception) {
-      throw new IllegalStateException(
-          "Failed to instantiate " + toolClass.getName() + " for descriptor resolution",
-          exception);
+      throw new IllegalStateException("No-arg constructor required for descriptor resolution in " + toolClass.getName(), exception);
+    } catch (InstantiationException | IllegalAccessException | InvocationTargetException exception) {
+      throw new IllegalStateException("Failed to instantiate " + toolClass.getName() + " for descriptor resolution", exception);
     }
   }
 
-  private record ToolDefinition(
-      ToolDescriptor descriptor,
-      Constructor<? extends Tool> constructor,
-      List<ConstructorParam> params) {}
+  private record ToolDefinition(ToolDescriptor descriptor, Constructor<? extends Tool> constructor, List<ConstructorParam> params) {
+  }
 
-  private record ConstructorParam(String key, Type type, Class<?> rawType) {}
+  private record ConstructorParam(String key, Type type, Class<?> rawType) {
+  }
 
   private record DiscoveredToolProvider(ToolDefinition definition) implements ToolProvider {
     @Override
@@ -147,9 +131,7 @@ public final class DiscoveredToolProviders {
       final Object[] args = resolveArguments(toolConfig);
       try {
         return definition.constructor().newInstance(args);
-      } catch (InstantiationException
-               | IllegalAccessException
-               | InvocationTargetException exception) {
+      } catch (InstantiationException | IllegalAccessException | InvocationTargetException exception) {
         final String toolName = definition.descriptor().name();
         throw new IllegalStateException("Failed to create tool " + toolName, exception);
       }

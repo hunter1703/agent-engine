@@ -1,7 +1,6 @@
 package com.agentengine.engine.utils;
 
 import com.agentengine.engine.tools.planning.beans.Plan;
-import com.agentengine.engine.api.utils.EventUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -12,8 +11,8 @@ import com.google.adk.sessions.State;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionCall;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,13 +27,16 @@ public final class RunState extends BaseAgentState {
   private int offTopicRetries;
   private final List<Violation> violations = new ArrayList<>();
 
-  public RunState() {}
+  public RunState() {
+  }
 
   /**
    * Reconstructs persisted RunState fields from the session event log.
    *
-   * <p>Persisted fields (plan, lastToolCalls, continuationRequested) are rebuilt from event
-   * history. Transient fields (violations, offTopicRetries, thinkingOpen) always start fresh.
+   * <p>
+   * Persisted fields (plan, lastToolCalls, continuationRequested) are rebuilt
+   * from event history. Transient fields (violations, offTopicRetries,
+   * thinkingOpen) always start fresh.
    */
   public static RunState buildFrom(final List<Event> events) {
     if (CollectionUtils.isEmpty(events)) {
@@ -59,9 +61,7 @@ public final class RunState extends BaseAgentState {
     for (int i = events.size() - 1; i >= 0; i--) {
       final List<FunctionCall> calls = events.get(i).functionCalls();
       if (!calls.isEmpty()) {
-        return calls.stream()
-            .map(c -> new ToolCallSignature(c.name().orElse(null), c.args().orElse(Map.of())))
-            .toList();
+        return calls.stream().map(c -> new ToolCallSignature(c.name().orElse(null), c.args().orElse(Map.of()))).toList();
       }
     }
     return List.of();

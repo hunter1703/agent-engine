@@ -1,6 +1,5 @@
 package com.agentengine.interfaces.rest.exception;
 
-import com.agentengine.engine.api.exception.AgentException;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -22,87 +21,62 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
   @Override
   public Response toResponse(Throwable exception) {
     String traceId = UUID.randomUUID().toString();
-    LOG.error(
-        "Request failed traceId={} class={}", traceId, exception.getClass().getName(), exception);
+    LOG.error("Request failed traceId={} class={}", traceId, exception.getClass().getName(), exception);
 
     if (exception instanceof WebApplicationException webEx) {
       int status = webEx.getResponse().getStatus();
       String message = webEx.getMessage();
-      return Response.status(status)
-          .entity(new ErrorResponse(String.valueOf(status), message, traceId))
-          .build();
+      return Response.status(status).entity(new ErrorResponse(String.valueOf(status), message, traceId)).build();
     }
 
     if (exception instanceof AssetNotFoundException) {
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(new ErrorResponse("404", exception.getMessage(), traceId))
-          .build();
+      return Response.status(Response.Status.NOT_FOUND).entity(new ErrorResponse("404", exception.getMessage(), traceId)).build();
     }
 
     if (exception instanceof DuplicateAssetException) {
-      return Response.status(Response.Status.CONFLICT)
-          .entity(new ErrorResponse("409", exception.getMessage(), traceId))
-          .build();
+      return Response.status(Response.Status.CONFLICT).entity(new ErrorResponse("409", exception.getMessage(), traceId)).build();
     }
 
     if (exception instanceof ConfigurationException configurationException) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorResponse("400", configurationException.getMessage(), traceId))
-          .build();
-    }
-
-    if (exception instanceof AgentException agentException) {
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(new ErrorResponse("500", agentException.getMessage(), traceId))
+      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", configurationException.getMessage(), traceId))
           .build();
     }
 
     if (exception instanceof ValidationException) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(
-              new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId))
-          .build();
+          .entity(new ErrorResponse("400", "Constraint Violation: " + exception.getMessage(), traceId)).build();
     }
 
     if (exception instanceof IllegalArgumentException illegalArgumentException) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorResponse("400", illegalArgumentException.getMessage(), traceId))
+      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", illegalArgumentException.getMessage(), traceId))
           .build();
     }
 
-    if ("com.agentengine.engine.exceptions.JsonDeserializationException"
-        .equals(exception.getClass().getName())) {
+    if ("com.agentengine.engine.exceptions.JsonDeserializationException".equals(exception.getClass().getName())) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(
-              new ErrorResponse(
-                  "400", "JSON Deserialization Error: " + exception.getMessage(), traceId))
-          .build();
+          .entity(new ErrorResponse("400", "JSON Deserialization Error: " + exception.getMessage(), traceId)).build();
     }
 
     if (exception instanceof StatusRuntimeException grpcEx) {
       final var code = grpcEx.getStatus().getCode();
-      final int status =
-          switch (code) {
-            case INVALID_ARGUMENT -> 400;
-            case NOT_FOUND -> 404;
-            case ALREADY_EXISTS -> 409;
-            case UNAUTHENTICATED -> 401;
-            case PERMISSION_DENIED -> 403;
-            case RESOURCE_EXHAUSTED -> 429;
-            case UNAVAILABLE -> 503;
-            default -> 500;
-          };
-      final String message =
-          status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
-      return Response.status(status)
-          .entity(new ErrorResponse(String.valueOf(status), message, traceId))
-          .build();
+      final int status = switch (code) {
+        case INVALID_ARGUMENT -> 400;
+        case NOT_FOUND -> 404;
+        case ALREADY_EXISTS -> 409;
+        case UNAUTHENTICATED -> 401;
+        case PERMISSION_DENIED -> 403;
+        case RESOURCE_EXHAUSTED -> 429;
+        case UNAVAILABLE -> 503;
+        default -> 500;
+      };
+      final String message = status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
+      return Response.status(status).entity(new ErrorResponse(String.valueOf(status), message, traceId)).build();
     }
 
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-        .entity(new ErrorResponse("500", "Internal Server Error", traceId))
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse("500", "Internal Server Error", traceId))
         .build();
   }
 
-  public record ErrorResponse(String code, String message, String traceId) {}
+  public record ErrorResponse(String code, String message, String traceId) {
+  }
 }

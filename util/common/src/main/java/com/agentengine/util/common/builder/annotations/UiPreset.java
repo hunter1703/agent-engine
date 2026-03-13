@@ -10,8 +10,9 @@ import java.lang.annotation.Target;
 /**
  * Declares a reusable builder preset for a configuration type.
  *
- * <p>Each preset contributes a labeled partial configuration value that the UI can offer as a
- * starting point.
+ * <p>
+ * Each preset contributes a labeled partial configuration value that the UI can
+ * offer as a starting point.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

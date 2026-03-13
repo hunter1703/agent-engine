@@ -1,11 +1,11 @@
 package com.agentengine.engine.tools.shell;
 
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.tools.annotations.DiscoverableTool;
-import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.plugin.annotations.DiscoverableTool;
+import com.agentengine.engine.plugin.annotations.ToolConstructor;
+import com.agentengine.engine.plugin.annotations.ToolSchema;
+import com.agentengine.engine.plugin.tools.Tool;
 import io.vertx.json.schema.common.dsl.Schemas;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,12 +22,9 @@ public final class ShellCommandTool extends Tool {
   private static final Pattern BLOCKED = Pattern.compile("(^|[\\s;|&()])(/bin/)?rm(\\s|$)");
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private static final String TOOL_NAME = "run_cmd";
-  public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(
-          TOOL_NAME,
-          "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
-          buildConfigSchema(),
-          ToolRiskLevel.HIGH);
+  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
+      "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
+      buildConfigSchema(), ToolRiskLevel.HIGH);
   private final Duration timeout;
 
   public ShellCommandTool() {
@@ -36,21 +33,13 @@ public final class ShellCommandTool extends Tool {
 
   @ToolConstructor
   public ShellCommandTool(
-      @ToolSchema(
-              name = "timeout_seconds",
-              description = "timeout in seconds for the shell command execution.",
-              optional = true)
-          final Long timeoutSecs) {
+      @ToolSchema(name = "timeout_seconds", description = "timeout in seconds for the shell command execution.", optional = true) final Long timeoutSecs) {
     super(DESCRIPTOR);
     this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
   }
 
   public Map<String, Object> execute(
-      @ToolSchema(
-              name = "command",
-              description =
-                  "The shell command to execute. Can include pipes, redirects, and logic operators.")
-          final String command) {
+      @ToolSchema(name = "command", description = "The shell command to execute. Can include pipes, redirects, and logic operators.") final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");
     }
@@ -81,9 +70,7 @@ public final class ShellCommandTool extends Tool {
   }
 
   private String readAll(Process process) throws IOException {
-    try (BufferedReader reader =
-        new BufferedReader(
-            new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
       StringBuilder builder = new StringBuilder();
       String line;
       while ((line = reader.readLine()) != null) {
@@ -102,16 +89,13 @@ public final class ShellCommandTool extends Tool {
 
   @SuppressWarnings("unchecked")
   private static Map<String, Object> buildConfigSchema() {
-    //noinspection unchecked
+    // noinspection unchecked
     return Schemas.objectSchema()
-        .property(
-            "timeout_seconds",
+        .property("timeout_seconds",
             Schemas.intSchema()
-                .withKeyword(
-                    "description",
+                .withKeyword("description",
                     "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
                 .withKeyword("default", 30))
-        .toJson()
-        .mapTo(Map.class);
+        .toJson().mapTo(Map.class);
   }
 }

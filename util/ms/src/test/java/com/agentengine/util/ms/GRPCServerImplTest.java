@@ -21,31 +21,26 @@ class GRPCServerImplTest {
   @Test
   void shouldMapIllegalArgumentExceptionToInvalidArgumentStatus() throws Exception {
     final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new ThrowingServiceImpl()));
-    final Request request =
-        Request.newBuilder()
-            .setService(ThrowingService.class.getSimpleName())
-            .setMethod("fail")
-            .build();
+    final Request request = Request.newBuilder().setService(ThrowingService.class.getSimpleName()).setMethod("fail").build();
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-    grpcServer.execute(
-        request,
-        new StreamObserver<>() {
-          @Override
-          public void onNext(final Response value) {}
+    grpcServer.execute(request, new StreamObserver<>() {
+      @Override
+      public void onNext(final Response value) {
+      }
 
-          @Override
-          public void onError(final Throwable throwable) {
-            errorRef.set(throwable);
-            latch.countDown();
-          }
+      @Override
+      public void onError(final Throwable throwable) {
+        errorRef.set(throwable);
+        latch.countDown();
+      }
 
-          @Override
-          public void onCompleted() {
-            latch.countDown();
-          }
-        });
+      @Override
+      public void onCompleted() {
+        latch.countDown();
+      }
+    });
 
     final boolean completed = latch.await(5, TimeUnit.SECONDS);
     assertThat(completed).isTrue();
@@ -57,31 +52,26 @@ class GRPCServerImplTest {
   @Test
   void shouldMapAssetNotFoundExceptionToNotFoundStatus() throws Exception {
     final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new AssetNotFoundServiceImpl()));
-    final Request request =
-        Request.newBuilder()
-            .setService(AssetNotFoundService.class.getSimpleName())
-            .setMethod("fail")
-            .build();
+    final Request request = Request.newBuilder().setService(AssetNotFoundService.class.getSimpleName()).setMethod("fail").build();
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-    grpcServer.execute(
-        request,
-        new StreamObserver<>() {
-          @Override
-          public void onNext(final Response value) {}
+    grpcServer.execute(request, new StreamObserver<>() {
+      @Override
+      public void onNext(final Response value) {
+      }
 
-          @Override
-          public void onError(final Throwable throwable) {
-            errorRef.set(throwable);
-            latch.countDown();
-          }
+      @Override
+      public void onError(final Throwable throwable) {
+        errorRef.set(throwable);
+        latch.countDown();
+      }
 
-          @Override
-          public void onCompleted() {
-            latch.countDown();
-          }
-        });
+      @Override
+      public void onCompleted() {
+        latch.countDown();
+      }
+    });
 
     final boolean completed = latch.await(5, TimeUnit.SECONDS);
     assertThat(completed).isTrue();
@@ -92,33 +82,27 @@ class GRPCServerImplTest {
 
   @Test
   void shouldMapConfigurationExceptionToInvalidArgumentStatus() throws Exception {
-    final GRPCServerImpl grpcServer =
-        new GRPCServerImpl(List.of(new ConfigurationExceptionServiceImpl()));
-    final Request request =
-        Request.newBuilder()
-            .setService(ConfigurationExceptionService.class.getSimpleName())
-            .setMethod("fail")
-            .build();
+    final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new ConfigurationExceptionServiceImpl()));
+    final Request request = Request.newBuilder().setService(ConfigurationExceptionService.class.getSimpleName()).setMethod("fail").build();
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-    grpcServer.execute(
-        request,
-        new StreamObserver<>() {
-          @Override
-          public void onNext(final Response value) {}
+    grpcServer.execute(request, new StreamObserver<>() {
+      @Override
+      public void onNext(final Response value) {
+      }
 
-          @Override
-          public void onError(final Throwable throwable) {
-            errorRef.set(throwable);
-            latch.countDown();
-          }
+      @Override
+      public void onError(final Throwable throwable) {
+        errorRef.set(throwable);
+        latch.countDown();
+      }
 
-          @Override
-          public void onCompleted() {
-            latch.countDown();
-          }
-        });
+      @Override
+      public void onCompleted() {
+        latch.countDown();
+      }
+    });
 
     final boolean completed = latch.await(5, TimeUnit.SECONDS);
     assertThat(completed).isTrue();
@@ -129,33 +113,27 @@ class GRPCServerImplTest {
 
   @Test
   void shouldMapFlowableAssetNotFoundExceptionToNotFoundStatus() throws Exception {
-    final GRPCServerImpl grpcServer =
-        new GRPCServerImpl(List.of(new FlowableAssetNotFoundServiceImpl()));
-    final Request request =
-        Request.newBuilder()
-            .setService(FlowableAssetNotFoundService.class.getSimpleName())
-            .setMethod("stream")
-            .build();
+    final GRPCServerImpl grpcServer = new GRPCServerImpl(List.of(new FlowableAssetNotFoundServiceImpl()));
+    final Request request = Request.newBuilder().setService(FlowableAssetNotFoundService.class.getSimpleName()).setMethod("stream").build();
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<Throwable> errorRef = new AtomicReference<>();
 
-    grpcServer.execute(
-        request,
-        new StreamObserver<>() {
-          @Override
-          public void onNext(final Response value) {}
+    grpcServer.execute(request, new StreamObserver<>() {
+      @Override
+      public void onNext(final Response value) {
+      }
 
-          @Override
-          public void onError(final Throwable throwable) {
-            errorRef.set(throwable);
-            latch.countDown();
-          }
+      @Override
+      public void onError(final Throwable throwable) {
+        errorRef.set(throwable);
+        latch.countDown();
+      }
 
-          @Override
-          public void onCompleted() {
-            latch.countDown();
-          }
-        });
+      @Override
+      public void onCompleted() {
+        latch.countDown();
+      }
+    });
 
     final boolean completed = latch.await(5, TimeUnit.SECONDS);
     assertThat(completed).isTrue();

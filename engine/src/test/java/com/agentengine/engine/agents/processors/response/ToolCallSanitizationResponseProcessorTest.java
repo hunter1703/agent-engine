@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.BaseAgentState;
 import com.google.adk.agents.InvocationContext;
@@ -26,88 +26,42 @@ class ToolCallSanitizationResponseProcessorTest {
   @Test
   void shouldTrackLastToolCallOnFullResponses() {
     final InvocationContext context = invocationContext("agent-1", "session-1");
-    final LlmResponse response =
-        LlmResponse.builder()
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(
-                        List.of(
-                            Part.builder()
-                                .functionCall(
-                                    FunctionCall.builder()
-                                        .name("search")
-                                        .args(Map.of("query", "weather"))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    final LlmResponse response = LlmResponse.builder().content(Content.builder().role("model")
+        .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+        .build()).build();
 
-    final LlmResponse updated =
-        ToolCallSanitizationResponseProcessor.INSTANCE
-            .processResponse(context, response)
-            .blockingGet()
-            .updatedResponse();
+    final LlmResponse updated = ToolCallSanitizationResponseProcessor.INSTANCE.processResponse(context, response).blockingGet()
+        .updatedResponse();
 
     assertThat(updated).isSameAs(response);
-    assertThat(RunStateUtils.getState(context).lastToolCalls())
-        .singleElement()
-        .satisfies(
-            signature -> {
-              assertThat(signature.name()).isEqualTo("search");
-              assertThat(signature.args()).containsEntry("query", "weather");
-            });
+    assertThat(RunUtils.getState(context).lastToolCalls()).singleElement().satisfies(signature -> {
+      assertThat(signature.name()).isEqualTo("search");
+      assertThat(signature.args()).containsEntry("query", "weather");
+    });
   }
 
   @Test
   void shouldStripToolPartsFromPartialResponses() {
     final InvocationContext context = invocationContext("agent-1", "session-1");
-    final LlmResponse response =
-        LlmResponse.builder()
-            .partial(true)
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(
-                        List.of(
-                            Part.fromText("Working on it"),
-                            Part.builder()
-                                .functionCall(
-                                    FunctionCall.builder()
-                                        .name("search")
-                                        .args(Map.of("query", "weather"))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    final LlmResponse response = LlmResponse.builder().partial(true).content(Content.builder().role("model")
+        .parts(List.of(Part.fromText("Working on it"),
+            Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+        .build()).build();
 
-    final LlmResponse updated =
-        ToolCallSanitizationResponseProcessor.INSTANCE
-            .processResponse(context, response)
-            .blockingGet()
-            .updatedResponse();
+    final LlmResponse updated = ToolCallSanitizationResponseProcessor.INSTANCE.processResponse(context, response).blockingGet()
+        .updatedResponse();
 
     assertThat(updated.content()).isPresent();
-    assertThat(updated.content().orElseThrow().parts().orElseThrow())
-        .extracting(part -> part.text().orElse(null))
+    assertThat(updated.content().orElseThrow().parts().orElseThrow()).extracting(part -> part.text().orElse(null))
         .containsExactly("Working on it");
-    assertThat(RunStateUtils.getState(context).violations())
-        .extracting(violation -> violation.code())
-        .contains("partial_tool_calls");
+    assertThat(RunUtils.getState(context).violations()).extracting(violation -> violation.code()).contains("partial_tool_calls");
   }
 
-  private static InvocationContext invocationContext(
-      final String agentId, final String sessionId) {
+  private static InvocationContext invocationContext(final String agentId, final String sessionId) {
     final ConcurrentMap<String, Object> state = new ConcurrentHashMap<>();
     final Map<String, BaseAgentState> agentStates = new ConcurrentHashMap<>();
-    final Session session =
-        Session.builder(sessionId)
-            .appName(agentId)
-            .userId("default")
-            .state(state)
-            .events(new ArrayList<>())
-            .lastUpdateTime(Instant.now())
-            .build();
+    final Session session = Session.builder(sessionId).appName(agentId).userId("default").state(state).events(new ArrayList<>())
+        .lastUpdateTime(Instant.now()).build();
     final BaseAgent agent = mock(BaseAgent.class);
     when(agent.name()).thenReturn(agentId);
 

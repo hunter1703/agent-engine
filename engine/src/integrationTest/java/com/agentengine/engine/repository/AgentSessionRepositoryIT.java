@@ -25,9 +25,11 @@ import org.junit.jupiter.api.Test;
 @QuarkusTestResource(MongoRedisTestResource.class)
 class AgentSessionRepositoryIT {
 
-  @Inject AgentSessionRepository agentSessionRepository;
+  @Inject
+  AgentSessionRepository agentSessionRepository;
 
-  @Inject MongoClientFactory mongoClientFactory;
+  @Inject
+  MongoClientFactory mongoClientFactory;
 
   @BeforeEach
   void shouldResetDatabaseWhenTestStarts() {
@@ -38,19 +40,10 @@ class AgentSessionRepositoryIT {
 
   @Test
   void shouldCreateAndFetchSessionWhenSessionExists() {
-    final Session created =
-        agentSessionRepository
-            .createSession(
-                "agent-1",
-                "user-1",
-                new ConcurrentHashMap<>(Map.of("status", "active")),
-                "session-1")
-            .blockingGet();
+    final Session created = agentSessionRepository
+        .createSession("agent-1", "user-1", new ConcurrentHashMap<>(Map.of("status", "active")), "session-1").blockingGet();
 
-    final Session fetched =
-        agentSessionRepository
-            .getSession("agent-1", "user-1", "session-1", Optional.empty())
-            .blockingGet();
+    final Session fetched = agentSessionRepository.getSession("agent-1", "user-1", "session-1", Optional.empty()).blockingGet();
 
     assertThat(created.id()).isEqualTo("session-1");
     assertThat(fetched).isNotNull();
@@ -59,49 +52,28 @@ class AgentSessionRepositoryIT {
 
   @Test
   void shouldAppendAndPersistEventWhenAppendEventCalled() {
-    final Session created =
-        agentSessionRepository
-            .createSession("agent-1", "user-1", new ConcurrentHashMap<>(), "session-1")
-            .blockingGet();
+    final Session created = agentSessionRepository.createSession("agent-1", "user-1", new ConcurrentHashMap<>(), "session-1").blockingGet();
 
-    final Event event =
-        Event.builder()
-            .id("event-1")
-            .invocationId("inv-1")
-            .author("agent")
-            .timestamp(Instant.now().toEpochMilli())
-            .content(Content.builder().role("model").parts(List.of(Part.fromText("hello"))).build())
-            .build();
+    final Event event = Event.builder().id("event-1").invocationId("inv-1").author("agent").timestamp(Instant.now().toEpochMilli())
+        .content(Content.builder().role("model").parts(List.of(Part.fromText("hello"))).build()).build();
 
     agentSessionRepository.appendEvent(created, event).blockingGet();
 
-    final var response =
-        agentSessionRepository.listEvents("agent-1", "user-1", "session-1").blockingGet();
+    final var response = agentSessionRepository.listEvents("agent-1", "user-1", "session-1").blockingGet();
     assertThat(response.events()).hasSize(1);
     assertThat(response.events().getFirst().id()).isEqualTo("event-1");
 
-    final Session fetchedWithConfig =
-        agentSessionRepository
-            .getSession(
-                "agent-1",
-                "user-1",
-                "session-1",
-                Optional.of(GetSessionConfig.builder().numRecentEvents(1).build()))
-            .blockingGet();
+    final Session fetchedWithConfig = agentSessionRepository
+        .getSession("agent-1", "user-1", "session-1", Optional.of(GetSessionConfig.builder().numRecentEvents(1).build())).blockingGet();
     assertThat(fetchedWithConfig.events()).hasSize(1);
   }
 
   @Test
   void shouldDeleteSessionWhenDeleteSessionCalled() {
-    agentSessionRepository
-        .createSession("agent-1", "user-1", new ConcurrentHashMap<>(), "session-a")
-        .blockingGet();
+    agentSessionRepository.createSession("agent-1", "user-1", new ConcurrentHashMap<>(), "session-a").blockingGet();
 
     agentSessionRepository.deleteSession("agent-1", "user-1", "session-a").blockingAwait();
-    final Session deleted =
-        agentSessionRepository
-            .getSession("agent-1", "user-1", "session-a", Optional.empty())
-            .blockingGet();
+    final Session deleted = agentSessionRepository.getSession("agent-1", "user-1", "session-a", Optional.empty()).blockingGet();
 
     assertThat(deleted).isNull();
   }

@@ -15,10 +15,10 @@ public class AgentRequest {
   @NotBlank(message = "message is required")
   private String message;
 
-  public AgentRequest() {}
+  public AgentRequest() {
+  }
 
-  private AgentRequest(
-      final String type, final String agentId, final String sessionId, final String message) {
+  private AgentRequest(final String type, final String agentId, final String sessionId, final String message) {
     this.type = type;
     this.agentId = agentId;
     this.sessionId = sessionId;
@@ -62,9 +62,7 @@ public class AgentRequest {
   }
 
   public enum RequestType {
-    UNKNOWN,
-    STREAM_AGUI_EVENTS,
-    RESUME_SESSION;
+    UNKNOWN, STREAM_AGUI_EVENTS, RESUME_SESSION;
 
     public static RequestType valueOfOrDefault(final String value) {
       if (value == null || value.isBlank()) {

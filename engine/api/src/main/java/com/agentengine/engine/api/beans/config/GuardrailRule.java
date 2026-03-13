@@ -11,16 +11,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "type",
-    visible = true)
-@JsonSubTypes({
-  @JsonSubTypes.Type(value = TextContentGuardrailRule.class, name = "TEXT_CONTENT"),
-  @JsonSubTypes.Type(value = ToolSafetyGuardrailRule.class, name = "TOOL_SAFETY"),
-  @JsonSubTypes.Type(value = OutputRelevanceGuardrailRule.class, name = "RELEVANCE")
-})
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
+@JsonSubTypes({@JsonSubTypes.Type(value = TextContentGuardrailRule.class, name = "TEXT_CONTENT"),
+    @JsonSubTypes.Type(value = ToolSafetyGuardrailRule.class, name = "TOOL_SAFETY"),
+    @JsonSubTypes.Type(value = OutputRelevanceGuardrailRule.class, name = "RELEVANCE")})
 @BsonDiscriminator(key = "type")
 public abstract class GuardrailRule {
   private static final String DEFAULT_STAGE = GuardrailStage.UNKNOWN.name();
@@ -28,10 +22,7 @@ public abstract class GuardrailRule {
 
   @UiField(label = "Rule ID", order = 10)
   @UiText
-  @UiAccess(
-      create = UiAccessLevel.EDITABLE,
-      edit = UiAccessLevel.EDITABLE,
-      view = UiAccessLevel.READ_ONLY)
+  @UiAccess(create = UiAccessLevel.EDITABLE, edit = UiAccessLevel.EDITABLE, view = UiAccessLevel.READ_ONLY)
   @NotBlank
   private String id;
 
@@ -60,7 +51,8 @@ public abstract class GuardrailRule {
     this.type = type.name();
   }
 
-  protected GuardrailRule() {}
+  protected GuardrailRule() {
+  }
 
   public String getId() {
     return id;

@@ -11,8 +11,7 @@ import com.agentengine.engine.guardrails.GuardrailDecision;
 import com.agentengine.engine.guardrails.OutputRelevanceUtils;
 import com.agentengine.engine.guardrails.RelevanceScorer;
 import com.agentengine.engine.utils.RunState;
-import com.agentengine.engine.utils.RunStateUtils;
-
+import com.agentengine.engine.utils.RunUtils;
 import java.util.Map;
 import java.util.Objects;
 
@@ -20,8 +19,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
   private final OutputRelevanceGuardrailRule config;
   private final RelevanceScorer relevanceScorer;
 
-  public OutputRelevanceGuardrail(
-      final OutputRelevanceGuardrailRule config, final RelevanceScorer relevanceScorer) {
+  public OutputRelevanceGuardrail(final OutputRelevanceGuardrailRule config, final RelevanceScorer relevanceScorer) {
     this.config = Objects.requireNonNull(config);
     this.relevanceScorer = relevanceScorer;
   }
@@ -45,7 +43,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
     final String anchor = OutputRelevanceUtils.buildAnchorPrompt(context.invocationContext(), config);
     final double score = relevanceScorer.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
-    final RunState runState = RunStateUtils.getState(context.invocationContext());
+    final RunState runState = RunUtils.getState(context.invocationContext());
 
     if (score >= threshold) {
       runState.resetOffTopicRetries();
@@ -53,57 +51,34 @@ public final class OutputRelevanceGuardrail implements Guardrail {
     }
 
     final int attempt = runState.incrementOffTopicRetries();
-    final RelevanceMode mode =
-        config.modeEnum() == RelevanceMode.UNKNOWN
-            ? RelevanceMode.STEER_THEN_BLOCK
-            : config.modeEnum();
+    final RelevanceMode mode = config.modeEnum() == RelevanceMode.UNKNOWN ? RelevanceMode.STEER_THEN_BLOCK : config.modeEnum();
 
     if (mode == RelevanceMode.STEER_ONLY) {
-      return new GuardrailDecision(
-          GuardrailAction.WARN,
-          GuardrailConstants.Code.RELEVANCE_STEER,
+      return new GuardrailDecision(GuardrailAction.WARN, GuardrailConstants.Code.RELEVANCE_STEER,
           "Response drifted from user intent. Regenerate strictly on the active request.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE, score,
-              GuardrailConstants.DetailKey.THRESHOLD, threshold,
-              GuardrailConstants.DetailKey.ATTEMPT, attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
+          Map.of(GuardrailConstants.DetailKey.SCORE, score, GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt, GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     }
 
     if (mode == RelevanceMode.STEER_THEN_ALLOW && attempt <= config.getMaxSteeringRetries()) {
-      return new GuardrailDecision(
-          GuardrailAction.WARN,
-          GuardrailConstants.Code.RELEVANCE_STEER,
+      return new GuardrailDecision(GuardrailAction.WARN, GuardrailConstants.Code.RELEVANCE_STEER,
           "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE, score,
-              GuardrailConstants.DetailKey.THRESHOLD, threshold,
-              GuardrailConstants.DetailKey.ATTEMPT, attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
+          Map.of(GuardrailConstants.DetailKey.SCORE, score, GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt, GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     } else if (mode == RelevanceMode.STEER_THEN_ALLOW) {
       runState.resetOffTopicRetries();
       return GuardrailDecision.allow();
     }
 
     if (mode == RelevanceMode.STEER_THEN_BLOCK && attempt <= config.getMaxSteeringRetries()) {
-      return new GuardrailDecision(
-          GuardrailAction.WARN,
-          GuardrailConstants.Code.RELEVANCE_STEER,
+      return new GuardrailDecision(GuardrailAction.WARN, GuardrailConstants.Code.RELEVANCE_STEER,
           "Response is not aligned with the user request. Regenerate with stronger relevance.",
-          Map.of(
-              GuardrailConstants.DetailKey.SCORE, score,
-              GuardrailConstants.DetailKey.THRESHOLD, threshold,
-              GuardrailConstants.DetailKey.ATTEMPT, attempt,
-              GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
+          Map.of(GuardrailConstants.DetailKey.SCORE, score, GuardrailConstants.DetailKey.THRESHOLD, threshold,
+              GuardrailConstants.DetailKey.ATTEMPT, attempt, GuardrailConstants.DetailKey.RETRY_REQUIRED, true));
     }
 
-    return new GuardrailDecision(
-        GuardrailAction.BLOCK,
-        GuardrailConstants.Code.RELEVANCE_BLOCK,
-        "The response repeatedly drifted from the user request and was blocked.",
-        Map.of(
-            GuardrailConstants.DetailKey.SCORE, score,
-            GuardrailConstants.DetailKey.THRESHOLD, threshold,
-            GuardrailConstants.DetailKey.ATTEMPT, attempt));
+    return new GuardrailDecision(GuardrailAction.BLOCK, GuardrailConstants.Code.RELEVANCE_BLOCK,
+        "The response repeatedly drifted from the user request and was blocked.", Map.of(GuardrailConstants.DetailKey.SCORE, score,
+            GuardrailConstants.DetailKey.THRESHOLD, threshold, GuardrailConstants.DetailKey.ATTEMPT, attempt));
   }
 }

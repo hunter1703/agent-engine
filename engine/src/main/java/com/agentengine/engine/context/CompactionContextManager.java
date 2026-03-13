@@ -1,15 +1,16 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.engine.api.ContextManager;
+import static com.agentengine.engine.utils.ContentUtils.estimateTokens;
+
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.beans.session.SessionInfo;
-import com.agentengine.engine.api.utils.ContentUtils;
-import com.agentengine.engine.api.utils.TemplateUtils;
 import com.agentengine.engine.factories.model.ModelProvider;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.engine.plugin.ContextManager;
 import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.util.common.Cache;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.TemplateUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
@@ -21,27 +22,25 @@ import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.agentengine.engine.api.utils.ContentUtils.estimateTokens;
-
 /**
- * Compacts conversation history once it exceeds a token threshold, keeping a recent window
- * untouched and summarizing older content via an LLM call.
+ * Compacts conversation history once it exceeds a token threshold, keeping a
+ * recent window untouched and summarizing older content via an LLM call.
  *
- * <p>The summary is stored in session state (separate from raw events), so user-facing applications
- * retain the full event history while the LLM receives only compacted context.
+ * <p>
+ * The summary is stored in session state (separate from raw events), so
+ * user-facing applications retain the full event history while the LLM receives
+ * only compacted context.
  */
 public final class CompactionContextManager implements ContextManager {
   private static final Logger LOG = LoggerFactory.getLogger(CompactionContextManager.class);
-  private static final String DEFAULT_PROMPT_TEMPLATE =
-      """
-                  Summarize the following conversation history concisely, preserving all key facts, decisions, tool calls, and outcomes:
+  private static final String DEFAULT_PROMPT_TEMPLATE = """
+              Summarize the following conversation history concisely, preserving all key facts, decisions, tool calls, and outcomes:
 
-                  {context}
-          """;
+              {context}
+      """;
 
   private final int tokenThreshold;
   private final int recencyThreshold;
@@ -51,18 +50,12 @@ public final class CompactionContextManager implements ContextManager {
   private final AgentSessionRepository sessionRepository;
   private final Cache<String, String> summaryCache;
 
-  public CompactionContextManager(
-      final int tokenThreshold,
-      final int recencyThreshold,
-      final String modelId,
-      final String promptTemplate,
-      final ModelProvider modelProvider,
-      final AgentSessionRepository sessionRepository) {
+  public CompactionContextManager(final int tokenThreshold, final int recencyThreshold, final String modelId, final String promptTemplate,
+      final ModelProvider modelProvider, final AgentSessionRepository sessionRepository) {
     this.tokenThreshold = Math.max(1, tokenThreshold);
     this.recencyThreshold = Math.max(1, recencyThreshold);
     this.modelId = modelId;
-    this.promptTemplate =
-        StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
+    this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     this.modelProvider = modelProvider;
     this.sessionRepository = sessionRepository;
     this.summaryCache = new Cache<>(com.google.common.cache.CacheBuilder.newBuilder().maximumSize(1000), key -> {
@@ -72,8 +65,7 @@ public final class CompactionContextManager implements ContextManager {
   }
 
   @Override
-  public List<Content> buildPrompt(
-      final String agentId, final String sessionId, final List<Content> contents) {
+  public List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents) {
     if (CollectionUtils.isEmpty(contents)) {
       return List.of();
     }
@@ -95,15 +87,15 @@ public final class CompactionContextManager implements ContextManager {
       return withSummaryPrefix(newSummary, recent);
     }
 
-    LOG.warn(
-        "Compaction failed for agent_id={} session_id={}; using full context.", agentId, sessionId);
+    LOG.warn("Compaction failed for agent_id={} session_id={}; using full context.", agentId, sessionId);
     return withSummaryPrefix(existingSummary, contents);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
   /**
-   * Returns the index at which the "recent" window starts, keeping the last {@code
+   * Returns the index at which the "recent" window starts, keeping the last
+   * {@code
    * recencyThreshold} tokens intact.
    */
   private static int findRecentSplitIndex(final List<Content> contents, final int recencyTokens) {
@@ -118,17 +110,12 @@ public final class CompactionContextManager implements ContextManager {
     return 0;
   }
 
-  private static List<Content> withSummaryPrefix(
-      final String summary, final List<Content> contents) {
+  private static List<Content> withSummaryPrefix(final String summary, final List<Content> contents) {
     if (StringUtils.isBlank(summary)) {
       return new ArrayList<>(contents);
     }
     final List<Content> result = new ArrayList<>(contents.size() + 1);
-    result.add(
-        Content.builder()
-            .role("user")
-            .parts(List.of(Part.fromText("[Conversation Summary]\n" + summary)))
-            .build());
+    result.add(Content.builder().role("user").parts(List.of(Part.fromText("[Conversation Summary]\n" + summary))).build());
     result.addAll(contents);
     return result;
   }
@@ -154,21 +141,9 @@ public final class CompactionContextManager implements ContextManager {
       if (part.text().isPresent() && StringUtils.isNotBlank(part.text().get()) && !part.thought().orElse(false)) {
         sb.append(part.text().get()).append(" ");
       }
-      part.functionCall()
-          .ifPresent(
-              fc ->
-                  sb.append("[tool_call: ")
-                      .append(fc.name().orElse("?"))
-                      .append(fc.args())
-                      .append("]"));
+      part.functionCall().ifPresent(fc -> sb.append("[tool_call: ").append(fc.name().orElse("?")).append(fc.args()).append("]"));
       part.functionResponse()
-          .ifPresent(
-              fr ->
-                  sb.append("[tool_result: ")
-                      .append(fr.name().orElse("?"))
-                      .append(" → ")
-                      .append(fr.response())
-                      .append("]"));
+          .ifPresent(fr -> sb.append("[tool_result: ").append(fr.name().orElse("?")).append(" → ").append(fr.response()).append("]"));
     }
     return sb.toString();
   }
@@ -179,12 +154,8 @@ public final class CompactionContextManager implements ContextManager {
       return null;
     }
     final String prompt = TemplateUtils.renderTextTemplate(promptTemplate, Map.of("context", input));
-    final LlmRequest request =
-        LlmRequest.builder()
-            .contents(
-                List.of(
-                    Content.builder().role("user").parts(List.of(Part.fromText(prompt))).build()))
-            .build();
+    final LlmRequest request = LlmRequest.builder()
+        .contents(List.of(Content.builder().role("user").parts(List.of(Part.fromText(prompt))).build())).build();
     final BaseLlm model = modelProvider.acquire(modelId);
     try {
       final LlmResponse response = model.generateContent(request, false).blockingFirst();
@@ -198,24 +169,16 @@ public final class CompactionContextManager implements ContextManager {
   }
 
   private String loadSummary(final String sessionId, final String agentId) {
-    return sessionRepository
-            .findById(sessionId)
-            .map(AgentSession::getSessionInfo)
-            .map(SessionInfo::toSession)
-            .map(session -> {
-              final Map<String, Object> summary = CollectionUtils.getMapFromMap(session.state(), "summary");
-              return CollectionUtils.getStringValueFromMap(summary, agentId);
-            })
-            .map(Object::toString)
-            .orElse(null);
+    return sessionRepository.findById(sessionId).map(AgentSession::getSessionInfo).map(SessionInfo::toSession).map(session -> {
+      final Map<String, Object> summary = CollectionUtils.getMapFromMap(session.state(), "summary");
+      return CollectionUtils.getStringValueFromMap(summary, agentId);
+    }).map(Object::toString).orElse(null);
   }
 
   private void persistSummary(final String sessionId, final String agentId, final String summary) {
     try {
-      sessionRepository.update(
-          sessionId,
-          Update.of(
-              Operation.set(AgentSession.FIELD_SESSION_INFO + ".state." + summary + "." + agentId, summary),
+      sessionRepository.update(sessionId,
+          Update.of(Operation.set(AgentSession.FIELD_SESSION_INFO + ".state." + summary + "." + agentId, summary),
               Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
     } catch (Exception ex) {
       LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);
@@ -231,5 +194,4 @@ public final class CompactionContextManager implements ContextManager {
     }
     return total;
   }
-
 }

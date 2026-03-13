@@ -15,7 +15,8 @@ import java.util.Map;
 public final class Utils {
   public static final ObjectMapper OBJECT_MAPPER = JsonBaseModel.getMapper();
 
-  private Utils() {}
+  private Utils() {
+  }
 
   public static Class<?> getClass(final Type type) {
     if (type instanceof Class<?> clazz) {
@@ -30,18 +31,9 @@ public final class Utils {
     if (type == null) {
       return false;
     }
-    return type == Integer.class
-        || type == int.class
-        || type == Long.class
-        || type == long.class
-        || type == Double.class
-        || type == double.class
-        || type == Float.class
-        || type == float.class
-        || type == Boolean.class
-        || type == boolean.class
-        || type == String.class
-        || type.isEnum();
+    return type == Integer.class || type == int.class || type == Long.class || type == long.class || type == Double.class
+        || type == double.class || type == Float.class || type == float.class || type == Boolean.class || type == boolean.class
+        || type == String.class || type.isEnum();
   }
 
   public static Object castValue(final Object rawValue, final Class<?> targetType) {
@@ -128,8 +120,7 @@ public final class Utils {
       return (Class<?>) parameterizedType.getRawType();
     }
     final String label = paramName == null ? "" : " for '" + paramName + "'";
-    throw new IllegalArgumentException(
-        String.format("Unsupported parameterized type %s%s", type, label));
+    throw new IllegalArgumentException(String.format("Unsupported parameterized type %s%s", type, label));
   }
 
   public static Method resolveMethod(final Class<?> toolClass, final String methodName) {
@@ -139,8 +130,7 @@ public final class Utils {
         return method;
       }
     }
-    throw new IllegalArgumentException(
-        String.format("Method %s not found in class %s.", methodName, toolClass.getName()));
+    throw new IllegalArgumentException(String.format("Method %s not found in class %s.", methodName, toolClass.getName()));
   }
 
   public static AnnotatedMember resolveMember(final BeanPropertyDefinition property) {
@@ -156,8 +146,7 @@ public final class Utils {
     return property.getSetter();
   }
 
-  public static <T extends Annotation> T findAnnotation(
-      final BeanPropertyDefinition property, final Class<T> annotationClass) {
+  public static <T extends Annotation> T findAnnotation(final BeanPropertyDefinition property, final Class<T> annotationClass) {
     if (property == null) {
       return null;
     }

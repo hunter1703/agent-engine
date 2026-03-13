@@ -1,12 +1,12 @@
 package com.agentengine.engine.tools.planning;
 
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.plugin.tools.Tool;
 import com.agentengine.engine.tools.planning.beans.Plan;
 import com.agentengine.engine.tools.planning.beans.Task;
 import com.agentengine.engine.tools.planning.beans.TaskStatus;
 import com.agentengine.engine.utils.RunState;
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
@@ -17,15 +17,9 @@ public abstract class UpdateTaskStatusTool extends Tool {
     super(toolDescriptor);
   }
 
-  protected Map<String, Object> _execute(
-      final ToolContext toolContext,
-      final String taskId,
-      final String name,
-      final String goal,
-      final String description,
-      TaskStatus newStatus,
-      String result) {
-    final RunState runState = RunStateUtils.getState(toolContext.invocationContext());
+  protected Map<String, Object> _execute(final ToolContext toolContext, final String taskId, final String name, final String goal,
+      final String description, TaskStatus newStatus, String result) {
+    final RunState runState = RunUtils.getState(toolContext.invocationContext());
     final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");

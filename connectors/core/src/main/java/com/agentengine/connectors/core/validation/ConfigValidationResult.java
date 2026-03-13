@@ -17,8 +17,6 @@ public record ConfigValidationResult(List<ValidationIssue> issues) {
   }
 
   public List<ValidationIssue> errors() {
-    return issues.stream()
-        .filter(issue -> issue.severityEnum() == ValidationSeverity.ERROR)
-        .toList();
+    return issues.stream().filter(issue -> issue.severityEnum() == ValidationSeverity.ERROR).toList();
   }
 }

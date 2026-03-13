@@ -5,7 +5,6 @@ import com.google.adk.models.BaseLlm;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
-import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -16,17 +15,14 @@ public final class DelegatingLLMModel extends AbstractLLM {
   private final BaseLlm delegate;
 
   public DelegatingLLMModel(final BaseLlm delegate, final Parser parser) {
-    super(
-        Objects.requireNonNull(delegate, "delegate cannot be null").model(),
-        parser);
+    super(Objects.requireNonNull(delegate, "delegate cannot be null").model(), parser);
     this.delegate = delegate;
   }
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
     final LlmRequest requestForModel = parser.preProcess(llmRequest);
-    LOG.debug(
-        "Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
+    LOG.debug("Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
     return delegate.generateContent(requestForModel, stream).map(parser::postProcess);
   }
 

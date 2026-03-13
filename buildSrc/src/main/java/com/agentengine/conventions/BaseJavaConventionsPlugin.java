@@ -30,7 +30,7 @@ public abstract class BaseJavaConventionsPlugin {
             extension ->
                 extension.getToolchain().getLanguageVersion().set(JavaLanguageVersion.of(25)));
 
-    project.getExtensions().configure(SpotlessExtension.class, configureSpotless());
+    project.getExtensions().configure(SpotlessExtension.class, configureSpotless(project));
     configureCompilerOptions(project);
     configureTestTasks(project);
     configureIntegrationTestLane(project);
@@ -39,7 +39,7 @@ public abstract class BaseJavaConventionsPlugin {
     configureJandexOrdering(project);
   }
 
-  private static Action<SpotlessExtension> configureSpotless() {
+  private static Action<SpotlessExtension> configureSpotless(final Project project) {
     return spotless -> {
       spotless.java(
           java -> {
@@ -47,7 +47,7 @@ public abstract class BaseJavaConventionsPlugin {
                 "src/main/java/**/*.java",
                 "src/test/java/**/*.java",
                 "src/integrationTest/java/**/*.java");
-            java.googleJavaFormat("1.29.0");
+            java.eclipse().configFile(project.getRootProject().file("configs/spotless/eclipse.xml"));
             java.removeUnusedImports();
           });
 

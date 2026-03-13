@@ -2,35 +2,29 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.ToolRiskLevel;
+import com.agentengine.engine.utils.RunUtils;
+import com.agentengine.engine.utils.Violation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.engine.utils.RunStateUtils;
-import com.agentengine.engine.utils.Violation;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmResponse;
-import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class GuardrailUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(GuardrailUtils.class);
 
-  private GuardrailUtils() {}
+  private GuardrailUtils() {
+  }
 
-  public static GuardrailDecision evaluate(
-      final GuardrailContext context,
-      final List<? extends Guardrail> guardrails,
+  public static GuardrailDecision evaluate(final GuardrailContext context, final List<? extends Guardrail> guardrails,
       final GuardrailErrorMode errorMode) {
     GuardrailDecision decision = GuardrailDecision.allow();
     for (final Guardrail guardrail : CollectionUtils.nullSafeList(guardrails)) {
@@ -46,57 +40,31 @@ public final class GuardrailUtils {
     return decision;
   }
 
-  public static GuardrailDecision evaluateTool(
-      final InvocationContext invocationContext,
-      final ToolDescriptor toolDescriptor,
-      final Map<String, Object> toolArgs,
-      final List<? extends Guardrail> guardrails,
-      final GuardrailErrorMode errorMode) {
+  public static GuardrailDecision evaluateTool(final InvocationContext invocationContext, final ToolDescriptor toolDescriptor,
+      final Map<String, Object> toolArgs, final List<? extends Guardrail> guardrails, final GuardrailErrorMode errorMode) {
     return evaluate(
-        GuardrailContext.builder()
-            .invocationContext(invocationContext)
-            .toolDescriptor(toolDescriptor)
-            .toolArgs(toolArgs)
-            .build(),
-        guardrails,
-        errorMode);
+        GuardrailContext.builder().invocationContext(invocationContext).toolDescriptor(toolDescriptor).toolArgs(toolArgs).build(),
+        guardrails, errorMode);
   }
 
-  public static void recordViolation(
-      final InvocationContext invocationContext, final GuardrailDecision decision) {
+  public static void recordViolation(final InvocationContext invocationContext, final GuardrailDecision decision) {
     if (invocationContext == null || decision == null) {
       return;
     }
-    RunStateUtils.getState(invocationContext)
-        .addViolation(
-            Violation.builder(
-                    StringUtils.isBlank(decision.code())
-                        ? GuardrailConstants.Code.VIOLATION
-                        : decision.code())
-                .message(
-                    StringUtils.isBlank(decision.message())
-                        ? "Guardrail policy was triggered."
-                        : decision.message())
-                .correctionMessage(
-                    StringUtils.isBlank(decision.message())
-                        ? "Guardrail policy was triggered."
-                        : decision.message())
-                .details(decision.details())
-                .build());
+    RunUtils.getState(invocationContext)
+        .addViolation(Violation.builder(StringUtils.isBlank(decision.code()) ? GuardrailConstants.Code.VIOLATION : decision.code())
+            .message(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())
+            .correctionMessage(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())
+            .details(decision.details()).build());
   }
 
   public static LlmResponse buildGuardrailResponse(final String message) {
-    final String text =
-        StringUtils.isBlank(message)
-            ? "The request was blocked by guardrail policy."
-            : message.trim();
-    final Content content =
-        Content.builder().role("model").parts(List.of(Part.fromText(text))).build();
+    final String text = StringUtils.isBlank(message) ? "The request was blocked by guardrail policy." : message.trim();
+    final Content content = Content.builder().role("model").parts(List.of(Part.fromText(text))).build();
     return LlmResponse.builder().content(content).build();
   }
 
-  private static GuardrailDecision fallbackForError(
-      final GuardrailErrorMode errorMode, final String guardrailId, final Exception ex) {
+  private static GuardrailDecision fallbackForError(final GuardrailErrorMode errorMode, final String guardrailId, final Exception ex) {
     final String message = "Guardrail '" + guardrailId + "' failed: " + ex.getMessage();
     return errorMode == GuardrailErrorMode.FAIL_OPEN
         ? GuardrailDecision.warn(GuardrailConstants.Code.RUNTIME_WARN, message)
@@ -120,10 +88,7 @@ public final class GuardrailUtils {
     return false;
   }
 
-  public static GuardrailDecision fromAction(
-      final GuardrailAction action,
-      final String code,
-      final String message,
+  public static GuardrailDecision fromAction(final GuardrailAction action, final String code, final String message,
       final Map<String, Object> details) {
     final GuardrailAction effective = action == null ? GuardrailAction.WARN : action;
     return switch (effective) {

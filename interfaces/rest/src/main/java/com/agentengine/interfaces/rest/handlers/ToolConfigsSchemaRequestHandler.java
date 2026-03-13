@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest.handlers;
 
 import com.agentengine.engine.api.services.ToolCatalog;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
+import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collections;

@@ -2,7 +2,8 @@ package com.agentengine.util.common;
 
 public final class ExceptionUtils {
 
-  private ExceptionUtils() {}
+  private ExceptionUtils() {
+  }
 
   public static String getErrorMessage(final Throwable throwable) {
     if (throwable == null) {

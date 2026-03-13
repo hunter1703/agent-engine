@@ -19,9 +19,6 @@ public class DuplicateAssetException extends RuntimeException {
   }
 
   private static String buildMessage(final String assetType, final String assetId) {
-    return "Asset already exists: type="
-        + String.valueOf(assetType)
-        + ", id="
-        + String.valueOf(assetId);
+    return "Asset already exists: type=" + String.valueOf(assetType) + ", id=" + String.valueOf(assetId);
   }
 }

@@ -4,8 +4,7 @@ import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 
-public record GuardrailDecision(
-    GuardrailAction action, String code, String message, Map<String, Object> details) {
+public record GuardrailDecision(GuardrailAction action, String code, String message, Map<String, Object> details) {
 
   public GuardrailDecision {
     action = action == null ? GuardrailAction.ALLOW : action;
@@ -13,8 +12,7 @@ public record GuardrailDecision(
   }
 
   public static GuardrailDecision allow() {
-    return new GuardrailDecision(
-        GuardrailAction.ALLOW, GuardrailConstants.Code.ALLOW, "Allowed", Map.of());
+    return new GuardrailDecision(GuardrailAction.ALLOW, GuardrailConstants.Code.ALLOW, "Allowed", Map.of());
   }
 
   public static GuardrailDecision warn(final String code, final String message) {
@@ -33,8 +31,7 @@ public record GuardrailDecision(
     return action == GuardrailAction.BLOCK || action == GuardrailAction.ESCALATE;
   }
 
-  public static GuardrailDecision merge(
-      final GuardrailDecision left, final GuardrailDecision right) {
+  public static GuardrailDecision merge(final GuardrailDecision left, final GuardrailDecision right) {
     final GuardrailDecision lhs = left == null ? GuardrailDecision.allow() : left;
     final GuardrailDecision rhs = right == null ? GuardrailDecision.allow() : right;
     return severity(rhs.action()) > severity(lhs.action()) ? rhs : lhs;

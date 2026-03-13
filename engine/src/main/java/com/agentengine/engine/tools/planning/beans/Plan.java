@@ -13,7 +13,8 @@ public class Plan {
   private PlanStatus status = PlanStatus.IN_PROGRESS;
   private String result;
 
-  public Plan() {}
+  public Plan() {
+  }
 
   public Plan(String title, String goal) {
     this.title = title;

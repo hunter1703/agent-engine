@@ -9,7 +9,9 @@ import java.lang.annotation.Target;
 /**
  * Renders the field as a finite-choice selector (dropdown).
  *
- * <p>Options are derived from the supplied enum's constants, with {@code UNKNOWN} filtered out.
+ * <p>
+ * Options are derived from the supplied enum's constants, with {@code UNKNOWN}
+ * filtered out.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

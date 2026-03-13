@@ -7,8 +7,7 @@ import com.agentengine.util.common.builder.annotations.UiRuleEffect;
 import com.agentengine.util.common.builder.annotations.UiSelect;
 
 public class OrchestratorParallelConfig {
-  private static final String DEFAULT_AGGREGATION_POLICY =
-      ParallelAggregationPolicy.CONCATENATE.name();
+  private static final String DEFAULT_AGGREGATION_POLICY = ParallelAggregationPolicy.CONCATENATE.name();
   private static final String DEFAULT_STOPPING_POLICY = ParallelStoppingPolicy.ALL_COMPLETE.name();
 
   @UiField(label = "Aggregation Policy", order = 10)
@@ -21,10 +20,7 @@ public class OrchestratorParallelConfig {
 
   @UiField(label = "Quorum", order = 30)
   @UiNumber
-  @UiRule(
-      effect = UiRuleEffect.VISIBLE,
-      field = "stoppingPolicy",
-      values = {"QUORUM"})
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "stoppingPolicy", values = {"QUORUM"})
   private int quorum = 1;
 
   public String getAggregationPolicy() {
@@ -32,10 +28,7 @@ public class OrchestratorParallelConfig {
   }
 
   public void setAggregationPolicy(final String aggregationPolicy) {
-    this.aggregationPolicy =
-        aggregationPolicy == null || aggregationPolicy.isBlank()
-            ? DEFAULT_AGGREGATION_POLICY
-            : aggregationPolicy;
+    this.aggregationPolicy = aggregationPolicy == null || aggregationPolicy.isBlank() ? DEFAULT_AGGREGATION_POLICY : aggregationPolicy;
   }
 
   public ParallelAggregationPolicy aggregationPolicyEnum() {
@@ -47,10 +40,7 @@ public class OrchestratorParallelConfig {
   }
 
   public void setStoppingPolicy(final String stoppingPolicy) {
-    this.stoppingPolicy =
-        stoppingPolicy == null || stoppingPolicy.isBlank()
-            ? DEFAULT_STOPPING_POLICY
-            : stoppingPolicy;
+    this.stoppingPolicy = stoppingPolicy == null || stoppingPolicy.isBlank() ? DEFAULT_STOPPING_POLICY : stoppingPolicy;
   }
 
   public ParallelStoppingPolicy stoppingPolicyEnum() {

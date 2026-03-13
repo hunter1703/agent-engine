@@ -23,14 +23,12 @@ class ModelConfigTest {
 
   @Test
   void shouldReturnProviderWhenTypeKnown() {
-    assertThat(ModelConfig.Provider.valueOfOrDefault("ollama"))
-        .isEqualTo(ModelConfig.Provider.OLLAMA);
+    assertThat(ModelConfig.Provider.valueOfOrDefault("ollama")).isEqualTo(ModelConfig.Provider.OLLAMA);
   }
 
   @Test
   void shouldThrowWhenProviderTypeUnsupportedInFromType() {
-    assertThatThrownBy(() -> ModelConfig.Provider.fromType("unsupported"))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> ModelConfig.Provider.fromType("unsupported")).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported model provider");
   }
 }

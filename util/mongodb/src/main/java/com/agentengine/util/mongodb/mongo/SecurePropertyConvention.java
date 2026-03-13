@@ -32,8 +32,7 @@ public final class SecurePropertyConvention implements Convention {
   @Override
   public void apply(final ClassModelBuilder<?> classModelBuilder) {
     final Class<?> targetClass = classModelBuilder.getType();
-    for (final PropertyModelBuilder<?> propertyModelBuilder :
-        classModelBuilder.getPropertyModelBuilders()) {
+    for (final PropertyModelBuilder<?> propertyModelBuilder : classModelBuilder.getPropertyModelBuilders()) {
       final String propertyName = propertyModelBuilder.getName();
       if (!isSecureProperty(targetClass, propertyName, propertyModelBuilder)) {
         continue;
@@ -41,38 +40,29 @@ public final class SecurePropertyConvention implements Convention {
 
       final Class<?> propertyType = resolvePropertyType(targetClass, propertyName);
       if (!String.class.equals(propertyType)) {
-        LOG.debug(
-            "Secure annotation ignored for non-string field: {}.{}",
-            targetClass.getSimpleName(),
-            propertyName);
+        LOG.debug("Secure annotation ignored for non-string field: {}.{}", targetClass.getSimpleName(), propertyName);
         continue;
       }
 
       @SuppressWarnings("unchecked")
-      final PropertyModelBuilder<String> stringBuilder =
-          (PropertyModelBuilder<String>) propertyModelBuilder;
+      final PropertyModelBuilder<String> stringBuilder = (PropertyModelBuilder<String>) propertyModelBuilder;
       stringBuilder.codec(new SecureStringCodec(encryptionService));
     }
   }
 
-  private static boolean isSecureProperty(
-      final Class<?> targetClass,
-      final String propertyName,
+  private static boolean isSecureProperty(final Class<?> targetClass, final String propertyName,
       final PropertyModelBuilder<?> propertyModelBuilder) {
-    return hasSecureAnnotations(propertyModelBuilder)
-        || hasSecureField(targetClass, propertyName)
+    return hasSecureAnnotations(propertyModelBuilder) || hasSecureField(targetClass, propertyName)
         || hasSecureAccessor(targetClass, propertyName);
   }
 
   private static boolean hasSecureAnnotations(final PropertyModelBuilder<?> propertyModelBuilder) {
     if (propertyModelBuilder.getReadAnnotations() != null
-        && propertyModelBuilder.getReadAnnotations().stream()
-            .anyMatch(annotation -> annotation.annotationType().equals(Secure.class))) {
+        && propertyModelBuilder.getReadAnnotations().stream().anyMatch(annotation -> annotation.annotationType().equals(Secure.class))) {
       return true;
     }
     return propertyModelBuilder.getWriteAnnotations() != null
-        && propertyModelBuilder.getWriteAnnotations().stream()
-            .anyMatch(annotation -> annotation.annotationType().equals(Secure.class));
+        && propertyModelBuilder.getWriteAnnotations().stream().anyMatch(annotation -> annotation.annotationType().equals(Secure.class));
   }
 
   private static boolean hasSecureField(final Class<?> targetClass, final String propertyName) {
@@ -86,16 +76,10 @@ public final class SecurePropertyConvention implements Convention {
     final String booleanGetterName = "is" + capitalizedName;
     final String setterName = "set" + capitalizedName;
     return Arrays.stream(targetClass.getMethods())
-        .anyMatch(
-            method ->
-                method.isAnnotationPresent(Secure.class)
-                    && isAccessorMatch(method, getterName, booleanGetterName, setterName));
+        .anyMatch(method -> method.isAnnotationPresent(Secure.class) && isAccessorMatch(method, getterName, booleanGetterName, setterName));
   }
 
-  private static boolean isAccessorMatch(
-      final Method method,
-      final String getterName,
-      final String booleanGetterName,
+  private static boolean isAccessorMatch(final Method method, final String getterName, final String booleanGetterName,
       final String setterName) {
     if (method.getParameterCount() == 0) {
       return method.getName().equals(getterName) || method.getName().equals(booleanGetterName);
@@ -103,8 +87,7 @@ public final class SecurePropertyConvention implements Convention {
     return method.getParameterCount() == 1 && method.getName().equals(setterName);
   }
 
-  private static Class<?> resolvePropertyType(
-      final Class<?> targetClass, final String propertyName) {
+  private static Class<?> resolvePropertyType(final Class<?> targetClass, final String propertyName) {
     final Field field = findField(targetClass, propertyName);
     if (field != null) {
       return field.getType();
@@ -114,8 +97,7 @@ public final class SecurePropertyConvention implements Convention {
     final String booleanGetterName = "is" + capitalizedName;
     final String setterName = "set" + capitalizedName;
     for (final Method method : targetClass.getMethods()) {
-      if (method.getParameterCount() == 0
-          && (method.getName().equals(getterName) || method.getName().equals(booleanGetterName))) {
+      if (method.getParameterCount() == 0 && (method.getName().equals(getterName) || method.getName().equals(booleanGetterName))) {
         return method.getReturnType();
       }
       if (method.getParameterCount() == 1 && method.getName().equals(setterName)) {
@@ -153,8 +135,7 @@ public final class SecurePropertyConvention implements Convention {
     }
 
     @Override
-    public void encode(
-        final BsonWriter writer, final String value, final EncoderContext encoderContext) {
+    public void encode(final BsonWriter writer, final String value, final EncoderContext encoderContext) {
       if (value == null) {
         writer.writeNull();
         return;

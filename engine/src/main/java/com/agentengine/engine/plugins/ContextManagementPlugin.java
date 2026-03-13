@@ -1,6 +1,6 @@
 package com.agentengine.engine.plugins;
 
-import com.agentengine.engine.api.ContextManager;
+import com.agentengine.engine.plugin.ContextManager;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
@@ -14,7 +14,9 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Rebuilds model prompt contents using configured context managers per agent. */
+/**
+ * Rebuilds model prompt contents using configured context managers per agent.
+ */
 public final class ContextManagementPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(ContextManagementPlugin.class);
   private static final String NAME = "context_management";
@@ -27,8 +29,7 @@ public final class ContextManagementPlugin extends BasePlugin {
   }
 
   @Override
-  public Maybe<LlmResponse> beforeModelCallback(
-      final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
+  public Maybe<LlmResponse> beforeModelCallback(final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
     final InvocationContext invocationContext = callbackContext.invocationContext();
     final LlmRequest request = requestBuilder.build();
     final LlmRequest updatedRequest = applyContextManager(request, invocationContext);
@@ -36,8 +37,7 @@ public final class ContextManagementPlugin extends BasePlugin {
     return Maybe.empty();
   }
 
-  private LlmRequest applyContextManager(
-      final LlmRequest request, final InvocationContext invocationContext) {
+  private LlmRequest applyContextManager(final LlmRequest request, final InvocationContext invocationContext) {
     final String agentId = invocationContext.agent().name();
     final ContextManager contextManager = contextManagerByAgentId.get(agentId);
     if (contextManager == null) {
@@ -45,15 +45,11 @@ public final class ContextManagementPlugin extends BasePlugin {
     }
     try {
       final List<Content> contents = CollectionUtils.nullSafeList(request.contents());
-      final List<Content> prompt =
-          contextManager.buildPrompt(agentId, invocationContext.session().id(), contents);
+      final List<Content> prompt = contextManager.buildPrompt(agentId, invocationContext.session().id(), contents);
       return request.toBuilder().contents(prompt).build();
     } catch (Exception ex) {
-      LOG.warn(
-          "Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.",
-          agentId,
-          invocationContext.session().id(),
-          ex);
+      LOG.warn("Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.", agentId,
+          invocationContext.session().id(), ex);
       return request;
     }
   }

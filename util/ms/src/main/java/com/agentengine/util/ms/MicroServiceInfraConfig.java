@@ -5,8 +5,9 @@ import com.agentengine.util.common.beans.BaseEntity;
 /**
  * MongoDB document that stores the gRPC endpoint for one microservice server.
  *
- * <p>One document per server ID (e.g. {@code "agent"}), stored in the {@code MicroServiceConfig}
- * collection of the {@code INFRA} database.
+ * <p>
+ * One document per server ID (e.g. {@code "agent"}), stored in the
+ * {@code MicroServiceConfig} collection of the {@code INFRA} database.
  */
 public class MicroServiceInfraConfig extends BaseEntity {
 
@@ -14,7 +15,8 @@ public class MicroServiceInfraConfig extends BaseEntity {
   private String host;
   private int port;
 
-  public MicroServiceInfraConfig() {}
+  public MicroServiceInfraConfig() {
+  }
 
   public String getServerId() {
     return serverId;

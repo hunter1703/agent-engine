@@ -6,6 +6,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.interfaces.rest.ResourceCatalogAPI;
+import com.agentengine.interfaces.rest.dto.AssetRequest;
+import com.agentengine.interfaces.rest.handlers.catalog.AssetHandler;
+import com.agentengine.interfaces.rest.handlers.catalog.NamedAssetHandler;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
@@ -18,45 +22,35 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
-    assertThatThrownBy(() -> api.listResources(new AssetRequest()))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.listResources(new AssetRequest())).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
   void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("unknown");
 
-    assertThatThrownBy(() -> api.listResources(request))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.listResources(request)).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
   void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
 
-    assertThatThrownBy(() -> api.listResources(request))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.listResources(request)).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
   void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
     request.setQuery(new Query().withPage(new Page(0, 10)));
@@ -70,8 +64,7 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     final ModelConfig resource = api.getResource("model", "model-1", null);
 
@@ -80,13 +73,10 @@ class ResourceCatalogAPITest {
 
   @Test
   void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
-    final ResourceCatalogAPI api =
-        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
-    assertThatThrownBy(() -> api.getResource("model", "missing", null))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(404);
+    assertThatThrownBy(() -> api.getResource("model", "missing", null)).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(404);
   }
 
   @SafeVarargs

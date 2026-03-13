@@ -14,9 +14,6 @@ public class GeminiModelFactory extends DelegatingModelFactory<Gemini> {
 
   @Override
   protected Gemini buildDelegate(final ModelConfig modelConfig) {
-    return Gemini.builder()
-        .modelName(modelConfig.getModel())
-        .apiKey(modelConfig.getApiKey())
-        .build();
+    return Gemini.builder().modelName(modelConfig.getModel()).apiKey(modelConfig.getApiKey()).build();
   }
 }

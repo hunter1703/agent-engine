@@ -32,8 +32,7 @@ public class ToolSafetyGuardrailRule extends GuardrailRule {
   }
 
   public void setMinToolRisk(final String minToolRisk) {
-    this.minToolRisk =
-        minToolRisk == null || minToolRisk.isBlank() ? DEFAULT_MIN_TOOL_RISK : minToolRisk;
+    this.minToolRisk = minToolRisk == null || minToolRisk.isBlank() ? DEFAULT_MIN_TOOL_RISK : minToolRisk;
   }
 
   public ToolRiskLevel minToolRiskEnum() {

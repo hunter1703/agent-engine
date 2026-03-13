@@ -15,13 +15,11 @@ public final class ToolsConfig {
   private String toolName;
 
   @UiField(label = "Configuration", order = 20)
-  @UiDynamicSchema(
-      assetType = "tool_configs",
-      assetIdExpr = "$item.toolName",
-      contextIdExpr = "$.id")
+  @UiDynamicSchema(assetType = "tool_configs", assetIdExpr = "$item.toolName", contextIdExpr = "$.id")
   private Map<String, Object> configs = new HashMap<>();
 
-  public ToolsConfig() {}
+  public ToolsConfig() {
+  }
 
   public ToolsConfig(final String toolName, final Map<String, Object> configs) {
     this.toolName = toolName;

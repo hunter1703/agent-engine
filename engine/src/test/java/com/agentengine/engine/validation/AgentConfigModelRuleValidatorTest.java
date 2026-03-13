@@ -9,6 +9,7 @@ import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.utils.AgentValidator;
 import com.agentengine.util.common.validation.ValidationCollector;
 import jakarta.enterprise.inject.Instance;
 import java.util.Optional;

@@ -7,8 +7,7 @@ import com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail;
 import jakarta.inject.Singleton;
 
 @Singleton
-public final class ToolSafetyGuardrailProvider
-    implements GuardrailProvider<ToolSafetyGuardrailRule> {
+public final class ToolSafetyGuardrailProvider implements GuardrailProvider<ToolSafetyGuardrailRule> {
 
   @Override
   public GuardrailRuleType type() {

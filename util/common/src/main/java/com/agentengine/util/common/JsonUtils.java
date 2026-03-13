@@ -19,15 +19,13 @@ import org.slf4j.LoggerFactory;
 
 public final class JsonUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
-  private static final ObjectMapper JSON_MAPPER =
-      JsonBaseModel.getMapper()
-          .copy()
-          .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
-  private static final ObjectMapper YAML_MAPPER =
-      new ObjectMapper(new YAMLFactory())
-          .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+  private static final ObjectMapper JSON_MAPPER = JsonBaseModel.getMapper().copy().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS,
+      true);
+  private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory())
+      .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
 
-  private JsonUtils() {}
+  private JsonUtils() {
+  }
 
   public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
     if (map == null) {
@@ -96,7 +94,8 @@ public final class JsonUtils {
       return null;
     }
     try {
-      return JSON_MAPPER.readValue(is, new TypeReference<Map<String, Object>>() {});
+      return JSON_MAPPER.readValue(is, new TypeReference<Map<String, Object>>() {
+      });
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -106,7 +105,8 @@ public final class JsonUtils {
     if (obj == null) {
       return null;
     }
-    return JSON_MAPPER.convertValue(obj, new TypeReference<Map<String, Object>>() {});
+    return JSON_MAPPER.convertValue(obj, new TypeReference<Map<String, Object>>() {
+    });
   }
 
   public static Map<String, Object> toJacksonMap(final Object obj) {
@@ -169,13 +169,15 @@ public final class JsonUtils {
     }
     Map<String, Object> payload = null;
     try {
-      payload = fromJson(cleaned, new TypeReference<>() {});
+      payload = fromJson(cleaned, new TypeReference<>() {
+      });
     } catch (Exception ex) {
       final int start = cleaned.indexOf('{');
       final int end = cleaned.lastIndexOf('}');
       if (start >= 0 && end > start) {
         try {
-          payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
+          payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {
+          });
         } catch (Exception innerEx) {
           LOGGER.warn("Failed to parse JSON payload from substring", innerEx);
         }

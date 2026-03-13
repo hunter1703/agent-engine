@@ -3,11 +3,7 @@ package com.agentengine.engine.tools.planning.beans;
 import java.util.Locale;
 
 public enum TaskStatus {
-  UNKNOWN("unknown"),
-  TODO("todo"),
-  IN_PROGRESS("in_progress"),
-  DONE("done", true),
-  ABANDONED("abandoned", true);
+  UNKNOWN("unknown"), TODO("todo"), IN_PROGRESS("in_progress"), DONE("done", true), ABANDONED("abandoned", true);
 
   private final String value;
   private final boolean terminal;

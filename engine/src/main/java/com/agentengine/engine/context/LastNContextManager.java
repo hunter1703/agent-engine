@@ -1,8 +1,7 @@
 package com.agentengine.engine.context;
 
-import com.agentengine.engine.api.utils.ContentUtils;
+import com.agentengine.engine.utils.ContentUtils;
 import com.google.genai.types.Content;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,5 +34,4 @@ public final class LastNContextManager extends BaseContextManager {
     }
     return result;
   }
-
 }

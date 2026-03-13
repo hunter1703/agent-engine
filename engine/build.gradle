@@ -6,6 +6,7 @@ plugins {
 
 dependencies {
     api project(':engine:api')
+    implementation project(':engine:plugin')
     implementation project(':connectors:core')
     implementation project(':util:common')
     implementation project(':util:mongodb')
@@ -25,6 +26,12 @@ dependencies {
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.opentelemetry
     implementation libs.guava
+    implementation libs.stateless4j
+    implementation libs.ag.ui.core
+    implementation libs.ag.ui.server
+    implementation libs.ag.ui.json
+    implementation libs.ag.ui.http
+    implementation libs.ag.ui.ok.http
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.quarkus.junit5.mockito

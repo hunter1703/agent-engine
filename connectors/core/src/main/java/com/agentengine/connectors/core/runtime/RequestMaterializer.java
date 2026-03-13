@@ -30,64 +30,42 @@ public final class RequestMaterializer {
   private final AuthStrategyRegistry authRegistry;
 
   @Inject
-  public RequestMaterializer(
-      final TemplateResolver templateResolver, final AuthStrategyRegistry authStrategyRegistry) {
+  public RequestMaterializer(final TemplateResolver templateResolver, final AuthStrategyRegistry authStrategyRegistry) {
     this.templateResolver = templateResolver;
     this.authRegistry = authStrategyRegistry;
   }
 
-  public HttpRequestData materialize(
-      final ConnectorDefinition definition,
-      final RequestContext context,
+  public HttpRequestData materialize(final ConnectorDefinition definition, final RequestContext context,
       final PaginationDirective paginationDirective) {
     final EndpointConfig endpoint = definition.endpoint();
     final boolean strictUnresolved = definition.strictUnresolvedVariables();
 
-    final String baseUrl =
-        resolveStringValue(
-            endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
-    final String resolvedPath =
-        resolveStringValue(endpoint.path(), endpoint.pathTemplate(), context, strictUnresolved);
+    final String baseUrl = resolveStringValue(endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
+    final String resolvedPath = resolveStringValue(endpoint.path(), endpoint.pathTemplate(), context, strictUnresolved);
 
     String resolvedUrl = joinUrl(baseUrl, resolvedPath);
     if (paginationDirective.overrideUrl() != null && !paginationDirective.overrideUrl().isBlank()) {
       resolvedUrl = paginationDirective.overrideUrl();
     }
 
-    final Map<String, String> headers =
-        resolveMap(definition.headers(), context, strictUnresolved, endpoint.omitNullHeaders());
-    final Map<String, String> query =
-        resolveMap(definition.query(), context, strictUnresolved, endpoint.omitNullQuery());
+    final Map<String, String> headers = resolveMap(definition.headers(), context, strictUnresolved, endpoint.omitNullHeaders());
+    final Map<String, String> query = resolveMap(definition.query(), context, strictUnresolved, endpoint.omitNullQuery());
     query.putAll(paginationDirective.queryOverrides());
 
     final String body = resolveBody(definition, context);
     final String contentType = resolveContentType(definition);
 
-    authRegistry.apply(
-        new AuthRequestContext(
-            definition.auth(), context, templateResolver, strictUnresolved, headers, query));
+    authRegistry.apply(new AuthRequestContext(definition.auth(), context, templateResolver, strictUnresolved, headers, query));
 
-    return new HttpRequestData(
-        endpoint.methodEnum(),
-        resolvedUrl,
-        headers,
-        query,
-        body,
-        contentType,
-        endpoint.connectTimeoutMs(),
-        endpoint.readTimeoutMs(),
-        endpoint.writeTimeoutMs());
+    return new HttpRequestData(endpoint.methodEnum(), resolvedUrl, headers, query, body, contentType, endpoint.connectTimeoutMs(),
+        endpoint.readTimeoutMs(), endpoint.writeTimeoutMs());
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, String> resolveMap(
-      final Map<String, Object> mapTemplate,
-      final RequestContext context,
-      final boolean strictUnresolved,
-      final boolean omitNulls) {
-    final ResolvedValue resolvedValue =
-        templateResolver.resolve(
-            mapTemplate, context, new TemplateResolutionOptions(strictUnresolved, omitNulls));
+  private Map<String, String> resolveMap(final Map<String, Object> mapTemplate, final RequestContext context,
+      final boolean strictUnresolved, final boolean omitNulls) {
+    final ResolvedValue resolvedValue = templateResolver.resolve(mapTemplate, context,
+        new TemplateResolutionOptions(strictUnresolved, omitNulls));
 
     if (resolvedValue.status() == ResolvedValueStatus.NULL_VALUE || resolvedValue.value() == null) {
       return new LinkedHashMap<>();
@@ -98,13 +76,12 @@ public final class RequestMaterializer {
     }
 
     final Map<String, String> output = new LinkedHashMap<>();
-    resolvedMap.forEach(
-        (key, value) -> {
-          if (value == null && omitNulls) {
-            return;
-          }
-          output.put(String.valueOf(key), value == null ? null : String.valueOf(value));
-        });
+    resolvedMap.forEach((key, value) -> {
+      if (value == null && omitNulls) {
+        return;
+      }
+      output.put(String.valueOf(key), value == null ? null : String.valueOf(value));
+    });
     return output;
   }
 
@@ -113,12 +90,8 @@ public final class RequestMaterializer {
       return null;
     }
 
-    final ResolvedValue resolvedBody =
-        templateResolver.resolve(
-            definition.body().template(),
-            context,
-            new TemplateResolutionOptions(
-                definition.strictUnresolvedVariables(), definition.body().omitNulls()));
+    final ResolvedValue resolvedBody = templateResolver.resolve(definition.body().template(), context,
+        new TemplateResolutionOptions(definition.strictUnresolvedVariables(), definition.body().omitNulls()));
 
     if (resolvedBody.status() == ResolvedValueStatus.NULL_VALUE) {
       return null;
@@ -131,8 +104,7 @@ public final class RequestMaterializer {
       case JSON -> writeJson(value);
       case FORM_URLENCODED -> toFormEncoded(value);
       case TEXT -> value == null ? null : String.valueOf(value);
-      case UNKNOWN ->
-          throw new ConnectorExecutionException("Body type is required when body is present");
+      case UNKNOWN -> throw new ConnectorExecutionException("Body type is required when body is present");
     };
   }
 
@@ -167,13 +139,8 @@ public final class RequestMaterializer {
         builder.append('&');
       }
       first = false;
-      builder
-          .append(URLEncoder.encode(String.valueOf(entry.getKey()), StandardCharsets.UTF_8))
-          .append('=')
-          .append(
-              URLEncoder.encode(
-                  entry.getValue() == null ? "" : String.valueOf(entry.getValue()),
-                  StandardCharsets.UTF_8));
+      builder.append(URLEncoder.encode(String.valueOf(entry.getKey()), StandardCharsets.UTF_8)).append('=')
+          .append(URLEncoder.encode(entry.getValue() == null ? "" : String.valueOf(entry.getValue()), StandardCharsets.UTF_8));
     }
     return builder.toString();
   }
@@ -182,15 +149,11 @@ public final class RequestMaterializer {
     return JsonUtils.toJson(value);
   }
 
-  private String resolveStringValue(
-      final String staticValue,
-      final String templateValue,
-      final RequestContext context,
+  private String resolveStringValue(final String staticValue, final String templateValue, final RequestContext context,
       final boolean strictUnresolved) {
     if (templateValue != null && !templateValue.isBlank()) {
-      final ResolvedValue resolvedValue =
-          templateResolver.resolve(
-              templateValue, context, new TemplateResolutionOptions(strictUnresolved, false));
+      final ResolvedValue resolvedValue = templateResolver.resolve(templateValue, context,
+          new TemplateResolutionOptions(strictUnresolved, false));
       return resolvedValue.value() == null ? null : String.valueOf(resolvedValue.value());
     }
     return staticValue;

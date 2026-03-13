@@ -12,20 +12,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public record Violation(
-    String code,
-    Map<String, Object> details,
-    List<Violation> subViolations,
-    String message,
-    String correctionMessage)
-    implements Serializable {
+public record Violation(String code, Map<String, Object> details, List<Violation> subViolations, String message,
+    String correctionMessage) implements Serializable {
 
   @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
-  public Violation(
-      @JsonProperty("code") final String code,
-      @JsonProperty("details") final Map<String, Object> details,
-      @JsonProperty("subViolations") final List<Violation> subViolations,
-      @JsonProperty("message") final String message,
+  public Violation(@JsonProperty("code") final String code, @JsonProperty("details") final Map<String, Object> details,
+      @JsonProperty("subViolations") final List<Violation> subViolations, @JsonProperty("message") final String message,
       @JsonProperty("correctionMessage") final String correctionMessage) {
     this.code = code;
     this.message = message;

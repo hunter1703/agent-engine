@@ -14,9 +14,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "RELEVANCE")
 public class OutputRelevanceGuardrailRule extends GuardrailRule {
   private static final String DEFAULT_MODE = RelevanceMode.STEER_THEN_BLOCK.name();
-  private static final String DEFAULT_ANCHOR_STRATEGY =
-      RelevanceAnchorStrategy.LATEST_USER_AND_PLAN.name();
-
+  private static final String DEFAULT_ANCHOR_STRATEGY = RelevanceAnchorStrategy.LATEST_USER_AND_PLAN.name();
 
   @UiField(label = "Evaluator Model ID", order = 10)
   @UiLookup(assetType = "model")
@@ -28,11 +26,7 @@ public class OutputRelevanceGuardrailRule extends GuardrailRule {
 
   @UiField(label = "Max Steering Retries", order = 30)
   @UiNumber
-  @UiRule(
-      effect = UiRuleEffect.VISIBLE,
-      field = "mode",
-      operator = UiConditionOperator.NOT_IN,
-      values = {"STEER_ONLY"})
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "mode", operator = UiConditionOperator.NOT_IN, values = {"STEER_ONLY"})
   private int maxSteeringRetries = 3;
 
   @UiField(label = "Relevance Threshold", order = 40)
@@ -45,10 +39,7 @@ public class OutputRelevanceGuardrailRule extends GuardrailRule {
 
   @UiField(label = "Recency", order = 60)
   @UiNumber
-  @UiRule(
-      effect = UiRuleEffect.VISIBLE,
-      field = "anchorStrategy",
-      values = {"RECENT_USER"})
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "anchorStrategy", values = {"RECENT_USER"})
   private int recency = 5;
 
   public OutputRelevanceGuardrailRule() {
@@ -97,10 +88,7 @@ public class OutputRelevanceGuardrailRule extends GuardrailRule {
   }
 
   public void setAnchorStrategy(final String anchorStrategy) {
-    this.anchorStrategy =
-        anchorStrategy == null || anchorStrategy.isBlank()
-            ? DEFAULT_ANCHOR_STRATEGY
-            : anchorStrategy;
+    this.anchorStrategy = anchorStrategy == null || anchorStrategy.isBlank() ? DEFAULT_ANCHOR_STRATEGY : anchorStrategy;
   }
 
   public RelevanceAnchorStrategy anchorStrategyEnum() {

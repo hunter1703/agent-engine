@@ -10,8 +10,9 @@ import java.lang.annotation.Target;
 /**
  * Declares a conditional builder rule for a field.
  *
- * <p>Rules allow the builder definition to express conditions such as showing or requiring a field
- * only when another field has a matching value.
+ * <p>
+ * Rules allow the builder definition to express conditions such as showing or
+ * requiring a field only when another field has a matching value.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

@@ -5,7 +5,8 @@ public class Sort {
   private String field;
   private Order order;
 
-  public Sort() {}
+  public Sort() {
+  }
 
   public Sort(String field, Order order) {
     this.field = field;
@@ -39,9 +40,7 @@ public class Sort {
   }
 
   public enum Order {
-    ASC,
-    DESC,
-    UNKNOWN;
+    ASC, DESC, UNKNOWN;
 
     public static Order valueOfOrDefault(String value) {
       if (value == null) {

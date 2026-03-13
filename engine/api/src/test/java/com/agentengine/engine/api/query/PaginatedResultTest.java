@@ -19,8 +19,7 @@ class PaginatedResultTest {
 
     assertThat(result.isHasMore()).isTrue();
     assertThat(result.getNextCursor()).isNotBlank();
-    final String decodedCursor =
-        new String(Base64.getDecoder().decode(result.getNextCursor()), StandardCharsets.UTF_8);
+    final String decodedCursor = new String(Base64.getDecoder().decode(result.getNextCursor()), StandardCharsets.UTF_8);
     assertThat(decodedCursor).contains("\"offset\":2");
     assertThat(decodedCursor).contains("\"limit\":2");
   }
@@ -37,8 +36,7 @@ class PaginatedResultTest {
 
   @Test
   void shouldTransformItemsWhenTransformCalled() {
-    final PaginatedResult<String> source =
-        PaginatedResult.create(List.of("1", "2"), new Page(0, 2), 2L);
+    final PaginatedResult<String> source = PaginatedResult.create(List.of("1", "2"), new Page(0, 2), 2L);
 
     final PaginatedResult<Integer> transformed = source.transform(Integer::parseInt);
 

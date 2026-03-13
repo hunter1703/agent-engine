@@ -1,6 +1,6 @@
 package com.agentengine.engine.agents.processors;
 
-import com.agentengine.engine.api.utils.ContentUtils;
+import com.agentengine.engine.utils.ContentUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.GeminiUtil;
 import com.google.adk.models.LlmRequest;
@@ -15,16 +15,18 @@ import java.util.regex.Pattern;
 /**
  * Normalizes model content and tool-call payloads for the engine.
  *
- * <p>Responsibilities: - Parse text/thought tags into structured parts. - Split mixed parts (text +
- * tool payloads) into separate parts. - Drop tool call/response parts from partial responses. -
- * Emit violations when partial responses include tool payloads. - Convert tool call/response parts
- * into text when required for model input.
+ * <p>
+ * Responsibilities: - Parse text/thought tags into structured parts. - Split
+ * mixed parts (text + tool payloads) into separate parts. - Drop tool
+ * call/response parts from partial responses. - Emit violations when partial
+ * responses include tool payloads. - Convert tool call/response parts into text
+ * when required for model input.
  *
- * <p>Ownership: content normalization, parsing, and protocol hygiene.
+ * <p>
+ * Ownership: content normalization, parsing, and protocol hygiene.
  */
 public final class Parser {
-  private static final Pattern THOUGHT_TAG_PATTERN =
-      Pattern.compile("<thought>(.*?)</thought>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+  private static final Pattern THOUGHT_TAG_PATTERN = Pattern.compile("<thought>(.*?)</thought>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   private final String protocol;
   private final boolean areToolsEnabled;
@@ -35,18 +37,15 @@ public final class Parser {
   }
 
   public LlmRequest preProcess(final LlmRequest request) {
-    final LlmRequest.Builder builder =
-        request
-            .toBuilder()
-            .contents(sanitizeRequestContents(GeminiUtil.stripThoughts(request.contents()), areToolsEnabled));
+    final LlmRequest.Builder builder = request.toBuilder()
+        .contents(sanitizeRequestContents(GeminiUtil.stripThoughts(request.contents()), areToolsEnabled));
     if (StringUtils.isNotBlank(protocol)) {
       builder.appendInstructions(List.of(protocol));
     }
     return builder.build();
   }
 
-  private static List<Content> sanitizeRequestContents(
-      final List<Content> contents, final boolean areToolsEnabled) {
+  private static List<Content> sanitizeRequestContents(final List<Content> contents, final boolean areToolsEnabled) {
     if (contents == null) {
       return List.of();
     }
@@ -55,11 +54,9 @@ public final class Parser {
       if (content == null) {
         continue;
       }
-      final List<Part> parts =
-          content.parts().orElse(List.of()).stream()
-              .filter(part -> areToolsEnabled || (part.functionCall().isEmpty() && part.functionResponse().isEmpty()))
-              .filter(part -> !ContentUtils.isEmptyPart(part))
-              .toList();
+      final List<Part> parts = content.parts().orElse(List.of()).stream()
+          .filter(part -> areToolsEnabled || (part.functionCall().isEmpty() && part.functionResponse().isEmpty()))
+          .filter(part -> !ContentUtils.isEmptyPart(part)).toList();
       if (parts.isEmpty()) {
         continue;
       }
@@ -77,11 +74,8 @@ public final class Parser {
 
   private Content parseTextContent(final Content content) {
     String processedText = content.text();
-    final List<Part> thoughtParts =
-        new ArrayList<>(
-            content.parts().orElse(List.of()).stream()
-                .filter(part -> part.thought().orElse(false))
-                .toList());
+    final List<Part> thoughtParts = new ArrayList<>(
+        content.parts().orElse(List.of()).stream().filter(part -> part.thought().orElse(false)).toList());
     final List<Part> toolCallParts = ContentUtils.getToolCallParts(content);
 
     if (StringUtils.isNotBlank(processedText)) {

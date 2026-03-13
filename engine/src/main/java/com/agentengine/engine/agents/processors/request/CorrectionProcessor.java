@@ -1,10 +1,10 @@
 package com.agentengine.engine.agents.processors.request;
 
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.engine.api.utils.CorrectionUtils;
+import com.agentengine.engine.utils.CorrectionUtils;
 import com.agentengine.engine.utils.RunState;
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -20,23 +20,25 @@ import org.slf4j.LoggerFactory;
 /**
  * Injects corrective prompts for RunState violations into the next request.
  *
- * <p>Responsibilities: - Convert {@link com.agentengine.engine.utils.Violation} instances into
- * correction events. - Append correction content to the request payload. - Clear violations after
- * they are emitted.
+ * <p>
+ * Responsibilities: - Convert {@link com.agentengine.engine.utils.Violation}
+ * instances into correction events. - Append correction content to the request
+ * payload. - Clear violations after they are emitted.
  *
- * <p>Ownership: RunState violation remediation and correction prompt emission.
+ * <p>
+ * Ownership: RunState violation remediation and correction prompt emission.
  */
 public final class CorrectionProcessor implements RequestProcessor {
   public static final CorrectionProcessor INSTANCE = new CorrectionProcessor();
 
   private static final Logger LOG = LoggerFactory.getLogger(CorrectionProcessor.class);
 
-  private CorrectionProcessor() {}
+  private CorrectionProcessor() {
+  }
 
   @Override
-  public Single<RequestProcessingResult> processRequest(
-      final InvocationContext context, final LlmRequest request) {
-    final RunState runState = RunStateUtils.getState(context);
+  public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
+    final RunState runState = RunUtils.getState(context);
     final List<Violation> violations = runState.violations();
 
     if (CollectionUtils.isEmpty(violations)) {
@@ -49,17 +51,12 @@ public final class CorrectionProcessor implements RequestProcessor {
     final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
 
     for (final Violation violation : violations) {
-      LOG.debug(
-              "Violation: code={} message={} correction={}",
-              violation.code(),
-              violation.message(),
-              violation.correctionMessage());
+      LOG.debug("Violation: code={} message={} correction={}", violation.code(), violation.message(), violation.correctionMessage());
       final String correctionMessage = violation.correctionMessage();
       if (StringUtils.isBlank(correctionMessage)) {
         continue;
       }
-      final Event correctiveEvent =
-          CorrectionUtils.buildCorrectiveEvent(context, violation.code(), correctionMessage);
+      final Event correctiveEvent = CorrectionUtils.buildCorrectiveEvent(context, violation.code(), correctionMessage);
       correctiveEvent.content().ifPresent(contents::add);
       correctiveEvents.add(correctiveEvent);
     }

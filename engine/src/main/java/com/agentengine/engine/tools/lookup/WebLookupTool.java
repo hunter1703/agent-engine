@@ -2,12 +2,12 @@ package com.agentengine.engine.tools.lookup;
 
 import com.agentengine.connectors.core.ConnectorService;
 import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.agentengine.engine.api.tools.annotations.DiscoverableTool;
-import com.agentengine.engine.api.tools.annotations.ToolConstructor;
-import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.plugin.annotations.DiscoverableTool;
+import com.agentengine.engine.plugin.annotations.ToolConstructor;
+import com.agentengine.engine.plugin.annotations.ToolSchema;
+import com.agentengine.engine.plugin.tools.Tool;
 import io.quarkus.arc.Arc;
 import java.util.Map;
 
@@ -17,9 +17,8 @@ public final class WebLookupTool extends Tool {
   private static final String CONNECTOR_ID = "duckduckgo_instant_search";
   private static final String DEFAULT_ERROR = "Unknown error";
   private static final String EMPTY_RESULT = "No abstract available for this query.";
-  public static final ToolDescriptor DESCRIPTOR =
-      new ToolDescriptor(
-          TOOL_NAME, "Look up information on the web using DuckDuckGo.", Map.of(), ToolRiskLevel.LOW);
+  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, "Look up information on the web using DuckDuckGo.",
+      Map.of(), ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 
@@ -29,25 +28,19 @@ public final class WebLookupTool extends Tool {
 
   @ToolConstructor
   public WebLookupTool(
-      @ToolSchema(
-              name = "connectorService",
-              description = "Connector service for web lookup runtime",
-              optional = true)
-          final ConnectorService connectorService) {
+      @ToolSchema(name = "connectorService", description = "Connector service for web lookup runtime", optional = true) final ConnectorService connectorService) {
     super(DESCRIPTOR);
     this.connectorService = connectorService == null ? resolveConnectorService() : connectorService;
   }
 
   public Map<String, Object> execute(
-      @ToolSchema(name = "query", description = "The search query to look up on the web.")
-          final String query) {
+      @ToolSchema(name = "query", description = "The search query to look up on the web.") final String query) {
 
     if (query == null || query.isBlank()) {
       throw new IllegalArgumentException("Query cannot be empty");
     }
 
-    final ConnectorExecutionResult result =
-        connectorService.execute(CONNECTOR_ID, Map.of("query", query));
+    final ConnectorExecutionResult result = connectorService.execute(CONNECTOR_ID, Map.of("query", query));
 
     if (!result.success()) {
       return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());

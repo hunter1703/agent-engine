@@ -9,9 +9,11 @@ import java.lang.annotation.Target;
 /**
  * Declares a complex conditional builder rule using a JSONLogic expression.
  *
- * <p>Use this annotation when the condition cannot be expressed with {@link UiRule}. The {@code
- * value} must be a valid JSONLogic JSON string that is parsed into a rule expression at
- * definition-generation time.
+ * <p>
+ * Use this annotation when the condition cannot be expressed with
+ * {@link UiRule}. The {@code
+ * value} must be a valid JSONLogic JSON string that is parsed into a rule
+ * expression at definition-generation time.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

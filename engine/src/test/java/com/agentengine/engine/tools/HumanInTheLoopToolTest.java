@@ -24,13 +24,8 @@ class HumanInTheLoopToolTest {
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
 
-    final Map<String, Object> result =
-        tool.execute(
-            toolContext,
-            "Need more detail",
-            "TEXT",
-            List.of("A", " B ", "A", " "),
-            Map.of("source", "guardrail"));
+    final Map<String, Object> result = tool.execute(toolContext, "Need more detail", "TEXT", List.of("A", " B ", "A", " "),
+        Map.of("source", "guardrail"));
 
     assertThat(result).isEmpty();
     final ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
@@ -38,11 +33,7 @@ class HumanInTheLoopToolTest {
     verify(toolContext).requestConfirmation(promptCaptor.capture(), payloadCaptor.capture());
     assertThat(promptCaptor.getValue()).isEqualTo("Need more detail");
     assertThat(payloadCaptor.getValue())
-        .isEqualTo(
-            Map.of(
-                "kind", "TEXT",
-                "options", List.of("A", "B"),
-                "context", Map.of("source", "guardrail")));
+        .isEqualTo(Map.of("kind", "TEXT", "options", List.of("A", "B"), "context", Map.of("source", "guardrail")));
   }
 
   @Test
@@ -50,15 +41,9 @@ class HumanInTheLoopToolTest {
     final HumanInTheLoopTool tool = new HumanInTheLoopTool();
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.toolConfirmation())
-        .thenReturn(
-            Optional.of(
-                ToolConfirmation.builder()
-                    .confirmed(true)
-                    .payload(Map.of("answer", "Paris"))
-                    .build()));
+        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(true).payload(Map.of("answer", "Paris")).build()));
 
-    final Map<String, Object> result =
-        tool.execute(toolContext, "Need more detail", "TEXT", List.of(), Map.of());
+    final Map<String, Object> result = tool.execute(toolContext, "Need more detail", "TEXT", List.of(), Map.of());
 
     assertThat(result).containsEntry("status", "answered").containsEntry("answer", "Paris");
     verify(toolContext, never()).requestConfirmation(anyString(), any());
@@ -68,11 +53,9 @@ class HumanInTheLoopToolTest {
   void shouldReturnCancelledWhenTextReplayIsRejected() {
     final HumanInTheLoopTool tool = new HumanInTheLoopTool();
     final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.toolConfirmation())
-        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
+    when(toolContext.toolConfirmation()).thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
 
-    final Map<String, Object> result =
-        tool.execute(toolContext, "Need more detail", "TEXT", List.of(), Map.of());
+    final Map<String, Object> result = tool.execute(toolContext, "Need more detail", "TEXT", List.of(), Map.of());
 
     assertThat(result).containsEntry("status", "cancelled");
     verify(toolContext, never()).requestConfirmation(anyString(), any());
@@ -82,11 +65,9 @@ class HumanInTheLoopToolTest {
   void shouldReturnAllowDecisionOnConfirmedReplay() {
     final HumanInTheLoopTool tool = new HumanInTheLoopTool();
     final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.toolConfirmation())
-        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(true).build()));
+    when(toolContext.toolConfirmation()).thenReturn(Optional.of(ToolConfirmation.builder().confirmed(true).build()));
 
-    final Map<String, Object> result =
-        tool.execute(toolContext, "Allow this?", "DECISION", List.of("x"), Map.of());
+    final Map<String, Object> result = tool.execute(toolContext, "Allow this?", "DECISION", List.of("x"), Map.of());
 
     assertThat(result).containsEntry("decision", "ALLOW");
     verify(toolContext, never()).requestConfirmation(anyString(), any());
@@ -96,11 +77,9 @@ class HumanInTheLoopToolTest {
   void shouldReturnDisallowDecisionOnRejectedReplay() {
     final HumanInTheLoopTool tool = new HumanInTheLoopTool();
     final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.toolConfirmation())
-        .thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
+    when(toolContext.toolConfirmation()).thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
 
-    final Map<String, Object> result =
-        tool.execute(toolContext, "Allow this?", "DECISION", List.of(), Map.of());
+    final Map<String, Object> result = tool.execute(toolContext, "Allow this?", "DECISION", List.of(), Map.of());
 
     assertThat(result).containsEntry("decision", "DISALLOW");
     verify(toolContext, never()).requestConfirmation(anyString(), any());

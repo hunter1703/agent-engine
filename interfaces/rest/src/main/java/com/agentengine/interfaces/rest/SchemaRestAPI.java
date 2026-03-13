@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest;
 
+import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
-import com.agentengine.interfaces.rest.requests.SchemaLookupRequest;
 import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.util.common.builder.BuilderMode;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -28,31 +28,24 @@ public class SchemaRestAPI {
   private final Map<String, SchemaRequestHandler> handlers;
 
   @Inject
-  public SchemaRestAPI(
-      final BuilderDefinitionService definitionService,
-      final Instance<SchemaRequestHandler> handlers) {
+  public SchemaRestAPI(final BuilderDefinitionService definitionService, final Instance<SchemaRequestHandler> handlers) {
     this.definitionService = definitionService;
-    this.handlers =
-        handlers.stream()
-            .collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
+    this.handlers = handlers.stream().collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
   }
 
   @GET
   @Path("/{assetType}")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getSchema(
-      @PathParam("assetType") final String assetType, @QueryParam("mode") final String mode) {
+  public Response getSchema(@PathParam("assetType") final String assetType, @QueryParam("mode") final String mode) {
     final BuilderMode requestedMode = BuilderMode.fromString(mode);
     if (mode != null && requestedMode == null) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Unsupported mode '" + mode + "'. Expected one of: create, edit, view")
+      return Response.status(Response.Status.BAD_REQUEST).entity("Unsupported mode '" + mode + "'. Expected one of: create, edit, view")
           .build();
     }
     try {
       return Response.ok(definitionService.getDefinition(assetType).resolve(requestedMode)).build();
     } catch (IllegalArgumentException e) {
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity("Schema for assetType '" + assetType + "' not found: " + e.getMessage())
+      return Response.status(Response.Status.NOT_FOUND).entity("Schema for assetType '" + assetType + "' not found: " + e.getMessage())
           .build();
     }
   }
@@ -68,8 +61,6 @@ public class SchemaRestAPI {
       return Response.ok(handler.handle(request)).build();
     }
 
-    return Response.status(Response.Status.BAD_REQUEST)
-        .entity("Unsupported assetType for POST: " + assetType)
-        .build();
+    return Response.status(Response.Status.BAD_REQUEST).entity("Unsupported assetType for POST: " + assetType).build();
   }
 }

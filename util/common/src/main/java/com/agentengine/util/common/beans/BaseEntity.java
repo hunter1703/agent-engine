@@ -6,7 +6,8 @@ public abstract class BaseEntity {
   private Long createdTime;
   private Long updatedTime;
 
-  public BaseEntity() {}
+  public BaseEntity() {
+  }
 
   public BaseEntity(String id) {
     this.id = id;

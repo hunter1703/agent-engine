@@ -1,7 +1,7 @@
 package com.agentengine.engine.factories.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.factories.ModelFactory;
+import com.agentengine.engine.plugin.factories.ModelFactory;
 import com.agentengine.engine.repository.ModelRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCountedCache;
@@ -27,23 +27,13 @@ public class ModelProvider {
   private final RefCountedCache<String, BaseLlm> cache;
 
   @Inject
-  public ModelProvider(
-      final Instance<ModelFactory<?>> allFactories,
-      final OpenAIModelFactory openAIModelFactory,
+  public ModelProvider(final Instance<ModelFactory<?>> allFactories, final OpenAIModelFactory openAIModelFactory,
       final ModelRepository modelRepository) {
-    this.typeVsFactory =
-        CollectionUtils.transformToMap(
-            allFactories.stream().toList(), ModelFactory::type, Function.identity());
+    this.typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), ModelFactory::type, Function.identity());
     this.defaultFactory = openAIModelFactory;
     this.modelRepository = modelRepository;
-    this.cache =
-        RefCountedCache.<String, BaseLlm>builder()
-            .name("model-provider")
-            .idleTimeout(15, TimeUnit.MINUTES)
-            .cleanupInterval(60, TimeUnit.SECONDS)
-            .creator(this::buildModel)
-            .onEvict((_modelId, model) -> tryClose(model))
-            .build();
+    this.cache = RefCountedCache.<String, BaseLlm>builder().name("model-provider").idleTimeout(15, TimeUnit.MINUTES)
+        .cleanupInterval(60, TimeUnit.SECONDS).creator(this::buildModel).onEvict((_modelId, model) -> tryClose(model)).build();
   }
 
   public BaseLlm acquire(final String modelId) {
@@ -61,10 +51,8 @@ public class ModelProvider {
   }
 
   private BaseLlm buildModel(final String modelId) {
-    final ModelConfig modelConfig =
-        Objects.requireNonNull(modelRepository.findById(modelId).orElse(null));
-    final ModelFactory<? extends BaseLlm> factory =
-        typeVsFactory.getOrDefault(modelConfig.getType(), defaultFactory);
+    final ModelConfig modelConfig = Objects.requireNonNull(modelRepository.findById(modelId).orElse(null));
+    final ModelFactory<? extends BaseLlm> factory = typeVsFactory.getOrDefault(modelConfig.getType(), defaultFactory);
     return factory.build(modelConfig);
   }
 

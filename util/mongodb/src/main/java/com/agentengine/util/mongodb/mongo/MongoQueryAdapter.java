@@ -16,21 +16,20 @@ import org.bson.conversions.Bson;
 
 public final class MongoQueryAdapter {
 
-  private MongoQueryAdapter() {}
+  private MongoQueryAdapter() {
+  }
 
   public static Bson toBson(Filter filter) {
     if (filter == null) {
       return new Document();
     }
     if (filter.getOp().isCompound()) {
-      final List<Bson> subFilters =
-          filter.getValues().stream().map(value -> toBson((Filter) value)).toList();
+      final List<Bson> subFilters = filter.getValues().stream().map(value -> toBson((Filter) value)).toList();
       return switch (filter.getOp()) {
         case AND -> Filters.and(subFilters.toArray(new Bson[0]));
         case OR -> Filters.or(subFilters.toArray(new Bson[0]));
         case NOT -> Filters.not(Objects.requireNonNull(CollectionUtils.getFirst(subFilters)));
-        default ->
-            throw new IllegalArgumentException("Unsupported compound operator: " + filter.getOp());
+        default -> throw new IllegalArgumentException("Unsupported compound operator: " + filter.getOp());
       };
     } else {
       return toSimpleFilterBson(filter);
@@ -81,9 +80,7 @@ public final class MongoQueryAdapter {
     final List<String> includes = CollectionUtils.nullSafeList(query.getIncludeFields());
     final List<String> excludes = CollectionUtils.nullSafeList(query.getExcludeFields());
     if (!includes.isEmpty() && !excludes.isEmpty()) {
-      return Projections.fields(
-          Projections.include(includes.toArray(new String[0])),
-          Projections.exclude(excludes.toArray(new String[0])));
+      return Projections.fields(Projections.include(includes.toArray(new String[0])), Projections.exclude(excludes.toArray(new String[0])));
     }
     if (!includes.isEmpty()) {
       return Projections.include(includes.toArray(new String[0]));

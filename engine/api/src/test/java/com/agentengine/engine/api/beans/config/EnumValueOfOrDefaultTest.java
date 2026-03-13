@@ -8,14 +8,12 @@ class EnumValueOfOrDefaultTest {
 
   @Test
   void shouldReturnUnknownAgentTypeWhenValueInvalid() {
-    assertThat(BaseAgentConfig.AgentType.valueOfOrDefault("invalid"))
-        .isEqualTo(BaseAgentConfig.AgentType.UNKNOWN);
+    assertThat(BaseAgentConfig.AgentType.valueOfOrDefault("invalid")).isEqualTo(BaseAgentConfig.AgentType.UNKNOWN);
   }
 
   @Test
   void shouldParseAgentTypeWhenValueHasDifferentCase() {
-    assertThat(BaseAgentConfig.AgentType.valueOfOrDefault("orchestrator"))
-        .isEqualTo(BaseAgentConfig.AgentType.ORCHESTRATOR);
+    assertThat(BaseAgentConfig.AgentType.valueOfOrDefault("orchestrator")).isEqualTo(BaseAgentConfig.AgentType.ORCHESTRATOR);
   }
 
   @Test
@@ -30,19 +28,16 @@ class EnumValueOfOrDefaultTest {
 
   @Test
   void shouldReturnUnknownOrchestrationModeWhenValueInvalid() {
-    assertThat(OrchestrationMode.valueOfOrDefault("not_a_mode"))
-        .isEqualTo(OrchestrationMode.UNKNOWN);
+    assertThat(OrchestrationMode.valueOfOrDefault("not_a_mode")).isEqualTo(OrchestrationMode.UNKNOWN);
   }
 
   @Test
   void shouldParseManagerOrchestrationModeWhenValueValid() {
-    assertThat(OrchestrationMode.valueOfOrDefault("manager"))
-        .isEqualTo(OrchestrationMode.MANAGER);
+    assertThat(OrchestrationMode.valueOfOrDefault("manager")).isEqualTo(OrchestrationMode.MANAGER);
   }
 
   @Test
   void shouldParseParallelStoppingPolicyWhenValueValid() {
-    assertThat(ParallelStoppingPolicy.valueOfOrDefault("quorum"))
-        .isEqualTo(ParallelStoppingPolicy.QUORUM);
+    assertThat(ParallelStoppingPolicy.valueOfOrDefault("quorum")).isEqualTo(ParallelStoppingPolicy.QUORUM);
   }
 }

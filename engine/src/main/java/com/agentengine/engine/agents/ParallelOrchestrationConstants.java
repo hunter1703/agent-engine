@@ -1,12 +1,14 @@
 package com.agentengine.engine.agents;
 
 public final class ParallelOrchestrationConstants {
-  private ParallelOrchestrationConstants() {}
+  private ParallelOrchestrationConstants() {
+  }
 
   public static final class ViolationCode {
     public static final String POLICY_FALLBACK = "parallel_policy_fallback";
 
-    private ViolationCode() {}
+    private ViolationCode() {
+    }
   }
 
   public static final class DetailKey {
@@ -16,15 +18,15 @@ public final class ParallelOrchestrationConstants {
     public static final String SUCCESS_COUNT = "successCount";
     public static final String COMPLETED_COUNT = "completedCount";
 
-    private DetailKey() {}
+    private DetailKey() {
+    }
   }
 
   public static final class Message {
-    public static final String EMPTY_RESULT =
-        "Parallel orchestration completed without a successful textual result.";
-    public static final String FALLBACK =
-        "Parallel stopping target was not met; applied deterministic best-effort fallback.";
+    public static final String EMPTY_RESULT = "Parallel orchestration completed without a successful textual result.";
+    public static final String FALLBACK = "Parallel stopping target was not met; applied deterministic best-effort fallback.";
 
-    private Message() {}
+    private Message() {
+    }
   }
 }

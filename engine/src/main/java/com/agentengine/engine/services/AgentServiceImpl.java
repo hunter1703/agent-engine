@@ -2,8 +2,8 @@ package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.repository.AgentRepository;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.builder.BuilderDefinition;
 import com.agentengine.util.common.builder.BuilderDefinitionUtils;
@@ -22,10 +22,14 @@ import java.util.Optional;
 @Unremovable
 public class AgentServiceImpl implements AgentService {
 
-  private static final BuilderDefinition AGENT_DEFINITION =
-      BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+  private static final BuilderDefinition AGENT_DEFINITION = BuilderDefinitionUtils.generate(BaseAgentConfig.class);
 
-  @Inject AgentRepository agentRepository;
+  private final AgentRepository agentRepository;
+
+  @Inject
+  public AgentServiceImpl(final AgentRepository agentRepository) {
+    this.agentRepository = agentRepository;
+  }
 
   @Override
   @WithSpan
@@ -56,10 +60,7 @@ public class AgentServiceImpl implements AgentService {
   @Override
   @WithSpan
   public BaseAgentConfig saveAgent(final BaseAgentConfig agent) {
-    final BuilderMode mode =
-        StringUtils.isBlank(agent == null ? null : agent.getId())
-            ? BuilderMode.CREATE
-            : BuilderMode.EDIT;
+    final BuilderMode mode = StringUtils.isBlank(agent == null ? null : agent.getId()) ? BuilderMode.CREATE : BuilderMode.EDIT;
     return agentRepository.save(sanitize(agent, mode));
   }
 

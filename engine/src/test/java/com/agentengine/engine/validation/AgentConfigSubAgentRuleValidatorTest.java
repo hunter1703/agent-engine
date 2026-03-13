@@ -10,6 +10,7 @@ import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.engine.utils.AgentValidator;
 import com.agentengine.util.common.validation.ValidationCollector;
 import jakarta.enterprise.inject.Instance;
 import java.util.List;
@@ -30,8 +31,7 @@ class AgentConfigSubAgentRuleValidatorTest {
     validator.validate(config, collector);
 
     assertThat(collector.hasErrors()).isTrue();
-    assertThat(collector.errors())
-        .anyMatch(error -> error.contains("supported only for type=orchestrator"));
+    assertThat(collector.errors()).anyMatch(error -> error.contains("supported only for type=orchestrator"));
   }
 
   @Test
@@ -81,8 +81,7 @@ class AgentConfigSubAgentRuleValidatorTest {
     config.setSubAgentIds(List.of("sub-1", "sub-2"));
     final ValidationCollector collector = new ValidationCollector();
 
-    AgentValidator.validateOrchestratorSubAgentsExist(
-        config, subAgentId -> !"sub-2".equals(subAgentId), collector);
+    AgentValidator.validateOrchestratorSubAgentsExist(config, subAgentId -> !"sub-2".equals(subAgentId), collector);
 
     assertThat(collector.hasErrors()).isTrue();
     assertThat(collector.errors().getFirst()).contains("Sub-agent(s) not found: sub-2");

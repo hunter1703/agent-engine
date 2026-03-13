@@ -50,12 +50,8 @@ class TypedUtilsTest {
 
   @Test
   void shouldConvertDocumentToRunStateWithViolations() {
-    final Document violation =
-        new Document("code", "TEST_VIOLATION")
-            .append("message", "violation message")
-            .append("correctionMessage", "fix it")
-            .append("details", Map.of("k", "v"))
-            .append("subViolations", List.of());
+    final Document violation = new Document("code", "TEST_VIOLATION").append("message", "violation message")
+        .append("correctionMessage", "fix it").append("details", Map.of("k", "v")).append("subViolations", List.of());
     final Document raw = new Document("offTopicRetries", 0).append("violations", List.of(violation));
 
     final RunState resolved = Utils.toType(raw, RunState.class);
@@ -74,17 +70,10 @@ class TypedUtilsTest {
     when(agent.name()).thenReturn("agent-1");
     when(context.agent()).thenReturn(agent);
     when(context.agentStates()).thenReturn(agentStates);
-    when(context.session())
-        .thenReturn(
-            Session.builder("session-1")
-                .appName("agent-1")
-                .userId("default")
-                .state(new ConcurrentHashMap<>())
-                .events(new ArrayList<>())
-                .lastUpdateTime(Instant.now())
-                .build());
+    when(context.session()).thenReturn(Session.builder("session-1").appName("agent-1").userId("default").state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>()).lastUpdateTime(Instant.now()).build());
 
-    final RunState resolved = RunStateUtils.getState(context);
+    final RunState resolved = RunUtils.getState(context);
 
     assertThat(resolved.incrementOffTopicRetries()).isEqualTo(1);
     assertThat(agentStates.get("agent-1")).isInstanceOf(RunState.class);

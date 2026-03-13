@@ -9,8 +9,10 @@ import java.lang.annotation.Target;
 /**
  * Renders the field as an async catalog lookup selector.
  *
- * <p>On collection fields ({@code List}, {@code Set}, arrays) the selection mode is automatically
- * set to {@code "multiple"}; on scalar fields it is {@code "single"}.
+ * <p>
+ * On collection fields ({@code List}, {@code Set}, arrays) the selection mode
+ * is automatically set to {@code "multiple"}; on scalar fields it is
+ * {@code "single"}.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

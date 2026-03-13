@@ -25,23 +25,12 @@ class DelegatingLLMModelTest {
   void shouldDropPayloadLessPartsBeforeDelegatingToModel() {
     final BaseLlm delegate = mock(BaseLlm.class);
     when(delegate.model()).thenReturn("mock-model");
-    when(delegate.generateContent(any(), eq(false)))
-        .thenReturn(Flowable.just(LlmResponse.builder().build()));
+    when(delegate.generateContent(any(), eq(false))).thenReturn(Flowable.just(LlmResponse.builder().build()));
 
-    final LlmRequest request =
-        LlmRequest.builder()
-            .contents(
-                List.of(
-                    Content.builder()
-                        .role("user")
-                        .parts(List.of(Part.builder().build(), Part.fromText("hello")))
-                        .build()))
-            .build();
+    final LlmRequest request = LlmRequest.builder()
+        .contents(List.of(Content.builder().role("user").parts(List.of(Part.builder().build(), Part.fromText("hello"))).build())).build();
 
-    final DelegatingLLMModel model =
-        new DelegatingLLMModel(
-            delegate,
-            new Parser("", true));
+    final DelegatingLLMModel model = new DelegatingLLMModel(delegate, new Parser("", true));
 
     model.generateContent(request, false).blockingFirst();
 
@@ -50,8 +39,7 @@ class DelegatingLLMModelTest {
     final LlmRequest sent = captor.getValue();
     assertThat(sent.contents()).hasSize(1);
     assertThat(sent.contents().getFirst().parts().orElseThrow()).hasSize(1);
-    assertThat(sent.contents().getFirst().parts().orElseThrow().getFirst().text())
-        .contains("hello");
+    assertThat(sent.contents().getFirst().parts().orElseThrow().getFirst().text()).contains("hello");
   }
 
   @Test
@@ -60,20 +48,13 @@ class DelegatingLLMModelTest {
     when(delegate.model()).thenReturn("mock-model");
 
     final NullPointerException npe = new NullPointerException();
-    npe.setStackTrace(
-        new StackTraceElement[] {
-          new StackTraceElement(
-              "com.google.adk.models.langchain4j.LangChain4j", "toParts", "LangChain4j.java", 533)
-        });
+    npe.setStackTrace(new StackTraceElement[]{
+        new StackTraceElement("com.google.adk.models.langchain4j.LangChain4j", "toParts", "LangChain4j.java", 533)});
     when(delegate.generateContent(any(), eq(false))).thenReturn(Flowable.error(npe));
 
-    final DelegatingLLMModel model =
-        new DelegatingLLMModel(
-            delegate,
-            new Parser("", true));
+    final DelegatingLLMModel model = new DelegatingLLMModel(delegate, new Parser("", true));
 
-    assertThatThrownBy(
-            () -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
+    assertThatThrownBy(() -> model.generateContent(LlmRequest.builder().build(), false).blockingFirst())
         .isInstanceOf(NullPointerException.class);
   }
 
@@ -81,12 +62,8 @@ class DelegatingLLMModelTest {
   void shouldNotForceTurnCompletionInModelLayer() {
     final BaseLlm delegate = mock(BaseLlm.class);
     when(delegate.model()).thenReturn("mock-model");
-    when(delegate.generateContent(any(), eq(false)))
-        .thenReturn(
-            Flowable.just(
-                LlmResponse.builder()
-                    .content(Content.builder().role("model").parts(List.of(Part.fromText("ok"))).build())
-                    .build()));
+    when(delegate.generateContent(any(), eq(false))).thenReturn(
+        Flowable.just(LlmResponse.builder().content(Content.builder().role("model").parts(List.of(Part.fromText("ok"))).build()).build()));
 
     final DelegatingLLMModel model = new DelegatingLLMModel(delegate, new Parser("", true));
 

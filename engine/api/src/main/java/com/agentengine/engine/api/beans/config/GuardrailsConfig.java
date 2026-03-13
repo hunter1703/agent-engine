@@ -38,8 +38,7 @@ public class GuardrailsConfig {
   }
 
   public void setExecutionMode(final String executionMode) {
-    this.executionMode =
-        executionMode == null || executionMode.isBlank() ? DEFAULT_EXECUTION_MODE : executionMode;
+    this.executionMode = executionMode == null || executionMode.isBlank() ? DEFAULT_EXECUTION_MODE : executionMode;
   }
 
   public GuardrailExecutionMode executionModeEnum() {
@@ -51,8 +50,7 @@ public class GuardrailsConfig {
   }
 
   public void setDefaultOnError(final String defaultOnError) {
-    this.defaultOnError =
-        defaultOnError == null || defaultOnError.isBlank() ? DEFAULT_ON_ERROR : defaultOnError;
+    this.defaultOnError = defaultOnError == null || defaultOnError.isBlank() ? DEFAULT_ON_ERROR : defaultOnError;
   }
 
   public GuardrailErrorMode defaultOnErrorEnum() {

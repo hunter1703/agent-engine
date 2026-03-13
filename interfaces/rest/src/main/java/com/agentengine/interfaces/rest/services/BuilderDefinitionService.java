@@ -20,8 +20,7 @@ public class BuilderDefinitionService {
     try {
       return definitions.get(normalizedAssetType, () -> generateDefinition(normalizedAssetType));
     } catch (ExecutionException exception) {
-      throw new IllegalStateException(
-          "Failed to build definition for assetType: " + normalizedAssetType, exception);
+      throw new IllegalStateException("Failed to build definition for assetType: " + normalizedAssetType, exception);
     }
   }
 

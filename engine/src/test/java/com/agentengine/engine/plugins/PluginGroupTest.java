@@ -14,39 +14,28 @@ class PluginGroupTest {
 
   @Test
   void shouldForwardOnUserMessageCallbackAndShortCircuitOnFirstResult() {
-    final BasePlugin first =
-        new BasePlugin("first") {
-          @Override
-          public Maybe<Content> onUserMessageCallback(
-              final InvocationContext invocationContext, final Content userMessage) {
-            return Maybe.empty();
-          }
-        };
-    final BasePlugin second =
-        new BasePlugin("second") {
-          @Override
-          public Maybe<Content> onUserMessageCallback(
-              final InvocationContext invocationContext, final Content userMessage) {
-            return Maybe.just(
-                Content.builder().role("user").parts(List.of(Part.fromText("rewritten"))).build());
-          }
-        };
-    final BasePlugin third =
-        new BasePlugin("third") {
-          @Override
-          public Maybe<Content> onUserMessageCallback(
-              final InvocationContext invocationContext, final Content userMessage) {
-            return Maybe.just(
-                Content.builder().role("user").parts(List.of(Part.fromText("ignored"))).build());
-          }
-        };
+    final BasePlugin first = new BasePlugin("first") {
+      @Override
+      public Maybe<Content> onUserMessageCallback(final InvocationContext invocationContext, final Content userMessage) {
+        return Maybe.empty();
+      }
+    };
+    final BasePlugin second = new BasePlugin("second") {
+      @Override
+      public Maybe<Content> onUserMessageCallback(final InvocationContext invocationContext, final Content userMessage) {
+        return Maybe.just(Content.builder().role("user").parts(List.of(Part.fromText("rewritten"))).build());
+      }
+    };
+    final BasePlugin third = new BasePlugin("third") {
+      @Override
+      public Maybe<Content> onUserMessageCallback(final InvocationContext invocationContext, final Content userMessage) {
+        return Maybe.just(Content.builder().role("user").parts(List.of(Part.fromText("ignored"))).build());
+      }
+    };
     final PluginGroup pluginGroup = new PluginGroup("group", List.of(first, second, third));
 
-    final Content result =
-        pluginGroup
-            .onUserMessageCallback(
-                null, Content.builder().role("user").parts(List.of(Part.fromText("input"))).build())
-            .blockingGet();
+    final Content result = pluginGroup
+        .onUserMessageCallback(null, Content.builder().role("user").parts(List.of(Part.fromText("input"))).build()).blockingGet();
 
     assertThat(result.text()).isEqualTo("rewritten");
   }

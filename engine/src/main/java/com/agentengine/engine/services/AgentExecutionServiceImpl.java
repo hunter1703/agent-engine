@@ -2,18 +2,14 @@ package com.agentengine.engine.services;
 
 import static com.agentengine.engine.api.beans.session.AgentSession.DEFAULT_USER_ID;
 import static com.agentengine.engine.utils.SessionUtils.buildInitialState;
-import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 import static com.google.adk.agents.RunConfig.StreamingMode.SSE;
+import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 import static com.google.genai.types.Part.fromText;
 
 import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agentengine.engine.agents.SessionTitleGenerator;
-import com.agentengine.engine.api.Agent;
-import com.agentengine.engine.api.beans.ConfirmationDecision;
-import com.agentengine.engine.api.ContextManager;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.SessionPauseView;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
@@ -22,6 +18,10 @@ import com.agentengine.engine.factories.agent.AgentProvider;
 import com.agentengine.engine.factories.context.ContextManagerProvider;
 import com.agentengine.engine.guardrails.GuardrailPlugin;
 import com.agentengine.engine.guardrails.GuardrailPolicyFactory;
+import com.agentengine.engine.hitl.ConfirmationDecision;
+import com.agentengine.engine.hitl.SessionPauseView;
+import com.agentengine.engine.plugin.Agent;
+import com.agentengine.engine.plugin.ContextManager;
 import com.agentengine.engine.plugins.ContextManagementPlugin;
 import com.agentengine.engine.plugins.PluginGroup;
 import com.agentengine.engine.repository.AgentSessionRepository;
@@ -55,7 +55,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,13 +74,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   private final RefCountedCache<String, AgentSessionRuntime> runtimeCache;
 
   @Inject
-  public AgentExecutionServiceImpl(
-      final AgentService agentService,
-      final AgentProvider agentProvider,
-      final AgentSessionRepository sessionRepository,
-      final SessionService sessionService,
-      final GuardrailPolicyFactory guardrailPolicyFactory,
-      final SessionTitleGenerator sessionTitleGenerator,
+  public AgentExecutionServiceImpl(final AgentService agentService, final AgentProvider agentProvider,
+      final AgentSessionRepository sessionRepository, final SessionService sessionService,
+      final GuardrailPolicyFactory guardrailPolicyFactory, final SessionTitleGenerator sessionTitleGenerator,
       final ContextManagerProvider contextManagerProvider) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
@@ -90,12 +85,8 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     this.guardrailPolicyFactory = guardrailPolicyFactory;
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.contextManagerProvider = contextManagerProvider;
-    this.runtimeCache =
-        RefCountedCache.<String, AgentSessionRuntime>builder()
-            .name("agent-runtime")
-            .idleTimeout(DEFAULT_IDLE_TIMEOUT_MINUTES, TimeUnit.MINUTES)
-            .cleanupInterval(30, TimeUnit.SECONDS)
-            .build();
+    this.runtimeCache = RefCountedCache.<String, AgentSessionRuntime>builder().name("agent-runtime")
+        .idleTimeout(DEFAULT_IDLE_TIMEOUT_MINUTES, TimeUnit.MINUTES).cleanupInterval(30, TimeUnit.SECONDS).build();
   }
 
   @Override
@@ -104,22 +95,22 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   @Override
-  public Flowable<Event> resumeSession(final String agentId, final String sessionId, final ConfirmationDecision decision, final String answer) {
+  public Flowable<Event> resumeSession(final String agentId, final String sessionId, final String decisionStr, final String answer) {
+    final ConfirmationDecision decision = ConfirmationDecision.valueOfOrDefault(decisionStr);
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("sessionId is required");
     }
-    final AgentSession session =
-        sessionService
-            .getSession(sessionId)
-            .orElseThrow(() -> new AssetNotFoundException("session", sessionId));
+    final AgentSession session = sessionService.getSession(sessionId).orElseThrow(() -> new AssetNotFoundException("session", sessionId));
     final SessionPauseView pauseView = SessionPauseView.from(session.getSessionInfo().getEvents());
     if (pauseView == null || !pauseView.isPaused() || !pauseView.hasConfirmationId()) {
       throw new IllegalStateException("Session is not waiting for user input");
     }
     final Map<String, Object> response = ResponseUtils.buildResumeResponse(pauseView.kind(), decision, answer);
 
-    final FunctionResponse functionResponse = FunctionResponse.builder().id(pauseView.confirmationId()).name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(response).build();
-    final Content content = Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build())).build();
+    final FunctionResponse functionResponse = FunctionResponse.builder().id(pauseView.confirmationId())
+        .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(response).build();
+    final Content content = Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build()))
+        .build();
     return runContent(agentId, sessionId, content);
   }
 
@@ -127,17 +118,12 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     final AgentSessionRuntime runtime = getOrStartRuntime(agentId, sessionId);
     final String resolvedSessionId = runtime.sessionId();
     try {
-      LOG.debug(
-              "run - session_id={} agent_id={} content_parts={}",
-              resolvedSessionId,
-              agentId,
-              userContent == null ? 0 : userContent.parts().orElse(List.of()).size());
+      LOG.debug("run - session_id={} agent_id={} content_parts={}", resolvedSessionId, agentId,
+          userContent == null ? 0 : userContent.parts().orElse(List.of()).size());
       final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();
       final Runner runner = runtime.runner();
-      return runner
-              .runAsync(DEFAULT_USER_ID, resolvedSessionId, userContent, runConfig)
-              .doOnComplete(() -> updateTitle(runner, resolvedSessionId))
-              .doFinally(() -> markRunInactive(resolvedSessionId));
+      return runner.runAsync(DEFAULT_USER_ID, resolvedSessionId, userContent, runConfig)
+          .doOnComplete(() -> updateTitle(runner, resolvedSessionId)).doFinally(() -> markRunInactive(resolvedSessionId));
     } catch (Exception ex) {
       markRunInactive(resolvedSessionId);
       return Flowable.error(ex);
@@ -149,15 +135,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   private void updateTitle(final Runner runner, final String sessionId) {
-    final Session session =
-        Objects.requireNonNull(
-            runner
-                .sessionService()
-                .getSession(runner.appName(), DEFAULT_USER_ID, sessionId, Optional.empty())
-                .blockingGet());
-    sessionTitleGenerator
-        .generateTitle(session.events())
-        .ifPresent(title -> sessionService.updateTitle(sessionId, title));
+    final Session session = Objects
+        .requireNonNull(runner.sessionService().getSession(runner.appName(), DEFAULT_USER_ID, sessionId, Optional.empty()).blockingGet());
+    sessionTitleGenerator.generateTitle(session.events()).ifPresent(title -> sessionService.updateTitle(sessionId, title));
   }
 
   private static Content buildFromText(final String text) {
@@ -165,41 +145,28 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   private AgentSessionRuntime getOrStartRuntime(final String agentId, final String sessionId) {
-    final AgentSession session =
-        StringUtils.isNotBlank(sessionId) ? sessionService.getSession(sessionId).orElse(null) : null;
+    final AgentSession session = StringUtils.isNotBlank(sessionId) ? sessionService.getSession(sessionId).orElse(null) : null;
     final BaseAgentConfig agentConfig = getAgentConfig(agentId, session);
-    final String resolvedSessionId =
-        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
-    return runtimeCache.getAndAcquire(
-        resolvedSessionId,
-        ignored -> createRuntime(resolvedSessionId, agentConfig, session == null));
+    final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+    return runtimeCache.getAndAcquire(resolvedSessionId, ignored -> createRuntime(resolvedSessionId, agentConfig, session == null));
   }
 
   private void markRunInactive(final String sessionId) {
     runtimeCache.release(sessionId);
   }
 
-  private AgentSessionRuntime createRuntime(
-      final String sessionId, final BaseAgentConfig agentConfig, final boolean createSession) {
+  private AgentSessionRuntime createRuntime(final String sessionId, final BaseAgentConfig agentConfig, final boolean createSession) {
     if (createSession) {
-      LOG.debug(
-          "Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
-      sessionRepository
-          .createSession(agentConfig.getId(), DEFAULT_USER_ID, buildInitialState(), sessionId)
-          .blockingGet();
+      LOG.debug("Creating new session for agent_id={} session_id={}", agentConfig.getId(), sessionId);
+      sessionRepository.createSession(agentConfig.getId(), DEFAULT_USER_ID, buildInitialState(), sessionId).blockingGet();
     }
 
     final Agent agent = agentProvider.create(agentConfig);
     final PluginGroup pluginGroup = buildPluginGroup(agent);
-    final App.Builder appBuilder =
-        App.builder()
-            .name(agentConfig.getId())
-            .rootAgent(agent)
-            .plugins(List.of(pluginGroup))
-            .resumabilityConfig(new ResumabilityConfig(isResumable(agentConfig)));
+    final App.Builder appBuilder = App.builder().name(agentConfig.getId()).rootAgent(agent).plugins(List.of(pluginGroup))
+        .resumabilityConfig(new ResumabilityConfig(isResumable(agentConfig)));
 
-    final Runner runner =
-        Runner.builder().app(appBuilder.build()).sessionService(sessionRepository).build();
+    final Runner runner = Runner.builder().app(appBuilder.build()).sessionService(sessionRepository).build();
     return new AgentSessionRuntime(sessionId, runner, agentConfig);
   }
 
@@ -218,9 +185,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     if (StringUtils.isBlank(agentId)) {
       throw new IllegalArgumentException("agentId cannot be blank");
     }
-    return agentService
-        .getAgent(agentId)
-        .orElseThrow(() -> new AssetNotFoundException("agent", agentId));
+    return agentService.getAgent(agentId).orElseThrow(() -> new AssetNotFoundException("agent", agentId));
   }
 
   private PluginGroup buildPluginGroup(final Agent rootAgent) {
@@ -236,8 +201,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
         continue;
       }
       contextManagers.put(agent.name(), contextManagerProvider.create(agent.getAgentConfig()));
-      final GuardrailPolicyFactory.GuardrailPolicy policy =
-          guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
+      final GuardrailPolicyFactory.GuardrailPolicy policy = guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
       if (policy.enabled()) {
         policies.put(agent.name(), policy);
       }
@@ -247,8 +211,6 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
         }
       }
     }
-    return new PluginGroup(
-        "engine",
-        List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers)));
+    return new PluginGroup("engine", List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers)));
   }
 }

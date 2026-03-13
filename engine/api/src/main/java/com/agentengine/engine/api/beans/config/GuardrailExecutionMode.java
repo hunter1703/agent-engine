@@ -8,7 +8,9 @@ public enum GuardrailExecutionMode {
   UNKNOWN,
   /** Run guardrails before action execution; safest and deterministic. */
   SYNC,
-  /** Run guardrails concurrently and interrupt execution on blocking decisions. */
+  /**
+   * Run guardrails concurrently and interrupt execution on blocking decisions.
+   */
   OPTIMISTIC;
 
   public static GuardrailExecutionMode valueOfOrDefault(final String value) {

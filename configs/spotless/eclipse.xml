@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <profiles version="12">
   <profile kind="CodeFormatterProfile" name="AgentEngine" version="12">
-    <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="120"/>
+    <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="140"/>
     <setting id="org.eclipse.jdt.core.formatter.tabulation.char" value="space"/>
     <setting id="org.eclipse.jdt.core.formatter.tabulation.size" value="2"/>
     <setting id="org.eclipse.jdt.core.formatter.indentation.size" value="2"/>
@@ -10,5 +10,7 @@
     <setting id="org.eclipse.jdt.core.formatter.alignment_for_selector_in_method_invocation" value="16"/>
     <setting id="org.eclipse.jdt.core.formatter.alignment_for_arguments_in_method_invocation" value="16"/>
     <setting id="org.eclipse.jdt.core.formatter.alignment_for_arguments_in_method_declaration" value="16"/>
+    <setting id="org.eclipse.jdt.core.formatter.wrap_before_dot_in_method_invocation" value="true"/>
+    <setting id="org.eclipse.jdt.core.formatter.join_wrapped_lines" value="true"/>
   </profile>
 </profiles>

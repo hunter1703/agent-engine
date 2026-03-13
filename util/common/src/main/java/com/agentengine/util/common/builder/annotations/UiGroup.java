@@ -6,7 +6,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Declares default step, section, and ordering metadata for all builder fields within a type. */
+/**
+ * Declares default step, section, and ordering metadata for all builder fields
+ * within a type.
+ */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

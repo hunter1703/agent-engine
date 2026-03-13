@@ -9,7 +9,8 @@ import org.slf4j.LoggerFactory;
 public final class ResourceUtils {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceUtils.class);
 
-  private ResourceUtils() {}
+  private ResourceUtils() {
+  }
 
   public static String loadResourceAsString(final String path) {
     try (InputStream stream = ResourceUtils.class.getResourceAsStream(path)) {

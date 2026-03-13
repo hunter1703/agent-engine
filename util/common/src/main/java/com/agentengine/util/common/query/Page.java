@@ -4,7 +4,8 @@ public class Page {
   private int offset;
   private int limit;
 
-  public Page() {}
+  public Page() {
+  }
 
   public Page(int offset, int limit) {
     this.offset = offset;

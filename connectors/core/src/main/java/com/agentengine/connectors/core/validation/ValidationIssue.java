@@ -3,13 +3,11 @@ package com.agentengine.connectors.core.validation;
 public record ValidationIssue(String path, String message, String severity) {
 
   public ValidationIssue {
-    severity =
-        severity == null || severity.isBlank() ? ValidationSeverity.ERROR.name() : severity;
+    severity = severity == null || severity.isBlank() ? ValidationSeverity.ERROR.name() : severity;
     path = path == null ? "" : path;
   }
 
-  public ValidationIssue(
-      final String path, final String message, final ValidationSeverity severity) {
+  public ValidationIssue(final String path, final String message, final ValidationSeverity severity) {
     this(path, message, severity == null ? null : severity.name());
   }
 

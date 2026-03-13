@@ -10,7 +10,8 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public final class StructuredConcurrencyUtils {
-  private StructuredConcurrencyUtils() {}
+  private StructuredConcurrencyUtils() {
+  }
 
   public static <T> List<T> runConcurrently(final List<? extends Callable<T>> tasks) {
     final List<TaskOutcome<T>> outcomes = runConcurrentlyUntil(tasks, subtask -> false);
@@ -22,8 +23,7 @@ public final class StructuredConcurrencyUtils {
     return results;
   }
 
-  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(
-      final List<? extends Callable<T>> tasks,
+  public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(final List<? extends Callable<T>> tasks,
       final Predicate<Subtask<? extends T>> stopCondition) {
     if (CollectionUtils.isEmpty(tasks)) {
       return List.of();
@@ -71,5 +71,6 @@ public final class StructuredConcurrencyUtils {
     throw new IllegalStateException("Structured subtask did not complete successfully.");
   }
 
-  public record TaskOutcome<T>(int index, Subtask.State state, T value, Throwable error) {}
+  public record TaskOutcome<T>(int index, Subtask.State state, T value, Throwable error) {
+  }
 }

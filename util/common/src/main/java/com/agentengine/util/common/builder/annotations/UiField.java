@@ -7,14 +7,19 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a field for inclusion in the builder definition and supplies presentation metadata.
+ * Marks a field for inclusion in the builder definition and supplies
+ * presentation metadata.
  *
- * <p>A field is only exposed in the builder if it carries this annotation or a widget annotation
- * ({@link UiText}, {@link UiBoolean}, {@link UiNumber}, {@link UiSelect}, {@link UiLookup}, {@link
- * UiDynamicSchema}). Without at least one of these, the field is excluded entirely.
+ * <p>
+ * A field is only exposed in the builder if it carries this annotation or a
+ * widget annotation ({@link UiText}, {@link UiBoolean}, {@link UiNumber},
+ * {@link UiSelect}, {@link UiLookup}, {@link UiDynamicSchema}). Without at
+ * least one of these, the field is excluded entirely.
  *
- * <p>When present without a widget annotation, the field is rendered schema-driven (no explicit
- * widget) — the UI uses the JSON Schema shape to decide how to display it.
+ * <p>
+ * When present without a widget annotation, the field is rendered schema-driven
+ * (no explicit widget) — the UI uses the JSON Schema shape to decide how to
+ * display it.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
@@ -31,14 +36,14 @@ public @interface UiField {
   boolean advanced() default false;
 
   /**
-   * Overrides the step that this field belongs to. When blank, inherits from {@link UiGroup} on the
-   * declaring class, or falls back to {@code "general"}.
+   * Overrides the step that this field belongs to. When blank, inherits from
+   * {@link UiGroup} on the declaring class, or falls back to {@code "general"}.
    */
   String step() default "";
 
   /**
-   * Overrides the section within the step. When blank, inherits from {@link UiGroup} on the
-   * declaring class, or falls back to {@code "general"}.
+   * Overrides the section within the step. When blank, inherits from
+   * {@link UiGroup} on the declaring class, or falls back to {@code "general"}.
    */
   String section() default "";
 }

@@ -8,7 +8,10 @@ public enum OrchestrationMode {
   UNKNOWN,
   /** Handoff-capable manager pattern. */
   TRANSFER,
-  /** Manager pattern with sub-agents exposed only as tools; control always returns. */
+  /**
+   * Manager pattern with sub-agents exposed only as tools; control always
+   * returns.
+   */
   MANAGER,
   /** Deterministic sequential execution over sub-agents. */
   SEQUENTIAL,

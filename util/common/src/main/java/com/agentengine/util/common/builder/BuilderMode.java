@@ -3,9 +3,7 @@ package com.agentengine.util.common.builder;
 import java.util.Locale;
 
 public enum BuilderMode {
-  CREATE,
-  EDIT,
-  VIEW;
+  CREATE, EDIT, VIEW;
 
   public static BuilderMode fromString(final String value) {
     if (value == null || value.isBlank()) {

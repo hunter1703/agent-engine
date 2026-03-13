@@ -1,6 +1,5 @@
 package com.agentengine.connectors.core.auth;
 
-import com.agentengine.connectors.core.config.AuthConfig;
 import com.agentengine.connectors.core.config.AuthType;
 
 public interface AuthStrategy {

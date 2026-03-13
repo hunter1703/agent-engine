@@ -6,9 +6,14 @@ import java.util.Locale;
 public enum RelevanceAnchorStrategy {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,
-  /** Anchor to several recent user messages; useful for multi-turn conversations. */
+  /**
+   * Anchor to several recent user messages; useful for multi-turn conversations.
+   */
   RECENT_USER,
-  /** Anchor to latest user intent plus active plan/task context; best for planning agents. */
+  /**
+   * Anchor to latest user intent plus active plan/task context; best for planning
+   * agents.
+   */
   LATEST_USER_AND_PLAN;
 
   public static RelevanceAnchorStrategy valueOfOrDefault(final String value) {

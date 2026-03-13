@@ -15,28 +15,17 @@ import java.lang.reflect.Type;
 public class JsonMessageBodyReader implements MessageBodyReader<Object> {
 
   @Override
-  public boolean isReadable(
-      final Class<?> type,
-      final Type genericType,
-      final Annotation[] annotations,
-      final MediaType mediaType) {
-    return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE)
-        || mediaType.isCompatible(MediaType.valueOf("application/*+json"));
+  public boolean isReadable(final Class<?> type, final Type genericType, final Annotation[] annotations, final MediaType mediaType) {
+    return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE) || mediaType.isCompatible(MediaType.valueOf("application/*+json"));
   }
 
   @Override
-  public Object readFrom(
-      final Class<Object> type,
-      final Type genericType,
-      final Annotation[] annotations,
-      final MediaType mediaType,
-      final MultivaluedMap<String, String> httpHeaders,
-      final InputStream entityStream) {
+  public Object readFrom(final Class<Object> type, final Type genericType, final Annotation[] annotations, final MediaType mediaType,
+      final MultivaluedMap<String, String> httpHeaders, final InputStream entityStream) {
     try {
       return JsonUtils.fromStream(entityStream, type);
     } catch (final Exception e) {
-      throw new IllegalArgumentException(
-          String.format("Error deserializing JSON with Jackson: %s", e.getMessage()), e);
+      throw new IllegalArgumentException(String.format("Error deserializing JSON with Jackson: %s", e.getMessage()), e);
     }
   }
 }

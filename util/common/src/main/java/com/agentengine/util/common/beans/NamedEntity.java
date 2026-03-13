@@ -3,7 +3,8 @@ package com.agentengine.util.common.beans;
 public class NamedEntity extends BaseEntity {
   private String name;
 
-  public NamedEntity() {}
+  public NamedEntity() {
+  }
 
   public NamedEntity(String id, String name) {
     super(id);

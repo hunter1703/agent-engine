@@ -16,11 +16,13 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 /**
- * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards method calls to a
- * remote {@code @MicroService} implementation over gRPC.
+ * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards
+ * method calls to a remote {@code @MicroService} implementation over gRPC.
  *
- * <p>Blocking methods are dispatched via a server-streaming RPC and the first response is returned.
- * Methods whose return type is {@link Flowable} are mapped to a lazy stream of all responses.
+ * <p>
+ * Blocking methods are dispatched via a server-streaming RPC and the first
+ * response is returned. Methods whose return type is {@link Flowable} are
+ * mapped to a lazy stream of all responses.
  */
 public class MicroServiceInvocationHandler implements InvocationHandler {
 
@@ -41,36 +43,24 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
     final String requestId = MDC.get("requestId");
     if (requestId != null) {
-      LOG.info(
-          "[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
+      LOG.info("[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
     }
 
     Request request = buildRequest(method, args);
     // noinspection ReactiveStreamsUnusedPublisher
-    return method.getReturnType().equals(Flowable.class)
-        ? streamingCall(request, method)
-        : blockingCall(request, method);
+    return method.getReturnType().equals(Flowable.class) ? streamingCall(request, method) : blockingCall(request, method);
   }
 
   private Request buildRequest(Method method, Object[] args) {
-    Request.Builder builder =
-        Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
+    Request.Builder builder = Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(method.getName());
 
     if (args != null && args.length > 0) {
       final String requestId = MDC.get("requestId");
-      LOG.info(
-          "[{}] Serializing args for {}.{}",
-          requestId,
-          serviceClass.getSimpleName(),
-          method.getName());
+      LOG.info("[{}] Serializing args for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
       final long start = System.currentTimeMillis();
       final String json = JsonUtils.toJson(args);
       final long end = System.currentTimeMillis();
-      LOG.info(
-          "[{}] Serialization took {}ms, payload size: {}",
-          requestId,
-          (end - start),
-          json.length());
+      LOG.info("[{}] Serialization took {}ms, payload size: {}", requestId, (end - start), json.length());
       builder.setPayload(ByteString.copyFromUtf8(json));
     }
     return builder.build();
@@ -78,17 +68,9 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private Object blockingCall(Request request, Method method) {
     final String requestId = MDC.get("requestId");
-    LOG.info(
-        "[{}] Initiating gRPC blocking call for {}.{}",
-        requestId,
-        serviceClass.getSimpleName(),
-        method.getName());
+    LOG.info("[{}] Initiating gRPC blocking call for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
     var responseIterator = stub.execute(request);
-    LOG.info(
-        "[{}] gRPC call returned for {}.{}",
-        requestId,
-        serviceClass.getSimpleName(),
-        method.getName());
+    LOG.info("[{}] gRPC call returned for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
     if (!responseIterator.hasNext()) {
       // No payload from the server — return Optional.empty() for Optional return
       // types
@@ -113,10 +95,12 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType));
   }
 
-  /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */
+  /**
+   * Returns the first type argument of a generic type, or {@code Object.class} if
+   * unavailable.
+   */
   private static Class<?> firstTypeArgument(Type type) {
-    if (type instanceof ParameterizedType parameterizedType
-        && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
+    if (type instanceof ParameterizedType parameterizedType && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
       return clazz;
     }
     return Object.class;

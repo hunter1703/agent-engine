@@ -18,64 +18,55 @@ class ValidationServiceTest {
 
   @Test
   void shouldThrowWhenConfigNull() {
-    final ValidationService service =
-        new ValidationService(createValidator(), emptyRuleValidators());
+    final ValidationService service = new ValidationService(createValidator(), emptyRuleValidators());
 
-    assertThatThrownBy(() -> service.validate(null))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> service.validate(null)).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Config is required");
   }
 
   @Test
   void shouldThrowWhenBeanAndRuleValidationsFail() {
-    final Validator<SampleConfig> ruleValidator =
-        new Validator<>() {
-          @Override
-          public Class<SampleConfig> targetType() {
-            return SampleConfig.class;
-          }
+    final Validator<SampleConfig> ruleValidator = new Validator<>() {
+      @Override
+      public Class<SampleConfig> targetType() {
+        return SampleConfig.class;
+      }
 
-          @Override
-          public void validate(final SampleConfig value, final ValidationCollector errors) {
-            if (value.version < 1) {
-              errors.add("version: must be >= 1");
-            }
-          }
-        };
+      @Override
+      public void validate(final SampleConfig value, final ValidationCollector errors) {
+        if (value.version < 1) {
+          errors.add("version: must be >= 1");
+        }
+      }
+    };
 
-    final ValidationService service =
-        new ValidationService(createValidator(), instanceWith(ruleValidator));
+    final ValidationService service = new ValidationService(createValidator(), instanceWith(ruleValidator));
 
     final SampleConfig invalid = new SampleConfig();
     invalid.name = " ";
     invalid.version = 0;
 
-    assertThatThrownBy(() -> service.validate(invalid))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("name")
-        .hasMessageContaining("must not be blank")
-        .hasMessageContaining("version: must be >= 1");
+    assertThatThrownBy(() -> service.validate(invalid)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("name")
+        .hasMessageContaining("must not be blank").hasMessageContaining("version: must be >= 1");
   }
 
   @Test
   void shouldPassWhenConfigSatisfiesAllValidations() {
-    final Validator<SampleConfig> ruleValidator =
-        new Validator<>() {
-          @Override
-          public Class<SampleConfig> targetType() {
-            return SampleConfig.class;
-          }
+    final Validator<SampleConfig> ruleValidator = new Validator<>() {
+      @Override
+      public Class<SampleConfig> targetType() {
+        return SampleConfig.class;
+      }
 
-          @Override
-          public void validate(final SampleConfig value, final ValidationCollector errors) {
-            if (value.version < 1) {
-              errors.add("version: must be >= 1");
-            }
-          }
-        };
+      @Override
+      public void validate(final SampleConfig value, final ValidationCollector errors) {
+        if (value.version < 1) {
+          errors.add("version: must be >= 1");
+        }
+      }
+    };
 
-    final ValidationService service =
-        new ValidationService(createValidator(), instanceWith(ruleValidator));
+    final ValidationService service = new ValidationService(createValidator(), instanceWith(ruleValidator));
 
     final SampleConfig valid = new SampleConfig();
     valid.name = "agent";
@@ -103,7 +94,8 @@ class ValidationServiceTest {
   }
 
   private static final class SampleConfig {
-    @NotBlank String name;
+    @NotBlank
+    String name;
     int version;
   }
 }

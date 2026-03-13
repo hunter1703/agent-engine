@@ -34,9 +34,8 @@ class DefaultConnectorConfigValidatorTest {
 
   @Test
   void missingEndpointFailsValidation() {
-    final ConnectorDefinition definition =
-        new ConnectorDefinition(
-            "test-id", null, null, null, null, null, null, null, null, null, null, true);
+    final ConnectorDefinition definition = new ConnectorDefinition("test-id", null, null, null, null, null, null, null, null, null, null,
+        true);
 
     final ConfigValidationResult result = validator.validate(definition);
     assertThat(result.isValid()).isFalse();
@@ -45,20 +44,8 @@ class DefaultConnectorConfigValidatorTest {
 
   @Test
   void bodyWithGetMethodFailsValidation() {
-    final ConnectorDefinition definition =
-        new ConnectorDefinition(
-            "test-id",
-            null,
-            endpoint(HttpMethod.GET, "https://api.example.com"),
-            null,
-            null,
-            new BodyConfig(BodyType.JSON, java.util.Map.of("foo", "bar"), null, true),
-            null,
-            null,
-            null,
-            null,
-            null,
-            true);
+    final ConnectorDefinition definition = new ConnectorDefinition("test-id", null, endpoint(HttpMethod.GET, "https://api.example.com"),
+        null, null, new BodyConfig(BodyType.JSON, java.util.Map.of("foo", "bar"), null, true), null, null, null, null, null, true);
 
     final ConfigValidationResult result = validator.validate(definition);
     assertThat(result.isValid()).isFalse();
@@ -67,97 +54,38 @@ class DefaultConnectorConfigValidatorTest {
 
   @Test
   void invalidPaginationConfigFailsValidation() {
-    final ConnectorDefinition definition =
-        new ConnectorDefinition(
-            "test-id",
-            null,
-            endpoint(HttpMethod.GET, "https://api.example.com"),
-            null,
-            null,
-            null,
-            null,
-            null,
-            new PaginationConfig(
-                PaginationType.CURSOR,
-                10,
-                null,
-                1,
-                null,
-                100,
-                null,
-                0,
-                null,
-                100,
-                null,
-                null,
-                null),
-            null,
-            null,
-            true);
+    final ConnectorDefinition definition = new ConnectorDefinition("test-id", null, endpoint(HttpMethod.GET, "https://api.example.com"),
+        null, null, null, null, null,
+        new PaginationConfig(PaginationType.CURSOR, 10, null, 1, null, 100, null, 0, null, 100, null, null, null), null, null, true);
 
     final ConfigValidationResult result = validator.validate(definition);
     assertThat(result.isValid()).isFalse();
-    assertThat(result.errors())
-        .anyMatch(issue -> issue.path().equals("pagination.cursorParam"))
+    assertThat(result.errors()).anyMatch(issue -> issue.path().equals("pagination.cursorParam"))
         .anyMatch(issue -> issue.path().equals("pagination.nextCursorJsonPath"));
   }
 
   @Test
   void validateOrThrowThrowsForInvalidDefinition() {
-    final ConnectorDefinition invalidDefinition =
-        new ConnectorDefinition(
-            "",
-            null,
-            endpoint(HttpMethod.UNKNOWN, null),
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            true);
+    final ConnectorDefinition invalidDefinition = new ConnectorDefinition("", null, endpoint(HttpMethod.UNKNOWN, null), null, null, null,
+        null, null, null, null, null, true);
 
-    assertThatThrownBy(() -> validator.validateOrThrow(invalidDefinition))
-        .isInstanceOf(ConnectorConfigValidationException.class)
+    assertThatThrownBy(() -> validator.validateOrThrow(invalidDefinition)).isInstanceOf(ConnectorConfigValidationException.class)
         .hasMessageContaining("validation failed");
   }
 
   private static ConnectorDefinition validDefinition() {
-    return new ConnectorDefinition(
-        "test-id",
-        null,
-        endpoint(HttpMethod.GET, "https://api.example.com"),
-        java.util.Map.of("Accept", "application/json"),
-        java.util.Map.of("limit", 10),
-        null,
-        null,
-        null,
-        PaginationConfig.none(),
-        null,
-        List.of(),
-        true);
+    return new ConnectorDefinition("test-id", null, endpoint(HttpMethod.GET, "https://api.example.com"),
+        java.util.Map.of("Accept", "application/json"), java.util.Map.of("limit", 10), null, null, null, PaginationConfig.none(), null,
+        List.of(), true);
   }
 
   private static ConnectorDefinition withId(final ConnectorDefinition definition, final String id) {
-    return new ConnectorDefinition(
-        id,
-        definition.appName(),
-        definition.endpoint(),
-        definition.headers(),
-        definition.query(),
-        definition.body(),
-        definition.auth(),
-        definition.retryPolicy(),
-        definition.pagination(),
-        definition.responseMapping(),
-        definition.errorMappings(),
-        definition.strictUnresolvedVariables());
+    return new ConnectorDefinition(id, definition.appName(), definition.endpoint(), definition.headers(), definition.query(),
+        definition.body(), definition.auth(), definition.retryPolicy(), definition.pagination(), definition.responseMapping(),
+        definition.errorMappings(), definition.strictUnresolvedVariables());
   }
 
   private static EndpointConfig endpoint(final HttpMethod method, final String baseUrl) {
-    return new EndpointConfig(
-        method, baseUrl, null, "/v1/test", null, 1_000L, 1_000L, 1_000L, true, true);
+    return new EndpointConfig(method, baseUrl, null, "/v1/test", null, 1_000L, 1_000L, 1_000L, true, true);
   }
 }

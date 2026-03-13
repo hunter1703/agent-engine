@@ -1,7 +1,8 @@
 package com.agentengine.engine.guardrails;
 
 public final class GuardrailConstants {
-  private GuardrailConstants() {}
+  private GuardrailConstants() {
+  }
 
   public static final class Code {
     public static final String ALLOW = "guardrail_allow";
@@ -21,7 +22,8 @@ public final class GuardrailConstants {
     public static final String RELEVANCE_STEER = "relevance_steer";
     public static final String RELEVANCE_BLOCK = "relevance_block";
 
-    private Code() {}
+    private Code() {
+    }
   }
 
   public static final class DetailKey {
@@ -35,12 +37,14 @@ public final class GuardrailConstants {
     public static final String ATTEMPT = "attempt";
     public static final String RETRY_REQUIRED = "retry_required";
 
-    private DetailKey() {}
+    private DetailKey() {
+    }
   }
 
   public static final class ToolResultKey {
     public static final String MESSAGE = "message";
 
-    private ToolResultKey() {}
+    private ToolResultKey() {
+    }
   }
 }

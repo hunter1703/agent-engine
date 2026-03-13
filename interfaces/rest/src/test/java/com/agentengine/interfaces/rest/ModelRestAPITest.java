@@ -21,10 +21,8 @@ class ModelRestAPITest {
   void shouldThrowBadRequestWhenGetModelCalledWithBlankId() {
     final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-    assertThatThrownBy(() -> api.getModel(" "))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.getModel(" ")).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
@@ -33,10 +31,8 @@ class ModelRestAPITest {
     when(modelService.getModel("model-1")).thenReturn(Optional.empty());
     final ModelRestAPI api = new ModelRestAPI(modelService);
 
-    assertThatThrownBy(() -> api.getModel("model-1"))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(404);
+    assertThatThrownBy(() -> api.getModel("model-1")).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(404);
   }
 
   @Test
@@ -58,13 +54,11 @@ class ModelRestAPITest {
   @Test
   void shouldDelegateCreateModelValidationToService() {
     final ModelService modelService = mock(ModelService.class);
-    when(modelService.createModel(any(ModelConfig.class)))
-        .thenThrow(new IllegalArgumentException("Config validation failed"));
+    when(modelService.createModel(any(ModelConfig.class))).thenThrow(new IllegalArgumentException("Config validation failed"));
     final ModelRestAPI api = new ModelRestAPI(modelService);
     final ModelConfig model = new ModelConfig();
 
-    assertThatThrownBy(() -> api.createModel(model))
-        .isInstanceOf(IllegalArgumentException.class)
+    assertThatThrownBy(() -> api.createModel(model)).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Config validation failed");
     verify(modelService).createModel(any(ModelConfig.class));
   }
@@ -73,10 +67,8 @@ class ModelRestAPITest {
   void shouldThrowBadRequestWhenUpdateModelCalledWithNullConfig() {
     final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-    assertThatThrownBy(() -> api.updateModel("model-1", null))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.updateModel("model-1", null)).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
@@ -88,10 +80,8 @@ class ModelRestAPITest {
     model.setType("OLLAMA");
     model.setModel("qwen2.5");
 
-    assertThatThrownBy(() -> api.updateModel("model-1", model))
-        .isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-        .isEqualTo(400);
+    assertThatThrownBy(() -> api.updateModel("model-1", model)).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
   }
 
   @Test
@@ -101,8 +91,7 @@ class ModelRestAPITest {
     final ModelConfig model = new ModelConfig();
     model.setType("OLLAMA");
     model.setModel("qwen2.5");
-    when(modelService.updateModel(eq("model-1"), any(ModelConfig.class)))
-        .thenAnswer(inv -> inv.getArgument(1));
+    when(modelService.updateModel(eq("model-1"), any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(1));
 
     final ModelConfig updated = api.updateModel("model-1", model);
 
@@ -125,10 +114,29 @@ class ModelRestAPITest {
   @Test
   void shouldDelegateDeleteModelWhenDeleteModelCalled() {
     final ModelService modelService = mock(ModelService.class);
+    when(modelService.deleteModel("model-1")).thenReturn(true);
     final ModelRestAPI api = new ModelRestAPI(modelService);
 
     api.deleteModel("model-1");
 
     verify(modelService).deleteModel("model-1");
+  }
+
+  @Test
+  void shouldThrowBadRequestWhenDeleteModelCalledWithBlankId() {
+    final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
+
+    assertThatThrownBy(() -> api.deleteModel(" ")).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
+  }
+
+  @Test
+  void shouldThrowNotFoundWhenDeleteModelCalledForMissingId() {
+    final ModelService modelService = mock(ModelService.class);
+    when(modelService.deleteModel("model-1")).thenReturn(false);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
+
+    assertThatThrownBy(() -> api.deleteModel("model-1")).isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(404);
   }
 }

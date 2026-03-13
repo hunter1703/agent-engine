@@ -17,10 +17,7 @@ public class OrchestratorAgentConfig extends BaseAgentConfig {
   private String orchestrationMode = DEFAULT_ORCHESTRATION_MODE;
 
   @UiField(label = "Parallel Orchestration", step = "identity", section = "identity", order = 80)
-  @UiRule(
-      effect = UiRuleEffect.VISIBLE,
-      field = "orchestrationMode",
-      values = {"PARALLEL"})
+  @UiRule(effect = UiRuleEffect.VISIBLE, field = "orchestrationMode", values = {"PARALLEL"})
   private OrchestratorParallelConfig parallel = new OrchestratorParallelConfig();
 
   public OrchestratorAgentConfig() {
@@ -32,10 +29,7 @@ public class OrchestratorAgentConfig extends BaseAgentConfig {
   }
 
   public void setOrchestrationMode(final String orchestrationMode) {
-    this.orchestrationMode =
-        orchestrationMode == null || orchestrationMode.isBlank()
-            ? DEFAULT_ORCHESTRATION_MODE
-            : orchestrationMode;
+    this.orchestrationMode = orchestrationMode == null || orchestrationMode.isBlank() ? DEFAULT_ORCHESTRATION_MODE : orchestrationMode;
   }
 
   public OrchestrationMode orchestrationModeEnum() {

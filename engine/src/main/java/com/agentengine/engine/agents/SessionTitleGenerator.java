@@ -25,16 +25,14 @@ public final class SessionTitleGenerator {
   private final InfraMongoRepository infraMongoRepository;
   private final ModelProvider modelProvider;
 
-  public SessionTitleGenerator(
-      InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
+  public SessionTitleGenerator(InfraMongoRepository infraMongoRepository, ModelProvider modelProvider) {
     this.infraMongoRepository = infraMongoRepository;
     this.modelProvider = modelProvider;
   }
 
   private String getModelId() {
     try {
-      final DefaultModelConfig defaults =
-          infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+      final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
       if (defaults != null && StringUtils.isNotBlank(defaults.getTitleModelId())) {
         return defaults.getTitleModelId();
       }
@@ -101,17 +99,8 @@ public final class SessionTitleGenerator {
     }
     final StringBuilder builder = new StringBuilder();
     for (final Part part : parts) {
-      part.functionCall()
-          .ifPresent(
-              call ->
-                  builder.append("Tool call: ").append(call.name().orElse("tool")).append('\n'));
-      part.functionResponse()
-          .ifPresent(
-              response ->
-                  builder
-                      .append("Tool result: ")
-                      .append(response.name().orElse("tool"))
-                      .append('\n'));
+      part.functionCall().ifPresent(call -> builder.append("Tool call: ").append(call.name().orElse("tool")).append('\n'));
+      part.functionResponse().ifPresent(response -> builder.append("Tool result: ").append(response.name().orElse("tool")).append('\n'));
     }
     final String summary = builder.toString().trim();
     return summary.isEmpty() ? null : summary;
@@ -138,18 +127,15 @@ public final class SessionTitleGenerator {
         return Optional.empty();
       }
       final int startIndex = Math.max(0, conversationEvents.size() - MAX_EVENTS);
-      final List<Event> recentEvents =
-          conversationEvents.subList(startIndex, conversationEvents.size());
+      final List<Event> recentEvents = conversationEvents.subList(startIndex, conversationEvents.size());
       final String transcript = buildTranscript(recentEvents);
       if (StringUtils.isBlank(transcript)) {
         return Optional.empty();
       }
       final String prompt = buildPrompt(transcript);
-      final Content promptContent =
-          Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
+      final Content promptContent = Content.builder().role("user").parts(Part.builder().text(prompt).build()).build();
       final LlmRequest request = LlmRequest.builder().contents(List.of(promptContent)).build();
-      final LlmResponse response =
-          titleGeneratorModel.generateContent(request, false).blockingFirst();
+      final LlmResponse response = titleGeneratorModel.generateContent(request, false).blockingFirst();
       final String rawTitle = response.content().map(Content::text).orElse(null);
       return Optional.ofNullable(sanitizeTitle(rawTitle));
     } catch (Exception e) {
@@ -161,15 +147,12 @@ public final class SessionTitleGenerator {
   }
 
   private static String buildPrompt(final String transcript) {
-    return String.format(
-            """
+    return String.format("""
         Generate a concise title (max 8 words) for this conversation. Respond with only the title.
 
         Conversation:
         %s
-        """,
-            transcript)
-        .strip();
+        """, transcript).strip();
   }
 
   private static String sanitizeTitle(final String title) {
@@ -177,8 +160,7 @@ public final class SessionTitleGenerator {
       return null;
     }
     String sanitized = title.trim().replaceAll("\\s+", " ");
-    if ((sanitized.startsWith("\"") && sanitized.endsWith("\""))
-        || (sanitized.startsWith("'") && sanitized.endsWith("'"))) {
+    if ((sanitized.startsWith("\"") && sanitized.endsWith("\"")) || (sanitized.startsWith("'") && sanitized.endsWith("'"))) {
       sanitized = sanitized.substring(1, sanitized.length() - 1).trim();
     }
     if (sanitized.length() > MAX_TITLE_LENGTH) {

@@ -15,29 +15,17 @@ import java.lang.reflect.Type;
 public class JsonMessageBodyWriter implements MessageBodyWriter<Object> {
 
   @Override
-  public boolean isWriteable(
-      final Class<?> type,
-      final Type genericType,
-      final Annotation[] annotations,
-      final MediaType mediaType) {
-    return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE)
-        || mediaType.isCompatible(MediaType.valueOf("application/*+json"));
+  public boolean isWriteable(final Class<?> type, final Type genericType, final Annotation[] annotations, final MediaType mediaType) {
+    return mediaType.isCompatible(MediaType.APPLICATION_JSON_TYPE) || mediaType.isCompatible(MediaType.valueOf("application/*+json"));
   }
 
   @Override
-  public void writeTo(
-      final Object o,
-      final Class<?> type,
-      final Type genericType,
-      final Annotation[] annotations,
-      final MediaType mediaType,
-      final MultivaluedMap<String, Object> httpHeaders,
-      final OutputStream entityStream) {
+  public void writeTo(final Object o, final Class<?> type, final Type genericType, final Annotation[] annotations,
+      final MediaType mediaType, final MultivaluedMap<String, Object> httpHeaders, final OutputStream entityStream) {
     try {
       JsonUtils.toStream(entityStream, o);
     } catch (final Exception e) {
-      throw new RuntimeException(
-          String.format("Error serializing JSON with Jackson: %s", e.getMessage()), e);
+      throw new RuntimeException(String.format("Error serializing JSON with Jackson: %s", e.getMessage()), e);
     }
   }
 }

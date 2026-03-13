@@ -17,37 +17,27 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
   }
 
   @Override
-  public ClassifiedError classify(
-      final ConnectorDefinition definition, final HttpResponseData responseData) {
+  public ClassifiedError classify(final ConnectorDefinition definition, final HttpResponseData responseData) {
     for (ErrorMappingRule mappingRule : definition.errorMappings()) {
       if (!matches(mappingRule, responseData)) {
         continue;
       }
-      final String message =
-          mappingRule.message() != null && !mappingRule.message().isBlank()
-              ? mappingRule.message()
-              : "Connector request failed";
-      final String code =
-          mappingRule.errorCode() == null || mappingRule.errorCode().isBlank()
-              ? "HTTP_" + responseData.statusCode()
-              : mappingRule.errorCode();
+      final String message = mappingRule.message() != null && !mappingRule.message().isBlank()
+          ? mappingRule.message()
+          : "Connector request failed";
+      final String code = mappingRule.errorCode() == null || mappingRule.errorCode().isBlank()
+          ? "HTTP_" + responseData.statusCode()
+          : mappingRule.errorCode();
       return new ClassifiedError(code, message, mappingRule.retryable());
     }
 
-    final Object codeValue =
-        responseExtractor.extract(
-            responseData.body(), definition.responseMapping().errorCodeJsonPath());
-    final Object messageValue =
-        responseExtractor.extract(
-            responseData.body(), definition.responseMapping().errorMessageJsonPath());
-    final String code =
-        codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
-    final String message =
-        messageValue == null
-            ? "Connector request failed with status " + responseData.statusCode()
-            : String.valueOf(messageValue);
-    final boolean retryable =
-        definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
+    final Object codeValue = responseExtractor.extract(responseData.body(), definition.responseMapping().errorCodeJsonPath());
+    final Object messageValue = responseExtractor.extract(responseData.body(), definition.responseMapping().errorMessageJsonPath());
+    final String code = codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
+    final String message = messageValue == null
+        ? "Connector request failed with status " + responseData.statusCode()
+        : String.valueOf(messageValue);
+    final boolean retryable = definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
     return new ClassifiedError(code, message, retryable);
   }
 
@@ -56,9 +46,7 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
       return false;
     }
 
-    if (rule.bodyContains() != null
-        && !rule.bodyContains().isBlank()
-        && !responseData.body().contains(rule.bodyContains())) {
+    if (rule.bodyContains() != null && !rule.bodyContains().isBlank() && !responseData.body().contains(rule.bodyContains())) {
       return false;
     }
 

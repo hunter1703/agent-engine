@@ -1,16 +1,13 @@
 package com.agentengine.engine.tools.planning.beans;
 
-import com.agentengine.engine.api.tools.annotations.ToolSchema;
+import com.agentengine.engine.plugin.annotations.ToolSchema;
 import java.util.UUID;
 
 public class Task {
   @ToolSchema(description = "Unique identifier for the task", optional = true)
   private String taskId = UUID.randomUUID().toString();
 
-  @ToolSchema(
-      name = "parent_id",
-      description = "Parent task id for creating a hierarchy between tasks.",
-      optional = true)
+  @ToolSchema(name = "parent_id", description = "Parent task id for creating a hierarchy between tasks.", optional = true)
   private String parentId;
 
   @ToolSchema(description = "Short name for the task.")
@@ -28,7 +25,8 @@ public class Task {
   @ToolSchema(description = "Detailed description of the task.", optional = true)
   private String description;
 
-  public Task() {}
+  public Task() {
+  }
 
   public Task(String name, String goal) {
     this.name = name;

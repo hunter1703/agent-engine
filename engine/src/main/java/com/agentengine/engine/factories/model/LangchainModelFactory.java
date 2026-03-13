@@ -1,11 +1,11 @@
 package com.agentengine.engine.factories.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.engine.model.NormalizedLangChain4j;
 import com.agentengine.engine.utils.ModelUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.models.langchain4j.LangChain4j;
@@ -37,10 +37,9 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
 
   static {
-    DEFAULT_JSON_RESPONSE_FORMAT =
-        JsonUtils.fromJson(
-            ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json"),
-            new TypeReference<>() {});
+    DEFAULT_JSON_RESPONSE_FORMAT = JsonUtils.fromJson(ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json"),
+        new TypeReference<>() {
+        });
   }
 
   @Override
@@ -48,89 +47,47 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
     final ChatModels models = buildChatModels(modelConfig, responseFormat);
-    return new NormalizedLangChain4j(
-        models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
+    return new NormalizedLangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
   }
 
-  private record ChatModels(
-      ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {}
+  private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {
+  }
 
-  private static ChatModels buildChatModels(
-      final ModelConfig modelConfig, final ResponseFormat responseFormat) {
+  private static ChatModels buildChatModels(final ModelConfig modelConfig, final ResponseFormat responseFormat) {
     final ModelConfig.Provider provider = ModelConfig.Provider.fromType(modelConfig.getType());
     return switch (provider) {
       case ModelConfig.Provider.OLLAMA ->
-          new ChatModels(
-              buildOllama(modelConfig, responseFormat),
-              buildOllamaStreaming(modelConfig, responseFormat),
-              responseFormat);
+        new ChatModels(buildOllama(modelConfig, responseFormat), buildOllamaStreaming(modelConfig, responseFormat), responseFormat);
       case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
         ModelUtils.ensureRunning(modelConfig);
-        yield new ChatModels(
-            buildOpenAI(modelConfig, responseFormat),
-            buildOpenAIStreaming(modelConfig, responseFormat),
-            responseFormat);
+        yield new ChatModels(buildOpenAI(modelConfig, responseFormat), buildOpenAIStreaming(modelConfig, responseFormat), responseFormat);
       }
       default -> throw new IllegalArgumentException("Unsupported model provider: " + provider);
     };
   }
 
-  private static ChatModel buildOllama(
-      final ModelConfig config, final ResponseFormat responseFormat) {
-    return OllamaChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topK(config.getTopK())
-        .topP(config.getTopP())
-        .repeatPenalty(config.getRepeatPenalty())
-        .numPredict(config.getNumPredict())
-        .numCtx(config.getMaxContextLength())
-        .stop(config.getStopTokens())
-        .responseFormat(responseFormat)
-        .build();
+  private static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+    return OllamaChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
+        .topK(config.getTopK()).topP(config.getTopP()).repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
+        .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
   }
 
-  private static ChatModel buildOpenAI(
-      final ModelConfig config, final ResponseFormat responseFormat) {
+  private static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
-    return OpenAiChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topP(config.getTopP())
-        .stop(config.getStopTokens())
-        .responseFormat(format)
-        .build();
+    return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
+        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).build();
   }
 
-  private static StreamingChatModel buildOllamaStreaming(
-      final ModelConfig config, final ResponseFormat responseFormat) {
-    return OllamaStreamingChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topK(config.getTopK())
-        .topP(config.getTopP())
-        .repeatPenalty(config.getRepeatPenalty())
-        .numPredict(config.getNumPredict())
-        .numCtx(config.getMaxContextLength())
-        .stop(config.getStopTokens())
-        .responseFormat(responseFormat)
-        .build();
+  private static StreamingChatModel buildOllamaStreaming(final ModelConfig config, final ResponseFormat responseFormat) {
+    return OllamaStreamingChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
+        .topK(config.getTopK()).topP(config.getTopP()).repeatPenalty(config.getRepeatPenalty()).numPredict(config.getNumPredict())
+        .numCtx(config.getMaxContextLength()).stop(config.getStopTokens()).responseFormat(responseFormat).build();
   }
 
-  private static StreamingChatModel buildOpenAIStreaming(
-      final ModelConfig config, final ResponseFormat responseFormat) {
+  private static StreamingChatModel buildOpenAIStreaming(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
-    return OpenAiStreamingChatModel.builder()
-        .modelName(config.getModel())
-        .baseUrl(config.getBaseUrl())
-        .temperature(config.getTemperature())
-        .topP(config.getTopP())
-        .stop(config.getStopTokens())
-        .responseFormat(format)
-        .build();
+    return OpenAiStreamingChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
+        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).build();
   }
 
   protected static ResponseFormat getResponseFormat(final ResponseFormatType responseFormatType) {
@@ -183,31 +140,28 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
       }
     }
     final String type = typeValue instanceof final String typeString ? typeString : null;
-    final JsonSchemaElement element =
-        switch (type == null ? "" : type) {
-          case "object" -> buildObjectSchema(jsonSchema);
-          case "array" -> buildArraySchema(jsonSchema);
-          case "string" -> buildStringSchema(jsonSchema);
-          case "integer" -> buildIntegerSchema(jsonSchema);
-          case "number" -> buildNumberSchema(jsonSchema);
-          case "boolean" -> buildBooleanSchema(jsonSchema);
-          case "null" -> JsonEnumSchema.builder().enumValues("null").build();
-          case "" -> {
-            if (jsonSchema.containsKey("properties")) {
-              yield buildObjectSchema(jsonSchema);
-            }
-            if (jsonSchema.containsKey("items")) {
-              yield buildArraySchema(jsonSchema);
-            }
-            yield JsonObjectSchema.builder().build();
-          }
-          default -> JsonStringSchema.builder().build();
-        };
+    final JsonSchemaElement element = switch (type == null ? "" : type) {
+      case "object" -> buildObjectSchema(jsonSchema);
+      case "array" -> buildArraySchema(jsonSchema);
+      case "string" -> buildStringSchema(jsonSchema);
+      case "integer" -> buildIntegerSchema(jsonSchema);
+      case "number" -> buildNumberSchema(jsonSchema);
+      case "boolean" -> buildBooleanSchema(jsonSchema);
+      case "null" -> JsonEnumSchema.builder().enumValues("null").build();
+      case "" -> {
+        if (jsonSchema.containsKey("properties")) {
+          yield buildObjectSchema(jsonSchema);
+        }
+        if (jsonSchema.containsKey("items")) {
+          yield buildArraySchema(jsonSchema);
+        }
+        yield JsonObjectSchema.builder().build();
+      }
+      default -> JsonStringSchema.builder().build();
+    };
     final boolean nullable = Boolean.TRUE.equals(jsonSchema.get("nullable"));
     if (nullable) {
-      return JsonAnyOfSchema.builder()
-          .anyOf(element, JsonEnumSchema.builder().enumValues("null").build())
-          .build();
+      return JsonAnyOfSchema.builder().anyOf(element, JsonEnumSchema.builder().enumValues("null").build()).build();
     }
     return element;
   }
@@ -218,8 +172,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
     if (StringUtils.isNotBlank(description)) {
       builder.description(description);
     }
-    final Map<String, Map<String, Object>> properties =
-        CollectionUtils.getMapFromMap(jsonSchema, "properties");
+    final Map<String, Map<String, Object>> properties = CollectionUtils.getMapFromMap(jsonSchema, "properties");
     if (!CollectionUtils.isEmpty(properties)) {
       for (final Map.Entry<String, Map<String, Object>> fieldProp : properties.entrySet()) {
         builder.addProperty(fieldProp.getKey(), buildJsonSchemaElement(fieldProp.getValue()));
@@ -233,8 +186,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
     if (additionalProperties instanceof final Boolean allowed) {
       builder.additionalProperties(allowed);
     }
-    final Map<String, Map<String, Object>> definitions =
-        CollectionUtils.getMapFromMap(jsonSchema, "definitions");
+    final Map<String, Map<String, Object>> definitions = CollectionUtils.getMapFromMap(jsonSchema, "definitions");
     if (!CollectionUtils.isEmpty(definitions)) {
       final Map<String, JsonSchemaElement> definitionSchemas = new HashMap<>();
       for (final Map.Entry<String, Map<String, Object>> entry : definitions.entrySet()) {

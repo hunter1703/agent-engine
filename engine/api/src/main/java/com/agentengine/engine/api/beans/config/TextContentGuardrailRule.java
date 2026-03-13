@@ -37,7 +37,6 @@ public class TextContentGuardrailRule extends GuardrailRule {
   }
 
   public void setBlockedPatterns(final List<String> blockedPatterns) {
-    this.blockedPatterns =
-        blockedPatterns == null ? new ArrayList<>() : new ArrayList<>(blockedPatterns);
+    this.blockedPatterns = blockedPatterns == null ? new ArrayList<>() : new ArrayList<>(blockedPatterns);
   }
 }

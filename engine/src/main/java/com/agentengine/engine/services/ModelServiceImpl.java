@@ -3,6 +3,7 @@ package com.agentengine.engine.services;
 import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.repository.ModelRepository;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.builder.BuilderDefinition;
 import com.agentengine.util.common.builder.BuilderDefinitionUtils;
@@ -21,10 +22,14 @@ import java.util.Optional;
 @Unremovable
 public class ModelServiceImpl implements ModelService {
 
-  private static final BuilderDefinition MODEL_DEFINITION =
-      BuilderDefinitionUtils.generate(ModelConfig.class);
+  private static final BuilderDefinition MODEL_DEFINITION = BuilderDefinitionUtils.generate(ModelConfig.class);
 
-  @Inject ModelRepository modelRepository;
+  private final ModelRepository modelRepository;
+
+  @Inject
+  public ModelServiceImpl(final ModelRepository modelRepository) {
+    this.modelRepository = modelRepository;
+  }
 
   @Override
   @WithSpan
@@ -40,6 +45,9 @@ public class ModelServiceImpl implements ModelService {
 
   @Override
   public Map<String, ModelConfig> getModels(final Collection<String> ids) {
+    if (CollectionUtils.isEmpty(ids)) {
+      return Map.of();
+    }
     return modelRepository.findByIds(ids);
   }
 
@@ -52,10 +60,7 @@ public class ModelServiceImpl implements ModelService {
   @Override
   @WithSpan
   public ModelConfig saveModel(final ModelConfig model) {
-    final BuilderMode mode =
-        StringUtils.isBlank(model == null ? null : model.getId())
-            ? BuilderMode.CREATE
-            : BuilderMode.EDIT;
+    final BuilderMode mode = StringUtils.isBlank(model == null ? null : model.getId()) ? BuilderMode.CREATE : BuilderMode.EDIT;
     return modelRepository.save(sanitize(model, mode));
   }
 

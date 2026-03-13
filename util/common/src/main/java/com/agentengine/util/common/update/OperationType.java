@@ -3,9 +3,7 @@ package com.agentengine.util.common.update;
 import java.util.Locale;
 
 public enum OperationType {
-  UNKNOWN,
-  SET,
-  UNSET;
+  UNKNOWN, SET, UNSET;
 
   public static OperationType valueOfOrDefault(final String value) {
     if (value == null || value.isBlank()) {

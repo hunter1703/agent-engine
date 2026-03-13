@@ -43,8 +43,7 @@ public class ClasspathConnectorRegistry implements ConnectorRegistry {
       }
       return Optional.empty();
     } catch (IOException ex) {
-      throw new ConnectorConfigLoadException(
-          "Failed to read connector config: " + resourcePath, ex);
+      throw new ConnectorConfigLoadException("Failed to read connector config: " + resourcePath, ex);
     }
   }
 }

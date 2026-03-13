@@ -8,7 +8,10 @@ public enum ParallelAggregationPolicy {
   UNKNOWN,
   /** Preserve all successful outputs and concatenate them in branch order. */
   CONCATENATE,
-  /** Pick a single best-looking successful output (currently longest output heuristic). */
+  /**
+   * Pick a single best-looking successful output (currently longest output
+   * heuristic).
+   */
   BEST_EFFORT,
   /** Pick output supported by majority of matching normalized responses. */
   MAJORITY_VOTE;

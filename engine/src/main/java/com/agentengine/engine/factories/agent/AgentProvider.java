@@ -1,8 +1,8 @@
 package com.agentengine.engine.factories.agent;
 
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.factories.AgentFactory;
+import com.agentengine.engine.plugin.Agent;
+import com.agentengine.engine.plugin.factories.AgentFactory;
 import com.agentengine.util.common.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -19,18 +19,14 @@ public class AgentProvider {
 
   @Inject
   public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories) {
-    typeVsFactory =
-        CollectionUtils.transformToMap(
-            allFactories.stream().toList(), AgentFactory::type, Function.identity());
-    this.defaultAgentFactory =
-        (DefaultAgentFactory) typeVsFactory.get(BaseAgentConfig.AgentType.DEFAULT.name());
+    typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), AgentFactory::type, Function.identity());
+    this.defaultAgentFactory = (DefaultAgentFactory) typeVsFactory.get(BaseAgentConfig.AgentType.DEFAULT.name());
   }
 
   @SuppressWarnings("unchecked")
   public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {
     // noinspection unchecked
-    final AgentFactory<C, A> factory =
-        (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);
+    final AgentFactory<C, A> factory = (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);
     return factory.build(config);
   }
 }

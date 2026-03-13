@@ -4,13 +4,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public record RequestContext(
-    Map<String, Object> input,
-    Object rawPayload,
-    Map<String, Object> auth,
-    Connection connection,
-    Map<String, Object> previous,
-    Map<String, Object> vars) {
+public record RequestContext(Map<String, Object> input, Object rawPayload, Map<String, Object> auth, Connection connection,
+    Map<String, Object> previous, Map<String, Object> vars) {
 
   public RequestContext {
     input = input == null ? Map.of() : Map.copyOf(input);
@@ -21,8 +16,7 @@ public record RequestContext(
   }
 
   public static RequestContext empty() {
-    return new RequestContext(
-        Map.of(), null, Map.of(), new Connection(null, Map.of()), Map.of(), Map.of());
+    return new RequestContext(Map.of(), null, Map.of(), new Connection(null, Map.of()), Map.of(), Map.of());
   }
 
   public Map<String, Object> toTemplateVariables() {

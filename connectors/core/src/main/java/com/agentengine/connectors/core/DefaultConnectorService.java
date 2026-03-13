@@ -16,9 +16,7 @@ public class DefaultConnectorService implements ConnectorService {
   private final ConnectorAuthMaterialProvider authMaterialProvider;
 
   @Inject
-  public DefaultConnectorService(
-      ConnectorRegistry registry,
-      ConnectorExecutor executor,
+  public DefaultConnectorService(ConnectorRegistry registry, ConnectorExecutor executor,
       ConnectorAuthMaterialProvider authMaterialProvider) {
     this.registry = registry;
     this.executor = executor;
@@ -27,21 +25,17 @@ public class DefaultConnectorService implements ConnectorService {
 
   @Override
   public ConnectorExecutionResult execute(String connectorId, Map<String, Object> input) {
-    final var definition =
-        registry
-            .getConnector(connectorId)
-            .orElseThrow(() -> new IllegalArgumentException("Unknown connector: " + connectorId));
+    final var definition = registry.getConnector(connectorId)
+        .orElseThrow(() -> new IllegalArgumentException("Unknown connector: " + connectorId));
     final Map<String, Object> safeInput = input == null ? Map.of() : Map.copyOf(input);
     final Map<String, Object> authMaterials = authMaterialProvider.resolve(definition.appName());
     final Map<String, Object> mergedInput = mergeInputWithAuth(safeInput, authMaterials);
     final Connection connection = new Connection(definition.appName(), authMaterials);
-    return executor.executeOnce(
-        definition, new RequestContext(mergedInput, null, authMaterials, connection, null, null));
+    return executor.executeOnce(definition, new RequestContext(mergedInput, null, authMaterials, connection, null, null));
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<String, Object> mergeInputWithAuth(
-      final Map<String, Object> input, final Map<String, Object> authMaterials) {
+  private static Map<String, Object> mergeInputWithAuth(final Map<String, Object> input, final Map<String, Object> authMaterials) {
     if (authMaterials == null || authMaterials.isEmpty()) {
       return input;
     }

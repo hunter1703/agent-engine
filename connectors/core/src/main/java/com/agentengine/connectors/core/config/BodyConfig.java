@@ -7,8 +7,7 @@ public record BodyConfig(String type, Object template, String contentType, boole
     omitNulls = omitNulls;
   }
 
-  public BodyConfig(
-      final BodyType type, final Object template, final String contentType, final boolean omitNulls) {
+  public BodyConfig(final BodyType type, final Object template, final String contentType, final boolean omitNulls) {
     this(type == null ? null : type.name(), template, contentType, omitNulls);
   }
 

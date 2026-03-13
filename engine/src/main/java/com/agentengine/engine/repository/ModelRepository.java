@@ -1,8 +1,8 @@
 package com.agentengine.engine.repository;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.engine.utils.ModelUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
@@ -15,8 +15,7 @@ import jakarta.inject.Singleton;
 public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
 
   @Inject
-  public ModelRepository(
-      final MongoClientFactory mongoClientFactory, ValidationService validationService) {
+  public ModelRepository(final MongoClientFactory mongoClientFactory, ValidationService validationService) {
     super(mongoClientFactory, "Model", ModelConfig.class, validationService);
   }
 
@@ -51,10 +50,8 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
     return super.update(id, update);
   }
 
-  private static void applyServerConfigIfMissing(
-      final ModelConfig update, final ModelConfig existingModel) {
-    if (ModelConfig.Provider.valueOfOrDefault(existingModel.getType())
-        != ModelConfig.Provider.OPEN_AI_COMPATIBLE) {
+  private static void applyServerConfigIfMissing(final ModelConfig update, final ModelConfig existingModel) {
+    if (ModelConfig.Provider.valueOfOrDefault(existingModel.getType()) != ModelConfig.Provider.OPEN_AI_COMPATIBLE) {
       return;
     }
     if (StringUtils.isBlank(update.getBaseUrl())) {

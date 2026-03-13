@@ -17,8 +17,7 @@ public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader
       final String content = Files.readString(path);
       return parse(path.getFileName().toString(), content);
     } catch (IOException ex) {
-      throw new ConnectorConfigLoadException(
-          "Failed to load connector config from path: " + path, ex);
+      throw new ConnectorConfigLoadException("Failed to load connector config from path: " + path, ex);
     }
   }
 

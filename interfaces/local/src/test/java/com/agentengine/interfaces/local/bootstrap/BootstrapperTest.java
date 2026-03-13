@@ -18,7 +18,8 @@ import org.mockito.Mockito;
 
 class BootstrapperTest {
 
-  @TempDir Path tempDir;
+  @TempDir
+  Path tempDir;
 
   @Test
   void shouldBootstrapInfraAgentsAndModelsWhenBootstrapDirectoryExists() throws Exception {
@@ -28,18 +29,14 @@ class BootstrapperTest {
     Files.createDirectories(agentsDir);
     Files.createDirectories(modelsDir);
 
-    Files.writeString(
-        agentsDir.resolve("agent_one.json"),
-        """
+    Files.writeString(agentsDir.resolve("agent_one.json"), """
         {
           "type": "default",
           "name": "Agent One",
           "modelId": "model_one"
         }
         """);
-    Files.writeString(
-        modelsDir.resolve("model_one.json"),
-        """
+    Files.writeString(modelsDir.resolve("model_one.json"), """
         {
           "type": "ollama",
           "name": "Model One",
@@ -71,8 +68,7 @@ class BootstrapperTest {
     final AgentService agentService = Mockito.mock(AgentService.class);
     final ModelService modelService = Mockito.mock(ModelService.class);
     final InfraMongoRepository infraMongoRepository = Mockito.mock(InfraMongoRepository.class);
-    when(infraMongoRepository.findOneByType(DefaultModelConfig.TYPE))
-        .thenReturn(new DefaultModelConfig());
+    when(infraMongoRepository.findOneByType(DefaultModelConfig.TYPE)).thenReturn(new DefaultModelConfig());
 
     final Bootstrapper bootstrapper = new Bootstrapper();
     bootstrapper.bootstrapDir = tempDir.resolve("missing-configs").toString();

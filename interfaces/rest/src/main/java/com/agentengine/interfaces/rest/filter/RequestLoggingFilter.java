@@ -25,17 +25,12 @@ public class RequestLoggingFilter implements ContainerRequestFilter, ContainerRe
       requestId = UUID.randomUUID().toString();
     }
     MDC.put(MDC_KEY, requestId);
-    LOG.debug(
-        "Request received method={} path={} requestId={}",
-        requestContext.getMethod(),
-        requestContext.getUriInfo().getPath(),
+    LOG.debug("Request received method={} path={} requestId={}", requestContext.getMethod(), requestContext.getUriInfo().getPath(),
         requestId);
   }
 
   @Override
-  public void filter(
-      ContainerRequestContext requestContext, ContainerResponseContext responseContext)
-      throws IOException {
+  public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
     String requestId = MDC.get(MDC_KEY);
     if (requestId != null) {
       responseContext.getHeaders().add(REQUEST_ID_HEADER, requestId);

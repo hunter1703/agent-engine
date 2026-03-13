@@ -6,7 +6,6 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,18 +22,19 @@ public class SessionInfo extends BaseEntity {
   private String appName;
   private String userId;
   private Map<String, Object> state = new HashMap<>();
-  @BsonIgnore private List<Map<String, Object>> events = new ArrayList<>();
+  @BsonIgnore
+  private List<Map<String, Object>> events = new ArrayList<>();
   private Long lastUpdateTime;
 
-  public SessionInfo() {}
+  public SessionInfo() {
+  }
 
   public static SessionInfo fromSession(final Session session) {
     final SessionInfo sessionInfo = new SessionInfo();
     sessionInfo.setId(session.id());
     sessionInfo.setAppName(session.appName());
     sessionInfo.setUserId(session.userId());
-    sessionInfo.setState(
-        session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
+    sessionInfo.setState(session.state() == null ? new HashMap<>() : new HashMap<>(session.state()));
 
     if (session.events() != null) {
       final List<Map<String, Object>> eventMaps = new ArrayList<>();
@@ -55,12 +55,9 @@ public class SessionInfo extends BaseEntity {
     if (state != null) {
       sessionState.putAll(state);
     }
-    final Session.Builder builder =
-        Session.builder(getId())
-            .appName(appName)
-            .userId(userId)
-            .state(sessionState)
-            .events(JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {}));
+    final Session.Builder builder = Session.builder(getId()).appName(appName).userId(userId).state(sessionState)
+        .events(JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {
+        }));
     if (lastUpdateTime != null) {
       builder.lastUpdateTime(Instant.ofEpochMilli(lastUpdateTime));
     }
@@ -99,7 +96,8 @@ public class SessionInfo extends BaseEntity {
 
   @BsonIgnore
   public List<Event> getEvents() {
-    final List<Event> parsed = JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {});
+    final List<Event> parsed = JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {
+    });
     return parsed == null ? List.of() : parsed;
   }
 
@@ -119,7 +117,8 @@ public class SessionInfo extends BaseEntity {
       setEvents(new ArrayList<>());
       return;
     }
-    final List<Map<String, Object>> parsedEvents = JsonUtils.fromJson(json, new TypeReference<>() {});
+    final List<Map<String, Object>> parsedEvents = JsonUtils.fromJson(json, new TypeReference<>() {
+    });
     setEvents(parsedEvents == null ? new ArrayList<>() : parsedEvents);
   }
 

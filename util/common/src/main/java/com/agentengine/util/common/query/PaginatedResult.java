@@ -57,8 +57,7 @@ public class PaginatedResult<T> {
     result.setHasMore(hasMore);
     if (result.isHasMore()) {
       Page nextPage = new Page(page.getOffset() + page.getLimit(), page.getLimit());
-      result.setNextCursor(
-          Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
+      result.setNextCursor(Base64.getEncoder().encodeToString(JsonUtils.toJson(nextPage).getBytes()));
     }
     return result;
   }

@@ -10,8 +10,7 @@ public class AssetNotFoundException extends RuntimeException {
     this.assetId = assetId;
   }
 
-  public AssetNotFoundException(
-      final String assetType, final String assetId, final Throwable cause) {
+  public AssetNotFoundException(final String assetType, final String assetId, final Throwable cause) {
     super(buildMessage(assetType, assetId), cause);
     this.assetType = assetType;
     this.assetId = assetId;

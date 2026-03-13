@@ -6,16 +6,19 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.agents.processors.Parser;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.factories.model.ModelProvider;
 import com.agentengine.engine.model.AbstractLLM;
+import com.agentengine.engine.plugin.Agent;
+import com.agentengine.engine.plugin.tools.Tool;
+import com.agentengine.engine.plugin.tools.ToolProvider;
+import com.agentengine.engine.plugin.tools.ToolsetProvider;
 import com.agentengine.engine.tools.DiscoveredToolProviders;
-import com.agentengine.engine.tools.ToolCatalogImpl;
 import com.agentengine.engine.tools.ToolFactory;
+import com.agentengine.engine.tools.ToolServiceImpl;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.agents.LlmAgent;
@@ -45,8 +48,8 @@ class OrchestratorAgentFactoryTest {
     assertThat(agent.subAgents()).isEmpty();
     assertThat(llmAgent.disallowTransferToParent()).isTrue();
     assertThat(llmAgent.disallowTransferToPeers()).isTrue();
-    assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name)
-        .containsExactly("request_human_input", "sub-agent");
+    assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name).containsExactly("request_human_input",
+        "sub-agent");
   }
 
   @Test
@@ -61,9 +64,7 @@ class OrchestratorAgentFactoryTest {
     assertThat(agent.subAgents()).extracting(BaseAgent::name).containsExactly("sub-agent");
     assertThat(llmAgent.disallowTransferToParent()).isFalse();
     assertThat(llmAgent.disallowTransferToPeers()).isFalse();
-    assertThat(llmAgent.tools().blockingGet())
-        .extracting(com.google.adk.tools.BaseTool::name)
-        .containsExactly("request_human_input");
+    assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name).containsExactly("request_human_input");
   }
 
   private static LlmAgent extractDelegatedLlmAgent(final DelegatedAgent agent) {
@@ -91,17 +92,13 @@ class OrchestratorAgentFactoryTest {
       when(modelProvider.acquire("model-1")).thenReturn(new StubModel("model-1"));
 
       @SuppressWarnings("unchecked")
-      final Instance<com.agentengine.engine.api.tools.ToolProvider> toolProviders =
-          mock(Instance.class);
+      final Instance<ToolProvider> toolProviders = mock(Instance.class);
       when(toolProviders.iterator()).thenReturn(Collections.emptyIterator());
       @SuppressWarnings("unchecked")
-      final Instance<com.agentengine.engine.api.tools.ToolsetProvider> toolsetProviders =
-          mock(Instance.class);
+      final Instance<ToolsetProvider> toolsetProviders = mock(Instance.class);
       when(toolsetProviders.iterator()).thenReturn(Collections.emptyIterator());
-      final ToolCatalogImpl toolCatalogImpl =
-          new ToolCatalogImpl(toolProviders, toolsetProviders, emptyDiscoveredToolProviders());
-      final ToolFactory toolFactory =
-          new ToolFactory(toolCatalogImpl);
+      final ToolServiceImpl toolServiceImpl = new ToolServiceImpl(toolProviders, toolsetProviders, emptyDiscoveredToolProviders());
+      final ToolFactory toolFactory = new ToolFactory(toolServiceImpl);
 
       @SuppressWarnings("unchecked")
       final Instance<AgentProvider> agentProviderInstance = mock(Instance.class);
@@ -112,14 +109,13 @@ class OrchestratorAgentFactoryTest {
       final AgentService agentService = mock(AgentService.class);
       when(agentService.getAgent("sub-agent")).thenReturn(Optional.of(subAgentConfig));
 
-      return new OrchestratorAgentFactory(
-          modelProvider, toolFactory, agentProviderInstance, agentService);
+      return new OrchestratorAgentFactory(modelProvider, toolFactory, agentProviderInstance, agentService);
     }
 
     @SuppressWarnings("unchecked")
     private static DiscoveredToolProviders emptyDiscoveredToolProviders() {
-      final Instance<com.agentengine.engine.api.tools.Tool> tools = mock(Instance.class);
-      when(tools.iterator()).thenReturn(List.<com.agentengine.engine.api.tools.Tool>of().iterator());
+      final Instance<Tool> tools = mock(Instance.class);
+      when(tools.iterator()).thenReturn(List.<Tool>of().iterator());
       return new DiscoveredToolProviders(tools);
     }
 

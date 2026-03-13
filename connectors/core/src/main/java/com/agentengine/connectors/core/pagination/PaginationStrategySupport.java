@@ -6,7 +6,8 @@ import java.util.Collection;
 
 final class PaginationStrategySupport {
 
-  private PaginationStrategySupport() {}
+  private PaginationStrategySupport() {
+  }
 
   static boolean isTerminalData(final Object mappedData) {
     if (mappedData == null) {

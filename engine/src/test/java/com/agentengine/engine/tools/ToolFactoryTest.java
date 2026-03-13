@@ -5,10 +5,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.ToolsConfig;
-import com.agentengine.engine.api.tools.Tool;
 import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.api.tools.ToolProvider;
-import com.agentengine.engine.api.tools.ToolsetProvider;
+import com.agentengine.engine.plugin.tools.Tool;
+import com.agentengine.engine.plugin.tools.ToolProvider;
+import com.agentengine.engine.plugin.tools.ToolsetProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
 import io.reactivex.rxjava3.core.Flowable;
@@ -22,72 +22,59 @@ class ToolFactoryTest {
   @Test
   void shouldBuildOnlyStandaloneToolsFromConfiguredEntries() {
     final BaseTool runtimeTool = mock(BaseTool.class);
-    final ToolProvider provider =
-        new ToolProvider() {
-          @Override
-          public ToolDescriptor descriptor() {
-            return new ToolDescriptor("shared_tool", "Shared tool", Map.of());
-          }
+    final ToolProvider provider = new ToolProvider() {
+      @Override
+      public ToolDescriptor descriptor() {
+        return new ToolDescriptor("shared_tool", "Shared tool", Map.of());
+      }
 
-          @Override
-          public BaseTool create(final Map<String, Object> toolConfig) {
-            return runtimeTool;
-          }
-        };
-    final ToolFactory factory =
-        new ToolFactory(
-            new ToolCatalogImpl(
-                instanceOf(List.of(provider)),
-                instanceOf(List.<ToolsetProvider>of()),
-                emptyDiscoveredToolProviders()));
+      @Override
+      public BaseTool create(final Map<String, Object> toolConfig) {
+        return runtimeTool;
+      }
+    };
+    final ToolFactory factory = new ToolFactory(
+        new ToolServiceImpl(instanceOf(List.of(provider)), instanceOf(List.<ToolsetProvider>of()), emptyDiscoveredToolProviders()));
 
-    assertThat(factory.buildTools(List.of(new ToolsConfig("shared_tool", Map.of()))))
-        .containsExactly(runtimeTool);
+    assertThat(factory.buildTools(List.of(new ToolsConfig("shared_tool", Map.of())))).containsExactly(runtimeTool);
     assertThat(factory.buildToolsets(List.of(new ToolsConfig("shared_tool", Map.of())))).isEmpty();
   }
 
   @Test
   void shouldBuildOnlyToolsetsWithoutExpandingThemIntoIndividualTools() {
     final BaseTool runtimeTool = mock(BaseTool.class);
-    final BaseToolset runtimeToolset =
-        new BaseToolset() {
-          @Override
-          public Flowable<BaseTool> getTools(final com.google.adk.agents.ReadonlyContext context) {
-            return Flowable.just(runtimeTool);
-          }
+    final BaseToolset runtimeToolset = new BaseToolset() {
+      @Override
+      public Flowable<BaseTool> getTools(final com.google.adk.agents.ReadonlyContext context) {
+        return Flowable.just(runtimeTool);
+      }
 
-          @Override
-          public void close() {}
-        };
-    final ToolDescriptor memberDescriptor =
-        new ToolDescriptor("member_tool", "Member tool", Map.of());
-    final ToolsetProvider toolsetProvider =
-        new ToolsetProvider() {
-          @Override
-          public ToolDescriptor descriptor() {
-            return new ToolDescriptor("planning", "Planning toolset", Map.of());
-          }
+      @Override
+      public void close() {
+      }
+    };
+    final ToolDescriptor memberDescriptor = new ToolDescriptor("member_tool", "Member tool", Map.of());
+    final ToolsetProvider toolsetProvider = new ToolsetProvider() {
+      @Override
+      public ToolDescriptor descriptor() {
+        return new ToolDescriptor("planning", "Planning toolset", Map.of());
+      }
 
-          @Override
-          public List<ToolDescriptor> memberDescriptors() {
-            return List.of(memberDescriptor);
-          }
+      @Override
+      public List<ToolDescriptor> memberDescriptors() {
+        return List.of(memberDescriptor);
+      }
 
-          @Override
-          public BaseToolset create(final Map<String, Object> toolConfig) {
-            return runtimeToolset;
-          }
-        };
-    final ToolFactory factory =
-        new ToolFactory(
-            new ToolCatalogImpl(
-                instanceOf(List.<ToolProvider>of()),
-                instanceOf(List.of(toolsetProvider)),
-                emptyDiscoveredToolProviders()));
+      @Override
+      public BaseToolset create(final Map<String, Object> toolConfig) {
+        return runtimeToolset;
+      }
+    };
+    final ToolFactory factory = new ToolFactory(
+        new ToolServiceImpl(instanceOf(List.<ToolProvider>of()), instanceOf(List.of(toolsetProvider)), emptyDiscoveredToolProviders()));
 
     assertThat(factory.buildTools(List.of(new ToolsConfig("planning", Map.of())))).isEmpty();
-    assertThat(factory.buildToolsets(List.of(new ToolsConfig("planning", Map.of()))))
-        .containsExactly(runtimeToolset);
+    assertThat(factory.buildToolsets(List.of(new ToolsConfig("planning", Map.of())))).containsExactly(runtimeToolset);
   }
 
   @SuppressWarnings("unchecked")

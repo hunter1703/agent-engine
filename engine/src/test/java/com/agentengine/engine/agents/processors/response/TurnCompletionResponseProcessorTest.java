@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.utils.RunState;
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.BaseAgentState;
 import com.google.adk.agents.InvocationContext;
@@ -25,63 +25,36 @@ class TurnCompletionResponseProcessorTest {
   @Test
   void shouldConsumeContinuationOnNonPartialNonFinalResponses() {
     final InvocationContext context = invocationContext("agent-1", "session-1");
-    RunStateUtils.getState(context).requestContinuation();
-    final LlmResponse response =
-        LlmResponse.builder()
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(
-                        java.util.List.of(
-                            Part.builder()
-                                .functionCall(
-                                    FunctionCall.builder()
-                                        .name("search")
-                                        .args(Map.of("query", "weather"))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    RunUtils.getState(context).requestContinuation();
+    final LlmResponse response = LlmResponse.builder()
+        .content(Content.builder().role("model")
+            .parts(java.util.List
+                .of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+            .build())
+        .build();
 
-    final LlmResponse updated =
-        TurnCompletionResponseProcessor.INSTANCE
-            .processResponse(context, response)
-            .blockingGet()
-            .updatedResponse();
+    final LlmResponse updated = TurnCompletionResponseProcessor.INSTANCE.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.turnComplete().orElse(false)).isTrue();
     assertThat(updated.finishReason()).isEmpty();
-    assertThat(RunStateUtils.getState(context).hasContinuationRequested()).isFalse();
+    assertThat(RunUtils.getState(context).hasContinuationRequested()).isFalse();
   }
 
   @Test
   void shouldSetStopFinishReasonOnFinalAnswerWhenContinuationNotRequested() {
     final InvocationContext context = invocationContext("agent-1", "session-1");
-    final LlmResponse response =
-        LlmResponse.builder()
-            .content(Content.builder().role("model").parts(java.util.List.of(Part.fromText("done"))).build())
-            .build();
+    final LlmResponse response = LlmResponse.builder()
+        .content(Content.builder().role("model").parts(java.util.List.of(Part.fromText("done"))).build()).build();
 
-    final LlmResponse updated =
-        TurnCompletionResponseProcessor.INSTANCE
-            .processResponse(context, response)
-            .blockingGet()
-            .updatedResponse();
+    final LlmResponse updated = TurnCompletionResponseProcessor.INSTANCE.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.turnComplete().orElse(false)).isTrue();
     assertThat(updated.finishReason()).isPresent();
   }
 
-  private static InvocationContext invocationContext(
-      final String agentId, final String sessionId) {
-    final Session session =
-        Session.builder(sessionId)
-            .appName(agentId)
-            .userId("default")
-            .state(new ConcurrentHashMap<>())
-            .events(new ArrayList<>())
-            .lastUpdateTime(Instant.now())
-            .build();
+  private static InvocationContext invocationContext(final String agentId, final String sessionId) {
+    final Session session = Session.builder(sessionId).appName(agentId).userId("default").state(new ConcurrentHashMap<>())
+        .events(new ArrayList<>()).lastUpdateTime(Instant.now()).build();
     final BaseAgent agent = mock(BaseAgent.class);
     when(agent.name()).thenReturn(agentId);
 

@@ -20,11 +20,14 @@ import org.junit.jupiter.api.Test;
 @QuarkusTestResource(MongoRedisTestResource.class)
 class RepositoryPersistenceIT {
 
-  @Inject AgentRepository agentRepository;
+  @Inject
+  AgentRepository agentRepository;
 
-  @Inject ModelRepository modelRepository;
+  @Inject
+  ModelRepository modelRepository;
 
-  @Inject MongoClientFactory mongoClientFactory;
+  @Inject
+  MongoClientFactory mongoClientFactory;
 
   @BeforeEach
   void shouldResetDatabaseWhenTestStarts() {
@@ -46,8 +49,7 @@ class RepositoryPersistenceIT {
 
     final Query query = new Query().withPage(new Page(0, 10));
     query.setIncludeCount(true);
-    final PaginatedResult<com.agentengine.engine.api.beans.config.BaseAgentConfig> result =
-        agentRepository.findByQuery(query);
+    final PaginatedResult<com.agentengine.engine.api.beans.config.BaseAgentConfig> result = agentRepository.findByQuery(query);
 
     assertThat(result.getItems()).hasSize(1);
     assertThat(result.getTotal()).isEqualTo(1L);

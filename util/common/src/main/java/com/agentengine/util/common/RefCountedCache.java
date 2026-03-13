@@ -16,8 +16,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Generic ref-counted cache with idle eviction.
  *
- * <p>getAndAcquire increments a lease counter for the key. Release decrements it (floored at zero).
- * Entries are evicted only when refCount reaches zero and idle timeout is exceeded.
+ * <p>
+ * getAndAcquire increments a lease counter for the key. Release decrements it
+ * (floored at zero). Entries are evicted only when refCount reaches zero and
+ * idle timeout is exceeded.
  */
 public final class RefCountedCache<K, V> implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(RefCountedCache.class);
@@ -33,28 +35,16 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
   private final ConcurrentMap<K, Entry<V>> entries = new ConcurrentHashMap<>();
   private final ScheduledExecutorService cleanupExecutor;
 
-  private RefCountedCache(
-      final String name,
-      final long idleTimeout,
-      final TimeUnit idleTimeoutUnit,
-      final long cleanupInterval,
-      final TimeUnit cleanupIntervalUnit,
-      final Function<K, V> defaultCreator,
-      final BiConsumer<K, V> evictHandler) {
+  private RefCountedCache(final String name, final long idleTimeout, final TimeUnit idleTimeoutUnit, final long cleanupInterval,
+      final TimeUnit cleanupIntervalUnit, final Function<K, V> defaultCreator, final BiConsumer<K, V> evictHandler) {
     this.name = StringUtils.isBlank(name) ? "ref-counted-cache" : name;
     this.idleTimeoutMillis = Math.max(1L, idleTimeoutUnit.toMillis(Math.max(1L, idleTimeout)));
-    final long cleanupIntervalMillis =
-        Math.max(1L, cleanupIntervalUnit.toMillis(Math.max(1L, cleanupInterval)));
+    final long cleanupIntervalMillis = Math.max(1L, cleanupIntervalUnit.toMillis(Math.max(1L, cleanupInterval)));
     this.defaultCreator = defaultCreator;
-    this.evictHandler = evictHandler == null ? (_key, _value) -> {} : evictHandler;
-    this.cleanupExecutor =
-        Executors.newSingleThreadScheduledExecutor(
-            Thread.ofVirtual().name(this.name + "-cleanup-", 0).factory());
-    this.cleanupExecutor.scheduleAtFixedRate(
-        this::evictIdleEntries,
-        cleanupIntervalMillis,
-        cleanupIntervalMillis,
-        TimeUnit.MILLISECONDS);
+    this.evictHandler = evictHandler == null ? (_key, _value) -> {
+    } : evictHandler;
+    this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name(this.name + "-cleanup-", 0).factory());
+    this.cleanupExecutor.scheduleAtFixedRate(this::evictIdleEntries, cleanupIntervalMillis, cleanupIntervalMillis, TimeUnit.MILLISECONDS);
   }
 
   public static <K, V> Builder<K, V> builder() {
@@ -68,21 +58,15 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
   public V getAndAcquire(final K key, final Function<K, V> creatorOnMiss) {
     final Function<K, V> effectiveCreator = creatorOnMiss != null ? creatorOnMiss : defaultCreator;
     if (effectiveCreator == null) {
-      throw new IllegalStateException(
-          "No creator configured for cache '"
-              + name
-              + "'. Provide builder creator or on-miss creator.");
+      throw new IllegalStateException("No creator configured for cache '" + name + "'. Provide builder creator or on-miss creator.");
     }
     final long now = System.currentTimeMillis();
-    final Entry<V> entry =
-        entries.compute(
-            key,
-            (_key, existing) -> {
-              if (existing == null) {
-                return new Entry<>(effectiveCreator.apply(key), now);
-              }
-              return existing;
-            });
+    final Entry<V> entry = entries.compute(key, (_key, existing) -> {
+      if (existing == null) {
+        return new Entry<>(effectiveCreator.apply(key), now);
+      }
+      return existing;
+    });
     entry.acquireLease(now);
     return entry.value();
   }
@@ -135,11 +119,7 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
         continue;
       }
       onEvict(entry.getKey(), current.value());
-      LOG.debug(
-          "Evicted idle entry from cache '{}' key={} idle_ms={}",
-          name,
-          entry.getKey(),
-          now - current.lastAccessEpochMillis());
+      LOG.debug("Evicted idle entry from cache '{}' key={} idle_ms={}", name, entry.getKey(), now - current.lastAccessEpochMillis());
     }
   }
 
@@ -198,7 +178,8 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
     private long cleanupInterval = DEFAULT_CLEANUP_INTERVAL;
     private TimeUnit cleanupIntervalUnit = DEFAULT_CLEANUP_INTERVAL_UNIT;
     private Function<K, V> creator;
-    private BiConsumer<K, V> evictHandler = (_key, _value) -> {};
+    private BiConsumer<K, V> evictHandler = (_key, _value) -> {
+    };
 
     public Builder<K, V> name(final String name) {
       this.name = name;
@@ -223,19 +204,13 @@ public final class RefCountedCache<K, V> implements AutoCloseable {
     }
 
     public Builder<K, V> onEvict(final BiConsumer<K, V> evictHandler) {
-      this.evictHandler = evictHandler == null ? (_key, _value) -> {} : evictHandler;
+      this.evictHandler = evictHandler == null ? (_key, _value) -> {
+      } : evictHandler;
       return this;
     }
 
     public RefCountedCache<K, V> build() {
-      return new RefCountedCache<>(
-          name,
-          idleTimeout,
-          idleTimeoutUnit,
-          cleanupInterval,
-          cleanupIntervalUnit,
-          creator,
-          evictHandler);
+      return new RefCountedCache<>(name, idleTimeout, idleTimeoutUnit, cleanupInterval, cleanupIntervalUnit, creator, evictHandler);
     }
   }
 }

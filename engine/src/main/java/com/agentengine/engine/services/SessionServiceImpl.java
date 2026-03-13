@@ -30,9 +30,7 @@ public class SessionServiceImpl implements SessionService {
   private final Event<SessionDeletedEvent> sessionDeletedEvent;
 
   @Inject
-  public SessionServiceImpl(
-      AgentSessionRepository sessionRepository,
-      EncryptionService encryptionService,
+  public SessionServiceImpl(AgentSessionRepository sessionRepository, EncryptionService encryptionService,
       Event<SessionDeletedEvent> sessionDeletedEvent) {
     this.sessionRepository = sessionRepository;
     this.encryptionService = encryptionService;
@@ -69,7 +67,6 @@ public class SessionServiceImpl implements SessionService {
   @Override
   @WithSpan
   public void updateTitle(final String id, final String title) {
-    sessionRepository.update(
-        id, Update.of(Operation.set("title", encryptionService.encrypt(title))));
+    sessionRepository.update(id, Update.of(Operation.set("title", encryptionService.encrypt(title))));
   }
 }

@@ -5,10 +5,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import java.util.Map;
 
-public record GuardrailContext(
-    String text,
-    ToolDescriptor toolDescriptor,
-    Map<String, Object> toolArgs,
+public record GuardrailContext(String text, ToolDescriptor toolDescriptor, Map<String, Object> toolArgs,
     InvocationContext invocationContext) {
 
   public GuardrailContext {

@@ -2,7 +2,6 @@ package com.agentengine.util.common;
 
 import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -13,9 +12,7 @@ public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
   private final Function<K, Holder<? extends V>> loader;
 
-  public Cache(
-      final com.google.common.cache.CacheBuilder<Object, Object> delegate,
-      final Function<K, ? extends V> loader) {
+  public Cache(final com.google.common.cache.CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> loader) {
     this.delegate = delegate.build();
     this.loader = input -> new Holder<>(loader.apply(input));
   }
@@ -73,5 +70,6 @@ public class Cache<K, V> {
     delegate.cleanUp();
   }
 
-  private record Holder<T>(T value) {}
+  private record Holder<T>(T value) {
+  }
 }

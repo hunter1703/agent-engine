@@ -17,85 +17,37 @@ class EventUtilsTest {
 
   @Test
   void shouldTreatFinalResponseEventsAsTerminal() {
-    final Event event =
-        Event.builder()
-            .content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build())
-            .build();
+    final Event event = Event.builder().content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build()).build();
 
     assertThat(EventUtils.isTerminal(event)).isTrue();
   }
 
   @Test
   void shouldTreatEndInvocationEventsAsTerminal() {
-    final Event event =
-        Event.builder()
-            .actions(EventActions.builder().endInvocation(true).build())
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(
-                        List.of(
-                            Part.builder()
-                                .functionCall(
-                                    FunctionCall.builder()
-                                        .name("search")
-                                        .args(Map.of("query", "weather"))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    final Event event = Event.builder().actions(EventActions.builder().endInvocation(true).build()).content(Content.builder().role("model")
+        .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+        .build()).build();
 
     assertThat(EventUtils.isTerminal(event)).isTrue();
   }
 
   @Test
   void shouldNotTreatToolCallOnlyEventAsTerminal() {
-    final Event event =
-        Event.builder()
-            .content(
-                Content.builder()
-                    .role("model")
-                    .parts(
-                        List.of(
-                            Part.builder()
-                                .functionCall(
-                                    FunctionCall.builder()
-                                        .name("search")
-                                        .args(Map.of("query", "weather"))
-                                        .build())
-                                .build()))
-                    .build())
-            .build();
+    final Event event = Event.builder().content(Content.builder().role("model")
+        .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+        .build()).build();
 
     assertThat(EventUtils.isTerminal(event)).isFalse();
   }
 
   @Test
   void shouldReturnLatestDeltaValueForKey() {
-    final Event older =
-        Event.builder()
-            .id("event-1")
-            .actions(
-                EventActions.builder()
-                    .stateDelta(new ConcurrentHashMap<>(Map.of("k", "older")))
-                    .build())
-            .build();
-    final Event unrelated =
-        Event.builder()
-            .id("event-2")
-            .actions(
-                EventActions.builder()
-                    .stateDelta(new ConcurrentHashMap<>(Map.of("x", "value")))
-                    .build())
-            .build();
-    final Event latest =
-        Event.builder()
-            .id("event-3")
-            .actions(
-                EventActions.builder()
-                    .stateDelta(new ConcurrentHashMap<>(Map.of("k", "latest")))
-                    .build())
-            .build();
+    final Event older = Event.builder().id("event-1")
+        .actions(EventActions.builder().stateDelta(new ConcurrentHashMap<>(Map.of("k", "older"))).build()).build();
+    final Event unrelated = Event.builder().id("event-2")
+        .actions(EventActions.builder().stateDelta(new ConcurrentHashMap<>(Map.of("x", "value"))).build()).build();
+    final Event latest = Event.builder().id("event-3")
+        .actions(EventActions.builder().stateDelta(new ConcurrentHashMap<>(Map.of("k", "latest"))).build()).build();
 
     final Object value = EventUtils.latestDeltaValue(List.of(older, unrelated, latest), "k");
 
@@ -104,14 +56,8 @@ class EventUtilsTest {
 
   @Test
   void shouldReturnNullWhenKeyNotPresentInDelta() {
-    final Event event =
-        Event.builder()
-            .id("event-1")
-            .actions(
-                EventActions.builder()
-                    .stateDelta(new ConcurrentHashMap<>(Map.of("x", "value")))
-                    .build())
-            .build();
+    final Event event = Event.builder().id("event-1")
+        .actions(EventActions.builder().stateDelta(new ConcurrentHashMap<>(Map.of("x", "value"))).build()).build();
 
     final Object value = EventUtils.latestDeltaValue(List.of(event), "k");
 
@@ -120,14 +66,8 @@ class EventUtilsTest {
 
   @Test
   void shouldTreatRemovedDeltaValueAsNull() {
-    final Event removed =
-        Event.builder()
-            .id("event-1")
-            .actions(
-                EventActions.builder()
-                    .stateDelta(new ConcurrentHashMap<>(Map.of("k", State.REMOVED)))
-                    .build())
-            .build();
+    final Event removed = Event.builder().id("event-1")
+        .actions(EventActions.builder().stateDelta(new ConcurrentHashMap<>(Map.of("k", State.REMOVED))).build()).build();
 
     final Object value = EventUtils.latestDeltaValue(List.of(removed), "k");
 

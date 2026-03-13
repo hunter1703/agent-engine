@@ -25,25 +25,23 @@ public class EncryptionServiceImpl implements EncryptionService {
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int GCM_IV_LENGTH = 12;
   private static final int GCM_TAG_LENGTH = 128;
-  private static final ThreadLocal<Cipher> CIPHER_CACHE =
-      ThreadLocal.withInitial(
-          () -> {
-            try {
-              return Cipher.getInstance(ALGORITHM);
-            } catch (Exception e) {
-              throw new RuntimeException("Failed to initialize cipher", e);
-            }
-          });
+  private static final ThreadLocal<Cipher> CIPHER_CACHE = ThreadLocal.withInitial(() -> {
+    try {
+      return Cipher.getInstance(ALGORITHM);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to initialize cipher", e);
+    }
+  });
 
-  @Inject InfraMongoRepository infraMongoRepository;
+  @Inject
+  InfraMongoRepository infraMongoRepository;
 
   private SecretKey secretKey;
   private boolean encryptionEnabled;
   private final SecureRandom secureRandom = new SecureRandom();
 
   void init(@Observes final StartupEvent event) {
-    final EncryptionInfraConfig config =
-        infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
+    final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
     if (config == null || config.getKey() == null || config.getKey().isBlank()) {
       LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
       encryptionEnabled = false;
@@ -55,8 +53,7 @@ public class EncryptionServiceImpl implements EncryptionService {
     try {
       decodedKey = Base64.getDecoder().decode(config.getKey());
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(
-          "Encryption key stored in database is not valid Base64", e);
+      throw new IllegalArgumentException("Encryption key stored in database is not valid Base64", e);
     }
     if (decodedKey.length != 32) {
       throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");

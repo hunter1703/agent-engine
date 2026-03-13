@@ -9,22 +9,13 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-@Schema(
-    oneOf = {CompactionContextStrategyConfig.class, LastNContextStrategyConfig.class},
-    discriminatorProperty = "type",
-    discriminatorMapping = {
-      @DiscriminatorMapping(value = "COMPACTION", schema = CompactionContextStrategyConfig.class),
-      @DiscriminatorMapping(value = "LAST_N", schema = LastNContextStrategyConfig.class)
-    })
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "type",
-    visible = true)
-@JsonSubTypes({
-  @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION"),
-  @JsonSubTypes.Type(value = LastNContextStrategyConfig.class, name = "LAST_N")
-})
+@Schema(oneOf = {CompactionContextStrategyConfig.class,
+    LastNContextStrategyConfig.class}, discriminatorProperty = "type", discriminatorMapping = {
+        @DiscriminatorMapping(value = "COMPACTION", schema = CompactionContextStrategyConfig.class),
+        @DiscriminatorMapping(value = "LAST_N", schema = LastNContextStrategyConfig.class)})
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
+@JsonSubTypes({@JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION"),
+    @JsonSubTypes.Type(value = LastNContextStrategyConfig.class, name = "LAST_N")})
 @BsonDiscriminator(key = "type")
 public abstract class ContextStrategyConfig {
   @UiField(label = "Strategy Type", order = 10)
@@ -35,7 +26,8 @@ public abstract class ContextStrategyConfig {
     this.type = type.type();
   }
 
-  protected ContextStrategyConfig() {}
+  protected ContextStrategyConfig() {
+  }
 
   public String getType() {
     return type;
@@ -46,9 +38,7 @@ public abstract class ContextStrategyConfig {
   }
 
   public enum ContextStrategyType {
-    UNKNOWN,
-    COMPACTION,
-    LAST_N;
+    UNKNOWN, COMPACTION, LAST_N;
 
     public String type() {
       return name();

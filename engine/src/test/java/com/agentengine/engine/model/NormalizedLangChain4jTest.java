@@ -15,11 +15,8 @@ class NormalizedLangChain4jTest {
 
   @Test
   void shouldNormalizeStreamingTextWithoutClaimingFinalTurnCompletion() {
-    final List<LlmResponse> responses =
-        NormalizedLangChain4j
-            .normalizeStreamingResponses(Flowable.just(textResponse("Hel"), textResponse("lo")))
-            .toList()
-            .blockingGet();
+    final List<LlmResponse> responses = NormalizedLangChain4j
+        .normalizeStreamingResponses(Flowable.just(textResponse("Hel"), textResponse("lo"))).toList().blockingGet();
 
     assertThat(responses).hasSize(3);
     assertThat(responses.getFirst().partial()).contains(true);
@@ -35,11 +32,8 @@ class NormalizedLangChain4jTest {
 
   @Test
   void shouldLeaveToolCallSanitizationToResponseProcessors() {
-    final List<LlmResponse> responses =
-        NormalizedLangChain4j
-            .normalizeStreamingResponses(Flowable.just(toolCallResponseWithoutId()))
-            .toList()
-            .blockingGet();
+    final List<LlmResponse> responses = NormalizedLangChain4j.normalizeStreamingResponses(Flowable.just(toolCallResponseWithoutId()))
+        .toList().blockingGet();
 
     assertThat(responses).hasSize(1);
 
@@ -48,40 +42,16 @@ class NormalizedLangChain4jTest {
     assertThat(response.turnComplete()).isEmpty();
     assertThat(response.content()).isPresent();
     assertThat(response.content().orElseThrow().role()).contains("model");
-    assertThat(
-            response
-                .content()
-                .orElseThrow()
-                .parts()
-                .orElseThrow()
-                .getFirst()
-                .functionCall()
-                .orElseThrow()
-                .id())
-        .isEmpty();
+    assertThat(response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow().id()).isEmpty();
   }
 
   private static LlmResponse textResponse(final String text) {
-    return LlmResponse.builder()
-        .content(Content.builder().role("user").parts(List.of(Part.fromText(text))).build())
-        .build();
+    return LlmResponse.builder().content(Content.builder().role("user").parts(List.of(Part.fromText(text))).build()).build();
   }
 
   private static LlmResponse toolCallResponseWithoutId() {
-    return LlmResponse.builder()
-        .content(
-            Content.builder()
-                .role("user")
-                .parts(
-                    List.of(
-                        Part.builder()
-                            .functionCall(
-                                FunctionCall.builder()
-                                    .name("search")
-                                    .args(Map.of("query", "weather"))
-                                    .build())
-                            .build()))
-                .build())
-        .build();
+    return LlmResponse.builder().content(Content.builder().role("user")
+        .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
+        .build()).build();
   }
 }

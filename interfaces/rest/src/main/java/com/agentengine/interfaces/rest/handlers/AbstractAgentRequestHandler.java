@@ -1,16 +1,19 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.engine.api.services.AgentExecutionService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
 
-public abstract class AbstractAgentRequestHandler<Request extends AgentRequest, Response> implements AgentRequestHandler<Request, Response> {
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractAgentRequestHandler.class);
+public abstract class AbstractAgentRequestHandler<Request extends AgentRequest, Response>
+    implements
+      AgentRequestHandler<Request, Response> {
 
-  protected AgentExecutionService agentExecutionService;
+  private final AgentExecutionService agentExecutionService;
 
-  public AbstractAgentRequestHandler(AgentExecutionService agentExecutionService) {
+  protected AbstractAgentRequestHandler(final AgentExecutionService agentExecutionService) {
     this.agentExecutionService = agentExecutionService;
+  }
+
+  protected final AgentExecutionService agentExecutionService() {
+    return agentExecutionService;
   }
 }

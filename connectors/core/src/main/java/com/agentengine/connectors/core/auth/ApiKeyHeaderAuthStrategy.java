@@ -17,28 +17,15 @@ public final class ApiKeyHeaderAuthStrategy implements AuthStrategy {
   @Override
   public void apply(final AuthRequestContext requestContext) {
     final AuthConfig authConfig = requestContext.authConfig();
-    final String headerName =
-        AuthTemplateUtils.resolveString(
-            authConfig.headerName(),
-            authConfig.headerNameTemplate(),
-            requestContext.requestContext(),
-            requestContext.templateResolver(),
-            requestContext.strictUnresolvedVariables(),
-            "headerName");
-    final String apiKey =
-        AuthTemplateUtils.resolveString(
-            authConfig.apiKey(),
-            authConfig.apiKeyTemplate(),
-            requestContext.requestContext(),
-            requestContext.templateResolver(),
-            requestContext.strictUnresolvedVariables(),
-            "apiKey");
+    final String headerName = AuthTemplateUtils.resolveString(authConfig.headerName(), authConfig.headerNameTemplate(),
+        requestContext.requestContext(), requestContext.templateResolver(), requestContext.strictUnresolvedVariables(), "headerName");
+    final String apiKey = AuthTemplateUtils.resolveString(authConfig.apiKey(), authConfig.apiKeyTemplate(), requestContext.requestContext(),
+        requestContext.templateResolver(), requestContext.strictUnresolvedVariables(), "apiKey");
 
     if (apiKey == null || apiKey.isBlank()) {
       throw new AuthStrategyException("API key value is required for API_KEY_HEADER auth");
     }
 
-    requestContext.headers().put(
-        headerName == null || headerName.isBlank() ? DEFAULT_HEADER : headerName, apiKey.trim());
+    requestContext.headers().put(headerName == null || headerName.isBlank() ? DEFAULT_HEADER : headerName, apiKey.trim());
   }
 }

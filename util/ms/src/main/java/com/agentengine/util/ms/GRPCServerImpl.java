@@ -42,16 +42,16 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
-  public GRPCServerImpl() {}
+  public GRPCServerImpl() {
+  }
 
   public GRPCServerImpl(final List<Object> services) {
-    services.forEach(
-        instance -> {
-          final Class<?> iface = microServiceInterface(instance.getClass());
-          if (iface != null) {
-            this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
-          }
-        });
+    services.forEach(instance -> {
+      final Class<?> iface = microServiceInterface(instance.getClass());
+      if (iface != null) {
+        this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
+      }
+    });
   }
 
   @PostConstruct
@@ -59,41 +59,21 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     LOG.info("Initializing GRPCServerImpl. Scanning beans for @MicroService via Arc...");
 
     final ArcContainer container = Arc.container();
-    this.registry =
-        container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
-            .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
-            .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
-            .map(
-                bean ->
-                    container.instance(
-                        bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
-            .filter(InstanceHandle::isAvailable)
-            .map(
-                handle -> {
-                  final Object instance = handle.get();
-                  LOG.info("Checking instance: {}", instance.getClass().getName());
-                  return instance;
-                })
-            .flatMap(
-                instance ->
-                    Optional.ofNullable(microServiceInterface(instance.getClass()))
-                        .map(
-                            iface -> {
-                              LOG.info(
-                                  "Discovered MicroService: {} implemented by {}",
-                                  iface.getSimpleName(),
-                                  instance.getClass().getName());
-                              return Map.entry(
-                                  iface.getSimpleName(), new ServiceEntry(instance, iface));
-                            })
-                        .stream())
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
+    this.registry = container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
+        .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
+        .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
+        .map(bean -> container.instance(bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
+        .filter(InstanceHandle::isAvailable).map(handle -> {
+          final Object instance = handle.get();
+          LOG.info("Checking instance: {}", instance.getClass().getName());
+          return instance;
+        }).flatMap(instance -> Optional.ofNullable(microServiceInterface(instance.getClass())).map(iface -> {
+          LOG.info("Discovered MicroService: {} implemented by {}", iface.getSimpleName(), instance.getClass().getName());
+          return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
+        }).stream()).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
 
     LOG.info("Registered MicroServices: {}", registry.keySet());
-    registry.forEach(
-        (name, entry) -> LOG.debug("  {} -> methods: {}", name, entry.methods().keySet()));
+    registry.forEach((name, entry) -> LOG.debug("  {} -> methods: {}", name, entry.methods().keySet()));
   }
 
   @Override
@@ -102,15 +82,11 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
     } catch (final RejectedExecutionException e) {
       responseObserver.onError(
-          Status.RESOURCE_EXHAUSTED
-              .withDescription("gRPC virtual thread executor rejected request")
-              .withCause(e)
-              .asRuntimeException());
+          Status.RESOURCE_EXHAUSTED.withDescription("gRPC virtual thread executor rejected request").withCause(e).asRuntimeException());
     }
   }
 
-  private void executeInternal(
-      final Request request, final StreamObserver<Response> responseObserver) {
+  private void executeInternal(final Request request, final StreamObserver<Response> responseObserver) {
     final String serviceName = request.getService();
     final String methodName = request.getMethod();
     LOG.debug("GRPCServerImpl.execute called for {}/{}", serviceName, methodName);
@@ -118,18 +94,14 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     final ServiceEntry entry = registry.get(serviceName);
     if (entry == null) {
       LOG.error("Service not found: {}. Available: {}", serviceName, registry.keySet());
-      responseObserver.onError(
-          Status.NOT_FOUND
-              .withDescription("Service not found: " + serviceName)
-              .asRuntimeException());
+      responseObserver.onError(Status.NOT_FOUND.withDescription("Service not found: " + serviceName).asRuntimeException());
       return;
     }
 
     final Method method = entry.methods().get(methodName);
     if (method == null) {
       LOG.error("Method not found: {}/{}", serviceName, methodName);
-      responseObserver.onError(
-          Status.NOT_FOUND.withDescription("Method not found: " + methodName).asRuntimeException());
+      responseObserver.onError(Status.NOT_FOUND.withDescription("Method not found: " + methodName).asRuntimeException());
       return;
     }
 
@@ -211,19 +183,16 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private void sendResult(final Object result, final StreamObserver<Response> observer) {
     if (result instanceof Flowable<?> flowable) {
       LOG.debug("Subscribing to Flowable result...");
-      flowable.subscribe(
-          item -> {
-            LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
-            sendPayload(observer, item);
-          },
-          err -> {
-            LOG.error("Flowable error", err);
-            observer.onError(rootCauseStatus(err).asRuntimeException());
-          },
-          () -> {
-            LOG.debug("Flowable complete");
-            observer.onCompleted();
-          });
+      flowable.subscribe(item -> {
+        LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
+        sendPayload(observer, item);
+      }, err -> {
+        LOG.error("Flowable error", err);
+        observer.onError(rootCauseStatus(err).asRuntimeException());
+      }, () -> {
+        LOG.debug("Flowable complete");
+        observer.onCompleted();
+      });
       return;
     }
     if (result != null) {
@@ -233,8 +202,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   }
 
   private void sendPayload(final StreamObserver<Response> observer, final Object value) {
-    observer.onNext(
-        Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
+    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
   }
 
   private static ExecutorService newVirtualThreadExecutor(final String namePrefix) {
@@ -244,11 +212,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   private record ServiceEntry(Object bean, Map<String, Method> methods) {
     ServiceEntry(final Object bean, final Class<?> iface) {
-      this(
-          bean,
-          Arrays.stream(iface.getMethods())
-              .collect(
-                  Collectors.toUnmodifiableMap(Method::getName, method -> method, (first, __) -> first)));
+      this(bean,
+          Arrays.stream(iface.getMethods()).collect(Collectors.toUnmodifiableMap(Method::getName, method -> method, (first, __) -> first)));
     }
   }
 }

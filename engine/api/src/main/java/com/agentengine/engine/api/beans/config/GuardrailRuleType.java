@@ -2,7 +2,9 @@ package com.agentengine.engine.api.beans.config;
 
 import java.util.Locale;
 
-/** Guardrail rule type used to select the provider that builds/evaluates a rule. */
+/**
+ * Guardrail rule type used to select the provider that builds/evaluates a rule.
+ */
 public enum GuardrailRuleType {
   /** Fallback for invalid or missing config values. */
   UNKNOWN,

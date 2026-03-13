@@ -7,9 +7,7 @@ import java.util.Objects;
 public abstract class AbstractLLM extends BaseLlm {
   protected final Parser parser;
 
-  protected AbstractLLM(
-      final String model,
-      final Parser parser) {
+  protected AbstractLLM(final String model, final Parser parser) {
     super(model);
     this.parser = Objects.requireNonNull(parser, "parser cannot be null");
   }

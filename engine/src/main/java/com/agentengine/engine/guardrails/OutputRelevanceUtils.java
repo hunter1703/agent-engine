@@ -6,7 +6,7 @@ import com.agentengine.engine.api.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.engine.api.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.engine.tools.planning.PlanningUtils;
 import com.agentengine.engine.tools.planning.beans.Plan;
-import com.agentengine.engine.utils.RunStateUtils;
+import com.agentengine.engine.utils.RunUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -15,10 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class OutputRelevanceUtils {
-  private OutputRelevanceUtils() {}
+  private OutputRelevanceUtils() {
+  }
 
-  public static String buildAnchorPrompt(
-      final InvocationContext context, final OutputRelevanceGuardrailRule config) {
+  public static String buildAnchorPrompt(final InvocationContext context, final OutputRelevanceGuardrailRule config) {
     if (context == null || context.session() == null) {
       return "";
     }
@@ -58,7 +58,7 @@ public final class OutputRelevanceUtils {
   }
 
   private static String planAnchor(final InvocationContext context) {
-    final Plan plan = RunStateUtils.getState(context).plan();
+    final Plan plan = RunUtils.getState(context).plan();
     if (plan == null) {
       return "";
     }
@@ -66,5 +66,4 @@ public final class OutputRelevanceUtils {
     final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);
     return StringUtils.joinNonBlank(List.of(summary, taskFocus));
   }
-
 }

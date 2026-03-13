@@ -9,7 +9,8 @@ import jakarta.inject.Singleton;
 public final class JsonPathResponseExtractor implements ResponseExtractor {
 
   @Inject
-  public JsonPathResponseExtractor() {}
+  public JsonPathResponseExtractor() {
+  }
 
   @Override
   public Object extract(final String responseBody, final String jsonPath) {

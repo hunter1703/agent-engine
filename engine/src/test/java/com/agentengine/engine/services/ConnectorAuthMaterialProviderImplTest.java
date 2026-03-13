@@ -3,6 +3,7 @@ package com.agentengine.engine.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.agentengine.connectors.core.auth.ConnectorAuthMaterialProviderImpl;
 import com.agentengine.connectors.core.repository.ConnectionRepository;
 import com.agentengine.connectors.core.runtime.Connection;
 import java.util.Map;
@@ -15,9 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ConnectorAuthMaterialProviderImplTest {
 
-  @Mock private ConnectionRepository connectionRepository;
+  @Mock
+  private ConnectionRepository connectionRepository;
 
-  @InjectMocks private ConnectorAuthMaterialProviderImpl provider;
+  @InjectMocks
+  private ConnectorAuthMaterialProviderImpl provider;
 
   @Test
   void shouldReturnEmptyMapWhenConnectionNotFound() {
@@ -30,16 +33,11 @@ class ConnectorAuthMaterialProviderImplTest {
 
   @Test
   void shouldReturnInputsWhenConnectionFound() {
-    final Connection connection =
-        new Connection(
-            "brave", Map.of("token", "token-value", "apiKey", "api-key-value", "region", "US"));
+    final Connection connection = new Connection("brave", Map.of("token", "token-value", "apiKey", "api-key-value", "region", "US"));
     when(connectionRepository.findByAppName("brave")).thenReturn(connection);
 
     final Map<String, Object> result = provider.resolve("brave");
 
-    assertThat(result)
-        .containsEntry("token", "token-value")
-        .containsEntry("apiKey", "api-key-value")
-        .containsEntry("region", "US");
+    assertThat(result).containsEntry("token", "token-value").containsEntry("apiKey", "api-key-value").containsEntry("region", "US");
   }
 }

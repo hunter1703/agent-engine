@@ -1,9 +1,9 @@
 package com.agentengine.engine.factories.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.factories.model.ModelProvider;
+import com.agentengine.engine.plugin.Agent;
 import com.agentengine.engine.tools.ToolFactory;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;

@@ -3,13 +3,13 @@ package com.agentengine.interfaces.rest;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.interfaces.rest.dto.AgentRequest;
-import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.api.services.SessionService;
+import com.agentengine.interfaces.rest.dto.AgentRequest;
+import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
+import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
 import com.agentengine.interfaces.rest.handlers.AgentRequestHandler;
-import com.agentengine.interfaces.rest.requests.ResumeSessionRequest;
 import com.agentengine.util.common.StringUtils;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -48,13 +48,9 @@ public class AgentRestAPI {
   private final SessionService sessionService;
 
   @Inject
-  public AgentRestAPI(
-      final Instance<AgentRequestHandler<?, ?>> handlers,
-      final AgentService agentService,
+  public AgentRestAPI(final Instance<AgentRequestHandler<?, ?>> handlers, final AgentService agentService,
       final SessionService sessionService) {
-    this.handlers =
-        handlers.stream()
-            .collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
+    this.handlers = handlers.stream().collect(Collectors.toUnmodifiableMap(AgentRequestHandler::requestType, Function.identity()));
     this.agentService = agentService;
     this.sessionService = sessionService;
   }
@@ -64,13 +60,7 @@ public class AgentRestAPI {
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
   @Operation(summary = "Stream agent events")
-  @APIResponse(
-      responseCode = "200",
-      description = "SSE event stream in AG-UI format",
-      content =
-          @Content(
-              mediaType = SERVER_SENT_EVENTS,
-              schema = @Schema(implementation = BaseEvent.class)))
+  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format", content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
   @APIResponse(responseCode = "400", description = "Invalid request parameters")
   @APIResponse(responseCode = "404", description = "Agent not found")
   @APIResponse(responseCode = "500", description = "Internal server error")
@@ -85,10 +75,7 @@ public class AgentRestAPI {
   @POST
   @Path("/agent")
   @Operation(summary = "Create an agent")
-  @APIResponse(
-      responseCode = "201",
-      description = "Agent created",
-      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
   public BaseAgentConfig createAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
@@ -100,10 +87,7 @@ public class AgentRestAPI {
   @POST
   @Path("/agent/upsert")
   @Operation(summary = "Upsert an agent")
-  @APIResponse(
-      responseCode = "200",
-      description = "Agent created or updated",
-      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  @APIResponse(responseCode = "200", description = "Agent created or updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
@@ -117,13 +101,9 @@ public class AgentRestAPI {
   @PUT
   @Path("/agent/{agentId}")
   @Operation(summary = "Update an agent")
-  @APIResponse(
-      responseCode = "200",
-      description = "Agent updated",
-      content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  @APIResponse(responseCode = "200", description = "Agent updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "404", description = "Agent not found")
-  public BaseAgentConfig updateAgent(
-      @PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
+  public BaseAgentConfig updateAgent(@PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
     }
@@ -150,25 +130,16 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/session/{sessionId}/resume/events")
+  @Path("/session/resume/events")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
   @Operation(summary = "Resume a paused session and stream events")
-  @APIResponse(
-      responseCode = "200",
-      description = "SSE event stream in AG-UI format",
-      content =
-          @Content(
-              mediaType = SERVER_SENT_EVENTS,
-              schema = @Schema(implementation = BaseEvent.class)))
+  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format", content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
   @APIResponse(responseCode = "400", description = "Invalid resume payload")
   @APIResponse(responseCode = "404", description = "Session not found")
   @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
-  public Publisher<BaseEvent> resumeEvents(
-      @PathParam("sessionId") final String sessionId,
-      @Valid @NotNull final ResumeSessionRequest resumeRequest) {
-    final AgentRequestHandler<ResumeSessionRequest, Publisher<BaseEvent>> handler =
-        getHandler(RequestType.RESUME_SESSION);
+  public Publisher<BaseEvent> resumeEvents(@Valid @NotNull final ResumeSessionRequest resumeRequest) {
+    final AgentRequestHandler<ResumeSessionRequest, Publisher<BaseEvent>> handler = getHandler(RequestType.RESUME_SESSION);
     return handler.handle(resumeRequest);
   }
 
@@ -178,16 +149,18 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "204", description = "Session deleted")
   @APIResponse(responseCode = "404", description = "Session not found")
   public void deleteSession(@PathParam("sessionId") final String sessionId) {
+    if (StringUtils.isBlank(sessionId)) {
+      throw new WebApplicationException("Session ID is required", 400);
+    }
     sessionService.deleteSession(sessionId);
   }
 
-  private <Request extends AgentRequest, Response> AgentRequestHandler<Request, Response> getHandler(
-      final RequestType type) {
+  @SuppressWarnings("unchecked")
+  private <Request extends AgentRequest, Response> AgentRequestHandler<Request, Response> getHandler(final RequestType type) {
     final AgentRequestHandler<?, ?> handler = handlers.get(type);
     if (handler == null) {
       throw new WebApplicationException("No handler registered for request type: " + type, 400);
     }
-    //noinspection unchecked
     return (AgentRequestHandler<Request, Response>) handler;
   }
 }

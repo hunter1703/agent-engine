@@ -2,7 +2,6 @@ package com.agentengine.engine.factories.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.agents.ParallelOrchestratorAgent;
-import com.agentengine.engine.api.Agent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
@@ -12,6 +11,7 @@ import com.agentengine.engine.builders.agent.BaseLlmAgentBuilder;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
 import com.agentengine.engine.builders.agent.SequentialAgentBuilder;
 import com.agentengine.engine.factories.model.ModelProvider;
+import com.agentengine.engine.plugin.Agent;
 import com.agentengine.engine.tools.ToolFactory;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -30,11 +30,8 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   protected final Instance<AgentProvider> agentProviderInstance;
 
   @Inject
-  public OrchestratorAgentFactory(
-      final ModelProvider modelProvider,
-      final ToolFactory toolFactory,
-      @WithCaching final Instance<AgentProvider> agentProviderInstance,
-      final AgentService agentService) {
+  public OrchestratorAgentFactory(final ModelProvider modelProvider, final ToolFactory toolFactory,
+      @WithCaching final Instance<AgentProvider> agentProviderInstance, final AgentService agentService) {
     super(modelProvider, toolFactory);
     this.agentService = agentService;
     this.agentProviderInstance = agentProviderInstance;
@@ -52,7 +49,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       case SEQUENTIAL -> buildSequential(config, subAgents);
       case PARALLEL -> buildParallel(config, subAgents);
       case TRANSFER -> buildTransfer(config, subAgents);
-        default -> throw new IllegalStateException("Unexpected value: " + mode);
+      default -> throw new IllegalStateException("Unexpected value: " + mode);
     };
   }
 
@@ -65,42 +62,28 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       if (StringUtils.isBlank(subAgentId)) {
         continue;
       }
-      final BaseAgentConfig subAgent =
-          agentService
-              .getAgent(subAgentId)
-              .orElseThrow(
-                  () -> new IllegalArgumentException("Sub agent not found for id: " + subAgentId));
+      final BaseAgentConfig subAgent = agentService.getAgent(subAgentId)
+          .orElseThrow(() -> new IllegalArgumentException("Sub agent not found for id: " + subAgentId));
       subAgents.add(agentProviderInstance.get().create(subAgent));
     }
     return subAgents;
   }
 
-  private DelegatedAgent buildSequential(
-      final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+  private DelegatedAgent buildSequential(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
     if (CollectionUtils.isEmpty(subAgents)) {
-      throw new IllegalArgumentException(
-          "orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id="
-              + config.getId());
+      throw new IllegalArgumentException("orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id=" + config.getId());
     }
     return new SequentialAgentBuilder().agentConfig(config).subAgents(subAgents).build();
   }
 
-  private static ParallelOrchestratorAgent buildParallel(
-      final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {
+  private static ParallelOrchestratorAgent buildParallel(final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {
     final OrchestratorParallelConfig parallel = config.getParallel();
-    return new ParallelOrchestratorAgentBuilder()
-        .subAgents(subAgents)
-        .aggregationPolicy(parallel.aggregationPolicyEnum())
-        .stoppingPolicy(parallel.stoppingPolicyEnum())
-        .quorum(parallel.getQuorum())
-        .agentConfig(config)
-        .build();
+    return new ParallelOrchestratorAgentBuilder().subAgents(subAgents).aggregationPolicy(parallel.aggregationPolicyEnum())
+        .stoppingPolicy(parallel.stoppingPolicyEnum()).quorum(parallel.getQuorum()).agentConfig(config).build();
   }
 
-  private DelegatedAgent buildManager(
-      final BaseAgentConfig config, final List<? extends Agent> subAgents) {
-    final BaseLlmAgentBuilder builder =
-        createLlmAgentBuilder(config).disallowTransferToParent(true).disallowTransferToPeers(true);
+  private DelegatedAgent buildManager(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+    final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config).disallowTransferToParent(true).disallowTransferToPeers(true);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       for (final BaseAgent subAgent : subAgents) {
         builder.appendTools(List.of(AgentTool.create(subAgent)));
@@ -109,8 +92,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     return builder.build();
   }
 
-  private DelegatedAgent buildTransfer(
-      final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+  private DelegatedAgent buildTransfer(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
     final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       builder.subAgents(subAgents);

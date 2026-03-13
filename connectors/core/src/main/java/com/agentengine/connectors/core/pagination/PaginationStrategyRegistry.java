@@ -15,13 +15,8 @@ public final class PaginationStrategyRegistry {
 
   @Inject
   public PaginationStrategyRegistry() {
-    this(
-        List.of(
-            new NoPaginationStrategy(),
-            new PagePaginationStrategy(),
-            new OffsetPaginationStrategy(),
-            new CursorPaginationStrategy(),
-            new NextPageUrlPaginationStrategy()));
+    this(List.of(new NoPaginationStrategy(), new PagePaginationStrategy(), new OffsetPaginationStrategy(), new CursorPaginationStrategy(),
+        new NextPageUrlPaginationStrategy()));
   }
 
   public PaginationStrategyRegistry(final Collection<PaginationStrategy> customStrategies) {
