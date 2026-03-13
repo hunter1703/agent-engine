@@ -1,9 +1,10 @@
 package com.agentengine.engine.utils;
 
-import com.agentengine.engine.hitl.ConfirmationDecision;
 import com.agentengine.engine.hitl.SessionPauseKind;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.flows.llmflows.ResponseProcessor.ResponseProcessingResult;
 import com.google.adk.models.LlmResponse;
@@ -11,10 +12,8 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Single;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 
 /**
  * Shared flow helpers for event termination and response continuation shaping.
@@ -53,29 +52,21 @@ public final class ResponseUtils {
     return ContentUtils.hasVisibleText(response.content().orElse(null));
   }
 
-  // the shape must match exactly com.google.adk.events.ToolConfirmation as adk
-  // deserializes map
-  // into it
-  public static Map<String, Object> buildResumeResponse(final SessionPauseKind pauseKind, final ConfirmationDecision decision,
-      final String answer) {
-    final Map<String, Object> response = new LinkedHashMap<>();
-    switch (pauseKind == null ? SessionPauseKind.UNKNOWN : pauseKind) {
+  public static ToolConfirmation buildToolConfirmation(final SessionPauseKind pauseKind, final Boolean confirmed, final String answer) {
+    final ToolConfirmation.Builder builder = ToolConfirmation.builder();
+    switch (pauseKind) {
       case DECISION -> {
-        if (decision == ConfirmationDecision.UNKNOWN) {
-          throw new IllegalArgumentException("decision is required for this confirmation");
-        }
-        response.put("confirmed", decision == ConfirmationDecision.ALLOW);
+        builder.confirmed(Objects.requireNonNull(confirmed, "decision is required for this confirmation"));
       }
       case TEXT -> {
         if (StringUtils.isBlank(answer)) {
           throw new IllegalArgumentException("answer is required for this confirmation");
         }
-        response.put("confirmed", true);
-        response.put("payload", Map.of("answer", answer));
+        builder.confirmed(true).payload(Map.of("answer", answer));
       }
       case UNKNOWN -> throw new IllegalArgumentException("Unknown confirmation type");
     }
-    return response;
+    return builder.build();
   }
 
   public static LlmResponse requestHumanInTheLoop(final String prompt) {

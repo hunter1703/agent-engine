@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 class TurnCompletionResponseProcessorTest {
+  private static final TurnCompletionResponseProcessor PROCESSOR = new TurnCompletionResponseProcessor(null);
 
   @Test
   void shouldConsumeContinuationOnNonPartialNonFinalResponses() {
@@ -33,7 +34,7 @@ class TurnCompletionResponseProcessorTest {
             .build())
         .build();
 
-    final LlmResponse updated = TurnCompletionResponseProcessor.INSTANCE.processResponse(context, response).blockingGet().updatedResponse();
+    final LlmResponse updated = PROCESSOR.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.turnComplete().orElse(false)).isTrue();
     assertThat(updated.finishReason()).isEmpty();
@@ -46,7 +47,7 @@ class TurnCompletionResponseProcessorTest {
     final LlmResponse response = LlmResponse.builder()
         .content(Content.builder().role("model").parts(java.util.List.of(Part.fromText("done"))).build()).build();
 
-    final LlmResponse updated = TurnCompletionResponseProcessor.INSTANCE.processResponse(context, response).blockingGet().updatedResponse();
+    final LlmResponse updated = PROCESSOR.processResponse(context, response).blockingGet().updatedResponse();
 
     assertThat(updated.turnComplete().orElse(false)).isTrue();
     assertThat(updated.finishReason()).isPresent();

@@ -21,7 +21,7 @@ public final class ResumeAguiEventsHandler extends AbstractAgentRequestHandler<R
     final String agentId = resumeRequest.getAgentId();
     final String sessionId = resumeRequest.getSessionId();
     final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-    return mapper.map(agentExecutionService().resumeSession(agentId, sessionId, resumeRequest.getDecision(), resumeRequest.getMessage()));
+    return mapper.map(agentExecutionService().resumeSession(agentId, sessionId, resumeRequest.getConfirmed(), resumeRequest.getMessage()));
   }
 
   @Override

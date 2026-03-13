@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.dto;
 
 public class ResumeSessionRequest extends AgentRequest {
-  private String decision;
+  private Boolean confirmed;
 
   public ResumeSessionRequest() {
   }
@@ -10,16 +10,16 @@ public class ResumeSessionRequest extends AgentRequest {
     this(answer, null);
   }
 
-  public ResumeSessionRequest(final String answer, final String decision) {
+  public ResumeSessionRequest(final String answer, final Boolean confirmed) {
     setMessage(answer);
-    this.decision = decision;
+    this.confirmed = confirmed;
   }
 
-  public String getDecision() {
-    return decision;
+  public Boolean getConfirmed() {
+    return confirmed;
   }
 
-  public void setDecision(final String decision) {
-    this.decision = decision;
+  public void setConfirmed(final Boolean confirmed) {
+    this.confirmed = confirmed;
   }
 }

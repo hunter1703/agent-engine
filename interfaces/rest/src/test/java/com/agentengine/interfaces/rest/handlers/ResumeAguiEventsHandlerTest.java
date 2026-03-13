@@ -2,11 +2,11 @@ package com.agentengine.interfaces.rest.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.beans.ConfirmationDecision;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
 import com.agui.core.event.BaseEvent;
@@ -19,10 +19,9 @@ class ResumeAguiEventsHandlerTest {
   @Test
   void shouldDelegateResumeToExecutionService() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
-    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq(ConfirmationDecision.ALLOW), eq("resume")))
-        .thenReturn(Flowable.empty());
+    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq(Boolean.TRUE), eq("resume"))).thenReturn(Flowable.empty());
     final ResumeAguiEventsHandler handler = new ResumeAguiEventsHandler(executionService);
-    final ResumeSessionRequest request = new ResumeSessionRequest("resume", ConfirmationDecision.ALLOW);
+    final ResumeSessionRequest request = new ResumeSessionRequest("resume", true);
     request.setAgentId("agent-1");
     request.setSessionId("session-1");
 
@@ -30,14 +29,13 @@ class ResumeAguiEventsHandlerTest {
 
     assertThat(publisher).isNotNull();
     publisher.test().awaitDone(2, TimeUnit.SECONDS).assertNoErrors().assertComplete();
-    verify(executionService).resumeSession("agent-1", "session-1", ConfirmationDecision.ALLOW, "resume");
+    verify(executionService).resumeSession("agent-1", "session-1", true, "resume");
   }
 
   @Test
-  void shouldUseUnknownDecisionWhenDecisionIsMissing() {
+  void shouldUseUnknownDecisionWhenConfirmationIsMissing() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
-    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq(ConfirmationDecision.UNKNOWN), eq("resume")))
-        .thenReturn(Flowable.empty());
+    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), isNull(), eq("resume"))).thenReturn(Flowable.empty());
     final ResumeAguiEventsHandler handler = new ResumeAguiEventsHandler(executionService);
     final ResumeSessionRequest request = new ResumeSessionRequest("resume");
     request.setAgentId("agent-1");
@@ -45,6 +43,6 @@ class ResumeAguiEventsHandlerTest {
 
     handler.handle(request).test().awaitDone(2, TimeUnit.SECONDS).assertNoErrors().assertComplete();
 
-    verify(executionService).resumeSession("agent-1", "session-1", ConfirmationDecision.UNKNOWN, "resume");
+    verify(executionService).resumeSession("agent-1", "session-1", null, "resume");
   }
 }

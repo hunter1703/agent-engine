@@ -1,4 +1,4 @@
-package com.agentengine.engine.api.utils;
+package com.agentengine.engine.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

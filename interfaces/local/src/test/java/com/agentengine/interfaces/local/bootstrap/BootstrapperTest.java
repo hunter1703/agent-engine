@@ -31,14 +31,14 @@ class BootstrapperTest {
 
     Files.writeString(agentsDir.resolve("agent_one.json"), """
         {
-          "type": "default",
+          "type": "DEFAULT",
           "name": "Agent One",
           "modelId": "model_one"
         }
         """);
     Files.writeString(modelsDir.resolve("model_one.json"), """
         {
-          "type": "ollama",
+          "type": "OLLAMA",
           "name": "Model One",
           "model": "qwen2.5"
         }

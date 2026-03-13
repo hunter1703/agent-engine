@@ -24,7 +24,7 @@ class BaseAgentTest {
     final List<RequestProcessor> requestProcessors = requestProcessors(agent);
 
     assertThat(requestProcessors).contains(CorrectionProcessor.INSTANCE, PlanningRequestProcessor.INSTANCE);
-    assertThat(requestProcessors).noneMatch(AgentTransfer.class::isInstance);
+    assertThat(requestProcessors).anyMatch(AgentTransfer.class::isInstance);
   }
 
   @Test
