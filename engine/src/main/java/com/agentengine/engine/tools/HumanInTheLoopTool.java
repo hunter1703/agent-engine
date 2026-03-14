@@ -44,7 +44,8 @@ public final class HumanInTheLoopTool extends Tool {
     return requestConfirmation(toolContext, prompt, options, context, pauseKind);
   }
 
-  private static Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options, final Map<String, Object> context, final SessionPauseKind pauseKind) {
+  private static Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options,
+      final Map<String, Object> context, final SessionPauseKind pauseKind) {
     final String sanitizedPrompt = StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
     options = options.stream().filter(StringUtils::isNotBlank).map(String::trim).filter(StringUtils::isNotBlank).distinct().toList();
     final Map<String, Object> payload = new LinkedHashMap<>();
@@ -63,7 +64,7 @@ public final class HumanInTheLoopTool extends Tool {
     return switch (pauseKind) {
       case DECISION -> Map.of();
       case TEXT -> {
-        //noinspection unchecked
+        // noinspection unchecked
         final String answer = CollectionUtils.getStringValueFromMap((Map<String, Object>) confirmation.payload(), "answer");
         yield Map.of("answer", Objects.requireNonNull(answer));
       }

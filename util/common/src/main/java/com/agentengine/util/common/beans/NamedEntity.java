@@ -1,6 +1,7 @@
 package com.agentengine.util.common.beans;
 
 public class NamedEntity extends BaseEntity {
+  public static final String FIELD_NAME = "name";
   private String name;
 
   public NamedEntity() {

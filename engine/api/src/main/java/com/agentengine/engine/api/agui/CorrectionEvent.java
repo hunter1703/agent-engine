@@ -1,6 +1,5 @@
-package com.agentengine.engine.agui;
+package com.agentengine.engine.api.agui;
 
-import com.agentengine.engine.utils.CorrectionMetadata;
 import com.agui.core.event.CustomEvent;
 import java.util.Map;
 

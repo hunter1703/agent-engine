@@ -34,13 +34,15 @@ Fields:
 - `type`: required for `/v1/invoke`; use `INVOKE_AGENT` or `BUILD_PROMPT`.
 
 ### Endpoints
-- `POST /v1/invoke`: run the agent for a single turn (`INVOKE_AGENT`) or build prompt (`BUILD_PROMPT`).
-  - Invoke response: `{ "sessionId": "...", "finalAnswer": "...", "thoughts": "..." }`.
-  - `finalAnswer` is populated after the agent calls `submit_final_answer`; earlier text is returned in `thoughts`.
-  - Build prompt response: `{ "sessionId": "...", "messages": [ { "role": "system", "content": "..." } ] }`.
-- `POST /v1/events`: SSE stream of engine events.
+- `POST /v1/agent/events`: SSE stream of AG-UI runtime events.
   - Request body: `agentId`, `sessionId`, `message`.
-- `POST /v1/responses`: SSE stream of responses API events.
+- `POST /v1/agent/session/resume/events`: SSE stream when resuming a paused run.
+- `POST /v1/agent/agent`: create an agent configuration.
+- `PUT /v1/agent/agent/{agentId}`: update an agent configuration.
+- `DELETE /v1/agent/agent/{agentId}`: delete an agent configuration.
+- `POST /v1/model`: create a model configuration.
+- `PUT /v1/model/{modelId}`: update a model configuration.
+- `DELETE /v1/model/{modelId}`: delete a model configuration.
 - `GET /v1/agents`: list agent configurations.
 - `GET /v1/agents/{agentId}`: retrieve agent configuration.
 - `POST /v1/agents`: create an agent configuration.
@@ -50,6 +52,10 @@ Fields:
 - `GET /v1/agents/{agentId}/sessions/{sessionId}`: get session details and paginated events.
 - `POST /v1/catalog/search`: resource catalog search API (supports agents, sessions, and other resource types).
 - `GET /v1/catalog/{resourceType}/{id}`: resource catalog retrieval API.
+- `GET /v1/models`: OpenAI-compatible model list (`model id == agent id`).
+- `POST /v1/chat/completions`: OpenAI-compatible chat completions (streaming and non-streaming).
+- `POST /v1/responses`: OpenAI-compatible Responses API events (streaming and non-streaming).
+- `POST /v1/embeddings`: returns `501 not implemented` (explicitly unsupported in v1).
 
 For catalog queries targeting the `session` asset type, pass `options.includeEvents=true` in the
 request body to include AG-UI event payloads in each session result.
@@ -98,3 +104,10 @@ Common events include:
 
 The server also emits `ThinkingTextMessage*` events with raw metadata for reasoning deltas and emits
 planning data via standard `TOOL_CALL_*` events.
+
+## Open WebUI Integration
+- Configure Open WebUI `OPENAI_API_BASE_URL` (or `OPENAI_API_BASE_URLS`) to this service `/v1` base URL.
+- Enable `ENABLE_FORWARD_USER_INFO_HEADERS=true` in Open WebUI so chat-id forwarding is sent.
+- By default, agent-engine reads `X-OpenWebUI-Chat-Id` and uses it for deterministic session continuity.
+- The forwarded chat-id header name can be overridden with `agentengine.responses.forwarded-chat-id-header` (legacy `agentengine.openai.forwarded-chat-id-header` is also honored).
+- Responses streams include reasoning, correction, and tool lifecycle visibility through `response.*` events.

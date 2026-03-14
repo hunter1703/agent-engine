@@ -34,6 +34,13 @@ public final class JsonUtils {
     return JSON_MAPPER.convertValue(map, clazz);
   }
 
+  public static <T> T fromMap(final Map<String, Object> map, final TypeReference<T> typeReference) {
+    if (map == null) {
+      return null;
+    }
+    return JSON_MAPPER.convertValue(map, typeReference);
+  }
+
   public static <T> T fromJson(final String json, final Class<T> clazz) {
     if (json == null || json.isBlank()) {
       return null;

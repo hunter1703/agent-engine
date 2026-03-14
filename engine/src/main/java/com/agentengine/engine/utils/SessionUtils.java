@@ -5,11 +5,10 @@ import com.agentengine.engine.hitl.SessionPauseKind;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
 import com.agentengine.engine.tools.ToolUtils;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Utils;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
-import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.FunctionCall;
 import java.util.List;
@@ -57,7 +56,8 @@ public final class SessionUtils {
 
   private static SessionPause buildPauseView(final FunctionCall confirmationCall, final String confirmationId) {
     final Map<String, Object> args = CollectionUtils.nullSafeMap(confirmationCall.args().orElse(Map.of()));
-    final FunctionCall originalCall = Utils.toType(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), FunctionCall.class);
+    final FunctionCall originalCall = Utils.toType(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), new TypeReference<>() {
+    });
     final String toolName = Objects.requireNonNull(originalCall).name().orElse(null);
     return new SessionPause(resolveKind(toolName, originalCall.args().orElseThrow()), confirmationId);
   }

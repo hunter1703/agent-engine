@@ -5,6 +5,7 @@ import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,7 +26,11 @@ public interface Repository<T extends BaseEntity> {
    */
   Optional<T> findById(String id);
 
+  Optional<T> findById(String id, List<String> includeFields, List<String> excludeFields);
+
   Map<String, T> findByIds(Collection<String> ids);
+
+  Map<String, T> findByIds(Collection<String> ids, List<String> includeFields, List<String> excludeFields);
 
   T insert(T entity);
 

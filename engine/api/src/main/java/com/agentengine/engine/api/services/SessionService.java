@@ -12,7 +12,11 @@ import java.util.Optional;
 public interface SessionService {
   Optional<AgentSession> getSession(String id);
 
+  Optional<AgentSession> getSession(String id, boolean includeEvents);
+
   Map<String, AgentSession> getSessions(Collection<String> ids);
+
+  Map<String, AgentSession> getSessions(Collection<String> ids, boolean includeEvents);
 
   PaginatedResult<AgentSession> findSessions(Query query);
 

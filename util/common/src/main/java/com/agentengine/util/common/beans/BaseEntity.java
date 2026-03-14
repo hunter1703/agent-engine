@@ -1,10 +1,12 @@
 package com.agentengine.util.common.beans;
 
 public abstract class BaseEntity {
+  public static final String FIELD_ID = "id";
+  public static final String FIELD_CREATED_TIME = "createdTime";
   public static final String FIELD_UPDATED_TIME = "updatedTime";
   private String id;
-  private Long createdTime;
-  private Long updatedTime;
+  private long createdTime;
+  private long updatedTime;
 
   public BaseEntity() {
   }
@@ -21,19 +23,19 @@ public abstract class BaseEntity {
     this.id = id;
   }
 
-  public Long getCreatedTime() {
+  public long getCreatedTime() {
     return createdTime;
   }
 
-  public void setCreatedTime(final Long createdTime) {
+  public void setCreatedTime(final long createdTime) {
     this.createdTime = createdTime;
   }
 
-  public Long getUpdatedTime() {
+  public long getUpdatedTime() {
     return updatedTime;
   }
 
-  public void setUpdatedTime(final Long updatedTime) {
+  public void setUpdatedTime(final long updatedTime) {
     this.updatedTime = updatedTime;
   }
 }

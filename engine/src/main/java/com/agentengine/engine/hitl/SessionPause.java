@@ -1,7 +1,6 @@
 package com.agentengine.engine.hitl;
 
 import com.agentengine.util.common.StringUtils;
-import java.util.List;
 
 public record SessionPause(SessionPauseKind kind, String confirmationId) {
 

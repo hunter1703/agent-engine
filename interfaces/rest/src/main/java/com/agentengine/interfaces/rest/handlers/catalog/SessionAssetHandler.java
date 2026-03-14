@@ -1,25 +1,21 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.engine.agui.AGUIEventMapper;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.services.SessionService;
-import com.agentengine.interfaces.rest.dto.AgentSessionDTO;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agui.core.event.BaseEvent;
-import com.google.adk.events.Event;
-import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Singleton
-public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
+public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
 
   public static final String INCLUDE_EVENTS_OPTION = "includeEvents";
   private static final String ASSET_TYPE = "session";
@@ -37,57 +33,30 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   }
 
   @Override
-  public PaginatedResult<AgentSessionDTO> findAssets(final AssetRequest request) {
+  public PaginatedResult<AgentSession> findAssets(final AssetRequest request) {
     final boolean includeEvents = shouldIncludeEvents(request);
     final Query query = buildQuery(request, includeEvents);
-    final PaginatedResult<AgentSession> result = sessionService.findSessions(query);
-    return result.transform(session -> includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of()));
+    return sessionService.findSessions(query);
   }
 
   @Override
-  public PaginatedResult<AgentSessionDTO> listAssets(final AssetRequest request) {
-    final PaginatedResult<AgentSessionDTO> assets = findAssets(request);
-    return assets.transform(this::toSessionAssetSummary);
+  public PaginatedResult<AgentSession> listAssets(final AssetRequest request) {
+    Query query = request.getQuery();
+    query = query == null ? new Query() : query;
+    query.withIncludeFields(
+        List.of(BaseEntity.FIELD_ID, BaseEntity.FIELD_CREATED_TIME, BaseEntity.FIELD_UPDATED_TIME, NamedEntity.FIELD_NAME));
+    return findAssets(request);
   }
 
   @Override
-  public Map<String, AgentSessionDTO> getAssetsByIds(final AssetRequest request) {
-    final Map<String, AgentSessionDTO> result = new HashMap<>();
+  public Map<String, AgentSession> getAssetsByIds(final AssetRequest request) {
+    final Map<String, AgentSession> result = new HashMap<>();
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return result;
     }
 
     final boolean includeEvents = shouldIncludeEvents(request);
-    final Map<String, AgentSession> sessionMap = sessionService.getSessions(request.getKeys());
-    for (final AgentSession session : sessionMap.values()) {
-      final AgentSessionDTO dto = includeEvents ? attachEvents(session) : new AgentSessionDTO(session, List.of());
-      result.put(session.getId(), dto);
-    }
-
-    return result;
-  }
-
-  private AgentSessionDTO toSessionAssetSummary(final AgentSessionDTO session) {
-    if (session == null) {
-      return null;
-    }
-    return AgentSessionDTO.summary(session);
-  }
-
-  private AgentSessionDTO attachEvents(final AgentSession session) {
-    if (session == null) {
-      return null;
-    }
-    final List<BaseEvent> events = mapAguiEvents(session.getAgentId(), session.getId(), session.getSessionInfo().toSession().events());
-    return new AgentSessionDTO(session, events);
-  }
-
-  private static List<BaseEvent> mapAguiEvents(final String agentId, final String sessionId, final List<Event> events) {
-    if (CollectionUtils.isEmpty(events)) {
-      return List.of();
-    }
-    final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-    return Flowable.fromIterable(events).concatMap(mapper::map).concatWith(mapper.onComplete()).toList().blockingGet();
+    return sessionService.getSessions(request.getKeys(), includeEvents);
   }
 
   private static boolean shouldIncludeEvents(final AssetRequest request) {
@@ -98,18 +67,12 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSessionDTO> {
   }
 
   private static Query buildQuery(final AssetRequest request, final boolean includeEvents) {
-    final Query source = request == null || request.getQuery() == null ? new Query() : request.getQuery();
+    final Query query = request == null || request.getQuery() == null ? new Query() : request.getQuery();
     if (includeEvents) {
-      return source;
+      return query.addIncludeField(AgentSession.FIELD_EVENTS);
     }
-    final Query query = new Query();
-    query.setFilter(source.getFilter());
-    query.setPage(source.getPage());
-    query.setSort(source.getSort());
-    query.setIncludeCount(source.isIncludeCount());
-    query.setIncludeFields(source.getIncludeFields());
 
-    final List<String> excluded = new ArrayList<>(CollectionUtils.nullSafeList(source.getExcludeFields()));
+    final List<String> excluded = CollectionUtils.nullSafeMutableList(query.getExcludeFields());
     if (!excluded.contains("sessionInfo.eventsJson")) {
       excluded.add("sessionInfo.eventsJson");
     }

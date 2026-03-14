@@ -86,8 +86,13 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
   @Override
   public Optional<T> findById(String id) {
+    return findById(id, null, null);
+  }
+
+  @Override
+  public Optional<T> findById(final String id, final List<String> includeFields, final List<String> excludeFields) {
     try {
-      T document = getCollection().find(Filters.eq("_id", id)).first();
+      T document = getCollection().find(Filters.eq("_id", id)).projection(MongoUtils.getProjection(includeFields, excludeFields)).first();
       if (document != null) {
         return Optional.of(document);
       }
@@ -100,8 +105,14 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
   @Override
   public Map<String, T> findByIds(Collection<String> ids) {
+    return findByIds(ids, null, null);
+  }
+
+  @Override
+  public Map<String, T> findByIds(Collection<String> ids, List<String> includeFields, List<String> excludeFields) {
     try {
-      final FindIterable<T> iterable = getCollection().find(Filters.in("_id", ids));
+      final FindIterable<T> iterable = getCollection().find(Filters.in("_id", ids))
+          .projection(MongoUtils.getProjection(includeFields, excludeFields));
       final Map<String, T> result = new HashMap<>();
       for (final T doc : iterable) {
         result.put(doc.getId(), doc);
@@ -210,9 +221,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
       final Page page = query == null || query.getPage() == null ? new Page(0, 20) : query.getPage();
       List<T> entities = new ArrayList<>();
 
-      final Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());
-      final Bson bsonSort = MongoQueryAdapter.toSortBson(query == null ? null : query.getSort());
-      final Bson projection = MongoQueryAdapter.toProjectionBson(query);
+      final Bson bsonFilter = MongoUtils.toBson(query == null ? null : query.getFilter());
+      final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSort());
+      final Bson projection = MongoUtils.toProjectionBson(query);
 
       FindIterable<T> iter = getCollection().find(bsonFilter, entityClass);
       if (projection != null) {

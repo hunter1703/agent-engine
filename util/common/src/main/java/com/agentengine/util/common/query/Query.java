@@ -1,5 +1,7 @@
 package com.agentengine.util.common.query;
 
+import com.agentengine.util.common.CollectionUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,6 +73,13 @@ public class Query {
 
   public Query withIncludeFields(final List<String> includeFields) {
     setIncludeFields(includeFields);
+    return this;
+  }
+
+  public Query addIncludeField(final String includeField) {
+    final List<String> updatedFields = CollectionUtils.nullSafeMutableList(includeFields);
+    updatedFields.add(includeField);
+    setIncludeFields(updatedFields);
     return this;
   }
 

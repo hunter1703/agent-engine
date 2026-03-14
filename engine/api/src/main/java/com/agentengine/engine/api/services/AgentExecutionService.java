@@ -1,13 +1,13 @@
 package com.agentengine.engine.api.services;
 
 import com.agentengine.util.ms.MicroService;
-import com.google.adk.events.Event;
+import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 
 @MicroService("agent")
 public interface AgentExecutionService {
 
-  Flowable<Event> run(String agentId, String sessionId, String text);
+  Flowable<BaseEvent> run(String agentId, String sessionId, String text);
 
-  Flowable<Event> resumeSession(String agentId, String sessionId, Boolean confirmed, String answer);
+  Flowable<BaseEvent> resumeSession(String agentId, String sessionId, Boolean confirmed, String answer);
 }

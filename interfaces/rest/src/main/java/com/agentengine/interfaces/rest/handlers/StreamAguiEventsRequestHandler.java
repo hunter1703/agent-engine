@@ -1,6 +1,5 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.agui.AGUIEventMapper;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
@@ -28,7 +27,6 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
     if (request.getSessionId() == null) {
       request.setSessionId(UUID.randomUUID().toString());
     }
-    final AGUIEventMapper mapper = new AGUIEventMapper(request.getSessionId(), request.getAgentId());
-    return mapper.map(agentExecutionService().run(request.getAgentId(), request.getSessionId(), request.getMessage()));
+    return agentExecutionService().run(request.getAgentId(), request.getSessionId(), request.getMessage());
   }
 }

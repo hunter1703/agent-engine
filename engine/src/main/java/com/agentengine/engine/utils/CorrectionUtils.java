@@ -1,5 +1,6 @@
 package com.agentengine.engine.utils;
 
+import com.agentengine.engine.api.agui.CorrectionMetadata;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;

@@ -28,9 +28,8 @@ public final class ToolServiceImpl implements ToolService {
     toolProviders.addAll(discoveredToolProviders.providers());
     final List<ToolsetProvider> toolsetProviders = ServiceUtils.loadServices(toolsets, ToolsetProvider.class);
     this.toolNameVsEntry = toolProviders.stream().filter(toolProvider -> toolProvider.descriptor() != null)
-        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name()))
-        .collect(Collectors.toMap(toolProvider -> toolProvider.descriptor().name(),
-            provider -> new ToolEntry(provider.descriptor(), provider), (a, b) -> a));
+        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name())).collect(Collectors.toMap(
+            toolProvider -> toolProvider.descriptor().name(), provider -> new ToolEntry(provider.descriptor(), provider), (a, b) -> a));
     this.toolsetNameVsEntry = toolsetProviders.stream().filter(toolsetProvider -> toolsetProvider.descriptor() != null)
         .filter(toolsetProvider -> StringUtils.isNotBlank(toolsetProvider.descriptor().name()))
         .collect(Collectors.toMap(toolsetProvider -> toolsetProvider.descriptor().name(),

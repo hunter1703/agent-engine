@@ -2,14 +2,19 @@ package com.agentengine.engine.api.beans.session;
 
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agui.core.event.BaseEvent;
 import com.google.adk.sessions.Session;
+
+import java.util.List;
 
 public class AgentSession extends NamedEntity {
   public static final String DEFAULT_USER_ID = "default";
   public static final String FIELD_SESSION_INFO = "sessionInfo";
+  public static final String FIELD_EVENTS = FIELD_SESSION_INFO + "." + "eventsJson";
 
   private String agentId;
   private SessionInfo sessionInfo;
+  private List<BaseEvent> aguiEvents;
 
   public AgentSession() {
   }
@@ -52,5 +57,13 @@ public class AgentSession extends NamedEntity {
 
   public void setSessionInfo(final SessionInfo sessionInfo) {
     this.sessionInfo = sessionInfo;
+  }
+
+  public List<BaseEvent> getAguiEvents() {
+    return aguiEvents;
+  }
+
+  public void setAguiEvents(final List<BaseEvent> aguiEvents) {
+    this.aguiEvents = aguiEvents;
   }
 }

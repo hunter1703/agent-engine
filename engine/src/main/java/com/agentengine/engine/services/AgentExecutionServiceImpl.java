@@ -8,6 +8,7 @@ import static com.google.genai.types.Part.fromText;
 
 import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agentengine.engine.agents.SessionTitleGenerator;
+import com.agentengine.engine.agui.AGUIEventMapper;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.services.AgentExecutionService;
@@ -29,12 +30,14 @@ import com.agentengine.engine.utils.SessionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agui.core.event.BaseEvent;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.apps.App;
 import com.google.adk.apps.ResumabilityConfig;
-import com.google.adk.events.Event;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.Session;
@@ -46,6 +49,7 @@ import io.reactivex.rxjava3.core.Flowable;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -92,17 +96,18 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   }
 
   @Override
-  public Flowable<Event> run(final String agentId, final String sessionId, final String text) {
+  public Flowable<BaseEvent> run(final String agentId, final String sessionId, final String text) {
     return runContent(agentId, sessionId, buildFromText(text));
   }
 
   @Override
-  public Flowable<Event> resumeSession(final String agentId, final String sessionId, final Boolean confirmed, final String answer) {
+  public Flowable<BaseEvent> resumeSession(final String agentId, final String sessionId, final Boolean confirmed, final String answer) {
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("sessionId is required");
     }
     final AgentSession session = sessionService.getSession(sessionId).orElseThrow(() -> new AssetNotFoundException("session", sessionId));
-    final SessionPause pauseView = SessionUtils.pauseView(session.getSessionInfo().getEvents());
+    final SessionPause pauseView = SessionUtils.pauseView(Utils.toType(session.getSessionInfo().getEvents(), new TypeReference<>() {
+    }));
     if (!pauseView.isPaused() || !pauseView.hasConfirmationId()) {
       throw new IllegalStateException("Session is not waiting for user input");
     }
@@ -115,7 +120,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     return runContent(agentId, sessionId, content);
   }
 
-  private Flowable<Event> runContent(final String agentId, final String sessionId, final Content userContent) {
+  private Flowable<BaseEvent> runContent(final String agentId, final String sessionId, final Content userContent) {
     final AgentSessionRuntime runtime = getOrStartRuntime(agentId, sessionId);
     final String resolvedSessionId = runtime.sessionId();
     try {
@@ -123,8 +128,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
           userContent == null ? 0 : userContent.parts().orElse(List.of()).size());
       final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();
       final Runner runner = runtime.runner();
-      return runner.runAsync(DEFAULT_USER_ID, resolvedSessionId, userContent, runConfig)
-          .doOnComplete(() -> updateTitle(runner, resolvedSessionId)).doFinally(() -> markRunInactive(resolvedSessionId));
+      final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId, AGUIEventMapper.Mode.LIVE);
+      return mapper.map(runner.runAsync(DEFAULT_USER_ID, resolvedSessionId, userContent, runConfig)
+          .doOnComplete(() -> updateTitle(runner, resolvedSessionId)).doFinally(() -> markRunInactive(resolvedSessionId)));
     } catch (Exception ex) {
       markRunInactive(resolvedSessionId);
       return Flowable.error(ex);

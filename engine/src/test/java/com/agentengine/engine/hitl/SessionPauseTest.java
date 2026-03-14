@@ -41,7 +41,9 @@ class SessionPauseTest {
   @Test
   void shouldIgnoreRespondedConfirmationEvents() {
     final Event confirmationEvent = toolConfirmationEvent("run_cmd", null, System.currentTimeMillis());
-    final Event responseEvent = Event.builder().id("response-1").invocationId("inv-1").author("user").timestamp(System.currentTimeMillis())
+    final Event responseEvent = Event
+        .builder().id("response-1").invocationId("inv-1").author("user").timestamp(
+            System.currentTimeMillis())
         .content(Content.builder().role("user").parts(List.of(Part.builder().functionResponse(FunctionResponse.builder().id("confirm-1")
             .name(REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(Map.of("confirmed", true)).build()).build())).build())
         .build();

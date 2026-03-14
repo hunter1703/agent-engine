@@ -1,5 +1,6 @@
 package com.agentengine.engine.api.beans.session;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -13,12 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import org.bson.codecs.pojo.annotations.BsonId;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
-@BsonDiscriminator(value = "session_info")
 public class SessionInfo extends BaseEntity {
+
   private String appName;
   private String userId;
   private Map<String, Object> state = new HashMap<>();
@@ -95,10 +96,9 @@ public class SessionInfo extends BaseEntity {
   }
 
   @BsonIgnore
-  public List<Event> getEvents() {
-    final List<Event> parsed = JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {
-    });
-    return parsed == null ? List.of() : parsed;
+  public List<Map<String, Object>> getEvents() {
+    return CollectionUtils.nullSafeList(JsonUtils.fromJson(getEventsJson(), new TypeReference<>() {
+    }));
   }
 
   @BsonIgnore

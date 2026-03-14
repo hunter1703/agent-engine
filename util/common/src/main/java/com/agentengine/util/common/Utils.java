@@ -66,7 +66,7 @@ public final class Utils {
         return doubleValue.floatValue();
       }
       if (rawValue instanceof Float floatValue) {
-        return floatValue.floatValue();
+        return floatValue;
       }
       if (rawValue instanceof Integer integerValue) {
         return integerValue.floatValue();
@@ -90,17 +90,19 @@ public final class Utils {
     return OBJECT_MAPPER.convertValue(rawValue, targetType);
   }
 
-  public static <T> T toType(final Object value, final Class<T> type) {
-    if (value == null || type == null) {
+  public static <T> T toType(final Object value, final TypeReference<T> typeReference) {
+    if (value == null || typeReference == null) {
       return null;
     }
-    if (type.isInstance(value)) {
-      return type.cast(value);
+    final Type type = typeReference.getType();
+    if (type instanceof Class<?> clazz && clazz.isInstance(value)) {
+      // noinspection unchecked
+      return (T) clazz.cast(value);
     }
     if (value instanceof Map<?, ?> rawMap) {
       @SuppressWarnings("unchecked")
       final Map<String, Object> mapValue = (Map<String, Object>) rawMap;
-      return JsonUtils.fromMap(mapValue, type);
+      return JsonUtils.fromMap(mapValue, typeReference);
     }
     return null;
   }

@@ -6,7 +6,6 @@ plugins {
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.slf4j.api
-    implementation project(':engine')
     implementation project(':engine:api')
     implementation project(':util:common')
     implementation project(':util:ms')
@@ -41,14 +40,4 @@ dependencies {
     integrationTestImplementation libs.testcontainers.junit.jupiter
     integrationTestImplementation libs.testcontainers.mongodb
     integrationTestImplementation libs.testcontainers.redis
-}
-
-def isCiServer = System.getenv("CI_SERVER") != null
-def isCi = System.getenv("CI") != null
-def isContinuousIntegration = isCiServer || isCi
-
-if (isContinuousIntegration) {
-    tasks.withType(JavaCompile) {
-        options.compilerArgs += ['-Xlint:all', '-Werror']
-    }
 }

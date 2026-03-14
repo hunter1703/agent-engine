@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest.handlers;
 
 import static com.agentengine.interfaces.rest.dto.AgentRequest.RequestType.RESUME_SESSION;
 
-import com.agentengine.engine.agui.AGUIEventMapper;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
@@ -18,10 +17,8 @@ public final class ResumeAguiEventsHandler extends AbstractAgentRequestHandler<R
 
   @Override
   public Flowable<BaseEvent> handle(final ResumeSessionRequest resumeRequest) {
-    final String agentId = resumeRequest.getAgentId();
-    final String sessionId = resumeRequest.getSessionId();
-    final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-    return mapper.map(agentExecutionService().resumeSession(agentId, sessionId, resumeRequest.getConfirmed(), resumeRequest.getMessage()));
+    return agentExecutionService().resumeSession(resumeRequest.getAgentId(), resumeRequest.getSessionId(), resumeRequest.getConfirmed(),
+        resumeRequest.getMessage());
   }
 
   @Override
