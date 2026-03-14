@@ -102,9 +102,33 @@ if (skipped > 0) {
 '
 }
 
+upsert_microservice_config() {
+  echo "Upserting microservice configuration..."
+  compose exec -T mongodb mongosh --quiet --eval '
+const collection = db.getSiblingDB("INFRA").getCollection("MicroServiceConfig");
+// Delete any existing document with _id "agent" to avoid type conflicts
+collection.deleteOne({ _id: "agent" });
+// Insert fresh document with string _id
+const result = collection.updateOne(
+  { serverId: "agent" },
+  { 
+    $set: { 
+      _id: "agent",
+      serverId: "agent", 
+      host: "localhost", 
+      port: 19000 
+    } 
+  },
+  { upsert: true }
+);
+print(`microservice_config_upserted=${result.modifiedCount + result.upsertedCount}`);
+'
+}
+
 bootstrap_mongo_state() {
   wait_for_mongo
   upsert_connections
+  upsert_microservice_config
 }
 
 wait_for_http() {
