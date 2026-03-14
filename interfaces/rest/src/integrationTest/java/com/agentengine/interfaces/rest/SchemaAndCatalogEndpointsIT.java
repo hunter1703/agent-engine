@@ -3,11 +3,13 @@ package com.agentengine.interfaces.rest;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+import com.agentengine.engine.repository.AgentSessionRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +19,8 @@ class SchemaAndCatalogEndpointsIT {
 
   @Inject
   MongoClientFactory mongoClientFactory;
+  @Inject
+  AgentSessionRepository agentSessionRepository;
 
   @BeforeEach
   void shouldResetDatabaseWhenTestStarts() {
@@ -36,11 +40,12 @@ class SchemaAndCatalogEndpointsIT {
     given().contentType("application/json").body("""
         {
           "id": "agent-catalog",
-          "type": "default",
+          "type": "DEFAULT",
           "name": "Agent Catalog",
+          "systemPrompt": "Catalog agent prompt",
           "modelId": "model-catalog"
         }
-        """).when().post("/v1/agent/agent").then().statusCode(200);
+        """).when().post("/v1/agent/agent/upsert").then().statusCode(200);
   }
 
   @Test
@@ -57,6 +62,14 @@ class SchemaAndCatalogEndpointsIT {
   @Test
   void shouldListModelsWhenCatalogListEndpointCalled() {
     given().contentType("application/json").body("{\"assetType\":\"model\"}").when().post("/v1/catalog/list").then().statusCode(200)
+        .body("items.size()", greaterThanOrEqualTo(1));
+  }
+
+  @Test
+  void shouldListSessionsWhenCatalogListEndpointCalledWithoutPage() {
+    agentSessionRepository.createSession("agent-catalog", "default", new ConcurrentHashMap<>(), "session-catalog-1").blockingGet();
+
+    given().contentType("application/json").body("{\"assetType\":\"session\"}").when().post("/v1/catalog/list").then().statusCode(200)
         .body("items.size()", greaterThanOrEqualTo(1));
   }
 

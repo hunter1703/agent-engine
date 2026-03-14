@@ -108,7 +108,7 @@ class ModelServiceImplTest {
   }
 
   @Test
-  void shouldSanitizeBeforeSaveWhenSaveModelCalled() {
+  void shouldPreserveIdWhenSaveModelCalled() {
     final ModelConfig request = new ModelConfig();
     request.setId("model-3");
     request.setType("OLLAMA");
@@ -117,7 +117,7 @@ class ModelServiceImplTest {
 
     final ModelConfig saved = modelService.saveModel(request);
 
-    assertThat(saved.getId()).isNull();
+    assertThat(saved.getId()).isEqualTo("model-3");
     verify(modelRepository).save(any(ModelConfig.class));
   }
 }

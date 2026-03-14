@@ -1,11 +1,11 @@
 {
-  "type": "default",
+  "type": "DEFAULT",
   "id": "story_phase_6_final",
   "name": "Story Phase 6 - Final",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 6 of a story pipeline. Produce the final story output with clean formatting and a concise title.",
   "contextStrategy": {
-    "type": "compaction",
+    "type": "COMPACTION",
     "tokenThreshold": 4096,
     "eventRetentionSize": 50,
     "overlapSize": 0

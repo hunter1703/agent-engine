@@ -60,8 +60,13 @@ public class AgentServiceImpl implements AgentService {
   @Override
   @WithSpan
   public BaseAgentConfig saveAgent(final BaseAgentConfig agent) {
-    final BuilderMode mode = StringUtils.isBlank(agent == null ? null : agent.getId()) ? BuilderMode.CREATE : BuilderMode.EDIT;
-    return agentRepository.save(sanitize(agent, mode));
+    final String id = agent == null ? null : agent.getId();
+    final BuilderMode mode = StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT;
+    final BaseAgentConfig sanitized = sanitize(agent, mode);
+    if (mode == BuilderMode.EDIT) {
+      sanitized.setId(id);
+    }
+    return agentRepository.save(sanitized);
   }
 
   @Override

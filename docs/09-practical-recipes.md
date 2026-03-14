@@ -21,11 +21,11 @@ curl -s -X POST http://localhost:18080/v1/agent/agent/upsert \
   -H 'Content-Type: application/json' \
   -d '{
     "id":"echo-agent",
-    "type":"default",
+    "type":"DEFAULT",
     "name":"Echo Agent",
     "modelId":"local-qwen",
     "systemPrompt":"You are concise.",
-    "contextStrategy":{"type":"compaction"},
+    "contextStrategy":{"type":"COMPACTION"},
     "tools":[{"toolName":"echo","configs":{"prefix":"ok-"}}]
   }'
 ```
@@ -69,8 +69,9 @@ curl -s http://localhost:18080/schemas/model | jq .
 ```json
 {
   "id": "parallel-manager",
-  "type": "orchestrator",
+  "type": "ORCHESTRATOR",
   "name": "Parallel Manager",
+  "systemPrompt": "Coordinate the parallel worker agents and aggregate their outputs.",
   "orchestrationMode": "PARALLEL",
   "subAgentIds": ["agent-a", "agent-b", "agent-c"],
   "parallel": {
@@ -78,7 +79,7 @@ curl -s http://localhost:18080/schemas/model | jq .
     "stoppingPolicy": "QUORUM",
     "quorum": 2
   },
-  "contextStrategy": { "type": "compaction" }
+  "contextStrategy": { "type": "COMPACTION" }
 }
 ```
 

@@ -1,11 +1,11 @@
 {
-  "type": "default",
+  "type": "DEFAULT",
   "id": "echo_agent",
   "name": "Echo Agent",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are an echo-only assistant.",
   "contextStrategy": {
-    "type": "compaction",
+    "type": "COMPACTION",
     "tokenThreshold": 4096,
     "eventRetentionSize": 50,
     "overlapSize": 0

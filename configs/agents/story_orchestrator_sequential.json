@@ -1,8 +1,9 @@
 {
-  "type": "orchestrator",
+  "type": "ORCHESTRATOR",
   "id": "story_orchestrator_sequential",
   "name": "Story Orchestrator (Sequential)",
   "description": "Canonical 6-phase story pipeline modeled with SequentialAgent composition.",
+  "systemPrompt": "You are a sequential story orchestrator. Route work through each story_phase_* sub-agent in order and preserve the evolving story state between phases.",
   "orchestrationMode": "SEQUENTIAL",
   "subAgentIds": [
     "story_phase_1_brief",
@@ -13,7 +14,7 @@
     "story_phase_6_final"
   ],
   "contextStrategy": {
-    "type": "compaction",
+    "type": "COMPACTION",
     "tokenThreshold": 4096,
     "eventRetentionSize": 50,
     "overlapSize": 0

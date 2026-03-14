@@ -123,7 +123,7 @@ wait_for_http() {
 }
 
 bootstrap_data() {
-  local api_url="http://localhost:18080"
+  local api_url="${1:-http://localhost:18080}"
   echo "Waiting for REST API to become responsive on $api_url..."
   wait_for_http "$api_url/q/openapi"
   AGENT_ENGINE_API_URL="$api_url" "$PROJECT_ROOT/deploy/sync.sh"
@@ -202,7 +202,7 @@ start_production() {
   echo "Logs: $PROJECT_ROOT/logs/engine.log, $PROJECT_ROOT/logs/rest.log"
 
   if [ "$BOOTSTRAP" = true ]; then
-    bootstrap_data &
+    bootstrap_data "http://localhost:18080" &
   fi
 
   wait
@@ -211,7 +211,7 @@ start_production() {
 start_dev() {
   echo "Starting in DEV mode (Monolith)..."
   if [ "$BOOTSTRAP" = true ]; then
-    bootstrap_data &
+    bootstrap_data "http://localhost:8080" &
   fi
   cd "$PROJECT_ROOT"
   exec ./gradlew :interfaces:local:quarkusDev

@@ -207,7 +207,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
   @Override
   public PaginatedResult<T> findByQuery(final Query query) {
     try {
-      final Page page = query == null ? new Page(0, 20) : query.getPage();
+      final Page page = query == null || query.getPage() == null ? new Page(0, 20) : query.getPage();
       List<T> entities = new ArrayList<>();
 
       final Bson bsonFilter = MongoQueryAdapter.toBson(query == null ? null : query.getFilter());

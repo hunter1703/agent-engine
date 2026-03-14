@@ -88,7 +88,7 @@ class AgentServiceImplTest {
   }
 
   @Test
-  void shouldSanitizeBeforeSaveWhenSaveAgentCalled() {
+  void shouldPreserveIdWhenSaveAgentCalled() {
     final DefaultAgentConfig request = new DefaultAgentConfig();
     request.setId("agent-3");
     request.setModelId("model-1");
@@ -96,7 +96,7 @@ class AgentServiceImplTest {
 
     final BaseAgentConfig saved = agentService.saveAgent(request);
 
-    assertThat(saved.getId()).isNull();
+    assertThat(saved.getId()).isEqualTo("agent-3");
     verify(agentRepository).save(any(BaseAgentConfig.class));
   }
 }

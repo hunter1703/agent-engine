@@ -1,11 +1,11 @@
 {
-  "type": "default",
+  "type": "DEFAULT",
   "id": "story_phase_5_polish",
   "name": "Story Phase 5 - Polish",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 5 of a story pipeline. Improve pacing, clarity, transitions, and prose quality while preserving intent.",
   "contextStrategy": {
-    "type": "compaction",
+    "type": "COMPACTION",
     "tokenThreshold": 4096,
     "eventRetentionSize": 50,
     "overlapSize": 0

@@ -60,8 +60,13 @@ public class ModelServiceImpl implements ModelService {
   @Override
   @WithSpan
   public ModelConfig saveModel(final ModelConfig model) {
-    final BuilderMode mode = StringUtils.isBlank(model == null ? null : model.getId()) ? BuilderMode.CREATE : BuilderMode.EDIT;
-    return modelRepository.save(sanitize(model, mode));
+    final String id = model == null ? null : model.getId();
+    final BuilderMode mode = StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT;
+    final ModelConfig sanitized = sanitize(model, mode);
+    if (mode == BuilderMode.EDIT) {
+      sanitized.setId(id);
+    }
+    return modelRepository.save(sanitized);
   }
 
   @Override

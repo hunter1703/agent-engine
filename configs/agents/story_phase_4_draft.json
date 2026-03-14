@@ -1,11 +1,11 @@
 {
-  "type": "default",
+  "type": "DEFAULT",
   "id": "story_phase_4_draft",
   "name": "Story Phase 4 - Draft",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 4 of a story pipeline. Write a complete first draft using the established brief, outline, and characters.",
   "contextStrategy": {
-    "type": "compaction",
+    "type": "COMPACTION",
     "tokenThreshold": 4096,
     "eventRetentionSize": 50,
     "overlapSize": 0
