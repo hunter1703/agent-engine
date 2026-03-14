@@ -6,10 +6,5 @@ import java.util.List;
 /**
  * Output content item.
  */
-public record OutputContent(
-    String type,
-    String text,
-    List<Annotation> annotations,
-    @JsonProperty("refusal") String refusal
-) {
+public record OutputContent(String type, String text, List<Annotation> annotations, @JsonProperty("refusal") String refusal) {
 }

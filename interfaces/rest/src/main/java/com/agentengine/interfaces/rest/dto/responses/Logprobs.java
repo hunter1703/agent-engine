@@ -5,8 +5,5 @@ import java.util.List;
 /**
  * Log probability information.
  */
-public record Logprobs(
-    List<TokenLogprob> content,
-    List<TokenLogprob> refusal
-) {
+public record Logprobs(List<TokenLogprob> content, List<TokenLogprob> refusal) {
 }

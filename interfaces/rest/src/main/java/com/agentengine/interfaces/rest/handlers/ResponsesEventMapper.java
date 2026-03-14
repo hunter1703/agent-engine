@@ -8,7 +8,9 @@ import java.util.Map;
 /**
  * Maps AG-UI events to OpenAI Responses API output events.
  * 
- * <p>The Responses API uses a different SSE event format than Chat Completions:
+ * <p>
+ * The Responses API uses a different SSE event format than Chat Completions:
+ * 
  * <pre>
  * event: response.output_item.added
  * data: {"type":"response.output_item.added","output_index":0,"item":{...}}
@@ -35,8 +37,8 @@ public final class ResponsesEventMapper {
   }
 
   /**
-   * Map an AG-UI event to a Flowable of ResponseOutputEvent objects.
-   * RESTEasy Reactive will handle JSON serialization and SSE formatting.
+   * Map an AG-UI event to a Flowable of ResponseOutputEvent objects. RESTEasy
+   * Reactive will handle JSON serialization and SSE formatting.
    */
   public Flowable<ResponseOutputEvent> mapEvent(BaseEvent event) {
     if (event == null) {
@@ -71,7 +73,7 @@ public final class ResponsesEventMapper {
     // Thinking/reasoning events
     if (event instanceof ThinkingTextMessageContentEvent thinking) {
       Object rawEvent = thinking.getRawEvent();
-      //noinspection unchecked
+      // noinspection unchecked
       Map<String, Object> deltaObj = rawEvent instanceof Map ? (Map<String, Object>) rawEvent : Map.of();
       String delta = CollectionUtils.getStringValueFromMap(deltaObj, "delta");
       if (delta == null || delta.isEmpty()) {
@@ -159,32 +161,16 @@ public final class ResponsesEventMapper {
    */
   private Flowable<ResponseOutputEvent> toolCallAdded(String toolCallId, String toolName) {
     int index = outputIndex++;
-    return Flowable.just(new ResponseOutputEvent(
-        "response.function_call.output_item.added",
-        null,
-        null,
-        null,
-        index,
-        "function_call",
-        toolCallId,
-        toolName
-    ));
+    return Flowable.just(new ResponseOutputEvent("response.function_call.output_item.added", null, null, null, index, "function_call",
+        toolCallId, toolName));
   }
 
   /**
    * Emit function_call.arguments.delta event.
    */
   private Flowable<ResponseOutputEvent> toolCallArgumentsDelta(String toolCallId, String arguments) {
-    return Flowable.just(new ResponseOutputEvent(
-        "response.function_call.arguments.delta",
-        arguments,
-        null,
-        null,
-        null,
-        null,
-        toolCallId,
-        null
-    ));
+    return Flowable
+        .just(new ResponseOutputEvent("response.function_call.arguments.delta", arguments, null, null, null, null, toolCallId, null));
   }
 
   /**
@@ -199,16 +185,8 @@ public final class ResponsesEventMapper {
    */
   private Flowable<ResponseOutputEvent> toolResultAdded(String toolCallId, String result) {
     int index = outputIndex++;
-    return Flowable.just(new ResponseOutputEvent(
-        "response.tool_call.output_item.added",
-        result,
-        null,
-        null,
-        index,
-        "tool_call",
-        toolCallId,
-        null
-    ));
+    return Flowable
+        .just(new ResponseOutputEvent("response.tool_call.output_item.added", result, null, null, index, "tool_call", toolCallId, null));
   }
 
   /**
@@ -229,30 +207,32 @@ public final class ResponsesEventMapper {
   /**
    * Response output event for the Responses API.
    *
-   * @param type         The event type (e.g., "response.output_text.delta", "response.completed")
-   * @param delta        The content delta (for delta events)
-   * @param finishReason The finish reason (for completion events)
-   * @param usage        Token usage (for completion events)
-   * @param outputIndex  The output index (for output_item events)
-   * @param itemType     The item type (for output_item events)
-   * @param toolCallId   The tool call ID (for tool call events)
-   * @param toolName     The tool name (for tool call added events)
+   * @param type
+   *          The event type (e.g., "response.output_text.delta",
+   *          "response.completed")
+   * @param delta
+   *          The content delta (for delta events)
+   * @param finishReason
+   *          The finish reason (for completion events)
+   * @param usage
+   *          Token usage (for completion events)
+   * @param outputIndex
+   *          The output index (for output_item events)
+   * @param itemType
+   *          The item type (for output_item events)
+   * @param toolCallId
+   *          The tool call ID (for tool call events)
+   * @param toolName
+   *          The tool name (for tool call added events)
    */
-  public record ResponseOutputEvent(
-      String type,
-      String delta,
-      String finishReason,
-      Usage usage,
-      Integer outputIndex,
-      String itemType,
-      String toolCallId,
-      String toolName
-  ) {
-    // Constructor for simple events (no output_index, item_type, tool_call_id, tool_name)
+  public record ResponseOutputEvent(String type, String delta, String finishReason, Usage usage, Integer outputIndex, String itemType,
+      String toolCallId, String toolName) {
+    // Constructor for simple events (no output_index, item_type, tool_call_id,
+    // tool_name)
     public ResponseOutputEvent(String type, String delta, String finishReason, Usage usage) {
       this(type, delta, finishReason, usage, null, null, null, null);
     }
-    
+
     // Constructor for output_item events
     public ResponseOutputEvent(String type, String delta, String finishReason, Usage usage, Integer outputIndex, String itemType) {
       this(type, delta, finishReason, usage, outputIndex, itemType, null, null);

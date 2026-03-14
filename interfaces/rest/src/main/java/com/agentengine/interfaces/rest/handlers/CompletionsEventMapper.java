@@ -11,8 +11,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Maps AG-UI events to OpenAI Chat Completions API chunks.
- * Wraps ResponsesEventMapper to convert ResponseOutputEvent to ChatCompletionChunk format.
+ * Maps AG-UI events to OpenAI Chat Completions API chunks. Wraps
+ * ResponsesEventMapper to convert ResponseOutputEvent to ChatCompletionChunk
+ * format.
  */
 public final class CompletionsEventMapper {
 
@@ -29,23 +30,22 @@ public final class CompletionsEventMapper {
   }
 
   /**
-   * Map an AG-UI event to a Flowable of ChatCompletionChunk objects.
-   * RESTEasy Reactive will handle JSON serialization and SSE formatting.
+   * Map an AG-UI event to a Flowable of ChatCompletionChunk objects. RESTEasy
+   * Reactive will handle JSON serialization and SSE formatting.
    */
   public Flowable<ChatCompletionChunk> mapEvent(BaseEvent event) {
-    return responsesMapper.mapEvent(event)
-        .map(this::toChatCompletionChunk);
+    return responsesMapper.mapEvent(event).map(this::toChatCompletionChunk);
   }
 
   /**
-   * Convert ResponseOutputEvent to ChatCompletionChunk format.
-   * Only emits chunks for content/reasoning deltas, ignores structural events.
+   * Convert ResponseOutputEvent to ChatCompletionChunk format. Only emits chunks
+   * for content/reasoning deltas, ignores structural events.
    */
   private ChatCompletionChunk toChatCompletionChunk(ResponseOutputEvent outputEvent) {
     String content = null;
     String reasoning = null;
     String finishReason = outputEvent.finishReason();
-    
+
     // Map Responses API event types to Chat Completions delta format
     if ("response.output_text.delta".equals(outputEvent.type())) {
       content = outputEvent.delta();
@@ -54,10 +54,10 @@ public final class CompletionsEventMapper {
     } else if ("response.completed".equals(outputEvent.type())) {
       finishReason = outputEvent.finishReason();
     }
-    
+
     MessageDelta delta = new MessageDelta("assistant", content, null, null, null, reasoning);
     ChunkChoice choice = new ChunkChoice(0, delta, finishReason, null);
-    CompletionUsage usage = outputEvent.usage() != null 
+    CompletionUsage usage = outputEvent.usage() != null
         ? new CompletionUsage(outputEvent.usage().promptTokens(), outputEvent.usage().completionTokens(), outputEvent.usage().totalTokens())
         : null;
     return new ChatCompletionChunk(completionId, "chat.completion.chunk", created, modelId, List.of(choice), null, null, usage);

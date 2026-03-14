@@ -56,8 +56,9 @@ public final class SessionUtils {
 
   private static SessionPause buildPauseView(final FunctionCall confirmationCall, final String confirmationId) {
     final Map<String, Object> args = CollectionUtils.nullSafeMap(confirmationCall.args().orElse(Map.of()));
-    final FunctionCall originalCall = Utils.toType(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), new TypeReference<>() {
-    });
+    final FunctionCall originalCall = Utils.toType(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL),
+        new TypeReference<>() {
+        });
     final String toolName = Objects.requireNonNull(originalCall).name().orElse(null);
     return new SessionPause(resolveKind(toolName, originalCall.args().orElseThrow()), confirmationId);
   }

@@ -5,7 +5,5 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Stream options.
  */
-public record StreamOptions(
-    @JsonProperty("include_usage") Boolean includeUsage
-) {
+public record StreamOptions(@JsonProperty("include_usage") Boolean includeUsage) {
 }
