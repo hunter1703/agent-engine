@@ -1,6 +1,8 @@
 package com.agentengine.engine.agui;
 
-import com.agentengine.engine.utils.CorrectionMetadata;
+import com.agentengine.engine.EventMapper;
+import com.agentengine.engine.api.agui.CorrectionEvent;
+import com.agentengine.engine.api.agui.CorrectionMetadata;
 import com.agentengine.engine.utils.CorrectionUtils;
 import com.agentengine.engine.utils.EventUtils;
 import com.agentengine.util.common.CollectionUtils;
@@ -19,19 +21,32 @@ import org.slf4j.LoggerFactory;
 /** Maps runtime events to AGUI events */
 public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   private static final Logger LOG = LoggerFactory.getLogger(AGUIEventMapper.class);
+
+  public enum Mode {
+    LIVE, REPLAY
+  }
+
+  private final Mode mode;
   private final MapperState state;
 
-  public AGUIEventMapper(final String sessionId, final String agentId) {
+  public AGUIEventMapper(final String sessionId, final String agentId, final Mode mode) {
+    this.mode = mode;
     this.state = new MapperState(sessionId, agentId);
   }
 
   @Override
   public Flowable<BaseEvent> map(final Event event) {
     LOG.debug("Input event received for mapping - eventId={}, author={}", event.id(), event.author());
+    if ("user".equalsIgnoreCase(event.author())) {
+      return mode == Mode.REPLAY ? mapUserMessage(event) : Flowable.empty();
+    }
+    state.currentSourceTimestamp = event.timestamp();
+    state.currentSourceEventId = event.id();
 
     Flowable<BaseEvent> eventFlow = Flowable.empty();
-    if (state.runId == null) {
-      state.runId = event.invocationId();
+    final String eventRunId = event.invocationId();
+    if (eventRunId != null && !Objects.equals(state.runId, eventRunId)) {
+      state.runId = eventRunId;
       RunStartedEvent startEvent = new RunStartedEvent();
       startEvent.setRunId(state.runId);
       startEvent.setThreadId(state.sessionId);
@@ -117,6 +132,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       return Flowable.empty();
     }
     final RunFinishedEvent finishedEvent = buildRunFinished(state.runId);
+    state.runId = null;
     decorateEvent(finishedEvent);
     LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.getRunId());
     return Flowable.just(finishedEvent);
@@ -127,7 +143,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Step already started, skipping StepStartedEvent generation");
       return Flowable.empty();
     }
-    state.currentStepName = "step-" + UUID.randomUUID();
+    state.currentStepName = nextStableStepName();
     final StepStartedEvent stepEvent = new StepStartedEvent();
     stepEvent.setStepName(state.currentStepName);
     decorateEvent(stepEvent);
@@ -212,7 +228,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
       return Flowable.empty();
     }
-    state.currentTextMessageId = "msg-" + UUID.randomUUID();
+    state.currentTextMessageId = nextStableTextMessageId();
     final TextMessageStartEvent start = new TextMessageStartEvent();
     start.setMessageId(state.currentTextMessageId);
     decorateEvent(start);
@@ -324,6 +340,21 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return StringUtils.isNotBlank(state.currentStepName);
   }
 
+  private String nextStableStepName() {
+    return stableReplayId("step-", state.currentSourceEventId, ++state.stepSequence);
+  }
+
+  private String nextStableTextMessageId() {
+    return stableReplayId("msg-", state.currentSourceEventId, ++state.textMessageSequence);
+  }
+
+  private static String stableReplayId(final String prefix, final String sourceEventId, final int sequence) {
+    if (StringUtils.isNotBlank(sourceEventId)) {
+      return prefix + sourceEventId;
+    }
+    return prefix + sequence;
+  }
+
   private Flowable<BaseEvent> finishStepIfNeeded(final Event event) {
     if (!event.turnComplete().orElse(false) || !hasStepStarted()) {
       return Flowable.empty();
@@ -341,6 +372,30 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", stepEvent.getStepName());
       return Flowable.just(stepEvent);
     });
+  }
+
+  private Flowable<BaseEvent> mapUserMessage(final Event event) {
+    final String text = event.content()
+        .flatMap(c -> c.parts().flatMap(parts -> parts.stream().map(p -> p.text().orElse("")).filter(StringUtils::isNotBlank).findFirst()))
+        .orElse(null);
+    final String messageId = stableReplayId("msg-", event.id(), ++state.textMessageSequence);
+
+    final TextMessageStartEvent start = new TextMessageStartEvent();
+    start.setMessageId(messageId);
+    start.setRole("user");
+    decorateEvent(start);
+
+    final TextMessageContentEvent content = new TextMessageContentEvent();
+    content.setMessageId(messageId);
+    content.setDelta(text);
+    decorateEvent(content);
+
+    final TextMessageEndEvent end = new TextMessageEndEvent();
+    end.setMessageId(messageId);
+    decorateEvent(end);
+
+    LOG.debug("Generated user message events for replay - msgId={}", messageId);
+    return Flowable.just(start, content, end);
   }
 
   private Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
@@ -393,7 +448,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private <T extends BaseEvent> T decorateEvent(final T event) {
-    event.setTimestamp(System.currentTimeMillis());
+    final long sourceTimestamp = state.currentSourceTimestamp;
+    event.setTimestamp(sourceTimestamp > 0 ? sourceTimestamp : System.currentTimeMillis());
     // noinspection unchecked
     final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.getRawEvent());
     event.setRawEvent(null);
@@ -448,6 +504,10 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private boolean isThinking;
     private boolean thinkingMessageOpen;
     private String finalAnswer;
+    private long currentSourceTimestamp;
+    private String currentSourceEventId;
+    private int stepSequence;
+    private int textMessageSequence;
     private StringBuilder textBuffer = new StringBuilder();
     private boolean textMessageContentEmitted;
     private StringBuilder thoughtsBuffer = new StringBuilder();

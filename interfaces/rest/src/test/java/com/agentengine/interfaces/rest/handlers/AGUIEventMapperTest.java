@@ -155,8 +155,7 @@ class AGUIEventMapperTest {
     final List<String> secondReplayIds = new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet().stream()
         .map(this::stableReplayIdentifier).filter(id -> id != null).toList();
 
-    assertThat(firstReplayIds).isEqualTo(secondReplayIds)
-        .contains("step-event-1", "msg-event-1", "run-1");
+    assertThat(firstReplayIds).isEqualTo(secondReplayIds).contains("step-event-1", "msg-event-1", "run-1");
   }
 
   @Test
@@ -185,10 +184,8 @@ class AGUIEventMapperTest {
         .finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("stable"))).build()).build();
 
-    final List<String> firstMessageIds = extractMessageIds(
-        new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet());
-    final List<String> secondMessageIds = extractMessageIds(
-        new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet());
+    final List<String> firstMessageIds = extractMessageIds(new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet());
+    final List<String> secondMessageIds = extractMessageIds(new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet());
 
     assertThat(firstMessageIds).containsExactly("msg-event-1", "msg-event-1", "msg-event-1");
     assertThat(secondMessageIds).isEqualTo(firstMessageIds);
