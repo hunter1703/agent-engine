@@ -28,8 +28,9 @@ public final class GuardrailPolicyFactory {
   }
 
   public GuardrailPolicyFactory(final List<GuardrailProvider<?>> providers) {
-    //noinspection unchecked
-    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> (GuardrailProvider<? super GuardrailRule>) provider);
+    // noinspection unchecked
+    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type,
+        provider -> (GuardrailProvider<? super GuardrailRule>) provider);
   }
 
   public GuardrailPolicy build(final GuardrailsConfig config) {

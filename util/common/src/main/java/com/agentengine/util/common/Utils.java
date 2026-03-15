@@ -1,11 +1,11 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
-import com.google.adk.JsonBaseModel;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -13,7 +13,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 
 public final class Utils {
-  public static final ObjectMapper OBJECT_MAPPER = JsonBaseModel.getMapper();
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private Utils() {
   }
@@ -174,5 +174,13 @@ public final class Utils {
       return property.getSetter().getAnnotation(annotationClass);
     }
     return null;
+  }
+
+  public static JavaType constructType(Type type) {
+    return OBJECT_MAPPER.constructType(type);
+  }
+
+  public static BeanDescription getBeanDescription(final JavaType javaType) {
+    return OBJECT_MAPPER.getSerializationConfig().introspect(javaType);
   }
 }

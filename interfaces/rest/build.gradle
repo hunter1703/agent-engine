@@ -9,6 +9,7 @@ dependencies {
     implementation project(':engine:api')
     implementation project(':util:common')
     implementation project(':util:ms')
+    implementation libs.rxjava
     implementation libs.quarkus.logging.json
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi
@@ -18,12 +19,11 @@ dependencies {
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.smallrye.fault.tolerance
     implementation libs.quarkus.grpc
-
+    // Explicit dependency required for Jandex indexing.
+    // ag-ui/core lacks META-INF/beans.xml, so Quarkus cannot index it automatically.
+    // We need direct dependency (not transitive via :engine:api) to use quarkus.index-dependency
+    // in application.properties for proper reflection/OpenAPI support.
     implementation libs.ag.ui.core
-    implementation libs.ag.ui.server
-    implementation libs.ag.ui.json
-    implementation libs.ag.ui.http
-    implementation libs.ag.ui.ok.http
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core

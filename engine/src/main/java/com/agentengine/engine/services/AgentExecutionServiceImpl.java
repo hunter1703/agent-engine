@@ -100,7 +100,6 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     return runContent(agentId, sessionId, buildFromText(text));
   }
 
-
   @Override
   public Flowable<BaseEvent> resumeSession(final String agentId, final String sessionId, final Boolean confirmed, final String answer) {
     if (StringUtils.isBlank(sessionId)) {

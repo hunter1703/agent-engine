@@ -3,10 +3,10 @@ package com.agentengine.engine.context;
 import static com.agentengine.engine.utils.ContentUtils.estimateTokens;
 
 import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.api.beans.session.SessionInfo;
 import com.agentengine.engine.factories.model.ModelProvider;
 import com.agentengine.engine.plugin.ContextManager;
 import com.agentengine.engine.repository.AgentSessionRepository;
+import com.agentengine.engine.utils.SessionUtils;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -169,7 +169,7 @@ public final class CompactionContextManager implements ContextManager {
   }
 
   private String loadSummary(final String sessionId, final String agentId) {
-    return sessionRepository.findById(sessionId).map(AgentSession::getSessionInfo).map(SessionInfo::toSession).map(session -> {
+    return sessionRepository.findById(sessionId).map(AgentSession::getSessionInfo).map(SessionUtils::toSession).map(session -> {
       final Map<String, Object> summary = CollectionUtils.getMapFromMap(session.state(), "summary");
       return CollectionUtils.getStringValueFromMap(summary, agentId);
     }).map(Object::toString).orElse(null);

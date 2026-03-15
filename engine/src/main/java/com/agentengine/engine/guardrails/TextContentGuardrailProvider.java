@@ -1,7 +1,6 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
-import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
 import com.agentengine.engine.guardrails.rules.TextContentGuardrail;
 import jakarta.inject.Singleton;

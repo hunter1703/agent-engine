@@ -6,13 +6,13 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Utils;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
-import jakarta.validation.constraints.NotNull;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
@@ -70,7 +70,6 @@ public final class ToolUtils {
     return "toolContext".equals(paramName) || "inputStream".equals(paramName);
   }
 
-  @NotNull
   private static List<String> getEnumValues(String[] enumValuesArr, final Schema paramSchema) {
     List<String> enumValues = enumValuesArr == null ? null : Arrays.stream(enumValuesArr).collect(Collectors.toList());
     if (CollectionUtils.isEmpty(enumValues) && paramSchema.enum_().isPresent()) {
@@ -103,7 +102,7 @@ public final class ToolUtils {
   }
 
   private static Schema buildSchemaFromType(final Type type) {
-    return buildSchemaRecursive(OBJECT_MAPPER.constructType(type), new SchemaContext());
+    return buildSchemaRecursive(Utils.constructType(type), new SchemaContext());
   }
 
   private static Schema buildSchemaRecursive(final JavaType javaType, final SchemaContext context) {
@@ -154,7 +153,7 @@ public final class ToolUtils {
   }
 
   private static void populateObjectSchema(final Schema.Builder builder, final JavaType javaType, final SchemaContext context) {
-    BeanDescription beanDescription = OBJECT_MAPPER.getSerializationConfig().introspect(javaType);
+    BeanDescription beanDescription = Utils.getBeanDescription(javaType);
     Map<String, Schema> properties = new LinkedHashMap<>();
     List<String> required = new ArrayList<>();
     for (BeanPropertyDefinition property : beanDescription.findProperties()) {

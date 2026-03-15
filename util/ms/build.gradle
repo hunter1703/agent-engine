@@ -4,11 +4,12 @@ plugins {
 }
 
 dependencies {
-    api project(':util:common')
-    api project(':util:mongodb')
-    api libs.grpc.stub
-    api libs.grpc.protobuf
-    api libs.protobuf.java
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation libs.mongodb.driver.sync
+    implementation libs.grpc.stub
+    implementation libs.grpc.protobuf
+    implementation libs.protobuf.java
     implementation libs.annotations.api
     implementation libs.jakarta.inject.api
     implementation libs.jakarta.enterprise.cdi.api

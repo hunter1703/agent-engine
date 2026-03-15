@@ -3,14 +3,14 @@ plugins {
 }
 
 dependencies {
-    api libs.jakarta.inject.api
-    api libs.jakarta.enterprise.cdi.api
-    api libs.jackson.databind
-    api libs.google.adk.core
-    api libs.vertx.json.schema
+    implementation libs.jakarta.inject.api
+    implementation libs.jakarta.enterprise.cdi.api
+    implementation libs.jackson.databind
+    implementation libs.jackson.dataformat.yaml
+    implementation libs.vertx.json.schema
+
     implementation libs.guava
 
-    implementation libs.jackson.dataformat.yaml
     implementation libs.jinjava
     implementation libs.json.path
     implementation libs.slf4j.api

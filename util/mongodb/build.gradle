@@ -5,9 +5,9 @@ plugins {
 dependencies {
     implementation(enforcedPlatform(libs.quarkus.bom))
 
-    api project(':util:common')
-    api libs.mongodb.bson
-    api libs.mongodb.driver.sync
+    implementation project(':util:common')
+    implementation libs.mongodb.bson
+    implementation libs.mongodb.driver.sync
 
     implementation libs.quarkus.mongodb.client
     implementation libs.slf4j.api

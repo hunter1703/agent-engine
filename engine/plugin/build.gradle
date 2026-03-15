@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     api project(':engine:api')
-    api project(':util:common')
+    implementation project(':util:common')
+    implementation libs.google.adk.core
+    implementation libs.google.genai
     implementation libs.jakarta.validation.api
     implementation libs.jakarta.enterprise.cdi.api
     implementation libs.slf4j.api

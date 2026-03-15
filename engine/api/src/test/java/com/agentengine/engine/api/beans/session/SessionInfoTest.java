@@ -21,8 +21,8 @@ class SessionInfoTest {
     final Session sourceSession = Session.builder("session-1").appName("agent-a").userId("user-a")
         .state(new ConcurrentHashMap<>(Map.of("key", "value"))).events(List.of(event)).lastUpdateTime(Instant.now()).build();
 
-    final SessionInfo sessionInfo = SessionInfo.fromSession(sourceSession);
-    final Session restored = sessionInfo.toSession();
+    final SessionInfo sessionInfo = SessionUtils.fromSession(sourceSession);
+    final Session restored = SessionUtils.toSession(sessionInfo);
 
     assertThat(restored.id()).isEqualTo(sourceSession.id());
     assertThat(restored.appName()).isEqualTo(sourceSession.appName());

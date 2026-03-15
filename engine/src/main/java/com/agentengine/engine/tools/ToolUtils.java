@@ -2,7 +2,6 @@ package com.agentengine.engine.tools;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.SchemaUtils;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.models.LlmResponse;

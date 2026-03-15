@@ -81,7 +81,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     }
 
     String payload = responseIterator.next().getPayload().toStringUtf8();
-    Object result = JsonUtils.fromJson(payload, method.getGenericReturnType());
+    Object result = JsonUtils.fromJson(payload, method.getGenericReturnType(), true);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
@@ -92,7 +92,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   private Flowable<?> streamingCall(Request request, Method method) {
     Class<?> itemType = firstTypeArgument(method.getGenericReturnType());
     return Flowable.fromIterable(() -> stub.execute(request))
-        .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType));
+        .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType, true));
   }
 
   /**

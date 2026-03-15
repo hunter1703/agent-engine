@@ -28,10 +28,6 @@ dependencies {
     implementation libs.quarkus.opentelemetry
     implementation libs.guava
     implementation libs.stateless4j
-    implementation libs.ag.ui.server
-    implementation libs.ag.ui.json
-    implementation libs.ag.ui.http
-    implementation libs.ag.ui.ok.http
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.quarkus.junit5.mockito
@@ -55,10 +51,5 @@ tasks.jacocoTestReport {
 }
 
 tasks.test {
-    finalizedBy tasks.jacocoTestReport
-}
-
-tasks.integrationTest {
-    dependsOn tasks.quarkusGenerateCode, tasks.quarkusGenerateCodeTests
     finalizedBy tasks.jacocoTestReport
 }

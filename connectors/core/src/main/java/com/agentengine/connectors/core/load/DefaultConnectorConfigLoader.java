@@ -6,7 +6,6 @@ import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Locale;
 
 @Singleton
 public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader {
@@ -15,7 +14,7 @@ public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader
   public ConnectorDefinition load(final Path path) {
     try {
       final String content = Files.readString(path);
-      return parse(path.getFileName().toString(), content);
+      return parse(content);
     } catch (IOException ex) {
       throw new ConnectorConfigLoadException("Failed to load connector config from path: " + path, ex);
     }
@@ -24,24 +23,15 @@ public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader
   @Override
   public ConnectorDefinition load(final String rawConfig) {
     try {
-      return parse("", rawConfig);
+      return parse(rawConfig);
     } catch (RuntimeException ex) {
       throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
     }
   }
 
-  private ConnectorDefinition parse(final String fileName, final String content) {
+  private ConnectorDefinition parse(final String content) {
     try {
-      final String normalizedName = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
-      if (normalizedName.endsWith(".yaml") || normalizedName.endsWith(".yml")) {
-        return JsonUtils.fromYaml(content, ConnectorDefinition.class);
-      }
-      if (normalizedName.endsWith(".json")) {
-        return JsonUtils.fromJson(content, ConnectorDefinition.class);
-      }
-      return looksLikeJson(content)
-          ? JsonUtils.fromJson(content, ConnectorDefinition.class)
-          : JsonUtils.fromYaml(content, ConnectorDefinition.class);
+      return JsonUtils.fromJson(content, ConnectorDefinition.class);
     } catch (RuntimeException ex) {
       throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
     }

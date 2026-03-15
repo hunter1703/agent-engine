@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.VersionCatalog;
+import org.gradle.api.artifacts.VersionCatalogsExtension;
 import org.gradle.api.plugins.ApplicationPlugin;
 import org.gradle.api.tasks.compile.JavaCompile;
 
@@ -14,11 +16,19 @@ public class JavaApplicationConventionsPlugin extends BaseJavaConventionsPlugin 
         project.getPluginManager().apply(ApplicationPlugin.class);
 
         configureCommonFunctionality(project);
+        configureJacksonDependency(project);
 
         project.getConfigurations().configureEach(configuration -> {
             configuration.exclude(Map.of("group", "org.springframework.boot", "module", "spring-boot-starter-logging"));
             configuration.exclude(Map.of("group", "ch.qos.logback", "module", "logback-classic"));
             configuration.exclude(Map.of("group", "ch.qos.logback", "module", "logback-core"));
+        });
+    }
+
+    private void configureJacksonDependency(final Project project) {
+        VersionCatalog libs = project.getExtensions().getByType(VersionCatalogsExtension.class).named("libs");
+        libs.findLibrary("jackson-databind").ifPresent(jacksonDatabind -> {
+            project.getDependencies().add("implementation", jacksonDatabind);
         });
     }
 }

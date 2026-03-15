@@ -8,6 +8,7 @@ dependencies {
     implementation libs.slf4j.api
     implementation project(':engine')
     implementation project(':interfaces:rest')
+    implementation project(':util:common')
     implementation project(':util:mongodb')
     implementation libs.quarkus.logging.json
     implementation libs.quarkus.mongodb.client

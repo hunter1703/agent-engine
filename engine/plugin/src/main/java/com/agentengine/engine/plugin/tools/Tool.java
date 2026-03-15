@@ -1,7 +1,5 @@
 package com.agentengine.engine.plugin.tools;
 
-import static com.agentengine.util.common.Utils.OBJECT_MAPPER;
-
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
@@ -242,13 +240,13 @@ public abstract class Tool extends BaseTool {
       final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
       final boolean optional = schema != null && schema.optional();
       final Class<?> rawType = parameter.getType();
-      final JavaType javaType = OBJECT_MAPPER.constructType(parameter.getParameterizedType());
+      final JavaType javaType = Utils.constructType(parameter.getParameterizedType());
       final boolean isList = List.class.equals(rawType);
       final boolean isMap = Map.class.isAssignableFrom(rawType);
       JavaType elementType = null;
       if (isList && parameter.getParameterizedType() instanceof ParameterizedType parameterizedType) {
         final Type element = parameterizedType.getActualTypeArguments()[0];
-        elementType = OBJECT_MAPPER.constructType(element);
+        elementType = Utils.constructType(element);
       }
       bindings.add(new ParameterBinding(i, name, optional, rawType, javaType, elementType, isList, isMap, isToolContext, isInputStream));
     }
@@ -260,7 +258,7 @@ public abstract class Tool extends BaseTool {
   }
 
   private static Map<String, PropertyBinding> buildPropertyBindings(final JavaType targetType) {
-    final BeanDescription beanDescription = OBJECT_MAPPER.getSerializationConfig().introspect(targetType);
+    final BeanDescription beanDescription = Utils.getBeanDescription(targetType);
     final Map<String, PropertyBinding> bindings = new HashMap<>();
     for (BeanPropertyDefinition property : beanDescription.findProperties()) {
       ToolSchema toolSchema = Utils.findAnnotation(property, ToolSchema.class);

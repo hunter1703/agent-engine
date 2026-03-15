@@ -5,8 +5,6 @@ plugins {
 dependencies {
     implementation project(':util:ms')
     implementation project(':util:common')
-
-    api libs.google.adk.core
     api libs.ag.ui.core
     implementation libs.microprofile.openapi.api
     implementation libs.jakarta.inject.api

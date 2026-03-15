@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 
 public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
@@ -17,7 +16,7 @@ public class Cache<K, V> {
     this.loader = input -> new Holder<>(loader.apply(input));
   }
 
-  public @Nullable V getIfPresent(final K key) {
+  public V getIfPresent(final K key) {
     final Holder<? extends V> holder = delegate.getIfPresent(key);
     return holder == null ? null : holder.value;
   }

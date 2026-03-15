@@ -83,7 +83,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   }
 
   private DelegatedAgent buildManager(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
-    final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config).disallowTransferToParent(true).disallowTransferToPeers(true);
+    final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
     if (CollectionUtils.isNotEmpty(subAgents)) {
       for (final BaseAgent subAgent : subAgents) {
         builder.appendTools(List.of(AgentTool.create(subAgent)));

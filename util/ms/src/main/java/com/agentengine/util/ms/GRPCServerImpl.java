@@ -172,7 +172,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     final Object[] typedArgs = new Object[paramCount];
     for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
       if (rawArgs[index] instanceof Map<?, ?> map) {
-        typedArgs[index] = JsonUtils.fromJacksonMap((Map<String, Object>) map, paramTypes[index]);
+        typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) map, paramTypes[index]);
       } else {
         typedArgs[index] = rawArgs[index];
       }
@@ -202,7 +202,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   }
 
   private void sendPayload(final StreamObserver<Response> observer, final Object value) {
-    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value))).build());
+    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value, true))).build());
   }
 
   private static ExecutorService newVirtualThreadExecutor(final String namePrefix) {

@@ -6,6 +6,7 @@ protobuf = { id = "com.google.protobuf", version = "0.9.4" }
 quarkus = "3.31.0"
 langchain4j = "1.0.0-beta2"
 google-adk = "0.5.1-SNAPSHOT"
+google-genai = "1.43.0"
 jackson = "2.17.1"
 assertj = "3.26.3"
 junit = "5.10.3"
@@ -39,6 +40,7 @@ langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version
 
 google-adk-core = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
 google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
+google-genai = { group = "com.google.genai", name = "google-genai", version.ref = "google-genai" }
 # Quarkus & LangChain4j Core
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
 langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai", version.ref = "langchain4j-plugin" }
