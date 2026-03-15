@@ -1,6 +1,8 @@
 package com.agentengine.engine.services;
 
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
+import com.agentengine.engine.api.beans.config.GuardrailRule;
+import com.agentengine.engine.api.beans.config.GuardrailsConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.repository.AgentRepository;
 import com.agentengine.util.common.CollectionUtils;
@@ -14,9 +16,8 @@ import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 
 @Singleton
 @Unremovable
@@ -54,18 +55,17 @@ public class AgentServiceImpl implements AgentService {
   @Override
   @WithSpan
   public BaseAgentConfig createAgent(final BaseAgentConfig agent) {
-    return agentRepository.insert(sanitize(agent, BuilderMode.CREATE));
+    // Preserve caller-supplied ID if provided, otherwise let Mongo generate one
+    final String id = agent == null ? null : agent.getId();
+    final BaseAgentConfig sanitized = sanitizeConfig(id, agent, BuilderMode.CREATE);
+    return agentRepository.insert(sanitized);
   }
 
   @Override
   @WithSpan
   public BaseAgentConfig saveAgent(final BaseAgentConfig agent) {
     final String id = agent == null ? null : agent.getId();
-    final BuilderMode mode = StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT;
-    final BaseAgentConfig sanitized = sanitize(agent, mode);
-    if (mode == BuilderMode.EDIT) {
-      sanitized.setId(id);
-    }
+    final BaseAgentConfig sanitized = sanitizeConfig(id, agent, StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT);
     return agentRepository.save(sanitized);
   }
 
@@ -83,5 +83,20 @@ public class AgentServiceImpl implements AgentService {
 
   private static BaseAgentConfig sanitize(final BaseAgentConfig config, final BuilderMode mode) {
     return BuilderDefinitionUtils.sanitize(AGENT_DEFINITION, mode, config);
+  }
+
+  private static BaseAgentConfig sanitizeConfig(final String id, final BaseAgentConfig agent, final BuilderMode mode) {
+    final BaseAgentConfig sanitized = sanitize(agent, mode);
+    if (StringUtils.isNotBlank(id)) {
+      sanitized.setId(id);
+    }
+    final GuardrailsConfig guardrails = sanitized.getGuardrails();
+    final List<GuardrailRule> rules = CollectionUtils.nullSafeList(guardrails == null ? null : guardrails.getRules());
+    rules.forEach(rule -> {
+      if (StringUtils.isBlank(rule.getId())) {
+        rule.setId(UUID.randomUUID().toString());
+      }
+    });
+    return sanitized;
   }
 }

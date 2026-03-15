@@ -4,6 +4,7 @@ import com.agentengine.engine.api.beans.config.ModelConfig;
 import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.validation.ValidationService;
 import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
@@ -45,7 +46,10 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
 
   @Override
   public ModelConfig update(String id, ModelConfig update) {
-    final ModelConfig existingModel = findById(id).orElseThrow();
+    final ModelConfig existingModel = findById(id).orElse(null);
+    if (existingModel == null) {
+      throw new AssetNotFoundException("Model", id);
+    }
     applyServerConfigIfMissing(update, existingModel);
     return super.update(id, update);
   }

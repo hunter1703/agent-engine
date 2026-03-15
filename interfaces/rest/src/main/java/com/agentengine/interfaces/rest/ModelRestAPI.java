@@ -15,6 +15,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -53,11 +54,11 @@ public class ModelRestAPI {
   @Operation(summary = "Create a model", description = "Creates a new model configuration.")
   @APIResponse(responseCode = "201", description = "Model created", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
-  public ModelConfig createModel(final ModelConfig modelConfig) {
+  public Response createModel(final ModelConfig modelConfig) {
     if (modelConfig == null) {
       throw new WebApplicationException("Model config is required", 400);
     }
-    return modelService.createModel(modelConfig);
+    return Response.status(Response.Status.CREATED).entity(modelService.createModel(modelConfig)).build();
   }
 
   @POST

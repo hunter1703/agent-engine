@@ -3,6 +3,7 @@ package com.agentengine.engine.plugin.tools;
 import static com.agentengine.util.common.Utils.OBJECT_MAPPER;
 
 import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
 import com.agentengine.engine.plugin.utils.ToolUtils;
 import com.agentengine.util.common.CollectionUtils;
@@ -46,20 +47,18 @@ public abstract class Tool extends BaseTool {
 
   private final Method executeMethod;
   private final FunctionDeclaration declaration;
-  private final boolean requireConfirmation;
   private final List<ParameterBinding> parameterBindings;
   private final ToolDescriptor toolDescriptor;
 
   protected Tool(final ToolDescriptor toolDescriptor) {
-    this(toolDescriptor, false, false);
+    this(toolDescriptor, false);
   }
 
-  protected Tool(final ToolDescriptor toolDescriptor, final boolean isLongRunning, final boolean requireConfirmation) {
+  protected Tool(final ToolDescriptor toolDescriptor, final boolean isLongRunning) {
     super(toolDescriptor.name(), toolDescriptor.description(), isLongRunning);
     this.toolDescriptor = toolDescriptor;
     this.executeMethod = getExecuteMethod();
     this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
-    this.requireConfirmation = requireConfirmation;
     this.parameterBindings = PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
   }
 
@@ -79,7 +78,8 @@ public abstract class Tool extends BaseTool {
   @Override
   public Single<Map<String, Object>> runAsync(Map<String, Object> args, ToolContext toolContext) {
     try {
-      if (requireConfirmation) {
+      final ToolRiskLevel toolRiskLevel = descriptor().riskLevel();
+      if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
         if (toolContext.toolConfirmation().isEmpty()) {
           toolContext.requestConfirmation(String.format("Please approve or reject the tool call %s() by responding with a"
               + " FunctionResponse with an expected ToolConfirmation payload.", name()));

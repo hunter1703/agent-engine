@@ -16,7 +16,7 @@ public final class TextContentGuardrailProvider implements GuardrailProvider<Tex
 
   @Override
   public Guardrail create(final TextContentGuardrailRule rule) {
-    if (rule == null || rule.stageEnum() == GuardrailStage.TOOL) {
+    if (rule == null) {
       return null;
     }
     return new TextContentGuardrail(rule);

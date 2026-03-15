@@ -13,7 +13,6 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({@JsonSubTypes.Type(value = TextContentGuardrailRule.class, name = "TEXT_CONTENT"),
-    @JsonSubTypes.Type(value = ToolSafetyGuardrailRule.class, name = "TOOL_SAFETY"),
     @JsonSubTypes.Type(value = OutputRelevanceGuardrailRule.class, name = "RELEVANCE")})
 @BsonDiscriminator(key = "type")
 public abstract class GuardrailRule {

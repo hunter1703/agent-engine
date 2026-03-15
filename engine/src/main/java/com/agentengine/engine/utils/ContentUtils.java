@@ -79,6 +79,10 @@ public final class ContentUtils {
     return content.parts().orElse(List.of()).stream().filter(part -> part.functionCall().isPresent()).toList();
   }
 
+  public static List<Part> getToolResponseParts(final Content content) {
+    return content.parts().orElse(List.of()).stream().filter(part -> part.functionResponse().isPresent()).toList();
+  }
+
   public static boolean hasVisibleText(final Content content) {
     if (content == null) {
       return false;

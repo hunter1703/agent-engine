@@ -15,6 +15,7 @@ import com.agentengine.util.common.builder.annotations.UiRule;
 import com.agentengine.util.common.builder.annotations.UiRuleEffect;
 import com.agentengine.util.common.builder.annotations.UiSelect;
 import com.agentengine.util.common.builder.annotations.UiText;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Locale;
@@ -70,6 +71,7 @@ public class ModelConfig extends NamedEntity implements Config {
   @UiField(label = "API Key", step = "integration", section = "integration", order = 20)
   @UiText
   @Secure
+  @JsonIgnore
   @UiRule(effect = UiRuleEffect.VISIBLE, field = "type", values = {"GEMINI"})
   private String apiKey;
 

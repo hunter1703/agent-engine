@@ -102,6 +102,7 @@ public class AgentRestAPI {
   @Path("/agent/{agentId}")
   @Operation(summary = "Update an agent")
   @APIResponse(responseCode = "200", description = "Agent updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  @APIResponse(responseCode = "400", description = "Path agentId must match payload id")
   @APIResponse(responseCode = "404", description = "Agent not found")
   public BaseAgentConfig updateAgent(@PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
@@ -109,6 +110,9 @@ public class AgentRestAPI {
     }
     if (StringUtils.isBlank(agentId)) {
       throw new WebApplicationException("Agent ID is required", 400);
+    }
+    if (StringUtils.isNotBlank(agentConfig.getId()) && !agentId.equals(agentConfig.getId())) {
+      throw new WebApplicationException("Path agentId must match payload id", 400);
     }
     return agentService.updateAgent(agentId, agentConfig);
   }

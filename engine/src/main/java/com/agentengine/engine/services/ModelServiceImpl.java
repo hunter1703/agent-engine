@@ -54,7 +54,13 @@ public class ModelServiceImpl implements ModelService {
   @Override
   @WithSpan
   public ModelConfig createModel(final ModelConfig model) {
-    return modelRepository.insert(sanitize(model, BuilderMode.CREATE));
+    // Preserve caller-supplied ID if provided, otherwise let Mongo generate one
+    final String id = model == null ? null : model.getId();
+    final ModelConfig sanitized = sanitize(model, BuilderMode.CREATE);
+    if (StringUtils.isNotBlank(id)) {
+      sanitized.setId(id);
+    }
+    return modelRepository.insert(sanitized);
   }
 
   @Override

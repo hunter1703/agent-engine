@@ -13,7 +13,6 @@ import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
 import com.agentengine.engine.api.beans.config.GuardrailExecutionMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
-import com.agentengine.engine.api.beans.config.ToolSafetyGuardrailRule;
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.plugin.tools.Tool;
@@ -75,74 +74,6 @@ class GuardrailPluginTest {
   }
 
   @Test
-  void shouldAllowThroughToolViolationWhenExecutionModeIsOptimistic() {
-    final ToolSafetyGuardrailRule rule = toolRule(GuardrailAction.BLOCK, "blocked in sync mode");
-    final GuardrailPolicyFactory.GuardrailPolicy policy = new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN,
-        GuardrailExecutionMode.OPTIMISTIC,
-        Map.of(GuardrailStage.TOOL, List.of(new com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail(rule))));
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", policy));
-
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-2");
-    final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.invocationContext()).thenReturn(invocationContext);
-    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
-
-    final boolean empty = plugin.beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo F042"), toolContext)
-        .isEmpty().blockingGet();
-
-    assertThat(empty).isTrue();
-    assertThat(RunUtils.getState(invocationContext).violations()).extracting(violation -> violation.code())
-        .contains(GuardrailConstants.Code.TOOL_POLICY);
-  }
-
-  @Test
-  void shouldRequestConfirmationWhenEscalatingToolCall() {
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-escalate");
-    final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.invocationContext()).thenReturn(invocationContext);
-    when(toolContext.functionCallId()).thenReturn(Optional.of("call-123"));
-    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
-
-    final Map<String, Object> result = plugin
-        .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo hello"), toolContext).blockingGet();
-
-    assertThat(result).containsEntry(GuardrailConstants.ToolResultKey.MESSAGE, "Tool execution requires confirmation.").hasSize(1);
-    verify(toolContext).requestConfirmation(anyString(), any());
-  }
-
-  @Test
-  void shouldBlockRejectedToolReplayWithoutReEscalating() {
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-rejected");
-    final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.invocationContext()).thenReturn(invocationContext);
-    when(toolContext.toolConfirmation()).thenReturn(Optional.of(ToolConfirmation.builder().confirmed(false).build()));
-
-    final Map<String, Object> result = plugin
-        .beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo no"), toolContext).blockingGet();
-
-    assertThat(result).containsEntry(GuardrailConstants.ToolResultKey.MESSAGE, "Tool execution was cancelled by the user.").hasSize(1);
-    verify(toolContext, never()).requestConfirmation(anyString(), any());
-  }
-
-  @Test
-  void shouldBypassEscalationForConfirmedToolReplay() {
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousToolEscalationPolicy()));
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-approved");
-    final ToolContext toolContext = mock(ToolContext.class);
-    when(toolContext.invocationContext()).thenReturn(invocationContext);
-    when(toolContext.functionCallId()).thenReturn(Optional.of("call-123"));
-    when(toolContext.toolConfirmation()).thenReturn(Optional.of(ToolConfirmation.builder().confirmed(true).build()));
-
-    final boolean empty = plugin.beforeToolCallback(runtimeTool("run_cmd", "run command"), Map.of("command", "echo approved"), toolContext)
-        .isEmpty().blockingGet();
-
-    assertThat(empty).isTrue();
-    verify(toolContext, never()).requestConfirmation(anyString(), any());
-  }
-
-  @Test
   void shouldEmitInternalHumanDecisionToolCallForOutputEscalation() {
     final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", synchronousOutputEscalationPolicy()));
     final InvocationContext invocationContext = invocationContext("agent-1", "session-output-escalate");
@@ -189,22 +120,6 @@ class GuardrailPluginTest {
     rule.setBlockedPatterns(List.of("forbidden-output"));
     return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC,
         Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
-  }
-
-  private static GuardrailPolicyFactory.GuardrailPolicy synchronousToolEscalationPolicy() {
-    final ToolSafetyGuardrailRule rule = toolRule(GuardrailAction.ESCALATE, "Tool execution requires confirmation.");
-    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC,
-        Map.of(GuardrailStage.TOOL, List.of(new com.agentengine.engine.guardrails.rules.ToolSafetyGuardrail(rule))));
-  }
-
-  private static ToolSafetyGuardrailRule toolRule(final GuardrailAction action, final String message) {
-    final ToolSafetyGuardrailRule rule = new ToolSafetyGuardrailRule();
-    rule.setId("tool-rule-" + action.name().toLowerCase());
-    rule.setAction(action.name());
-    rule.setMessage(message);
-    rule.setToolNames(List.of("run_cmd"));
-    rule.setMinToolRisk(ToolRiskLevel.UNKNOWN.name());
-    return rule;
   }
 
   private static InvocationContext invocationContext(final String agentId, final String sessionId) {

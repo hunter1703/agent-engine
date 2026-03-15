@@ -8,8 +8,6 @@ public enum GuardrailStage {
   UNKNOWN,
   /** Evaluate before agent execution starts (user input validation). */
   INPUT,
-  /** Evaluate before a tool call is executed. */
-  TOOL,
   /** Evaluate before model output is emitted to the client. */
   OUTPUT;
 

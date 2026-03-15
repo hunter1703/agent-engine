@@ -100,6 +100,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     return runContent(agentId, sessionId, buildFromText(text));
   }
 
+
   @Override
   public Flowable<BaseEvent> resumeSession(final String agentId, final String sessionId, final Boolean confirmed, final String answer) {
     if (StringUtils.isBlank(sessionId)) {
@@ -109,7 +110,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     final SessionPause pauseView = SessionUtils.pauseView(Utils.toType(session.getSessionInfo().getEvents(), new TypeReference<>() {
     }));
     if (!pauseView.isPaused() || !pauseView.hasConfirmationId()) {
-      throw new IllegalStateException("Session is not waiting for user input");
+      throw new IllegalArgumentException("Session is not waiting for user input");
     }
     final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(pauseView.kind(), confirmed, answer);
 

@@ -57,3 +57,8 @@ tasks.jacocoTestReport {
 tasks.test {
     finalizedBy tasks.jacocoTestReport
 }
+
+tasks.integrationTest {
+    dependsOn tasks.quarkusGenerateCode, tasks.quarkusGenerateCodeTests
+    finalizedBy tasks.jacocoTestReport
+}

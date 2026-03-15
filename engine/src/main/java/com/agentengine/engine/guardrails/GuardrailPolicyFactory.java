@@ -23,12 +23,13 @@ public final class GuardrailPolicyFactory {
   private final Map<GuardrailRuleType, GuardrailProvider<? super GuardrailRule>> typeVsProvider;
 
   @Inject
-  public GuardrailPolicyFactory(final @Any Instance<GuardrailProvider<? super GuardrailRule>> providerInstances) {
+  public GuardrailPolicyFactory(final @Any Instance<GuardrailProvider<?>> providerInstances) {
     this(ServiceUtils.loadServicesForType(providerInstances, GuardrailProvider.class));
   }
 
-  public GuardrailPolicyFactory(final List<GuardrailProvider<? super GuardrailRule>> providers) {
-    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> provider);
+  public GuardrailPolicyFactory(final List<GuardrailProvider<?>> providers) {
+    //noinspection unchecked
+    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type, provider -> (GuardrailProvider<? super GuardrailRule>) provider);
   }
 
   public GuardrailPolicy build(final GuardrailsConfig config) {
