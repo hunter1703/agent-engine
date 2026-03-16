@@ -1,11 +1,9 @@
-package com.agentengine.engine.tools.fileops;
+package com.agentengine.engine.tools.file;
 
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.plugin.annotations.DiscoverableTool;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
-import com.agentengine.engine.plugin.tools.Tool;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.google.adk.tools.ToolContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * grep/ripgrep with configurable limits and file filtering.
  */
 @DiscoverableTool
-public final class GrepFilesTool extends Tool {
+public final class GrepFilesTool extends BaseFileTool {
   private static final Logger LOG = LoggerFactory.getLogger(GrepFilesTool.class);
   private static final String TOOL_NAME = "grep_files";
   private static final int DEFAULT_LIMIT = 100;
@@ -50,8 +48,7 @@ public final class GrepFilesTool extends Tool {
       @ToolSchema(name = "path", description = "Directory path to search in (default: current directory)", optional = true) String searchPath,
       @ToolSchema(name = "include", description = "Glob pattern for files to include (e.g., '*.java', '*.md')", optional = true) String includePattern,
       @ToolSchema(name = "limit", description = "Maximum number of matches to return (default: 100, max: 2000)", optional = true) Integer limit,
-      @ToolSchema(name = "case_sensitive", description = "Whether search is case-sensitive (default: false)", optional = true) Boolean caseSensitive,
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext) {
+      @ToolSchema(name = "case_sensitive", description = "Whether search is case-sensitive (default: false)", optional = true) Boolean caseSensitive) {
 
     if (pattern == null || pattern.isBlank()) {
       return Map.of("error", "pattern is required");
@@ -170,13 +167,6 @@ public final class GrepFilesTool extends Tool {
     map.put("line", match.line());
     map.put("match", match.matchedText());
     return map;
-  }
-
-  private String truncate(String value, int maxLength) {
-    if (value == null || value.length() <= maxLength) {
-      return value;
-    }
-    return value.substring(0, maxLength) + "...";
   }
 
   private record MatchResult(String file, int lineNumber, String line, String matchedText) {

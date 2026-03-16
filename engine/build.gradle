@@ -28,6 +28,7 @@ dependencies {
     implementation libs.quarkus.opentelemetry
     implementation libs.guava
     implementation libs.stateless4j
+    implementation libs.java.diff.utils
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.quarkus.junit5.mockito

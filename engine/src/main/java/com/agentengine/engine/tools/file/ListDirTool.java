@@ -1,15 +1,12 @@
-package com.agentengine.engine.tools.fileops;
+package com.agentengine.engine.tools.file;
 
 import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.plugin.annotations.DiscoverableTool;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
-import com.agentengine.engine.plugin.tools.Tool;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
-import com.google.adk.tools.ToolContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * Supports recursive listing up to a specified depth.
  */
 @DiscoverableTool
-public final class ListDirTool extends Tool {
+public final class ListDirTool extends BaseFileTool {
   private static final Logger LOG = LoggerFactory.getLogger(ListDirTool.class);
   private static final String TOOL_NAME = "list_dir";
   private static final int DEFAULT_OFFSET = 1;
@@ -44,8 +41,7 @@ public final class ListDirTool extends Tool {
       @ToolSchema(name = "dir_path", description = "Absolute or relative path to the directory to list", optional = false) String dirPath,
       @ToolSchema(name = "offset", description = "1-indexed entry number to start from (default: 1)", optional = true) Integer offset,
       @ToolSchema(name = "limit", description = "Maximum number of entries to return (default: 100)", optional = true) Integer limit,
-      @ToolSchema(name = "depth", description = "Recursion depth for subdirectories (default: 2, 0 = no recursion)", optional = true) Integer depth,
-      ToolContext toolContext) {
+      @ToolSchema(name = "depth", description = "Recursion depth for subdirectories (default: 2, 0 = no recursion)", optional = true) Integer depth) {
 
     if (dirPath == null || dirPath.isBlank()) {
       return Map.of("error", "dir_path is required");
@@ -142,24 +138,6 @@ public final class ListDirTool extends Tool {
     }
 
     return map;
-  }
-
-  private Path resolvePath(String dirPath) {
-    Path path = Paths.get(dirPath);
-
-    if (path.isAbsolute()) {
-      return path;
-    }
-
-    String cwd = System.getProperty("user.dir", ".");
-    return Paths.get(cwd).resolve(dirPath).normalize();
-  }
-
-  private String truncate(String value, int maxLength) {
-    if (value == null || value.length() <= maxLength) {
-      return value;
-    }
-    return value.substring(0, maxLength) + "...";
   }
 
   private record DirectoryEntry(String name, String path, boolean isDirectory, long size, int depth) {

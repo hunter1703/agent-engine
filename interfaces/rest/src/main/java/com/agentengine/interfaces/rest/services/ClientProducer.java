@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest.services;
 
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
-import com.agentengine.engine.api.services.ConnectionService;
 import com.agentengine.engine.api.services.ModelService;
 import com.agentengine.engine.api.services.SessionService;
 import com.agentengine.engine.api.services.ToolCatalog;
@@ -50,10 +49,4 @@ public class ClientProducer {
     return provider.get(SessionService.class);
   }
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public ConnectionService connectionService(MicroServiceClientProvider provider) {
-    return provider.get(ConnectionService.class);
-  }
 }

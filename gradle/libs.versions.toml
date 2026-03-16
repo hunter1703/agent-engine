@@ -31,6 +31,7 @@ stateless4j = "2.6.0"
 testcontainers = "1.20.4"
 testcontainers-redis = "2.2.4"
 mongodb = "5.7.0-beta0"
+java-diff-utils = "4.15"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
@@ -93,6 +94,7 @@ jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-datab
 jackson-dataformat-yaml = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-yaml", version.ref = "jackson" }
 jackson-datatype-jdk8 = { group = "com.fasterxml.jackson.datatype", name = "jackson-datatype-jdk8", version.ref = "jackson" }
 jinjava = { group = "com.hubspot.jinjava", name = "jinjava", version = "2.7.1" }
+java-diff-utils = { group = "io.github.java-diff-utils", name = "java-diff-utils", version.ref = "java-diff-utils" }
 mongodb-bson = { group = "org.mongodb", name = "bson", version.ref = "mongodb" }
 mongodb-driver-sync = { group = "org.mongodb", name = "mongodb-driver-sync", version.ref = "mongodb" }
 vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version = "5.0.7" }
