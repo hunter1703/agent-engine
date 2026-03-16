@@ -22,7 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/v1")
+@Path("/v1/model")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Model", description = "Model Management APIs")
@@ -37,7 +37,7 @@ public class ModelRestAPI {
   }
 
   @GET
-  @Path("/model/{modelId}")
+  @Path("/{modelId}")
   @Operation(summary = "Get a model", description = "Retrieves a specific model configuration by ID.")
   @APIResponse(responseCode = "200", description = "Model configuration found", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
@@ -50,7 +50,7 @@ public class ModelRestAPI {
   }
 
   @POST
-  @Path("/model")
+  @Path("/")
   @Operation(summary = "Create a model", description = "Creates a new model configuration.")
   @APIResponse(responseCode = "201", description = "Model created", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "409", description = "Model already exists")
@@ -62,7 +62,7 @@ public class ModelRestAPI {
   }
 
   @POST
-  @Path("/model/upsert")
+  @Path("/upsert")
   @Operation(summary = "Upsert a model", description = "Creates a new model configuration or updates an existing one.")
   @APIResponse(responseCode = "200", description = "Model created or updated", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   public ModelConfig upsertModel(final ModelConfig modelConfig) {
@@ -73,7 +73,7 @@ public class ModelRestAPI {
   }
 
   @PUT
-  @Path("/model/{modelId}")
+  @Path("/{modelId}")
   @Operation(summary = "Update a model", description = "Updates an existing model configuration.")
   @APIResponse(responseCode = "200", description = "Model updated", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   @APIResponse(responseCode = "404", description = "Model not found")
@@ -91,7 +91,7 @@ public class ModelRestAPI {
   }
 
   @DELETE
-  @Path("/model/{modelId}")
+  @Path("/{modelId}")
   @Operation(summary = "Delete a model", description = "Deletes an existing model configuration.")
   @APIResponse(responseCode = "204", description = "Model deleted")
   @APIResponse(responseCode = "404", description = "Model not found")

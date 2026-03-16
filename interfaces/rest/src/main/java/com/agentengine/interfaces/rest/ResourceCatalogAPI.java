@@ -30,7 +30,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/v1")
+@Path("/v1/catalog")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Catalog", description = "Resource catalog APIs")
@@ -45,7 +45,7 @@ public class ResourceCatalogAPI {
   }
 
   @POST
-  @Path("/catalog/list")
+  @Path("/list")
   @Operation(summary = "List resources", description = "List resources of a specific type based on provided criteria.")
   @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<? extends NamedEntity> listResources(AssetRequest request) {
@@ -65,7 +65,7 @@ public class ResourceCatalogAPI {
   }
 
   @POST
-  @Path("/catalog/search")
+  @Path("/search")
   @Operation(summary = "Search resources", description = "Searches resources of a specific type based on provided criteria.")
   @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<?> searchResources(AssetRequest request) {
@@ -82,7 +82,7 @@ public class ResourceCatalogAPI {
   }
 
   @GET
-  @Path("/catalog/{resourceType}/{id}")
+  @Path("/{resourceType}/{id}")
   @Operation(summary = "Get resource by ID", description = "Retrieves a specific resource by its ID.")
   @APIResponse(responseCode = "200", description = "Resource details", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = Object.class)))
   @APIResponse(responseCode = "404", description = "Resource not found")

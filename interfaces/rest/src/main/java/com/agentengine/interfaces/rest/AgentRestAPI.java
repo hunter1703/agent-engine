@@ -73,7 +73,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/agent")
+  @Path("/")
   @Operation(summary = "Create an agent")
   @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
@@ -85,7 +85,7 @@ public class AgentRestAPI {
   }
 
   @POST
-  @Path("/agent/upsert")
+  @Path("/upsert")
   @Operation(summary = "Upsert an agent")
   @APIResponse(responseCode = "200", description = "Agent created or updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
@@ -99,7 +99,7 @@ public class AgentRestAPI {
   }
 
   @PUT
-  @Path("/agent/{agentId}")
+  @Path("/{agentId}")
   @Operation(summary = "Update an agent")
   @APIResponse(responseCode = "200", description = "Agent updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "400", description = "Path agentId must match payload id")
@@ -118,7 +118,7 @@ public class AgentRestAPI {
   }
 
   @DELETE
-  @Path("/agent/{agentId}")
+  @Path("/{agentId}")
   @Operation(summary = "Delete an agent")
   @APIResponse(responseCode = "204", description = "Agent deleted")
   @APIResponse(responseCode = "404", description = "Agent not found")

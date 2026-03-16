@@ -29,7 +29,7 @@ if [ -d "$PROJECT_ROOT/configs/agents" ]; then
     for file in "$PROJECT_ROOT"/configs/agents/*.json; do
         if [ -f "$file" ]; then
             echo "  - $(basename "$file")"
-            curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL/v1/agent/agent/upsert" \
+            curl -s -o /dev/null -w "%{http_code}" -X POST "$API_URL/v1/agent/upsert" \
                  -H "Content-Type: application/json" \
                  -d @"$file" | grep -q "200" || echo "    ❌ Failed to sync $(basename "$file")"
         fi
