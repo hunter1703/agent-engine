@@ -10,6 +10,7 @@ import com.agentengine.engine.agents.AgentSessionRuntime;
 import com.agentengine.engine.agents.SessionTitleGenerator;
 import com.agentengine.engine.agui.AGUIEventMapper;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
+import com.agentengine.engine.api.beans.config.ToolExecutionMode;
 import com.agentengine.engine.api.beans.session.AgentSession;
 import com.agentengine.engine.api.services.AgentExecutionService;
 import com.agentengine.engine.api.services.AgentService;
@@ -126,7 +127,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     try {
       LOG.debug("run - session_id={} agent_id={} content_parts={}", resolvedSessionId, agentId,
           userContent == null ? 0 : userContent.parts().orElse(List.of()).size());
-      final RunConfig runConfig = RunConfig.builder().setStreamingMode(SSE).build();
+      final RunConfig runConfig = buildRunConfig(runtime.agentConfig());
       final Runner runner = runtime.runner();
       final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId, AGUIEventMapper.Mode.LIVE);
       return mapper.map(runner.runAsync(DEFAULT_USER_ID, resolvedSessionId, userContent, runConfig)
@@ -135,6 +136,13 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
       markRunInactive(resolvedSessionId);
       return Flowable.error(ex);
     }
+  }
+
+  private static RunConfig buildRunConfig(final BaseAgentConfig agentConfig) {
+    return RunConfig.builder()
+        .setStreamingMode(SSE)
+        .setToolExecutionMode(RunConfig.ToolExecutionMode.valueOf(agentConfig.getToolExecutionMode()))
+        .build();
   }
 
   public void onSessionDeleted(@Observes final SessionDeletedEvent event) {

@@ -68,6 +68,10 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   @UiField(label = "Runtime", step = "runtime", section = "runtime", order = 10)
   private AgentRuntimeConfig runtime = new AgentRuntimeConfig();
 
+  @UiField(label = "Tool Execution Mode", step = "runtime", section = "runtime", order = 20)
+  @UiSelect(enumType = ToolExecutionMode.class)
+  private String toolExecutionMode = ToolExecutionMode.PARALLEL.name();
+
   protected BaseAgentConfig(final AgentType agentType) {
     this.type = agentType.type();
   }
@@ -183,6 +187,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   public void setRuntime(final AgentRuntimeConfig runtime) {
     this.runtime = runtime == null ? new AgentRuntimeConfig() : runtime;
+  }
+
+  public String getToolExecutionMode() {
+    return toolExecutionMode;
+  }
+
+  public void setToolExecutionMode(final String toolExecutionMode) {
+    this.toolExecutionMode = toolExecutionMode == null ? ToolExecutionMode.PARALLEL.name() : toolExecutionMode;
   }
 
   public enum AgentType {
