@@ -1,5 +1,6 @@
 package com.agentengine.util.common;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.jayway.jsonpath.Configuration;
 import com.jayway.jsonpath.JsonPath;
 import java.io.IOException;
@@ -30,9 +32,9 @@ public final class JsonUtils {
   }
 
   private static JsonMapper createJsonMapper(boolean includeTypeInfo) {
-    JsonMapper.Builder builder = JsonMapper.builder()
-        .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    JsonMapper.Builder builder = JsonMapper.builder().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).addModule(new Jdk8Module())
+        .serializationInclusion(JsonInclude.Include.NON_ABSENT);
 
     if (includeTypeInfo) {
       BasicPolymorphicTypeValidator validator = BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();

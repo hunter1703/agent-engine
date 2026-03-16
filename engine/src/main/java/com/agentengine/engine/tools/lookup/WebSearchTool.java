@@ -10,7 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WebSearchTool extends Tool {
-  private static final String TOOL_NAME = "web_search";
+  private static final String TOOL_NAME = "web_research";
   private static final String CONNECTOR_ID = "brave_web_search";
   private static final String DEFAULT_COUNTRY = "US";
   private static final String DEFAULT_LANGUAGE = "en";

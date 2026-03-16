@@ -100,11 +100,6 @@ Interact with your agents using the unified REST API:
   }
   ```
 - **Stream SSE Events**:
-  `POST /agent/events` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
-- **Resume Paused Session (SSE)**:
-  `POST /agent/session/{sessionId}/resume/events` with either `{ "decision": "ALLOW" }` for binary confirmations or `{ "answer": "human clarification" }` for text input
-- **Codex CLI Compatible Stream**:
-  `POST /agent/responses` with `{ "agentId": "...", "sessionId": "...", "message": "..." }`
 - **Bootstrap Upserts**:
   `POST /v1/model/upsert` and `POST /v1/agent/agent/upsert` with the model/agent JSON payloads
 
@@ -192,6 +187,20 @@ To compile custom plugins (like the `shell-agent` or `echo-agent`) into your env
    ```bash
    ./gradlew -p plugins/<plugin-project> assemble
    ```
+
+### Standard Agents
+
+Agent Engine includes pre-configured agents for common use cases in `configs/agents/`:
+
+| Agent | Purpose | Key Tools |
+|-------|---------|-----------|
+| `coding_agent` | General-purpose coding assistant with comprehensive safety guidelines | planning, file ops, shell |
+| `review_agent` | Code review specialist with severity-ordered findings | read_file, grep, planning |
+| `shell_agent` | Command-line execution with safety-first approach | shell_command, file ops |
+| `web_research_agent` | Web research with citation standards | web_search, web_lookup |
+| `story_orchestrator_sequential` | Multi-phase story pipeline orchestrator | orchestration |
+
+Each agent has a comprehensive system prompt covering personality, safety guidelines, tool use patterns, and collaboration posture.
 
 ---
 

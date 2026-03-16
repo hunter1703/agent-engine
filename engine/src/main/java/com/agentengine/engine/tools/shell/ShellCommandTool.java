@@ -6,6 +6,7 @@ import com.agentengine.engine.plugin.annotations.DiscoverableTool;
 import com.agentengine.engine.plugin.annotations.ToolConstructor;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
 import com.agentengine.engine.plugin.tools.Tool;
+import com.google.adk.tools.ToolContext;
 import io.vertx.json.schema.common.dsl.Schemas;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -39,12 +40,14 @@ public final class ShellCommandTool extends Tool {
   }
 
   public Map<String, Object> execute(
+      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
       @ToolSchema(name = "command", description = "The shell command to execute. Can include pipes, redirects, and logic operators.") final String command) {
     if (command == null || command.isBlank()) {
       throw new IllegalArgumentException("Empty command");
     }
     if (BLOCKED.matcher(command).find()) {
-      throw new IllegalArgumentException("Blocked: rm is not allowed");
+      toolContext.requestConfirmation("Should the : " + command + " be executed?");
+      return Map.of();
     }
     final ProcessBuilder builder = new ProcessBuilder("bash", "-lc", command);
     builder.directory(Path.of(System.getProperty("user.home")).toFile());

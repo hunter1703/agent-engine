@@ -237,7 +237,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   }
 
   private Flowable<BaseEvent> mapTextMessageContent(String text, final boolean partial) {
-    if (StringUtils.isBlank(text)) {
+    if (text == null || text.isEmpty()) {
       return Flowable.empty();
     }
     LOG.debug("Processing message mapping - msgId={}, partial={}", state.currentTextMessageId, partial);

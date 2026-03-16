@@ -1,6 +1,5 @@
 package com.agentengine.engine.model;
 
-import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.models.langchain4j.LangChain4j;
@@ -92,12 +91,12 @@ public final class NormalizedLangChain4j extends LangChain4j {
         return null;
       }
       final String text = part.text().orElse(null);
-      if (StringUtils.isNotBlank(text)) {
+      if (text != null && !text.isEmpty()) {
         builder.append(text);
       }
     }
     final String combined = builder.toString();
-    return StringUtils.isBlank(combined) ? null : combined;
+    return combined.isEmpty() ? null : combined;
   }
 
   private static Flowable<LlmResponse> finalizeStream(final ResponseState responseState) {
