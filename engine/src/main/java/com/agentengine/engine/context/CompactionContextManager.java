@@ -50,10 +50,11 @@ public final class CompactionContextManager implements ContextManager {
   private final AgentSessionRepository sessionRepository;
   private final Cache<String, String> summaryCache;
 
-  public CompactionContextManager(final int tokenThreshold, final int recencyThreshold, final String modelId, final String promptTemplate,
+  public CompactionContextManager(final int tokenThreshold, int recencyThreshold, final String modelId, final String promptTemplate,
       final ModelProvider modelProvider, final AgentSessionRepository sessionRepository) {
     this.tokenThreshold = Math.max(1, tokenThreshold);
-    this.recencyThreshold = Math.max(1, recencyThreshold);
+    recencyThreshold = Math.max(1, recencyThreshold);
+    this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
     this.modelId = modelId;
     this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     this.modelProvider = modelProvider;

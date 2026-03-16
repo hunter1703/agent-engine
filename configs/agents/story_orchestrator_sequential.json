@@ -14,9 +14,6 @@
     "story_phase_6_final"
   ],
   "contextStrategy": {
-    "type": "COMPACTION",
-    "tokenThreshold": 4096,
-    "eventRetentionSize": 50,
-    "overlapSize": 0
+    "type": "COMPACTION"
   }
 }

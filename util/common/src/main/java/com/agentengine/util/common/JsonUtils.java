@@ -2,6 +2,7 @@ package com.agentengine.util.common;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -22,22 +23,23 @@ import org.slf4j.LoggerFactory;
 public final class JsonUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
 
-  private static final ObjectMapper JSON_MAPPER = createJsonMapper(false);
-  private static final ObjectMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
+  private static final JsonMapper JSON_MAPPER = createJsonMapper(false);
+  private static final JsonMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
 
   private JsonUtils() {
   }
 
-  private static ObjectMapper createJsonMapper(boolean includeTypeInfo) {
-    ObjectMapper mapper = JsonMapper.builder().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true).build();
+  private static JsonMapper createJsonMapper(boolean includeTypeInfo) {
+    JsonMapper.Builder builder = JsonMapper.builder()
+        .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     if (includeTypeInfo) {
       BasicPolymorphicTypeValidator validator = BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
-
-      mapper.activateDefaultTyping(validator, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+      builder.activateDefaultTyping(validator, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
     }
 
-    return mapper;
+    return builder.build();
   }
 
   public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
@@ -208,11 +210,11 @@ public final class JsonUtils {
   }
 
   private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {
-    ObjectMapper mapper = mapper(includeTypeInfo);
+    JsonMapper mapper = mapper(includeTypeInfo);
     return includeTypeInfo ? mapper.writerFor(Object.class) : mapper.writer();
   }
 
-  private static ObjectMapper mapper(boolean includeTypeInfo) {
+  private static JsonMapper mapper(boolean includeTypeInfo) {
     return includeTypeInfo ? JSON_MAPPER_WITH_TYPE : JSON_MAPPER;
   }
 }

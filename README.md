@@ -131,6 +131,55 @@ At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./pl
 - `ToolParam.AGENT_CONTEXT` or an `AgentContext` parameter injects the current execution context.
 - `ToolSuite` describes a user-facing suite name plus `toolNames()`; selecting the suite in `tools` expands to the member tools at runtime.
 
+### Built-in Tools
+
+Agent Engine ships with the following built-in tool categories:
+
+**Planning Tools** (suite: `planning`)
+- `create_plan` - Create a new plan with tasks
+- `add_task` - Add a task to the current plan
+- `update_task_info` - Update task metadata
+- `update_task_status` - Update task progress
+- `start_task` - Mark a task as in-progress
+- `complete_task` - Mark a task as completed
+- `finish_plan` - Mark a plan as finished
+- `view_plan` - View the current plan
+
+**File Operations** (auto-discovered)
+- `read_file` - Read file contents with pagination (offset/limit)
+- `list_dir` - List directory contents with depth control
+- `grep_files` - Search files using regex patterns
+- `apply_patch` - Apply unified diff patches to files with validation
+
+**Shell & Execution**
+- `shell_command` - Execute shell commands in a sandboxed environment
+
+**Human-in-the-Loop**
+- `human_in_the_loop` - Request human confirmation or input
+
+**Web & Lookup**
+- `web_search` - Search the web for information
+- `web_lookup` - Fetch content from specific URLs
+
+**Utilities**
+- `echo` - Echo input back (useful for testing)
+
+### Tool Execution Mode
+
+By default, when an agent requests multiple tools in a single turn, they execute **in parallel** for better performance.
+To enforce sequential execution (e.g., for tools with dependent side effects), set `toolExecutionMode: "SEQUENTIAL"` in the agent config:
+
+```json
+{
+  "type": "DEFAULT",
+  "toolExecutionMode": "SEQUENTIAL"
+}
+```
+
+Options:
+- `PARALLEL` (default) - Tools execute concurrently
+- `SEQUENTIAL` - Tools execute one at a time in order
+
 ### Building Plugins
 
 To compile custom plugins (like the `shell-agent` or `echo-agent`) into your environment:
@@ -212,5 +261,6 @@ Use `UNKNOWN` as parser fallback only. Do not set `UNKNOWN` intentionally in age
 | `RelevanceMode` | `STEER_THEN_BLOCK`, `STEER_ONLY`, `STEER_THEN_ALLOW` | `STEER_THEN_BLOCK` for balanced safety, `STEER_ONLY` for low-friction UX, `STEER_THEN_ALLOW` to retry briefly then continue. |
 | `RelevanceAnchorStrategy` | `RECENT_USER`, `LATEST_USER_AND_PLAN` | `RECENT_USER` for conversational continuity, `LATEST_USER_AND_PLAN` for planning workflows. |
 | `ToolRiskLevel` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Classify tools by side-effect sensitivity so `ToolSafetyGuardrail` can enforce minimum/maximum risk policy. |
+| `ToolExecutionMode` | `PARALLEL`, `SEQUENTIAL` | `PARALLEL` (default) for concurrent tool execution; `SEQUENTIAL` when tools have dependent side effects that must run in order. |
 | `ParallelAggregationPolicy` | `CONCATENATE`, `BEST_EFFORT`, `MAJORITY_VOTE` | `CONCATENATE` preserves all successful branch outputs in order; `BEST_EFFORT` chooses one deterministic best output; `MAJORITY_VOTE` chooses the most frequent normalized successful output. |
 | `ParallelStoppingPolicy` | `ALL_COMPLETE`, `FIRST_SUCCESS`, `QUORUM` | `ALL_COMPLETE` waits all branches; `FIRST_SUCCESS` stops at first successful branch (`turnComplete=true`); `QUORUM` stops when successful branches reach configured `quorum`. |
