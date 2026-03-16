@@ -71,12 +71,13 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
     if (includeEvents) {
       return query.addIncludeField(AgentSession.FIELD_EVENTS);
     }
-
-    final List<String> excluded = CollectionUtils.nullSafeMutableList(query.getExcludeFields());
-    if (!excluded.contains("sessionInfo.eventsJson")) {
-      excluded.add("sessionInfo.eventsJson");
+    if (CollectionUtils.nullSafeList(query.getIncludeFields()).isEmpty()) {
+      final List<String> excluded = CollectionUtils.nullSafeMutableList(query.getExcludeFields());
+      if (!excluded.contains(AgentSession.FIELD_EVENTS)) {
+        excluded.add(AgentSession.FIELD_EVENTS);
+      }
+      query.setExcludeFields(excluded);
     }
-    query.setExcludeFields(excluded);
     return query;
   }
 }

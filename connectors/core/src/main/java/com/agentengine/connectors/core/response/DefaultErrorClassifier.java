@@ -34,9 +34,7 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
       return new ClassifiedError(code, message, mappingRule.retryable());
     }
 
-    final Map<String, Object> templateVariables = Map.of(
-        "response", responseData.body(),
-        "statusCode", responseData.statusCode(),
+    final Map<String, Object> templateVariables = Map.of("response", responseData.body(), "statusCode", responseData.statusCode(),
         "headers", responseData.headers());
     final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
 

@@ -19,11 +19,8 @@ class WebSearchToolTest {
 
   @Test
   void usesDefaultsWhenOptionalArgumentsAreMissing() {
-    final Map<String, Object> duckDuckGoResponse = Map.of(
-        "abstract", "Quick summary result",
-        "url", "https://example.com",
-        "source", "Example",
-        "heading", "Result");
+    final Map<String, Object> duckDuckGoResponse = Map.of("abstract", "Quick summary result", "url", "https://example.com", "source",
+        "Example", "heading", "Result");
     final CapturingConnectorService connector = new CapturingConnectorService(success(duckDuckGoResponse));
     final WebSearchTool tool = new WebSearchTool(connector);
 
@@ -57,11 +54,8 @@ class WebSearchToolTest {
 
   @Test
   void usesDuckDuckGoWhenDetailedIsFalse() {
-    final Map<String, Object> duckDuckGoResponse = Map.of(
-        "abstract", "Richard Feynman was an American theoretical physicist.",
-        "url", "https://en.wikipedia.org/wiki/Richard_Feynman",
-        "source", "Wikipedia",
-        "heading", "Richard Feynman");
+    final Map<String, Object> duckDuckGoResponse = Map.of("abstract", "Richard Feynman was an American theoretical physicist.", "url",
+        "https://en.wikipedia.org/wiki/Richard_Feynman", "source", "Wikipedia", "heading", "Richard Feynman");
     final CapturingConnectorService connector = new CapturingConnectorService(success(duckDuckGoResponse));
     final WebSearchTool tool = new WebSearchTool(connector);
 
@@ -74,13 +68,8 @@ class WebSearchToolTest {
 
   @Test
   void fallsBackToBraveSearchWhenDuckDuckGoReturnsEmptyAbstractText() {
-    final Map<String, Object> emptyResponse = Map.of(
-        "abstract", "",
-        "url", "",
-        "source", "",
-        "heading", "");
-    final CapturingConnectorService connector = new CapturingConnectorService(
-        success(emptyResponse),
+    final Map<String, Object> emptyResponse = Map.of("abstract", "", "url", "", "source", "", "heading", "");
+    final CapturingConnectorService connector = new CapturingConnectorService(success(emptyResponse),
         success(Map.of("brave_result", true)));
 
     final WebSearchTool tool = new WebSearchTool(connector);
@@ -97,8 +86,7 @@ class WebSearchToolTest {
     final Map<String, Object> nullAbstractResponse = new java.util.LinkedHashMap<>();
     nullAbstractResponse.put("abstract", null);
     nullAbstractResponse.put("heading", "");
-    final CapturingConnectorService connector = new CapturingConnectorService(
-        success(nullAbstractResponse),
+    final CapturingConnectorService connector = new CapturingConnectorService(success(nullAbstractResponse),
         success(Map.of("fallback", true)));
 
     final WebSearchTool tool = new WebSearchTool(connector);

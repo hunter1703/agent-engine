@@ -4,10 +4,10 @@ import com.agentengine.util.common.beans.BaseEntity;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(key = "type")
-public class InfraConfig extends BaseEntity {
+public abstract class InfraConfig extends BaseEntity {
   private String type;
 
-  public InfraConfig(final String type) {
+  protected InfraConfig(final String type) {
     this.type = type;
   }
 

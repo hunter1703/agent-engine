@@ -1,8 +1,7 @@
 package com.agentengine.connectors.core.config;
 
 public record PaginationConfig(String type, int maxPages, String pageParam, int pageStart, String pageSizeParam, int pageSize,
-    String offsetParam, int offsetStart, String limitParam, int limit, String cursorParam, String nextCursor,
-    String nextPageUrl) {
+    String offsetParam, int offsetStart, String limitParam, int limit, String cursorParam, String nextCursor, String nextPageUrl) {
 
   public PaginationConfig {
     type = type == null || type.isBlank() ? PaginationType.UNKNOWN.name() : type;

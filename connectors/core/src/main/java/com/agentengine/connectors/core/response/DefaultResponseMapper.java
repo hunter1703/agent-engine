@@ -28,13 +28,11 @@ public final class DefaultResponseMapper {
   public ConnectorExecutionResult map(final ConnectorDefinition definition, final HttpResponseData responseData, final String requestUrl,
       final String method) {
     final boolean success = isSuccess(definition, responseData.statusCode());
-    
-    final Map<String, Object> templateVariables = Map.of(
-        "response", responseData.body(),
-        "statusCode", responseData.statusCode(),
+
+    final Map<String, Object> templateVariables = Map.of("response", responseData.body(), "statusCode", responseData.statusCode(),
         "headers", responseData.headers());
     final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
-    
+
     final Object data = templateResolver.resolve(definition.responseMapping().output(), context, null).value();
     final Object metadata = definition.responseMapping().metadata() != null
         ? templateResolver.resolve(definition.responseMapping().metadata(), context, null).value()

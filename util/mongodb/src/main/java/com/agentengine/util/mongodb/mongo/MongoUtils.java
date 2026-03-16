@@ -104,7 +104,8 @@ public final class MongoUtils {
     includes = CollectionUtils.nullSafeList(includes);
     excludes = CollectionUtils.nullSafeList(excludes);
     if (!includes.isEmpty() && !excludes.isEmpty()) {
-      return Projections.fields(Projections.include(includes.toArray(new String[0])), Projections.exclude(excludes.toArray(new String[0])));
+      throw new IllegalArgumentException(
+          "MongoDB projections cannot mix inclusion and exclusion fields: includes=" + includes + ", excludes=" + excludes);
     }
     if (!includes.isEmpty()) {
       return Projections.include(includes.toArray(new String[0]));

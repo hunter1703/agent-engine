@@ -21,8 +21,8 @@ public final class WebSearchTool extends Tool {
   private static final int DEFAULT_MAX_TOKENS = 8192;
   private static final String DEFAULT_ERROR = "Unknown error";
 
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
-      "Search the web for information on a given topic.", Map.of(), ToolRiskLevel.LOW);
+  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, "Search the web for information on a given topic.",
+      Map.of(), ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 
@@ -31,8 +31,7 @@ public final class WebSearchTool extends Tool {
     this.connectorService = connectorService;
   }
 
-  public Map<String, Object> execute(
-      @ToolSchema(name = "query", description = "The search query.") final String query,
+  public Map<String, Object> execute(@ToolSchema(name = "query", description = "The search query.") final String query,
       @ToolSchema(name = "country", description = "Country code for search localization.", optional = true) final String country,
       @ToolSchema(name = "search_lang", description = "Language code for search localization.", optional = true) final String searchLang,
       @ToolSchema(name = "maximum_number_of_tokens", description = "Maximum number of tokens in the response.", optional = true) final Integer maximumNumberOfTokens,
@@ -74,7 +73,7 @@ public final class WebSearchTool extends Tool {
       return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
     }
 
-    //noinspection unchecked
+    // noinspection unchecked
     final Map<String, Object> mappedData = CollectionUtils.nullSafeMap((Map<String, Object>) result.mappedData());
     if (StringUtils.isBlank(CollectionUtils.getStringValueFromMap(mappedData, "abstract"))) {
       return executeBraveSearch(query, null, null, null);
