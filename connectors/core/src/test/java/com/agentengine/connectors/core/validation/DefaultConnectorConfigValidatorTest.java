@@ -61,7 +61,7 @@ class DefaultConnectorConfigValidatorTest {
     final ConfigValidationResult result = validator.validate(definition);
     assertThat(result.isValid()).isFalse();
     assertThat(result.errors()).anyMatch(issue -> issue.path().equals("pagination.cursorParam"))
-        .anyMatch(issue -> issue.path().equals("pagination.nextCursorJsonPath"));
+        .anyMatch(issue -> issue.path().equals("pagination.nextCursor"));
   }
 
   @Test

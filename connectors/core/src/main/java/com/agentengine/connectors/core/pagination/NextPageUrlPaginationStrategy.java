@@ -29,7 +29,7 @@ public final class NextPageUrlPaginationStrategy implements PaginationStrategy {
           currentState.nextPageUrl(), true);
     }
 
-    final String nextPageUrl = PaginationStrategySupport.extractString(config.nextPageUrlJsonPath(), responseBody);
+    final String nextPageUrl = PaginationStrategySupport.extractString(config.nextPageUrl(), responseBody);
     final boolean done = nextPageUrl == null || nextPageUrl.isBlank();
     return new PaginationState(nextIteration, currentState.pageNumber(), currentState.offset(), currentState.cursor(), nextPageUrl, done);
   }

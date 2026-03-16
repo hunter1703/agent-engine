@@ -6,19 +6,23 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.api.tools.ToolRiskLevel;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
 import com.agentengine.engine.plugin.tools.Tool;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.StringUtils;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WebSearchTool extends Tool {
   private static final String TOOL_NAME = "web_research";
-  private static final String CONNECTOR_ID = "brave_web_search";
+  private static final String BRAVE_CONNECTOR_ID = "brave_web_search";
+  private static final String DUCKDUCKGO_CONNECTOR_ID = "duckduckgo_instant_search";
   private static final String DEFAULT_COUNTRY = "US";
   private static final String DEFAULT_LANGUAGE = "en";
   private static final int DEFAULT_MAX_TOKENS = 8192;
   private static final String DEFAULT_ERROR = "Unknown error";
 
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, "Search the web using Brave Search API.", Map.of(),
-      ToolRiskLevel.LOW);
+  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
+      "Search the web for information on a given topic.", Map.of(), ToolRiskLevel.LOW);
 
   private final ConnectorService connectorService;
 
@@ -27,14 +31,28 @@ public final class WebSearchTool extends Tool {
     this.connectorService = connectorService;
   }
 
-  public Map<String, Object> execute(@ToolSchema(name = "query", description = "The web search query.") final String query,
-      @ToolSchema(name = "country", description = "Country code for search localization (e.g., US).", optional = true) final String country,
-      @ToolSchema(name = "search_lang", description = "Language code for search localization (e.g., en).", optional = true) final String searchLang,
-      @ToolSchema(name = "maximum_number_of_tokens", description = "Maximum number of tokens in Brave LLM context response.", optional = true) final Integer maximumNumberOfTokens) {
+  public Map<String, Object> execute(
+      @ToolSchema(name = "query", description = "The search query.") final String query,
+      @ToolSchema(name = "country", description = "Country code for search localization.", optional = true) final String country,
+      @ToolSchema(name = "search_lang", description = "Language code for search localization.", optional = true) final String searchLang,
+      @ToolSchema(name = "maximum_number_of_tokens", description = "Maximum number of tokens in the response.", optional = true) final Integer maximumNumberOfTokens,
+      @ToolSchema(name = "detailed", description = "If true, returns comprehensive search results (uses more resources). If false, returns a quick summary. Defaults to false.", optional = true) final Boolean detailed) {
+
     if (query == null || query.isBlank()) {
       throw new IllegalArgumentException("Query cannot be empty");
     }
 
+    final boolean useDetailed = detailed != null && detailed;
+
+    if (useDetailed) {
+      return executeBraveSearch(query, country, searchLang, maximumNumberOfTokens);
+    } else {
+      return executeDuckDuckGoLookup(query);
+    }
+  }
+
+  private Map<String, Object> executeBraveSearch(final String query, final String country, final String searchLang,
+      final Integer maximumNumberOfTokens) {
     final Map<String, Object> connectorInput = new LinkedHashMap<>();
     connectorInput.put("query", query.trim());
     connectorInput.put("country", country == null || country.isBlank() ? DEFAULT_COUNTRY : country.trim());
@@ -42,10 +60,26 @@ public final class WebSearchTool extends Tool {
     connectorInput.put("maximum_number_of_tokens",
         maximumNumberOfTokens == null || maximumNumberOfTokens <= 0 ? DEFAULT_MAX_TOKENS : maximumNumberOfTokens);
 
-    final ConnectorExecutionResult result = connectorService.execute(CONNECTOR_ID, Map.copyOf(connectorInput));
+    final ConnectorExecutionResult result = connectorService.execute(BRAVE_CONNECTOR_ID, Map.copyOf(connectorInput));
     if (!result.success()) {
       return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
     }
     return Map.of("result", result.mappedData());
+  }
+
+  private Map<String, Object> executeDuckDuckGoLookup(final String query) {
+    final ConnectorExecutionResult result = connectorService.execute(DUCKDUCKGO_CONNECTOR_ID, Map.of("query", query.trim()));
+
+    if (!result.success()) {
+      return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
+    }
+
+    //noinspection unchecked
+    final Map<String, Object> mappedData = CollectionUtils.nullSafeMap((Map<String, Object>) result.mappedData());
+    if (StringUtils.isBlank(CollectionUtils.getStringValueFromMap(mappedData, "abstract"))) {
+      return executeBraveSearch(query, null, null, null);
+    }
+
+    return Map.of("result", mappedData);
   }
 }

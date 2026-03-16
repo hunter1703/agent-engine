@@ -11,6 +11,6 @@
     "format": "json"
   },
   "responseMapping": {
-    "dataJsonPath": "$.AbstractText"
+    "output": "${ def data = response; if (data == null) return null; def result = [:]; result.abstract = data.AbstractText; result.url = data.AbstractURL; result.source = data.AbstractSource; result.heading = data.Heading; if (data.RelatedTopics != null) result.relatedTopics = data.RelatedTopics; return result }"
   }
 }

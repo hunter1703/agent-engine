@@ -1,10 +1,32 @@
 package com.agentengine.connectors.core.pagination;
 
-import com.jayway.jsonpath.JsonPath;
-import com.jayway.jsonpath.PathNotFoundException;
+import com.agentengine.connectors.core.runtime.RequestContext;
+import com.agentengine.connectors.core.template.*;
+
 import java.util.Collection;
+import java.util.Map;
 
 final class PaginationStrategySupport {
+
+  private static final TemplateResolver templateResolver = new TemplateResolver() {
+    @Override
+    public ResolvedValue resolve(final Object template, final RequestContext context, final TemplateResolutionOptions options) {
+      final var evaluator = new GroovySandboxEvaluator();
+      final var variables = context.toTemplateVariables();
+      if (template == null) {
+        return ResolvedValue.nullValue();
+      }
+      if (template instanceof String stringTemplate) {
+        try {
+          final Object value = evaluator.evaluate(stringTemplate, variables);
+          return value == null ? ResolvedValue.nullValue() : ResolvedValue.resolved(value);
+        } catch (UnresolvedVariableException ex) {
+          return ResolvedValue.unresolved();
+        }
+      }
+      return ResolvedValue.resolved(template);
+    }
+  };
 
   private PaginationStrategySupport() {
   }
@@ -19,17 +41,17 @@ final class PaginationStrategySupport {
     return false;
   }
 
-  static String extractString(final String jsonPath, final String responseBody) {
-    if (jsonPath == null || jsonPath.isBlank() || responseBody == null || responseBody.isBlank()) {
+  static String extractString(final String template, final String responseBody) {
+    if (template == null || template.isBlank() || responseBody == null || responseBody.isBlank()) {
       return null;
     }
     try {
-      final Object value = JsonPath.read(responseBody, jsonPath);
-      return value == null ? null : String.valueOf(value);
-    } catch (PathNotFoundException ex) {
-      return null;
+      final Map<String, Object> templateVariables = Map.of("response", responseBody);
+      final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+      final ResolvedValue resolved = templateResolver.resolve(template, context, null);
+      return resolved.value() == null ? null : String.valueOf(resolved.value());
     } catch (RuntimeException ex) {
-      throw new PaginationStrategyException("Failed to extract pagination token with JsonPath", ex);
+      throw new PaginationStrategyException("Failed to extract pagination token", ex);
     }
   }
 

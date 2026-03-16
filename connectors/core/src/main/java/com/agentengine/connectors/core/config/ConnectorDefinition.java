@@ -17,7 +17,7 @@ public record ConnectorDefinition(String id, String appName, EndpointConfig endp
         : auth;
     retryPolicy = retryPolicy == null ? RetryPolicyConfig.disabled() : retryPolicy;
     pagination = pagination == null ? PaginationConfig.none() : pagination;
-    responseMapping = responseMapping == null ? new ResponseMappingConfig("$", null, null, null, List.of(), true) : responseMapping;
+    responseMapping = responseMapping == null ? new ResponseMappingConfig("${response}", null, null, null, List.of(), true) : responseMapping;
     errorMappings = errorMappings == null ? List.of() : List.copyOf(errorMappings);
   }
 }

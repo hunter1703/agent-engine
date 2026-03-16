@@ -8,7 +8,6 @@ import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import com.github.difflib.patch.PatchFailedException;
-import com.google.adk.tools.ToolContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,8 +39,7 @@ public final class ApplyPatchTool extends BaseFileTool {
     super(DESCRIPTOR);
   }
 
-  public Map<String, Object> execute(
-      @ToolSchema(name = "file_path", description = "Path to the file to patch") String filePath,
+  public Map<String, Object> execute(@ToolSchema(name = "file_path", description = "Path to the file to patch") String filePath,
       @ToolSchema(name = "patch", description = "Unified diff patch content to apply") String patch,
       @ToolSchema(name = "expected_hash", description = "Expected content hash from read_file (first 16 chars of SHA-256). If provided, validates file hasn't changed.", optional = true) String expectedHash) {
 
@@ -64,12 +62,11 @@ public final class ApplyPatchTool extends BaseFileTool {
         return Map.of("error", "File not found: " + filePath);
       }
 
-
       BaseFileTool.FileDetails details = readFile(file, 0, 0);
       String currentHash = details.getHash().substring(0, Math.min(16, details.getHash().length()));
       if (expectedHash != null && !expectedHash.equalsIgnoreCase(currentHash)) {
         return Map.of("error", "File content has changed since patch was created (hash mismatch)", "validation_failed", true,
-                "expected_hash", expectedHash, "actual_hash", currentHash);
+            "expected_hash", expectedHash, "actual_hash", currentHash);
       }
 
       // Parse unified diff using library

@@ -3,17 +3,20 @@ package com.agentengine.connectors.core.response;
 import com.agentengine.connectors.core.config.ConnectorDefinition;
 import com.agentengine.connectors.core.config.ErrorMappingRule;
 import com.agentengine.connectors.core.http.HttpResponseData;
+import com.agentengine.connectors.core.runtime.RequestContext;
+import com.agentengine.connectors.core.template.TemplateResolver;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Map;
 
 @Singleton
 public final class DefaultErrorClassifier implements ErrorClassifier {
 
-  private final ResponseExtractor responseExtractor;
+  private final TemplateResolver templateResolver;
 
   @Inject
-  public DefaultErrorClassifier(final ResponseExtractor responseExtractor) {
-    this.responseExtractor = responseExtractor;
+  public DefaultErrorClassifier(final TemplateResolver templateResolver) {
+    this.templateResolver = templateResolver;
   }
 
   @Override
@@ -31,8 +34,19 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
       return new ClassifiedError(code, message, mappingRule.retryable());
     }
 
-    final Object codeValue = responseExtractor.extract(responseData.body(), definition.responseMapping().errorCodeJsonPath());
-    final Object messageValue = responseExtractor.extract(responseData.body(), definition.responseMapping().errorMessageJsonPath());
+    final Map<String, Object> templateVariables = Map.of(
+        "response", responseData.body(),
+        "statusCode", responseData.statusCode(),
+        "headers", responseData.headers());
+    final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+
+    final Object codeValue = definition.responseMapping().errorCode() != null
+        ? templateResolver.resolve(definition.responseMapping().errorCode(), context, null).value()
+        : null;
+    final Object messageValue = definition.responseMapping().errorMessage() != null
+        ? templateResolver.resolve(definition.responseMapping().errorMessage(), context, null).value()
+        : null;
+
     final String code = codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
     final String message = messageValue == null
         ? "Connector request failed with status " + responseData.statusCode()
@@ -50,8 +64,10 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
       return false;
     }
 
-    if (rule.bodyJsonPath() != null && !rule.bodyJsonPath().isBlank()) {
-      final Object value = responseExtractor.extract(responseData.body(), rule.bodyJsonPath());
+    if (rule.body() != null && !rule.body().isBlank()) {
+      final Map<String, Object> templateVariables = Map.of("response", responseData.body());
+      final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+      final Object value = templateResolver.resolve(rule.body(), context, null).value();
       return value != null;
     }
 

@@ -38,7 +38,7 @@ public final class CursorPaginationStrategy implements PaginationStrategy {
           currentState.nextPageUrl(), true);
     }
 
-    final String nextCursor = PaginationStrategySupport.extractString(config.nextCursorJsonPath(), responseBody);
+    final String nextCursor = PaginationStrategySupport.extractString(config.nextCursor(), responseBody);
     final boolean done = nextCursor == null || nextCursor.isBlank();
     return new PaginationState(nextIteration, currentState.pageNumber(), currentState.offset(), nextCursor, currentState.nextPageUrl(),
         done);

@@ -68,7 +68,7 @@ Descriptor resolution:
 
 - `echo` (`EchoTool`)
 - `run_cmd` (`ShellCommandTool`)
-- `web_lookup` (`WebLookupTool` via connectors framework)
+- `web_research` (`WebSearchTool` via connectors framework; supports quick DuckDuckGo lookup or detailed Brave Search)
 - planning suite tools:
   - `create_plan`
   - `update_plan`

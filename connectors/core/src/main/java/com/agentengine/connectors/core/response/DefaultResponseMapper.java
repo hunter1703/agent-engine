@@ -3,8 +3,11 @@ package com.agentengine.connectors.core.response;
 import com.agentengine.connectors.core.config.ConnectorDefinition;
 import com.agentengine.connectors.core.http.HttpResponseData;
 import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
+import com.agentengine.connectors.core.runtime.RequestContext;
+import com.agentengine.connectors.core.template.TemplateResolver;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Map;
 import java.util.Set;
 
 @Singleton
@@ -13,20 +16,29 @@ public final class DefaultResponseMapper {
   private static final Set<Integer> DEFAULT_SUCCESS_STATUS_CODES = java.util.stream.IntStream.range(200, 300).boxed()
       .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-  private final ResponseExtractor extractor;
   private final ErrorClassifier errorClassifier;
+  private final TemplateResolver templateResolver;
 
   @Inject
-  public DefaultResponseMapper(final ResponseExtractor responseExtractor, final ErrorClassifier errorClassifier) {
-    this.extractor = responseExtractor;
+  public DefaultResponseMapper(final ErrorClassifier errorClassifier, final TemplateResolver templateResolver) {
     this.errorClassifier = errorClassifier;
+    this.templateResolver = templateResolver;
   }
 
   public ConnectorExecutionResult map(final ConnectorDefinition definition, final HttpResponseData responseData, final String requestUrl,
       final String method) {
     final boolean success = isSuccess(definition, responseData.statusCode());
-    final Object data = extractor.extract(responseData.body(), definition.responseMapping().dataJsonPath());
-    final Object metadata = extractor.extract(responseData.body(), definition.responseMapping().metadataJsonPath());
+    
+    final Map<String, Object> templateVariables = Map.of(
+        "response", responseData.body(),
+        "statusCode", responseData.statusCode(),
+        "headers", responseData.headers());
+    final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+    
+    final Object data = templateResolver.resolve(definition.responseMapping().output(), context, null).value();
+    final Object metadata = definition.responseMapping().metadata() != null
+        ? templateResolver.resolve(definition.responseMapping().metadata(), context, null).value()
+        : null;
 
     if (success) {
       return new ConnectorExecutionResult(responseData.statusCode(), true, requestUrl, method, responseData.flattenHeaders(), data,

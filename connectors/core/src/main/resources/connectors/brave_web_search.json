@@ -34,7 +34,7 @@
     }
   },
   "responseMapping": {
-    "dataJsonPath": "$"
+    "output": "${response}"
   },
   "strictUnresolvedVariables": true
 }

@@ -123,8 +123,9 @@ This lets runtime components inject connector services directly in Quarkus apps.
 
 ## 6.10 In-Engine Usage Example
 
-`WebLookupTool` loads classpath connector definition:
+`WebSearchTool` loads classpath connector definitions:
 
-- `/connectors/duckduckgo_instant_search.json`
+- `/connectors/duckduckgo_instant_search.json` (for quick lookup when `detailed=false`)
+- `/connectors/brave_web_search.json` (for detailed search when `detailed=true` or as fallback)
 
 Then executes it via `ConnectorExecutor` with input map containing query text.

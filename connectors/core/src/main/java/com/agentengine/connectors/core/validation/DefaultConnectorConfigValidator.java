@@ -102,10 +102,10 @@ public final class DefaultConnectorConfigValidator implements ConnectorConfigVal
       }
       case CURSOR -> {
         requireField(issues, pagination.cursorParam(), "pagination.cursorParam", "cursorParam is required");
-        requireField(issues, pagination.nextCursorJsonPath(), "pagination.nextCursorJsonPath", "nextCursorJsonPath is required");
+        requireField(issues, pagination.nextCursor(), "pagination.nextCursor", "nextCursor is required");
       }
       case NEXT_URL ->
-        requireField(issues, pagination.nextPageUrlJsonPath(), "pagination.nextPageUrlJsonPath", "nextPageUrlJsonPath is required");
+        requireField(issues, pagination.nextPageUrl(), "pagination.nextPageUrl", "nextPageUrl is required");
       default -> {
         // no-op
       }
