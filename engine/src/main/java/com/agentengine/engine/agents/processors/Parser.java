@@ -66,7 +66,7 @@ public final class Parser {
   }
 
   public LlmResponse postProcess(final LlmResponse response) {
-    if (response == null || response.content().isEmpty()) {
+    if (response == null || response.content().isEmpty() || response.partial().orElse(false)) {
       return response;
     }
     return response.toBuilder().content(parseTextContent(response.content().orElseThrow())).build();

@@ -102,7 +102,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
           }
         } else {
           final String text = part.text().orElse(null);
-          if (StringUtils.isNotBlank(text)) {
+          if (StringUtils.isNotEmpty(text)) {
             // Close thinking BEFORE text if we have both in same chunk
             flowable = flowable.concatWith(closeThinkingIfNeeded());
             flowable = flowable.concatWith(startTextMessageIfNeeded()).concatWith(mapTextMessageContent(text, partial))
