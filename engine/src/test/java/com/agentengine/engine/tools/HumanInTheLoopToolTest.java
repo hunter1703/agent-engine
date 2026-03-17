@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.adk.events.EventActions;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
@@ -23,6 +24,7 @@ class HumanInTheLoopToolTest {
     final HumanInTheLoopTool tool = new HumanInTheLoopTool();
     final ToolContext toolContext = mock(ToolContext.class);
     when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
+    when(toolContext.eventActions()).thenReturn(new EventActions());
 
     final Map<String, Object> result = tool.execute(toolContext, "Need more detail", "TEXT", List.of("A", " B ", "A", " "),
         Map.of("source", "guardrail"));
@@ -71,6 +73,34 @@ class HumanInTheLoopToolTest {
 
     assertThat(result).containsEntry("decision", "ALLOW");
     verify(toolContext, never()).requestConfirmation(anyString(), any());
+  }
+
+  @Test
+  void shouldRequestConfirmationWhenOptionsIsNull() {
+    final HumanInTheLoopTool tool = new HumanInTheLoopTool();
+    final ToolContext toolContext = mock(ToolContext.class);
+    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
+    when(toolContext.eventActions()).thenReturn(new EventActions());
+
+    final Map<String, Object> result = tool.execute(toolContext, "What are you looking for?", "TEXT", null, null);
+
+    assertThat(result).isEmpty();
+    final ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
+    verify(toolContext).requestConfirmation(promptCaptor.capture(), any());
+    assertThat(promptCaptor.getValue()).isEqualTo("What are you looking for?");
+  }
+
+  @Test
+  void shouldSetEndInvocationWhenRequestingConfirmation() {
+    final HumanInTheLoopTool tool = new HumanInTheLoopTool();
+    final ToolContext toolContext = mock(ToolContext.class);
+    final EventActions eventActions = new EventActions();
+    when(toolContext.toolConfirmation()).thenReturn(Optional.empty());
+    when(toolContext.eventActions()).thenReturn(eventActions);
+
+    tool.execute(toolContext, "What is your query?", "TEXT", null, null);
+
+    assertThat(eventActions.endInvocation()).contains(true);
   }
 
   @Test

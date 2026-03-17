@@ -8,6 +8,7 @@ import com.google.genai.types.Part;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class NormalizedLangChain4j extends LangChain4j {
@@ -35,16 +36,12 @@ public final class NormalizedLangChain4j extends LangChain4j {
       return Flowable.empty();
     }
     if (hasToolParts(response)) {
-      final LlmResponse toolResponse = markNonPartial(response);
-      Flowable<LlmResponse> result = Flowable.just(toolResponse);
-      if (!responseState.fullText.isEmpty()) {
-        // Flush buffered text before surfacing the terminal tool-call chunk.
-        final LlmResponse textResponse = markPartial(responseState.lastTextResponse, responseState.fullText.toString());
-        result = Flowable.just(textResponse, toolResponse);
-        responseState.fullText.setLength(0);
-        responseState.lastTextResponse = null;
-      }
-      return result;
+      final LlmResponse merged = responseState.fullText.isEmpty()
+          ? markNonPartial(response)
+          : mergeTextIntoToolResponse(response, responseState.fullText.toString());
+      responseState.fullText.setLength(0);
+      responseState.lastTextResponse = null;
+      return Flowable.just(merged);
     }
     final String delta = extractTextDelta(response);
     if (delta == null) {
@@ -115,9 +112,13 @@ public final class NormalizedLangChain4j extends LangChain4j {
     return response.toBuilder().partial(false).build();
   }
 
-  private static LlmResponse markPartial(final LlmResponse response, final String fullText) {
-    final Content content = Content.builder().role("model").parts(Part.fromText(fullText)).build();
-    return response.toBuilder().content(content).partial(true).build();
+  private static LlmResponse mergeTextIntoToolResponse(final LlmResponse toolResponse, final String fullText) {
+    final Content original = toolResponse.content().orElseThrow();
+    final List<Part> parts = new ArrayList<>();
+    parts.add(Part.fromText(fullText));
+    parts.addAll(original.parts().orElse(List.of()));
+    final Content merged = Content.builder().role("model").parts(parts).build();
+    return toolResponse.toBuilder().content(merged).partial(false).build();
   }
 
   private static boolean hasToolParts(final LlmResponse response) {

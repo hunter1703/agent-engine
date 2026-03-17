@@ -10,6 +10,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.AgentTransfer;
+import com.google.genai.types.FinishReason;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
@@ -38,23 +39,37 @@ public final class BaseFlow extends SingleFlow {
   }
 
   /**
-   * Runs the agent flow, looping if the run completed without a
-   * {@code finishReason} event.
+   * Runs the agent flow, looping until a terminal event is observed.
    *
-   * <p>
-   * {@link TurnCompletionResponseProcessor} sets {@code finishReason} on terminal
-   * events when no continuation was requested, and omits it when continuation was
-   * requested. BaseFlow observes this signal: no {@code finishReason} seen →
-   * loop; {@code finishReason} seen → done.
+   * <h3>Termination ownership (two sources, intentionally split)</h3>
    *
-   * <p>
-   * Terminal events without {@code finishReason} (continuation case) are marked
-   * internal so they are excluded from user-facing output while remaining in
-   * session history.
+   * <p><b>{@link TurnCompletionResponseProcessor}</b> owns termination for
+   * LLM-generated responses: it sets {@code finishReason=STOP} on final-answer
+   * events when no continuation was requested, and omits it when continuation
+   * was requested. ADK's response-processor chain only sees {@code LlmResponse}
+   * objects, so this is the only place that can act on LLM output.
+   *
+   * <p><b>This method</b> owns termination for non-LLM events — specifically
+   * function-response events produced by tool execution. When a tool sets
+   * {@code endInvocation=true} (e.g. {@code HumanInTheLoopTool}), ADK stops its
+   * own inner loop but emits the event without a {@code finishReason}. No ADK
+   * extension point exists between tool execution and event emission where
+   * {@code finishReason} could be set cleanly, so this method normalises the
+   * signal: if an event carries {@code endInvocation=true} and no
+   * {@code finishReason}, it stamps {@code finishReason=STOP} and
+   * {@code turnComplete=true} before the event reaches downstream consumers.
+   *
+   * <p>Terminal events without {@code finishReason} (continuation case) are
+   * marked internal so they are excluded from user-facing output while remaining
+   * in session history.
    */
   private Flowable<Event> runLoop(final InvocationContext invocationContext) {
     final AtomicBoolean finished = new AtomicBoolean(false);
     return super.run(invocationContext).doOnNext(event -> {
+      if (event.actions().endInvocation().orElse(false) && event.finishReason().isEmpty()) {
+        event.setTurnComplete(Optional.of(true));
+        event.setFinishReason(Optional.of(new FinishReason(FinishReason.Known.STOP)));
+      }
       if (event.finishReason().isPresent()) {
         finished.set(true);
       } else if (event.finalResponse()) {

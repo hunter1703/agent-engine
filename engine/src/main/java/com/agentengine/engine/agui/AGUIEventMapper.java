@@ -270,19 +270,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return emitTextMessageContentIfNeeded().concatWith(emitTextMessageEnd());
   }
 
-  private Flowable<BaseEvent> finalizeThinkingIfNeeded() {
-    if (!state.isThinking) {
-      return Flowable.empty();
-    }
-    Flowable<BaseEvent> flowable = Flowable.empty();
-    if (state.thinkingMessageOpen) {
-      flowable = emitThoughtContentIfNeeded(state.thoughtsBuffer.toString(), false).concatWith(endThinkingMessageIfNeeded(false));
-    }
-    return flowable.concatWith(endThinkingIfNeeded());
-  }
-
   private Flowable<BaseEvent> emitTextMessageContentIfNeeded() {
-    if (state.currentTextMessageId == null || state.textMessageContentEmitted) {
+    if (state.currentTextMessageId == null) {
       return Flowable.empty();
     }
     final String bufferedText = state.textBuffer.toString();
@@ -291,7 +280,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     content.setDelta(bufferedText);
     decorateEvent(content);
     state.finalAnswer = bufferedText;
-    state.textMessageContentEmitted = true;
     LOG.debug("Generated output event - eventType=TextMessageContentEvent, msgId={}", content.getMessageId());
     return Flowable.just(content);
   }
@@ -333,7 +321,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
   private void resetTextMessageState() {
     state.currentTextMessageId = null;
     state.textBuffer = new StringBuilder();
-    state.textMessageContentEmitted = false;
   }
 
   private boolean hasStepStarted() {
@@ -355,11 +342,11 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return prefix + sequence;
   }
 
-  private Flowable<BaseEvent> finishStepIfNeeded(final Event event) {
+  private Flowable<StepFinishedEvent> finishStepIfNeeded(final Event event) {
     if (!event.turnComplete().orElse(false) || !hasStepStarted()) {
       return Flowable.empty();
     }
-    return finalizeThinkingIfNeeded().concatWith(finalizeTextMessageIfNeeded()).concatWith(finishStep());
+    return finishStep();
   }
 
   private Flowable<StepFinishedEvent> finishStep() {
@@ -509,7 +496,6 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     private int stepSequence;
     private int textMessageSequence;
     private StringBuilder textBuffer = new StringBuilder();
-    private boolean textMessageContentEmitted;
     private StringBuilder thoughtsBuffer = new StringBuilder();
 
     private MapperState(final String sessionId, final String agentId) {

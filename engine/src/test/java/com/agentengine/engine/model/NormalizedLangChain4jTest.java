@@ -45,6 +45,26 @@ class NormalizedLangChain4jTest {
     assertThat(response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow().id()).isEmpty();
   }
 
+  @Test
+  void shouldMergeAccumulatedTextIntoToolCallResponse() {
+    // When streaming text is followed by a tool call, the accumulated text is merged into the
+    // same LlmResponse as the function call. Emitting a separate partial=false text response
+    // before the tool call would cause TurnCompletionResponseProcessor to see isFinalAnswer=true
+    // (visible text, not partial, no function parts) and terminate the loop before the tool call
+    // is processed. Merging keeps function parts present, so isFinalAnswer stays false.
+    final List<LlmResponse> responses = NormalizedLangChain4j
+        .normalizeStreamingResponses(Flowable.just(textResponse("What "), textResponse("is your query?"), toolCallResponseWithoutId()))
+        .toList().blockingGet();
+
+    // chunk("What ") + chunk("is your query?") + merged(fullText + toolCall, partial=false)
+    assertThat(responses).hasSize(3);
+    final LlmResponse merged = responses.getLast();
+    assertThat(merged.partial()).contains(false);
+    final List<Part> parts = merged.content().orElseThrow().parts().orElseThrow();
+    assertThat(parts.getFirst().text()).contains("What is your query?");
+    assertThat(parts.getLast().functionCall()).isPresent();
+  }
+
   private static LlmResponse textResponse(final String text) {
     return LlmResponse.builder().content(Content.builder().role("user").parts(List.of(Part.fromText(text))).build()).build();
   }

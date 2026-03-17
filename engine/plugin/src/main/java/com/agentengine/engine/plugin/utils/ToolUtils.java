@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
+import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import java.lang.reflect.Method;
@@ -23,6 +24,17 @@ import java.util.stream.Collectors;
 public final class ToolUtils {
 
   private ToolUtils() {
+  }
+
+  /**
+   * Requests confirmation from the user and ends the current invocation, pausing the agentic loop
+   * until the user responds. Both calls are required together: {@code requestConfirmation} alone
+   * does not stop the loop; without {@code setEndInvocation}, ADK will re-invoke the LLM before
+   * the user has had a chance to respond.
+   */
+  public static void requestConfirmationAndPause(final ToolContext toolContext, final String prompt, final Object payload) {
+    toolContext.requestConfirmation(prompt, payload);
+    toolContext.eventActions().setEndInvocation(true);
   }
 
   public static String resolveParameterName(final Parameter parameter) {

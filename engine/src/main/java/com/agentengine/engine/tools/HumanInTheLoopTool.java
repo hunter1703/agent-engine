@@ -4,6 +4,7 @@ import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.hitl.SessionPauseKind;
 import com.agentengine.engine.plugin.annotations.ToolSchema;
 import com.agentengine.engine.plugin.tools.Tool;
+import com.agentengine.engine.plugin.utils.ToolUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.ToolConfirmation;
@@ -47,7 +48,7 @@ public final class HumanInTheLoopTool extends Tool {
   private static Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options,
       final Map<String, Object> context, final SessionPauseKind pauseKind) {
     final String sanitizedPrompt = StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
-    options = options.stream().filter(StringUtils::isNotBlank).map(String::trim).filter(StringUtils::isNotBlank).distinct().toList();
+    options = CollectionUtils.nullSafeList(options).stream().filter(StringUtils::isNotBlank).map(String::trim).filter(StringUtils::isNotBlank).distinct().toList();
     final Map<String, Object> payload = new LinkedHashMap<>();
     payload.put(KIND, pauseKind.name());
     if (CollectionUtils.isNotEmpty(options)) {
@@ -56,17 +57,23 @@ public final class HumanInTheLoopTool extends Tool {
     if (CollectionUtils.isNotEmpty(context)) {
       payload.put(CONTEXT, context);
     }
-    toolContext.requestConfirmation(sanitizedPrompt, payload);
+    ToolUtils.requestConfirmationAndPause(toolContext, sanitizedPrompt, payload);
     return Map.of();
   }
 
   private static Map<String, Object> confirm(final ToolConfirmation confirmation, final SessionPauseKind pauseKind) {
     return switch (pauseKind) {
-      case DECISION -> Map.of();
+      // The decision is surfaced in the function response so the LLM can reason about
+      // whether to proceed or abort — especially critical in the rejection case where
+      // the LLM must not continue with the originally requested action.
+      case DECISION -> Map.of("decision", confirmation.confirmed() ? "ALLOW" : "DISALLOW");
       case TEXT -> {
+        if (!confirmation.confirmed()) {
+          yield Map.of("status", "cancelled");
+        }
         // noinspection unchecked
         final String answer = CollectionUtils.getStringValueFromMap((Map<String, Object>) confirmation.payload(), "answer");
-        yield Map.of("answer", Objects.requireNonNull(answer));
+        yield Map.of("status", "answered", "answer", Objects.requireNonNull(answer));
       }
       case UNKNOWN -> // noinspection unchecked
         CollectionUtils.nullSafeMap((Map<String, Object>) confirmation.payload());

@@ -79,8 +79,8 @@ public abstract class Tool extends BaseTool {
       final ToolRiskLevel toolRiskLevel = descriptor().riskLevel();
       if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
         if (toolContext.toolConfirmation().isEmpty()) {
-          toolContext.requestConfirmation(String.format("Please approve or reject the tool call %s() by responding with a"
-              + " FunctionResponse with an expected ToolConfirmation payload.", name()));
+          ToolUtils.requestConfirmationAndPause(toolContext, String.format("Please approve or reject the tool call %s() by responding with a"
+              + " FunctionResponse with an expected ToolConfirmation payload.", name()), args);
           return Single.just(ImmutableMap.of("error", "This tool call requires confirmation, please approve or reject."));
         } else if (!toolContext.toolConfirmation().get().confirmed()) {
           return Single.just(ImmutableMap.of("error", "This tool call is rejected."));
