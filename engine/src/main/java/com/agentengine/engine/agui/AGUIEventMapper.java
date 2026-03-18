@@ -94,12 +94,12 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       for (final Part part : parts) {
         if (part.thought().orElse(false) || internal) {
           final String thoughtText = part.text().orElse("");
-          if (StringUtils.isNotEmpty(thoughtText)) {
+          if (StringUtils.isNotEmpty(thoughtText) && partial) {
             if (state.currentTextMessageId != null) {
               flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
             }
             flowable = flowable.concatWith(startThinkingIfNeeded()).concatWith(startThinkingMessageIfNeeded())
-                .concatWith(mapThinkingContent(thoughtText, partial)).concatWith(endThinkingMessageIfNeeded(partial));
+                .concatWith(mapThinkingContent(thoughtText)).concatWith(endThinkingMessageIfNeeded(true));
           }
         } else {
           final String text = part.text().orElse(null);
@@ -187,8 +187,8 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return Flowable.just(event);
   }
 
-  private Flowable<BaseEvent> mapThinkingContent(final String text, final boolean partial) {
-    if (StringUtils.isEmpty(text) || !partial) {
+  private Flowable<BaseEvent> mapThinkingContent(final String text) {
+    if (StringUtils.isEmpty(text)) {
       return Flowable.empty();
     }
     return emitThoughtContentIfNeeded(text);
@@ -238,9 +238,7 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     }
     LOG.debug("Processing message mapping - msgId={}, partial={}, isNewText={}", state.currentTextMessageId, partial,
         state.textBuffer.isEmpty());
-    if (!partial && !state.textBuffer.isEmpty()) {
-      // partial=false but chunks already streamed: skip (we've already emitted this
-      // content)
+    if (!partial) {
       return Flowable.empty();
     }
 
@@ -327,14 +325,14 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     return prefix + sequence;
   }
 
-  private Flowable<StepFinishedEvent> finishStepIfNeeded(final Event event) {
+  private Flowable<BaseEvent> finishStepIfNeeded(final Event event) {
     if (!event.turnComplete().orElse(false) || !hasStepStarted()) {
       return Flowable.empty();
     }
     return finishStep();
   }
 
-  private Flowable<StepFinishedEvent> finishStep() {
+  private Flowable<BaseEvent> finishStep() {
     return Flowable.defer(() -> {
       final String stepName = state.currentStepName;
       state.currentStepName = null;
@@ -342,7 +340,10 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
       stepEvent.setStepName(stepName);
       decorateEvent(stepEvent);
       LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", stepEvent.getStepName());
-      return Flowable.just(stepEvent);
+      // ThinkingEnd is a higher-level lifecycle event that spans multiple partial thought
+      // blocks — unlike TextMessageEnd and ThinkingTextMessageEnd, it is not tied to any
+      // content arriving, so it must be explicitly closed here before the step finishes.
+      return closeThinkingIfNeeded().concatWith(Flowable.just(stepEvent));
     });
   }
 
