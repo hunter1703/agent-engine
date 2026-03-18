@@ -3,6 +3,7 @@ package com.agentengine.engine.agui;
 import com.agentengine.engine.EventMapper;
 import com.agentengine.engine.api.agui.CorrectionEvent;
 import com.agentengine.engine.api.agui.CorrectionMetadata;
+import com.agentengine.engine.api.agui.ThinkingChunkEvent;
 import com.agentengine.engine.utils.CorrectionUtils;
 import com.agentengine.engine.utils.EventUtils;
 import com.agentengine.util.common.CollectionUtils;
@@ -271,10 +272,10 @@ public final class AGUIEventMapper implements EventMapper<Event, BaseEvent> {
     if (!state.isThinking || !state.thinkingMessageOpen) {
       return Flowable.empty();
     }
-    final ThinkingTextMessageContentEvent content = new ThinkingTextMessageContentEvent();
-    content.setRawEvent(Map.of("delta", text));
+    final ThinkingChunkEvent content = new ThinkingChunkEvent();
+    content.setDelta(text);
     decorateEvent(content);
-    LOG.debug("Generated output event - eventType=ThinkingTextMessageContentEvent");
+    LOG.debug("Generated output event - eventType=ThinkingChunkEvent");
     return Flowable.just(content);
   }
 

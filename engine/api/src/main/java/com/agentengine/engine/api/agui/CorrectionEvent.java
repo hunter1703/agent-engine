@@ -1,15 +1,12 @@
 package com.agentengine.engine.api.agui;
 
-import com.agui.core.event.CustomEvent;
-import java.util.Map;
-
-public class CorrectionEvent extends CustomEvent {
+public class CorrectionEvent extends BaseCustomEvent {
   private String correctionType;
   private String code;
   private String message;
 
   public CorrectionEvent(final CorrectionMetadata correctionMetadata) {
-    setRawEvent(Map.of("type", "correction"));
+    super("correction");
     this.correctionType = correctionMetadata.type();
     this.code = correctionMetadata.code();
     this.message = correctionMetadata.message();
