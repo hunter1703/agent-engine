@@ -1,9 +1,12 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.engine.api.agui.ReasoningEndEvent;
+import com.agentengine.engine.api.agui.ReasoningMessageContentEvent;
+import com.agentengine.engine.api.agui.ReasoningMessageEndEvent;
+import com.agentengine.engine.api.agui.ReasoningMessageStartEvent;
+import com.agentengine.engine.api.agui.ReasoningStartEvent;
 import com.agui.core.event.*;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.Map;
 
 /**
  * Maps AG-UI events to OpenAI Responses API output events.
@@ -70,31 +73,28 @@ public final class ResponsesEventMapper {
       return outputItemDone("message");
     }
 
-    // Thinking/reasoning events
-    if (event instanceof ThinkingTextMessageContentEvent thinking) {
-      Object rawEvent = thinking.getRawEvent();
-      // noinspection unchecked
-      Map<String, Object> deltaObj = rawEvent instanceof Map ? (Map<String, Object>) rawEvent : Map.of();
-      String delta = CollectionUtils.getStringValueFromMap(deltaObj, "delta");
+    // Reasoning events
+    if (event instanceof ReasoningMessageContentEvent reasoning) {
+      String delta = reasoning.getDelta();
       if (delta == null || delta.isEmpty()) {
         return Flowable.empty();
       }
       return reasoningDelta(delta);
     }
 
-    if (event instanceof ThinkingTextMessageStartEvent) {
+    if (event instanceof ReasoningMessageStartEvent) {
       return outputItemAdded("reasoning");
     }
 
-    if (event instanceof ThinkingTextMessageEndEvent) {
+    if (event instanceof ReasoningMessageEndEvent) {
       return outputItemDone("reasoning");
     }
 
-    if (event instanceof ThinkingStartEvent) {
+    if (event instanceof ReasoningStartEvent) {
       return Flowable.just(new ResponseOutputEvent("response.reasoning.started", null, null, null));
     }
 
-    if (event instanceof ThinkingEndEvent) {
+    if (event instanceof ReasoningEndEvent) {
       return Flowable.just(new ResponseOutputEvent("response.reasoning.done", null, null, null));
     }
 

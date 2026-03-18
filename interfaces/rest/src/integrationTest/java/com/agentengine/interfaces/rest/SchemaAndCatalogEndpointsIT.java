@@ -74,6 +74,26 @@ class SchemaAndCatalogEndpointsIT {
   }
 
   @Test
+  void shouldReturnAgentWhenCatalogSearchFiltersById() {
+    given().contentType("application/json").body("""
+        {
+          "assetType": "agent",
+          "query": {
+            "filter": {
+              "field": "id",
+              "op": "EQ",
+              "values": ["agent-catalog"]
+            },
+            "includeCount": true
+          }
+        }
+        """).when().post("/v1/catalog/search").then().statusCode(200)
+        .body("items.size()", greaterThanOrEqualTo(1))
+        .body("items[0].id", org.hamcrest.Matchers.equalTo("agent-catalog"))
+        .body("total", org.hamcrest.Matchers.greaterThanOrEqualTo(1));
+  }
+
+  @Test
   void shouldReturnBadRequestWhenCatalogListUnsupportedType() {
     given().contentType("application/json").body("{\"assetType\":\"unsupported\"}").when().post("/v1/catalog/list").then().statusCode(400);
   }
