@@ -8,9 +8,10 @@ public enum ParallelStoppingPolicy {
   UNKNOWN,
   /** Wait for all branches to complete unless timeout occurs. */
   ALL_COMPLETE,
-  /** Stop once the first successful branch completes. */
-  FIRST_SUCCESS,
-  /** Stop once a configurable number of successful branches is reached. */
+  /**
+   * Stop once a configurable number of successful branches is reached. To stop
+   * after the first success, set quorum to 1.
+   */
   QUORUM;
 
   public static ParallelStoppingPolicy valueOfOrDefault(final String value) {

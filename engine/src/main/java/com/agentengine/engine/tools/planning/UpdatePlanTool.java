@@ -23,7 +23,7 @@ public final class UpdatePlanTool extends Tool {
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
       @ToolSchema(name = "title", description = "New title for the plan (optional)", optional = true) String title,
       @ToolSchema(name = "goal", description = "New goal for the plan (optional)", optional = true) String goal) {
-    final RunState runState = RunUtils.getState(toolContext.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
     final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");

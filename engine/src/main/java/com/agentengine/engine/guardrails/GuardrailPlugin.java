@@ -62,8 +62,8 @@ public final class GuardrailPlugin extends BasePlugin {
     if (StringUtils.isBlank(text)) {
       return Maybe.empty();
     }
-    final GuardrailDecision decision = GuardrailUtils
-        .evaluate(GuardrailContext.builder().invocationContext(invocationContext).text(text).build(), guardrails, policy.errorMode());
+    final GuardrailDecision decision = GuardrailUtils.evaluate(new GuardrailContext(text, invocationContext), guardrails,
+        policy.errorMode());
     if (policy.executionMode() == GuardrailExecutionMode.OPTIMISTIC) {
       if (decision.action() != GuardrailAction.ALLOW) {
         GuardrailUtils.recordViolation(invocationContext, optimisticFlagDecision(decision));
@@ -92,8 +92,8 @@ public final class GuardrailPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    final GuardrailDecision decision = GuardrailUtils.evaluate(
-        GuardrailContext.builder().invocationContext(invocationContext).text(content.text()).build(), guardrails, policy.errorMode());
+    final GuardrailDecision decision = GuardrailUtils.evaluate(new GuardrailContext(content.text(), invocationContext), guardrails,
+        policy.errorMode());
     return handleOutputDecision(invocationContext, llmResponse, content, decision);
   }
 
@@ -149,7 +149,7 @@ public final class GuardrailPlugin extends BasePlugin {
       if (!requiresRegeneration(decision)) {
         return Maybe.empty();
       }
-      RunUtils.getState(invocationContext).requestContinuation();
+      RunUtils.getOrInitState(invocationContext).requestContinuation();
       return Maybe.empty();
     }
 
@@ -193,8 +193,8 @@ public final class GuardrailPlugin extends BasePlugin {
     if (invocationContext == null || StringUtils.isBlank(invocationContext.invocationId())) {
       return;
     }
-    final CompletableFuture<GuardrailDecision> future = CompletableFuture.supplyAsync(() -> GuardrailUtils
-        .evaluate(GuardrailContext.builder().invocationContext(invocationContext).text(text).build(), guardrails, policy.errorMode()));
+    final CompletableFuture<GuardrailDecision> future = CompletableFuture
+        .supplyAsync(() -> GuardrailUtils.evaluate(new GuardrailContext(text, invocationContext), guardrails, policy.errorMode()));
     setOptimisticFuture(invocationContext, future);
   }
 

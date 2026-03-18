@@ -20,13 +20,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
-class TurnCompletionResponseProcessorTest {
-  private static final TurnCompletionResponseProcessor PROCESSOR = new TurnCompletionResponseProcessor(null);
+class RunCompletionResponseProcessorTest {
+  private static final RunCompletionResponseProcessor PROCESSOR = new RunCompletionResponseProcessor(null);
 
   @Test
   void shouldConsumeContinuationOnNonPartialNonFinalResponses() {
     final InvocationContext context = invocationContext("agent-1", "session-1");
-    RunUtils.getState(context).requestContinuation();
+    RunUtils.getOrInitState(context).requestContinuation();
     final LlmResponse response = LlmResponse.builder()
         .content(Content.builder().role("model")
             .parts(java.util.List
@@ -38,7 +38,7 @@ class TurnCompletionResponseProcessorTest {
 
     assertThat(updated.turnComplete().orElse(false)).isTrue();
     assertThat(updated.finishReason()).isEmpty();
-    assertThat(RunUtils.getState(context).hasContinuationRequested()).isFalse();
+    assertThat(RunUtils.getOrInitState(context).hasContinuationRequested()).isFalse();
   }
 
   @Test

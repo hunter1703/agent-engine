@@ -31,7 +31,7 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
     }
     final Map<String, Object> response = CollectionUtils
         .nullSafeMutableMap(_execute(toolContext, taskId, null, null, null, newStatus, result));
-    final Plan currentPlan = RunUtils.getState(toolContext.invocationContext()).plan();
+    final Plan currentPlan = RunUtils.getOrInitState(toolContext.invocationContext()).plan();
     final Task nextTask = PlanningUtils.findNextTodoTask(currentPlan);
     if (nextTask != null) {
       response.put("next_task", "Next recommended task: [" + nextTask.getTaskId() + "] (" + nextTask.getName() + ")");

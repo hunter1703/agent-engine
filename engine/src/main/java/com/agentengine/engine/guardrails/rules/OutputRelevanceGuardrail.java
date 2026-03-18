@@ -15,6 +15,41 @@ import com.agentengine.engine.utils.RunUtils;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Detects and corrects output drift from the user's original request via
+ * semantic scoring.
+ *
+ * <p>
+ * <b>Mechanism:</b> Scores the model's output against an anchor prompt (derived
+ * from the user's original request and agent context) using semantic
+ * similarity. If the score is below the configured threshold, the output is
+ * considered off-topic. The guardrail tracks consecutive off-topic attempts per
+ * session and applies a configured mode to decide whether to steer (request
+ * regeneration), allow anyway, or block.
+ *
+ * <p>
+ * <b>Modes (with max steering retries):</b>
+ * <ul>
+ * <li><b>STEER_ONLY:</b> Always returns WARN (triggers regeneration
+ * indefinitely).
+ * <li><b>STEER_THEN_ALLOW:</b> Returns WARN for up to N retries, then ALLOW
+ * (content accepted regardless of score).
+ * <li><b>STEER_THEN_BLOCK:</b> Returns WARN for up to N retries, then BLOCK
+ * (content rejected after N attempts). Default if mode is UNKNOWN.
+ * </ul>
+ *
+ * <p>
+ * <b>Retry counter:</b> Tracks consecutive off-topic outputs per session.
+ * Resets to zero when output is on-topic (score >= threshold) or when the
+ * guardrail allows the output (after max retries in STEER_THEN_ALLOW mode).
+ * This prevents infinite steering loops while allowing recovery if the model
+ * succeeds later.
+ *
+ * <p>
+ * <b>Use case:</b> Prevent the model from drifting into tangential topics,
+ * maintaining focus on the user's original intent when multi-turn conversations
+ * or complex prompts cause hallucination.
+ */
 public final class OutputRelevanceGuardrail implements Guardrail {
   private final OutputRelevanceGuardrailRule config;
   private final RelevanceScorer relevanceScorer;
@@ -43,7 +78,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
     final String anchor = OutputRelevanceUtils.buildAnchorPrompt(context.invocationContext(), config);
     final double score = relevanceScorer.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
-    final RunState runState = RunUtils.getState(context.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(context.invocationContext());
 
     if (score >= threshold) {
       runState.resetOffTopicRetries();

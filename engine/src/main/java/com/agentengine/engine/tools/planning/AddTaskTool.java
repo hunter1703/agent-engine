@@ -27,7 +27,7 @@ public final class AddTaskTool extends Tool {
       @ToolSchema(name = "name", description = "Short name for the new task") String name,
       @ToolSchema(name = "goal", description = "The goal or expected result of this task") String goal,
       @ToolSchema(name = "description", description = "Detailed description of the task", optional = true) String description) {
-    final RunState runState = RunUtils.getState(toolContext.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
     final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");

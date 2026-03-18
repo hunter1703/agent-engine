@@ -44,7 +44,7 @@ class GuardrailPluginTest {
     final boolean empty = plugin.beforeModelCallback(callbackContext, requestBuilder).isEmpty().blockingGet();
 
     assertThat(empty).isTrue();
-    assertThat(RunUtils.getState(invocationContext).violations()).extracting(violation -> violation.code())
+    assertThat(RunUtils.getOrInitState(invocationContext).violations()).extracting(violation -> violation.code())
         .contains(GuardrailConstants.Code.INPUT_PATTERN);
   }
 

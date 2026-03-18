@@ -19,6 +19,6 @@ public final class ViewPlanTool extends Tool {
 
   public Plan execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext) {
-    return RunUtils.getState(toolContext.invocationContext()).plan();
+    return RunUtils.getOrInitState(toolContext.invocationContext()).plan();
   }
 }

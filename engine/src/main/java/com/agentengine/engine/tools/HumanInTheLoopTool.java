@@ -48,7 +48,8 @@ public final class HumanInTheLoopTool extends Tool {
   private static Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options,
       final Map<String, Object> context, final SessionPauseKind pauseKind) {
     final String sanitizedPrompt = StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
-    options = CollectionUtils.nullSafeList(options).stream().filter(StringUtils::isNotBlank).map(String::trim).filter(StringUtils::isNotBlank).distinct().toList();
+    options = CollectionUtils.nullSafeList(options).stream().filter(StringUtils::isNotBlank).map(String::trim)
+        .filter(StringUtils::isNotBlank).distinct().toList();
     final Map<String, Object> payload = new LinkedHashMap<>();
     payload.put(KIND, pauseKind.name());
     if (CollectionUtils.isNotEmpty(options)) {

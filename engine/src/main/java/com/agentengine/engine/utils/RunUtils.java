@@ -10,7 +10,7 @@ public final class RunUtils {
   private RunUtils() {
   }
 
-  public static RunState getState(final InvocationContext context) {
+  public static RunState getOrInitState(final InvocationContext context) {
     final Map<String, BaseAgentState> agentStates = context.agentStates();
     final String agentId = agentId(context);
     final Object rawState = ((Map<?, ?>) agentStates).get(agentId);

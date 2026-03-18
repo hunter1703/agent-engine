@@ -58,7 +58,7 @@ public final class OutputRelevanceUtils {
   }
 
   private static String planAnchor(final InvocationContext context) {
-    final Plan plan = RunUtils.getState(context).plan();
+    final Plan plan = RunUtils.getOrInitState(context).plan();
     if (plan == null) {
       return "";
     }

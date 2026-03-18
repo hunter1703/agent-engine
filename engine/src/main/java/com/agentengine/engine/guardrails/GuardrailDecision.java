@@ -4,6 +4,36 @@ import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 
+/**
+ * The decision returned by a guardrail evaluation.
+ *
+ * <p>
+ * Encodes the action to take (allow, warn, block, escalate) and contextual
+ * information (code, message, details) for logging, debugging, and feedback.
+ *
+ * <h3>Guarantees</h3>
+ *
+ * <ul>
+ * <li><b>Action semantics:</b> The action determines flow behavior:
+ * <ul>
+ * <li>{@code ALLOW} — content passes; agent processing continues.
+ * <li>{@code WARN} — content allowed but flagged for observation; agent
+ * continues.
+ * <li>{@code BLOCK} — content rejected and replaced with guardrail message. For
+ * input guardrails, the model call is prevented; the agent receives the block
+ * message as if from the model. For output guardrails, the model's response is
+ * discarded and replaced with the block message. Agent execution continues.
+ * <li>{@code ESCALATE} — content flagged for escalation; agent execution pauses
+ * pending human review decision.
+ * </ul>
+ * <li><b>Merging semantics:</b> When multiple guardrails evaluate the same
+ * context, the highest-severity decision prevails (ESCALATE > BLOCK > WARN >
+ * ALLOW). A single blocking guardrail prevents execution even if others allow.
+ * <li><b>Non-null action:</b> Action defaults to {@code ALLOW} if null.
+ * <li><b>Non-null args map:</b> {@code toolArgs} is never null — it's an empty
+ * map if absent.
+ * </ul>
+ */
 public record GuardrailDecision(GuardrailAction action, String code, String message, Map<String, Object> details) {
 
   public GuardrailDecision {

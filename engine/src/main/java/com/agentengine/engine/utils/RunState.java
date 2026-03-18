@@ -25,6 +25,7 @@ public final class RunState extends BaseAgentState {
   private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
   private boolean continuationRequested;
   private int offTopicRetries;
+  private int turnsUsed;
   private final List<Violation> violations = new ArrayList<>();
 
   public RunState() {
@@ -34,9 +35,10 @@ public final class RunState extends BaseAgentState {
    * Reconstructs persisted RunState fields from the session event log.
    *
    * <p>
-   * Persisted fields (plan, lastToolCalls, continuationRequested) are rebuilt
-   * from event history. Transient fields (violations, offTopicRetries,
-   * thinkingOpen) always start fresh.
+   * Persisted fields (plan, lastToolCalls) are rebuilt from event history.
+   * Transient fields (violations, offTopicRetries, turnsUsed,
+   * continuationRequested) always start fresh, scoped to the current invocation
+   * only.
    */
   public static RunState buildFrom(final List<Event> events) {
     if (CollectionUtils.isEmpty(events)) {
@@ -71,6 +73,10 @@ public final class RunState extends BaseAgentState {
     return plan;
   }
 
+  public boolean hasActivePlan() {
+    return plan != null && !plan.getStatus().isTerminal();
+  }
+
   public List<ToolCallSignature> lastToolCalls() {
     return List.copyOf(lastToolCalls);
   }
@@ -95,13 +101,8 @@ public final class RunState extends BaseAgentState {
 
   public void updateLastToolCalls(final List<ToolCallSignature> toolCalls) {
     lastToolCalls.clear();
-    if (CollectionUtils.isEmpty(toolCalls)) {
-      return;
-    }
-    for (final ToolCallSignature call : toolCalls) {
-      if (call != null) {
-        lastToolCalls.add(call);
-      }
+    if (CollectionUtils.isNotEmpty(toolCalls)) {
+      lastToolCalls.addAll(toolCalls);
     }
   }
 
@@ -133,6 +134,10 @@ public final class RunState extends BaseAgentState {
 
   public void resetOffTopicRetries() {
     offTopicRetries = 0;
+  }
+
+  public boolean consumeTurn(final int limit) {
+    return ++turnsUsed >= limit;
   }
 
   public void requestContinuation() {

@@ -23,7 +23,7 @@ public final class FinishPlanTool extends Tool {
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext,
       @ToolSchema(name = "status", description = "Final status of the plan", enums = {"done", "abandoned"}) String status,
       @ToolSchema(name = "result", description = "The final result or summary of the plan") String result) {
-    final RunState runState = RunUtils.getState(toolContext.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
     final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");

@@ -30,7 +30,7 @@ public final class CreatePlanTool extends Tool {
       @ToolSchema(name = "title", description = "Short, descriptive title of the plan") String title,
       @ToolSchema(name = "goal", description = "Description of what this plan accomplishes") String goal,
       @ToolSchema(name = "tasks", description = "Flat list of tasks, use 'parent_id' matching another task's 'id' for logical hierarchy") List<Task> tasks) {
-    final RunState runState = RunUtils.getState(toolContext.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
     final Plan existingPlan = runState.plan();
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();

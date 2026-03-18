@@ -13,6 +13,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Enforces text content constraints on input and output: maximum length and
+ * blocked patterns.
+ *
+ * <p>
+ * <b>Behavior:</b> Evaluates text in two sequential checks:
+ * <ol>
+ * <li>If a max length is configured and exceeded, the configured action
+ * (BLOCK/WARN) is returned with details on actual vs. max length.
+ * <li>If any configured blocked pattern (regex) matches the text, the
+ * configured action is returned.
+ * </ol>
+ *
+ * <p>
+ * <b>Defaults:</b> INPUT stage has a 12,000-character default limit (unless
+ * explicitly configured). OUTPUT stage has no length limit by default. INPUT
+ * stage ignores custom blocked patterns if none are configured (using an empty
+ * default). OUTPUT stage respects custom patterns.
+ *
+ * <p>
+ * <b>Use cases:</b> Protect against excessively long inputs (DoS), prevent
+ * injection of specific patterns (e.g., code snippets, sensitive keywords), and
+ * enforce output format constraints.
+ */
 public final class TextContentGuardrail implements Guardrail {
   private static final int DEFAULT_MAX_INPUT = 12_000;
   private static final List<String> DEFAULT_INPUT_BLOCK_PATTERNS = List.of();

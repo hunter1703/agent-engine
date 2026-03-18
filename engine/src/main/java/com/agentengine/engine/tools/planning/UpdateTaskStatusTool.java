@@ -19,7 +19,7 @@ public abstract class UpdateTaskStatusTool extends Tool {
 
   protected Map<String, Object> _execute(final ToolContext toolContext, final String taskId, final String name, final String goal,
       final String description, TaskStatus newStatus, String result) {
-    final RunState runState = RunUtils.getState(toolContext.invocationContext());
+    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
     final Plan currentPlan = runState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");

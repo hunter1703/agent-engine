@@ -15,6 +15,7 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.google.adk.models.BaseLlm;
+import com.google.common.cache.CacheBuilder;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -59,7 +60,7 @@ public final class CompactionContextManager implements ContextManager {
     this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     this.modelProvider = modelProvider;
     this.sessionRepository = sessionRepository;
-    this.summaryCache = new Cache<>(com.google.common.cache.CacheBuilder.newBuilder().maximumSize(1000), key -> {
+    this.summaryCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), key -> {
       final String[] split = key.split(":");
       return loadSummary(split[0], split[1]);
     });

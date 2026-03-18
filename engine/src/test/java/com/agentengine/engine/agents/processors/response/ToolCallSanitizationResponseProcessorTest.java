@@ -34,7 +34,7 @@ class ToolCallSanitizationResponseProcessorTest {
         .updatedResponse();
 
     assertThat(updated).isSameAs(response);
-    assertThat(RunUtils.getState(context).lastToolCalls()).singleElement().satisfies(signature -> {
+    assertThat(RunUtils.getOrInitState(context).lastToolCalls()).singleElement().satisfies(signature -> {
       assertThat(signature.name()).isEqualTo("search");
       assertThat(signature.args()).containsEntry("query", "weather");
     });
@@ -54,7 +54,7 @@ class ToolCallSanitizationResponseProcessorTest {
     assertThat(updated.content()).isPresent();
     assertThat(updated.content().orElseThrow().parts().orElseThrow()).extracting(part -> part.text().orElse(null))
         .containsExactly("Working on it");
-    assertThat(RunUtils.getState(context).violations()).extracting(violation -> violation.code()).contains("partial_tool_calls");
+    assertThat(RunUtils.getOrInitState(context).violations()).extracting(violation -> violation.code()).contains("partial_tool_calls");
   }
 
   private static InvocationContext invocationContext(final String agentId, final String sessionId) {

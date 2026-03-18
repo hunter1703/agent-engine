@@ -18,15 +18,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Injects corrective prompts for RunState violations into the next request.
+ * Injects corrective prompts from prior violations into the request.
  *
  * <p>
- * Responsibilities: - Convert {@link com.agentengine.engine.utils.Violation}
- * instances into correction events. - Append correction content to the request
- * payload. - Clear violations after they are emitted.
+ * When the model produces output that violates a protocol (e.g., tool calls in
+ * partial responses), a violation is recorded with a correction message. This
+ * processor retrieves those violations and appends their correction messages as
+ * user content to the next request, providing the model with explicit feedback
+ * on how to correct its behavior.
  *
- * <p>
- * Ownership: RunState violation remediation and correction prompt emission.
+ * <h3>Guarantees</h3>
+ *
+ * <ul>
+ * <li>All accumulated violations are converted into correction content and
+ * appended to the request.
+ * <li>After violations are processed, the violation list is cleared for the
+ * next turn.
+ * <li>If no violations are present, the request passes through unchanged.
+ * <li>Correction content is added as user messages (role="user") to the
+ * request.
+ * </ul>
+ *
+ * <h3>Expectations from upstream</h3>
+ *
+ * <ul>
+ * <li>Session violation state must be initialized in
+ * {@code RunUtils.getOrInitState(context)}.
+ * <li>Prior response processors have recorded any violations that need
+ * correction.
+ * </ul>
  */
 public final class CorrectionProcessor implements RequestProcessor {
   public static final CorrectionProcessor INSTANCE = new CorrectionProcessor();
@@ -38,7 +58,7 @@ public final class CorrectionProcessor implements RequestProcessor {
 
   @Override
   public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
-    final RunState runState = RunUtils.getState(context);
+    final RunState runState = RunUtils.getOrInitState(context);
     final List<Violation> violations = runState.violations();
 
     if (CollectionUtils.isEmpty(violations)) {

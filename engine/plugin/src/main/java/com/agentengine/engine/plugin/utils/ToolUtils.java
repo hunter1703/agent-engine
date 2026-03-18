@@ -27,10 +27,11 @@ public final class ToolUtils {
   }
 
   /**
-   * Requests confirmation from the user and ends the current invocation, pausing the agentic loop
-   * until the user responds. Both calls are required together: {@code requestConfirmation} alone
-   * does not stop the loop; without {@code setEndInvocation}, ADK will re-invoke the LLM before
-   * the user has had a chance to respond.
+   * Requests confirmation from the user and ends the current invocation, pausing
+   * the agentic loop until the user responds. Both calls are required together:
+   * {@code requestConfirmation} alone does not stop the loop; without
+   * {@code setEndInvocation}, ADK will re-invoke the LLM before the user has had
+   * a chance to respond.
    */
   public static void requestConfirmationAndPause(final ToolContext toolContext, final String prompt, final Object payload) {
     toolContext.requestConfirmation(prompt, payload);

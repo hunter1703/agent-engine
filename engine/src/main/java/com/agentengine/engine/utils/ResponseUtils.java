@@ -24,20 +24,11 @@ public final class ResponseUtils {
 
   /* Mirrors {@code Event.finalResponse()} semantics at the LLM-response level. */
   public static boolean isFinalAnswer(final LlmResponse response) {
-    if (!hasVisibleText(response)) {
+    if (!hasVisibleText(response) || response.partial().orElse(false)) {
       return false;
     }
-    if (response.partial().orElse(false)) {
-      return false;
-    }
-    final Content content = response.content().orElse(null);
-    if (content == null) {
-      return true;
-    }
-    final List<Part> parts = content.parts().orElse(List.of());
-    final boolean hasFunctionPayloads = parts.stream()
-        .anyMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
-    return !hasFunctionPayloads;
+    final List<Part> parts = response.content().map(content -> content.parts().orElse(List.of())).orElse(List.of());
+    return parts.stream().noneMatch(part -> part.functionCall().isPresent() || part.functionResponse().isPresent());
   }
 
   public static Single<ResponseProcessingResult> single(final LlmResponse response) {

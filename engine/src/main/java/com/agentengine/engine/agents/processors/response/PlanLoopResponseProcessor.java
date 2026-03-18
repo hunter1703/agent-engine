@@ -13,15 +13,32 @@ import com.google.adk.models.LlmResponse;
 import io.reactivex.rxjava3.core.Single;
 
 /**
- * Enforces plan/task completion before the final answer.
+ * Enforces plan/task completion before final-answer responses.
  *
  * <p>
- * Responsibilities: - Reject final-answer signals when the plan is incomplete.
- * - Surface active task status violations on non-tool turns. - Strip invalid
- * final-answer signals when plan validation fails.
+ * Validates that any final-answer response corresponds to a completed plan.
+ * When a final answer is signaled while tasks remain open, the response is
+ * rejected and continuation is requested so the model can continue working
+ * toward completion.
  *
- * <p>
- * Ownership: plan/task completion validation and enforcement.
+ * <h3>Guarantees</h3>
+ *
+ * <ul>
+ * <li>Final-answer responses are allowed only when the plan is absent or
+ * already completed.
+ * <li>If a final answer is signaled while the plan has open tasks, a violation
+ * is emitted and continuation is requested (the model regenerates without
+ * finalizing).
+ * <li>Partial responses and tool-call responses pass through unchanged.
+ * </ul>
+ *
+ * <h3>Expectations from upstream</h3>
+ *
+ * <ul>
+ * <li>Session plan state must be initialized in
+ * {@code RunUtils.getOrInitState(context)}.
+ * <li>Prior processors have completed their modifications to the response.
+ * </ul>
  */
 public final class PlanLoopResponseProcessor implements ResponseProcessor {
   public static final PlanLoopResponseProcessor INSTANCE = new PlanLoopResponseProcessor();
@@ -35,13 +52,12 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
       return ResponseUtils.single(response);
     }
 
-    final RunState runState = RunUtils.getState(context);
-    final Plan plan = runState.plan();
-
-    if (plan == null || plan.getStatus().isTerminal()) {
-      // no plan or completed plan
+    final RunState runState = RunUtils.getOrInitState(context);
+    if (!runState.hasActivePlan()) {
       return ResponseUtils.single(response);
     }
+
+    final Plan plan = runState.plan();
 
     if (!ResponseUtils.isFinalAnswer(response)) {
       return ResponseUtils.single(response);

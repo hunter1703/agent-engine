@@ -28,11 +28,55 @@ import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Policy-aware parallel orchestrator that emits only aggregated orchestrator
- * output.
+ * Runs sub-agents in parallel and aggregates their outputs according to
+ * stopping and aggregation policies.
  *
  * <p>
- * Branch success is based on terminal flow signals from branch output events.
+ * <b>Execution Model:</b> All sub-agent branches are executed concurrently. The
+ * stopping policy determines when to stop waiting for additional branches
+ * (QUORUM stops after N successes where N is configurable, ALL_COMPLETE waits
+ * for all). The aggregation policy determines how successful outputs are
+ * combined (BEST_EFFORT selects longest text, MAJORITY_VOTE groups by
+ * similarity, CONCATENATE combines all).
+ *
+ * <p>
+ * <b>Success Definition:</b> A branch is successful if (1) it completes without
+ * exception, AND (2) its final event is terminal (has finishReason set). Both
+ * conditions must be true.
+ *
+ * <p>
+ * <b>Fallback Behavior:</b> If the actual number of successful branches is less
+ * than required by the stopping policy, fallback is triggered. In fallback,
+ * BEST_EFFORT logic is used regardless of aggregation policy: the longest text
+ * output is selected from all available branches (successful or failed), or an
+ * empty result if no text exists.
+ *
+ * <p>
+ * <b>Aggregation Strategies:</b>
+ * <ul>
+ * <li><b>BEST_EFFORT:</b> Selects the longest text output from successful
+ * branches (or from all branches if none succeeded). Breaks ties by preferring
+ * earlier branch order.
+ * <li><b>MAJORITY_VOTE:</b> Groups successful outputs by normalized text
+ * (lowercase, trimmed, single spaces), then returns the longest text from the
+ * group with the most matches. If groups tie by size, selects the group with
+ * longest text.
+ * <li><b>CONCATENATE:</b> Joins all successful outputs with blank line
+ * separators.
+ * </ul>
+ *
+ * <p>
+ * <b>Policy Interaction:</b> The stopping policy and aggregation policy are
+ * independent. A policy combination like QUORUM (quorum=1) + MAJORITY_VOTE
+ * means: "stop after 1 succeeds, then apply majority vote to that 1 result"
+ * (which will trivially be that result). QUORUM (quorum=3) + CONCATENATE means:
+ * "wait for 3 to succeed, then concatenate all 3 results."
+ *
+ * <p>
+ * <b>Error Handling:</b> If a branch throws an exception, it's recorded as
+ * failed (not successful). Violations are recorded when fallback is triggered,
+ * capturing the stopping policy, aggregation policy, required vs. actual
+ * successes, and completion status.
  */
 public final class ParallelOrchestratorAgent extends Agent {
   private final ParallelAggregationPolicy aggregationPolicy;
@@ -58,7 +102,7 @@ public final class ParallelOrchestratorAgent extends Agent {
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
     final Result result = executeBranches(invocationContext);
     if (result.fallbackUsed()) {
-      RunUtils.getState(invocationContext)
+      RunUtils.getOrInitState(invocationContext)
           .addViolation(Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
               .message(ParallelOrchestrationConstants.Message.FALLBACK).correctionMessage(ParallelOrchestrationConstants.Message.FALLBACK)
               .details(Map.of(ParallelOrchestrationConstants.DetailKey.STOPPING_POLICY, stoppingPolicy.name(),
@@ -220,7 +264,6 @@ public final class ParallelOrchestratorAgent extends Agent {
       return 0;
     }
     return switch (stoppingPolicy) {
-      case FIRST_SUCCESS -> 1;
       case QUORUM -> Math.min(Math.max(1, quorum), branchCount);
       case ALL_COMPLETE, UNKNOWN -> branchCount;
     };

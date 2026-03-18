@@ -19,16 +19,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Sanitizes tool calls in model responses.
+ * Sanitizes tool calls in model responses, enforcing protocol constraints and
+ * detecting logical errors.
  *
- * <p>
- * Responsibilities: - Partial responses: detect and strip tool call/response
- * parts; emit a protocol violation so the model is corrected on its next turn.
- * - Full responses: detect and strip redundant tool-call sequences (same calls
- * as the previous turn); emit a redundancy violation.
+ * <h3>Guarantees</h3>
  *
- * <p>
- * Ownership: tool-call protocol enforcement across partial and full responses.
+ * <ul>
+ * <li><b>Partial responses:</b> No tool call or response parts appear in
+ * partial responses. (If present, they are stripped.)
+ * <li><b>Redundant tool calls:</b> Tool calls that are identical (same name and
+ * arguments) to the previous turn are removed from the response.
+ * <li><b>Invalid tool calls:</b> If all tool calls in a full response are
+ * invalid (stripped), the response is passed back through the loop for
+ * regeneration (continuation is signaled).
+ * </ul>
  */
 public final class ToolCallSanitizationResponseProcessor implements ResponseProcessor {
   public static final ToolCallSanitizationResponseProcessor INSTANCE = new ToolCallSanitizationResponseProcessor();
@@ -59,7 +63,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
         ? "Tool calls and responses are not allowed in partial responses." + " Emit them only in non-partial turns."
         : "Tool calls and responses are not allowed in partial responses." + " Emit them only in non-partial turns."
             + " Following tool parts have been stripped: " + toolSummary + ".";
-    RunUtils.getState(context).addViolation(
+    RunUtils.getOrInitState(context).addViolation(
         Violation.builder("partial_tool_calls").message("Tool calls in partial response").correctionMessage(correctionMessage).build());
 
     final List<Part> textOnly = parts.stream().filter(p -> p.functionCall().isEmpty() && p.functionResponse().isEmpty()).toList();
@@ -77,7 +81,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
       return ResponseUtils.single(response);
     }
 
-    final Set<ToolCallSignature> previousCalls = Set.copyOf(RunUtils.getState(context).lastToolCalls());
+    final Set<ToolCallSignature> previousCalls = Set.copyOf(RunUtils.getOrInitState(context).lastToolCalls());
     final List<FunctionCall> redundant = toolCalls.stream().filter(call -> previousCalls.contains(toSignature(call))).toList();
 
     if (CollectionUtils.isNotEmpty(redundant)) {
@@ -85,7 +89,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
     }
 
     final List<ToolCallSignature> currentCalls = toolCalls.stream().map(ToolCallSanitizationResponseProcessor::toSignature).toList();
-    RunUtils.getState(context).updateLastToolCalls(currentCalls);
+    RunUtils.getOrInitState(context).updateLastToolCalls(currentCalls);
     return ResponseUtils.single(response);
   }
 
@@ -94,7 +98,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
     final String names = redundant.stream().map(c -> c.name().orElse("unknown")).collect(Collectors.joining(", "));
     final String msg = String.format("Redundancy Detected: You are repeating tool calls [%s] with the exact same arguments"
         + " as the previous turn. Please adjust your strategy or update the arguments.", names);
-    RunUtils.getState(context)
+    RunUtils.getOrInitState(context)
         .addViolation(Violation.builder("redundant_tool_calls").message("Redundant tool calls detected").correctionMessage(msg).build());
 
     final List<Part> filtered = response.content().flatMap(Content::parts).orElse(List.of()).stream()
@@ -106,7 +110,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
     if (hasRemainingToolParts) {
       return ResponseUtils.single(filteredResponse);
     }
-    RunUtils.getState(context).requestContinuation();
+    RunUtils.getOrInitState(context).requestContinuation();
     return ResponseUtils.single(filteredResponse);
   }
 

@@ -2,7 +2,6 @@ package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.tools.ToolDescriptor;
 import com.agentengine.engine.utils.RunUtils;
 import com.agentengine.engine.utils.Violation;
 import com.agentengine.util.common.CollectionUtils;
@@ -40,18 +39,11 @@ public final class GuardrailUtils {
     return decision;
   }
 
-  public static GuardrailDecision evaluateTool(final InvocationContext invocationContext, final ToolDescriptor toolDescriptor,
-      final Map<String, Object> toolArgs, final List<? extends Guardrail> guardrails, final GuardrailErrorMode errorMode) {
-    return evaluate(
-        GuardrailContext.builder().invocationContext(invocationContext).toolDescriptor(toolDescriptor).toolArgs(toolArgs).build(),
-        guardrails, errorMode);
-  }
-
   public static void recordViolation(final InvocationContext invocationContext, final GuardrailDecision decision) {
     if (invocationContext == null || decision == null) {
       return;
     }
-    RunUtils.getState(invocationContext)
+    RunUtils.getOrInitState(invocationContext)
         .addViolation(Violation.builder(StringUtils.isBlank(decision.code()) ? GuardrailConstants.Code.VIOLATION : decision.code())
             .message(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())
             .correctionMessage(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())

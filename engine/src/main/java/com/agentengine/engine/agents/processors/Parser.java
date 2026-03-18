@@ -2,7 +2,6 @@ package com.agentengine.engine.agents.processors;
 
 import com.agentengine.engine.utils.ContentUtils;
 import com.agentengine.util.common.StringUtils;
-import com.google.adk.models.GeminiUtil;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -37,8 +36,7 @@ public final class Parser {
   }
 
   public LlmRequest preProcess(final LlmRequest request) {
-    final LlmRequest.Builder builder = request.toBuilder()
-        .contents(sanitizeRequestContents(GeminiUtil.stripThoughts(request.contents()), areToolsEnabled));
+    final LlmRequest.Builder builder = request.toBuilder().contents(sanitizeRequestContents(request.contents(), areToolsEnabled));
     if (StringUtils.isNotBlank(protocol)) {
       builder.appendInstructions(List.of(protocol));
     }

@@ -511,7 +511,7 @@ public final class PlanningUtils {
     return status != null && status.isTerminal();
   }
 
-  public static boolean isTerminalStatus(final com.agentengine.engine.tools.planning.beans.PlanStatus status) {
+  public static boolean isTerminalStatus(final PlanStatus status) {
     return status != null && status.isTerminal();
   }
 
@@ -531,9 +531,9 @@ public final class PlanningUtils {
           values.add(s.getValue());
         }
       }
-    } else if (enumClass == com.agentengine.engine.tools.planning.beans.PlanStatus.class) {
-      for (com.agentengine.engine.tools.planning.beans.PlanStatus s : com.agentengine.engine.tools.planning.beans.PlanStatus.values()) {
-        if (s != com.agentengine.engine.tools.planning.beans.PlanStatus.UNKNOWN && s.isTerminal() == terminal) {
+    } else if (enumClass == PlanStatus.class) {
+      for (PlanStatus s : PlanStatus.values()) {
+        if (s != PlanStatus.UNKNOWN && s.isTerminal() == terminal) {
           values.add(s.getValue());
         }
       }

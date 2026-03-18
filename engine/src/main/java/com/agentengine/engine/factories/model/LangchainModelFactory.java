@@ -1,14 +1,14 @@
 package com.agentengine.engine.factories.model;
 
 import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.model.NormalizedLangChain4j;
+import com.agentengine.engine.model.LangChain4jModel;
 import com.agentengine.engine.utils.ModelUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.adk.models.langchain4j.LangChain4j;
+import com.google.adk.models.BaseLlm;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public abstract class LangchainModelFactory extends DelegatingModelFactory<LangChain4j> {
+public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseLlm> {
   private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
 
   static {
@@ -43,11 +43,11 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
   }
 
   @Override
-  protected LangChain4j buildDelegate(final ModelConfig modelConfig) {
+  protected BaseLlm buildDelegate(final ModelConfig modelConfig) {
     final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
     final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
     final ChatModels models = buildChatModels(modelConfig, responseFormat);
-    return new NormalizedLangChain4j(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
+    return new LangChain4jModel(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
   }
 
   private record ChatModels(ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {
@@ -75,7 +75,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
   private static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
-        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).build();
+        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).returnThinking(true).build();
   }
 
   private static StreamingChatModel buildOllamaStreaming(final ModelConfig config, final ResponseFormat responseFormat) {
@@ -87,7 +87,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
   private static StreamingChatModel buildOpenAIStreaming(final ModelConfig config, final ResponseFormat responseFormat) {
     final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
     return OpenAiStreamingChatModel.builder().modelName(config.getModel()).baseUrl(config.getBaseUrl()).temperature(config.getTemperature())
-        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).build();
+        .topP(config.getTopP()).stop(config.getStopTokens()).responseFormat(format).returnThinking(true).build();
   }
 
   protected static ResponseFormat getResponseFormat(final ResponseFormatType responseFormatType) {
@@ -197,7 +197,6 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
     return builder.build();
   }
 
-  @SuppressWarnings("unchecked")
   private static JsonSchemaElement buildArraySchema(final Map<String, Object> jsonSchema) {
     final JsonArraySchema.Builder builder = JsonArraySchema.builder();
     final String description = CollectionUtils.getStringValueFromMap(jsonSchema, "description");
@@ -208,12 +207,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<LangC
     if (items instanceof final Map<?, ?> itemsMap) {
       builder.items(buildJsonSchemaElement((Map<String, Object>) itemsMap));
     } else if (items instanceof final List<?> list) {
-      final List<JsonSchemaElement> itemElements = new ArrayList<>();
-      for (final Object item : list) {
-        if (item instanceof final Map<?, ?> entryMap) {
-          itemElements.add(buildJsonSchemaElement((Map<String, Object>) entryMap));
-        }
-      }
+      final List<JsonSchemaElement> itemElements = buildAnyOfElements(list);
       if (!itemElements.isEmpty()) {
         builder.items(JsonAnyOfSchema.builder().anyOf(itemElements).build());
       }
