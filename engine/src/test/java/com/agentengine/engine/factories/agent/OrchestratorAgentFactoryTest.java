@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 class OrchestratorAgentFactoryTest {
 
   @Test
-  void shouldBuildManagerWithoutTransferTargetsAndWithSubAgentTools() {
+  void shouldBuildManagerWithTransferEnabledAndWithSubAgentTools() {
     final TestFixtures fixtures = new TestFixtures();
     final OrchestratorAgentFactory factory = fixtures.createFactory();
     final OrchestratorAgentConfig config = fixtures.createConfig(OrchestrationMode.MANAGER);
@@ -46,8 +46,8 @@ class OrchestratorAgentFactoryTest {
     final LlmAgent llmAgent = extractDelegatedLlmAgent(agent);
 
     assertThat(agent.subAgents()).isEmpty();
-    assertThat(llmAgent.disallowTransferToParent()).isTrue();
-    assertThat(llmAgent.disallowTransferToPeers()).isTrue();
+    assertThat(llmAgent.disallowTransferToParent()).isFalse();
+    assertThat(llmAgent.disallowTransferToPeers()).isFalse();
     assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name).containsExactly("human_in_the_loop",
         "sub-agent");
   }

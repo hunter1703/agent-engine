@@ -62,7 +62,7 @@ class GuardrailPluginTest {
     assertThat(response).isNotNull();
     final FunctionCall functionCall = response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
     assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
-    assertThat(functionCall.args().orElseThrow()).containsEntry("kind", "DECISION").containsEntry("options", List.of("ALLOW", "DISALLOW"));
+    assertThat(functionCall.args().orElseThrow()).containsEntry("kind", "DECISION").containsEntry("prompt", "Input needs approval.");
   }
 
   @Test
@@ -78,7 +78,22 @@ class GuardrailPluginTest {
     assertThat(response).isNotNull();
     final FunctionCall functionCall = response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
     assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
-    assertThat(functionCall.args().orElseThrow()).containsEntry("kind", "DECISION").containsEntry("options", List.of("ALLOW", "DISALLOW"));
+    assertThat(functionCall.args().orElseThrow()).containsEntry("kind", "DECISION").containsEntry("prompt", "Output needs approval.");
+  }
+
+  @Test
+  void shouldEmitInternalHumanDecisionToolCallForOptimisticOutputEscalation() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", optimisticOutputEscalationPolicy()));
+    final InvocationContext invocationContext = invocationContext("agent-1", "session-output-opt-escalate");
+    final CallbackContext callbackContext = mock(CallbackContext.class);
+    when(callbackContext.invocationContext()).thenReturn(invocationContext);
+    final LlmResponse llmResponse = LlmResponse.builder().content(textContent("forbidden-output")).build();
+
+    final LlmResponse response = plugin.afterModelCallback(callbackContext, llmResponse).blockingGet();
+
+    assertThat(response).isNotNull();
+    final FunctionCall functionCall = response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
+    assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
   }
 
   private static GuardrailPolicyFactory.GuardrailPolicy optimisticInputPolicy() {
@@ -111,6 +126,17 @@ class GuardrailPluginTest {
     rule.setMessage("Output needs approval.");
     rule.setBlockedPatterns(List.of("forbidden-output"));
     return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC,
+        Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
+  }
+
+  private static GuardrailPolicyFactory.GuardrailPolicy optimisticOutputEscalationPolicy() {
+    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
+    rule.setId("output-opt-escalate");
+    rule.setStage(GuardrailStage.OUTPUT.name());
+    rule.setAction(GuardrailAction.ESCALATE.name());
+    rule.setMessage("Output needs approval.");
+    rule.setBlockedPatterns(List.of("forbidden-output"));
+    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.OPTIMISTIC,
         Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
   }
 
