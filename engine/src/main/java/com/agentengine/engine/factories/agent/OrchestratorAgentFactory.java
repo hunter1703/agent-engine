@@ -2,7 +2,6 @@ package com.agentengine.engine.factories.agent;
 
 import com.agentengine.engine.agents.DelegatedAgent;
 import com.agentengine.engine.agents.ParallelOrchestratorAgent;
-import com.agentengine.engine.agents.SequentialOrchestratorAgent;
 import com.agentengine.engine.api.beans.config.BaseAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
 import com.agentengine.engine.api.beans.config.OrchestratorAgentConfig;
@@ -10,6 +9,7 @@ import com.agentengine.engine.api.beans.config.OrchestratorParallelConfig;
 import com.agentengine.engine.api.services.AgentService;
 import com.agentengine.engine.builders.agent.BaseLlmAgentBuilder;
 import com.agentengine.engine.builders.agent.ParallelOrchestratorAgentBuilder;
+import com.agentengine.engine.builders.agent.SequentialAgentBuilder;
 import com.agentengine.engine.factories.model.ModelProvider;
 import com.agentengine.engine.plugin.Agent;
 import com.agentengine.engine.tools.ToolFactory;
@@ -69,11 +69,11 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     return subAgents;
   }
 
-  private SequentialOrchestratorAgent buildSequential(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+  private DelegatedAgent buildSequential(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
     if (CollectionUtils.isEmpty(subAgents)) {
       throw new IllegalArgumentException("orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id=" + config.getId());
     }
-    return new SequentialOrchestratorAgent.Builder().agentConfig(config).subAgents(subAgents).build();
+    return new SequentialAgentBuilder().agentConfig(config).subAgents(subAgents).build();
   }
 
   private static ParallelOrchestratorAgent buildParallel(final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {

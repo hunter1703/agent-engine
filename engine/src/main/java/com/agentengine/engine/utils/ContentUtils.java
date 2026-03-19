@@ -97,4 +97,8 @@ public final class ContentUtils {
         .filter(c -> !c.parts().orElse(List.of()).isEmpty())
         .toList();
   }
+
+  public static Content stripToolParts(final Content content) {
+    return content.toBuilder().parts(content.parts().orElse(List.of()).stream().filter(p -> p.functionCall().isEmpty() && p.functionResponse().isEmpty()).toList()).build();
+  }
 }

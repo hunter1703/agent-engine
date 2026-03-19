@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.DelegatedAgent;
-import com.agentengine.engine.agents.SequentialOrchestratorAgent;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
@@ -23,6 +22,7 @@ import com.agentengine.engine.tools.ToolServiceImpl;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.agents.LlmAgent;
+import com.google.adk.agents.SequentialAgent;
 import com.google.adk.events.Event;
 import com.google.adk.models.BaseLlmConnection;
 import com.google.adk.models.LlmRequest;
@@ -69,22 +69,27 @@ class OrchestratorAgentFactoryTest {
   }
 
   @Test
-  void shouldBuildSequentialWithCustomSequentialOrchestrator() {
+  void shouldBuildSequentialWithAdkSequentialAgent() {
     final TestFixtures fixtures = new TestFixtures();
     final OrchestratorAgentFactory factory = fixtures.createFactory();
     final OrchestratorAgentConfig config = fixtures.createConfig(OrchestrationMode.SEQUENTIAL);
 
-    final Agent agent = factory.build(config);
+    final DelegatedAgent agent = (DelegatedAgent) factory.build(config);
+    final BaseAgent delegated = extractDelegatedAgent(agent);
 
-    assertThat(agent).isInstanceOf(SequentialOrchestratorAgent.class);
+    assertThat(delegated).isInstanceOf(SequentialAgent.class);
     assertThat(agent.subAgents()).extracting(BaseAgent::name).containsExactly("sub-agent");
   }
 
   private static LlmAgent extractDelegatedLlmAgent(final DelegatedAgent agent) {
+    return (LlmAgent) extractDelegatedAgent(agent);
+  }
+
+  private static BaseAgent extractDelegatedAgent(final DelegatedAgent agent) {
     try {
       final Field field = DelegatedAgent.class.getDeclaredField("delegated");
       field.setAccessible(true);
-      return (LlmAgent) field.get(agent);
+      return (BaseAgent) field.get(agent);
     } catch (ReflectiveOperationException ex) {
       throw new IllegalStateException("Failed to access delegated agent.", ex);
     }
