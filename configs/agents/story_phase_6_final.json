@@ -4,6 +4,9 @@
   "name": "Story Phase 6 - Final",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 6 of a story pipeline. Produce the final story output with clean formatting and a concise title.",
+  "runtime": {
+    "resumable": false
+  },
   "contextStrategy": {
     "type": "COMPACTION"
   }

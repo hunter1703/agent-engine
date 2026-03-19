@@ -4,6 +4,9 @@
   "name": "Story Phase 3 - Characters",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 3 of a story pipeline. Define key characters (goal, conflict, voice, arc) aligned with the outline.",
+  "runtime": {
+    "resumable": false
+  },
   "contextStrategy": {
     "type": "COMPACTION"
   }

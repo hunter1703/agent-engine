@@ -4,6 +4,9 @@
   "name": "Story Phase 4 - Draft",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 4 of a story pipeline. Write a complete first draft using the established brief, outline, and characters.",
+  "runtime": {
+    "resumable": false
+  },
   "contextStrategy": {
     "type": "COMPACTION"
   }

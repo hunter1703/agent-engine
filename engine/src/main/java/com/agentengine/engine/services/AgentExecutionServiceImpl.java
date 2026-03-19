@@ -175,11 +175,15 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
 
     final Agent agent = agentProvider.create(agentConfig);
     final PluginGroup pluginGroup = buildPluginGroup(agent);
-    final App.Builder appBuilder = App.builder().name(agentConfig.getId()).rootAgent(agent).plugins(List.of(pluginGroup))
+    final App.Builder appBuilder = App.builder().name(runtimeAppName(agentConfig.getId())).rootAgent(agent).plugins(List.of(pluginGroup))
         .resumabilityConfig(new ResumabilityConfig(isResumable(agentConfig)));
 
     final Runner runner = Runner.builder().app(appBuilder.build()).sessionService(sessionRepository).build();
     return new AgentSessionRuntime(sessionId, runner, agentConfig);
+  }
+
+  static String runtimeAppName(final String agentId) {
+    return agentId.replaceAll("[^A-Za-z0-9_]", "_");
   }
 
   private static boolean isResumable(final BaseAgentConfig config) {

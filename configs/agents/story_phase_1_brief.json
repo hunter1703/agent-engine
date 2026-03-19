@@ -4,6 +4,9 @@
   "name": "Story Phase 1 - Brief",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 1 of a story pipeline. Given the user's request, produce a concise story brief with genre, tone, core conflict, and narrative promise.",
+  "runtime": {
+    "resumable": false
+  },
   "contextStrategy": {
     "type": "COMPACTION"
   }

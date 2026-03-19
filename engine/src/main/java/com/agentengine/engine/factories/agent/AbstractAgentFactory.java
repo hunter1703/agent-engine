@@ -28,7 +28,8 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
     final LlmAgent.Builder builder = LlmAgent.builder();
     builder.disallowTransferToParent(false).disallowTransferToPeers(false).maxSteps(config.getRuntime().getMaxSteps()).model(model);
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
-    return baseLlmAgentBuilder.systemInstructions(config.getSystemPrompt()).appendTools(toolFactory.buildTools(config.getTools()))
+    return baseLlmAgentBuilder.includeHumanInTheLoopTool(config.getRuntime() == null || config.getRuntime().isResumable())
+        .systemInstructions(config.getSystemPrompt()).appendTools(toolFactory.buildTools(config.getTools()))
         .appendToolSets(toolFactory.buildToolsets(config.getTools())).agentConfig(config);
   }
 }

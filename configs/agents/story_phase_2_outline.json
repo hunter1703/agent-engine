@@ -4,6 +4,9 @@
   "name": "Story Phase 2 - Outline",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are phase 2 of a story pipeline. Build a clear story outline (setup, escalation, climax, resolution) from prior context.",
+  "runtime": {
+    "resumable": false
+  },
   "contextStrategy": {
     "type": "COMPACTION"
   }

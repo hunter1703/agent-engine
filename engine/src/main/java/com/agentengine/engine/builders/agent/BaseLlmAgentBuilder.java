@@ -16,6 +16,7 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
   private final List<BaseTool> tools = new ArrayList<>();
   private final List<BaseToolset> toolSets = new ArrayList<>();
   private final LlmAgent.Builder llmAgentBuilder;
+  private boolean includeHumanInTheLoopTool = true;
 
   public BaseLlmAgentBuilder(final LlmAgent.Builder llmAgentBuilder) {
     this.llmAgentBuilder = llmAgentBuilder;
@@ -52,10 +53,17 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
     return this;
   }
 
+  public BaseLlmAgentBuilder includeHumanInTheLoopTool(final boolean includeHumanInTheLoopTool) {
+    this.includeHumanInTheLoopTool = includeHumanInTheLoopTool;
+    return this;
+  }
+
   @Override
   public DelegatedAgent build() {
     final List<Object> toolsAndToolsets = new ArrayList<>();
-    toolsAndToolsets.add(new HumanInTheLoopTool());
+    if (includeHumanInTheLoopTool) {
+      toolsAndToolsets.add(new HumanInTheLoopTool());
+    }
     toolsAndToolsets.addAll(tools);
     toolsAndToolsets.addAll(toolSets);
     final LlmAgent.Builder builder = llmAgentBuilder.name(name()).description(description()).subAgents(subAgents())
