@@ -1,6 +1,7 @@
 package com.agentengine.util.mongodb.mongo;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Operator;
 import com.agentengine.util.common.query.Query;
@@ -56,7 +57,7 @@ public final class MongoUtils {
   }
 
   private static Bson toSimpleFilterBson(Filter filter) {
-    String field = filter.getField();
+    String field = normalizeField(filter.getField());
     List<Object> value = filter.getValues();
     Operator op = filter.getOp();
 
@@ -85,10 +86,11 @@ public final class MongoUtils {
     if (sort == null || sort.getField() == null) {
       return null;
     }
+    final String field = normalizeField(sort.getField());
     return switch (sort.getOrder()) {
-      case ASC -> Sorts.ascending(sort.getField());
-      case DESC -> Sorts.descending(sort.getField());
-      case UNKNOWN -> Sorts.ascending(sort.getField()); // Defaulting to ascending
+      case ASC -> Sorts.ascending(field);
+      case DESC -> Sorts.descending(field);
+      case UNKNOWN -> Sorts.ascending(field); // Defaulting to ascending
     };
   }
 
@@ -114,5 +116,12 @@ public final class MongoUtils {
       return Projections.exclude(excludes.toArray(new String[0]));
     }
     return null;
+  }
+
+  private static String normalizeField(final String field) {
+    if (BaseEntity.FIELD_ID.equals(field)) {
+      return "_id";
+    }
+    return field;
   }
 }
