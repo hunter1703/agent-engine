@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.agents.DelegatedAgent;
+import com.agentengine.engine.agents.SequentialOrchestratorAgent;
 import com.agentengine.engine.agents.processors.Parser;
 import com.agentengine.engine.api.beans.config.DefaultAgentConfig;
 import com.agentengine.engine.api.beans.config.OrchestrationMode;
@@ -65,6 +66,18 @@ class OrchestratorAgentFactoryTest {
     assertThat(llmAgent.disallowTransferToParent()).isFalse();
     assertThat(llmAgent.disallowTransferToPeers()).isFalse();
     assertThat(llmAgent.tools().blockingGet()).extracting(com.google.adk.tools.BaseTool::name).containsExactly("human_in_the_loop");
+  }
+
+  @Test
+  void shouldBuildSequentialWithCustomSequentialOrchestrator() {
+    final TestFixtures fixtures = new TestFixtures();
+    final OrchestratorAgentFactory factory = fixtures.createFactory();
+    final OrchestratorAgentConfig config = fixtures.createConfig(OrchestrationMode.SEQUENTIAL);
+
+    final Agent agent = factory.build(config);
+
+    assertThat(agent).isInstanceOf(SequentialOrchestratorAgent.class);
+    assertThat(agent.subAgents()).extracting(BaseAgent::name).containsExactly("sub-agent");
   }
 
   private static LlmAgent extractDelegatedLlmAgent(final DelegatedAgent agent) {
