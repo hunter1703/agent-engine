@@ -71,7 +71,7 @@ public final class GuardrailUtils {
       if (StringUtils.isBlank(pattern)) {
         continue;
       }
-      final Pattern compile = Pattern.compile(pattern);
+      final Pattern compile = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
       final Matcher matcher = compile.matcher(text);
       if (matcher.find()) {
         return true;
