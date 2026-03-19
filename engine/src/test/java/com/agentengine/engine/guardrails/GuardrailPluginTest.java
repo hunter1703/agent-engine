@@ -6,13 +6,9 @@ import static org.mockito.Mockito.when;
 
 import com.agentengine.engine.api.beans.config.GuardrailAction;
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.GuardrailExecutionMode;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
 import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
-import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.plugin.tools.Tool;
 import com.agentengine.engine.tools.HumanInTheLoopTool;
-import com.agentengine.engine.utils.RunUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.BaseAgentState;
 import com.google.adk.agents.CallbackContext;
@@ -34,18 +30,18 @@ import org.junit.jupiter.api.Test;
 class GuardrailPluginTest {
 
   @Test
-  void shouldAllowThroughInputViolationWhenExecutionModeIsOptimistic() {
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", optimisticInputPolicy()));
+  void shouldReturnGuardrailBlockForInputViolation() {
+    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", blockingInputPolicy()));
     final InvocationContext invocationContext = invocationContext("agent-1", "session-1");
     final CallbackContext callbackContext = mock(CallbackContext.class);
     when(callbackContext.invocationContext()).thenReturn(invocationContext);
     final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(textContent("please process f040_forbidden payload")));
 
-    final boolean empty = plugin.beforeModelCallback(callbackContext, requestBuilder).isEmpty().blockingGet();
+    final LlmResponse response = plugin.beforeModelCallback(callbackContext, requestBuilder).blockingGet();
 
-    assertThat(empty).isTrue();
-    assertThat(RunUtils.getOrInitState(invocationContext).violations()).extracting(violation -> violation.code())
-        .contains(GuardrailConstants.Code.INPUT_PATTERN);
+    assertThat(response).isNotNull();
+    assertThat(response.content()).isPresent();
+    assertThat(response.content().orElseThrow().text()).contains("blocked in sync mode");
   }
 
   @Test
@@ -81,29 +77,14 @@ class GuardrailPluginTest {
     assertThat(functionCall.args().orElseThrow()).containsEntry("kind", "DECISION").containsEntry("prompt", "Output needs approval.");
   }
 
-  @Test
-  void shouldEmitInternalHumanDecisionToolCallForOptimisticOutputEscalation() {
-    final GuardrailPlugin plugin = new GuardrailPlugin(Map.of("agent-1", optimisticOutputEscalationPolicy()));
-    final InvocationContext invocationContext = invocationContext("agent-1", "session-output-opt-escalate");
-    final CallbackContext callbackContext = mock(CallbackContext.class);
-    when(callbackContext.invocationContext()).thenReturn(invocationContext);
-    final LlmResponse llmResponse = LlmResponse.builder().content(textContent("forbidden-output")).build();
-
-    final LlmResponse response = plugin.afterModelCallback(callbackContext, llmResponse).blockingGet();
-
-    assertThat(response).isNotNull();
-    final FunctionCall functionCall = response.content().orElseThrow().parts().orElseThrow().getFirst().functionCall().orElseThrow();
-    assertThat(functionCall.name()).contains(HumanInTheLoopTool.TOOL_NAME);
-  }
-
-  private static GuardrailPolicyFactory.GuardrailPolicy optimisticInputPolicy() {
+  private static GuardrailPolicyFactory.GuardrailPolicy blockingInputPolicy() {
     final TextContentGuardrailRule rule = new TextContentGuardrailRule();
     rule.setId("f040-input-opt-rule");
     rule.setStage(GuardrailStage.INPUT.name());
     rule.setAction(GuardrailAction.BLOCK.name());
     rule.setMessage("blocked in sync mode");
     rule.setBlockedPatterns(List.of("f040_forbidden"));
-    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.OPTIMISTIC,
+    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN,
         Map.of(GuardrailStage.INPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
   }
 
@@ -114,7 +95,7 @@ class GuardrailPluginTest {
     rule.setAction(GuardrailAction.ESCALATE.name());
     rule.setMessage("Input needs approval.");
     rule.setBlockedPatterns(List.of("forbidden-input"));
-    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC,
+    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN,
         Map.of(GuardrailStage.INPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
   }
 
@@ -125,18 +106,7 @@ class GuardrailPluginTest {
     rule.setAction(GuardrailAction.ESCALATE.name());
     rule.setMessage("Output needs approval.");
     rule.setBlockedPatterns(List.of("forbidden-output"));
-    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC,
-        Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
-  }
-
-  private static GuardrailPolicyFactory.GuardrailPolicy optimisticOutputEscalationPolicy() {
-    final TextContentGuardrailRule rule = new TextContentGuardrailRule();
-    rule.setId("output-opt-escalate");
-    rule.setStage(GuardrailStage.OUTPUT.name());
-    rule.setAction(GuardrailAction.ESCALATE.name());
-    rule.setMessage("Output needs approval.");
-    rule.setBlockedPatterns(List.of("forbidden-output"));
-    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.OPTIMISTIC,
+    return new GuardrailPolicyFactory.GuardrailPolicy(true, GuardrailErrorMode.FAIL_OPEN,
         Map.of(GuardrailStage.OUTPUT, List.of(new com.agentengine.engine.guardrails.rules.TextContentGuardrail(rule))));
   }
 
@@ -153,14 +123,6 @@ class GuardrailPluginTest {
     when(invocationContext.session()).thenReturn(session);
     when(invocationContext.agentStates()).thenReturn(agentStates);
     return invocationContext;
-  }
-
-  private static Tool runtimeTool(final String name, final String description) {
-    final Tool tool = mock(Tool.class);
-    when(tool.name()).thenReturn(name);
-    when(tool.description()).thenReturn(description);
-    when(tool.descriptor()).thenReturn(new ToolDescriptor(name, description, Map.of()));
-    return tool;
   }
 
   private static Content textContent(final String text) {

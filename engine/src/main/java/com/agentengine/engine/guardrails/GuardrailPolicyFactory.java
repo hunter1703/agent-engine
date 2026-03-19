@@ -1,7 +1,6 @@
 package com.agentengine.engine.guardrails;
 
 import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.GuardrailExecutionMode;
 import com.agentengine.engine.api.beans.config.GuardrailRule;
 import com.agentengine.engine.api.beans.config.GuardrailRuleType;
 import com.agentengine.engine.api.beans.config.GuardrailStage;
@@ -57,16 +56,12 @@ public final class GuardrailPolicyFactory {
     final GuardrailErrorMode errorMode = config.defaultOnErrorEnum() == GuardrailErrorMode.UNKNOWN
         ? GuardrailErrorMode.FAIL_OPEN
         : config.defaultOnErrorEnum();
-    final GuardrailExecutionMode executionMode = config.executionModeEnum() == GuardrailExecutionMode.UNKNOWN
-        ? GuardrailExecutionMode.SYNC
-        : config.executionModeEnum();
-    return new GuardrailPolicy(config.isEnabled(), errorMode, executionMode, stageVsGuardRails);
+    return new GuardrailPolicy(config.isEnabled(), errorMode, stageVsGuardRails);
   }
 
-  public record GuardrailPolicy(boolean enabled, GuardrailErrorMode errorMode, GuardrailExecutionMode executionMode,
-      Map<GuardrailStage, List<Guardrail>> stageToGuardrails) {
+  public record GuardrailPolicy(boolean enabled, GuardrailErrorMode errorMode, Map<GuardrailStage, List<Guardrail>> stageToGuardrails) {
     public static GuardrailPolicy disabled() {
-      return new GuardrailPolicy(false, GuardrailErrorMode.FAIL_OPEN, GuardrailExecutionMode.SYNC, Map.of());
+      return new GuardrailPolicy(false, GuardrailErrorMode.FAIL_OPEN, Map.of());
     }
 
     public List<Guardrail> guardrails(final GuardrailStage stage) {
