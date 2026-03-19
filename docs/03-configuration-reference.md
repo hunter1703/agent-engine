@@ -89,7 +89,6 @@ Note: repository currently persists sessions via Mongo-backed service implementa
 Top-level:
 
 - `enabled`
-- `executionMode`: `SYNC`, `OPTIMISTIC`
 - `defaultOnError`: `FAIL_OPEN`, `FAIL_CLOSED`
 - `rules`
 

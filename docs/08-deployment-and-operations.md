@@ -88,5 +88,4 @@ After availability, bootstrap sync script can upsert configs.
 
 1. Plugin jars are loaded dynamically from filesystem; keep plugin supply chain controlled.
 2. Shell tool (`run_cmd`) is high risk even with `rm` block; guardrail/tool exposure should be tightly scoped.
-3. Guardrails in `OPTIMISTIC` mode can allow brief window before async output decision resolves.
-4. gRPC service method dispatch is name-based; interface and method naming stability matters for distributed deployments.
+3. gRPC service method dispatch is name-based; interface and method naming stability matters for distributed deployments.

@@ -88,7 +88,6 @@ curl -s http://localhost:18080/schemas/model | jq .
 ```json
 {
   "enabled": true,
-  "executionMode": "SYNC",
   "defaultOnError": "FAIL_CLOSED",
   "rules": [
     {

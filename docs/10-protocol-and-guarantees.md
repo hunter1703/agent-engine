@@ -124,21 +124,10 @@ The engine does not synthesize `turnComplete` or reorder parts. ADK owns respons
 
 ## 10.5.3 Output stage (`afterModelCallback` + `onEventCallback`)
 
-### SYNC mode
-
 - guardrails evaluated immediately on finalized output text
 - `ALLOW`: pass through
 - `WARN`: record violation; may request regeneration when `retry_required=true` or relevance steer code
 - `BLOCK`/`ESCALATE`: replace output text with block/escalation message; escalate also pauses session
-
-### OPTIMISTIC mode
-
-- output decision is scheduled asynchronously
-- final/terminal events wait briefly for decision (`200ms`)
-- if blocking/escalating decision arrives:
-  - violation recorded
-  - invocation ended via event actions
-  - event content replaced with block message
 
 ## 10.5.4 Guardrail fallback mode on internal errors
 

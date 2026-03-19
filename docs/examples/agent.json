@@ -58,11 +58,6 @@
             "default" : true,
             "type" : "boolean"
           },
-          "executionMode" : {
-            "default" : "SYNC",
-            "enum" : [ "SYNC", "OPTIMISTIC" ],
-            "type" : "string"
-          },
           "rules" : {
             "items" : {
               "additionalProperties" : false,
@@ -446,24 +441,11 @@
           "view" : "READ_ONLY"
         }
       },
-      "/guardrails/executionMode" : {
-        "label" : "Execution Mode",
-        "widget" : "SELECT",
-        "step" : "general",
-        "section" : "general",
-        "order" : 20,
-        "access" : {
-          "create" : "EDITABLE",
-          "edit" : "EDITABLE",
-          "view" : "READ_ONLY"
-        },
-        "options" : [ "SYNC", "OPTIMISTIC" ]
-      },
       "/guardrails/rules" : {
         "label" : "Rules",
         "step" : "general",
         "section" : "general",
-        "order" : 40,
+        "order" : 30,
         "access" : {
           "create" : "EDITABLE",
           "edit" : "EDITABLE",

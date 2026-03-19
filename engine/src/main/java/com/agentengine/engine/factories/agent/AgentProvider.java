@@ -23,7 +23,6 @@ public class AgentProvider {
     this.defaultAgentFactory = (DefaultAgentFactory) typeVsFactory.get(BaseAgentConfig.AgentType.DEFAULT.name());
   }
 
-  @SuppressWarnings("unchecked")
   public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {
     // noinspection unchecked
     final AgentFactory<C, A> factory = (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);
