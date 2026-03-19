@@ -90,4 +90,11 @@ public final class ContentUtils {
     return content.parts().orElse(List.of()).stream().filter(part -> !part.thought().orElse(false)).map(Part::text)
         .flatMap(Optional::stream).anyMatch(StringUtils::isNotBlank);
   }
+
+  public static List<Content> stripThoughtParts(final List<Content> contents) {
+    return CollectionUtils.nullSafeList(contents).stream()
+        .map(c -> c.toBuilder().parts(c.parts().orElse(List.of()).stream().filter(p -> !p.thought().orElse(false)).toList()).build())
+        .filter(c -> !c.parts().orElse(List.of()).isEmpty())
+        .toList();
+  }
 }

@@ -1,7 +1,7 @@
 package com.agentengine.engine.plugins;
 
 import com.agentengine.engine.plugin.ContextManager;
-import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.engine.utils.ContentUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
@@ -11,11 +11,16 @@ import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Maybe;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Rebuilds model prompt contents using configured context managers per agent.
+ * Pre-processes model prompt contents before each LLM call.
+ *
+ * <p>Always strips thought parts from session history — thought traces must never be sent back to
+ * the model as regular context. Optionally reshapes the remaining contents through a per-agent
+ * {@link ContextManager} (e.g. last-N windowing, compaction).
  */
 public final class ContextManagementPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(ContextManagementPlugin.class);
@@ -30,27 +35,24 @@ public final class ContextManagementPlugin extends BasePlugin {
 
   @Override
   public Maybe<LlmResponse> beforeModelCallback(final CallbackContext callbackContext, final LlmRequest.Builder requestBuilder) {
-    final InvocationContext invocationContext = callbackContext.invocationContext();
-    final LlmRequest request = requestBuilder.build();
-    final LlmRequest updatedRequest = applyContextManager(request, invocationContext);
-    requestBuilder.contents(updatedRequest.contents());
+    final List<Content> stripped = ContentUtils.stripThoughtParts(requestBuilder.build().contents());
+    requestBuilder.contents(stripped);
+    applyContextManager(stripped, callbackContext.invocationContext()).ifPresent(requestBuilder::contents);
     return Maybe.empty();
   }
 
-  private LlmRequest applyContextManager(final LlmRequest request, final InvocationContext invocationContext) {
+  private Optional<List<Content>> applyContextManager(final List<Content> contents, final InvocationContext invocationContext) {
     final String agentId = invocationContext.agent().name();
     final ContextManager contextManager = contextManagerByAgentId.get(agentId);
     if (contextManager == null) {
-      return request;
+      return Optional.empty();
     }
     try {
-      final List<Content> contents = CollectionUtils.nullSafeList(request.contents());
-      final List<Content> prompt = contextManager.buildPrompt(agentId, invocationContext.session().id(), contents);
-      return request.toBuilder().contents(prompt).build();
+      return Optional.of(contextManager.buildPrompt(agentId, invocationContext.session().id(), contents));
     } catch (Exception ex) {
-      LOG.warn("Context manager failed for agent_id={} session_id={}; continuing with unmodified prompt.", agentId,
+      LOG.warn("Context manager failed for agent_id={} session_id={}; continuing with stripped prompt.", agentId,
           invocationContext.session().id(), ex);
-      return request;
+      return Optional.empty();
     }
   }
 }

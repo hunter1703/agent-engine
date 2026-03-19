@@ -35,6 +35,65 @@ class ContextManagementPluginTest {
   }
 
   @Test
+  void shouldStripThoughtPartsEvenWhenNoContextManagerConfigured() {
+    final Part thoughtPart = Part.builder().text("internal reasoning").thought(true).build();
+    final Part textPart = Part.fromText("visible text");
+    final Content mixedContent = Content.builder().role("model").parts(List.of(thoughtPart, textPart)).build();
+    final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(mixedContent));
+
+    final ContextManagementPlugin plugin = new ContextManagementPlugin(Map.of());
+
+    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
+
+    final List<Part> parts = requestBuilder.build().contents().getFirst().parts().orElseThrow();
+    assertThat(parts).hasSize(1);
+    assertThat(parts.getFirst().text()).hasValue("visible text");
+  }
+
+  @Test
+  void shouldStripThoughtPartsBeforePassingToContextManager() {
+    final Part thoughtPart = Part.builder().text("internal reasoning").thought(true).build();
+    final Part textPart = Part.fromText("visible text");
+    final Content mixedContent = Content.builder().role("model").parts(List.of(thoughtPart, textPart)).build();
+    final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(mixedContent));
+
+    final List<List<Content>> captured = new ArrayList<>();
+    final ContextManager contextManager = (agentId, sessionId, contents) -> {
+      captured.add(contents);
+      return contents;
+    };
+
+    final ContextManagementPlugin plugin = new ContextManagementPlugin(Map.of("agent-1", contextManager));
+    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
+
+    assertThat(captured).hasSize(1);
+    final List<Part> parts = captured.getFirst().getFirst().parts().orElseThrow();
+    assertThat(parts).hasSize(1);
+    assertThat(parts.getFirst().text()).hasValue("visible text");
+    assertThat(parts.getFirst().thought().orElse(false)).isFalse();
+  }
+
+  @Test
+  void shouldDropThoughtOnlyContentsEntirelyBeforePassingToContextManager() {
+    final Content thoughtOnly = Content.builder().role("model").parts(List.of(Part.builder().text("think").thought(true).build())).build();
+    final Content visible = textContent("hello");
+    final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(thoughtOnly, visible));
+
+    final List<List<Content>> captured = new ArrayList<>();
+    final ContextManager contextManager = (agentId, sessionId, contents) -> {
+      captured.add(contents);
+      return contents;
+    };
+
+    final ContextManagementPlugin plugin = new ContextManagementPlugin(Map.of("agent-1", contextManager));
+    plugin.beforeModelCallback(callbackContext("agent-1", "session-1"), requestBuilder).blockingGet();
+
+    assertThat(captured).hasSize(1);
+    assertThat(captured.getFirst()).hasSize(1);
+    assertThat(captured.getFirst().getFirst().text()).isEqualTo("hello");
+  }
+
+  @Test
   void shouldKeepOriginalContentsWhenContextManagerFails() {
     final LlmRequest.Builder requestBuilder = LlmRequest.builder().contents(List.of(textContent("original")));
     final ContextManager contextManager = (agentId, sessionId, contents) -> {

@@ -81,10 +81,6 @@ import java.util.UUID;
  * <li>Final: thinking appears as {@code thought=true} Part in the
  * {@code partial=false} response.
  * </ul>
- * <li><b>History reconstruction:</b> When session history is sent back to the
- * model in a new request, any {@code thought=true} parts from prior responses
- * are not present in the reconstructed assistant messages — they are removed
- * before the request reaches the model.
  * </ul>
  *
  * <h3>Expectations from upstream</h3>
@@ -269,9 +265,6 @@ public final class LangChain4jModel extends BaseLlm {
     final List<String> texts = new ArrayList<>();
     final List<ToolExecutionRequest> toolCalls = new ArrayList<>();
     content.parts().orElse(List.of()).forEach(part -> {
-      if (part.thought().orElse(false)) {
-        return;
-      }
       if (part.text().isPresent()) {
         texts.add(part.text().get());
       } else if (part.functionCall().isPresent()) {

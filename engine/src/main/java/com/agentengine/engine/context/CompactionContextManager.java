@@ -140,7 +140,7 @@ public final class CompactionContextManager implements ContextManager {
     }
     final StringBuilder sb = new StringBuilder(content.role().orElse("unknown")).append(": ");
     for (final Part part : content.parts().orElse(List.of())) {
-      if (part.text().isPresent() && StringUtils.isNotBlank(part.text().get()) && !part.thought().orElse(false)) {
+      if (part.text().isPresent() && StringUtils.isNotBlank(part.text().get())) {
         sb.append(part.text().get()).append(" ");
       }
       part.functionCall().ifPresent(fc -> sb.append("[tool_call: ").append(fc.name().orElse("?")).append(fc.args()).append("]"));
