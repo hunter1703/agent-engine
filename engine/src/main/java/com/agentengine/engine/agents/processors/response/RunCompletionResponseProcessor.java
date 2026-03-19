@@ -27,38 +27,33 @@ import io.reactivex.rxjava3.core.Single;
  * <li><b>Termination on final answers:</b>
  * <ul>
  * <li>If no continuation is requested: response has {@code finishReason=STOP}.
- * <li>If continuation is requested: response has no {@code finishReason} (loop
- * continues).
+ * <li>If continuation is requested: the retry continues unless the configured
+ * turn limit is reached.
  * </ul>
  * <li><b>Tool call handling:</b> Tool-call responses (non-final-answer) never
  * have {@code finishReason} set unless the turn limit is reached. The loop
  * continues regardless of continuation requests for tool calls.
- * <li><b>Turn limit enforcement:</b> When turn limit is reached (on
- * non-final-answer responses), the response receives {@code finishReason=STOP}
+ * <li><b>Turn limit enforcement:</b> Any non-partial response that keeps the
+ * loop alive (tool-call steps or continuation-driven retries) consumes a turn.
+ * When the limit is reached, the response receives {@code finishReason=STOP}
  * to terminate the loop.
  * </ul>
  *
  * <h3>Expectations from upstream</h3>
  *
  * <ul>
- * <li>Prior processors may request continuation via
- * {@code RunUtils.getOrInitState().requestContinuation()}. This processor
- * consumes that flag and acts on it (side effect: flag is removed after read).
  * <li>Partial responses must be properly marked:
  * {@code response.partial().orElse(false)} must reliably indicate whether a
  * response is a streaming delta or final assembly.
- * <li>Final-answer responses are marked by
- * {@code ResponseUtils.isFinalAnswer(response)}, which examines the response
- * structure (not the continuation flag).
  * </ul>
  *
  * <h3>State Management</h3>
  *
  * <p>
  * Turn consumption is tracked in {@link com.agentengine.engine.utils.RunState}
- * (scoped to the current invocation). Only tool-call responses
- * (non-final-answer) consume a turn. The limit applies per run — it resets with
- * each new user invocation.
+ * (scoped to the current invocation). Any non-partial response that does not
+ * already terminate the loop consumes a turn. The limit applies per run — it
+ * resets with each new user invocation.
  */
 public final class RunCompletionResponseProcessor implements ResponseProcessor {
 
@@ -74,13 +69,11 @@ public final class RunCompletionResponseProcessor implements ResponseProcessor {
       return ResponseUtils.single(response.toBuilder().turnComplete(false).build());
     }
     final RunState state = RunUtils.getOrInitState(context);
-    final boolean continuationRequested = state.consumeContinuation();
     final LlmResponse.Builder builder = response.toBuilder().turnComplete(true);
-    if (ResponseUtils.isFinalAnswer(response)) {
-      if (!continuationRequested) {
-        builder.finishReason(response.finishReason().orElse(new FinishReason(FinishReason.Known.STOP)));
-      }
-    } else if (state.consumeTurn(maxSteps)) {
+    // always consume continuation flag
+    final boolean continuationRequested = state.consumeContinuation();
+    final boolean hasStepsRemaining = state.consumeTurn(maxSteps);
+    if (!hasStepsRemaining || (ResponseUtils.isFinalAnswer(response) && !continuationRequested)) {
       builder.finishReason(response.finishReason().orElse(new FinishReason(FinishReason.Known.STOP)));
     }
     return ResponseUtils.single(builder.build());
