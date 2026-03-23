@@ -16,6 +16,7 @@ dependencies {
     implementation libs.json.path
     implementation libs.slf4j.api
     implementation libs.jakarta.validation.api
+    implementation libs.rxjava
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

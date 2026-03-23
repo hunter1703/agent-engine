@@ -1,20 +1,21 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.api.services.AgentExecutionService;
+import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.interfaces.rest.dto.AgentRequest.RequestType;
+import com.agentengine.util.ms.MicroServiceClientProvider;
 import com.agui.core.event.BaseEvent;
-import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.UUID;
+import org.reactivestreams.Publisher;
 
 @Singleton
-public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<AgentRequest, Flowable<BaseEvent>> {
+public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<AgentRequest, Publisher<BaseEvent>> {
 
   @Inject
-  public StreamAguiEventsRequestHandler(final AgentExecutionService agentExecutionService) {
-    super(agentExecutionService);
+  public StreamAguiEventsRequestHandler(final MicroServiceClientProvider clientProvider) {
+    super(clientProvider);
   }
 
   @Override
@@ -23,7 +24,7 @@ public class StreamAguiEventsRequestHandler extends AbstractAgentRequestHandler<
   }
 
   @Override
-  public Flowable<BaseEvent> handle(final AgentRequest request) {
+  public Publisher<BaseEvent> handle(final AgentRequest request) {
     if (request.getSessionId() == null) {
       request.setSessionId(UUID.randomUUID().toString());
     }

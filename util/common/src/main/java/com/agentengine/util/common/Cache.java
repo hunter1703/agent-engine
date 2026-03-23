@@ -1,5 +1,6 @@
 package com.agentengine.util.common;
 
+import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
@@ -11,7 +12,7 @@ public class Cache<K, V> {
   private final com.google.common.cache.Cache<K, Holder<? extends V>> delegate;
   private final Function<K, Holder<? extends V>> loader;
 
-  public Cache(final com.google.common.cache.CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> loader) {
+  public Cache(final CacheBuilder<Object, Object> delegate, final Function<K, ? extends V> loader) {
     this.delegate = delegate.build();
     this.loader = input -> new Holder<>(loader.apply(input));
   }

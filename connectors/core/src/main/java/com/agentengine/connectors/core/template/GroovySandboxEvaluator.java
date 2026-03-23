@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -26,7 +27,7 @@ public final class GroovySandboxEvaluator {
 
   private static final List<String> BLOCKED_SUBSTRINGS = List.of("classloader", "metaclass", "class.forname", "runtime.", "system.",
       "thread.", "processbuilder", "new file", "new url", "import ", "@grab");
-  private static final ExecutorService EVALUATION_EXECUTOR = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+  private static final ExecutorService EVALUATION_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
   static {
     Runtime.getRuntime().addShutdownHook(new Thread(EVALUATION_EXECUTOR::shutdownNow));

@@ -1,0 +1,107 @@
+package com.agentengine.runtime.tools.file;
+
+import com.agentengine.runtime.api.tools.ToolDescriptor;
+import com.agentengine.runtime.plugin.tools.Tool;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.HexFormat;
+import java.util.List;
+
+/**
+ * Base class for file operation tools. Provides common functionality like path
+ * resolution and content hashing.
+ */
+public abstract class BaseFileTool extends Tool {
+
+  protected BaseFileTool(final ToolDescriptor toolDescriptor) {
+    super(toolDescriptor);
+  }
+
+  protected static FileDetails readFile(Path path, long offset, long limit) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      List<String> selectedLines = new ArrayList<>();
+      long lineCount = 0;
+      long to = offset + limit;
+      try (InputStream in = Files.newInputStream(path);
+          DigestInputStream din = new DigestInputStream(in, digest);
+          BufferedReader reader = new BufferedReader(new InputStreamReader(din, StandardCharsets.UTF_8))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          lineCount++;
+
+          if (lineCount >= offset && lineCount < to) {
+            selectedLines.add(line);
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
+      return new FileDetails(lineCount, HexFormat.of().formatHex(digest.digest()), List.copyOf(selectedLines));
+    } catch (java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
+  }
+
+  /**
+   * Resolves a file path, handling both absolute and relative paths.
+   *
+   * @param filePath
+   *          the file path to resolve (can be absolute or relative)
+   * @return resolved Path
+   */
+  protected Path resolvePath(String filePath) {
+    Path path = Paths.get(filePath);
+
+    // If absolute path, use as-is
+    if (path.isAbsolute()) {
+      return path;
+    }
+
+    // Use current working directory for relative paths
+    String cwd = System.getProperty("user.dir", ".");
+    return Paths.get(cwd).resolve(filePath).normalize();
+  }
+
+  protected static String truncate(String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
+    }
+    return value.substring(0, maxLength) + "... [truncated]";
+  }
+
+  protected static class FileDetails {
+    private final long numLines;
+    private final String hash;
+    private final List<String> content;
+
+    protected FileDetails(long numLines, String hash, List<String> content) {
+      this.numLines = numLines;
+      this.hash = hash;
+      this.content = content;
+    }
+
+    public long getNumLines() {
+      return numLines;
+    }
+
+    public String getHash() {
+      return hash;
+    }
+
+    public List<String> getContent() {
+      return content;
+    }
+  }
+}

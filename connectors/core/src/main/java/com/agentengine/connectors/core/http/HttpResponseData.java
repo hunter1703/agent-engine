@@ -2,6 +2,7 @@ package com.agentengine.connectors.core.http;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public record HttpResponseData(int statusCode, Map<String, List<String>> headers, String body) {
 
@@ -12,6 +13,6 @@ public record HttpResponseData(int statusCode, Map<String, List<String>> headers
 
   public Map<String, String> flattenHeaders() {
     return headers.entrySet().stream().filter(entry -> !entry.getValue().isEmpty())
-        .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getFirst(), (left, right) -> left));
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getFirst(), (left, right) -> left));
   }
 }

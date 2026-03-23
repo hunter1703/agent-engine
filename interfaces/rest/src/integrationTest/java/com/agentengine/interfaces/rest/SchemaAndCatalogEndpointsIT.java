@@ -87,10 +87,8 @@ class SchemaAndCatalogEndpointsIT {
             "includeCount": true
           }
         }
-        """).when().post("/v1/catalog/search").then().statusCode(200)
-        .body("items.size()", greaterThanOrEqualTo(1))
-        .body("items[0].id", org.hamcrest.Matchers.equalTo("agent-catalog"))
-        .body("total", org.hamcrest.Matchers.greaterThanOrEqualTo(1));
+        """).when().post("/v1/catalog/search").then().statusCode(200).body("items.size()", greaterThanOrEqualTo(1))
+        .body("items[0].id", org.hamcrest.Matchers.equalTo("agent-catalog")).body("total", org.hamcrest.Matchers.greaterThanOrEqualTo(1));
   }
 
   @Test

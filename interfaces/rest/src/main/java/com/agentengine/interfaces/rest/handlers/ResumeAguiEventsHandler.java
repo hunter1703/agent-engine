@@ -2,23 +2,27 @@ package com.agentengine.interfaces.rest.handlers;
 
 import static com.agentengine.interfaces.rest.dto.AgentRequest.RequestType.RESUME_SESSION;
 
-import com.agentengine.engine.api.services.AgentExecutionService;
+import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
+import com.agentengine.util.ms.MicroServiceClientProvider;
 import com.agui.core.event.BaseEvent;
-import io.reactivex.rxjava3.core.Flowable;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.reactivestreams.Publisher;
 
 @Singleton
-public final class ResumeAguiEventsHandler extends AbstractAgentRequestHandler<ResumeSessionRequest, Flowable<BaseEvent>> {
-  public ResumeAguiEventsHandler(final AgentExecutionService agentExecutionService) {
-    super(agentExecutionService);
+public final class ResumeAguiEventsHandler extends AbstractAgentRequestHandler<ResumeSessionRequest, Publisher<BaseEvent>> {
+  
+  @Inject
+  public ResumeAguiEventsHandler(final MicroServiceClientProvider microServiceClientProvider) {
+    super(microServiceClientProvider);
   }
 
   @Override
-  public Flowable<BaseEvent> handle(final ResumeSessionRequest resumeRequest) {
-    return agentExecutionService().resumeSession(resumeRequest.getAgentId(), resumeRequest.getSessionId(), resumeRequest.getConfirmed(),
-        resumeRequest.getMessage());
+  public Publisher<BaseEvent> handle(final ResumeSessionRequest resumeRequest) {
+    return agentExecutionService().resumeSession(resumeRequest.getAgentId(), resumeRequest.getSessionId(),
+        resumeRequest.getConfirmationId(), resumeRequest.getConfirmed(), resumeRequest.getMessage());
   }
 
   @Override

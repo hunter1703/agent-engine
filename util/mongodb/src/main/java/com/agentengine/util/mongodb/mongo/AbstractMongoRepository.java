@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -41,7 +40,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoRepository.class);
 
-  protected MongoClient mongoClient;
+  private final MongoClient mongoClient;
   protected String collectionName;
   protected Class<T> entityClass;
   protected String databaseName;
@@ -61,42 +60,15 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     this.validationService = validationService;
   }
 
-  public AbstractMongoRepository(final MongoClient mongoClient, final String collectionName, final Class<T> entityClass) {
-    this(mongoClient, "AGENT_ENGINE", collectionName, entityClass, null);
-  }
-
-  public AbstractMongoRepository(final MongoClient mongoClient, final String collectionName, final Class<T> entityClass,
-      final ValidationService validationService) {
-    this(mongoClient, "AGENT_ENGINE", collectionName, entityClass, validationService);
-  }
-
-  public AbstractMongoRepository(final MongoClient mongoClient, final String databaseName, final String collectionName,
-      final Class<T> entityClass) {
-    this(mongoClient, databaseName, collectionName, entityClass, null);
-  }
-
-  public AbstractMongoRepository(final MongoClient mongoClient, final String databaseName, final String collectionName,
-      final Class<T> entityClass, final ValidationService validationService) {
-    this.mongoClient = mongoClient;
-    this.databaseName = databaseName;
-    this.collectionName = collectionName;
-    this.entityClass = entityClass;
-    this.validationService = validationService;
-  }
-
   @Override
-  public Optional<T> findById(String id) {
+  public T findById(String id) {
     return findById(id, null, null);
   }
 
   @Override
-  public Optional<T> findById(final String id, final List<String> includeFields, final List<String> excludeFields) {
+  public T findById(final String id, final List<String> includeFields, final List<String> excludeFields) {
     try {
-      T document = getCollection().find(Filters.eq("_id", id)).projection(MongoUtils.getProjection(includeFields, excludeFields)).first();
-      if (document != null) {
-        return Optional.of(document);
-      }
-      return Optional.empty();
+        return getCollection().find(Filters.eq("_id", id)).projection(MongoUtils.getProjection(includeFields, excludeFields)).first();
     } catch (Exception e) {
       LOG.error("Error finding entity by ID: {}", id, e);
       throw new RuntimeException("Error finding entity by ID: " + id, e);
@@ -267,7 +239,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> implements R
     }
   }
 
-  protected MongoCollection<T> getCollection() {
+  private MongoCollection<T> getCollection() {
     return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
   }
 

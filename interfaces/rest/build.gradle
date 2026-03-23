@@ -1,15 +1,14 @@
 plugins {
     id 'com.agentengine.java-application-conventions'
-    alias(libs.plugins.quarkus)
 }
 
 dependencies {
-    implementation(enforcedPlatform(libs.quarkus.bom))
-    implementation libs.slf4j.api
-    implementation project(':engine:api')
+    implementation project(':core-api')
+    implementation project(':util:agents')
     implementation project(':util:common')
     implementation project(':util:ms')
-    implementation libs.rxjava
+
+    implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.quarkus.logging.json
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi
@@ -19,11 +18,11 @@ dependencies {
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.smallrye.fault.tolerance
     implementation libs.quarkus.grpc
-    // Explicit dependency required for Jandex indexing.
-    // ag-ui/core lacks META-INF/beans.xml, so Quarkus cannot index it automatically.
-    // We need direct dependency (not transitive via :engine:api) to use quarkus.index-dependency
-    // in application.properties for proper reflection/OpenAPI support.
+    implementation libs.quarkus.arc
     implementation libs.ag.ui.core
+    implementation libs.rxjava
+    implementation libs.slf4j.api
+    implementation libs.jackson.databind
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core
@@ -31,13 +30,4 @@ dependencies {
     testImplementation libs.mockito.junit.jupiter
     testImplementation libs.rest.assured
     testImplementation libs.hamcrest
-
-    integrationTestImplementation project(':engine')
-    integrationTestImplementation libs.quarkus.junit5
-    integrationTestImplementation libs.assertj.core
-    integrationTestImplementation libs.rest.assured
-    integrationTestImplementation libs.mockito.core
-    integrationTestImplementation libs.testcontainers.junit.jupiter
-    integrationTestImplementation libs.testcontainers.mongodb
-    integrationTestImplementation libs.testcontainers.redis
 }

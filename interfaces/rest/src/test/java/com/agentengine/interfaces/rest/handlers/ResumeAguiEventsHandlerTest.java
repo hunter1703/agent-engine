@@ -19,30 +19,34 @@ class ResumeAguiEventsHandlerTest {
   @Test
   void shouldDelegateResumeToExecutionService() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
-    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq(Boolean.TRUE), eq("resume"))).thenReturn(Flowable.empty());
+    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq("pause-1"), eq(Boolean.TRUE), eq("resume")))
+        .thenReturn(Flowable.empty());
     final ResumeAguiEventsHandler handler = new ResumeAguiEventsHandler(executionService);
-    final ResumeSessionRequest request = new ResumeSessionRequest("resume", true);
+    final ResumeSessionRequest request = new ResumeSessionRequest("resume", true, "pause-1");
     request.setAgentId("agent-1");
     request.setSessionId("session-1");
+    request.setConfirmationId("pause-1");
 
     final Flowable<BaseEvent> publisher = handler.handle(request);
 
     assertThat(publisher).isNotNull();
     publisher.test().awaitDone(2, TimeUnit.SECONDS).assertNoErrors().assertComplete();
-    verify(executionService).resumeSession("agent-1", "session-1", true, "resume");
+    verify(executionService).resumeSession("agent-1", "session-1", "pause-1", true, "resume");
   }
 
   @Test
   void shouldUseUnknownDecisionWhenConfirmationIsMissing() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
-    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), isNull(), eq("resume"))).thenReturn(Flowable.empty());
+    when(executionService.resumeSession(eq("agent-1"), eq("session-1"), eq("pause-2"), isNull(), eq("resume")))
+        .thenReturn(Flowable.empty());
     final ResumeAguiEventsHandler handler = new ResumeAguiEventsHandler(executionService);
-    final ResumeSessionRequest request = new ResumeSessionRequest("resume");
+    final ResumeSessionRequest request = new ResumeSessionRequest("resume", null, "pause-2");
     request.setAgentId("agent-1");
     request.setSessionId("session-1");
+    request.setConfirmationId("pause-2");
 
     handler.handle(request).test().awaitDone(2, TimeUnit.SECONDS).assertNoErrors().assertComplete();
 
-    verify(executionService).resumeSession("agent-1", "session-1", null, "resume");
+    verify(executionService).resumeSession("agent-1", "session-1", "pause-2", null, "resume");
   }
 }

@@ -98,7 +98,7 @@ class AGUIEventMapperTest {
     final Event event = Event.builder().finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build()).build();
 
-    final List<BaseEvent> mapped = mapper.map(event).toList().blockingGet();
+    final List<BaseEvent> mapped = mapper.map(io.reactivex.rxjava3.core.Flowable.just(event)).toList().blockingGet();
 
     assertThat(mapped).anyMatch(RunFinishedEvent.class::isInstance);
   }

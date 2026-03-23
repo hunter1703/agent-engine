@@ -38,14 +38,14 @@ Runtime cache behavior:
 
 Orchestrator branches:
 
-- `TRANSFER`: handoff-capable manager agent with native transfer targets plus `AgentTool` wrappers
-- `MANAGER`: manager agent with sub-agents exposed only as `AgentTool` wrappers
+- `TRANSFER`: handoff-capable manager agent with native transfer targets
+- `MANAGER`: custom `ManagerAgent` that runs an internal manager LLM plus visible child agent invocations with pairwise sidecar sessions
 - `SEQUENTIAL`: ADK `SequentialAgent`
-- `PARALLEL`: custom `ParallelOrchestratorAgent`
+- `PARALLEL`: custom `ParallelAgent`
 
 ## 2.4 Parallel Orchestration Semantics
 
-`ParallelOrchestratorAgent` executes sub-agents concurrently and emits only the aggregated orchestrator output.
+`ParallelAgent` executes sub-agents concurrently and emits only the aggregated orchestrator output.
 
 Stopping policies:
 

@@ -1,0 +1,23 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+
+    implementation platform(libs.pekko.bom)
+    implementation libs.jakarta.enterprise.cdi.api
+    implementation libs.pekko.actor.typed
+    implementation libs.pekko.cluster.typed
+    implementation libs.pekko.cluster.sharding.typed
+    implementation libs.pekko.persistence.typed
+    implementation libs.pekko.persistence.jdbc
+    implementation libs.pekko.serialization.jackson
+    implementation libs.pekko.streams
+    implementation libs.pekko.streams.typed
+
+    testImplementation libs.pekko.testkit
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+}

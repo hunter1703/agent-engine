@@ -1,5 +1,8 @@
 package com.agentengine.util.common;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public final class ExceptionUtils {
 
   private ExceptionUtils() {
@@ -17,6 +20,18 @@ public final class ExceptionUtils {
       message = throwable.getClass().getName();
     }
     return message;
+  }
+
+  public static Throwable getRootCause(final Throwable throwable) {
+    if (throwable == null) {
+      return null;
+    }
+    Throwable current = throwable;
+    final Set<Throwable> seen = new HashSet<>();
+    while (current.getCause() != null && seen.add(current.getCause())) {
+      current = current.getCause();
+    }
+    return current;
   }
 
   public static String getStackstrace(final Throwable throwable) {

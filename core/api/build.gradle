@@ -1,0 +1,13 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+
+dependencies {
+    implementation project(':util:ms')
+    implementation project(':util:common')
+    implementation project(':util:agents')
+
+    implementation libs.rxjava
+}
+

@@ -2,6 +2,7 @@ package com.agentengine.connectors.core.pagination;
 
 import com.agentengine.connectors.core.config.PaginationConfig;
 import com.agentengine.connectors.core.config.PaginationType;
+import java.util.Map;
 
 public final class NextPageUrlPaginationStrategy implements PaginationStrategy {
 
@@ -17,7 +18,7 @@ public final class NextPageUrlPaginationStrategy implements PaginationStrategy {
 
   @Override
   public PaginationDirective buildRequest(final PaginationConfig config, final PaginationState state) {
-    return new PaginationDirective(java.util.Map.of(), state.nextPageUrl());
+    return new PaginationDirective(Map.of(), state.nextPageUrl());
   }
 
   @Override

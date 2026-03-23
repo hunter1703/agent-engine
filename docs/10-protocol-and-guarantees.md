@@ -5,7 +5,7 @@ It is normative for behavior implemented in:
 
 - `engine` request/response processors
 - `EngineFlow`, `ContextManagementPlugin`, and `GuardrailPlugin`
-- `ParallelOrchestratorAgent`
+- `ParallelAgent`
 - REST event mapper `AGUIEventMapper`
 
 ## 10.1 Terms
@@ -157,7 +157,7 @@ Core codes (from `GuardrailConstants`):
 
 ## 10.6 Parallel Orchestration Protocol
 
-`ParallelOrchestratorAgent` rules:
+`ParallelAgent` rules:
 
 - success is strict: branch is successful only when the terminal event satisfies ADK terminal semantics (`Event.finalResponse()` or `EventActions.endInvocation()`)
 - only aggregated orchestrator output is emitted (single final event)
