@@ -1,10 +1,10 @@
 package com.agentengine.runtime.agents.processors.response;
 
-import com.agentengine.engine.tools.ToolUtils;
-import com.agentengine.engine.utils.ContentUtils;
-import com.agentengine.engine.utils.ResponseUtils;
-import com.agentengine.engine.utils.RunUtils;
-import com.agentengine.engine.utils.Violation;
+import com.agentengine.runtime.utils.ToolUtils;
+import com.agentengine.runtime.utils.ContentUtils;
+import com.agentengine.runtime.utils.ResponseUtils;
+import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.google.adk.agents.InvocationContext;

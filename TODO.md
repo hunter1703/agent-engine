@@ -1,4 +1,5 @@
 # TODO
+add tool config schema from tool constructor for discovered tools
 
 ## Deferred Test Follow-ups
 - Add regression tests for orchestrator mode validation matrix:
@@ -7,6 +8,7 @@
   - parallel policy validation paths (including quorum bounds for `stoppingPolicy=QUORUM`).
 - Add integration tests for mixed context-strategy graph validation and compaction compatibility checks.
 - Add integration tests for native confirmation resume adapter (non-empty text -> approval payload mapping).
+
 
 ## Deferred Agent-Engine Work For Agent-Console UX Parity
 - Move Builder Contract generation from runtime warm-cache to dedicated build-time artifact generation task and wire it into module resource packaging.

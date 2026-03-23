@@ -52,11 +52,6 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           .build();
     }
 
-    if ("com.agentengine.engine.exceptions.JsonDeserializationException".equals(exception.getClass().getName())) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new ErrorResponse("400", "JSON Deserialization Error: " + exception.getMessage(), traceId)).build();
-    }
-
     if (exception instanceof StatusRuntimeException grpcEx) {
       final var code = grpcEx.getStatus().getCode();
       final int status = switch (code) {

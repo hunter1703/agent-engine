@@ -10,6 +10,9 @@ project(':runtime').projectDir = file('runtime')
 include 'runtime-api'
 project(':runtime-api').projectDir = file('runtime/api')
 
+include 'runtime-actor'
+project(':runtime-actor').projectDir = file('runtime/actor')
+
 include 'core-api'
 project(':core-api').projectDir = file('core/api')
 

@@ -62,7 +62,6 @@ public record Violation(String code, Map<String, Object> details, List<Violation
   public static class Builder {
     private final String code;
     private String message;
-    private String correctionMessage;
     private final Map<String, Object> details = new HashMap<>();
     private final List<Violation> subViolations = new ArrayList<>();
 

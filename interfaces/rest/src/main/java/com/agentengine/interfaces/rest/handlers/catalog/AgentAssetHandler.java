@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.services.AgentService;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.core.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;

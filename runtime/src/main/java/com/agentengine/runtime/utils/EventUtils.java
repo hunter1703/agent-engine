@@ -1,5 +1,6 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.actor.SessionEventUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.Event;
@@ -12,7 +13,6 @@ import java.util.concurrent.ConcurrentMap;
 
 /** Utilities for working with runtime {@link Event} objects. */
 public final class EventUtils {
-
   /**
    * Key used to mark an event as internal (pipeline-only).
    *
@@ -21,7 +21,7 @@ public final class EventUtils {
    * state, but is preserved in the event's {@code stateDelta} through
    * serialisation round-trips.
    */
-  public static final String INTERNAL_KEY = State.TEMP_PREFIX + "internal";
+  public static final String INTERNAL_KEY = State.TEMP_PREFIX + SessionEventUtils.INTERNAL;
 
   private EventUtils() {
   }
@@ -56,17 +56,6 @@ public final class EventUtils {
     }
     delta.put(INTERNAL_KEY, Boolean.TRUE);
     event.setActions(actions.toBuilder().stateDelta(delta).build());
-  }
-
-  /**
-   * Returns {@code true} if the event was marked as internal via
-   * {@link #markAsInternal}.
-   */
-  public static boolean isInternal(final Event event) {
-    if (event == null || event.actions() == null || event.actions().stateDelta() == null) {
-      return false;
-    }
-    return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(event.actions().stateDelta(), INTERNAL_KEY));
   }
 
   /**

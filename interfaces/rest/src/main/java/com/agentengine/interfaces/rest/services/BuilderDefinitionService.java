@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.builder.BuilderDefinition;
 import com.agentengine.util.common.builder.BuilderDefinitionUtils;
 import com.google.common.cache.Cache;

@@ -1,6 +1,6 @@
 package com.agentengine.runtime.factories.model;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
+import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.google.adk.models.Gemini;
 import jakarta.inject.Singleton;
 

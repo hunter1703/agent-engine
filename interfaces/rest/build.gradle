@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':core-api')
+    implementation project(':runtime-api')
     implementation project(':util:agents')
     implementation project(':util:common')
     implementation project(':util:ms')

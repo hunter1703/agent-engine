@@ -149,7 +149,7 @@
       },
       "orchestrationMode" : {
         "default" : "TRANSFER",
-        "enum" : [ "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
+        "enum" : [ "TRANSFER", "SEQUENTIAL", "PARALLEL" ],
         "type" : "string"
       },
       "parallel" : {
@@ -814,7 +814,7 @@
           "edit" : "EDITABLE",
           "view" : "READ_ONLY"
         },
-        "options" : [ "TRANSFER", "MANAGER", "SEQUENTIAL", "PARALLEL" ],
+        "options" : [ "TRANSFER", "SEQUENTIAL", "PARALLEL" ],
         "rules" : [ {
           "effect" : "VISIBLE",
           "expr" : {

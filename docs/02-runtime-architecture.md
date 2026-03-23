@@ -2,7 +2,7 @@
 
 ## 2.1 Core Services
 
-Implemented in `engine/src/main/java/com/agentengine/engine/services`:
+Implemented across `core/src/main/java/com/agentengine/core/services` and `runtime/src/main/java/com/agentengine/runtime/services`:
 
 - `AgentServiceImpl`: CRUD/query for agent configs
 - `ModelServiceImpl`: CRUD/query for model configs
@@ -18,7 +18,7 @@ For each request:
 1. Resolve target session (existing or new).
 2. Resolve effective agent config (from request/session).
 3. Acquire or create `AgentSessionRuntime` from ref-counted cache.
-4. Build ADK `Runner` over app + plugins + resumability config.
+4. Build ADK `Runner` over the configured runtime services and resumability config.
 5. Execute with `RunConfig` in SSE streaming mode.
 6. On completion, generate/update session title.
 7. Release runtime reference.
@@ -39,7 +39,6 @@ Runtime cache behavior:
 Orchestrator branches:
 
 - `TRANSFER`: handoff-capable manager agent with native transfer targets
-- `MANAGER`: custom `ManagerAgent` that runs an internal manager LLM plus visible child agent invocations with pairwise sidecar sessions
 - `SEQUENTIAL`: ADK `SequentialAgent`
 - `PARALLEL`: custom `ParallelAgent`
 
@@ -72,14 +71,9 @@ Cache behavior:
 - Cleanup interval: 60 seconds
 - Auto-close on eviction if model implements `AutoCloseable`
 
-## 2.6 Plugins Applied to Every Run
+## 2.6 Cross-Cutting Runtime Components
 
-Execution creates a `PluginGroup` containing:
-
-- `GuardrailPlugin`
-- `ContextManagementPlugin`
-
-Request/response processors now live in the engine-owned ADK flow class `EngineFlow` rather than in a plugin-owned model pipeline.
+Execution wires guardrails and context management directly into the runtime flow.
 
 Flow-owned request processors:
 - `CorrectionProcessor`
@@ -93,11 +87,11 @@ Terminal step/run semantics now follow ADK event semantics directly:
 - terminal event = `Event.finalResponse()` or `EventActions.endInvocation()`
 - the engine no longer synthesizes `turnComplete` or reorders response parts after the model
 
-### ContextManagementPlugin responsibilities
+### Context management responsibilities
 
 - context manager prompt rebuild
 
-### GuardrailPlugin responsibilities
+### Guardrail responsibilities
 
 - input guardrails before model invocation
 - tool guardrails before tool call execution

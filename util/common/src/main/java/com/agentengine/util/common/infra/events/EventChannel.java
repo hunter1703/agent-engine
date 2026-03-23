@@ -7,20 +7,23 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 /**
- * A typed hot event channel: publishers may emit concurrently and each
- * subscriber receives only events published after that subscriber attaches to
- * the returned stream. Historical replay is intentionally out of scope.
- *
- * <p>Waiting for a specific event is a derived operation built on top of the
- * live event stream returned by {@link #events()}.
+ * A scoped hot event channel where each scope key {@code K} has its own
+ * independent live stream. Publishers may emit concurrently and each
+ * subscriber receives only events published after that subscriber attaches.
  */
-public interface EventChannel<E> {
+public interface EventChannel<Scope, Event> {
 
-  void publish(E event);
+  void publish(Scope scope, Event event);
 
-  Publisher<E> events();
+  Publisher<Event> events(Scope scope);
 
-  CompletionStage<E> waitFor(Predicate<E> predicate, Duration timeout);
+  CompletionStage<Event> waitFor(Scope scope, Predicate<Event> predicate, Duration timeout);
+
+  /** Signal end-of-stream for the given scope. */
+  default void complete(Scope scope){}
+
+  /** Signal an error for the given scope. */
+  default void fail(Scope scope, Throwable throwable){}
 
   /** Signal end-of-stream for the channel. Default is no-op. */
   default void complete() {

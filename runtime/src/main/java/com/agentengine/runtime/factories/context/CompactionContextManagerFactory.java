@@ -1,15 +1,15 @@
 package com.agentengine.runtime.factories.context;
 
-import com.agentengine.runtime.api.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.api.beans.config.CompactionContextStrategyConfig;
-import com.agentengine.runtime.api.beans.config.ContextStrategyConfig;
-import com.agentengine.runtime.api.beans.config.DefaultAgentConfig;
+import com.agentengine.runtime.services.MongoSessionService;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
+import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
+import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.runtime.context.CompactionContextManager;
 import com.agentengine.runtime.context.NoOpContextManager;
 import com.agentengine.runtime.factories.model.ModelProvider;
-import com.agentengine.runtime.plugin.ContextManager;
-import com.agentengine.runtime.plugin.factories.ContextManagerFactory;
-import com.agentengine.runtime.repository.AgentSessionRepository;
+import com.agentengine.runtime.context.ContextManager;
+import com.agentengine.runtime.factories.context.ContextManagerFactory;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.mongodb.infra.DefaultModelConfig;
 import com.agentengine.util.mongodb.infra.InfraMongoRepository;
@@ -20,14 +20,14 @@ import jakarta.inject.Singleton;
 public class CompactionContextManagerFactory implements ContextManagerFactory<CompactionContextStrategyConfig, ContextManager> {
 
   private final ModelProvider modelProvider;
-  private final AgentSessionRepository sessionRepository;
+  private final MongoSessionService sessionService;
   private final InfraMongoRepository infraMongoRepository;
 
   @Inject
-  public CompactionContextManagerFactory(final ModelProvider modelProvider, final AgentSessionRepository sessionRepository,
+  public CompactionContextManagerFactory(final ModelProvider modelProvider, final MongoSessionService sessionService,
       final InfraMongoRepository infraMongoRepository) {
     this.modelProvider = modelProvider;
-    this.sessionRepository = sessionRepository;
+    this.sessionService = sessionService;
     this.infraMongoRepository = infraMongoRepository;
   }
 
@@ -38,7 +38,7 @@ public class CompactionContextManagerFactory implements ContextManagerFactory<Co
     }
     final String modelId = resolveModelId(config, agentConfig);
     return new CompactionContextManager(config.getTokenThreshold(), config.getRecencyThreshold(), modelId, config.getPromptTemplate(),
-        modelProvider, sessionRepository);
+        modelProvider, sessionService);
   }
 
   @Override

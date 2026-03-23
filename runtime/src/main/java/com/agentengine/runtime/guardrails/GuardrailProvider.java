@@ -1,7 +1,7 @@
 package com.agentengine.runtime.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailRule;
-import com.agentengine.engine.api.beans.config.GuardrailRuleType;
+import com.agentengine.util.agents.beans.config.GuardrailRule;
+import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 
 /**
  * Factory for creating {@link Guardrail} instances from configuration.

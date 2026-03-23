@@ -1,8 +1,8 @@
 package com.agentengine.core.services;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.services.ModelService;
-import com.agentengine.engine.repository.ModelRepository;
+import com.agentengine.core.api.services.ModelService;
+import com.agentengine.core.repository.ModelRepository;
+import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.builder.BuilderDefinition;
@@ -39,7 +39,7 @@ public class ModelServiceImpl implements ModelService {
 
   @Override
   @WithSpan
-  public Optional<ModelConfig> getModel(String id) {
+  public ModelConfig getModel(String id) {
     return modelRepository.findById(id);
   }
 

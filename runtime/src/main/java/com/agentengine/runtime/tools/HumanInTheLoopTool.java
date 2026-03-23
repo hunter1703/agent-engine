@@ -1,10 +1,9 @@
 package com.agentengine.runtime.tools;
 
-import com.agentengine.runtime.api.tools.ToolDescriptor;
 import com.agentengine.runtime.hitl.SessionPauseKind;
-import com.agentengine.runtime.plugin.annotations.ToolSchema;
-import com.agentengine.runtime.plugin.tools.Tool;
-import com.agentengine.runtime.plugin.utils.ToolUtils;
+import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.runtime.utils.ToolUtils;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.ToolConfirmation;

@@ -11,4 +11,7 @@ dependencies {
 
     implementation libs.quarkus.mongodb.client
     implementation libs.slf4j.api
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
 }

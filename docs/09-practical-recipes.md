@@ -17,7 +17,7 @@ curl -s -X POST http://localhost:18080/v1/model/upsert \
 ## 9.2 Create a Default Agent
 
 ```bash
-curl -s -X POST http://localhost:18080/v1/agent/agent/upsert \
+curl -s -X POST http://localhost:18080/v1/agent/upsert \
   -H 'Content-Type: application/json' \
   -d '{
     "id":"echo-agent",

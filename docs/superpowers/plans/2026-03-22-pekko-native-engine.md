@@ -831,7 +831,7 @@ public final class PekkoEventChannel<E> implements EventChannel<E> {
 ```java
 package com.agentengine.util.pekko.events;
 
-import com.agentengine.util.common.infra.events.ScopedEventChannel;
+import com.agentengine.util.common.infra.events.EventChannel;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.reactivestreams.Publisher;
 
@@ -1268,10 +1268,10 @@ public interface AgentRuntimeConfig extends PekkoBaseConfig {
 package com.agentengine.engine.runtime;
 
 import com.agentengine.util.common.infra.events.EventChannel;
-import com.agentengine.util.common.infra.events.ScopedEventChannel;
+import com.agentengine.util.common.infra.events.EventChannel;
 import com.agentengine.util.pekko.ActorSystemProvider;
+import com.agentengine.util.pekko.events.PekkoEventChannel.SingleChannel;
 import com.agentengine.util.pekko.events.PekkoEventChannel;
-import com.agentengine.util.pekko.events.PekkoScopedEventChannel;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.pekko.actor.typed.ActorSystem;

@@ -1,0 +1,138 @@
+package com.agentengine.util.pekko;
+
+import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.SQLInfraConfig;
+import com.agentengine.util.pekko.actor.ShardedEntity;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.Produces;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import jakarta.inject.Singleton;
+import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.actor.typed.javadsl.Behaviors;
+import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
+import org.apache.pekko.stream.Materializer;
+
+/**
+ * CDI producer for the Pekko {@link ActorSystem}. One system per application;
+ * consumers inject {@code ActorSystem<Void>} directly.
+ */
+@Singleton
+public class ActorSystemProvider {
+  private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+  private static final String DEFAULT_JDBC_DRIVER = "org.postgresql.Driver";
+  private final LazyLoader<ActorSystem<Void>> system;
+  private final LazyLoader<Materializer> materializer;
+
+  public ActorSystemProvider(final InfraMongoRepository repository, final Instance<ShardedEntity.ShardedEntityDefinition<?, ?>> definitions) {
+    this.system = new LazyLoader<>(() -> {
+      final PekkoConfig pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
+      final SQLInfraConfig sqlConfig = repository.findOneByType(SQLInfraConfig.TYPE);
+      final ActorSystem<Void> actorSystem = ActorSystem.create(Behaviors.empty(), pekkoConfig.getClusterName(), buildConfig(pekkoConfig, sqlConfig));
+      final ClusterSharding sharding = ClusterSharding.get(actorSystem);
+      for (ShardedEntity.ShardedEntityDefinition<?, ?> definition : definitions) {
+        sharding.init(definition.entity());
+      }
+      return actorSystem;
+    });
+    this.materializer = new LazyLoader<>(() -> Materializer.createMaterializer(system.get()));
+  }
+
+  @Produces
+  @Singleton
+  public ActorSystem<Void> system() {
+    return system.get();
+  }
+
+  @Produces
+  @Singleton
+  public Materializer materializer() {
+    return materializer.get();
+  }
+
+  static Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
+    final String hostname = resolve(config.getHostname());
+    final List<String> seedNodes = config.getSeedNodes() == null ? List.of() : config.getSeedNodes().stream().map(ActorSystemProvider::resolve).toList();
+    final String jdbcUrl = resolve(sqlConfig.getJdbcUrl());
+    final String jdbcUser = resolve(sqlConfig.getJdbcUser());
+    final String jdbcPassword = resolve(sqlConfig.getJdbcPassword());
+    final String hocon = """
+        pekko {
+          actor.provider = cluster
+          remote.artery.canonical {
+            hostname = "%s"
+            port = %d
+          }
+          cluster.seed-nodes = [%s]
+          serialization.bindings {
+            "com.agentengine.util.pekko.PekkoSerializable" = jackson-cbor
+          }
+          persistence {
+            journal.plugin  = "jdbc-journal"
+            snapshot-store.plugin = "jdbc-snapshot-store"
+          }
+        }
+        jdbc-journal {
+          slick {
+            profile = "slick.jdbc.PostgresProfile$"
+            db {
+              url = "%s"
+              user = "%s"
+              password = "%s"
+              driver = "%s"
+            }
+          }
+        }
+        jdbc-snapshot-store {
+          slick {
+            profile = "slick.jdbc.PostgresProfile$"
+            db {
+              url = "%s"
+              user = "%s"
+              password = "%s"
+              driver = "%s"
+            }
+          }
+        }
+        """.formatted(hostname, config.getPort(),
+        seedNodes.stream().map(StringUtils::wrapInQuotes).collect(Collectors.joining(", ")),
+        jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER,
+        jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER);
+    return ConfigFactory.parseString(hocon).withFallback(ConfigFactory.load());
+  }
+
+  private static String resolve(final String rawValue) {
+    if (StringUtils.isBlank(rawValue)) {
+      return rawValue;
+    }
+    final Matcher matcher = PLACEHOLDER_PATTERN.matcher(rawValue);
+    final StringBuilder resolved = new StringBuilder();
+    while (matcher.find()) {
+      final String key = matcher.group(1);
+      final String replacement = resolveValue(key);
+      matcher.appendReplacement(resolved, Matcher.quoteReplacement(replacement));
+    }
+    matcher.appendTail(resolved);
+    return resolved.toString();
+  }
+
+  private static String resolveValue(final String key) {
+    final String fromEnv = System.getenv(key);
+    if (StringUtils.isNotBlank(fromEnv)) {
+      return fromEnv;
+    }
+    final String fromProperty = System.getProperty(key);
+    if (StringUtils.isNotBlank(fromProperty)) {
+      return fromProperty;
+    }
+    throw new IllegalStateException("Missing value for runtime config placeholder: " + key);
+  }
+
+}

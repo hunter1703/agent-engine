@@ -1,11 +1,11 @@
 package com.agentengine.runtime.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.api.beans.config.GuardrailRule;
-import com.agentengine.engine.api.beans.config.GuardrailRuleType;
-import com.agentengine.engine.api.beans.config.GuardrailStage;
-import com.agentengine.engine.api.beans.config.GuardrailsConfig;
-import com.agentengine.engine.plugin.ServiceUtils;
+import com.agentengine.util.agents.beans.config.GuardrailErrorMode;
+import com.agentengine.util.agents.beans.config.GuardrailRule;
+import com.agentengine.util.agents.beans.config.GuardrailRuleType;
+import com.agentengine.util.agents.beans.config.GuardrailStage;
+import com.agentengine.util.agents.beans.config.GuardrailsConfig;
+import com.agentengine.runtime.ServiceUtils;
 import com.agentengine.util.common.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;

@@ -6,17 +6,7 @@ dependencies {
     implementation project(':util:ms')
     implementation project(':util:common')
     implementation project(':util:agents')
-    implementation project(':util:mongodb')
 
     implementation libs.ag.ui.core
-    implementation libs.microprofile.openapi.api
-    implementation libs.jakarta.inject.api
-    implementation libs.jakarta.enterprise.cdi.api
-    implementation(enforcedPlatform(libs.quarkus.bom))
-    implementation libs.quarkus.arc
-    implementation libs.jakarta.validation.api
-    implementation libs.jackson.databind
-    implementation libs.slf4j.api
     implementation libs.rxjava
-    implementation libs.mongodb.bson
 }

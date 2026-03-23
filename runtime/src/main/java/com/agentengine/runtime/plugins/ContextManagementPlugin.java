@@ -1,6 +1,6 @@
 package com.agentengine.runtime.plugins;
 
-import com.agentengine.runtime.plugin.ContextManager;
+import com.agentengine.runtime.context.ContextManager;
 import com.agentengine.runtime.utils.ContentUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;

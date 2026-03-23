@@ -27,14 +27,14 @@ and REST) for interacting with agents.
 # Integration tests (opt-in, requires Docker)
 ./gradlew integrationTest
 
-# Start dev mode (hot-reload, auto-provisions MongoDB via Docker Compose)
-./deploy/deploy.sh dev [--bootstrap] [--clean]
+# Deploy the standard Kubernetes stack
+./k8s/scripts/deploy.sh
 
-# Start production microservices (engine on 8081/9000, REST on 8080)
-./deploy/deploy.sh production [--bootstrap] [--clean]
+# Tear down the standard Kubernetes stack
+./k8s/scripts/cleanup.sh
 
-# Stop all services
-./deploy/stop.sh
+# Build a service image
+docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 ```
 
 ## Module Structure
@@ -50,7 +50,9 @@ and REST) for interacting with agents.
 | `util/ms/`          | Microservice transport utilities                                |
 | `connectors/core/`  | Outbound HTTP transport and auth strategies                     |
 | `configs/`          | Agent and model registry JSON/YAML definitions                  |
-| `deploy/`           | Docker Compose resources and the unified deploy script          |
+| `docker/`           | Shared container image build artifacts                          |
+| `k8s/`              | Helm charts and Kubernetes deployment scripts                   |
+| `scripts/`          | Operational helper scripts                                      |
 
 ## Testing Conventions
 
@@ -63,7 +65,7 @@ and REST) for interacting with agents.
 
 - **llama.cpp chat template bug**: Some `.gguf` models (e.g. `qwen3-coder-30b`) cause `500` errors on nested JSON schemas. Fix: pass `--chat-template-file` pointing to the safe template in `configs/models/templates/`.
 - **Compaction model resolution order**: `contextStrategy.modelId` → infra `default_model.compactionModelId` → agent `modelId`.
-- **Encrypted fields** (`@Secure`): `SessionInfo.eventsJson` is AES/GCM-encrypted. Classes with `@BsonDiscriminator` must use `.conventions(conventions)` in `ClassModel.builder(...)` or encryption is bypassed.
+- **Session history source**: committed session events are reconstructed from the session actor's replay state rather than an embedded event blob on `AgentSession`.
 - **Deferred work**: record follow-ups in `TODO.md`, not inline comments.
 - **Enum rule**: all enums must include `UNKNOWN` and a `valueOfOrDefault` parser.
 

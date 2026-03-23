@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools.planning.beans;
 
-import com.agentengine.engine.plugin.annotations.ToolSchema;
+import com.agentengine.runtime.annotations.ToolSchema;
 import java.util.UUID;
 
 public class Task {

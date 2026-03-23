@@ -1,10 +1,10 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.engine.api.agui.ReasoningEndEvent;
-import com.agentengine.engine.api.agui.ReasoningMessageContentEvent;
-import com.agentengine.engine.api.agui.ReasoningMessageEndEvent;
-import com.agentengine.engine.api.agui.ReasoningMessageStartEvent;
-import com.agentengine.engine.api.agui.ReasoningStartEvent;
+import com.agentengine.util.agents.agui.ReasoningEndEvent;
+import com.agentengine.util.agents.agui.ReasoningMessageContentEvent;
+import com.agentengine.util.agents.agui.ReasoningMessageEndEvent;
+import com.agentengine.util.agents.agui.ReasoningMessageStartEvent;
+import com.agentengine.util.agents.agui.ReasoningStartEvent;
 import com.agui.core.event.*;
 import io.reactivex.rxjava3.core.Flowable;
 

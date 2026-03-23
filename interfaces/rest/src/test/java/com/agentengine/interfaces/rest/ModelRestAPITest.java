@@ -9,10 +9,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.services.ModelService;
+import com.agentengine.core.api.services.ModelService;
+import com.agentengine.util.agents.beans.config.ModelConfig;
 import jakarta.ws.rs.WebApplicationException;
-import java.util.Optional;
+import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
 class ModelRestAPITest {
@@ -21,18 +21,17 @@ class ModelRestAPITest {
   void shouldThrowBadRequestWhenGetModelCalledWithBlankId() {
     final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-    assertThatThrownBy(() -> api.getModel(" ")).isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
+    assertThatThrownBy(() -> api.getModel(" ")).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Model ID is required");
   }
 
   @Test
   void shouldThrowNotFoundWhenModelMissing() {
     final ModelService modelService = mock(ModelService.class);
-    when(modelService.getModel("model-1")).thenReturn(Optional.empty());
+    when(modelService.getModel("model-1")).thenReturn(null);
     final ModelRestAPI api = new ModelRestAPI(modelService);
 
-    assertThatThrownBy(() -> api.getModel("model-1")).isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(404);
+    assertThatThrownBy(() -> api.getModel("model-1")).hasMessageContaining("model-1");
   }
 
   @Test
@@ -44,10 +43,10 @@ class ModelRestAPITest {
     model.setModel("qwen2.5");
     when(modelService.createModel(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    final ModelConfig created = api.createModel(model);
+    final Response created = api.createModel(model);
 
-    assertThat(created).isNotNull();
-    assertThat(created.getId()).isNull();
+    assertThat(created.getStatus()).isEqualTo(201);
+    assertThat(created.getEntity()).isInstanceOf(ModelConfig.class);
     verify(modelService).createModel(any(ModelConfig.class));
   }
 
@@ -67,8 +66,8 @@ class ModelRestAPITest {
   void shouldThrowBadRequestWhenUpdateModelCalledWithNullConfig() {
     final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-    assertThatThrownBy(() -> api.updateModel("model-1", null)).isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
+    assertThatThrownBy(() -> api.updateModel("model-1", null)).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Model config is required");
   }
 
   @Test
@@ -80,8 +79,8 @@ class ModelRestAPITest {
     model.setType("OLLAMA");
     model.setModel("qwen2.5");
 
-    assertThatThrownBy(() -> api.updateModel("model-1", model)).isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(400);
+    assertThatThrownBy(() -> api.updateModel("model-1", model)).isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must match");
   }
 
   @Test
@@ -107,7 +106,9 @@ class ModelRestAPITest {
     config.setType("OLLAMA");
     config.setModel("qwen2.5");
     when(svc.createModel(any())).thenReturn(config);
+
     new ModelRestAPI(svc).createModel(config);
+
     verify(svc, never()).getModel(any());
   }
 
@@ -136,7 +137,6 @@ class ModelRestAPITest {
     when(modelService.deleteModel("model-1")).thenReturn(false);
     final ModelRestAPI api = new ModelRestAPI(modelService);
 
-    assertThatThrownBy(() -> api.deleteModel("model-1")).isInstanceOf(WebApplicationException.class)
-        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus()).isEqualTo(404);
+    assertThatThrownBy(() -> api.deleteModel("model-1")).hasMessageContaining("model-1");
   }
 }

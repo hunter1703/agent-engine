@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.engine.api.services.ToolCatalog;
-import com.agentengine.engine.api.tools.ToolDescriptor;
+import com.agentengine.runtime.api.services.ToolCatalog;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;

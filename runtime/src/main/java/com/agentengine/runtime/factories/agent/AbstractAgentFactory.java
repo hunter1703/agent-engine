@@ -1,11 +1,11 @@
 package com.agentengine.runtime.factories.agent;
 
-import com.agentengine.runtime.api.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.builders.agent.BaseLlmAgentBuilder;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.runtime.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.model.AbstractLLM;
-import com.agentengine.runtime.plugin.Agent;
-import com.agentengine.runtime.plugin.factories.AgentFactory;
+import com.agentengine.runtime.agents.Agent;
+import com.agentengine.runtime.factories.agent.AgentFactory;
 import com.agentengine.runtime.tools.ToolFactory;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;

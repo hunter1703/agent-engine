@@ -14,6 +14,7 @@ dependencies {
 
     implementation libs.jinjava
     implementation libs.json.path
+    implementation libs.commons.text
     implementation libs.slf4j.api
     implementation libs.jakarta.validation.api
     implementation libs.rxjava

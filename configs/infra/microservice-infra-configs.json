@@ -1,0 +1,16 @@
+[
+  {
+    "id": "microservice:agent",
+    "type": "microservice",
+    "serverId": "agent",
+    "host": "agent-engine-core.agent-engine.svc.cluster.local",
+    "port": 9000
+  },
+  {
+    "id": "microservice:runtime",
+    "type": "microservice",
+    "serverId": "runtime",
+    "host": "agent-engine-runtime.agent-engine.svc.cluster.local",
+    "port": 9000
+  }
+]

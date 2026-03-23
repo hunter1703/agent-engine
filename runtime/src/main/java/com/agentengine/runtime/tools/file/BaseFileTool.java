@@ -1,7 +1,7 @@
 package com.agentengine.runtime.tools.file;
 
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.plugin.tools.Tool;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.runtime.tools.Tool;
 
 import java.io.BufferedReader;
 import java.io.IOException;

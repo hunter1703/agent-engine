@@ -1,6 +1,5 @@
 package com.agentengine.runtime.context;
 
-import com.agentengine.runtime.plugin.ContextManager;
 import com.google.genai.types.Content;
 import java.util.List;
 import java.util.function.UnaryOperator;

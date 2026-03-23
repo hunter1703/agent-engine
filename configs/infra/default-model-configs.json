@@ -1,0 +1,9 @@
+[
+  {
+    "id": "default-model",
+    "type": "default_model",
+    "titleModelId": "qwen2.5-1.5b-instruct-q5_k_m",
+    "compactionModelId": "llama3.1-8b",
+    "evaluatorModelId": "llama3.1-8b"
+  }
+]

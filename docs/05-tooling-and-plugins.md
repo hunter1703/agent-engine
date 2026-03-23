@@ -1,8 +1,8 @@
-# 5. Tooling and Plugins
+# 5. Tooling and Extension Points
 
 ## 5.1 Tool Runtime Contract
 
-Tool API is defined in `engine:api`:
+Tool APIs live in the active runtime modules:
 
 - `Tool` (base class over ADK `BaseTool`)
 - `ToolDescriptor`
@@ -23,9 +23,7 @@ Runtime composition uses ADK's native tool union model:
 `ToolCatalog` composes the visible tool catalog from:
 
 - CDI `ToolProvider` beans
-- plugin `ToolProvider` implementations loaded via `ServiceLoader`
 - CDI `ToolsetProvider` beans
-- plugin `ToolsetProvider` implementations loaded via `ServiceLoader`
 - auto-discovered annotated tools via `DiscoveredToolProviders`
 
 Visibility rules:
@@ -42,7 +40,8 @@ Catalog behavior:
 
 - selecting a standalone tool yields one `BaseTool`
 - selecting a toolset yields one `BaseToolset`
-- the engine does not expand toolsets into individual tools before passing them to ADK
+- the runtime does not expand toolsets into individual tools before passing them to ADK
+- the runtime does not expand toolsets into individual tools before passing them to ADK
 
 ## 5.3 Auto-Discovered Tools (`DiscoveredToolProviders`)
 
@@ -90,30 +89,14 @@ Descriptor resolution:
 - configurable timeout (`timeout_seconds`)
 - risk level marked `HIGH`
 
-## 5.6 Plugin Loading Model
+## 5.6 Extension Model
 
-`PluginLoader` resolves plugin directory in this order:
-
-1. `PLUGIN_DIR` system property
-2. `PLUGIN_DIR` environment variable
-3. upward search for `plugins/` from current working directory
-4. fallback literal `plugins`
-
-All `*.jar` files in plugin directory are added to a dedicated `URLClassLoader`.
-
-Plugin-extensible areas include:
-
-- `ToolProvider`
-- `ToolsetProvider`
-- `GuardrailProvider`
-
-via Java `ServiceLoader` on plugin classloader.
+The current codebase exposes extension seams primarily through CDI-discovered providers and tool auto-discovery inside the runtime modules.
 
 ## 5.7 Prompt Protocol Resources
 
-Engine protocol text templates live under:
+Runtime protocol text templates live under:
 
-- `engine/src/main/resources/prompts/shared/protocol/json.txt`
-- `engine/src/main/resources/prompts/shared/protocol/text.txt`
+- `runtime/src/main/resources/prompts/shared/protocol/text.txt`
 
 These are used when constructing final prompt instructions for model behavior/protocol conformance.

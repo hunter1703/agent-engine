@@ -1,89 +1,58 @@
 package com.agentengine.util.pekko;
 
 import com.agentengine.util.mongodb.infra.InfraConfig;
-
 import java.util.List;
 
 public class PekkoConfig extends InfraConfig {
-    private String hostname;
-    private int port;
+  public static final String TYPE = "PEKKO";
 
-    private List<String> seedNodes;
+  private String hostname;
+  private int port;
+  private List<String> seedNodes;
+  private String clusterName;
+  private int snapshotThreshold = 100;
 
-    private String clusterName;
+  public PekkoConfig() {
+    super(TYPE);
+  }
 
-    private String jdbcUrl;
+  public String getHostname() {
+    return hostname;
+  }
 
-    private String jdbcUser;
+  public void setHostname(final String hostname) {
+    this.hostname = hostname;
+  }
 
-    private String jdbcPassword;
-    private int snapshotThreshold = 100;
+  public int getPort() {
+    return port;
+  }
 
-    public PekkoConfig() {
-        super("PEKKO");
-    }
+  public void setPort(final int port) {
+    this.port = port;
+  }
 
-    public String getHostname() {
-        return hostname;
-    }
+  public List<String> getSeedNodes() {
+    return seedNodes;
+  }
 
-    public void setHostname(final String hostname) {
-        this.hostname = hostname;
-    }
+  public void setSeedNodes(final List<String> seedNodes) {
+    this.seedNodes = seedNodes;
+  }
 
-    public int getPort() {
-        return port;
-    }
+  public String getClusterName() {
+    return clusterName;
+  }
 
-    public void setPort(final int port) {
-        this.port = port;
-    }
+  public void setClusterName(final String clusterName) {
+    this.clusterName = clusterName;
+  }
 
-    public List<String> getSeedNodes() {
-        return seedNodes;
-    }
+  public int getSnapshotThreshold() {
+    return snapshotThreshold;
+  }
 
-    public void setSeedNodes(final List<String> seedNodes) {
-        this.seedNodes = seedNodes;
-    }
-
-    public String getClusterName() {
-        return clusterName;
-    }
-
-    public void setClusterName(final String clusterName) {
-        this.clusterName = clusterName;
-    }
-
-    public String getJdbcUrl() {
-        return jdbcUrl;
-    }
-
-    public void setJdbcUrl(final String jdbcUrl) {
-        this.jdbcUrl = jdbcUrl;
-    }
-
-    public String getJdbcUser() {
-        return jdbcUser;
-    }
-
-    public void setJdbcUser(final String jdbcUser) {
-        this.jdbcUser = jdbcUser;
-    }
-
-    public String getJdbcPassword() {
-        return jdbcPassword;
-    }
-
-    public void setJdbcPassword(final String jdbcPassword) {
-        this.jdbcPassword = jdbcPassword;
-    }
-
-    public int getSnapshotThreshold() {
-        return snapshotThreshold;
-    }
-
-    public void setSnapshotThreshold(final int snapshotThreshold) {
-        this.snapshotThreshold = snapshotThreshold;
-    }
+  public void setSnapshotThreshold(final int snapshotThreshold) {
+    this.snapshotThreshold = snapshotThreshold;
+  }
 }

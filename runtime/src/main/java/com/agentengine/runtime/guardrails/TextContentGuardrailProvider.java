@@ -1,8 +1,8 @@
 package com.agentengine.runtime.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailRuleType;
-import com.agentengine.engine.api.beans.config.TextContentGuardrailRule;
-import com.agentengine.engine.guardrails.rules.TextContentGuardrail;
+import com.agentengine.util.agents.beans.config.GuardrailRuleType;
+import com.agentengine.util.agents.beans.config.TextContentGuardrailRule;
+import com.agentengine.runtime.guardrails.TextContentGuardrail;
 import jakarta.inject.Singleton;
 
 @Singleton

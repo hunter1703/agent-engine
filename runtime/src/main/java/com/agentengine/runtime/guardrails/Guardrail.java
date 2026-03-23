@@ -1,6 +1,6 @@
 package com.agentengine.runtime.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailStage;
+import com.agentengine.util.agents.beans.config.GuardrailStage;
 
 /**
  * A single guardrail rule that evaluates input or output for policy violations.

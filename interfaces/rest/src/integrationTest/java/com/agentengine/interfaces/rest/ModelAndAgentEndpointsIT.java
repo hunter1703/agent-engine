@@ -108,7 +108,7 @@ class ModelAndAgentEndpointsIT {
           "name": "Agent IT",
           "modelId": "model-it"
         }
-        """).when().post("/v1/agent/agent").then().statusCode(200).body("id", equalTo("agent-it")).body("name", equalTo("Agent IT"));
+        """).when().post("/v1/agent").then().statusCode(200).body("id", equalTo("agent-it")).body("name", equalTo("Agent IT"));
 
     given().contentType("application/json").body("""
         {
@@ -117,9 +117,9 @@ class ModelAndAgentEndpointsIT {
           "name": "Agent IT Updated",
           "modelId": "model-it"
         }
-        """).when().put("/v1/agent/agent/agent-it").then().statusCode(200).body("name", equalTo("Agent IT Updated"));
+        """).when().put("/v1/agent/agent-it").then().statusCode(200).body("name", equalTo("Agent IT Updated"));
 
-    given().when().delete("/v1/agent/agent/agent-it").then().statusCode(200).body(equalTo("true"));
+    given().when().delete("/v1/agent/agent-it").then().statusCode(200).body(equalTo("true"));
   }
 
   @Test
@@ -131,7 +131,7 @@ class ModelAndAgentEndpointsIT {
           "name": "Agent Duplicate IT",
           "modelId": "model-it"
         }
-        """).when().post("/v1/agent/agent").then().statusCode(200).body("id", equalTo("agent-duplicate-it"));
+        """).when().post("/v1/agent").then().statusCode(200).body("id", equalTo("agent-duplicate-it"));
 
     given().contentType("application/json").body("""
         {
@@ -140,9 +140,9 @@ class ModelAndAgentEndpointsIT {
           "name": "Agent Duplicate IT",
           "modelId": "model-it"
         }
-        """).when().post("/v1/agent/agent").then().statusCode(409);
+        """).when().post("/v1/agent").then().statusCode(409);
 
-    given().contentType("application/json").body("{}").when().post("/v1/agent/agent").then().statusCode(400);
+    given().contentType("application/json").body("{}").when().post("/v1/agent").then().statusCode(400);
   }
 
   @Test
@@ -154,12 +154,12 @@ class ModelAndAgentEndpointsIT {
           "name": "Missing Agent",
           "modelId": "model-it"
         }
-        """).when().put("/v1/agent/agent/missing-agent-update-it").then().statusCode(404);
+        """).when().put("/v1/agent/missing-agent-update-it").then().statusCode(404);
   }
 
   @Test
   void shouldReturnNotFoundWhenDeletingMissingAgent() {
-    given().when().delete("/v1/agent/agent/missing-agent-delete-it").then().statusCode(404);
+    given().when().delete("/v1/agent/missing-agent-delete-it").then().statusCode(404);
   }
 
   @Test

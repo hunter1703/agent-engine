@@ -1,10 +1,7 @@
 package com.agentengine.runtime.tools;
 
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.plugin.annotations.ToolConstructor;
-import com.agentengine.runtime.plugin.annotations.ToolSchema;
-import com.agentengine.runtime.plugin.tools.Tool;
-import com.agentengine.runtime.plugin.tools.ToolProvider;
+import com.agentengine.runtime.annotations.ToolConstructor;
+import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;

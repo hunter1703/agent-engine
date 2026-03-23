@@ -5,7 +5,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EncryptionService;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Properties;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -21,10 +21,13 @@ import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.Convention;
 import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
-import org.eclipse.microprofile.config.ConfigProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class MongoClientFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
+  private static final String MONGO_CONNECTION_STRING = "mongodb.connection.string";
   private static final String DEFAULT_CONNECTION = "mongodb://localhost:27018";
 
   @Inject
@@ -33,16 +36,12 @@ public class MongoClientFactory {
   @Inject
   Instance<EncryptionService> encryptionService;
 
-  public MongoClient getClient() {
-    final String connectionString = resolveConnectionString();
-    return MongoClients.create(buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport), encryptionService));
-  }
+  @Inject
+  Properties properties;
 
-  private String resolveConnectionString() {
-    return ConfigProvider.getConfig().getOptionalValue("quarkus.mongodb.connection-string", String.class).orElseGet(() -> {
-      final String fromEnv = System.getenv("MONGODB_CONNECTION_STRING");
-      return StringUtils.isNotBlank(fromEnv) ? fromEnv : DEFAULT_CONNECTION;
-    });
+  public MongoClient getClient() {
+    final String connectionString = properties.getString(MONGO_CONNECTION_STRING, DEFAULT_CONNECTION);
+    return MongoClients.create(buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport), encryptionService));
   }
 
   private List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {
@@ -67,7 +66,7 @@ public class MongoClientFactory {
         pojoCodecProviderBuilder.register(
             ClassModel.builder(Class.forName(discriminator, true, classLoader)).enableDiscriminator(true).conventions(conventions).build());
       } catch (ClassNotFoundException ex) {
-        // Ignore
+        LOG.warn("Discriminator class '{}' not found — codec registration skipped; @Secure fields may be stored unencrypted", discriminator);
       }
     }
     CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),

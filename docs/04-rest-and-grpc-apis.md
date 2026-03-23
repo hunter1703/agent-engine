@@ -31,19 +31,19 @@ Minimal body:
 }
 ```
 
-### `POST /v1/agent/agent`
+### `POST /v1/agent`
 
 Create agent config.
 
-### `POST /v1/agent/agent/upsert`
+### `POST /v1/agent/upsert`
 
 Insert or update agent config.
 
-### `PUT /v1/agent/agent/{agentId}`
+### `PUT /v1/agent/{agentId}`
 
 Update agent config.
 
-### `DELETE /v1/agent/agent/{agentId}`
+### `DELETE /v1/agent/{agentId}`
 
 Delete agent config.
 
@@ -120,7 +120,7 @@ Runtime event flow:
 
 - Engine emits ADK `Event`
 - `AGUIEventMapper` maps ADK events -> AG-UI event stream
-- `StreamAguiEventsRequestHandler` publishes mapped events as SSE
+- `AgentRestAPI` publishes mapped events as SSE via `AgentExecutionService`
 
 Additional response DTO mapper (`ResponsesEventMapper`) exists to map AG-UI events to response-style event DTOs; it is currently utility-level and not exposed as a dedicated REST endpoint in the current code.
 

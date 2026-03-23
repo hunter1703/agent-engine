@@ -29,8 +29,10 @@ It is intentionally independent from the existing `README.md` and `docs/` conten
 - The Gradle module currently included is `interfaces:local` (not `interfaces:cli`).
 - Some CI and historical docs references still mention `interfaces:cli`; treat those as stale.
 - Runtime-facing APIs and behaviors below are derived from current source under:
-  - `engine/`
-  - `engine/api/`
+  - `runtime/`
+  - `runtime/api/`
+  - `runtime/actor/`
+  - `core/`
+  - `core/api/`
   - `interfaces/rest/`
-  - `interfaces/local/`
   - `connectors/core/`

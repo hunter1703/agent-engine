@@ -1,8 +1,8 @@
 package com.agentengine.runtime.utils;
 
-import com.agentengine.runtime.api.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.api.beans.config.CompactionContextStrategyConfig;
-import com.agentengine.runtime.api.beans.config.ContextStrategyConfig;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
+import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
 
 public final class AgentUtils {
   private AgentUtils() {

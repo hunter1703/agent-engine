@@ -24,9 +24,9 @@ public interface Repository<T extends BaseEntity> {
    *          the entity ID
    * @return the entity wrapped in an Optional, or empty if not found
    */
-  Optional<T> findById(String id);
+  T findById(String id);
 
-  Optional<T> findById(String id, List<String> includeFields, List<String> excludeFields);
+  T findById(String id, List<String> includeFields, List<String> excludeFields);
 
   Map<String, T> findByIds(Collection<String> ids);
 

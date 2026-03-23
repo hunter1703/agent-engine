@@ -11,35 +11,34 @@ Built on top of `quarkus-langchain4j`, it provides a pluggable tool system, conf
 
 ## 🚀 Quick Start
 
-Agent Engine can be run locally in development mode (monolithic Quarkus Dev mode) or entirely containerized as production-ready microservices.
+Agent Engine is deployed through Kubernetes-native Helm charts under [`k8s/`](/Users/rhp/Projects/agent-engine/k8s).
 
-Both modes automatically provision the required local MongoDB instance via Docker Compose.
-
-### Development Mode
-
-Boot the entire engine with hot-reload and optionally bootstrap initial models and agents:
+Deploy the standard stack:
 
 ```bash
-./deploy/deploy.sh dev [--bootstrap] [--clean]
+./k8s/scripts/deploy.sh
 ```
 
-### Production Mode (Microservices)
+This is the single deployment command for the application workloads. It builds the required service images and applies the Helm charts for `runtime`, `core`, and `rest`.
 
-Run as separate, production-ready microservices (Core Engine on port 8081/9000, REST API on port 8080) and optionally bootstrap the database:
+Sync infra, model, and agent data when needed:
 
 ```bash
-./deploy/deploy.sh production [--bootstrap] [--clean]
+./k8s/scripts/seed-configs.sh
 ```
 
-Use `--clean` to run a full Gradle clean before building.
-
-
-### Stopping Services
-
-To stop all background services (Engine, REST) and the MongoDB infrastructure:
+Tear it down:
 
 ```bash
-./deploy/stop.sh
+./k8s/scripts/cleanup.sh
+```
+
+Build service images manually with the shared Dockerfile when you need a custom image workflow:
+
+```bash
+docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=core -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=interfaces/rest -f docker/Dockerfile .
 ```
 
 ---
@@ -80,7 +79,7 @@ Run integration tests (opt-in):
 - Use mocks/fakes for unit tests focused on pure logic, branching, and service delegation.
 - Use real Quarkus runtime + Testcontainers for integration tests that validate persistence, transport, and end-to-end wiring.
 
-> **Note:** Test coverage reports are generated at `engine/build/reports/jacoco/test/html/index.html`.
+> **Note:** Test coverage reports are generated per module, for example at `runtime/build/reports/jacoco/test/html/index.html`.
 > **Note:** Gradle parallel execution and configuration-on-demand are enabled for faster builds; if you hit Quarkus plugin sync issues in your environment, temporarily disable them in `gradle.properties`.
 
 ---
@@ -101,30 +100,28 @@ Interact with your agents using the unified REST API:
   ```
 - **Stream SSE Events**:
 - **Bootstrap Upserts**:
-  `POST /v1/model/upsert` and `POST /v1/agent/agent/upsert` with the model/agent JSON payloads
+  `POST /v1/model/upsert` and `POST /v1/agent/upsert` with the model/agent JSON payloads
 
 ### Core Runtime Settings
 
-- `PLUGIN_DIR`: Directory containing plugin JARs (default: `plugins`)
-- `MONGODB_CONNECTION_STRING`: Connection string for the Agent Config and Session store (default: `mongodb://localhost:27017`)
+- `mongodb.connection.string` / `MONGODB_CONNECTION_STRING`: Connection string for the Agent Config and Session store (default: `mongodb://localhost:27018`)
 - `sessionStore.type: mongodb`: Persists context state, events, and app state natively in MongoDB.
+
+Operational runtime config is expected to come from external Kubernetes config, typically a mounted `/config/application.properties` plus Secret-backed environment variables for sensitive values.
 
 ---
 
-## 🧩 Plugins & Custom Tools
+## 🧩 Tools & Customization
 
-Agent Engine's power comes from its modular architecture. Tools are provided by `com.agentengine.engine.plugin.tools.ToolProvider` implementations. Built-in providers include the auto-discovery provider for `@AgentTool` classes, while plugins register providers via `META-INF/services`.
-
-At runtime, the engine loads all plugin JARs found in the `PLUGIN_DIR` (or `./plugins` by default).
+Agent Engine's power comes from its runtime tool system. Tools are provided through built-in `ToolProvider` / `ToolsetProvider` implementations plus auto-discovered runtime tools.
 
 ### Tooling Model
 
-- A tool implements `com.agentengine.engine.plugin.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, risk, and config schema.
+- A tool extends `com.agentengine.runtime.tools.Tool`, exposes an `execute(...)` method, and returns a `ToolDescriptor` describing its name, risk, and config schema.
 - All registered tools are globally visible to all agents.
-- `@AgentTool` marks auto-discoverable tools. `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
-- `@ToolParam` maps constructor params to config keys. When omitted, parameter names are used (requires compilation with `-parameters`).
-- `ToolParam.AGENT_CONTEXT` or an `AgentContext` parameter injects the current execution context.
-- `ToolSuite` describes a user-facing suite name plus `toolNames()`; selecting the suite in `tools` expands to the member tools at runtime.
+- `@ToolConstructor` selects which constructor should receive `toolConfig` values; otherwise the single constructor is used.
+- `@ToolSchema` maps model arguments to parameters. `ToolContext` can be injected for runtime context.
+- `ToolsetProvider` describes a user-facing suite name plus member descriptors; selecting the suite in `tools` activates the member tools at runtime.
 
 ### Built-in Tools
 
@@ -139,6 +136,11 @@ Agent Engine ships with the following built-in tool categories:
 - `complete_task` - Mark a task as completed
 - `finish_plan` - Mark a plan as finished
 - `view_plan` - View the current plan
+
+**Agent Management** (suite: `agent_tools`)
+- `spawn_agent` - Start a child agent session for a subtask
+- `send_task` - Send a follow-up task to an existing child session
+- `await_agent` - Wait for a child session to finish and collect its result
 
 **File Operations** (auto-discovered)
 - `read_file` - Read file contents with pagination (offset/limit)
@@ -175,18 +177,13 @@ Options:
 - `PARALLEL` (default) - Tools execute concurrently
 - `SEQUENTIAL` - Tools execute one at a time in order
 
-### Building Plugins
+### Building Modules
 
-To compile custom plugins (like the `shell-agent` or `echo-agent`) into your environment:
+To compile the active runtime and interface modules directly:
 
-1. Build the core engine JAR first:
-   ```bash
-   ./gradlew :engine:jar
-   ```
-2. Build the plugin project and copy the resulting `*-plugin.jar` into `plugins/`:
-   ```bash
-   ./gradlew -p plugins/<plugin-project> assemble
-   ```
+```bash
+./gradlew :runtime:build :core:build :interfaces:rest:build
+```
 
 ### Standard Agents
 
@@ -206,15 +203,20 @@ Each agent has a comprehensive system prompt covering personality, safety guidel
 
 ## 🏗 Architecture & Modules
 
-The repository is structured to separate interface transports from the core LLM execution engine:
+The repository is structured to separate transport, control, and runtime concerns:
 
-- **`engine/`**: The core execution library (config, context, state mapping, and tooling).
-- **`engine/client/`**: Shared client request/response GRPC buffers and models.
-- **`interfaces/common/`**: Shared interface services and utilities.
-- **`interfaces/rest/`**: REST service gateway exposing user-facing endpoints.
-- **`plugins/`**: Optional, dynamically loaded tool/plugin JAR projects.
-- **`configs/`**: Agent (`json/yaml`) and Model (`json`) registry configuration definitions.
-- **`deploy/`**: Docker resources, `docker-compose.yaml`, and the unified deployment script.
+- **`runtime/`**: Agent execution, tool wiring, model factories, and context handling.
+- **`runtime/api/`**: Runtime-facing service contracts.
+- **`runtime/actor/`**: Session actor and event-stream infrastructure.
+- **`core/`**: Config CRUD, AG-UI mapping, and orchestration entrypoints.
+- **`core/api/`**: Core service contracts used across modules.
+- **`interfaces/rest/`**: REST gateway exposing user-facing HTTP endpoints.
+- **`connectors/core/`**: Connector transport, auth, validation, and templating.
+- **`util/*`**: Shared utilities for agents, MongoDB, microservice transport, and Pekko.
+- **`configs/`**: Agent (`json/yaml`) and model (`json`) registry definitions.
+- **`docker/`**: Container image build artifacts
+- **`k8s/`**: Helm charts and Kubernetes deployment scripts
+- **`scripts/`**: operational helper scripts
 
 ### MongoDB Config Store Details
 
@@ -244,14 +246,12 @@ The repository is structured to separate interface transports from the core LLM 
   - `MAJORITY_VOTE`: pick most frequent normalized successful output, tie-break with best-effort.
 - If `FIRST_SUCCESS`/`QUORUM` targets are not met, runtime falls back to deterministic best-effort output and records a warning violation.
 - Story pipelines are modeled as sequential orchestrators (see `configs/agents/story_orchestrator_sequential.json`).
-- Guardrails are centralized via app-level plugin callbacks (input/tool/output) with `allow/warn/block/escalate` semantics.
-- `GuardrailExecutionMode=OPTIMISTIC` is output-optimistic in this iteration: input/tool remain synchronous; output checks run asynchronously and terminate invocation on block/escalate.
+- Guardrails are centralized via app-level callbacks (input/tool/output) with `allow/warn/block/escalate` semantics.
 - Relevance scoring supports dual-prompt LLM evaluation (`relevance` + `irrelevance`) with combined score `(x + (100 - y)) / 2`, executed in parallel.
 - Tool confirmations and clarification resumes use native runtime confirmation events (`requestConfirmation` / `adk_request_confirmation`). The REST resume endpoint sends native `FunctionResponse` payloads directly; no marker text protocol exists.
-- Plugin tools are discovered via Java `ServiceLoader` entries under `META-INF/services` for `ToolProvider` implementations.
 - Auto-discoverable tools use `@AgentTool` with constructor selection via `@ToolConstructor` and `@ToolParam`.
-- Prompt templates (located in `engine/src/main/resources/prompts`) are natively rendered via `Jinjava`.
-- Squirrel-backed state machine helpers live in `com.agentengine.engine.utils`, returning success/failure results for builder-defined transitions.
+- Prompt templates (located in `runtime/src/main/resources/prompts`) are natively rendered via `Jinjava`.
+- Squirrel-backed state machine helpers live in the runtime/core utility packages, returning success/failure results for builder-defined transitions.
 - **Note on Local llama.cpp models**: Some `.gguf` models (e.g., `qwen3-coder-30b`) contain bugs in their embedded chat templates that cause `500 Server Errors` when parsing complex JSON schemas (like nested Arrays in `create_plan`). To fix this, provide an updated explicit template override via the `--chat-template-file` argument referencing the safe versions stored in `configs/models/templates/`.
 
 ### Enum Selection Guide
@@ -262,7 +262,6 @@ Use `UNKNOWN` as parser fallback only. Do not set `UNKNOWN` intentionally in age
 |---|---|---|
 | `AgentType` | `DEFAULT`, `ORCHESTRATOR` | `DEFAULT` for most agents, `ORCHESTRATOR` for manager/coordinator agents with sub-agents. |
 | `OrchestrationMode` | `TRANSFER`, `SEQUENTIAL`, `PARALLEL` | `TRANSFER` for LLM manager + transfer/AgentTool; `SEQUENTIAL` for fixed stage pipelines; `PARALLEL` for fan-out branch execution. |
-| `GuardrailExecutionMode` | `SYNC`, `OPTIMISTIC` | `SYNC` for deterministic stage gating; `OPTIMISTIC` for asynchronous output gating with terminate-on-block/escalate. |
 | `GuardrailErrorMode` | `FAIL_CLOSED`, `FAIL_OPEN` | `FAIL_CLOSED` for safety-first production; `FAIL_OPEN` when availability is more important than strict safety. |
 | `GuardrailRuleType` | `TEXT_CONTENT`, `TOOL_SAFETY`, `RELEVANCE` | Selects guardrail strategy: `TEXT_CONTENT` for text policy checks, `TOOL_SAFETY` for tool risk gating, and `RELEVANCE` for on-topic control. |
 | `GuardrailStage` | `INPUT`, `TOOL`, `OUTPUT` | `INPUT` to filter user requests, `TOOL` to gate tool calls, `OUTPUT` to validate model responses before emission. |

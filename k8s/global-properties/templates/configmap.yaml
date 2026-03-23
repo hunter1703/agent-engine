@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: global-properties-{{ .Values.tierName }}-configmap
+  namespace: {{ include "agent-engine-global-properties.namespace" . }}
+  labels:
+    {{- include "agent-engine-global-properties.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  global.properties: |-
+    {{- range $key, $value := .Values.globalProperties }}
+    {{ $key }}={{ $value }}
+    {{- end }}

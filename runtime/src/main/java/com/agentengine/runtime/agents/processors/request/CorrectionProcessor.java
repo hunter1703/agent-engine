@@ -71,8 +71,8 @@ public final class CorrectionProcessor implements RequestProcessor {
     final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
 
     for (final Violation violation : violations) {
-      LOG.debug("Violation: code={} message={} correction={}", violation.code(), violation.message(), violation.correctionMessage());
-      final String correctionMessage = violation.correctionMessage();
+      LOG.debug("Violation: code={} message={}", violation.code(), violation.message());
+      final String correctionMessage = violation.message();
       if (StringUtils.isBlank(correctionMessage)) {
         continue;
       }

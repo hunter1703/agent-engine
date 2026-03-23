@@ -3,10 +3,11 @@ package com.agentengine.util.pekko.events;
 import com.agentengine.util.common.CompletionUtils;
 import com.agentengine.util.common.infra.events.EventChannel;
 import com.agentengine.util.pekko.actor.BroadcastBehavior;
+import com.agentengine.util.pekko.actor.ShardedEntity;
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.ActorSystem;
-import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import org.apache.pekko.cluster.sharding.typed.ShardingEnvelope;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -21,86 +22,98 @@ import org.reactivestreams.Publisher;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
-/**
- * {@link EventChannel} backed by a Pekko {@link BroadcastBehavior} actor. Each
- * call to {@link #events()} creates a new subscriber actor that receives all
- * events published after subscription.
- */
-public final class PekkoEventChannel<E> implements EventChannel<E> {
-  private static final String GLOBAL_ENTITY_ID = "__global__";
+public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Event>, ShardedEntity.ShardedEntityDefinition<BroadcastBehavior.Command, ShardingEnvelope<BroadcastBehavior.Command>> {
   private static final Duration SUBSCRIPTION_TIMEOUT = Duration.ofSeconds(5);
-
-  private final ActorSystem<?> system;
   private final ClusterSharding sharding;
   private final EntityTypeKey<BroadcastBehavior.Command> typeKey;
-  private final String entityId;
   private final Materializer materializer;
+  private final ConcurrentMap<Scope, SingleChannel<Event>> channels = new ConcurrentHashMap<>();
 
-  public PekkoEventChannel(final ActorSystem<?> system) {
-    this(system, "event-channel-" + UUID.randomUUID());
+  public PekkoEventChannel(final ActorSystem<?> system, Materializer materializer) {
+    this(system, materializer, "scoped-event-channel-" + java.util.UUID.randomUUID());
   }
 
-  public PekkoEventChannel(final ActorSystem<?> system, final String name) {
-    this(system, name, GLOBAL_ENTITY_ID);
-  }
-
-  public PekkoEventChannel(final ActorSystem<?> system, final String name, final String entityId) {
-    this.system = system;
+  public PekkoEventChannel(final ActorSystem<?> system, final Materializer materializer, final String channelName) {
     this.sharding = ClusterSharding.get(system);
-    this.typeKey = EntityTypeKey.create(BroadcastBehavior.Command.class, sanitizeTypeKey(name));
-    this.sharding.init(Entity.of(typeKey, ctx -> BroadcastBehavior.create()));
-    this.entityId = entityId;
-    this.materializer = Materializer.createMaterializer(system);
+    this.materializer = materializer;
+    this.typeKey = EntityTypeKey.create(BroadcastBehavior.Command.class, sanitizeTypeKey(channelName));
   }
 
   @Override
-  public void publish(final E event) {
-    entityRef().tell(new BroadcastBehavior.Command.Publish(event));
+  public void publish(final Scope scope, final Event event) {
+    channel(scope).publish(event);
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public Publisher<E> events() {
-    final CompletableFuture<ActorRef<E>> subscriberRef = new CompletableFuture<>();
-    final Publisher<E> publisher = ActorSource.<E>actorRef(msg -> false, msg -> Optional.empty(), 256, OverflowStrategy.dropHead())
-        .mapMaterializedValue(ref -> {
-          subscriberRef.complete(ref);
-          return ref;
-        })
-        .runWith(Sink.asPublisher(AsPublisher.WITHOUT_FANOUT), materializer);
-
-    final ActorRef<E> ref = subscriberRef.join();
-    AskPattern.ask(entityRef(), (ActorRef<Done> replyTo) -> new BroadcastBehavior.Command.Subscribe((ActorRef<Object>) ref, replyTo),
-        SUBSCRIPTION_TIMEOUT, system.scheduler()).toCompletableFuture().join();
-    return publisher;
+  public Publisher<Event> events(final Scope scope) {
+    return channel(scope).events();
   }
 
   @Override
-  public CompletionStage<E> waitFor(final Predicate<E> predicate, final Duration timeout) {
-    return CompletionUtils.completeWithRootCause(
-        Source.fromPublisher(events()).filter(predicate::test).take(1).completionTimeout(timeout).runWith(Sink.head(), materializer));
+  public CompletionStage<Event> waitFor(final Scope scope, final Predicate<Event> predicate, final Duration timeout) {
+    return channel(scope).waitFor(predicate, timeout);
   }
 
-  /**
-   * Stops the underlying broadcast entity. When it stops, all subscriber
-   * {@code ActorSource} streams fail with
-   * {@code WatchedActorTerminatedException} — a deliberate signal that the
-   * channel is gone rather than a clean completion.
-   */
-  public void stop() {
-    entityRef().tell(new BroadcastBehavior.Command.Stop());
+  @Override
+  public void complete(final Scope scope) {
+    channels.remove(scope);
+    entityRef(scope).tell(new BroadcastBehavior.Command.Stop());
   }
 
-  private EntityRef<BroadcastBehavior.Command> entityRef() {
-    return sharding.entityRefFor(typeKey, entityId);
+  @Override
+  public Entity<BroadcastBehavior.Command, ShardingEnvelope<BroadcastBehavior.Command>> entity() {
+    return Entity.of(typeKey, ctx -> BroadcastBehavior.create());
+  }
+
+  private SingleChannel<Event> channel(final Scope scope) {
+    return channels.computeIfAbsent(scope, k -> new SingleChannel<>(entityRef(scope), materializer));
+  }
+
+  private EntityRef<BroadcastBehavior.Command> entityRef(final Scope scope) {
+    return sharding.entityRefFor(typeKey, scope.toString());
   }
 
   private static String sanitizeTypeKey(final String name) {
     return "event-channel-" + name.replaceAll("[^A-Za-z0-9_-]", "-");
+  }
+
+  private static class SingleChannel<E> {
+    private final EntityRef<BroadcastBehavior.Command> broadcaster;
+    private final Materializer materializer;
+
+    private SingleChannel(final EntityRef<BroadcastBehavior.Command> broadcaster, final Materializer materializer) {
+      this.broadcaster = broadcaster;
+      this.materializer = materializer;
+    }
+
+    private void publish(final E event) {
+      broadcaster.tell(new BroadcastBehavior.Command.Publish(event));
+    }
+
+    private Publisher<E> events() {
+      final CompletableFuture<ActorRef<E>> subscriberRef = new CompletableFuture<>();
+      final Publisher<E> publisher = ActorSource.<E>actorRef(msg -> false, msg -> Optional.empty(), 256, OverflowStrategy.dropHead())
+          .mapMaterializedValue(ref -> {
+            subscriberRef.complete(ref);
+            return ref;
+          })
+          .runWith(Sink.asPublisher(AsPublisher.WITHOUT_FANOUT), materializer);
+
+      final ActorRef<E> ref = subscriberRef.join();
+      //noinspection unchecked
+      broadcaster.ask((ActorRef<Done> replyTo) -> new BroadcastBehavior.Command.Subscribe((ActorRef<Object>) ref, replyTo), SUBSCRIPTION_TIMEOUT).toCompletableFuture().join();
+      return publisher;
+    }
+
+    private CompletionStage<E> waitFor(final Predicate<E> predicate, final Duration timeout) {
+      return CompletionUtils.completeWithRootCause(
+          Source.fromPublisher(events()).filter(predicate::test).take(1).completionTimeout(timeout).runWith(Sink.head(), materializer));
+    }
   }
 }

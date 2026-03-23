@@ -2,7 +2,7 @@ package com.agentengine.interfaces.rest.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.agentengine.engine.agui.AGUIEventMapper;
+import com.agentengine.core.agui.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;

@@ -1,9 +1,9 @@
 package com.agentengine.runtime.agents;
 
-import com.agentengine.runtime.api.beans.config.ParallelAggregationPolicy;
-import com.agentengine.runtime.api.beans.config.ParallelStoppingPolicy;
-import com.agentengine.runtime.builders.agent.ParallelOrchestratorAgentBuilder;
-import com.agentengine.runtime.plugin.Agent;
+import com.agentengine.util.agents.beans.config.ParallelAggregationPolicy;
+import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
+import com.agentengine.runtime.factories.agent.builders.ParallelOrchestratorAgentBuilder;
+import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.runtime.utils.RunUtils;
 import com.agentengine.util.common.Violation;

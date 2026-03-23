@@ -1,8 +1,10 @@
 package com.agentengine.interfaces.rest;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.api.services.ModelService;
+import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.core.api.services.ModelService;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.exception.AssetNotFoundException;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -43,10 +45,14 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "404", description = "Model not found")
   public ModelConfig getModel(@PathParam("modelId") final String modelId) {
     if (StringUtils.isBlank(modelId)) {
-      throw new WebApplicationException("Model ID is required", 400);
+      throw new IllegalArgumentException("Model ID is required");
     }
 
-    return modelService.getModel(modelId).orElseThrow(() -> new WebApplicationException("Model not found", 404));
+    final ModelConfig model = modelService.getModel(modelId);
+    if (model == null) {
+      throw new AssetNotFoundException(AssetClass.MODEL, modelId);
+    }
+    return model;
   }
 
   @POST
@@ -56,7 +62,7 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "409", description = "Model already exists")
   public Response createModel(final ModelConfig modelConfig) {
     if (modelConfig == null) {
-      throw new WebApplicationException("Model config is required", 400);
+      throw new IllegalArgumentException("Model config is required");
     }
     return Response.status(Response.Status.CREATED).entity(modelService.createModel(modelConfig)).build();
   }
@@ -67,7 +73,7 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "200", description = "Model created or updated", content = @Content(schema = @Schema(implementation = ModelConfig.class)))
   public ModelConfig upsertModel(final ModelConfig modelConfig) {
     if (modelConfig == null) {
-      throw new WebApplicationException("Model config is required", 400);
+      throw new IllegalArgumentException("Model config is required");
     }
     return modelService.saveModel(modelConfig);
   }
@@ -79,13 +85,13 @@ public class ModelRestAPI {
   @APIResponse(responseCode = "404", description = "Model not found")
   public ModelConfig updateModel(@PathParam("modelId") final String modelId, final ModelConfig modelConfig) {
     if (modelConfig == null) {
-      throw new WebApplicationException("Model config is required", 400);
+      throw new IllegalArgumentException("Model config is required");
     }
     if (StringUtils.isBlank(modelId)) {
-      throw new WebApplicationException("Model ID is required", 400);
+      throw new IllegalArgumentException("Model ID is required");
     }
     if (StringUtils.isNotBlank(modelConfig.getId()) && !modelId.equals(modelConfig.getId())) {
-      throw new WebApplicationException("Path modelId must match payload id", 400);
+      throw new IllegalArgumentException("Path modelId must match payload id");
     }
     return modelService.updateModel(modelId, modelConfig);
   }
@@ -101,7 +107,7 @@ public class ModelRestAPI {
     }
 
     if (!modelService.deleteModel(modelId)) {
-      throw new WebApplicationException("Model not found", 404);
+      throw new AssetNotFoundException(AssetClass.MODEL, modelId);
     }
   }
 }

@@ -37,9 +37,9 @@ Fields:
 - `POST /v1/agent/events`: SSE stream of AG-UI runtime events.
   - Request body: `agentId`, `sessionId`, `message`.
 - `POST /v1/agent/session/resume/events`: SSE stream when resuming a paused run.
-- `POST /v1/agent/agent`: create an agent configuration.
-- `PUT /v1/agent/agent/{agentId}`: update an agent configuration.
-- `DELETE /v1/agent/agent/{agentId}`: delete an agent configuration.
+- `POST /v1/agent`: create an agent configuration.
+- `PUT /v1/agent/{agentId}`: update an agent configuration.
+- `DELETE /v1/agent/{agentId}`: delete an agent configuration.
 - `POST /v1/model`: create a model configuration.
 - `PUT /v1/model/{modelId}`: update a model configuration.
 - `DELETE /v1/model/{modelId}`: delete a model configuration.

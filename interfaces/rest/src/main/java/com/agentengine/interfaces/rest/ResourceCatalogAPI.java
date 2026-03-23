@@ -50,15 +50,15 @@ public class ResourceCatalogAPI {
   @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<? extends NamedEntity> listResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
-      throw new WebApplicationException("Resource type is required", 400);
+      throw new IllegalArgumentException("Resource type is required");
     }
 
     AssetHandler<?> rawHandler = assetHandlers.get(request.getAssetType());
     if (rawHandler == null) {
-      throw new WebApplicationException("Unsupported resource type: " + request.getAssetType(), 400);
+      throw new IllegalArgumentException("Unsupported resource type: " + request.getAssetType());
     }
     if (!(rawHandler instanceof NamedAssetHandler<?> handler)) {
-      throw new WebApplicationException("Resource type does not support listing: " + request.getAssetType(), 400);
+      throw new IllegalArgumentException("Resource type does not support listing: " + request.getAssetType());
     }
 
     return handler.listAssets(request);
@@ -70,12 +70,12 @@ public class ResourceCatalogAPI {
   @APIResponse(responseCode = "200", description = "List of resources", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = PaginatedResult.class)))
   public PaginatedResult<?> searchResources(AssetRequest request) {
     if (request == null || request.getAssetType() == null) {
-      throw new WebApplicationException("Resource type is required", 400);
+      throw new IllegalArgumentException("Resource type is required");
     }
 
     AssetHandler<?> handler = assetHandlers.get(request.getAssetType());
     if (handler == null) {
-      throw new WebApplicationException("Unsupported resource type: " + request.getAssetType(), 400);
+      throw new IllegalArgumentException("Unsupported resource type: " + request.getAssetType());
     }
 
     return handler.findAssets(request);
@@ -89,13 +89,13 @@ public class ResourceCatalogAPI {
   public <T extends BaseEntity> T getResource(@PathParam("resourceType") String resourceType, @PathParam("id") String id,
       @Context UriInfo uriInfo) {
     if (resourceType == null || id == null) {
-      throw new WebApplicationException("Resource type and ID are required", 400);
+      throw new IllegalArgumentException("Resource type and ID are required");
     }
 
     // noinspection unchecked
     AssetHandler<T> handler = (AssetHandler<T>) assetHandlers.get(resourceType);
     if (handler == null) {
-      throw new WebApplicationException("Unsupported resource type: " + resourceType, 400);
+      throw new IllegalArgumentException("Unsupported resource type: " + resourceType);
     }
 
     AssetRequest request = new AssetRequest();
@@ -106,7 +106,7 @@ public class ResourceCatalogAPI {
     if (uriInfo != null && uriInfo.getQueryParameters() != null) {
       uriInfo.getQueryParameters().forEach((key, values) -> {
         if (values != null && !values.isEmpty()) {
-          options.put(key, values.get(0));
+          options.put(key, values.getFirst());
         }
       });
     }

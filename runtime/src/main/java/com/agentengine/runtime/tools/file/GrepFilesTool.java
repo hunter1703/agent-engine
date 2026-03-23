@@ -1,9 +1,9 @@
 package com.agentengine.runtime.tools.file;
 
-import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.plugin.annotations.DiscoverableTool;
-import com.agentengine.engine.plugin.annotations.ToolSchema;
-import com.agentengine.engine.api.tools.ToolRiskLevel;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.runtime.annotations.DiscoverableTool;
+import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;

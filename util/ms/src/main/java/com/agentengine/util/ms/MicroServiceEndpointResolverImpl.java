@@ -1,5 +1,10 @@
 package com.agentengine.util.ms;
 
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
+import com.agentengine.util.mongodb.infra.InfraConfig;
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.slf4j.Logger;
@@ -22,10 +27,10 @@ public class MicroServiceEndpointResolverImpl implements MicroServiceEndpointRes
   private static final String DEFAULT_HOST = "localhost";
   private static final int DEFAULT_PORT = 9000;
 
-  private final MicroServiceRepository repository;
+  private final InfraMongoRepository repository;
 
   @Inject
-  public MicroServiceEndpointResolverImpl(final MicroServiceRepository repository) {
+  public MicroServiceEndpointResolverImpl(final InfraMongoRepository repository) {
     this.repository = repository;
   }
 
@@ -36,7 +41,8 @@ public class MicroServiceEndpointResolverImpl implements MicroServiceEndpointRes
       return new MicroServiceEndpoint(DEFAULT_HOST, DEFAULT_PORT);
     }
     final String serverId = annotation.value();
-    final MicroServiceInfraConfig config = repository.findByServerId(serverId);
+    final PaginatedResult<InfraConfig> results = repository.findByQuery(new Query().withFilter(Filters.eq(MicroServiceInfraConfig.FIELD_SERVER_ID, serverId)));
+    final MicroServiceInfraConfig config = (MicroServiceInfraConfig) results.getItems().getFirst();
     if (config != null) {
       LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, config.getHost(), config.getPort());
       return new MicroServiceEndpoint(config.getHost(), config.getPort());

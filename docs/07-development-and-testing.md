@@ -23,7 +23,8 @@ Common commands:
 Targeted module examples:
 
 ```bash
-./gradlew :engine:test
+./gradlew :runtime:test
+./gradlew :core:test
 ./gradlew :interfaces:rest:test
 ./gradlew :connectors:core:test
 ```
@@ -32,30 +33,27 @@ Targeted module examples:
 
 ### Unit tests
 
-- `engine/src/test/java`
-- includes service tests, model utils tests, tool tests, and validation tests
+- `runtime/src/test/java`
+- `core/src/test/java`
+- `interfaces/rest/src/test/java`
 
 ### Integration tests
 
-- `engine/src/integrationTest/java`
 - `interfaces/rest/src/integrationTest/java`
 
 Integration tests use Quarkus test resources with Mongo/Redis test containers.
 
-## 7.4 Running Locally (Scripted)
+## 7.4 Deployment Workflow
 
-`deploy/deploy.sh` supports:
+This repository now treats Kubernetes as the primary deployment path.
 
-- `dev` mode: starts monolithic local interface (`:interfaces:local:quarkusDev`)
-- `production` mode: builds/runs engine + rest as separate processes
+Use:
 
-Script options:
+- `./k8s/scripts/deploy.sh` to install the standard release set
+- `./k8s/scripts/deploy.sh runtime core rest` to deploy a subset while preserving dependency order
+- `./k8s/scripts/cleanup.sh` to remove the standard release set
 
-- `--build`
-- `--clean`
-- `--no-bootstrap`
-
-`deploy/stop.sh` stops java services and dockerized infra.
+`deploy.sh` builds the required service images automatically. `k8s/scripts/build-images.sh` remains available for manual or registry-push workflows, and container images are still built from `docker/Dockerfile`.
 
 ## 7.5 Bootstrap Data in Dev
 
@@ -69,7 +67,7 @@ Observed repository conventions:
 
 - enums include `UNKNOWN` and parser helpers
 - validation is centralized in `ConfigValidationService` + rule validators
-- service interfaces in `engine:api` are transport-agnostic and gRPC-capable
+- service interfaces in `core:api` and `runtime:api` are transport-agnostic and gRPC-capable
 - secure persistence uses `@Secure` + custom Mongo codec convention
 
 ## 7.7 Known Inconsistency to Be Aware Of

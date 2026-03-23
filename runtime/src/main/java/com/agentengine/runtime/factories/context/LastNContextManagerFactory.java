@@ -1,9 +1,9 @@
 package com.agentengine.runtime.factories.context;
 
-import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
-import com.agentengine.engine.api.beans.config.LastNContextStrategyConfig;
-import com.agentengine.engine.context.LastNContextManager;
-import com.agentengine.engine.plugin.factories.ContextManagerFactory;
+import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
+import com.agentengine.util.agents.beans.config.LastNContextStrategyConfig;
+import com.agentengine.runtime.context.LastNContextManager;
+import com.agentengine.runtime.factories.context.ContextManagerFactory;
 import jakarta.inject.Singleton;
 
 @Singleton

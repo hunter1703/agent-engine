@@ -1,8 +1,8 @@
 package com.agentengine.runtime.tools.planning;
 
-import com.agentengine.engine.api.tools.ToolDescriptor;
-import com.agentengine.engine.plugin.annotations.ToolSchema;
-import com.agentengine.engine.tools.planning.beans.TaskStatus;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.runtime.tools.planning.beans.TaskStatus;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 

@@ -1,6 +1,6 @@
 package com.agentengine.runtime.guardrails;
 
-import com.agentengine.engine.api.beans.config.GuardrailAction;
+import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 

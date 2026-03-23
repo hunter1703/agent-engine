@@ -1,12 +1,11 @@
 package com.agentengine.runtime.context;
 
-import static com.agentengine.engine.utils.ContentUtils.estimateTokens;
+import static com.agentengine.runtime.utils.ContentUtils.estimateTokens;
 
+import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.runtime.factories.model.ModelProvider;
-import com.agentengine.runtime.plugin.ContextManager;
-import com.agentengine.runtime.repository.AgentSessionRepository;
-import com.agentengine.runtime.utils.SessionUtils;
+import com.agentengine.runtime.context.ContextManager;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -23,6 +22,7 @@ import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,21 +48,20 @@ public final class CompactionContextManager implements ContextManager {
   private final String modelId;
   private final String promptTemplate;
   private final ModelProvider modelProvider;
-  private final AgentSessionRepository sessionRepository;
+  private final MongoSessionService sessionService;
   private final Cache<String, String> summaryCache;
 
   public CompactionContextManager(final int tokenThreshold, int recencyThreshold, final String modelId, final String promptTemplate,
-      final ModelProvider modelProvider, final AgentSessionRepository sessionRepository) {
+      final ModelProvider modelProvider, final MongoSessionService sessionService) {
     this.tokenThreshold = Math.max(1, tokenThreshold);
     recencyThreshold = Math.max(1, recencyThreshold);
     this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
     this.modelId = modelId;
     this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     this.modelProvider = modelProvider;
-    this.sessionRepository = sessionRepository;
+    this.sessionService = sessionService;
     this.summaryCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), key -> {
-      final String[] split = key.split(":");
-      return loadSummary(split[0], split[1]);
+      return loadSummary(key.split(":")[0]);
     });
   }
 
@@ -85,7 +84,7 @@ public final class CompactionContextManager implements ContextManager {
     final String newSummary = callSummaryModel(buildSummaryInput(existingSummary, older));
 
     if (StringUtils.isNotBlank(newSummary)) {
-      persistSummary(sessionId, agentId, newSummary);
+      persistSummary(sessionId, newSummary);
       return withSummaryPrefix(newSummary, recent);
     }
 
@@ -170,17 +169,14 @@ public final class CompactionContextManager implements ContextManager {
     }
   }
 
-  private String loadSummary(final String sessionId, final String agentId) {
-    return sessionRepository.findById(sessionId).map(AgentSession::getSessionInfo).map(SessionUtils::toSession).map(session -> {
-      final Map<String, Object> summary = CollectionUtils.getMapFromMap(session.state(), "summary");
-      return CollectionUtils.getStringValueFromMap(summary, agentId);
-    }).map(Object::toString).orElse(null);
+  private String loadSummary(final String sessionId) {
+    return Optional.ofNullable(sessionService.findById(sessionId)).map(AgentSession::getSummary).orElse(null);
   }
 
-  private void persistSummary(final String sessionId, final String agentId, final String summary) {
+  private void persistSummary(final String sessionId, final String summary) {
     try {
-      sessionRepository.update(sessionId,
-          Update.of(Operation.set(AgentSession.FIELD_SESSION_INFO + ".state." + summary + "." + agentId, summary),
+      sessionService.update(sessionId,
+          Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary),
               Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
     } catch (Exception ex) {
       LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);

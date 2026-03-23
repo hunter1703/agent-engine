@@ -1,9 +1,9 @@
 package com.agentengine.runtime.factories.model;
 
 import com.agentengine.runtime.agents.processors.Parser;
-import com.agentengine.runtime.api.beans.config.ModelConfig;
+import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.runtime.model.DelegatingLLMModel;
-import com.agentengine.runtime.plugin.factories.ModelFactory;
+import com.agentengine.runtime.factories.model.ModelFactory;
 import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.TemplateUtils;

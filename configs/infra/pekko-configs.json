@@ -1,0 +1,15 @@
+[
+  {
+    "id": "pekko",
+    "type": "PEKKO",
+    "hostname": "${POD_NAME}.agent-engine-runtime-internal.${POD_NAMESPACE}.svc.cluster.local",
+    "port": 2552,
+    "seedNodes": [
+      "pekko://agent-engine-runtime@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
+      "pekko://agent-engine-runtime@agent-engine-runtime-1.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
+      "pekko://agent-engine-runtime@agent-engine-runtime-2.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552"
+    ],
+    "clusterName": "agent-engine-runtime",
+    "snapshotThreshold": 100
+  }
+]

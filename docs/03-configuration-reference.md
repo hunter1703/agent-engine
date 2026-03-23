@@ -4,13 +4,14 @@
 
 Key runtime inputs used across modules:
 
-- `quarkus.mongodb.connection-string`
+- `mongodb.connection.string`
 - `MONGODB_CONNECTION_STRING`
-- `PLUGIN_DIR` (system property or env var)
 - `agent.engine.bootstrap.dir` (default: `configs` in `interfaces:local`)
-- `agentengine.grpc.host` / `agentengine.grpc.port` (REST -> engine gRPC)
+- `agentengine.grpc.host` / `agentengine.grpc.port` (REST -> service gRPC transport)
 
 Default Mongo behavior in this repo commonly points to `mongodb://localhost:27018`.
+
+In Kubernetes, non-secret runtime config is expected to come from an externally mounted `application.properties` file, while sensitive values should come from environment variables or Secrets.
 
 ## 3.2 Agent Config (`BaseAgentConfig`)
 
@@ -44,7 +45,7 @@ Validation rules enforced by `ConfigValidationService` + custom validators:
 
 `OrchestratorAgentConfig` adds:
 
-- `orchestrationMode`: `TRANSFER`, `MANAGER`, `SEQUENTIAL`, `PARALLEL`
+- `orchestrationMode`: `TRANSFER`, `SEQUENTIAL`, `PARALLEL`
 - `parallel` (`OrchestratorParallelConfig`):
   - `aggregationPolicy`
   - `stoppingPolicy`

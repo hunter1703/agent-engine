@@ -1,8 +1,9 @@
 package com.agentengine.runtime.factories.agent.builders;
 
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.runtime.agents.BaseAgent;
 import com.agentengine.runtime.agents.DelegatedAgent;
-import com.agentengine.runtime.plugin.Agent;
+import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.tools.HumanInTheLoopTool;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.LlmAgent;

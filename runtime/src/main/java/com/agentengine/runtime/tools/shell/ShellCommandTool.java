@@ -1,13 +1,12 @@
 package com.agentengine.runtime.tools.shell;
 
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.api.tools.ToolRiskLevel;
-import com.agentengine.runtime.plugin.annotations.DiscoverableTool;
-import com.agentengine.runtime.plugin.annotations.ToolConstructor;
-import com.agentengine.runtime.plugin.annotations.ToolSchema;
-import com.agentengine.runtime.plugin.tools.Tool;
+import com.agentengine.runtime.annotations.DiscoverableTool;
+import com.agentengine.runtime.annotations.ToolConstructor;
+import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.runtime.tools.Tool;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.google.adk.tools.ToolContext;
-import io.vertx.json.schema.common.dsl.Schemas;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -24,8 +23,7 @@ public final class ShellCommandTool extends Tool {
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private static final String TOOL_NAME = "run_cmd";
   public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
-      "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.",
-      buildConfigSchema(), ToolRiskLevel.HIGH);
+      "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.", ToolRiskLevel.HIGH);
   private final Duration timeout;
 
   public ShellCommandTool() {
@@ -88,17 +86,5 @@ public final class ShellCommandTool extends Tool {
       return text;
     }
     return text.substring(0, MAX_OUTPUT_CHARS) + "\n...<truncated>...";
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> buildConfigSchema() {
-    // noinspection unchecked
-    return Schemas.objectSchema()
-        .property("timeout_seconds",
-            Schemas.intSchema()
-                .withKeyword("description",
-                    "Optional timeout in seconds for the shell command execution. Defaults to 30 seconds if not provided.")
-                .withKeyword("default", 30))
-        .toJson().mapTo(Map.class);
   }
 }

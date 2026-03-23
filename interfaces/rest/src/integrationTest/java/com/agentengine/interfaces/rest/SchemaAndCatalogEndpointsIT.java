@@ -45,7 +45,7 @@ class SchemaAndCatalogEndpointsIT {
           "systemPrompt": "Catalog agent prompt",
           "modelId": "model-catalog"
         }
-        """).when().post("/v1/agent/agent/upsert").then().statusCode(200);
+        """).when().post("/v1/agent/upsert").then().statusCode(200);
   }
 
   @Test

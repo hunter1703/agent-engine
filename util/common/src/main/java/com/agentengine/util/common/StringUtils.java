@@ -1,6 +1,7 @@
 package com.agentengine.util.common;
 
 import java.util.List;
+import org.apache.commons.text.StringEscapeUtils;
 
 public final class StringUtils {
 
@@ -57,5 +58,9 @@ public final class StringUtils {
 
   public static String joinNonBlank(final List<String> values) {
     return values.stream().filter(StringUtils::isNotBlank).reduce((a, b) -> a + "\n" + b).orElse("");
+  }
+
+  public static String wrapInQuotes(final String value) {
+    return "\"" + StringEscapeUtils.escapeJava(value) + "\"";
   }
 }

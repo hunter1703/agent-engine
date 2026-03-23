@@ -1,13 +1,7 @@
 package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.ServiceUtils;
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.plugin.ServiceUtils;
-import com.agentengine.runtime.plugin.tools.ToolProvider;
-import com.agentengine.runtime.plugin.tools.ToolsetProvider;
-import com.agentengine.util.agents.tools.ToolDescriptor;
-import com.agentengine.util.agents.tools.ToolProvider;
-import com.agentengine.util.agents.tools.ToolsetProvider;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import jakarta.enterprise.inject.Any;

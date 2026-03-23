@@ -1,11 +1,9 @@
 package com.agentengine.interfaces.rest.handlers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.agentengine.engine.agui.AGUIEventMapper;
-import com.agentengine.engine.api.agui.CorrectionEvent;
-import com.agentengine.engine.api.agui.CorrectionMetadata;
-import com.agentengine.interfaces.rest.dto.responses.ResponsesEvents;
+import com.agentengine.core.agui.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.google.adk.events.Event;
@@ -25,32 +23,18 @@ class ResponsesEventMapperTest {
   void shouldMapReasoningTextAndCompletionEvents() {
     final Event first = Event.builder().id("evt-1").partial(true)
         .content(Content.builder().role("model").parts(List.of(Part.builder().thought(true).text("thinking ").build())).build()).build();
-    final Event second = Event
-        .builder().id("evt-2").turnComplete(true).finishReason(new FinishReason(FinishReason.Known.STOP)).content(Content.builder()
-            .role("model").parts(List.of(Part.builder().thought(true).text("done").build(), Part.fromText("final answer"))).build())
+    final Event second = Event.builder().id("evt-2").turnComplete(true).finishReason(new FinishReason(FinishReason.Known.STOP))
+        .content(Content.builder().role("model")
+            .parts(List.of(Part.builder().thought(true).text("done").build(), Part.fromText("final answer"))).build())
         .build();
 
     final Flowable<BaseEvent> aguiEvents = new AGUIEventMapper("session-1", "agent-1").map(Flowable.just(first, second));
-    final List<ResponsesEvents.StreamEvent> mapped = new ResponsesEventMapper("resp-1", "agent-1").map(aguiEvents).toList().blockingGet();
+    final ResponsesEventMapper mapper = new ResponsesEventMapper("resp-1", "agent-1", 1L);
 
-    assertThat(mapped).extracting(ResponsesEvents.StreamEvent::type).contains("response.reasoning_text.delta",
-        "response.reasoning_text.done", "response.output_text.delta", "response.completed");
+    final List<ResponsesEventMapper.ResponseOutputEvent> mapped = aguiEvents.concatMap(mapper::mapEvent).toList().blockingGet();
 
-    final ResponsesEvents.CompletedEvent completed = mapped.stream().filter(ResponsesEvents.CompletedEvent.class::isInstance)
-        .map(ResponsesEvents.CompletedEvent.class::cast).findFirst().orElseThrow();
-    assertThat(completed.response().output()).isNotEmpty();
-  }
-
-  @Test
-  void shouldMapCorrectionEventIntoReasoningSummaryEvents() {
-    final CorrectionEvent correction = new CorrectionEvent(
-        new CorrectionMetadata("guardrail", "partial_tool_calls", "Tool calls in partial"));
-
-    final List<ResponsesEvents.StreamEvent> mapped = new ResponsesEventMapper("resp-2", "agent-2").map(Flowable.just(correction)).toList()
-        .blockingGet();
-
-    assertThat(mapped).extracting(ResponsesEvents.StreamEvent::type).contains("response.reasoning_summary_part.added",
-        "response.reasoning_summary_text.delta", "response.reasoning_summary_text.done", "response.completed");
+    assertThat(mapped).extracting(ResponsesEventMapper.ResponseOutputEvent::type).contains("response.reasoning.delta",
+        "response.output_text.delta", "response.completed");
   }
 
   @Test
@@ -63,26 +47,26 @@ class ResponsesEventMapperTest {
         .build();
 
     final Flowable<BaseEvent> aguiEvents = new AGUIEventMapper("session-2", "agent-1").map(Flowable.just(event));
-    final List<ResponsesEvents.StreamEvent> mapped = new ResponsesEventMapper("resp-3", "agent-1").map(aguiEvents).toList().blockingGet();
+    final ResponsesEventMapper mapper = new ResponsesEventMapper("resp-3", "agent-1", 1L);
 
-    assertThat(mapped).extracting(ResponsesEvents.StreamEvent::type).contains("response.output_item.added",
-        "response.function_call_arguments.delta", "response.function_call_arguments.done");
+    final List<ResponsesEventMapper.ResponseOutputEvent> mapped = aguiEvents.concatMap(mapper::mapEvent).toList().blockingGet();
 
-    final ResponsesEvents.OutputItemAddedEvent callOutput = mapped.stream().filter(ResponsesEvents.OutputItemAddedEvent.class::isInstance)
-        .map(ResponsesEvents.OutputItemAddedEvent.class::cast).filter(item -> "function_call_output".equals(item.item().get("type")))
-        .findFirst().orElseThrow();
+    assertThat(mapped).extracting(ResponsesEventMapper.ResponseOutputEvent::type).contains("response.function_call.output_item.added",
+        "response.function_call.arguments.delta", "response.function_call.done", "response.tool_call.output_item.added");
 
-    assertThat(callOutput.item().get("call_id")).isEqualTo("call-1");
+    final ResponsesEventMapper.ResponseOutputEvent functionCallAdded = mapped.stream()
+        .filter(output -> "response.function_call.output_item.added".equals(output.type())).findFirst().orElseThrow();
+    assertThat(functionCallAdded.toolCallId()).isEqualTo("call-1");
+    assertThat(functionCallAdded.toolName()).isEqualTo("search");
   }
 
   @Test
-  void shouldEmitFailedEventWhenRunErrorIsMapped() {
+  void shouldEmitErrorWhenRunErrorIsMapped() {
     final RunErrorEvent errorEvent = new RunErrorEvent();
     errorEvent.setError("boom");
+    final ResponsesEventMapper mapper = new ResponsesEventMapper("resp-4", "agent-3", 1L);
 
-    final List<ResponsesEvents.StreamEvent> mapped = new ResponsesEventMapper("resp-4", "agent-3").map(Flowable.just(errorEvent)).toList()
-        .blockingGet();
-
-    assertThat(mapped).extracting(ResponsesEvents.StreamEvent::type).contains("response.failed");
+    assertThatThrownBy(() -> mapper.mapEvent(errorEvent).toList().blockingGet()).isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("boom");
   }
 }

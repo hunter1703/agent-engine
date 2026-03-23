@@ -1,6 +1,8 @@
 package com.agentengine.util.ms;
 
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.mongodb.infra.InfraConfig;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 /**
  * MongoDB document that stores the gRPC endpoint for one microservice server.
@@ -9,13 +11,16 @@ import com.agentengine.util.common.beans.BaseEntity;
  * One document per server ID (e.g. {@code "agent"}), stored in the
  * {@code MicroServiceConfig} collection of the {@code INFRA} database.
  */
-public class MicroServiceInfraConfig extends BaseEntity {
-
+@BsonDiscriminator(value = "microservice")
+public class MicroServiceInfraConfig extends InfraConfig {
+  public static final String TYPE = "microservice";
+  public static final String FIELD_SERVER_ID = "serverId";
   private String serverId;
   private String host;
   private int port;
 
   public MicroServiceInfraConfig() {
+    super(TYPE);
   }
 
   public String getServerId() {

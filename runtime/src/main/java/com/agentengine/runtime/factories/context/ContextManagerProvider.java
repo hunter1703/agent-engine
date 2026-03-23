@@ -1,9 +1,9 @@
 package com.agentengine.runtime.factories.context;
 
-import com.agentengine.runtime.api.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.api.beans.config.ContextStrategyConfig;
-import com.agentengine.runtime.plugin.ContextManager;
-import com.agentengine.runtime.plugin.factories.ContextManagerFactory;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
+import com.agentengine.runtime.context.ContextManager;
+import com.agentengine.runtime.factories.context.ContextManagerFactory;
 import com.agentengine.runtime.utils.AgentUtils;
 import com.agentengine.util.common.CollectionUtils;
 import jakarta.enterprise.inject.Instance;

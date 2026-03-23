@@ -1,0 +1,101 @@
+namespace: agent-engine
+nameOverride: ""
+fullnameOverride: ""
+replicas: 1
+revisionHistoryLimit: 3
+terminationGracePeriodSeconds: 60
+priorityClassName: ""
+
+commonLabels: {}
+podLabels: {}
+podAnnotations: {}
+
+imagePullSecrets: []
+
+image:
+  repository: agent-engine/core
+  tag: "latest"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+  automountToken: false
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+java:
+  opts: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
+  args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
+
+bootstrap:
+  mongodb:
+    existingSecret: ""
+    connectionStringKey: connection-string
+
+config:
+  existingConfigMap: ""
+  applicationProperties: {}
+
+extraEnv: {}
+extraEnvFromSecrets: []
+extraEnvFromConfigMaps: []
+
+resources:
+  requests:
+    cpu: "1"
+    memory: "2Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"
+
+service:
+  type: ClusterIP
+  annotations: {}
+  httpPort: 8080
+  grpcPort: 9000
+
+tmpVolume:
+  enabled: true
+  sizeLimit: 256Mi
+
+probes:
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 1
+  liveness:
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 1
+  startup:
+    enabled: true
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 1
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+pdb:
+  enabled: false
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

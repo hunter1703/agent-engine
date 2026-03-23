@@ -1,8 +1,8 @@
 package com.agentengine.runtime.factories.context;
 
-import com.agentengine.engine.api.beans.config.BaseAgentConfig;
-import com.agentengine.engine.api.beans.config.ContextStrategyConfig;
-import com.agentengine.engine.plugin.ContextManager;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
+import com.agentengine.runtime.context.ContextManager;
 
 public interface ContextManagerFactory<C extends ContextStrategyConfig, CM extends ContextManager> {
 

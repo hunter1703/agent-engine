@@ -1,0 +1,9 @@
+[
+  {
+    "id": "sql-main",
+    "type": "sql",
+    "jdbcUrl": "jdbc:postgresql://postgres:5432/agent_engine_events",
+    "jdbcUser": "agentengine",
+    "jdbcPassword": "agentengine"
+  }
+]

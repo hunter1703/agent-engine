@@ -1,8 +1,8 @@
 package com.agentengine.runtime.factories.model;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.model.LangChain4jModel;
-import com.agentengine.engine.utils.ModelUtils;
+import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.runtime.model.LangChain4jModel;
+import com.agentengine.runtime.utils.ModelUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.ResourceUtils;

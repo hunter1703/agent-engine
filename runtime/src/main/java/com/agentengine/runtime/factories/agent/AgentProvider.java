@@ -1,8 +1,7 @@
 package com.agentengine.runtime.factories.agent;
 
-import com.agentengine.runtime.api.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.plugin.Agent;
-import com.agentengine.runtime.plugin.factories.AgentFactory;
+import com.agentengine.runtime.agents.Agent;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -18,9 +17,10 @@ public class AgentProvider {
   private final DefaultAgentFactory defaultAgentFactory;
 
   @Inject
-  public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories) {
+  public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories,
+                       final DefaultAgentFactory defaultAgentFactory) {
     typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), AgentFactory::type, Function.identity());
-    this.defaultAgentFactory = (DefaultAgentFactory) typeVsFactory.get(BaseAgentConfig.AgentType.DEFAULT.name());
+    this.defaultAgentFactory = defaultAgentFactory;
   }
 
   public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {

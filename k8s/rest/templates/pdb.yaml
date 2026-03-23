@@ -1,0 +1,14 @@
+{{- if and .Values.pdb.enabled (gt (int .Values.replicas) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "agent-engine-rest.fullname" . }}
+  namespace: {{ include "agent-engine-rest.namespace" . }}
+  labels:
+    {{- include "agent-engine-rest.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "agent-engine-rest.selectorLabels" . | nindent 6 }}
+{{- end }}

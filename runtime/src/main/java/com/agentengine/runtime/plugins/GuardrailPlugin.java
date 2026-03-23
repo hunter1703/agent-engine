@@ -1,12 +1,18 @@
 package com.agentengine.runtime.plugins;
 
-import com.agentengine.engine.api.beans.config.GuardrailAction;
-import com.agentengine.engine.api.beans.config.GuardrailStage;
-import com.agentengine.engine.tools.ToolUtils;
-import com.agentengine.engine.utils.ContentUtils;
-import com.agentengine.engine.utils.EventUtils;
-import com.agentengine.engine.utils.ResponseUtils;
-import com.agentengine.engine.utils.RunUtils;
+import com.agentengine.runtime.guardrails.Guardrail;
+import com.agentengine.runtime.guardrails.GuardrailConstants;
+import com.agentengine.runtime.guardrails.GuardrailContext;
+import com.agentengine.runtime.guardrails.GuardrailDecision;
+import com.agentengine.runtime.guardrails.GuardrailPolicyFactory;
+import com.agentengine.runtime.utils.ContentUtils;
+import com.agentengine.runtime.utils.EventUtils;
+import com.agentengine.runtime.utils.GuardrailUtils;
+import com.agentengine.runtime.utils.ResponseUtils;
+import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.runtime.utils.ToolUtils;
+import com.agentengine.util.agents.beans.config.GuardrailAction;
+import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.CallbackContext;

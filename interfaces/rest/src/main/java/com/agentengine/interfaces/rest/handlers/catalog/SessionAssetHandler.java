@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.engine.api.beans.session.AgentSession;
-import com.agentengine.engine.api.services.SessionService;
+import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -34,8 +34,7 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
 
   @Override
   public PaginatedResult<AgentSession> findAssets(final AssetRequest request) {
-    final boolean includeEvents = shouldIncludeEvents(request);
-    final Query query = buildQuery(request, includeEvents);
+    final Query query = request == null || request.getQuery() == null ? new Query() : request.getQuery();
     return sessionService.findSessions(query);
   }
 
@@ -64,20 +63,5 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
       return false;
     }
     return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(request.getOptions(), INCLUDE_EVENTS_OPTION));
-  }
-
-  private static Query buildQuery(final AssetRequest request, final boolean includeEvents) {
-    final Query query = request == null || request.getQuery() == null ? new Query() : request.getQuery();
-    if (includeEvents) {
-      return query.addIncludeField(AgentSession.FIELD_EVENTS);
-    }
-    if (CollectionUtils.nullSafeList(query.getIncludeFields()).isEmpty()) {
-      final List<String> excluded = CollectionUtils.nullSafeMutableList(query.getExcludeFields());
-      if (!excluded.contains(AgentSession.FIELD_EVENTS)) {
-        excluded.add(AgentSession.FIELD_EVENTS);
-      }
-      query.setExcludeFields(excluded);
-    }
-    return query;
   }
 }

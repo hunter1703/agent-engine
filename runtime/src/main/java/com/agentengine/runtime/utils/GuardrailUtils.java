@@ -1,9 +1,13 @@
 package com.agentengine.runtime.utils;
 
-import com.agentengine.engine.api.beans.config.GuardrailAction;
-import com.agentengine.engine.api.beans.config.GuardrailErrorMode;
-import com.agentengine.engine.utils.RunUtils;
-import com.agentengine.engine.utils.Violation;
+import com.agentengine.util.agents.beans.config.GuardrailAction;
+import com.agentengine.util.agents.beans.config.GuardrailErrorMode;
+import com.agentengine.runtime.guardrails.Guardrail;
+import com.agentengine.runtime.guardrails.GuardrailConstants;
+import com.agentengine.runtime.guardrails.GuardrailContext;
+import com.agentengine.runtime.guardrails.GuardrailDecision;
+import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
@@ -46,7 +50,6 @@ public final class GuardrailUtils {
     RunUtils.getOrInitState(invocationContext)
         .addViolation(Violation.builder(StringUtils.isBlank(decision.code()) ? GuardrailConstants.Code.VIOLATION : decision.code())
             .message(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())
-            .correctionMessage(StringUtils.isBlank(decision.message()) ? "Guardrail policy was triggered." : decision.message())
             .details(decision.details()).build());
   }
 

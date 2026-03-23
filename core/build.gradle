@@ -1,0 +1,25 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+dependencies {
+    implementation project(':core-api')
+    implementation project(':runtime-api')
+    implementation project(':runtime-actor')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation project(':util:agents')
+    implementation project(':util:ms')
+
+    implementation libs.ag.ui.core
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation libs.quarkus.mongodb.client
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.jackson
+    implementation libs.google.genai
+
+    implementation libs.slf4j.api
+    implementation libs.rxjava
+}

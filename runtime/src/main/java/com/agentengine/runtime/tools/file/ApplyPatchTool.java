@@ -1,9 +1,9 @@
 package com.agentengine.runtime.tools.file;
 
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.plugin.annotations.DiscoverableTool;
-import com.agentengine.runtime.plugin.annotations.ToolSchema;
-import com.agentengine.runtime.api.tools.ToolRiskLevel;
+import com.agentengine.runtime.annotations.DiscoverableTool;
+import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;

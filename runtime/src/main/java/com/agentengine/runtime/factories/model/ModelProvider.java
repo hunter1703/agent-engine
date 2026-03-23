@@ -1,8 +1,8 @@
 package com.agentengine.runtime.factories.model;
 
-import com.agentengine.engine.api.beans.config.ModelConfig;
-import com.agentengine.engine.plugin.factories.ModelFactory;
-import com.agentengine.engine.repository.ModelRepository;
+import com.agentengine.core.api.services.ModelService;
+import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.runtime.factories.model.ModelFactory;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
@@ -11,7 +11,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -21,17 +20,16 @@ import org.slf4j.LoggerFactory;
 public class ModelProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ModelProvider.class);
 
-  private final Map<String, ModelFactory<? extends BaseLlm>> typeVsFactory;
+  private final Map<String, ModelFactory<?>> typeVsFactory;
   private final ModelFactory<?> defaultFactory;
-  private final ModelRepository modelRepository;
+  private final ModelService modelService;
   private final RefCountedCache<String, BaseLlm> cache;
 
   @Inject
-  public ModelProvider(final Instance<ModelFactory<?>> allFactories, final OpenAIModelFactory openAIModelFactory,
-      final ModelRepository modelRepository) {
+  public ModelProvider(final Instance<ModelFactory<?>> allFactories, final OpenAIModelFactory openAIModelFactory, final ModelService modelService) {
     this.typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), ModelFactory::type, Function.identity());
     this.defaultFactory = openAIModelFactory;
-    this.modelRepository = modelRepository;
+    this.modelService = modelService;
     this.cache = RefCountedCache.<String, BaseLlm>builder().name("model-provider").idleTimeout(15, TimeUnit.MINUTES)
         .cleanupInterval(60, TimeUnit.SECONDS).creator(this::buildModel).onEvict((_modelId, model) -> tryClose(model)).build();
   }
@@ -51,9 +49,12 @@ public class ModelProvider {
   }
 
   private BaseLlm buildModel(final String modelId) {
-    final ModelConfig modelConfig = Objects.requireNonNull(modelRepository.findById(modelId).orElse(null));
-    final ModelFactory<? extends BaseLlm> factory = typeVsFactory.getOrDefault(modelConfig.getType(), defaultFactory);
-    return factory.build(modelConfig);
+    final ModelConfig config = modelService.getModel(modelId);
+    if (config == null) {
+      throw new IllegalStateException("Model config missing in execution package for model_id=" + modelId);
+    }
+    final ModelFactory<?> factory = typeVsFactory.getOrDefault(config.getType(), defaultFactory);
+    return factory.build(config);
   }
 
   private static void tryClose(final BaseLlm model) {

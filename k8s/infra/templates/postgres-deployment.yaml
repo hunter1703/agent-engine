@@ -1,0 +1,94 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: {{ include "agent-engine-infra.namespace" . }}
+  labels:
+    app.kubernetes.io/name: postgres
+    {{- include "agent-engine-infra.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.postgres.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.postgres.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.postgres.podSecurityContext | nindent 8 }}
+      {{- with .Values.postgres.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgres
+          image: {{ include "agent-engine-infra.postgresImage" . | quote }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.postgres.containerSecurityContext | nindent 12 }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "agent-engine-infra.postgresSecretName" . }}
+                  key: {{ .Values.postgres.usernameKey }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "agent-engine-infra.postgresSecretName" . }}
+                  key: {{ .Values.postgres.passwordKey }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.postgres.port }}
+          readinessProbe:
+            tcpSocket:
+              port: postgres
+            periodSeconds: {{ .Values.postgres.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.postgres.probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ .Values.postgres.probes.readiness.timeoutSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: postgres
+            periodSeconds: {{ .Values.postgres.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.postgres.probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ .Values.postgres.probes.liveness.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+{{- if .Values.postgres.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: postgres-data
+{{- else }}
+          emptyDir: {}
+{{- end }}
+{{- end }}

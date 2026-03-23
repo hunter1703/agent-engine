@@ -25,7 +25,7 @@ re-establish context. Rollback lets the user prune the last N user turns and res
 good state, which is fundamental to productive coding sessions.
 
 **Design:**
-Session events in MongoDB are append-only (encrypted JSONL in `SessionInfo.eventsJson`). Rather
+Session events are sourced from the session actor's committed replay state. Rather
 than mutating the event log, append a sentinel `RollbackEvent` carrying the target truncation point.
 `RunState.buildFrom` and `SessionUtils.toSession` already replay the event list — they need to
 honour rollback markers by ignoring events after the rollback boundary. This keeps the full audit

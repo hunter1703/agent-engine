@@ -1,0 +1,49 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+dependencies {
+    // Internal modules
+    implementation project(':runtime-api')
+    implementation project(':runtime-actor')
+    implementation project(':core-api')
+    implementation project(':connectors:core')
+    implementation project(':util:common')
+    implementation project(':util:pekko')
+    implementation project(':util:mongodb')
+    implementation project(':util:agents')
+    implementation project(':util:ms')
+
+    implementation platform(libs.pekko.bom)
+    implementation libs.pekko.actor.typed
+    implementation libs.pekko.cluster.sharding.typed
+    implementation libs.pekko.cluster.typed
+    implementation libs.pekko.persistence.typed
+    implementation libs.pekko.persistence.jdbc
+    implementation libs.pekko.streams.typed
+    implementation libs.pekko.serialization.jackson
+
+    implementation libs.postgresql
+
+    implementation platform(libs.langchain4j.bom)
+    implementation libs.google.adk.langchain4j
+    implementation libs.google.genai
+    implementation libs.langchain4j.core
+    implementation libs.langchain4j.open.ai
+    implementation libs.langchain4j.ollama
+    implementation libs.langchain4j.http.client.jdk
+
+    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation libs.quarkus.mongodb.client
+    implementation libs.quarkus.jackson
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.fault.tolerance
+
+    implementation libs.slf4j.api
+    implementation libs.guava
+    implementation libs.rxjava
+    implementation libs.stateless4j
+    implementation libs.vertx.json.schema
+    implementation libs.java.diff.utils
+}

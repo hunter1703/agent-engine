@@ -1,8 +1,8 @@
 package com.agentengine.runtime.tools.lookup;
 
 import com.agentengine.connectors.core.ConnectorService;
-import com.agentengine.runtime.api.tools.ToolDescriptor;
-import com.agentengine.runtime.plugin.tools.ToolProvider;
+import com.agentengine.runtime.tools.ToolProvider;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
