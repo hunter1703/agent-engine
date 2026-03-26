@@ -20,6 +20,9 @@ dependencies {
     implementation libs.pekko.cluster.typed
     implementation libs.pekko.persistence.typed
     implementation libs.pekko.persistence.jdbc
+    implementation libs.pekko.projection.core
+    implementation libs.pekko.projection.eventsourced
+    implementation libs.pekko.projection.jdbc
     implementation libs.pekko.streams.typed
     implementation libs.pekko.serialization.jackson
 
