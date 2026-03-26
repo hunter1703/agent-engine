@@ -2,10 +2,9 @@ package com.agentengine.runtime.context;
 
 import static com.agentengine.runtime.utils.ContentUtils.estimateTokens;
 
-import com.agentengine.runtime.services.MongoSessionService;
+import com.agentengine.runtime.services.ProjectionBackedSessionService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.runtime.factories.model.ModelProvider;
-import com.agentengine.runtime.context.ContextManager;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -48,11 +47,11 @@ public final class CompactionContextManager implements ContextManager {
   private final String modelId;
   private final String promptTemplate;
   private final ModelProvider modelProvider;
-  private final MongoSessionService sessionService;
+  private final ProjectionBackedSessionService sessionService;
   private final Cache<String, String> summaryCache;
 
   public CompactionContextManager(final int tokenThreshold, int recencyThreshold, final String modelId, final String promptTemplate,
-      final ModelProvider modelProvider, final MongoSessionService sessionService) {
+      final ModelProvider modelProvider, final ProjectionBackedSessionService sessionService) {
     this.tokenThreshold = Math.max(1, tokenThreshold);
     recencyThreshold = Math.max(1, recencyThreshold);
     this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
@@ -175,9 +174,8 @@ public final class CompactionContextManager implements ContextManager {
 
   private void persistSummary(final String sessionId, final String summary) {
     try {
-      sessionService.update(sessionId,
-          Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary),
-              Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
+      sessionService.update(sessionId, Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary),
+          Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
     } catch (Exception ex) {
       LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);
     }

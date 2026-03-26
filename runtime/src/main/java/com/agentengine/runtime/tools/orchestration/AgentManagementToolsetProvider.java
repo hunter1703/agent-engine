@@ -16,9 +16,9 @@ public final class AgentManagementToolsetProvider extends AbstractToolsetProvide
 
   @Inject
   public AgentManagementToolsetProvider(final SessionActorFactory actorFactory) {
-    super(TOOLSET_DESCRIPTOR, List.of(
-        new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorFactory)),
-        new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorFactory)),
-        new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorFactory))));
+    super(TOOLSET_DESCRIPTOR,
+        List.of(new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorFactory)),
+            new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorFactory)),
+            new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorFactory))));
   }
 }

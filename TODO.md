@@ -10,6 +10,32 @@ add tool config schema from tool constructor for discovered tools
 - Add integration tests for native confirmation resume adapter (non-empty text -> approval payload mapping).
 
 
+## Session Actor Rebuild — Deferred Correctness Gaps
+
+- **ClusterSingleton for projection**: `SessionHistoryProjection` starts on every node. Wrap with
+  `ClusterSingleton` or guard with Pekko cluster-aware startup to prevent duplicate projection
+  runners.
+- **CDI bean wiring for projection**: `SessionHistoryProjection`, `SessionHistoryProjectionHandler`,
+  and `DefaultSessionHistory` are not yet wired as CDI beans (no `@ApplicationScoped`/`@Singleton`
+  on the projection class with injected `MongoCollection`). Wire via Quarkus CDI and confirm startup.
+- **Child actor dispatch**: `SessionActor` logs spawned children but does not yet dispatch
+  `SpawnChild` / `SendChildTask` / `AwaitChildRun` through a real `ChildRegistry`. Implement
+  `ChildRegistry` dispatch and cross-shard child lookup.
+- **`SessionTopology` assembly**: `DefaultAgentRunner` receives a `SessionTopology` but the
+  factory that constructs it from `AgentDefinition` + loaded tools has not been wired. Implement
+  `SessionTopologyFactory`.
+- **Recovery cleanup on restart**: After an actor recovers from a crash mid-run, any in-flight
+  `RUNNING` execution state should be transitioned to `FAILED` at startup. Add a `RecoveryCleanup`
+  guard in `SessionActor.forState`.
+- **`atLeastOnce` idempotency**: `SessionHistoryProjectionHandler` uses `atLeastOnceAsync`, so
+  `writeTurnEvents` may be called more than once for the same sequence. Add sequence-based
+  upsert (`$setOnInsert`) to the MongoDB write to make it idempotent.
+- **Projection offset store**: The JDBC offset store used by `SessionHistoryProjection` requires a
+  `pekko_projection_offset_store` table. Add the schema migration / DDL init.
+- **`SessionHistory` in `SessionServiceImpl`**: `SessionServiceImpl` now injects `SessionHistory`
+  but the injection point is not guarded against `null` events from projections that haven't caught
+  up. Add a documented eventual-consistency note and consider a fallback read from the actor.
+
 ## Deferred Agent-Engine Work For Agent-Console UX Parity
 - Move Builder Contract generation from runtime warm-cache to dedicated build-time artifact generation task and wire it into module resource packaging.
 - Extend access-policy enforcement from top-level fields to full JSON-pointer nested enforcement (arrays/objects) for strict mode-safe updates.
