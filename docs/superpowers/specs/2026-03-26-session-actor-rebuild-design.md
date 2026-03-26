@@ -609,8 +609,8 @@ A recovered `Running` state is always invalid. The in-flight execution died with
 In Pekko's `EventSourcedBehavior`, the recovery-completed signal handler cannot directly persist facts — only command handlers can produce `Effect().persist(...)`. The idiomatic approach is to self-send a command from the signal handler.
 
 ```java
-// Internal command for recovery cleanup
-record RecoveryCleanup(String runId) implements Command {}
+// Defined in InternalCommand sealed hierarchy (Section 6)
+// record RecoveryCleanup(String runId) implements InternalCommand {}
 
 void onRecoveryCompleted() {
     switch (state.execution()) {
