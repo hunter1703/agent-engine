@@ -83,6 +83,11 @@ public final class SessionActor
 
         // Initialized phase: all commands accepted
         builder.forState(state -> state != null)
+                .onCommand(SessionCommand.ExternalCommand.InitializeSession.class,
+                        (state, cmd) -> {
+                            cmd.replyTo().tell(new SessionReply.InitializeResult.AlreadyInitialized());
+                            return Effect().none();
+                        })
                 .onCommand(SessionCommand.ExternalCommand.StartRun.class,              this::onStartRun)
                 .onCommand(SessionCommand.ExternalCommand.ResumeRun.class,             this::onResumeRun)
                 .onCommand(SessionCommand.ExternalCommand.SpawnChild.class,            this::onSpawnChild)
@@ -279,7 +284,8 @@ public final class SessionActor
                 ))
                 .thenRun(newState -> {
                     cmd.replyTo().tell(new SessionReply.SpawnResult.ChildSpawned(handle));
-                    // TODO: dispatch child session initialization via SessionActorFactory
+                    runner.spawnChild(newState.topology(), cmd.childAgentId(), childSessionId,
+                            childRunId, cmd.message(), ctx.getSelf());
                 });
     }
 
@@ -303,7 +309,8 @@ public final class SessionActor
                 .persist(new SessionFact.ChildRunStarted(cmd.childSessionId(), childRunId, Instant.now()))
                 .thenRun(newState -> {
                     cmd.replyTo().tell(new SessionReply.SendTaskResult.TaskAccepted(handle));
-                    // TODO: tell child actor new StartRun via SessionActorFactory
+                    runner.sendChildTask(newState.topology(), worker.get().childAgentId(),
+                            cmd.childSessionId(), childRunId, cmd.message(), ctx.getSelf());
                 });
     }
 
@@ -519,7 +526,6 @@ public final class SessionActor
     }
 
     private void notifyParentIfChild(final SessionState state, final String runId) {
-        if (state.topology().isRoot()) return;
-        // TODO: notify parent actor via SessionActorFactory
+        runner.notifyParentOfCompletion(state.topology(), runId, null);
     }
 }

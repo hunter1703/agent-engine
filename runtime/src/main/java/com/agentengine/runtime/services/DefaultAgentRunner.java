@@ -1,11 +1,14 @@
 package com.agentengine.runtime.services;
 
 import com.agentengine.core.api.services.AgentService;
+import com.agentengine.runtime.actor.ActorUtils;
 import com.agentengine.runtime.actor.AgentRunner;
+import com.agentengine.runtime.actor.ChildRegistry;
 import com.agentengine.runtime.actor.SessionActorFactory;
 import com.agentengine.runtime.actor.SessionCommand;
 import com.agentengine.runtime.actor.SessionEvent;
 import com.agentengine.runtime.actor.SessionTopology;
+import com.agentengine.runtime.actor.SessionTopologyFactory;
 import com.agentengine.runtime.factories.agent.AgentProvider;
 import com.agentengine.runtime.hitl.SessionPause;
 import com.agentengine.runtime.hitl.SessionPauseKind;
@@ -28,6 +31,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.pekko.actor.typed.ActorRef;
+import org.apache.pekko.actor.typed.ActorSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,14 +51,17 @@ public class DefaultAgentRunner implements AgentRunner {
   private final AgentProvider agentProvider;
   private final ProjectionBackedSessionService sessionService;
   private final Instance<SessionActorFactory> actorFactory;
+  private final ActorSystem<Void> actorSystem;
 
   @Inject
   public DefaultAgentRunner(final AgentService agentService, final AgentProvider agentProvider,
-      final ProjectionBackedSessionService sessionService, final Instance<SessionActorFactory> actorFactory) {
+      final ProjectionBackedSessionService sessionService, final Instance<SessionActorFactory> actorFactory,
+      final ActorSystem<Void> actorSystem) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.sessionService = sessionService;
     this.actorFactory = actorFactory;
+    this.actorSystem = actorSystem;
   }
 
   @Override
@@ -88,6 +95,34 @@ public class DefaultAgentRunner implements AgentRunner {
   @Override
   public void retryRun(final SessionTopology topology, final String runId, final ActorRef<SessionCommand> replyTo) {
     Thread.ofVirtual().start(() -> execute(topology, runId, null, replyTo));
+  }
+
+  @Override
+  public void spawnChild(final SessionTopology parentTopology, final String childAgentId, final String childSessionId,
+      final String childRunId, final String message, final ActorRef<SessionCommand> parentRef) {
+    final var childTopology = SessionTopologyFactory.childTopology(childAgentId, childSessionId, parentTopology.rootSessionId(),
+        parentTopology.sessionId(), parentTopology.agentId());
+    final var childRef = actorFactory.get().entityRef(childAgentId, childSessionId);
+    childRef.<com.agentengine.runtime.actor.SessionReply.InitializeResult>ask(
+        replyTo -> new SessionCommand.ExternalCommand.InitializeSession(childTopology, replyTo), ActorUtils.DEFAULT_ASK_TIMEOUT)
+        .thenAccept(_ -> childRef.<com.agentengine.runtime.actor.SessionReply.StartRunResult>ask(
+            replyTo -> new SessionCommand.ExternalCommand.StartRun(message, replyTo), ActorUtils.DEFAULT_ASK_TIMEOUT));
+  }
+
+  @Override
+  public void sendChildTask(final SessionTopology parentTopology, final String childAgentId, final String childSessionId,
+      final String childRunId, final String message, final ActorRef<SessionCommand> parentRef) {
+    actorFactory.get().entityRef(childAgentId, childSessionId).<com.agentengine.runtime.actor.SessionReply.StartRunResult>ask(
+        replyTo -> new SessionCommand.ExternalCommand.StartRun(message, replyTo), ActorUtils.DEFAULT_ASK_TIMEOUT);
+  }
+
+  @Override
+  public void notifyParentOfCompletion(final SessionTopology childTopology, final String runId, final ChildRegistry.ChildRunResult result) {
+    if (childTopology.isRoot())
+      return;
+    final var role = (SessionTopology.SessionRole.Child) childTopology.role();
+    actorFactory.get().entityRef(role.parentAgentId(), role.parentSessionId())
+        .tell(new SessionCommand.InternalCommand.NotifyChildRunCompleted(childTopology.sessionId(), runId, result));
   }
 
   private void execute(final SessionTopology topology, final String runId, final Content userContent,

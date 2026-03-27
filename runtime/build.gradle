@@ -40,6 +40,8 @@ dependencies {
     implementation libs.quarkus.mongodb.client
     implementation libs.quarkus.jackson
     implementation libs.quarkus.arc
+    implementation libs.quarkus.agroal
+    implementation libs.quarkus.jdbc.postgresql
     implementation libs.quarkus.opentelemetry
     implementation libs.quarkus.smallrye.fault.tolerance
 

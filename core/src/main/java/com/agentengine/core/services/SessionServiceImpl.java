@@ -79,6 +79,10 @@ public class SessionServiceImpl implements SessionService {
     if (!includeEvents || session == null) {
       return session;
     }
+    // Events come from the projection store and are eventually consistent: events
+    // committed
+    // after the last projection checkpoint will be absent until the projection
+    // catches up.
     final AGUIEventMapper mapper = new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
     final List<BaseEvent> aguiEvents = new ArrayList<>();
     for (final SessionEvent event : sessionHistory.events(session.getId())) {

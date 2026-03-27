@@ -107,6 +107,8 @@ quarkus-smallrye-health = { group = "io.quarkus", name = "quarkus-smallrye-healt
 quarkus-micrometer-registry-prometheus = { group = "io.quarkus", name = "quarkus-micrometer-registry-prometheus" }
 quarkus-hibernate-validator = { group = "io.quarkus", name = "quarkus-hibernate-validator" }
 quarkus-arc = { group = "io.quarkus", name = "quarkus-arc" }
+quarkus-agroal = { group = "io.quarkus", name = "quarkus-agroal" }
+quarkus-jdbc-postgresql = { group = "io.quarkus", name = "quarkus-jdbc-postgresql" }
 
 # Jakarta APIs
 jakarta-validation-api = { group = "jakarta.validation", name = "jakarta.validation-api", version.ref = "jakarta-validation" }
