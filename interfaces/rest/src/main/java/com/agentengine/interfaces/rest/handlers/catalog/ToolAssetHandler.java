@@ -3,6 +3,8 @@ package com.agentengine.interfaces.rest.handlers.catalog;
 import com.agentengine.runtime.api.services.ToolCatalog;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
@@ -16,8 +18,6 @@ import java.util.stream.Collectors;
 @Singleton
 public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
-  private static final String ASSET_TYPE = "tool";
-
   private final ToolCatalog toolCatalog;
 
   @Inject
@@ -27,7 +27,7 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
   @Override
   public String getAssetType() {
-    return ASSET_TYPE;
+    return AssetClass.TOOL;
   }
 
   @Override
@@ -49,8 +49,9 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
     if (request.getKeys() == null || request.getKeys().isEmpty()) {
       return Map.of();
     }
-    return request.getKeys().stream().map(toolCatalog::getToolByName).filter(Objects::nonNull)
-        .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
+    List<ToolDescriptor> tools = toolCatalog.getTools();
+    final Map<String, ToolDescriptor> nameVsCatalog = CollectionUtils.transformToMap(tools, ToolDescriptor::name, Function.identity());
+    return request.getKeys().stream().map(nameVsCatalog::get).filter(Objects::nonNull).collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
   }
 
   @Override

@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.Locale;
 
 public class AgentRequest {
-  @NotBlank(message = "types is required")
+  @NotBlank(message = "type is required")
   private String type;
 
   @NotBlank(message = "agentId is required")

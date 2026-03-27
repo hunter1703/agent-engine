@@ -5,7 +5,6 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EncryptionService;
-import com.agentengine.util.common.Properties;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -16,6 +15,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.Convention;
@@ -36,12 +37,13 @@ public class MongoClientFactory {
   @Inject
   Instance<EncryptionService> encryptionService;
 
-  @Inject
-  Properties properties;
-
   public MongoClient getClient() {
-    final String connectionString = properties.getString(MONGO_CONNECTION_STRING, DEFAULT_CONNECTION);
+    final String connectionString = resolveConnectionString(ConfigProvider.getConfig());
     return MongoClients.create(buildClientSettings(connectionString, getBsonDiscriminators(mongoClientSupport), encryptionService));
+  }
+
+  private static String resolveConnectionString(final Config config) {
+    return config.getOptionalValue(MONGO_CONNECTION_STRING, String.class).orElseThrow();
   }
 
   private List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {
