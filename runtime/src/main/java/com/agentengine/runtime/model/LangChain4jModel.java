@@ -172,25 +172,26 @@ public final class LangChain4jModel extends BaseLlm {
 
   private static void applyConfig(final ChatRequest.Builder builder, final GenerateContentConfig config,
       final List<ToolSpecification> toolSpecifications) {
-    config.temperature().ifPresent(t -> builder.temperature(t.doubleValue()));
-    config.topP().ifPresent(t -> builder.topP(t.doubleValue()));
-    config.topK().ifPresent(t -> builder.topK(t.intValue()));
+    config.temperature().ifPresent(temperature -> builder.temperature(temperature.doubleValue()));
+    config.topP().ifPresent(topP -> builder.topP(topP.doubleValue()));
+    config.topK().ifPresent(topK -> builder.topK(topK.intValue()));
     config.maxOutputTokens().ifPresent(builder::maxOutputTokens);
     config.stopSequences().ifPresent(builder::stopSequences);
-    config.frequencyPenalty().ifPresent(t -> builder.frequencyPenalty(t.doubleValue()));
-    config.presencePenalty().ifPresent(t -> builder.presencePenalty(t.doubleValue()));
-    config.toolConfig().ifPresent(tc -> applyToolConfig(builder, tc, toolSpecifications));
+    config.frequencyPenalty().ifPresent(frequencyPenalty -> builder.frequencyPenalty(frequencyPenalty.doubleValue()));
+    config.presencePenalty().ifPresent(presencePenalty -> builder.presencePenalty(presencePenalty.doubleValue()));
+    config.toolConfig().ifPresent(toolConfiguration -> applyToolConfig(builder, toolConfiguration, toolSpecifications));
   }
 
   private static void applyToolConfig(final ChatRequest.Builder builder, final ToolConfig toolConfig,
       final List<ToolSpecification> toolSpecifications) {
-    toolConfig.functionCallingConfig().ifPresent(fc -> fc.mode().ifPresent(mode -> {
+    toolConfig.functionCallingConfig().ifPresent(functionCallingConfig -> functionCallingConfig.mode().ifPresent(mode -> {
       if (FunctionCallingConfigMode.Known.AUTO.equals(mode.knownEnum())) {
         builder.toolChoice(ToolChoice.AUTO);
       } else if (FunctionCallingConfigMode.Known.ANY.equals(mode.knownEnum())) {
         builder.toolChoice(ToolChoice.REQUIRED);
-        fc.allowedFunctionNames()
-            .ifPresent(allowed -> builder.toolSpecifications(toolSpecifications.stream().filter(t -> allowed.contains(t.name())).toList()));
+        functionCallingConfig.allowedFunctionNames().ifPresent(
+            allowedFunctionNames -> builder.toolSpecifications(
+                toolSpecifications.stream().filter(toolSpecification -> allowedFunctionNames.contains(toolSpecification.name())).toList()));
       } else if (FunctionCallingConfigMode.Known.NONE.equals(mode.knownEnum())) {
         builder.toolSpecifications(List.of());
       }
@@ -217,10 +218,10 @@ public final class LangChain4jModel extends BaseLlm {
     // ADK encodes tool results as user-role Content with FunctionResponse parts.
     // When present, each becomes a separate ToolExecutionResultMessage; otherwise
     // it is a UserMessage.
-    final List<ChatMessage> toolResults = parts.stream().filter(p -> p.functionResponse().isPresent()).map(p -> {
-      final FunctionResponse fr = p.functionResponse().get();
-      return (ChatMessage) ToolExecutionResultMessage.from(fr.id().orElseThrow(), fr.name().orElseThrow(),
-          JsonUtils.toJson(fr.response().orElseThrow()));
+    final List<ChatMessage> toolResults = parts.stream().filter(part -> part.functionResponse().isPresent()).map(part -> {
+      final FunctionResponse functionResponse = part.functionResponse().get();
+      return (ChatMessage) ToolExecutionResultMessage.from(functionResponse.id().orElseThrow(), functionResponse.name().orElseThrow(),
+          JsonUtils.toJson(functionResponse.response().orElseThrow()));
     }).toList();
     if (!toolResults.isEmpty()) {
       return toolResults;
@@ -318,7 +319,7 @@ public final class LangChain4jModel extends BaseLlm {
   private static JsonObjectSchema toParameters(final Schema schema) {
     if (schema.type().isPresent() && Type.Known.OBJECT.equals(schema.type().get().knownEnum())) {
       final Map<String, JsonSchemaElement> properties = new HashMap<>();
-      schema.properties().orElse(Map.of()).forEach((k, v) -> properties.put(k, toSchemaElement(v)));
+      schema.properties().orElse(Map.of()).forEach((propertyName, propertySchema) -> properties.put(propertyName, toSchemaElement(propertySchema)));
       return JsonObjectSchema.builder().addProperties(properties).required(schema.required().orElse(List.of())).build();
     }
     throw new UnsupportedOperationException("Unsupported schema type: " + schema.type());

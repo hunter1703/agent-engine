@@ -1,6 +1,8 @@
 package com.agentengine.runtime.actor;
 
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.CorrectionMetadata;
+import com.agentengine.util.agents.beans.SessionEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -34,7 +36,7 @@ class SessionEventUtilsTest {
     }
 
     private static SessionEvent minimalEvent() {
-        return new SessionEvent("id", null, null, "session", "run",
+        return new SessionEvent("id", null, null, "session", "runState",
                 "agent", null, false, false, null, 0L, 0L, Map.of());
     }
 }

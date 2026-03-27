@@ -2,20 +2,25 @@ package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.BaseTool;
+import com.google.genai.types.Schema;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +47,7 @@ public final class DiscoveredToolProviders {
   private static ToolDefinition buildDefinition(final Class<? extends Tool> toolClass) {
     final Constructor<? extends Tool> constructor = resolveConstructor(toolClass);
     final List<ConstructorParam> params = resolveParameters(constructor);
-    final ToolDescriptor descriptor = getDescriptor(toolClass);
+    final ToolDescriptor descriptor = getDescriptor(toolClass, params);
     return new ToolDefinition(descriptor, constructor, params);
   }
 
@@ -77,7 +82,11 @@ public final class DiscoveredToolProviders {
     final List<ConstructorParam> params = new ArrayList<>(parameters.length);
     for (final Parameter parameter : parameters) {
       final String key = resolveKey(parameter);
-      params.add(new ConstructorParam(key, parameter.getParameterizedType(), parameter.getType()));
+      final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
+      final String description = schema == null ? null : schema.description();
+      final boolean optional = schema != null && schema.optional();
+      final List<String> enumValues = schema == null ? List.of() : Arrays.stream(schema.enums()).toList();
+      params.add(new ConstructorParam(key, parameter.getParameterizedType(), parameter.getType(), description, optional, enumValues));
     }
     return params;
   }
@@ -99,7 +108,17 @@ public final class DiscoveredToolProviders {
     return providers;
   }
 
-  private static ToolDescriptor getDescriptor(final Class<? extends Tool> toolClass) {
+  public static ToolDescriptor getDescriptor(final Class<? extends Tool> toolClass, final List<ConstructorParam> params) {
+    final ToolDescriptor descriptor = resolveBaseDescriptor(toolClass);
+    final Map<String, Object> configsSchema = buildConfigsSchema(params, descriptor.configsSchema());
+    return new ToolDescriptor(descriptor.name(), descriptor.description(), configsSchema, descriptor.riskLevel());
+  }
+
+  private static ToolDescriptor resolveBaseDescriptor(final Class<? extends Tool> toolClass) {
+    final ToolDescriptor staticDescriptor = resolveStaticDescriptor(toolClass);
+    if (staticDescriptor != null) {
+      return staticDescriptor;
+    }
     try {
       final Constructor<? extends Tool> constructor = toolClass.getDeclaredConstructor();
       constructor.setAccessible(true);
@@ -112,10 +131,51 @@ public final class DiscoveredToolProviders {
     }
   }
 
+  private static Map<String, Object> buildConfigsSchema(final List<ConstructorParam> params, final Map<String, Object> defaultSchema) {
+    if (CollectionUtils.isEmpty(params)) {
+      return defaultSchema;
+    }
+    final List<String> required = new ArrayList<>();
+    final Map<String, Schema> properties = new LinkedHashMap<>();
+    for (final ConstructorParam param : params) {
+      if (!param.optional()) {
+        required.add(param.key());
+      }
+      Schema propertySchema = ToolUtils.buildSchemaFromType(param.type());
+      if (!param.enumValues().isEmpty()) {
+        propertySchema = propertySchema.toBuilder().enum_(param.enumValues()).build();
+      }
+      propertySchema = ToolUtils.applySchemaMetadata(propertySchema, param.description(), !param.optional(), param.enumValues());
+      properties.put(param.key(), propertySchema);
+    }
+    if (properties.isEmpty()) {
+      return defaultSchema;
+    }
+    final Schema.Builder builder = Schema.builder().type("OBJECT").properties(properties);
+    if (!required.isEmpty()) {
+      builder.required(required);
+    }
+    return SchemaUtils.toMap(builder.build());
+  }
+
+  private static ToolDescriptor resolveStaticDescriptor(final Class<? extends Tool> toolClass) {
+    try {
+      final Field descriptorField = toolClass.getDeclaredField("DESCRIPTOR");
+      if (!Modifier.isStatic(descriptorField.getModifiers()) || !ToolDescriptor.class.isAssignableFrom(descriptorField.getType())) {
+        return null;
+      }
+      descriptorField.setAccessible(true);
+      return (ToolDescriptor) descriptorField.get(null);
+    } catch (NoSuchFieldException | IllegalAccessException exception) {
+      return null;
+    }
+  }
+
   private record ToolDefinition(ToolDescriptor descriptor, Constructor<? extends Tool> constructor, List<ConstructorParam> params) {
   }
 
-  private record ConstructorParam(String key, Type type, Class<?> rawType) {
+  private record ConstructorParam(String key, Type type, Class<?> rawType, String description, boolean optional,
+                          List<String> enumValues) {
   }
 
   private record DiscoveredToolProvider(ToolDefinition definition) implements ToolProvider {

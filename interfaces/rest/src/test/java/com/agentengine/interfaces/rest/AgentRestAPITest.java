@@ -20,13 +20,14 @@ import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agui.core.event.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 
-class AgentRestAPITest {
+public class AgentRestAPITest {
 
   @Test
-  void shouldThrowBadRequestWhenCreateAgentCalledWithNullConfig() {
+  public void shouldThrowBadRequestWhenCreateAgentCalledWithNullConfig() {
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), mock(SessionService.class), mock(AgentExecutionService.class));
 
     assertThatThrownBy(() -> api.createAgent(null)).isInstanceOf(IllegalArgumentException.class)
@@ -34,7 +35,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateCreateAgentValidationToService() {
+  public void shouldDelegateCreateAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.createAgent(any(BaseAgentConfig.class)))
         .thenThrow(new IllegalArgumentException("Agent type and modelId are required"));
@@ -48,7 +49,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenUpdateAgentCalledWithBlankAgentId() {
+  public void shouldThrowBadRequestWhenUpdateAgentCalledWithBlankAgentId() {
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), mock(SessionService.class), mock(AgentExecutionService.class));
 
     assertThatThrownBy(() -> api.updateAgent(" ", new DefaultAgentConfig())).isInstanceOf(IllegalArgumentException.class)
@@ -56,7 +57,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateUpdateAgentIdMismatchValidationToService() {
+  public void shouldDelegateUpdateAgentIdMismatchValidationToService() {
     final AgentService agentService = mock(AgentService.class);
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
@@ -70,7 +71,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldUseExecutionServiceWhenResumeEventsCalled() {
+  public void shouldUseExecutionServiceWhenResumeEventsCalled() {
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
     when(executionService.resumeSession("session-request-1", "confirmation-1", true, "Paris")).thenReturn(Flowable.empty());
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), mock(SessionService.class), executionService);
@@ -86,7 +87,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldUseExecutionServiceWhenEventsCalledForExistingAgent() {
+  public void shouldUseExecutionServiceWhenEventsCalledForExistingAgent() {
     final AgentService agentService = mock(AgentService.class);
     final AgentExecutionService executionService = mock(AgentExecutionService.class);
     when(agentService.getAgent("agent-1")).thenReturn(new DefaultAgentConfig());
@@ -105,7 +106,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowNotFoundWhenEventsCalledWithUnknownAgentId() {
+  public void shouldThrowNotFoundWhenEventsCalledWithUnknownAgentId() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.getAgent("ghost")).thenReturn(null);
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
@@ -118,7 +119,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateUpsertSubAgentValidationToService() {
+  public void shouldDelegateUpsertSubAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.saveAgent(any(BaseAgentConfig.class)))
         .thenThrow(new IllegalArgumentException("Sub-agent(s) not found: missing_subagent"));
@@ -127,7 +128,7 @@ class AgentRestAPITest {
     payload.setId("orch-1");
     payload.setType("ORCHESTRATOR");
     payload.setModelId("model-1");
-    payload.setSubAgentIds(java.util.List.of("story_phase_1_brief", "missing_subagent"));
+    payload.setSubAgentIds(List.of("story_phase_1_brief", "missing_subagent"));
 
     assertThatThrownBy(() -> api.upsertAgent(payload)).isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Sub-agent(s) not found");
@@ -135,14 +136,14 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldAllowUpsertOrchestratorWithoutModelId() {
+  public void shouldAllowUpsertOrchestratorWithoutModelId() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.saveAgent(any(BaseAgentConfig.class))).thenAnswer(inv -> inv.getArgument(0));
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
     final OrchestratorAgentConfig payload = new OrchestratorAgentConfig();
     payload.setId("orch-2");
     payload.setType("ORCHESTRATOR");
-    payload.setSubAgentIds(java.util.List.of());
+    payload.setSubAgentIds(List.of());
 
     final BaseAgentConfig saved = api.upsertAgent(payload);
 
@@ -150,7 +151,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateDeleteAgentWhenDeleteAgentCalled() {
+  public void shouldDelegateDeleteAgentWhenDeleteAgentCalled() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.deleteAgent("agent-1")).thenReturn(true);
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
@@ -162,7 +163,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowNotFoundWhenDeleteAgentCalledForMissingId() {
+  public void shouldThrowNotFoundWhenDeleteAgentCalledForMissingId() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.deleteAgent("agent-1")).thenReturn(false);
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
@@ -171,7 +172,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateUpdateAgentWhenUpdateAgentCalled() {
+  public void shouldDelegateUpdateAgentWhenUpdateAgentCalled() {
     final AgentService agentService = mock(AgentService.class);
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
     final DefaultAgentConfig payload = new DefaultAgentConfig();
@@ -187,14 +188,14 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateCreateSubAgentValidationToService() {
+  public void shouldDelegateCreateSubAgentValidationToService() {
     final AgentService agentService = mock(AgentService.class);
     when(agentService.createAgent(any(BaseAgentConfig.class)))
         .thenThrow(new IllegalArgumentException("Sub-agent(s) not found: missing-sub"));
     final OrchestratorAgentConfig config = new OrchestratorAgentConfig();
     config.setId("orch-1");
     config.setType("ORCHESTRATOR");
-    config.setSubAgentIds(java.util.List.of("missing-sub"));
+    config.setSubAgentIds(List.of("missing-sub"));
     final AgentRestAPI api = new AgentRestAPI(agentService, mock(SessionService.class), mock(AgentExecutionService.class));
 
     assertThatThrownBy(() -> api.createAgent(config)).isInstanceOf(IllegalArgumentException.class)
@@ -203,7 +204,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldNotCallGetAgentBeforeCreateAgent() {
+  public void shouldNotCallGetAgentBeforeCreateAgent() {
     final AgentService agentService = mock(AgentService.class);
     final DefaultAgentConfig config = new DefaultAgentConfig();
     config.setId("a-1");
@@ -217,7 +218,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenDeleteAgentCalledWithBlankId() {
+  public void shouldThrowBadRequestWhenDeleteAgentCalledWithBlankId() {
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), mock(SessionService.class), mock(AgentExecutionService.class));
 
     assertThatThrownBy(() -> api.deleteAgent(" ")).isInstanceOf(IllegalArgumentException.class)
@@ -225,7 +226,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldDelegateDeleteSessionWhenDeleteSessionCalled() {
+  public void shouldDelegateDeleteSessionWhenDeleteSessionCalled() {
     final SessionService sessionService = mock(SessionService.class);
     when(sessionService.deleteSession("session-1")).thenReturn(true);
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), sessionService, mock(AgentExecutionService.class));
@@ -236,7 +237,7 @@ class AgentRestAPITest {
   }
 
   @Test
-  void shouldStillDelegateDeleteSessionWhenSessionMissing() {
+  public void shouldStillDelegateDeleteSessionWhenSessionMissing() {
     final SessionService sessionService = mock(SessionService.class);
     when(sessionService.deleteSession("session-1")).thenReturn(false);
     final AgentRestAPI api = new AgentRestAPI(mock(AgentService.class), sessionService, mock(AgentExecutionService.class));

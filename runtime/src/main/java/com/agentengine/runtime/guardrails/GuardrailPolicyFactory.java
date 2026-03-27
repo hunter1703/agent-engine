@@ -19,17 +19,17 @@ import org.slf4j.LoggerFactory;
 public final class GuardrailPolicyFactory {
   private static final Logger LOG = LoggerFactory.getLogger(GuardrailPolicyFactory.class);
 
-  private final Map<GuardrailRuleType, GuardrailProvider<? super GuardrailRule>> typeVsProvider;
+  private final Map<GuardrailRuleType, GuardrailFactory<? super GuardrailRule>> typeVsProvider;
 
   @Inject
-  public GuardrailPolicyFactory(final @Any Instance<GuardrailProvider<?>> providerInstances) {
-    this(ServiceUtils.loadServicesForType(providerInstances, GuardrailProvider.class));
+  public GuardrailPolicyFactory(final @Any Instance<GuardrailFactory<?>> providerInstances) {
+    this(ServiceUtils.loadServicesForType(providerInstances, GuardrailFactory.class));
   }
 
-  public GuardrailPolicyFactory(final List<GuardrailProvider<?>> providers) {
+  public GuardrailPolicyFactory(final List<GuardrailFactory<?>> providers) {
     // noinspection unchecked
-    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailProvider::type,
-        provider -> (GuardrailProvider<? super GuardrailRule>) provider);
+    this.typeVsProvider = CollectionUtils.transformToMap(providers, GuardrailFactory::type,
+        provider -> (GuardrailFactory<? super GuardrailRule>) provider);
   }
 
   public GuardrailPolicy build(final GuardrailsConfig config) {
@@ -43,7 +43,7 @@ public final class GuardrailPolicyFactory {
         continue;
       }
       final GuardrailRuleType type = GuardrailRuleType.valueOfOrDefault(rule.getType());
-      final GuardrailProvider<? super GuardrailRule> provider = typeVsProvider.get(type);
+      final GuardrailFactory<? super GuardrailRule> provider = typeVsProvider.get(type);
       if (provider == null) {
         LOG.warn("No guardrail provider registered for rule type '{}'.", type);
         continue;

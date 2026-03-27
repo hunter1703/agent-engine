@@ -211,7 +211,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   }
 
   private record ServiceEntry(Object bean, Map<String, Method> methods) {
-    ServiceEntry(final Object bean, final Class<?> iface) {
+    private ServiceEntry(final Object bean, final Class<?> iface) {
       this(bean,
           Arrays.stream(iface.getMethods()).collect(Collectors.toUnmodifiableMap(Method::getName, method -> method, (first, __) -> first)));
     }

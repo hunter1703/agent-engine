@@ -208,7 +208,9 @@ public final class PlanningUtils {
   private static Set<String> collectRelevantTaskIds(final Plan plan, final Map<String, Task> tasksById,
       final Map<String, List<Task>> ancestorMap) {
     final Set<String> relevant = new HashSet<>();
-    final List<Task> inProgress = plan.getTasks().stream().filter(t -> getTaskStatusEnum(t) == TaskStatus.IN_PROGRESS).toList();
+    final List<Task> inProgress = plan.getTasks().stream()
+        .filter(task -> getTaskStatusEnum(task) == TaskStatus.IN_PROGRESS)
+        .toList();
 
     for (Task task : inProgress) {
       final String id = getTaskIdValue(task);
@@ -239,7 +241,7 @@ public final class PlanningUtils {
     return StringUtils.isBlank(plan.getTitle()) ? "Untitled" : plan.getTitle();
   }
 
-  static List<Task> collectOrderedTasks(final Map<String, List<Task>> taskTree) {
+  public static List<Task> collectOrderedTasks(final Map<String, List<Task>> taskTree) {
     final List<Task> ordered = new ArrayList<>();
     appendOrderedTasks(taskTree, null, ordered);
     return ordered;
@@ -367,7 +369,7 @@ public final class PlanningUtils {
     return getTaskStatusEnum(task).getValue();
   }
 
-  static TaskStatus getTaskStatusEnum(final Task task) {
+  public static TaskStatus getTaskStatusEnum(final Task task) {
     if (task == null || task.getStatus() == null) {
       return TaskStatus.TODO;
     }
@@ -381,7 +383,7 @@ public final class PlanningUtils {
     return plan.getStatus().getValue();
   }
 
-  static Map<String, List<Task>> groupTasksByParent(final Plan plan) {
+  public static Map<String, List<Task>> groupTasksByParent(final Plan plan) {
     if (plan == null) {
       return Map.of();
     }
@@ -406,7 +408,7 @@ public final class PlanningUtils {
     return tasksById;
   }
 
-  static Map<String, List<Task>> buildTaskAncestorMap(final Plan plan, final Map<String, Task> tasksById) {
+  public static Map<String, List<Task>> buildTaskAncestorMap(final Plan plan, final Map<String, Task> tasksById) {
     if (plan == null) {
       return Map.of();
     }
@@ -429,7 +431,7 @@ public final class PlanningUtils {
     return ancestorMap;
   }
 
-  static List<Task> getAncestors(final Task task, final Map<String, Task> tasksById, final Map<String, List<Task>> ancestorMap) {
+  public static List<Task> getAncestors(final Task task, final Map<String, Task> tasksById, final Map<String, List<Task>> ancestorMap) {
     final String taskId = getTaskIdValue(task);
     if (StringUtils.isNotBlank(taskId)) {
       final List<Task> cached = ancestorMap.get(taskId);

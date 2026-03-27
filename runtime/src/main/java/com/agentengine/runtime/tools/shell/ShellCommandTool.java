@@ -4,6 +4,7 @@ import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
+import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.google.adk.tools.ToolContext;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -23,7 +25,8 @@ public final class ShellCommandTool extends Tool {
   private static final int MAX_OUTPUT_CHARS = 12_000;
   private static final String TOOL_NAME = "run_cmd";
   public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
-      "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; avoid rm.", ToolRiskLevel.HIGH);
+      "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; commands matching `rm` require confirmation.",
+      ToolRiskLevel.MEDIUM);
   private final Duration timeout;
 
   public ShellCommandTool() {
@@ -44,8 +47,13 @@ public final class ShellCommandTool extends Tool {
       throw new IllegalArgumentException("Empty command");
     }
     if (BLOCKED.matcher(command).find()) {
-      toolContext.requestConfirmation("Should the : " + command + " be executed?");
-      return Map.of();
+      if (toolContext.toolConfirmation().isEmpty()) {
+        ToolUtils.requestConfirmationAndPause(toolContext, String.format("Should the command `%s` be executed?", command), Map.of("command", command));
+        return Map.of();
+      }
+      if (!toolContext.toolConfirmation().get().confirmed()) {
+        return Map.of("error", "This command is rejected.");
+      }
     }
     final ProcessBuilder builder = new ProcessBuilder("bash", "-lc", command);
     builder.directory(Path.of(System.getProperty("user.home")).toFile());

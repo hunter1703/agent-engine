@@ -57,7 +57,10 @@ public final class StringUtils {
   }
 
   public static String joinNonBlank(final List<String> values) {
-    return values.stream().filter(StringUtils::isNotBlank).reduce((a, b) -> a + "\n" + b).orElse("");
+    return values.stream()
+        .filter(StringUtils::isNotBlank)
+        .reduce((existingText, nextText) -> existingText + "\n" + nextText)
+        .orElse("");
   }
 
   public static String wrapInQuotes(final String value) {

@@ -1,6 +1,6 @@
 package com.agentengine.runtime.utils;
 
-import com.agentengine.runtime.actor.SessionEventUtils;
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;

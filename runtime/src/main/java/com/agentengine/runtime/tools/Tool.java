@@ -20,6 +20,7 @@ import io.reactivex.rxjava3.core.Single;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Member;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -266,7 +267,7 @@ public abstract class Tool extends BaseTool {
       ToolSchema toolSchema = Utils.findAnnotation(property, ToolSchema.class);
       String javaName = property.getName();
       String schemaName = toolSchema != null && StringUtils.isNotBlank(toolSchema.name()) ? toolSchema.name() : javaName;
-      final var member = Utils.resolveMember(property);
+      final Member member = Utils.resolveMember(property);
       if (member == null) {
         continue;
       }

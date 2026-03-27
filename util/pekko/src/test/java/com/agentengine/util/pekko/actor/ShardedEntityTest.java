@@ -66,22 +66,25 @@ class ShardedEntityTest {
     public CommandHandler<CounterCmd, Incremented, CounterState> commandHandler() {
       return newCommandHandlerBuilder().forAnyState()
           .onCommand(CounterCmd.Increment.class,
-              (state, cmd) -> Effect().persist(new Incremented()).thenRun(s -> cmd.replyTo().tell(s.count())))
-          .onCommand(CounterCmd.GetCount.class, (state, cmd) -> {
-            cmd.replyTo().tell(state.count());
+              (state, incrementCommand) -> Effect().persist(new Incremented())
+                  .thenRun(updatedState -> incrementCommand.replyTo().tell(updatedState.count())))
+          .onCommand(CounterCmd.GetCount.class, (state, getCountCommand) -> {
+            getCountCommand.replyTo().tell(state.count());
             return Effect().none();
           }).build();
     }
 
     @Override
     public EventHandler<CounterState, Incremented> eventHandler() {
-      return newEventHandlerBuilder().forAnyState().onEvent(Incremented.class, (state, e) -> new CounterState(state.count() + 1)).build();
+      return newEventHandlerBuilder().forAnyState()
+          .onEvent(Incremented.class, (state, incrementedEvent) -> new CounterState(state.count() + 1))
+          .build();
     }
   }
 
   @Test
   void shouldRespondToInitialState() {
-    final var entity = kit.spawn(new CounterEntity("counter-initial"));
+    final ActorRef<CounterCmd> entity = kit.spawn(new CounterEntity("counter-initial"));
     final TestProbe<Integer> probe = kit.createTestProbe();
 
     entity.tell(new CounterCmd.GetCount(probe.ref()));
@@ -90,7 +93,7 @@ class ShardedEntityTest {
 
   @Test
   void shouldPersistAndRecoverState() {
-    final var entity = kit.spawn(new CounterEntity("counter-1"));
+    final ActorRef<CounterCmd> entity = kit.spawn(new CounterEntity("counter-1"));
     final TestProbe<Integer> probe = kit.createTestProbe();
 
     entity.tell(new CounterCmd.Increment(probe.ref()));

@@ -2,6 +2,7 @@ package com.agentengine.util.ms;
 
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.ms.grpc.Request;
+import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
@@ -10,6 +11,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Iterator;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +71,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   private Object blockingCall(Request request, Method method) {
     final String requestId = MDC.get("requestId");
     LOG.info("[{}] Initiating gRPC blocking call for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
-    var responseIterator = stub.execute(request);
+    final Iterator<Response> responseIterator = stub.execute(request);
     LOG.info("[{}] gRPC call returned for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
     if (!responseIterator.hasNext()) {
       // No payload from the server — return Optional.empty() for Optional return

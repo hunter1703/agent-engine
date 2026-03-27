@@ -14,17 +14,19 @@ public record ChildRegistry(Map<String, ChildWorker> workers) implements PekkoSe
     public static final ChildRegistry EMPTY = new ChildRegistry(Map.of());
 
     public ChildRegistry register(final String childSessionId, final ChildWorker worker) {
-        final var next = new HashMap<>(workers);
+        final Map<String, ChildWorker> next = new HashMap<>(workers);
         next.put(childSessionId, worker);
-        return new ChildRegistry(Map.copyOf(next));
+        return new ChildRegistry(next);
     }
 
     public ChildRegistry update(final String childSessionId, final UnaryOperator<ChildWorker> fn) {
-        final var worker = workers.get(childSessionId);
-        if (worker == null) return this;
-        final var next = new HashMap<>(workers);
+        final ChildWorker worker = workers.get(childSessionId);
+        if (worker == null) {
+            return this;
+        }
+        final Map<String, ChildWorker> next = new HashMap<>(workers);
         next.put(childSessionId, fn.apply(worker));
-        return new ChildRegistry(Map.copyOf(next));
+        return new ChildRegistry(next);
     }
 
     public Optional<ChildWorker> get(final String childSessionId) {
@@ -35,29 +37,28 @@ public record ChildRegistry(Map<String, ChildWorker> workers) implements PekkoSe
         return workers.values().stream().anyMatch(ChildWorker::hasActiveRun);
     }
 
-    // ── Nested types ────────────────────────────────────────────────────────
-
     /** A reusable child agent session that can accept multiple sequential runs. */
-    public record ChildWorker(String childAgentId, Map<String, ChildRun> runs)
+    public record ChildWorker(String childAgentId, Map<String, ChildRunState> runs)
             implements PekkoSerializable {
 
         public boolean hasActiveRun() {
             return runs.values().stream()
-                    .anyMatch(r -> r.state() instanceof ChildRunState.Active
-                            || r.state() instanceof ChildRunState.Paused);
+                    .anyMatch(state -> state instanceof ChildRunState.Active
+                            || state instanceof ChildRunState.Paused);
         }
 
-        public ChildWorker withRun(final String runId, final ChildRun run) {
-            final var next = new HashMap<>(runs);
-            next.put(runId, run);
-            return new ChildWorker(childAgentId, Map.copyOf(next));
-        }
-    }
-
-    /** A single execution run within a child worker. */
-    public record ChildRun(String runId, ChildRunState state) implements PekkoSerializable {
-        public ChildRun withState(final ChildRunState newState) {
-            return new ChildRun(runId, newState);
+        public ChildWorker withRun(final String runId, final ChildRunState state) {
+            final Map<String, ChildRunState> next = new HashMap<>(runs);
+            if (state instanceof ChildRunState.Completed || state instanceof ChildRunState.Failed) {
+                // Drop stale terminal states — only the latest result needs to be available
+                // for AwaitChildRun. The prior result should have been consumed before a new
+                // run was started (SendChildMessage rejects while a run is active).
+                next.entrySet().removeIf(e ->
+                        e.getValue() instanceof ChildRunState.Completed
+                        || e.getValue() instanceof ChildRunState.Failed);
+            }
+            next.put(runId, state);
+            return new ChildWorker(childAgentId, next);
         }
     }
 

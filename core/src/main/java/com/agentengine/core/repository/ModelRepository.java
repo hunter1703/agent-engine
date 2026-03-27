@@ -20,26 +20,18 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
   }
 
   @Override
-  public ModelConfig insert(final ModelConfig modelConfig) {
-    ModelUtils.generateServerConfig(modelConfig);
-    return super.insert(modelConfig);
-  }
-
-  @Override
   public ModelConfig save(final ModelConfig modelConfig) {
     if (modelConfig == null) {
       throw new IllegalArgumentException("Model config is required");
     }
     if (StringUtils.isBlank(modelConfig.getId())) {
-      ModelUtils.generateServerConfig(modelConfig);
       return super.insert(modelConfig);
     }
     final ModelConfig existingModel = findById(modelConfig.getId());
     if (existingModel == null) {
-      ModelUtils.generateServerConfig(modelConfig);
       return super.insert(modelConfig);
     }
-    applyServerConfigIfMissing(modelConfig, existingModel);
+//    applyServerConfigIfMissing(modelConfig, existingModel);
     return super.update(modelConfig.getId(), modelConfig);
   }
 
@@ -49,7 +41,7 @@ public class ModelRepository extends AbstractMongoRepository<ModelConfig> {
     if (existingModel == null) {
       throw new AssetNotFoundException("Model", id);
     }
-    applyServerConfigIfMissing(update, existingModel);
+//    applyServerConfigIfMissing(update, existingModel);
     return super.update(id, update);
   }
 

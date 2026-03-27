@@ -54,7 +54,6 @@ public class ModelServiceImpl implements ModelService {
   @Override
   @WithSpan
   public ModelConfig createModel(final ModelConfig model) {
-    // Preserve caller-supplied ID if provided, otherwise let Mongo generate one
     final String id = model == null ? null : model.getId();
     final ModelConfig sanitized = sanitize(model, BuilderMode.CREATE);
     if (StringUtils.isNotBlank(id)) {
@@ -66,7 +65,10 @@ public class ModelServiceImpl implements ModelService {
   @Override
   @WithSpan
   public ModelConfig saveModel(final ModelConfig model) {
-    final String id = model == null ? null : model.getId();
+    if (model == null) {
+      throw new IllegalArgumentException("Model should be non-null");
+    }
+    final String id = model.getId();
     final BuilderMode mode = StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT;
     final ModelConfig sanitized = sanitize(model, mode);
     if (mode == BuilderMode.EDIT) {

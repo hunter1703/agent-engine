@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -27,7 +28,7 @@ public final class YamlUtils {
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {
-    try (var stream = Files.newInputStream(path)) {
+    try (InputStream stream = Files.newInputStream(path)) {
       return OBJECT_MAPPER.readValue(stream, clazz);
     } catch (IOException ex) {
       throw new RuntimeException(ex);

@@ -1,5 +1,7 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.tools.planning.PlanningUtils;
+import com.agentengine.runtime.tools.planning.beans.Plan;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailErrorMode;
 import com.agentengine.runtime.guardrails.Guardrail;
@@ -7,6 +9,8 @@ import com.agentengine.runtime.guardrails.GuardrailConstants;
 import com.agentengine.runtime.guardrails.GuardrailContext;
 import com.agentengine.runtime.guardrails.GuardrailDecision;
 import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
+import com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -20,6 +24,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy.*;
 
 public final class GuardrailUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(GuardrailUtils.class);
@@ -93,4 +99,32 @@ public final class GuardrailUtils {
       case ESCALATE -> new GuardrailDecision(GuardrailAction.ESCALATE, code, message, details);
     };
   }
+
+    public static String buildRelevanceAnchorPrompt(final InvocationContext context, final OutputRelevanceGuardrailRule config) {
+      if (context == null || context.session() == null) {
+        return "";
+      }
+      RelevanceAnchorStrategy strategy = config.anchorStrategyEnum();
+      if (strategy == UNKNOWN) {
+        strategy = LATEST_USER_AND_PLAN;
+      }
+
+      final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
+      final String recentUserMessages = ContentUtils.recentUser(context.session().events(), recency);
+      final String latestUserMessage = ContentUtils.recentUser(context.session().events(), 1);
+
+      String planAnchor = "";
+      final Plan plan = RunUtils.getOrInitState(context).plan();
+      if (plan != null) {
+        final String summary = PlanningUtils.buildPlanSummary(plan);
+        final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);
+        planAnchor = StringUtils.joinNonBlank(List.of(summary, taskFocus));
+      }
+
+      return switch (strategy) {
+        case RECENT_USER -> recentUserMessages;
+        case LATEST_USER_AND_PLAN -> StringUtils.joinNonBlank(List.of(latestUserMessage, planAnchor));
+        default -> throw new IllegalStateException("Unexpected value: " + strategy);
+      };
+    }
 }

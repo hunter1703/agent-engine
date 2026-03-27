@@ -18,9 +18,12 @@ public final class SchemaUtils {
   private SchemaUtils() {
   }
 
+  public static Map<String, Object> toMap(final Schema schema) {
+    return com.agentengine.util.common.SchemaUtils.toMap(toVertxSchema(schema));
+  }
+
   public static String toJsonSchema(final Schema schema) {
-    final SchemaBuilder<?, ?> vertxSchema = toVertxSchema(schema);
-    return JsonUtils.toJson(com.agentengine.util.common.SchemaUtils.toMap(vertxSchema));
+    return JsonUtils.toJson(toMap(schema));
   }
 
   private static SchemaBuilder<? extends SchemaBuilder<?, ?>, ? extends Keyword> toVertxSchema(final Schema schema) {
@@ -94,7 +97,7 @@ public final class SchemaUtils {
     schema.description().ifPresent(value -> builder.withKeyword("description", value));
     schema.title().ifPresent(value -> builder.withKeyword("title", value));
     schema.format().ifPresent(value -> builder.withKeyword("format", value));
-    schema.default_().ifPresent(value -> builder.defaultValue(value));
+    schema.default_().ifPresent(builder::defaultValue);
     schema.example().ifPresent(value -> builder.withKeyword("example", value));
     schema.enum_().filter(values -> !values.isEmpty()).ifPresent(values -> builder.withKeyword("enum", values));
     schema.pattern().ifPresent(value -> builder.withKeyword("pattern", value));

@@ -16,12 +16,10 @@ public abstract class AbstractToolsetProvider implements ToolsetProvider {
 
   private final ToolDescriptor descriptor;
   private final List<ToolDefinition> toolDefinitions;
-  private final List<ToolDescriptor> memberDescriptors;
 
   protected AbstractToolsetProvider(final ToolDescriptor descriptor, final List<ToolDefinition> toolDefinitions) {
     this.descriptor = descriptor;
     this.toolDefinitions = List.copyOf(toolDefinitions);
-    this.memberDescriptors = this.toolDefinitions.stream().map(ToolDefinition::descriptor).toList();
   }
 
   @Override
@@ -30,32 +28,23 @@ public abstract class AbstractToolsetProvider implements ToolsetProvider {
   }
 
   @Override
-  public final List<ToolDescriptor> memberDescriptors() {
-    return memberDescriptors;
-  }
-
-  @Override
   public BaseToolset create(final Map<String, Object> toolConfig) {
-    return new StaticToolset(toolDefinitions);
+    return new Toolset(toolDefinitions);
   }
 
   public record ToolDefinition(ToolDescriptor descriptor, Supplier<? extends BaseTool> factory) {
   }
 
-  private static class StaticToolset implements BaseToolset {
-    private final List<ToolDefinition> toolDefinitions;
-    private StaticToolset(List<ToolDefinition> toolDefinitions) {
-      this.toolDefinitions = toolDefinitions;
-    }
+  private record Toolset(List<ToolDefinition> toolDefinitions) implements BaseToolset {
 
     @Override
-    public Flowable<BaseTool> getTools(final ReadonlyContext context) {
-      return Flowable.fromIterable(toolDefinitions).map(ToolDefinition::factory).map(Supplier::get).cast(BaseTool.class);
-    }
+      public Flowable<BaseTool> getTools(final ReadonlyContext context) {
+        return Flowable.fromIterable(toolDefinitions).map(ToolDefinition::factory).map(Supplier::get).cast(BaseTool.class);
+      }
 
-    @Override
-    public void close() {
-      // No resources to release.
+      @Override
+      public void close() {
+        // No resources to release.
+      }
     }
-  }
 }

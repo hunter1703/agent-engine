@@ -5,11 +5,14 @@ import io.grpc.ManagedChannelBuilder;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InjectableBean;
+import io.quarkus.arc.InstanceHandle;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.spi.Bean;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.reflect.Proxy;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -46,11 +49,11 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
     // Prefer a local implementation when co-located in the same process
     ArcContainer container = Arc.container();
-    var beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
-    for (var bean : beans) {
+    final Set<Bean<?>> beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
+    for (Bean<?> bean : beans) {
       if (bean instanceof InjectableBean<?> injectable) {
         if (injectable.getKind() == InjectableBean.Kind.CLASS) {
-          try (var localInstance = container.instance(serviceClass)) {
+          try (InstanceHandle<T> localInstance = container.instance(serviceClass)) {
             if (localInstance.isAvailable()) {
               return localInstance.get();
             }
@@ -72,7 +75,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
   }
 
   @PreDestroy
-  void shutdown() {
+  private void shutdown() {
     channels.forEach((serviceClass, channel) -> {
       LOG.debug("Shutting down gRPC channel for {}", serviceClass.getSimpleName());
       channel.shutdown();

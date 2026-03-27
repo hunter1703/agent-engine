@@ -8,25 +8,26 @@ import com.mongodb.client.MongoClient;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import com.agentengine.interfaces.rest.testing.MongoRedisTestResource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@QuarkusTestResource(com.agentengine.interfaces.rest.testing.MongoRedisTestResource.class)
-class ModelAndAgentEndpointsIT {
+@QuarkusTestResource(MongoRedisTestResource.class)
+public class ModelAndAgentEndpointsIT {
 
   @Inject
-  MongoClientFactory mongoClientFactory;
+  private MongoClientFactory mongoClientFactory;
 
   @BeforeEach
-  void shouldResetDatabaseWhenTestStarts() {
+  public void shouldResetDatabaseWhenTestStarts() {
     try (MongoClient client = mongoClientFactory.getClient()) {
       client.getDatabase("AGENT_ENGINE").drop();
     }
   }
 
   @Test
-  void shouldCreateAndGetModelWhenModelEndpointsInvoked() {
+  public void shouldCreateAndGetModelWhenModelEndpointsInvoked() {
     given().contentType("application/json").body("""
         {
           "id": "model-it",
@@ -40,7 +41,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnClientErrorsForDuplicateAndInvalidModelCreate() {
+  public void shouldReturnClientErrorsForDuplicateAndInvalidModelCreate() {
     given().contentType("application/json").body("""
         {
           "id": "model-duplicate-it",
@@ -65,7 +66,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnClientErrorsForMissingAndInvalidModelUpdate() {
+  public void shouldReturnClientErrorsForMissingAndInvalidModelUpdate() {
     given().contentType("application/json").body("""
         {
           "id": "model-update-it",
@@ -100,7 +101,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldCreateUpdateAndDeleteAgentWhenAgentEndpointsInvoked() {
+  public void shouldCreateUpdateAndDeleteAgentWhenAgentEndpointsInvoked() {
     given().contentType("application/json").body("""
         {
           "id": "agent-it",
@@ -123,7 +124,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnClientErrorsForDuplicateAndInvalidAgentCreate() {
+  public void shouldReturnClientErrorsForDuplicateAndInvalidAgentCreate() {
     given().contentType("application/json").body("""
         {
           "id": "agent-duplicate-it",
@@ -146,7 +147,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnNotFoundWhenUpdatingMissingAgent() {
+  public void shouldReturnNotFoundWhenUpdatingMissingAgent() {
     given().contentType("application/json").body("""
         {
           "id": "missing-agent-update-it",
@@ -158,12 +159,12 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnNotFoundWhenDeletingMissingAgent() {
+  public void shouldReturnNotFoundWhenDeletingMissingAgent() {
     given().when().delete("/v1/agent/missing-agent-delete-it").then().statusCode(404);
   }
 
   @Test
-  void shouldReturnNotFoundWhenInvokingUnknownAgent() {
+  public void shouldReturnNotFoundWhenInvokingUnknownAgent() {
     given().contentType("application/json").body("""
         {
           "type": "STREAM_AGUI_EVENTS",
@@ -174,7 +175,7 @@ class ModelAndAgentEndpointsIT {
   }
 
   @Test
-  void shouldReturnNotFoundWhenResumingUnknownSession() {
+  public void shouldReturnNotFoundWhenResumingUnknownSession() {
     given().contentType("application/json").body("{\"message\":\"resume\"}").when().post("/v1/agent/session/missing-session/resume/events")
         .then().statusCode(404);
   }

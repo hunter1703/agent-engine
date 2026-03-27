@@ -1,7 +1,6 @@
 package com.agentengine.core.services;
 
-import com.agentengine.core.api.services.AgentService;
-import com.agentengine.core.api.services.ModelService;
+import com.agentengine.runtime.actor.SessionHistoryService;
 import com.agentengine.runtime.actor.services.RuntimeService;
 import com.agentengine.util.ms.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
@@ -17,6 +16,13 @@ public class ClientProducer {
   @DefaultBean
   public RuntimeService runtimeService(MicroServiceClientProvider provider) {
     return provider.get(RuntimeService.class);
+  }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public SessionHistoryService sessionHistory(MicroServiceClientProvider provider) {
+    return provider.get(SessionHistoryService.class);
   }
 
 }

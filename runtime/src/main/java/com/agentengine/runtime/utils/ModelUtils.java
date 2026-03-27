@@ -62,7 +62,7 @@ public final class ModelUtils {
     }
   }
 
-  static ServerAddress resolveAddress(final String baseUrl) {
+  private static ServerAddress resolveAddress(final String baseUrl) {
     if (StringUtils.isBlank(baseUrl)) {
       return null;
     }
@@ -145,7 +145,7 @@ public final class ModelUtils {
     LOGGER.warning(ModelConfig.Provider.OPEN_AI_COMPATIBLE.type() + " server did not report ready within timeout for " + address.baseUrl());
   }
 
-  static URI buildModelsEndpoint(final String baseUrl) {
+  private static URI buildModelsEndpoint(final String baseUrl) {
     if (StringUtils.isBlank(baseUrl)) {
       return null;
     }
@@ -178,9 +178,9 @@ public final class ModelUtils {
     }
   }
 
-  record ServerAddress(String baseUrl, String host, int port) {
+  private record ServerAddress(String baseUrl, String host, int port) {
   }
 
-  record ManagedServer(String baseUrl, Process process, List<String> command) {
+  private record ManagedServer(String baseUrl, Process process, List<String> command) {
   }
 }

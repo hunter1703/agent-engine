@@ -1,0 +1,208 @@
+package com.agentengine.util.agents.beans;
+
+import com.agentengine.util.common.beans.BaseEntity;
+import com.google.genai.types.Content;
+import com.google.genai.types.FinishReason;
+
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Event emitted by a session actor during execution.
+ * <p>
+ * The {@code sequence} field provides per-session ordering guarantees:
+ * events from the same {@code sessionId} are totally ordered by sequence number.
+ * Events across different sessions have no ordering guarantee.
+ */
+public final class SessionEvent extends BaseEntity {
+    public static final String FIELD_SESSION_ID = "sessionId";
+    private String rootSessionId;
+    private String parentSessionId;
+    private String sessionId;
+    private String runId;
+    private String author;
+    private Content content;
+    private Boolean partial;
+    private Boolean turnComplete;
+    private FinishReason finishReason;
+    private long timestamp;
+    private long sequence;
+    private Map<String, Object> metadata;
+
+    public SessionEvent(String id, String rootSessionId, String parentSessionId, String sessionId, String runId, String author, Content content, Boolean partial, Boolean turnComplete, FinishReason finishReason, long timestamp, long sequence, Map<String, Object> metadata) {
+        setId(id);
+        this.rootSessionId = rootSessionId;
+        this.parentSessionId = parentSessionId;
+        this.sessionId = sessionId;
+        this.runId = runId;
+        this.author = author;
+        this.content = content;
+        this.partial = partial;
+        this.turnComplete = turnComplete;
+        this.finishReason = finishReason;
+        this.timestamp = timestamp;
+        this.sequence = sequence;
+        this.metadata = metadata;
+    }
+
+    public SessionEvent withSequence(long sequence) {
+        setSequence(sequence);
+        return this;
+    }
+
+    public SessionEvent withContent(Content content) {
+        setContent(content);
+        return this;
+    }
+
+    public SessionEvent withTurnComplete(Boolean turnComplete) {
+        setTurnComplete(turnComplete);
+        return this;
+    }
+
+    public SessionEvent withMetadata(Map<String, Object> metadata) {
+        setMetadata(metadata);
+        return this;
+    }
+
+    public String getRootSessionId() {
+        return rootSessionId;
+    }
+
+    public String getParentSessionId() {
+        return parentSessionId;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public String getRunId() {
+        return runId;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public Content getContent() {
+        return content;
+    }
+
+    public Boolean isPartial() {
+        return partial;
+    }
+
+    public Boolean isTurnComplete() {
+        return turnComplete;
+    }
+
+    public FinishReason getFinishReason() {
+        return finishReason;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public long getSequence() {
+        return sequence;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        final SessionEvent that = (SessionEvent) obj;
+        return Objects.equals(this.getId(), that.getId()) &&
+                Objects.equals(this.rootSessionId, that.rootSessionId) &&
+                Objects.equals(this.parentSessionId, that.parentSessionId) &&
+                Objects.equals(this.sessionId, that.sessionId) &&
+                Objects.equals(this.runId, that.runId) &&
+                Objects.equals(this.author, that.author) &&
+                Objects.equals(this.content, that.content) &&
+                Objects.equals(this.partial, that.partial) &&
+                Objects.equals(this.turnComplete, that.turnComplete) &&
+                Objects.equals(this.finishReason, that.finishReason) &&
+                this.timestamp == that.timestamp &&
+                this.sequence == that.sequence &&
+                Objects.equals(this.metadata, that.metadata);
+    }
+
+    public void setRootSessionId(final String rootSessionId) {
+        this.rootSessionId = rootSessionId;
+    }
+
+    public void setParentSessionId(final String parentSessionId) {
+        this.parentSessionId = parentSessionId;
+    }
+
+    public void setSessionId(final String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public void setRunId(final String runId) {
+        this.runId = runId;
+    }
+
+    public void setAuthor(final String author) {
+        this.author = author;
+    }
+
+    public void setContent(final Content content) {
+        this.content = content;
+    }
+
+    public void setPartial(final Boolean partial) {
+        this.partial = partial;
+    }
+
+    public void setTurnComplete(final Boolean turnComplete) {
+        this.turnComplete = turnComplete;
+    }
+
+    public void setFinishReason(final FinishReason finishReason) {
+        this.finishReason = finishReason;
+    }
+
+    public void setTimestamp(final long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setSequence(final long sequence) {
+        this.sequence = sequence;
+    }
+
+    public void setMetadata(final Map<String, Object> metadata) {
+        this.metadata = metadata;
+    }
+
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), rootSessionId, parentSessionId, sessionId, runId, author, content, partial, turnComplete, finishReason, timestamp, sequence, metadata);
+    }
+
+    @Override
+    public String toString() {
+        return "SessionEvent[" +
+                "id=" + getId() + ", " +
+                "rootSessionId=" + rootSessionId + ", " +
+                "parentSessionId=" + parentSessionId + ", " +
+                "sessionId=" + sessionId + ", " +
+                "runId=" + runId + ", " +
+                "author=" + author + ", " +
+                "content=" + content + ", " +
+                "partial=" + partial + ", " +
+                "turnComplete=" + turnComplete + ", " +
+                "finishReason=" + finishReason + ", " +
+                "timestamp=" + timestamp + ", " +
+                "sequence=" + sequence + ", " +
+                "metadata=" + metadata + ']';
+    }
+
+}

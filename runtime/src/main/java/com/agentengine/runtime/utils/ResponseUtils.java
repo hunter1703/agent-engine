@@ -42,19 +42,15 @@ public final class ResponseUtils {
     return ContentUtils.hasVisibleText(response.content().orElse(null));
   }
 
-  public static ToolConfirmation buildToolConfirmation(final SessionPauseKind pauseKind, final Boolean confirmed, final String answer) {
+  public static ToolConfirmation buildToolConfirmation(final Boolean confirmed, final String answer) {
+    if (confirmed == null && StringUtils.isBlank(answer)) {
+      throw new IllegalArgumentException("either confirmation or answer is required");
+    }
     final ToolConfirmation.Builder builder = ToolConfirmation.builder();
-    switch (pauseKind) {
-      case DECISION -> {
-        builder.confirmed(Objects.requireNonNull(confirmed, "decision is required for this confirmation"));
-      }
-      case TEXT -> {
-        if (StringUtils.isBlank(answer)) {
-          throw new IllegalArgumentException("answer is required for this confirmation");
-        }
-        builder.confirmed(true).payload(Map.of("answer", answer));
-      }
-      case UNKNOWN -> throw new IllegalArgumentException("Unknown confirmation type");
+    if (confirmed != null) {
+      builder.confirmed(confirmed);
+    } else if (StringUtils.isNotBlank(answer)) {
+      builder.confirmed(true).payload(Map.of("answer", answer));
     }
     return builder.build();
   }

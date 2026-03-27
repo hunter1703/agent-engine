@@ -30,13 +30,15 @@ public class MongoClientFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
   private static final String DEFAULT_CONNECTION = "mongodb://localhost:27018";
 
-  @Inject
-  MongoClientSupport mongoClientSupport;
+  private final MongoClientSupport mongoClientSupport;
+  private final Instance<EncryptionService> encryptionService;
 
-  @Inject
-  Instance<EncryptionService> encryptionService;
+    public MongoClientFactory(MongoClientSupport mongoClientSupport, Instance<EncryptionService> encryptionService) {
+        this.mongoClientSupport = mongoClientSupport;
+        this.encryptionService = encryptionService;
+    }
 
-  public MongoClient getClient() {
+    public MongoClient getClient() {
     return MongoClients.create(buildClientSettings(
         resolveConnectionString(), getBsonDiscriminators(mongoClientSupport), encryptionService));
   }

@@ -1,61 +1,152 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.events.EventSubscription;
+import com.agentengine.util.common.events.SequencedEvent;
 import com.typesafe.config.ConfigFactory;
-import org.apache.pekko.actor.testkit.typed.javadsl.ActorTestKit;
+import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.actor.typed.SpawnProtocol;
+import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
+import org.apache.pekko.cluster.typed.Cluster;
+import org.apache.pekko.cluster.typed.Join;
 import org.apache.pekko.stream.Materializer;
 import org.apache.pekko.stream.javadsl.Sink;
+import org.apache.pekko.stream.javadsl.SinkQueueWithCancel;
 import org.apache.pekko.stream.javadsl.Source;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Publisher;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SingleChannelTest {
 
-  private static final ActorTestKit kit = ActorTestKit.create(ConfigFactory.parseString("""
-      pekko {
-        actor.provider = cluster
-        remote.artery.canonical.hostname = "127.0.0.1"
-        remote.artery.canonical.port = 0
-        cluster.seed-nodes = []
-      }
-      """));
-  private static final Materializer mat = Materializer.createMaterializer(kit.system());
+  private static final ActorSystem<SpawnProtocol.Command> system = ActorSystem.create(
+      SpawnProtocol.create(),
+      "single-channel-test-system",
+      ConfigFactory.parseString("""
+          pekko {
+            loglevel = "WARNING"
+            actor.provider = cluster
+            remote.artery.canonical.hostname = "127.0.0.1"
+            remote.artery.canonical.port = 0
+            cluster.seed-nodes = []
+            persistence {
+              journal.plugin = "pekko.persistence.journal.inmem"
+              snapshot-store.plugin = "pekko.persistence.no-snapshot-store"
+            }
+            actor.serialization-bindings {
+              "com.agentengine.util.pekko.PekkoSerializable" = jackson-json
+            }
+          }
+          """));
+  private static final Materializer mat = Materializer.createMaterializer(system);
+
+  static {
+    final Cluster cluster = Cluster.get(system);
+    cluster.manager().tell(Join.create(cluster.selfMember().address()));
+  }
 
   @AfterAll
   static void teardown() {
-    kit.shutdownTestKit();
+    system.terminate();
   }
 
   @Test
-  void shouldDeliverPublishedEventsToSubscribers() throws Exception {
-    final var channel = new PekkoEventChannel.SingleChannel<String>(kit.system());
-    final List<String> received = new ArrayList<>();
+  void shouldDeliverOnlyEventsPublishedAfterSubscribeConfirmation() {
+    final PekkoEventChannel<String, String> channel = new PekkoEventChannel<>(system, "pekko-channel-ordering");
+    ClusterSharding.get(system).init(channel.entity());
+    final String scope = "scope-ordering";
 
-    final Publisher<String> stream = channel.events();
-    Source.fromPublisher(stream).take(2).runForeach(received::add, mat);
+    join(channel.publish(scope, "early"));
+    final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
+        .runWith(Sink.queue(), mat);
 
-    channel.publish("first");
-    channel.publish("second");
+    join(channel.publish(scope, "late"));
+    final SequencedEvent<String> event = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join()
+        .orElseThrow();
 
-    // Give async stream time to process
-    Thread.sleep(200);
-    assertThat(received).containsExactly("first", "second");
+    assertThat(event.payload()).isEqualTo("late");
+    assertThat(event.sequence()).isEqualTo(2L);
+    queue.cancel();
   }
 
   @Test
-  void shouldDeliverOnlyEventsPublishedAfterSubscriberAttaches() {
-    final var channel = new PekkoEventChannel.SingleChannel<String>(kit.system());
-    channel.publish("early");
+  void shouldStopDeliveringAfterCancelConfirmation() {
+    final PekkoEventChannel<String, String> channel = new PekkoEventChannel<>(system, "pekko-channel-cancel");
+    ClusterSharding.get(system).init(channel.entity());
+    final String scope = "scope-cancel";
+    final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
+        .runWith(Sink.queue(), mat);
 
-    final var received = Source.fromPublisher(channel.events()).take(1).runWith(Sink.seq(), mat).toCompletableFuture();
-    channel.publish("late");
+    join(channel.publish(scope, "before-cancel"));
+    final SequencedEvent<String> first = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join()
+        .orElseThrow();
+    assertThat(first.payload()).isEqualTo("before-cancel");
 
-    assertThat(received.orTimeout(2, TimeUnit.SECONDS).join()).containsExactly("late");
+    join(subscription.cancel());
+    join(channel.publish(scope, "after-cancel"));
+
+    final Optional<SequencedEvent<String>> next = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join();
+    assertThat(next).isEmpty();
+    queue.cancel();
+  }
+
+  @Test
+  void shouldFailSlowSubscriberOnOverflow() {
+    final PekkoEventChannel<String, String> channel = new PekkoEventChannel<>(system, "pekko-channel-overflow");
+    ClusterSharding.get(system).init(channel.entity());
+    final String scope = "scope-overflow";
+    final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
+
+    for (int i = 0; i < 400; i++) {
+      join(channel.publish(scope, "event-" + i));
+    }
+
+    final CompletableFuture<List<SequencedEvent<String>>> stream = Source.fromPublisher(subscription.publisher()).runWith(Sink.seq(), mat)
+        .toCompletableFuture();
+    assertThatThrownBy(() -> stream.orTimeout(5, TimeUnit.SECONDS).join())
+        .isInstanceOf(RuntimeException.class);
+  }
+
+  @Test
+  void shouldDeliverParallelPublishesInStrictSequenceOrder() {
+    final PekkoEventChannel<String, String> channel = new PekkoEventChannel<>(system, "pekko-channel-parallel-order");
+    ClusterSharding.get(system).init(channel.entity());
+    final String scope = "scope-parallel-order";
+    final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
+        .runWith(Sink.queue(), mat);
+
+    final int publishCount = 200;
+    final List<CompletableFuture<Long>> publishStages = IntStream.range(0, publishCount)
+        .mapToObj(index -> channel.publish(scope, "event-" + index).toCompletableFuture())
+        .toList();
+    CompletableFuture.allOf(publishStages.toArray(new CompletableFuture[0]))
+        .orTimeout(10, TimeUnit.SECONDS)
+        .join();
+
+    final List<Long> deliveredSequences = IntStream.range(0, publishCount)
+        .mapToObj(ignored -> queue.pull().toCompletableFuture().orTimeout(10, TimeUnit.SECONDS).join()
+            .orElseThrow()
+            .sequence())
+        .toList();
+
+    assertThat(deliveredSequences)
+        .containsExactlyElementsOf(LongStream.rangeClosed(1, publishCount).boxed().toList());
+    queue.cancel();
+  }
+
+  private static <T> T join(final CompletionStage<T> stage) {
+    return stage.toCompletableFuture().join();
   }
 }

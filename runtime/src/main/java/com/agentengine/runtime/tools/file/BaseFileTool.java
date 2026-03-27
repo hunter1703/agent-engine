@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
@@ -49,7 +50,7 @@ public abstract class BaseFileTool extends Tool {
       }
 
       return new FileDetails(lineCount, HexFormat.of().formatHex(digest.digest()), List.copyOf(selectedLines));
-    } catch (java.security.NoSuchAlgorithmException e) {
+    } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 algorithm not available", e);
     }
   }

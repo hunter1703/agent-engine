@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.cluster.typed.ClusterSingleton;
 import org.apache.pekko.cluster.typed.SingletonActor;
 import org.apache.pekko.japi.function.Function;
@@ -41,12 +42,12 @@ public class SessionHistoryProjection {
   private static final int MIN_SLICE = 0;
   private static final int MAX_SLICE = 1023;
 
-  private final ActorSystem<Void> actorSystem;
+  private final ActorSystem<SpawnProtocol.Command> actorSystem;
   private final MongoCollection<Document> collection;
   private final Supplier<Connection> jdbcConnectionFactory;
 
   @Inject
-  public SessionHistoryProjection(final ActorSystem<Void> actorSystem, final MongoCollection<Document> collection,
+  public SessionHistoryProjection(final ActorSystem<SpawnProtocol.Command> actorSystem, final MongoCollection<Document> collection,
       final Supplier<Connection> jdbcConnectionFactory) {
     this.actorSystem = actorSystem;
     this.collection = collection;

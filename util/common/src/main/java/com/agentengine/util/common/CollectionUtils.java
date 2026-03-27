@@ -92,11 +92,11 @@ public final class CollectionUtils {
     return new HashMap<>(map);
   }
 
-  public static String getStringValueFromMap(final Map<String, Object> map, final String key) {
+  public static <K> String getStringValueFromMap(final Map<K, ?> map, final K key) {
     if (CollectionUtils.isEmpty(map)) {
       return null;
     }
-    return (String) map.get(key);
+    return String.valueOf(map.get(key));
   }
 
   @SuppressWarnings("unchecked")

@@ -1,7 +1,10 @@
 package com.agentengine.interfaces.rest.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class ResumeSessionRequest extends AgentRequest {
   private Boolean confirmed;
+  @NotBlank(message = "Confirmation Id is required")
   private String confirmationId;
 
   public ResumeSessionRequest() {

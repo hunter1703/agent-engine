@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest.handlers;
 import com.agentengine.runtime.api.services.ToolCatalog;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
+import com.agentengine.util.common.beans.AssetClass;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collections;
@@ -20,7 +21,7 @@ public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
 
   @Override
   public String getAssetType() {
-    return "tool_configs";
+    return AssetClass.TOOL_CONFIGS;
   }
 
   @Override

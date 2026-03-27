@@ -63,30 +63,38 @@ public final class ToolUtils {
     final FunctionDeclaration.Builder builder = FunctionDeclaration.builder().name(toolDescriptor.name())
         .description(toolDescriptor.description());
 
+    builder.parameters(buildParameterObjectSchema(method.getParameters(), false));
+    builder.response(buildResponseSchema(method));
+    return builder.build();
+  }
+
+  public static Schema buildParameterObjectSchema(final Parameter[] parameters, final boolean includeUnannotated) {
     final List<String> required = new ArrayList<>();
     final Map<String, Schema> properties = new LinkedHashMap<>();
-    for (Parameter param : method.getParameters()) {
+    for (final Parameter param : parameters) {
       final String paramName = resolveParameterName(param);
       if (shouldIgnoreParameter(paramName)) {
         continue;
       }
       final ToolSchema schema = param.getAnnotation(ToolSchema.class);
-      if (schema == null) {
+      if (schema == null && !includeUnannotated) {
         continue;
       }
-      final boolean isRequired = !schema.optional();
+      final boolean isRequired = schema == null || !schema.optional();
       if (isRequired) {
         required.add(paramName);
       }
       Schema paramSchema = buildSchemaFromType(param.getParameterizedType());
-      final List<String> enumValues = getEnumValues(schema.enums(), paramSchema);
+      final List<String> enumValues = getEnumValues(schema == null ? null : schema.enums(), paramSchema);
       paramSchema = addEnumsToSchema(enumValues, paramSchema);
       paramSchema = applyFieldMetadata(paramSchema, schema, isRequired, enumValues);
       properties.put(paramName, paramSchema);
     }
 
-    builder.parameters(Schema.builder().required(required).properties(properties).type("OBJECT").build());
-    builder.response(buildResponseSchema(method));
+    final Schema.Builder builder = Schema.builder().properties(properties).type("OBJECT");
+    if (!required.isEmpty()) {
+      builder.required(required);
+    }
     return builder.build();
   }
 
@@ -109,6 +117,11 @@ public final class ToolUtils {
     return paramSchema;
   }
 
+  public static Schema applySchemaMetadata(final Schema schema, final String description, final boolean required,
+      final List<String> enumValues) {
+    return applyFieldMetadata(schema, description, required, enumValues);
+  }
+
   private static Schema buildResponseSchema(final Method method) {
     Type returnType = method.getGenericReturnType();
     if (returnType == Void.TYPE || returnType == Void.class) {
@@ -125,7 +138,7 @@ public final class ToolUtils {
     return buildSchemaFromType(actualReturnType);
   }
 
-  private static Schema buildSchemaFromType(final Type type) {
+  public static Schema buildSchemaFromType(final Type type) {
     return buildSchemaRecursive(Utils.constructType(type), new SchemaContext());
   }
 
@@ -216,6 +229,11 @@ public final class ToolUtils {
   private static Schema applyFieldMetadata(final Schema schema, final ToolSchema toolSchema, final boolean required,
       final List<String> enumValues) {
     String baseDescription = toolSchema == null ? null : toolSchema.description();
+    return applyFieldMetadata(schema, baseDescription, required, enumValues);
+  }
+
+  private static Schema applyFieldMetadata(final Schema schema, String baseDescription, final boolean required,
+      final List<String> enumValues) {
     if (StringUtils.isBlank(baseDescription) && schema.description().isPresent()) {
       baseDescription = schema.description().orElse("");
     }
@@ -348,8 +366,10 @@ public final class ToolUtils {
       if (event == null) {
         continue;
       }
-      event.functionResponses().stream().filter(r -> REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(r.name().orElse(null)))
-          .flatMap(r -> r.id().stream()).forEach(ids::add);
+      event.functionResponses().stream()
+          .filter(response -> REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(response.name().orElse(null)))
+          .flatMap(response -> response.id().stream())
+          .forEach(ids::add);
     }
     return ids;
   }
@@ -374,23 +394,23 @@ public final class ToolUtils {
     private final Map<JavaType, Schema> definitions = new HashMap<>();
     private final Set<JavaType> processingStack = new HashSet<>();
 
-    boolean isProcessing(JavaType type) {
+    private boolean isProcessing(JavaType type) {
       return processingStack.contains(type);
     }
 
-    void startProcessing(JavaType type) {
+    private void startProcessing(JavaType type) {
       processingStack.add(type);
     }
 
-    void finishProcessing(JavaType type) {
+    private void finishProcessing(JavaType type) {
       processingStack.remove(type);
     }
 
-    Optional<Schema> getDefinition(JavaType type) {
+    private Optional<Schema> getDefinition(JavaType type) {
       return Optional.ofNullable(definitions.get(type));
     }
 
-    void addDefinition(JavaType type, Schema schema) {
+    private void addDefinition(JavaType type, Schema schema) {
       definitions.put(type, schema);
     }
   }

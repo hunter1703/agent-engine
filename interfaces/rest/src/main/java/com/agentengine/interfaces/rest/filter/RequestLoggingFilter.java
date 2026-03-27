@@ -1,5 +1,7 @@
 package com.agentengine.interfaces.rest.filter;
 
+import com.agentengine.util.common.Utils;
+import io.opentelemetry.api.trace.Span;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
@@ -15,27 +17,19 @@ import org.slf4j.MDC;
 public class RequestLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestLoggingFilter.class);
-  private static final String REQUEST_ID_HEADER = "X-Request-ID";
-  private static final String MDC_KEY = "requestId";
+  private static final String TRACE_ID_HEADER = "X-Trace-ID";
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws IOException {
-    String requestId = requestContext.getHeaderString(REQUEST_ID_HEADER);
-    if (requestId == null || requestId.isEmpty()) {
-      requestId = UUID.randomUUID().toString();
-    }
-    MDC.put(MDC_KEY, requestId);
-    LOG.debug("Request received method={} path={} requestId={}", requestContext.getMethod(), requestContext.getUriInfo().getPath(),
-        requestId);
+  public void filter(final ContainerRequestContext requestContext) {
+    LOG.debug("Request received method={} path={}", requestContext.getMethod(), requestContext.getUriInfo().getPath());
   }
 
   @Override
-  public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
-    String requestId = MDC.get(MDC_KEY);
-    if (requestId != null) {
-      responseContext.getHeaders().add(REQUEST_ID_HEADER, requestId);
+  public void filter(final ContainerRequestContext requestContext, final ContainerResponseContext responseContext) {
+    final String traceId = Span.current().getSpanContext().getTraceId();
+    if (Span.current().getSpanContext().isValid()) {
+      responseContext.getHeaders().add(TRACE_ID_HEADER, traceId);
     }
-    LOG.debug("Request completed status={} requestId={}", responseContext.getStatus(), requestId);
-    MDC.remove(MDC_KEY);
+    LOG.debug("Request completed status={}", responseContext.getStatus());
   }
 }

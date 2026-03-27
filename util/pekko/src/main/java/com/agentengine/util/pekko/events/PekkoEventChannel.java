@@ -1,81 +1,127 @@
 package com.agentengine.util.pekko.events;
 
 import com.agentengine.util.common.CompletionUtils;
-import com.agentengine.util.common.infra.events.EventChannel;
-import com.agentengine.util.pekko.actor.BroadcastBehavior;
+import com.agentengine.util.common.events.EventChannel;
+import com.agentengine.util.common.events.EventSubscription;
+import com.agentengine.util.common.events.SequencedEvent;
+import com.agentengine.util.pekko.actor.RequesterFirstAllocationStrategy;
 import com.agentengine.util.pekko.actor.ShardedEntity;
-import org.apache.pekko.Done;
-import org.apache.pekko.actor.typed.ActorRef;
-import org.apache.pekko.actor.typed.ActorSystem;
+import io.reactivex.rxjava3.core.BackpressureOverflowStrategy;
+import io.reactivex.rxjava3.processors.FlowableProcessor;
+import io.reactivex.rxjava3.processors.PublishProcessor;
+import org.apache.pekko.actor.typed.*;
+import org.apache.pekko.actor.typed.javadsl.AskPattern;
+import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.sharding.typed.ShardingEnvelope;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
-import org.apache.pekko.stream.Materializer;
-import org.apache.pekko.stream.OverflowStrategy;
-import org.apache.pekko.stream.javadsl.AsPublisher;
-import org.apache.pekko.stream.javadsl.Sink;
-import org.apache.pekko.stream.javadsl.Source;
-import org.apache.pekko.stream.typed.javadsl.ActorSource;
+import org.apache.pekko.japi.function.Function;
 import org.reactivestreams.Publisher;
 
 import java.time.Duration;
-import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Predicate;
 
-public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Event>, ShardedEntity.ShardedEntityDefinition<BroadcastBehavior.Command, ShardingEnvelope<BroadcastBehavior.Command>> {
-  private static final Duration SUBSCRIPTION_TIMEOUT = Duration.ofSeconds(5);
+/**
+ * Distributed, scope-keyed event channel backed by a persistent sharded broadcaster.
+ * <p>
+ * Delivery contract:
+ * <ul>
+ *   <li>{@code subscribe} linearizes when the returned stage completes — all events
+ *       published after that point are delivered at least once to the subscriber's mailbox.</li>
+ *   <li>{@code publish} linearizes when the returned stage completes and returns the
+ *       assigned monotonic sequence.</li>
+ *   <li>Cancellation is via {@link EventSubscription#cancel()}; the subscriber actor stops,
+ *       broadcaster state is cleaned up via DeathWatch.</li>
+ *   <li>If the broadcaster recovers from passivation, subscribers re-register automatically
+ *       via DeathWatch. Events during the re-registration window are not guaranteed.</li>
+ * </ul>
+ */
+public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Event>,
+    ShardedEntity.ShardedEntityDefinition<ChannelCommand, ShardingEnvelope<ChannelCommand>> {
+
+  private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(10);
+  private static final int SUBSCRIBER_BUFFER_SIZE = 256;
+
+  private final ActorSystem<SpawnProtocol.Command> system;
   private final ClusterSharding sharding;
-  private final EntityTypeKey<BroadcastBehavior.Command> typeKey;
-  private final Materializer materializer;
-  private final ConcurrentMap<Scope, SingleChannel<Event>> channels = new ConcurrentHashMap<>();
+  private final EntityTypeKey<ChannelCommand> typeKey;
+  private final Entity<ChannelCommand, ShardingEnvelope<ChannelCommand>> entity;
 
-  public PekkoEventChannel(final ActorSystem<?> system, Materializer materializer) {
-    this(system, materializer, "scoped-event-channel-" + java.util.UUID.randomUUID());
-  }
-
-  public PekkoEventChannel(final ActorSystem<?> system, final Materializer materializer, final String channelName) {
+  public PekkoEventChannel(
+      final ActorSystem<SpawnProtocol.Command> system,
+      final String channelName) {
+    this.system = system;
     this.sharding = ClusterSharding.get(system);
-    this.materializer = materializer;
-    this.typeKey = EntityTypeKey.create(BroadcastBehavior.Command.class, sanitizeTypeKey(channelName));
+    this.typeKey = EntityTypeKey.create(ChannelCommand.class, sanitizeTypeKey(channelName));
+    this.entity = Entity.of(typeKey, ctx -> Behaviors.setup(actorCtx ->
+            new EventBroadcasterEntity(actorCtx, typeKey.name(), ctx.getEntityId())))
+        .withAllocationStrategy(RequesterFirstAllocationStrategy.INSTANCE);
   }
 
   @Override
-  public void publish(final Scope scope, final Event event) {
-    channel(scope).publish(event);
+  @SuppressWarnings("unchecked")
+  public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
+    final String subscriptionId = UUID.randomUUID().toString();
+    final FlowableProcessor<SequencedEvent<Object>> processor = PublishProcessor.<SequencedEvent<Object>>create().toSerialized();
+
+    final Behavior<Command> subscriberBehavior = SubscriberActor.create(subscriptionId, broadcaster(scope), processor);
+    final ActorRef<Command> subscriberActor = system.systemActorOf(subscriberBehavior, "event-subscriber-" + subscriptionId, Props.empty());
+
+    final Publisher<SequencedEvent<Event>> publisher = processor
+        .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
+        .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()))
+        .doFinally(() -> stopSubscriber(subscriberActor).exceptionally(ignored -> null));
+
+    return CompletionUtils.completeWithRootCause(
+        AskPattern.ask(
+                subscriberActor,
+                (Function<ActorRef<CommandResult>, Command>)
+                    Command.Start::new,
+                COMMAND_TIMEOUT,
+                system.scheduler())
+            .thenCompose(result -> {
+              if (result instanceof CommandResult.Failed failed) {
+                if (!processor.hasComplete() && !processor.hasThrowable()) {
+                  processor.onError(failed.cause());
+                }
+                return CompletionUtils.failedStage(failed.cause());
+              }
+              return CompletableFuture.completedFuture(new EventSubscription<>(
+                  subscriptionId,
+                  publisher,
+                  () -> stopSubscriber(subscriberActor)));
+            }));
   }
 
   @Override
-  public Publisher<Event> events(final Scope scope) {
-    return channel(scope).events();
+  public CompletionStage<Long> publish(final Scope scope, final Event event) {
+    return CompletionUtils.completeWithRootCause(
+        broadcaster(scope)
+            .ask((Function<ActorRef<ChannelCommand.PublishAck>, ChannelCommand>) replyTo ->
+                new ChannelCommand.Publish<>(event, replyTo), COMMAND_TIMEOUT)
+            .thenApply(ChannelCommand.PublishAck::sequence));
   }
 
   @Override
-  public CompletionStage<Event> waitFor(final Scope scope, final Predicate<Event> predicate, final Duration timeout) {
-    return channel(scope).waitFor(predicate, timeout);
+  public Entity<ChannelCommand, ShardingEnvelope<ChannelCommand>> entity() {
+    return entity;
   }
 
-  @Override
-  public void complete(final Scope scope) {
-    channels.remove(scope);
-    entityRef(scope).tell(new BroadcastBehavior.Command.Stop());
+  private CompletionStage<Void> stopSubscriber(final ActorRef<Command> subscriberActor) {
+    return AskPattern.ask(
+            subscriberActor,
+            (Function<ActorRef<CommandResult>, Command>)
+                Command.Stop::new,
+            COMMAND_TIMEOUT,
+            system.scheduler())
+        .thenApply(ignored -> null);
   }
 
-  @Override
-  public Entity<BroadcastBehavior.Command, ShardingEnvelope<BroadcastBehavior.Command>> entity() {
-    return Entity.of(typeKey, ctx -> BroadcastBehavior.create());
-  }
-
-  private SingleChannel<Event> channel(final Scope scope) {
-    return channels.computeIfAbsent(scope, k -> new SingleChannel<>(entityRef(scope), materializer));
-  }
-
-  private EntityRef<BroadcastBehavior.Command> entityRef(final Scope scope) {
+  private EntityRef<ChannelCommand> broadcaster(final Scope scope) {
     return sharding.entityRefFor(typeKey, scope.toString());
   }
 
@@ -83,37 +129,4 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
     return "event-channel-" + name.replaceAll("[^A-Za-z0-9_-]", "-");
   }
 
-  private static class SingleChannel<E> {
-    private final EntityRef<BroadcastBehavior.Command> broadcaster;
-    private final Materializer materializer;
-
-    private SingleChannel(final EntityRef<BroadcastBehavior.Command> broadcaster, final Materializer materializer) {
-      this.broadcaster = broadcaster;
-      this.materializer = materializer;
-    }
-
-    private void publish(final E event) {
-      broadcaster.tell(new BroadcastBehavior.Command.Publish(event));
-    }
-
-    private Publisher<E> events() {
-      final CompletableFuture<ActorRef<E>> subscriberRef = new CompletableFuture<>();
-      final Publisher<E> publisher = ActorSource.<E>actorRef(msg -> false, msg -> Optional.empty(), 256, OverflowStrategy.dropHead())
-          .mapMaterializedValue(ref -> {
-            subscriberRef.complete(ref);
-            return ref;
-          })
-          .runWith(Sink.asPublisher(AsPublisher.WITHOUT_FANOUT), materializer);
-
-      final ActorRef<E> ref = subscriberRef.join();
-      //noinspection unchecked
-      broadcaster.ask((ActorRef<Done> replyTo) -> new BroadcastBehavior.Command.Subscribe((ActorRef<Object>) ref, replyTo), SUBSCRIPTION_TIMEOUT).toCompletableFuture().join();
-      return publisher;
-    }
-
-    private CompletionStage<E> waitFor(final Predicate<E> predicate, final Duration timeout) {
-      return CompletionUtils.completeWithRootCause(
-          Source.fromPublisher(events()).filter(predicate::test).take(1).completionTimeout(timeout).runWith(Sink.head(), materializer));
-    }
-  }
 }

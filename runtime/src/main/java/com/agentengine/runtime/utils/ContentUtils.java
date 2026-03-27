@@ -1,10 +1,17 @@
 package com.agentengine.runtime.utils;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.google.adk.events.Event;
+import com.google.adk.events.ToolConfirmation;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
+import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -93,12 +100,48 @@ public final class ContentUtils {
 
   public static List<Content> stripThoughtParts(final List<Content> contents) {
     return CollectionUtils.nullSafeList(contents).stream()
-        .map(c -> c.toBuilder().parts(c.parts().orElse(List.of()).stream().filter(p -> !p.thought().orElse(false)).toList()).build())
-        .filter(c -> !c.parts().orElse(List.of()).isEmpty())
+        .map(content -> content.toBuilder()
+            .parts(content.parts().orElse(List.of()).stream().filter(part -> !part.thought().orElse(false)).toList())
+            .build())
+        .filter(content -> !content.parts().orElse(List.of()).isEmpty())
         .toList();
   }
 
   public static Content stripToolParts(final Content content) {
-    return content.toBuilder().parts(content.parts().orElse(List.of()).stream().filter(p -> p.functionCall().isEmpty() && p.functionResponse().isEmpty()).toList()).build();
+    return content.toBuilder()
+        .parts(content.parts().orElse(List.of()).stream()
+            .filter(part -> part.functionCall().isEmpty() && part.functionResponse().isEmpty())
+            .toList())
+        .build();
+  }
+
+  public static String recentUser(final List<Event> events, final int max) {
+      if (events == null || events.isEmpty()) {
+        return "";
+      }
+      final List<String> intents = new ArrayList<>();
+      for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
+        final Content content = events.get(i).content().orElse(null);
+        if (content == null || !"user".equals(content.role().orElse(""))) {
+          continue;
+        }
+        final String text = content.text();
+        if (StringUtils.isNotBlank(text)) {
+          intents.add(text);
+        }
+      }
+      return String.join("\n", intents.reversed());
+  }
+
+  public static Content buildUserContent(final String message) {
+    return Content.builder().role("user").parts(List.of(Part.fromText(message))).build();
+  }
+
+  public static Event buildConfirmationEvent(final String confirmationId, final Boolean confirmed, final String answer) {
+      final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
+      final FunctionResponse functionResponse = FunctionResponse.builder().id(confirmationId)
+              .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(JsonUtils.toMap(toolConfirmation)).build();
+      return Event.builder().author("user")
+              .content(Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build())).build()).build();
   }
 }

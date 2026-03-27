@@ -16,12 +16,15 @@ import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import jakarta.enterprise.inject.Instance;
 import jakarta.ws.rs.WebApplicationException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
-class ResourceCatalogAPITest {
+public class ResourceCatalogAPITest {
 
   @Test
-  void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
+  public void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     assertThatThrownBy(() -> api.listResources(new AssetRequest())).isInstanceOf(WebApplicationException.class)
@@ -29,7 +32,7 @@ class ResourceCatalogAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
+  public void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("unknown");
@@ -39,7 +42,7 @@ class ResourceCatalogAPITest {
   }
 
   @Test
-  void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
+  public void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
@@ -49,7 +52,7 @@ class ResourceCatalogAPITest {
   }
 
   @Test
-  void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
+  public void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
     final AssetRequest request = new AssetRequest();
     request.setAssetType("model");
@@ -63,7 +66,7 @@ class ResourceCatalogAPITest {
   }
 
   @Test
-  void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
+  public void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     final ModelConfig resource = api.getResource("model", "model-1", null);
@@ -72,7 +75,7 @@ class ResourceCatalogAPITest {
   }
 
   @Test
-  void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
+  public void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
     final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
     assertThatThrownBy(() -> api.getResource("model", "missing", null)).isInstanceOf(WebApplicationException.class)
@@ -83,7 +86,7 @@ class ResourceCatalogAPITest {
   @SuppressWarnings("unchecked")
   private static Instance<AssetHandler<?>> handlerInstanceWith(final AssetHandler<?>... handlers) {
     final Instance<AssetHandler<?>> instance = mock(Instance.class);
-    when(instance.stream()).thenReturn(java.util.stream.Stream.of(handlers));
+    when(instance.stream()).thenReturn(Stream.of(handlers));
     return instance;
   }
 
@@ -96,12 +99,12 @@ class ResourceCatalogAPITest {
 
     @Override
     public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
-      return PaginatedResult.create(java.util.List.of(newModel("model-1", "Model One")));
+      return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
     }
 
     @Override
-    public java.util.Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
-      return java.util.Map.of("model-1", newModel("model-1", "Model One"));
+    public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
+      return Map.of("model-1", newModel("model-1", "Model One"));
     }
   }
 
@@ -114,19 +117,19 @@ class ResourceCatalogAPITest {
 
     @Override
     public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
-      return PaginatedResult.create(java.util.List.of(newModel("model-1", "Model One")));
+      return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
     }
 
     @Override
-    public java.util.Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
+    public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
       if (request.getKeys() == null || request.getKeys().isEmpty()) {
-        return java.util.Map.of();
+        return Map.of();
       }
       final String key = request.getKeys().getFirst();
       if (!"model-1".equals(key)) {
-        return java.util.Map.of();
+        return Map.of();
       }
-      return java.util.Map.of("model-1", newModel("model-1", "Model One"));
+      return Map.of("model-1", newModel("model-1", "Model One"));
     }
   }
 

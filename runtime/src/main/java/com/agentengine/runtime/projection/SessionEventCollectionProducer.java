@@ -1,5 +1,7 @@
 package com.agentengine.runtime.projection;
 
+import com.agentengine.util.mongodb.infra.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.IndexOptions;
@@ -13,8 +15,8 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
@@ -34,12 +36,14 @@ public class SessionEventCollectionProducer {
   private static final String COLLECTION_NAME = "session_events";
 
   private final MongoCollection<Document> collection;
-  private final DataSource dataSource;
+  private final InfraMongoRepository infraMongoRepository;
+  private volatile SQLInfraConfig sqlConfig;
 
   @Inject
-  public SessionEventCollectionProducer(final MongoClientFactory mongoClientFactory, final DataSource dataSource) {
+  public SessionEventCollectionProducer(final MongoClientFactory mongoClientFactory,
+      final InfraMongoRepository infraMongoRepository) {
     this.collection = mongoClientFactory.getClient().getDatabase(DATABASE_NAME).getCollection(COLLECTION_NAME);
-    this.dataSource = dataSource;
+    this.infraMongoRepository = infraMongoRepository;
   }
 
   @Produces
@@ -52,8 +56,12 @@ public class SessionEventCollectionProducer {
   @Singleton
   public Supplier<Connection> jdbcConnectionFactory() {
     return () -> {
+      SQLInfraConfig cfg = sqlConfig;
+      if (cfg == null) {
+        cfg = sqlConfig = infraMongoRepository.findOneByType(SQLInfraConfig.TYPE);
+      }
       try {
-        return dataSource.getConnection();
+        return DriverManager.getConnection(cfg.getJdbcUrl(), cfg.getJdbcUser(), cfg.getJdbcPassword());
       } catch (final SQLException e) {
         throw new RuntimeException("Failed to acquire JDBC connection for projection", e);
       }
@@ -61,12 +69,14 @@ public class SessionEventCollectionProducer {
   }
 
   public void onStart(@Observes final StartupEvent event) {
+    sqlConfig = infraMongoRepository.findOneByType(SQLInfraConfig.TYPE);
     collection.createIndex(ascending("sessionId", "sequence"), new IndexOptions().unique(true).background(true));
     applyProjectionOffsetStoreDdl();
   }
 
   private void applyProjectionOffsetStoreDdl() {
-    try (final Connection conn = dataSource.getConnection(); final var stmt = conn.createStatement()) {
+    try (final Connection conn = DriverManager.getConnection(sqlConfig.getJdbcUrl(), sqlConfig.getJdbcUser(),
+        sqlConfig.getJdbcPassword()); final var stmt = conn.createStatement()) {
       stmt.execute("""
           CREATE TABLE IF NOT EXISTS pekko_projection_offset_store (
             projection_name VARCHAR(255) NOT NULL,

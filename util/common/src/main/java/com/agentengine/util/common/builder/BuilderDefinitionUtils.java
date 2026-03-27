@@ -26,6 +26,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
@@ -59,7 +60,7 @@ public final class BuilderDefinitionUtils {
   // ─── Public API ───────────────────────────────────────────────────────────
 
   public static BuilderDefinition generate(final Class<?> rootType) {
-    final Context ctx = new Context(rootType);
+    final Context ctx = new Context();
     final SchemaBuilder<?, ?> schemaBuilder = buildSchemaForType(rootType, ctx, "");
     schemaBuilder.withKeyword("$schema", "https://json-schema.org/draft/2020-12/schema");
     final PresetCollection presets = collectPresets(rootType);
@@ -355,15 +356,15 @@ public final class BuilderDefinitionUtils {
     // first.
     final Map<String, List<Map<String, Object>>> byEffect = new LinkedHashMap<>();
     if (autoVisibilityExpr != null) {
-      byEffect.computeIfAbsent("VISIBLE", k -> new ArrayList<>()).add(autoVisibilityExpr);
+      byEffect.computeIfAbsent("VISIBLE", effectName -> new ArrayList<>()).add(autoVisibilityExpr);
     }
     for (final UiRule rule : uiRules) {
-      byEffect.computeIfAbsent(rule.effect().name(), k -> new ArrayList<>()).add(toJsonLogic(rule));
+      byEffect.computeIfAbsent(rule.effect().name(), effectName -> new ArrayList<>()).add(toJsonLogic(rule));
     }
     final List<LayoutFieldRule> rules = new ArrayList<>();
-    for (final Map.Entry<String, List<Map<String, Object>>> e : byEffect.entrySet()) {
-      final List<Map<String, Object>> exprs = e.getValue();
-      rules.add(new LayoutFieldRule(e.getKey(), exprs.size() == 1 ? exprs.getFirst() : Map.of("and", exprs)));
+    for (final Map.Entry<String, List<Map<String, Object>>> effectEntry : byEffect.entrySet()) {
+      final List<Map<String, Object>> expressions = effectEntry.getValue();
+      rules.add(new LayoutFieldRule(effectEntry.getKey(), expressions.size() == 1 ? expressions.getFirst() : Map.of("and", expressions)));
     }
     if (uiExpr != null) {
       rules.add(new LayoutFieldRule(uiExpr.effect().name(), JsonUtils.fromJson(uiExpr.value(), new TypeReference<>() {
@@ -711,7 +712,7 @@ public final class BuilderDefinitionUtils {
 
   private static Object instantiate(final Class<?> clazz) {
     try {
-      final var ctor = clazz.getDeclaredConstructor();
+      final Constructor<?> ctor = clazz.getDeclaredConstructor();
       ctor.setAccessible(true);
       return ctor.newInstance();
     } catch (Exception ignored) {
@@ -805,15 +806,13 @@ public final class BuilderDefinitionUtils {
   // ─── Context ──────────────────────────────────────────────────────────────
 
   private static final class Context {
-    final Class<?> rootType;
-    final Deque<Class<?>> typeStack = new ArrayDeque<>();
-    final Map<String, LayoutField> fields = new LinkedHashMap<>();
+    private final Deque<Class<?>> typeStack = new ArrayDeque<>();
+    private final Map<String, LayoutField> fields = new LinkedHashMap<>();
 
-    Context(final Class<?> rootType) {
-      this.rootType = rootType;
+    private Context() {
     }
 
-    void registerField(final String pointer, final Class<?> owner, final Field field, final Map<String, Object> fieldSchema,
+    private void registerField(final String pointer, final Class<?> owner, final Field field, final Map<String, Object> fieldSchema,
         final Map<String, Object> autoVisibilityExpr) {
       BuilderDefinitionUtils.registerField(this, pointer, owner, field, fieldSchema, autoVisibilityExpr);
     }

@@ -2,9 +2,9 @@ package com.agentengine.interfaces.rest.services;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.builder.BuilderDefinition;
 import com.agentengine.util.common.builder.BuilderDefinitionUtils;
-import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Singleton;
 import java.util.Locale;
@@ -13,15 +13,10 @@ import java.util.concurrent.ExecutionException;
 @Singleton
 public class BuilderDefinitionService {
 
-  private final Cache<String, BuilderDefinition> definitions = CacheBuilder.newBuilder().build();
+  private final Cache<String, BuilderDefinition> definitions = new Cache<>(CacheBuilder.newBuilder(), this::generateDefinition);
 
   public BuilderDefinition getDefinition(final String assetType) {
-    final String normalizedAssetType = normalizeAssetType(assetType);
-    try {
-      return definitions.get(normalizedAssetType, () -> generateDefinition(normalizedAssetType));
-    } catch (ExecutionException exception) {
-      throw new IllegalStateException("Failed to build definition for assetType: " + normalizedAssetType, exception);
-    }
+    return definitions.get(assetType);
   }
 
   private BuilderDefinition generateDefinition(final String assetType) {
@@ -30,9 +25,5 @@ public class BuilderDefinitionService {
       case "model" -> BuilderDefinitionUtils.generate(ModelConfig.class);
       default -> throw new IllegalArgumentException("Unsupported assetType: " + assetType);
     };
-  }
-
-  private static String normalizeAssetType(final String value) {
-    return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
   }
 }

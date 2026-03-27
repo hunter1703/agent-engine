@@ -1,15 +1,10 @@
 package com.agentengine.runtime.guardrails;
 
+import com.agentengine.runtime.utils.GuardrailUtils;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.util.agents.beans.config.RelevanceMode;
-import com.agentengine.runtime.guardrails.Guardrail;
-import com.agentengine.runtime.guardrails.GuardrailConstants;
-import com.agentengine.runtime.guardrails.GuardrailContext;
-import com.agentengine.runtime.guardrails.GuardrailDecision;
-import com.agentengine.runtime.utils.OutputRelevanceUtils;
-import com.agentengine.runtime.guardrails.RelevanceScorer;
 import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
 import java.util.Map;
@@ -75,7 +70,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
       return GuardrailDecision.allow();
     }
 
-    final String anchor = OutputRelevanceUtils.buildAnchorPrompt(context.invocationContext(), config);
+    final String anchor = GuardrailUtils.buildRelevanceAnchorPrompt(context.invocationContext(), config);
     final double score = relevanceScorer.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
     final RunState runState = RunUtils.getOrInitState(context.invocationContext());

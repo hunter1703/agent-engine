@@ -1,5 +1,8 @@
 # TODO
-add tool config schema from tool constructor for discovered tools
+separate utils:ms:client and utils:ms:server
+optimize or rewrite the [GRPCServerImpl.java](util%2Fms%2Fsrc%2Fmain%2Fjava%2Fcom%2Fagentengine%2Futil%2Fms%2FGRPCServerImpl.java)
+add MANAGER orchestrator
+
 
 ## Deferred Test Follow-ups
 - Add regression tests for orchestrator mode validation matrix:
@@ -9,6 +12,13 @@ add tool config schema from tool constructor for discovered tools
 - Add integration tests for mixed context-strategy graph validation and compaction compatibility checks.
 - Add integration tests for native confirmation resume adapter (non-empty text -> approval payload mapping).
 
+
+## Session Actor — Deferred Correctness Gaps
+
+- **`resumeChildCompletion` result injection**: When a parked session resumes after child completion,
+  `resumeChildCompletion` should inject the child result as a function-response event into session
+  history before re-running, so the ADK runner can continue from the `await_agent` call site.
+  Without this, the ADK re-execution may not correctly deliver the child result to the LLM.
 
 ## Session Actor Rebuild — Deferred Correctness Gaps
 

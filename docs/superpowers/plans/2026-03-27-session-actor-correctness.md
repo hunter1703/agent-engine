@@ -121,7 +121,7 @@ Expected: compilation fails on files that still reference the old `SessionEvent 
 ```java
 package com.agentengine.runtime.projection;
 
-import com.agentengine.runtime.actor.SessionEvent;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.runtime.actor.SessionFact;
 import com.agentengine.util.common.JsonUtils;
 import com.mongodb.client.MongoCollection;
@@ -198,8 +198,8 @@ public final class SessionHistoryProjectionHandler extends Handler<EventEnvelope
 ```java
 package com.agentengine.runtime.services;
 
-import com.agentengine.runtime.actor.SessionEvent;
-import com.agentengine.runtime.actor.SessionHistory;
+import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.runtime.actor.SessionHistoryService;
 import com.agentengine.util.common.JsonUtils;
 import com.mongodb.client.MongoCollection;
 import jakarta.inject.Inject;

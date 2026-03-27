@@ -1,11 +1,10 @@
 package com.agentengine.core.services;
 
-import com.agentengine.core.agui.AGUIEventMapper;
+import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.core.api.services.SessionService;
-import com.agentengine.core.events.SessionDeletedEvent;
 import com.agentengine.core.repository.SessionRepository;
-import com.agentengine.runtime.actor.SessionEvent;
-import com.agentengine.runtime.actor.SessionHistory;
+import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.runtime.actor.SessionHistoryService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
@@ -25,15 +24,12 @@ import java.util.Map;
 public class SessionServiceImpl implements SessionService {
 
   private final SessionRepository sessionRepository;
-  private final Event<SessionDeletedEvent> sessionDeletedEvent;
-  private final SessionHistory sessionHistory;
+  private final SessionHistoryService sessionHistoryService;
 
   @Inject
-  public SessionServiceImpl(final SessionRepository sessionRepository, final Event<SessionDeletedEvent> sessionDeletedEvent,
-      final SessionHistory sessionHistory) {
+  public SessionServiceImpl(final SessionRepository sessionRepository, final SessionHistoryService sessionHistoryService) {
     this.sessionRepository = sessionRepository;
-    this.sessionDeletedEvent = sessionDeletedEvent;
-    this.sessionHistory = sessionHistory;
+    this.sessionHistoryService = sessionHistoryService;
   }
 
   @Override
@@ -55,24 +51,20 @@ public class SessionServiceImpl implements SessionService {
   @Override
   public Map<String, AgentSession> getSessions(final Collection<String> ids, final boolean includeEvents) {
     final Map<String, AgentSession> idVsSession = sessionRepository.findByIds(ids);
-    idVsSession.values().forEach(s -> sanitizeSession(s, includeEvents));
+    idVsSession.values().forEach(session -> sanitizeSession(session, includeEvents));
     return idVsSession;
   }
 
   @Override
   @WithSpan
   public PaginatedResult<AgentSession> findSessions(final Query query) {
-    return sessionRepository.findByQuery(query).transform(s -> sanitizeSession(s, false));
+    return sessionRepository.findByQuery(query).transform(session -> sanitizeSession(session, false));
   }
 
   @Override
   @WithSpan
   public boolean deleteSession(final String id) {
-    final boolean deleted = sessionRepository.deleteById(id);
-    if (deleted) {
-      sessionDeletedEvent.fire(new SessionDeletedEvent(id));
-    }
-    return deleted;
+    return sessionRepository.deleteById(id);
   }
 
   private AgentSession sanitizeSession(final AgentSession session, final boolean includeEvents) {
@@ -85,7 +77,7 @@ public class SessionServiceImpl implements SessionService {
     // catches up.
     final AGUIEventMapper mapper = new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
     final List<BaseEvent> aguiEvents = new ArrayList<>();
-    for (final SessionEvent event : sessionHistory.events(session.getId())) {
+    for (final SessionEvent event : sessionHistoryService.events(session.getId())) {
       mapper.map(event).blockingForEach(aguiEvents::add);
     }
     session.setAguiEvents(aguiEvents);

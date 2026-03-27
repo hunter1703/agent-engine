@@ -55,7 +55,6 @@ public class AgentServiceImpl implements AgentService {
   @Override
   @WithSpan
   public BaseAgentConfig createAgent(final BaseAgentConfig agent) {
-    // Preserve caller-supplied ID if provided, otherwise let Mongo generate one
     final String id = agent == null ? null : agent.getId();
     final BaseAgentConfig sanitized = sanitizeConfig(id, agent, BuilderMode.CREATE);
     return agentRepository.insert(sanitized);
@@ -64,9 +63,11 @@ public class AgentServiceImpl implements AgentService {
   @Override
   @WithSpan
   public BaseAgentConfig saveAgent(final BaseAgentConfig agent) {
-    final String id = agent == null ? null : agent.getId();
-    final BaseAgentConfig sanitized = sanitizeConfig(id, agent, StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT);
-    return agentRepository.save(sanitized);
+    if (agent == null) {
+      throw new IllegalArgumentException("Agent should be non-null");
+    }
+    final String id = agent.getId();
+    return agentRepository.save(sanitizeConfig(id, agent, StringUtils.isBlank(id) ? BuilderMode.CREATE : BuilderMode.EDIT));
   }
 
   @Override

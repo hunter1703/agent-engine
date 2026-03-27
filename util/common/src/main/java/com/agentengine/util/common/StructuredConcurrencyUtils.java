@@ -31,7 +31,7 @@ public final class StructuredConcurrencyUtils {
 
     final Joiner<T, Stream<Subtask<T>>> joiner = Joiner.allUntil(stopCondition);
 
-    try (var scope = StructuredTaskScope.open(joiner)) {
+    try (StructuredTaskScope<T, Stream<Subtask<T>>> scope = StructuredTaskScope.open(joiner)) {
       final List<Subtask<T>> subtasks = new ArrayList<>(tasks.size());
       for (final Callable<T> task : tasks) {
         subtasks.add(scope.fork(task));

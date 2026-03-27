@@ -6,7 +6,7 @@ import com.agentengine.runtime.actor.AgentRunner;
 import com.agentengine.runtime.actor.ChildRegistry;
 import com.agentengine.runtime.actor.SessionActorFactory;
 import com.agentengine.runtime.actor.SessionCommand;
-import com.agentengine.runtime.actor.SessionEvent;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.runtime.actor.SessionTopology;
 import com.agentengine.runtime.actor.SessionTopologyFactory;
 import com.agentengine.runtime.factories.agent.AgentProvider;
@@ -31,7 +31,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.apache.pekko.actor.typed.ActorRef;
-import org.apache.pekko.actor.typed.ActorSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,17 +50,14 @@ public class DefaultAgentRunner implements AgentRunner {
   private final AgentProvider agentProvider;
   private final ProjectionBackedSessionService sessionService;
   private final Instance<SessionActorFactory> actorFactory;
-  private final ActorSystem<Void> actorSystem;
 
   @Inject
   public DefaultAgentRunner(final AgentService agentService, final AgentProvider agentProvider,
-      final ProjectionBackedSessionService sessionService, final Instance<SessionActorFactory> actorFactory,
-      final ActorSystem<Void> actorSystem) {
+      final ProjectionBackedSessionService sessionService, final Instance<SessionActorFactory> actorFactory) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
     this.sessionService = sessionService;
     this.actorFactory = actorFactory;
-    this.actorSystem = actorSystem;
   }
 
   @Override

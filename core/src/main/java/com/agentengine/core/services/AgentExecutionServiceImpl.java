@@ -1,15 +1,21 @@
 package com.agentengine.core.services;
 
-import com.agentengine.core.agui.AGUIEventMapper;
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.actor.SessionEventChannel;
 import com.agentengine.runtime.actor.SessionReply;
 import com.agentengine.runtime.actor.services.RuntimeService;
+import com.agentengine.util.agents.agui.AGUIEventMapper;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.events.EventSubscription;
+import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.core.event.BaseEvent;
+import com.agui.core.event.RunErrorEvent;
+import com.agui.core.event.RunFinishedEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -17,7 +23,10 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 
 @Singleton
 public class AgentExecutionServiceImpl implements AgentExecutionService {
@@ -29,7 +38,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   private final SessionEventChannel sessionEventChannel;
 
   @Inject
-  public AgentExecutionServiceImpl(final SessionService sessionService, final RuntimeService runtimeService,
+  public AgentExecutionServiceImpl(
+      final SessionService sessionService,
+      final RuntimeService runtimeService,
       final SessionEventChannel sessionEventChannel) {
     this.sessionService = sessionService;
     this.runtimeService = runtimeService;
@@ -39,49 +50,69 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
   @Override
   public Publisher<BaseEvent> run(final String agentId, final String text) {
     final String sessionId = UUID.randomUUID().toString();
-    final Publisher<BaseEvent> publisher = subscribe(agentId, sessionId);
-    runtimeService.startSession(agentId, sessionId, text).whenComplete((result, ex) -> {
-      if (ex != null) {
-        // System failure (actor timeout, cluster down) — the actor cannot clean up; we
-        // must.
-        LOG.error("Session {}:{} failed to start: {}", agentId, sessionId, ex.getMessage());
-        sessionEventChannel.complete(sessionId);
-      } else if (result instanceof SessionReply.StartRunResult.Rejected rejected) {
-        // Rejection is handled by the actor, which calls eventChannel.complete()
-        // itself.
-        LOG.error("Session {}:{} start rejected: {}", agentId, sessionId, rejected.reason());
-      }
-    });
-    return publisher;
+    return Flowable.fromCompletionStage(sessionEventChannel.subscribe(sessionId))
+        .flatMap(subscription ->
+            Flowable.fromCompletionStage(runtimeService.startSession(agentId, sessionId, text))
+                .flatMap(startResult -> {
+                  if (startResult instanceof SessionReply.StartRunResult.Rejected rejected) {
+                    cancelQuietly(subscription, "run start rejected for session " + sessionId);
+                    return Flowable.error(new IllegalStateException("Run rejected: " + rejected.reason()));
+                  }
+                  return Flowable.fromPublisher(mapEvents(agentId, sessionId, subscription));
+                })
+                .doOnError(error -> cancelQuietly(subscription, "run start failed for session " + sessionId)));
   }
 
   @Override
-  public Publisher<BaseEvent> resumeSession(final String sessionId, final String confirmationId, final Boolean confirmed,
+  public Publisher<BaseEvent> resumeSession(
+      final String sessionId,
+      final String confirmationId,
+      final Boolean confirmed,
       final String answer) {
     final AgentSession session = sessionService.getSession(sessionId);
     if (session == null) {
       throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
-    // Always resume from the root: the cascade unwinds top-down through the awaited
-    // hierarchy.
+
     final String rootSessionId = session.getRootSessionId();
     final String rootAgentId = session.getRootAgentId();
-    // Subscribe before sending the command so no events are missed.
-    final Publisher<BaseEvent> channelEvents = subscribe(rootAgentId, rootSessionId);
-    return Flowable
-        .fromCompletionStage(
-            runtimeService.resumeSession(rootAgentId, rootSessionId, confirmationId, confirmed != null && confirmed, answer))
-        .concatMap(result -> switch (result) {
-          case SessionReply.ResumeResult.Resumed _ -> Flowable.fromPublisher(channelEvents);
-          case SessionReply.ResumeResult.Rejected(String reason) -> {
-            LOG.error("Session {} resume rejected: {}", rootSessionId, reason);
-            yield Flowable.error(new IllegalStateException("Resume rejected: " + reason));
-          }
-        });
+
+    final CompletionStage<SessionReply.ResumeResult> resumeStage = runtimeService.resumeSession(
+        rootAgentId,
+        rootSessionId,
+        confirmationId,
+        confirmed != null && confirmed,
+        answer);
+
+    return Flowable.fromCompletionStage(sessionEventChannel.subscribe(rootSessionId))
+        .flatMap(subscription ->
+            Flowable.fromCompletionStage(resumeStage)
+                .flatMap(result -> {
+                  if (result instanceof SessionReply.ResumeResult.Rejected rejected) {
+                    cancelQuietly(subscription, "resume rejected for session " + rootSessionId);
+                    return Flowable.error(new IllegalStateException("Resume rejected: " + rejected.reason()));
+                  }
+                  return Flowable.fromPublisher(mapEvents(rootAgentId, rootSessionId, subscription));
+                })
+                .doOnError(error -> cancelQuietly(subscription, "resume failed for session " + rootSessionId)));
   }
 
-  private Publisher<BaseEvent> subscribe(final String agentId, final String sessionId) {
+  private static Publisher<BaseEvent> mapEvents(
+      final String agentId,
+      final String sessionId,
+      final EventSubscription<SequencedEvent<SessionEvent>> subscription) {
     final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-    return Flowable.fromPublisher(sessionEventChannel.events(sessionId)).concatMap(mapper::map);
+    return Flowable.fromPublisher(subscription.publisher())
+        .concatMap(event -> mapper.map(event.payload()))
+        .takeUntil(mapper::isTerminalEvent)
+        .doFinally(() -> cancelQuietly(subscription, null));
+  }
+
+  private static void cancelQuietly(final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String reason) {
+    subscription.cancel().whenComplete((ignored, error) -> {
+      if (error != null) {
+        LOG.debug("Failed to cancel subscription after {}", reason, error);
+      }
+    });
   }
 }

@@ -4,26 +4,28 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import com.agentengine.engine.repository.AgentSessionRepository;
+import com.agentengine.interfaces.rest.testing.MongoRedisTestResource;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
 import com.mongodb.client.MongoClient;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.concurrent.ConcurrentHashMap;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@QuarkusTestResource(com.agentengine.interfaces.rest.testing.MongoRedisTestResource.class)
-class SchemaAndCatalogEndpointsIT {
+@QuarkusTestResource(MongoRedisTestResource.class)
+public class SchemaAndCatalogEndpointsIT {
 
   @Inject
-  MongoClientFactory mongoClientFactory;
+  private MongoClientFactory mongoClientFactory;
   @Inject
-  AgentSessionRepository agentSessionRepository;
+  private AgentSessionRepository agentSessionRepository;
 
   @BeforeEach
-  void shouldResetDatabaseWhenTestStarts() {
+  public void shouldResetDatabaseWhenTestStarts() {
     try (MongoClient client = mongoClientFactory.getClient()) {
       client.getDatabase("AGENT_ENGINE").drop();
     }
@@ -49,24 +51,24 @@ class SchemaAndCatalogEndpointsIT {
   }
 
   @Test
-  void shouldReturnSchemaWhenSchemaEndpointCalledForKnownAssetType() {
+  public void shouldReturnSchemaWhenSchemaEndpointCalledForKnownAssetType() {
     given().when().get("/schemas/model").then().statusCode(200).body("size()", greaterThanOrEqualTo(1));
   }
 
   @Test
-  void shouldReturnBadRequestWhenSchemaLookupUnsupportedAssetType() {
+  public void shouldReturnBadRequestWhenSchemaLookupUnsupportedAssetType() {
     given().contentType("application/json").body("{\"assetType\":\"unsupported\",\"assetId\":\"x\",\"agentId\":\"a\"}").when()
         .post("/schemas/").then().statusCode(400);
   }
 
   @Test
-  void shouldListModelsWhenCatalogListEndpointCalled() {
+  public void shouldListModelsWhenCatalogListEndpointCalled() {
     given().contentType("application/json").body("{\"assetType\":\"model\"}").when().post("/v1/catalog/list").then().statusCode(200)
         .body("items.size()", greaterThanOrEqualTo(1));
   }
 
   @Test
-  void shouldListSessionsWhenCatalogListEndpointCalledWithoutPage() {
+  public void shouldListSessionsWhenCatalogListEndpointCalledWithoutPage() {
     agentSessionRepository.createSession("agent-catalog", "default", new ConcurrentHashMap<>(), "session-catalog-1").blockingGet();
 
     given().contentType("application/json").body("{\"assetType\":\"session\"}").when().post("/v1/catalog/list").then().statusCode(200)
@@ -74,7 +76,7 @@ class SchemaAndCatalogEndpointsIT {
   }
 
   @Test
-  void shouldReturnAgentWhenCatalogSearchFiltersById() {
+  public void shouldReturnAgentWhenCatalogSearchFiltersById() {
     given().contentType("application/json").body("""
         {
           "assetType": "agent",
@@ -88,11 +90,11 @@ class SchemaAndCatalogEndpointsIT {
           }
         }
         """).when().post("/v1/catalog/search").then().statusCode(200).body("items.size()", greaterThanOrEqualTo(1))
-        .body("items[0].id", org.hamcrest.Matchers.equalTo("agent-catalog")).body("total", org.hamcrest.Matchers.greaterThanOrEqualTo(1));
+        .body("items[0].id", Matchers.equalTo("agent-catalog")).body("total", Matchers.greaterThanOrEqualTo(1));
   }
 
   @Test
-  void shouldReturnBadRequestWhenCatalogListUnsupportedType() {
+  public void shouldReturnBadRequestWhenCatalogListUnsupportedType() {
     given().contentType("application/json").body("{\"assetType\":\"unsupported\"}").when().post("/v1/catalog/list").then().statusCode(400);
   }
 }

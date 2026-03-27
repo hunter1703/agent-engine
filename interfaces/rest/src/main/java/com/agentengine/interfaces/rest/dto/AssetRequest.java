@@ -1,11 +1,14 @@
 package com.agentengine.interfaces.rest.dto;
 
 import com.agentengine.util.common.query.Query;
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.List;
 import java.util.Map;
 
 public class AssetRequest {
 
+  @NotBlank(message = "Asset type is required")
   private String assetType;
   private List<String> keys;
   private Query query;

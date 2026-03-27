@@ -59,9 +59,7 @@ public final class CompactionContextManager implements ContextManager {
     this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
     this.modelProvider = modelProvider;
     this.sessionService = sessionService;
-    this.summaryCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), key -> {
-      return loadSummary(key.split(":")[0]);
-    });
+    this.summaryCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), key -> loadSummary(key.split(":")[0]));
   }
 
   @Override

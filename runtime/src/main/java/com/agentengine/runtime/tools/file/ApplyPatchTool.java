@@ -63,13 +63,12 @@ public final class ApplyPatchTool extends BaseFileTool {
       }
 
       BaseFileTool.FileDetails details = readFile(file, 0, 0);
-      String currentHash = details.getHash().substring(0, Math.min(16, details.getHash().length()));
+      String currentHash = details.getHash();
       if (expectedHash != null && !expectedHash.equalsIgnoreCase(currentHash)) {
         return Map.of("error", "File content has changed since patch was created (hash mismatch)", "validation_failed", true,
             "expected_hash", expectedHash, "actual_hash", currentHash);
       }
 
-      // Parse unified diff using library
       List<String> patchLines = Arrays.asList(patch.split("\n"));
       Patch<String> parsedPatch;
       try {

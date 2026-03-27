@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,13 +31,13 @@ public final class PluginLoader {
     return LOADER.get();
   }
 
-  static ClassLoader buildClassLoader() {
+  private static ClassLoader buildClassLoader() {
     Path pluginsDir = resolvePluginsDir();
     if (!Files.isDirectory(pluginsDir)) {
       return PluginLoader.class.getClassLoader();
     }
     List<URL> urls = new ArrayList<>();
-    try (var paths = Files.list(pluginsDir)) {
+    try (Stream<Path> paths = Files.list(pluginsDir)) {
       paths.filter(path -> path.toString().endsWith(".jar")).forEach(path -> {
         try {
           urls.add(path.toUri().toURL());

@@ -16,26 +16,26 @@ import java.util.stream.Collectors;
 
 import jakarta.inject.Singleton;
 import org.apache.pekko.actor.typed.ActorSystem;
-import org.apache.pekko.actor.typed.javadsl.Behaviors;
+import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.stream.Materializer;
 
 /**
  * CDI producer for the Pekko {@link ActorSystem}. One system per application;
- * consumers inject {@code ActorSystem<Void>} directly.
+ * consumers inject {@code ActorSystem<SpawnProtocol.Command>} directly.
  */
 @Singleton
 public class ActorSystemProvider {
   private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
   private static final String DEFAULT_JDBC_DRIVER = "org.postgresql.Driver";
-  private final LazyLoader<ActorSystem<Void>> system;
+  private final LazyLoader<ActorSystem<SpawnProtocol.Command>> system;
   private final LazyLoader<Materializer> materializer;
 
   public ActorSystemProvider(final InfraMongoRepository repository, final Instance<ShardedEntity.ShardedEntityDefinition<?, ?>> definitions) {
     this.system = new LazyLoader<>(() -> {
       final PekkoConfig pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
       final SQLInfraConfig sqlConfig = repository.findOneByType(SQLInfraConfig.TYPE);
-      final ActorSystem<Void> actorSystem = ActorSystem.create(Behaviors.empty(), pekkoConfig.getClusterName(), buildConfig(pekkoConfig, sqlConfig));
+      final ActorSystem<SpawnProtocol.Command> actorSystem = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), buildConfig(pekkoConfig, sqlConfig));
       final ClusterSharding sharding = ClusterSharding.get(actorSystem);
       for (ShardedEntity.ShardedEntityDefinition<?, ?> definition : definitions) {
         sharding.init(definition.entity());
@@ -47,7 +47,7 @@ public class ActorSystemProvider {
 
   @Produces
   @Singleton
-  public ActorSystem<Void> system() {
+  public ActorSystem<SpawnProtocol.Command> system() {
     return system.get();
   }
 
@@ -57,7 +57,7 @@ public class ActorSystemProvider {
     return materializer.get();
   }
 
-  static Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
+  public static Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
     final String hostname = resolve(config.getHostname());
     final List<String> seedNodes = config.getSeedNodes() == null ? List.of() : config.getSeedNodes().stream().map(ActorSystemProvider::resolve).toList();
     final String jdbcUrl = resolve(sqlConfig.getJdbcUrl());

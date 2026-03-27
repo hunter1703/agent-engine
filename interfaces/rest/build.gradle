@@ -11,6 +11,7 @@ dependencies {
 
     implementation(enforcedPlatform(libs.quarkus.bom))
     implementation libs.quarkus.logging.json
+    implementation libs.quarkus.opentelemetry
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi
     implementation libs.quarkus.mongodb.client

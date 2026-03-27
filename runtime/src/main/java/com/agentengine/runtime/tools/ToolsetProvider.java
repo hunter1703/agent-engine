@@ -9,7 +9,5 @@ import java.util.Map;
 public interface ToolsetProvider {
   ToolDescriptor descriptor();
 
-  List<ToolDescriptor> memberDescriptors();
-
   BaseToolset create(Map<String, Object> toolConfig);
 }

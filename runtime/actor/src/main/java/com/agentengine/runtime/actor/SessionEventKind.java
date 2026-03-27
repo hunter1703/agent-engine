@@ -1,5 +1,7 @@
 package com.agentengine.runtime.actor;
 
+import com.agentengine.util.agents.beans.SessionEvent;
+
 /** Typed classification of a {@link SessionEvent}, derived from its metadata. */
 public enum SessionEventKind {
     UNKNOWN,

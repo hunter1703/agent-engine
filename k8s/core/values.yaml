@@ -46,7 +46,10 @@ bootstrap:
 
 config:
   existingConfigMap: ""
-  applicationProperties: {}
+  applicationProperties:
+    quarkus.otel.service.name: agent-engine-core
+    quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
+    quarkus.log.console.json: "true"
 
 extraEnv: {}
 extraEnvFromSecrets: []

@@ -11,6 +11,7 @@ import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 
@@ -246,7 +247,7 @@ public abstract class BaseJavaConventionsPlugin {
     project.getTasks().named("jar").configure(task -> task.dependsOn("jandex"));
     project
         .getTasks()
-        .withType(org.gradle.api.tasks.javadoc.Javadoc.class)
+        .withType(Javadoc.class)
         .configureEach(task -> task.dependsOn("jandex"));
 
     project

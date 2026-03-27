@@ -47,7 +47,11 @@ bootstrap:
 
 config:
   existingConfigMap: ""
-  applicationProperties: {}
+  applicationProperties:
+    quarkus.otel.service.name: agent-engine-runtime
+    quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
+    quarkus.log.console.json: "true"
+    agent-engine.session-actor.passivation.idle-timeout: PT1H
 
 extraEnv: {}
 extraEnvFromSecrets: []

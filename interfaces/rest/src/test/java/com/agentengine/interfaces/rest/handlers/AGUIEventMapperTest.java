@@ -19,15 +19,18 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.Part;
+import io.reactivex.rxjava3.core.Flowable;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-class AGUIEventMapperTest {
+public class AGUIEventMapperTest {
 
   @Test
-  void shouldFinishStepWhenTurnCompleteIsSet() {
+  public void shouldFinishStepWhenTurnCompleteIsSet() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().turnComplete(true).content(Content.builder().role("model")
         .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
@@ -41,7 +44,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldNotFinishStepWhenToolCallArrivesWithoutTurnComplete() {
+  public void shouldNotFinishStepWhenToolCallArrivesWithoutTurnComplete() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().content(Content.builder().role("model")
         .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
@@ -55,7 +58,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldNotFinishStepForPartialTextChunks() {
+  public void shouldNotFinishStepForPartialTextChunks() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().partial(true)
         .content(Content.builder().role("model").parts(List.of(Part.fromText("hello"))).build()).build();
@@ -68,7 +71,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldNotFinishStepForCompletedTextWithoutTurnComplete() {
+  public void shouldNotFinishStepForCompletedTextWithoutTurnComplete() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build()).build();
 
@@ -80,7 +83,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldNotFinishStepForEndInvocationEventsWithoutTurnComplete() {
+  public void shouldNotFinishStepForEndInvocationEventsWithoutTurnComplete() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().actions(EventActions.builder().endInvocation(true).build()).content(Content.builder().role("model")
         .parts(List.of(Part.builder().functionCall(FunctionCall.builder().name("search").args(Map.of("query", "weather")).build()).build()))
@@ -93,18 +96,18 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldEmitRunFinishedWhenFinishReasonIsPresent() {
+  public void shouldEmitRunFinishedWhenFinishReasonIsPresent() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event event = Event.builder().finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("done"))).build()).build();
 
-    final List<BaseEvent> mapped = mapper.map(io.reactivex.rxjava3.core.Flowable.just(event)).toList().blockingGet();
+    final List<BaseEvent> mapped = mapper.map(Flowable.just(event)).toList().blockingGet();
 
     assertThat(mapped).anyMatch(RunFinishedEvent.class::isInstance);
   }
 
   @Test
-  void shouldPreserveDistinctRunIdsAcrossMultipleInvocationsInOneSessionHistoryReplay() {
+  public void shouldPreserveDistinctRunIdsAcrossMultipleInvocationsInOneSessionHistoryReplay() {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final Event first = Event.builder().invocationId("run-1").turnComplete(true).finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("first"))).build()).build();
@@ -122,7 +125,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldReuseSourceEventTimestampWhenReplayingStoredEvents() {
+  public void shouldReuseSourceEventTimestampWhenReplayingStoredEvents() {
     final long sourceTimestamp = 123_456_789L;
     final Event event = Event.builder().invocationId("run-1").timestamp(sourceTimestamp).turnComplete(true)
         .finishReason(new FinishReason(FinishReason.Known.STOP))
@@ -135,7 +138,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldIgnoreUserAuthoredInputEventsWhenReplayingSessionHistory() {
+  public void shouldIgnoreUserAuthoredInputEventsWhenReplayingSessionHistory() {
     final Event event = Event.builder().invocationId("run-1").author("user").timestamp(123_456_789L).turnComplete(true)
         .content(Content.builder().role("user").parts(List.of(Part.fromText("user-input"))).build()).build();
 
@@ -145,7 +148,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldPreserveDeterministicStepAndMessageIdsAcrossReplayReads() {
+  public void shouldPreserveDeterministicStepAndMessageIdsAcrossReplayReads() {
     final Event event = Event.builder().id("event-1").invocationId("run-1").timestamp(123_456_789L).turnComplete(true)
         .finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("stable"))).build()).build();
@@ -159,7 +162,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldFallbackToSequentialStepAndMessageIdsWhenSourceEventIdIsMissing() {
+  public void shouldFallbackToSequentialStepAndMessageIdsWhenSourceEventIdIsMissing() {
     final Event event = Event.builder().id(null).invocationId("run-1").timestamp(123_456_789L).turnComplete(true)
         .finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("stable"))).build()).build();
@@ -179,7 +182,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldReuseOneMessageIdAcrossTextMessageEventsAndRepeatedMappings() {
+  public void shouldReuseOneMessageIdAcrossTextMessageEventsAndRepeatedMappings() {
     final Event event = Event.builder().id("event-1").invocationId("run-1").timestamp(123_456_789L).turnComplete(true)
         .finishReason(new FinishReason(FinishReason.Known.STOP))
         .content(Content.builder().role("model").parts(List.of(Part.fromText("stable"))).build()).build();
@@ -192,7 +195,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldKeepMessageIdsDisjointBetweenRunsAndStableAcrossReads() {
+  public void shouldKeepMessageIdsDisjointBetweenRunsAndStableAcrossReads() {
     final Map<String, List<String>> firstRead = mapMessageIdsByRun();
     final Map<String, List<String>> secondRead = mapMessageIdsByRun();
 
@@ -203,7 +206,7 @@ class AGUIEventMapperTest {
   }
 
   @Test
-  void shouldKeepMessageIdSequencesStableWhenEventIdsAreMissing() {
+  public void shouldKeepMessageIdSequencesStableWhenEventIdsAreMissing() {
     final Map<String, List<String>> firstRead = mapMessageIdsByRunWithMissingIds();
     final Map<String, List<String>> secondRead = mapMessageIdsByRunWithMissingIds();
 
@@ -275,12 +278,12 @@ class AGUIEventMapperTest {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final List<BaseEvent> mapped = mapper.map(first).concatWith(mapper.map(second)).toList().blockingGet();
 
-    final Map<String, List<String>> grouped = new java.util.LinkedHashMap<>();
+    final Map<String, List<String>> grouped = new LinkedHashMap<>();
     String currentRunId = null;
     for (final BaseEvent event : mapped) {
       if (event instanceof RunStartedEvent runStartedEvent) {
         currentRunId = runStartedEvent.getRunId();
-        grouped.putIfAbsent(currentRunId, new java.util.ArrayList<>());
+        grouped.putIfAbsent(currentRunId, new ArrayList<>());
         continue;
       }
       final String messageId = extractMessageId(event);
@@ -302,12 +305,12 @@ class AGUIEventMapperTest {
     final AGUIEventMapper mapper = new AGUIEventMapper("session-1", "agent-1");
     final List<BaseEvent> mapped = mapper.map(first).concatWith(mapper.map(second)).toList().blockingGet();
 
-    final Map<String, List<String>> grouped = new java.util.LinkedHashMap<>();
+    final Map<String, List<String>> grouped = new LinkedHashMap<>();
     String currentRunId = null;
     for (final BaseEvent event : mapped) {
       if (event instanceof RunStartedEvent runStartedEvent) {
         currentRunId = runStartedEvent.getRunId();
-        grouped.putIfAbsent(currentRunId, new java.util.ArrayList<>());
+        grouped.putIfAbsent(currentRunId, new ArrayList<>());
         continue;
       }
       final String messageId = extractMessageId(event);

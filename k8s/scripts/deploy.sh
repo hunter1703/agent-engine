@@ -28,7 +28,7 @@ Behavior:
   - Deploys runtime, core, and rest when no charts are provided.
   - Builds runtime, core, and rest images automatically before applying charts.
   - Applies environment overlays from k8s/environments/<environment>/<chart>.yaml.
-  - Enforces dependency order: global-properties -> infra -> runtime -> core -> rest.
+  - Enforces dependency order: infra -> runtime -> core -> rest.
   - Runs helm lint before upgrade by default.
   - Syncs infra/model/agent configs only when explicitly requested.
 

@@ -139,7 +139,7 @@ Agent Engine ships with the following built-in tool categories:
 
 **Agent Management** (suite: `agent_tools`)
 - `spawn_agent` - Start a child agent session for a subtask
-- `send_task` - Send a follow-up task to an existing child session
+- `send_message` - Send a follow-up message to an existing child session
 - `await_agent` - Wait for a child session to finish and collect its result
 
 **File Operations** (auto-discovered)

@@ -20,4 +20,10 @@ public final class CompletionUtils {
       return failed;
     }).thenCompose(completionStage -> completionStage);
   }
+
+    public static <T> CompletionStage<T> failedStage(final Throwable throwable) {
+      final CompletableFuture<T> failed = new CompletableFuture<>();
+      failed.completeExceptionally(throwable);
+      return failed;
+    }
 }

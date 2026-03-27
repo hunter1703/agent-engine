@@ -12,7 +12,7 @@ public record MessageQueue(List<String> messages) implements PekkoSerializable {
     public static final MessageQueue EMPTY = new MessageQueue(List.of());
 
     public MessageQueue enqueue(final String message) {
-        final var next = new ArrayList<>(messages);
+        final ArrayList<String> next = new ArrayList<>(messages);
         next.add(message);
         return new MessageQueue(List.copyOf(next));
     }

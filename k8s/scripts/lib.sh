@@ -8,11 +8,10 @@ DEFAULT_NAMESPACE=agent-engine
 DEFAULT_ENVIRONMENT=prod
 DEFAULT_TIMEOUT=10m
 DEFAULT_CHARTS="runtime core rest"
-ALL_CHARTS="global-properties infra runtime core rest"
+ALL_CHARTS="infra runtime core rest"
 
 chart_release_name() {
   case "$1" in
-    global-properties) echo "agent-engine-global-properties" ;;
     infra) echo "agent-engine-infra" ;;
     runtime) echo "agent-engine-runtime" ;;
     core) echo "agent-engine-core" ;;

@@ -11,8 +11,8 @@ final class PaginationStrategySupport {
   private static final TemplateResolver templateResolver = new TemplateResolver() {
     @Override
     public ResolvedValue resolve(final Object template, final RequestContext context, final TemplateResolutionOptions options) {
-      final var evaluator = new GroovySandboxEvaluator();
-      final var variables = context.toTemplateVariables();
+      final GroovySandboxEvaluator evaluator = new GroovySandboxEvaluator();
+      final Map<String, Object> variables = context.toTemplateVariables();
       if (template == null) {
         return ResolvedValue.nullValue();
       }
@@ -31,7 +31,7 @@ final class PaginationStrategySupport {
   private PaginationStrategySupport() {
   }
 
-  static boolean isTerminalData(final Object mappedData) {
+  public static boolean isTerminalData(final Object mappedData) {
     if (mappedData == null) {
       return true;
     }
@@ -41,7 +41,7 @@ final class PaginationStrategySupport {
     return false;
   }
 
-  static String extractString(final String template, final String responseBody) {
+  public static String extractString(final String template, final String responseBody) {
     if (template == null || template.isBlank() || responseBody == null || responseBody.isBlank()) {
       return null;
     }
@@ -55,7 +55,7 @@ final class PaginationStrategySupport {
     }
   }
 
-  static boolean reachedMaxPages(final int nextIteration, final int maxPages) {
+  public static boolean reachedMaxPages(final int nextIteration, final int maxPages) {
     return nextIteration >= Math.max(1, maxPages);
   }
 }

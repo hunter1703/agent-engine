@@ -32,7 +32,7 @@ import com.agentengine.util.agents.beans.config.GuardrailStage;
  * <li>For blocking/escalation decisions, provide a clear {@code code} and
  * {@code message} for the model to understand why content was rejected.
  * <li>Avoid expensive operations (external API calls, DB queries) in
- * {@code evaluate()}. Guardrails run in the hot path.
+ * {@code evaluate()}. Guardrails runState in the hot path.
  * </ul>
  */
 public interface Guardrail {

@@ -1,6 +1,6 @@
 package com.agentengine.runtime.projection;
 
-import com.agentengine.runtime.actor.SessionEvent;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.runtime.actor.SessionFact;
 import com.agentengine.util.common.JsonUtils;
 import com.mongodb.client.MongoCollection;
@@ -12,6 +12,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.IntStream;
@@ -44,11 +45,12 @@ public final class SessionHistoryProjectionHandler extends Handler<EventEnvelope
   }
 
   private CompletionStage<Done> writeTurnEvents(final SessionFact.TurnCommitted fact) {
-    final var events = fact.events();
-    final var docs = IntStream.range(0, events.size()).mapToObj(i -> toDocument(events.get(i), fact.startSequence() + i)).toList();
+    final List<SessionEvent> events = fact.events();
+    final List<Document> docs = IntStream.range(0, events.size()).mapToObj(i -> toDocument(events.get(i), fact.startSequence() + i))
+        .toList();
 
     try {
-      for (final var doc : docs) {
+      for (final Document doc : docs) {
         collection.replaceOne(and(eq("sessionId", doc.getString("sessionId")), eq("sequence", doc.getLong("sequence"))), doc,
             new ReplaceOptions().upsert(true));
       }
@@ -61,6 +63,6 @@ public final class SessionHistoryProjectionHandler extends Handler<EventEnvelope
   }
 
   private static Document toDocument(final SessionEvent event, final long sequence) {
-    return new Document().append("sessionId", event.sessionId()).append("sequence", sequence).append("eventJson", JsonUtils.toJson(event));
+    return new Document().append("sessionId", event.getSessionId()).append("sequence", sequence).append("eventJson", JsonUtils.toJson(event));
   }
 }

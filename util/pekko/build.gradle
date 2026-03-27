@@ -16,6 +16,7 @@ dependencies {
     implementation libs.pekko.serialization.jackson
     implementation libs.pekko.streams
     implementation libs.pekko.streams.typed
+    implementation libs.rxjava
 
     testImplementation libs.pekko.testkit
     testImplementation libs.junit.jupiter

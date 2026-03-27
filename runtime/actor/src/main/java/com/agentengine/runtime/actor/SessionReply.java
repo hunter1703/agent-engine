@@ -10,11 +10,7 @@ public final class SessionReply {
 
     private SessionReply() {}
 
-    public sealed interface InitializeResult extends PekkoSerializable
-            permits InitializeResult.Initialized, InitializeResult.AlreadyInitialized {
-        record Initialized() implements InitializeResult {}
-        record AlreadyInitialized() implements InitializeResult {}
-    }
+    public record Initialized() implements PekkoSerializable {}
 
     public sealed interface StartRunResult extends PekkoSerializable
             permits StartRunResult.RunAccepted, StartRunResult.RunQueued, StartRunResult.Rejected {
@@ -35,15 +31,17 @@ public final class SessionReply {
         record Rejected(String reason) implements SpawnResult {}
     }
 
-    public sealed interface SendTaskResult extends PekkoSerializable
-            permits SendTaskResult.TaskAccepted, SendTaskResult.Rejected {
-        record TaskAccepted(ChildRegistry.ChildRunHandle handle) implements SendTaskResult {}
-        record Rejected(String reason) implements SendTaskResult {}
+    public sealed interface SendMessageResult extends PekkoSerializable
+            permits SendMessageResult.Accepted, SendMessageResult.Rejected {
+        record Accepted(ChildRegistry.ChildRunHandle handle) implements SendMessageResult {}
+        record Rejected(String reason) implements SendMessageResult {}
     }
 
     public sealed interface AwaitResult extends PekkoSerializable
-            permits AwaitResult.Completed, AwaitResult.Failed {
+            permits AwaitResult.Completed, AwaitResult.Failed, AwaitResult.Parked {
         record Completed(ChildRegistry.ChildRunResult result) implements AwaitResult {}
         record Failed(String reason) implements AwaitResult {}
+        /** Session parked — execution will resume automatically when child completes. */
+        record Parked() implements AwaitResult {}
     }
 }
