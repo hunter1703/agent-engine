@@ -10,6 +10,15 @@ public enum SessionEventKind {
     CHILD_FAILED,
     CHILD_PAUSED;
 
+    public static SessionEventKind valueOfOrDefault(final String value) {
+        if (value == null) return UNKNOWN;
+        try {
+            return valueOf(value);
+        } catch (final IllegalArgumentException e) {
+            return UNKNOWN;
+        }
+    }
+
     public boolean isChildEvent() {
         return this == CHILD_COMPLETED
                 || this == CHILD_FAILED
