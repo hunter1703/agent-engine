@@ -48,7 +48,7 @@ public class Sort {
       }
       try {
         return Order.valueOf(value.toUpperCase());
-      } catch (IllegalArgumentException e) {
+      } catch (IllegalArgumentException exception) {
         return UNKNOWN;
       }
     }

@@ -1,5 +1,6 @@
 package com.agentengine.util.ms;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
@@ -41,9 +42,10 @@ public class MicroServiceEndpointResolverImpl implements MicroServiceEndpointRes
       return new MicroServiceEndpoint(DEFAULT_HOST, DEFAULT_PORT);
     }
     final String serverId = annotation.value();
-    final PaginatedResult<InfraConfig> results = repository.findByQuery(new Query().withFilter(Filters.eq(MicroServiceInfraConfig.FIELD_SERVER_ID, serverId)));
-    final MicroServiceInfraConfig config = (MicroServiceInfraConfig) results.getItems().getFirst();
-    if (config != null) {
+    final PaginatedResult<InfraConfig> results = repository
+        .findByQuery(new Query().withFilter(Filters.eq(MicroServiceInfraConfig.FIELD_SERVER_ID, serverId)));
+    if (CollectionUtils.isNotEmpty(results == null ? null : results.getItems())) {
+      final MicroServiceInfraConfig config = (MicroServiceInfraConfig) results.getItems().getFirst();
       LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, config.getHost(), config.getPort());
       return new MicroServiceEndpoint(config.getHost(), config.getPort());
     }

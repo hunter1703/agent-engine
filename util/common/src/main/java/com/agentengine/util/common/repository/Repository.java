@@ -1,13 +1,7 @@
 package com.agentengine.util.common.repository;
 
 import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.query.PaginatedResult;
-import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Generic repository interface providing basic CRUD operations
@@ -15,22 +9,7 @@ import java.util.Optional;
  * @param <T>
  *          the entity type
  */
-public interface Repository<T extends BaseEntity> {
-
-  /**
-   * Find an entity by its ID
-   *
-   * @param id
-   *          the entity ID
-   * @return the entity wrapped in an Optional, or empty if not found
-   */
-  T findById(String id);
-
-  T findById(String id, List<String> includeFields, List<String> excludeFields);
-
-  Map<String, T> findByIds(Collection<String> ids);
-
-  Map<String, T> findByIds(Collection<String> ids, List<String> includeFields, List<String> excludeFields);
+public interface Repository<T extends BaseEntity> extends ReadRepository<T> {
 
   T insert(T entity);
 
@@ -65,17 +44,4 @@ public interface Repository<T extends BaseEntity> {
    */
   boolean deleteById(String id);
 
-  /**
-   * Find all entities
-   *
-   * @return a list of all entities
-   */
-  PaginatedResult<T> findByQuery(final Query query);
-
-  /**
-   * Get the count of all entities
-   *
-   * @return the number of entities
-   */
-  long count();
 }

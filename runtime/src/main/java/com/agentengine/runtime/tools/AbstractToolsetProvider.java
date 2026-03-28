@@ -38,13 +38,13 @@ public abstract class AbstractToolsetProvider implements ToolsetProvider {
   private record Toolset(List<ToolDefinition> toolDefinitions) implements BaseToolset {
 
     @Override
-      public Flowable<BaseTool> getTools(final ReadonlyContext context) {
-        return Flowable.fromIterable(toolDefinitions).map(ToolDefinition::factory).map(Supplier::get).cast(BaseTool.class);
-      }
-
-      @Override
-      public void close() {
-        // No resources to release.
-      }
+    public Flowable<BaseTool> getTools(final ReadonlyContext context) {
+      return Flowable.fromIterable(toolDefinitions).map(ToolDefinition::factory).map(Supplier::get).cast(BaseTool.class);
     }
+
+    @Override
+    public void close() {
+      // No resources to release.
+    }
+  }
 }

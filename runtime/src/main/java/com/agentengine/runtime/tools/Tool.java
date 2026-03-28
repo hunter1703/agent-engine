@@ -1,5 +1,6 @@
 package com.agentengine.runtime.tools;
 
+import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -10,6 +11,7 @@ import com.agentengine.util.common.Utils;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
@@ -20,7 +22,6 @@ import io.reactivex.rxjava3.core.Single;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Member;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -48,14 +49,16 @@ public abstract class Tool extends BaseTool {
   private final FunctionDeclaration declaration;
   private final List<ParameterBinding> parameterBindings;
   private final ToolDescriptor toolDescriptor;
+  protected final SessionActorFactory sessionActorFactory;
 
   protected Tool(final ToolDescriptor toolDescriptor) {
-    this(toolDescriptor, false);
+    this(toolDescriptor, null);
   }
 
-  protected Tool(final ToolDescriptor toolDescriptor, final boolean isLongRunning) {
-    super(toolDescriptor.name(), toolDescriptor.description(), isLongRunning);
+  protected Tool(final ToolDescriptor toolDescriptor, final SessionActorFactory sessionActorFactory) {
+    super(toolDescriptor.name(), toolDescriptor.description());
     this.toolDescriptor = toolDescriptor;
+    this.sessionActorFactory = sessionActorFactory;
     this.executeMethod = getExecuteMethod();
     this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
     this.parameterBindings = PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
@@ -80,7 +83,7 @@ public abstract class Tool extends BaseTool {
       final ToolRiskLevel toolRiskLevel = descriptor().riskLevel();
       if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
         if (toolContext.toolConfirmation().isEmpty()) {
-          ToolUtils.requestConfirmationAndPause(toolContext,
+          ToolUtils.requestConfirmationAndPause(sessionActorFactory, toolContext,
               String.format("Please approve or reject the tool call %s() by responding with a"
                   + " FunctionResponse with an expected ToolConfirmation payload.", name()),
               args);
@@ -90,8 +93,8 @@ public abstract class Tool extends BaseTool {
         }
       }
       return call(CollectionUtils.nullSafeMap(args), toolContext).defaultIfEmpty(ImmutableMap.of());
-    } catch (Exception e) {
-      LOG.error("Exception occurred while calling function tool: " + executeMethod.getName(), e);
+    } catch (Exception exception) {
+      LOG.error("Exception occurred while calling function tool: " + executeMethod.getName(), exception);
       return Single.just(ImmutableMap.of("status", "error", "message", "An internal error occurred."));
     }
   }
@@ -110,7 +113,7 @@ public abstract class Tool extends BaseTool {
         try {
           yield Maybe.just(Utils.convertValue(result, new TypeReference<Map<String, Object>>() {
           }));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
           yield Maybe.just(ImmutableMap.of("result", result));
         }
       }
@@ -267,7 +270,7 @@ public abstract class Tool extends BaseTool {
       ToolSchema toolSchema = Utils.findAnnotation(property, ToolSchema.class);
       String javaName = property.getName();
       String schemaName = toolSchema != null && StringUtils.isNotBlank(toolSchema.name()) ? toolSchema.name() : javaName;
-      final Member member = Utils.resolveMember(property);
+      final AnnotatedMember member = Utils.resolveMember(property);
       if (member == null) {
         continue;
       }

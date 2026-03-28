@@ -27,8 +27,7 @@ public class InMemoryEventChannelTest {
     join(channel.publish("scope-1", "early"));
 
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe("scope-1"));
-    final TestSubscriber<SequencedEvent<String>> subscriber =
-        Flowable.fromPublisher(subscription.publisher()).test();
+    final TestSubscriber<SequencedEvent<String>> subscriber = Flowable.fromPublisher(subscription.publisher()).test();
 
     join(channel.publish("scope-1", "late"));
 
@@ -42,8 +41,7 @@ public class InMemoryEventChannelTest {
   public void shouldLinearizeCancelAndStopFurtherDeliveryAfterConfirmation() {
     final InMemoryEventChannel<String, String> channel = new InMemoryEventChannel<>();
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe("scope-cancel"));
-    final TestSubscriber<SequencedEvent<String>> subscriber =
-        Flowable.fromPublisher(subscription.publisher()).test();
+    final TestSubscriber<SequencedEvent<String>> subscriber = Flowable.fromPublisher(subscription.publisher()).test();
 
     join(channel.publish("scope-cancel", "before-cancel"));
     subscriber.awaitCount(1);
@@ -72,10 +70,8 @@ public class InMemoryEventChannelTest {
     final InMemoryEventChannel<String, String> channel = new InMemoryEventChannel<>();
     final EventSubscription<SequencedEvent<String>> scopeOne = join(channel.subscribe("scope-one"));
     final EventSubscription<SequencedEvent<String>> scopeTwo = join(channel.subscribe("scope-two"));
-    final TestSubscriber<SequencedEvent<String>> first =
-        Flowable.fromPublisher(scopeOne.publisher()).test();
-    final TestSubscriber<SequencedEvent<String>> second =
-        Flowable.fromPublisher(scopeTwo.publisher()).test();
+    final TestSubscriber<SequencedEvent<String>> first = Flowable.fromPublisher(scopeOne.publisher()).test();
+    final TestSubscriber<SequencedEvent<String>> second = Flowable.fromPublisher(scopeTwo.publisher()).test();
 
     join(channel.publish("scope-one", "one"));
     join(channel.publish("scope-two", "two"));
@@ -105,8 +101,7 @@ public class InMemoryEventChannelTest {
   public void shouldDeliverParallelPublishesInStrictSequenceOrder() throws InterruptedException {
     final InMemoryEventChannel<String, String> channel = new InMemoryEventChannel<>();
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe("scope-parallel-order"));
-    final TestSubscriber<SequencedEvent<String>> subscriber =
-        Flowable.fromPublisher(subscription.publisher()).test();
+    final TestSubscriber<SequencedEvent<String>> subscriber = Flowable.fromPublisher(subscription.publisher()).test();
 
     final int publishCount = 200;
     final ExecutorService executor = Executors.newFixedThreadPool(8);
@@ -121,8 +116,7 @@ public class InMemoryEventChannelTest {
               throw new RuntimeException(exception);
             }
             return join(channel.publish("scope-parallel-order", "event-" + index));
-          }, executor))
-          .toList();
+          }, executor)).toList();
 
       start.countDown();
       publishes.forEach(stage -> join(stage));
@@ -130,11 +124,8 @@ public class InMemoryEventChannelTest {
       subscriber.awaitCount(publishCount);
       subscriber.assertValueCount(publishCount);
 
-      final List<Long> deliveredSequences = subscriber.values().stream()
-          .map(SequencedEvent::sequence)
-          .toList();
-      assertThat(deliveredSequences)
-          .containsExactlyElementsOf(LongStream.rangeClosed(1, publishCount).boxed().toList());
+      final List<Long> deliveredSequences = subscriber.values().stream().map(SequencedEvent::sequence).toList();
+      assertThat(deliveredSequences).containsExactlyElementsOf(LongStream.rangeClosed(1, publishCount).boxed().toList());
     } finally {
       executor.shutdownNow();
     }

@@ -95,9 +95,9 @@ public final class ListDirTool extends BaseFileTool {
 
       return response;
 
-    } catch (IOException e) {
-      LOG.error("Failed to list directory: {}", dirPath, e);
-      return Map.of("error", "Failed to list directory: " + e.getMessage());
+    } catch (IOException exception) {
+      LOG.error("Failed to list directory: {}", dirPath, exception);
+      return Map.of("error", "Failed to list directory: " + exception.getMessage());
     }
   }
 
@@ -127,17 +127,17 @@ public final class ListDirTool extends BaseFileTool {
   }
 
   private Map<String, Object> entryToMap(DirectoryEntry entry) {
-    Map<String, Object> map = new HashMap<>();
-    map.put("name", truncate(entry.name(), MAX_ENTRY_LENGTH));
-    map.put("path", truncate(entry.path(), MAX_ENTRY_LENGTH));
-    map.put("type", entry.isDirectory() ? "directory" : "file");
-    map.put("depth", entry.depth());
+    Map<String, Object> entryMap = new HashMap<>();
+    entryMap.put("name", truncate(entry.name(), MAX_ENTRY_LENGTH));
+    entryMap.put("path", truncate(entry.path(), MAX_ENTRY_LENGTH));
+    entryMap.put("type", entry.isDirectory() ? "directory" : "file");
+    entryMap.put("depth", entry.depth());
 
     if (!entry.isDirectory()) {
-      map.put("size_bytes", entry.size());
+      entryMap.put("size_bytes", entry.size());
     }
 
-    return map;
+    return entryMap;
   }
 
   private record DirectoryEntry(String name, String path, boolean isDirectory, long size, int depth) {

@@ -28,9 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SingleChannelTest {
 
-  private static final ActorSystem<SpawnProtocol.Command> system = ActorSystem.create(
-      SpawnProtocol.create(),
-      "single-channel-test-system",
+  private static final ActorSystem<SpawnProtocol.Command> system = ActorSystem.create(SpawnProtocol.create(), "single-channel-test-system",
       ConfigFactory.parseString("""
           pekko {
             loglevel = "WARNING"
@@ -67,12 +65,10 @@ class SingleChannelTest {
 
     join(channel.publish(scope, "early"));
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
-    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
-        .runWith(Sink.queue(), mat);
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher()).runWith(Sink.queue(), mat);
 
     join(channel.publish(scope, "late"));
-    final SequencedEvent<String> event = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join()
-        .orElseThrow();
+    final SequencedEvent<String> event = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join().orElseThrow();
 
     assertThat(event.payload()).isEqualTo("late");
     assertThat(event.sequence()).isEqualTo(2L);
@@ -85,12 +81,10 @@ class SingleChannelTest {
     ClusterSharding.get(system).init(channel.entity());
     final String scope = "scope-cancel";
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
-    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
-        .runWith(Sink.queue(), mat);
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher()).runWith(Sink.queue(), mat);
 
     join(channel.publish(scope, "before-cancel"));
-    final SequencedEvent<String> first = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join()
-        .orElseThrow();
+    final SequencedEvent<String> first = queue.pull().toCompletableFuture().orTimeout(3, TimeUnit.SECONDS).join().orElseThrow();
     assertThat(first.payload()).isEqualTo("before-cancel");
 
     join(subscription.cancel());
@@ -114,8 +108,7 @@ class SingleChannelTest {
 
     final CompletableFuture<List<SequencedEvent<String>>> stream = Source.fromPublisher(subscription.publisher()).runWith(Sink.seq(), mat)
         .toCompletableFuture();
-    assertThatThrownBy(() -> stream.orTimeout(5, TimeUnit.SECONDS).join())
-        .isInstanceOf(RuntimeException.class);
+    assertThatThrownBy(() -> stream.orTimeout(5, TimeUnit.SECONDS).join()).isInstanceOf(RuntimeException.class);
   }
 
   @Test
@@ -124,25 +117,17 @@ class SingleChannelTest {
     ClusterSharding.get(system).init(channel.entity());
     final String scope = "scope-parallel-order";
     final EventSubscription<SequencedEvent<String>> subscription = join(channel.subscribe(scope));
-    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher())
-        .runWith(Sink.queue(), mat);
+    final SinkQueueWithCancel<SequencedEvent<String>> queue = Source.fromPublisher(subscription.publisher()).runWith(Sink.queue(), mat);
 
     final int publishCount = 200;
     final List<CompletableFuture<Long>> publishStages = IntStream.range(0, publishCount)
-        .mapToObj(index -> channel.publish(scope, "event-" + index).toCompletableFuture())
-        .toList();
-    CompletableFuture.allOf(publishStages.toArray(new CompletableFuture[0]))
-        .orTimeout(10, TimeUnit.SECONDS)
-        .join();
+        .mapToObj(index -> channel.publish(scope, "event-" + index).toCompletableFuture()).toList();
+    CompletableFuture.allOf(publishStages.toArray(new CompletableFuture[0])).orTimeout(10, TimeUnit.SECONDS).join();
 
     final List<Long> deliveredSequences = IntStream.range(0, publishCount)
-        .mapToObj(ignored -> queue.pull().toCompletableFuture().orTimeout(10, TimeUnit.SECONDS).join()
-            .orElseThrow()
-            .sequence())
-        .toList();
+        .mapToObj(ignored -> queue.pull().toCompletableFuture().orTimeout(10, TimeUnit.SECONDS).join().orElseThrow().sequence()).toList();
 
-    assertThat(deliveredSequences)
-        .containsExactlyElementsOf(LongStream.rangeClosed(1, publishCount).boxed().toList());
+    assertThat(deliveredSequences).containsExactlyElementsOf(LongStream.rangeClosed(1, publishCount).boxed().toList());
     queue.cancel();
   }
 

@@ -22,13 +22,13 @@ import java.util.Map;
  * <li>{@code BLOCK} — content rejected and replaced with guardrail message. For
  * input guardrails, the model call is prevented; the agent receives the block
  * message as if from the model. For output guardrails, the model's response is
- * discarded and replaced with the block message. Agent execution continues.
- * <li>{@code ESCALATE} — content flagged for escalation; agent execution pauses
+ * discarded and replaced with the block message. Agent session continues.
+ * <li>{@code ESCALATE} — content flagged for escalation; agent session pauses
  * pending human review decision.
  * </ul>
  * <li><b>Merging semantics:</b> When multiple guardrails evaluate the same
  * context, the highest-severity decision prevails (ESCALATE > BLOCK > WARN >
- * ALLOW). A single blocking guardrail prevents execution even if others allow.
+ * ALLOW). A single blocking guardrail prevents session even if others allow.
  * <li><b>Non-null action:</b> Action defaults to {@code ALLOW} if null.
  * <li><b>Non-null args map:</b> {@code toolArgs} is never null — it's an empty
  * map if absent.

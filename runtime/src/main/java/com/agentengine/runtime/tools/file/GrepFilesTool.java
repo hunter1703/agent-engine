@@ -49,7 +49,7 @@ public final class GrepFilesTool extends BaseFileTool {
   public Map<String, Object> execute(
       @ToolSchema(name = "pattern", description = "Regex pattern to search for", optional = false) String pattern,
       @ToolSchema(name = "path", description = "Directory path to search in (default: current directory)", optional = true) String searchPath,
-      @ToolSchema(name = "include", description = "Glob pattern for files to include (e.g., '*.java', '*.md')", optional = true) String includePattern,
+      @ToolSchema(name = "include", description = "Glob pattern for files to include (exception.g., '*.java', '*.md')", optional = true) String includePattern,
       @ToolSchema(name = "limit", description = "Maximum number of matches to return (default: 100, max: 2000)", optional = true) Integer limit,
       @ToolSchema(name = "case_sensitive", description = "Whether search is case-sensitive (default: false)", optional = true) Boolean caseSensitive) {
 
@@ -80,8 +80,7 @@ public final class GrepFilesTool extends BaseFileTool {
       final boolean truncated = searchState.isTruncated();
 
       LOG.info("Grep search: pattern='{}' in {} files, found {} matches (limit: {})", pattern, searchState.filesSearched(),
-          resultsJson.size(),
-          maxMatches);
+          resultsJson.size(), maxMatches);
 
       final Map<String, Object> response = new HashMap<>();
       response.put("matches", resultsJson);
@@ -103,12 +102,12 @@ public final class GrepFilesTool extends BaseFileTool {
 
       return response;
 
-    } catch (PatternSyntaxException e) {
-      LOG.error("Invalid regex pattern: {}", pattern, e);
-      return Map.of("error", "Invalid regex pattern: " + e.getDescription());
-    } catch (IOException e) {
-      LOG.error("Failed to search files: {}", basePath, e);
-      return Map.of("error", "Failed to search files: " + e.getMessage());
+    } catch (PatternSyntaxException exception) {
+      LOG.error("Invalid regex pattern: {}", pattern, exception);
+      return Map.of("error", "Invalid regex pattern: " + exception.getDescription());
+    } catch (IOException exception) {
+      LOG.error("Failed to search files: {}", basePath, exception);
+      return Map.of("error", "Failed to search files: " + exception.getMessage());
     }
   }
 
@@ -167,8 +166,8 @@ public final class GrepFilesTool extends BaseFileTool {
             }
           }
         }
-      } catch (IOException e) {
-        LOG.debug("Skipping unreadable file during grep search: {}", file, e);
+      } catch (IOException exception) {
+        LOG.debug("Skipping unreadable file during grep search: {}", file, exception);
       }
       return FileVisitResult.CONTINUE;
     }
@@ -203,7 +202,7 @@ public final class GrepFilesTool extends BaseFileTool {
       }
 
       return relativePath -> pathMatcher.matches(relativePath)
-              || (relativePath.getFileName() != null && pathMatcher.matches(relativePath.getFileName()));
+          || (relativePath.getFileName() != null && pathMatcher.matches(relativePath.getFileName()));
     }
   }
 

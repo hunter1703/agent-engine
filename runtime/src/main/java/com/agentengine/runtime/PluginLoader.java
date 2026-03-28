@@ -41,12 +41,12 @@ public final class PluginLoader {
       paths.filter(path -> path.toString().endsWith(".jar")).forEach(path -> {
         try {
           urls.add(path.toUri().toURL());
-        } catch (Exception e) {
-          LOG.warn("Failed to convert path to URL: {}", path, e);
+        } catch (Exception exception) {
+          LOG.warn("Failed to convert path to URL: {}", path, exception);
         }
       });
-    } catch (Exception e) {
-      LOG.warn("Failed to list plugin directory: {}", pluginsDir, e);
+    } catch (Exception exception) {
+      LOG.warn("Failed to list plugin directory: {}", pluginsDir, exception);
       return PluginLoader.class.getClassLoader();
     }
     if (urls.isEmpty()) {

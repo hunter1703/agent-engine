@@ -5,6 +5,7 @@ plugins {
 dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')
+    implementation libs.mongodb.bson
 
     implementation platform(libs.pekko.bom)
     implementation libs.jakarta.enterprise.cdi.api

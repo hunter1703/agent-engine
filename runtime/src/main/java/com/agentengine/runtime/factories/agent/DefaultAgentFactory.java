@@ -1,10 +1,10 @@
 package com.agentengine.runtime.factories.agent;
 
-import com.agentengine.runtime.agents.DelegatedAgent;
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.agents.Agent;
+import com.agentengine.runtime.agents.DelegatedAgent;
+import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.tools.ToolFactory;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;

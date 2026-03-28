@@ -31,13 +31,15 @@ public class ActorSystemProvider {
   private final LazyLoader<ActorSystem<SpawnProtocol.Command>> system;
   private final LazyLoader<Materializer> materializer;
 
-  public ActorSystemProvider(final InfraMongoRepository repository, final Instance<ShardedEntity.ShardedEntityDefinition<?, ?>> definitions) {
+  public ActorSystemProvider(final InfraMongoRepository repository,
+      final Instance<ShardedEntity.ShardedEntityDefinition<?, ?>> definitions) {
     this.system = new LazyLoader<>(() -> {
       final PekkoConfig pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
       final SQLInfraConfig sqlConfig = repository.findOneByType(SQLInfraConfig.TYPE);
-      final ActorSystem<SpawnProtocol.Command> actorSystem = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), buildConfig(pekkoConfig, sqlConfig));
+      final ActorSystem<SpawnProtocol.Command> actorSystem = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(),
+          buildConfig(pekkoConfig, sqlConfig));
       final ClusterSharding sharding = ClusterSharding.get(actorSystem);
-      for (ShardedEntity.ShardedEntityDefinition<?, ?> definition : definitions) {
+      for (final ShardedEntity.ShardedEntityDefinition<?, ?> definition : definitions) {
         sharding.init(definition.entity());
       }
       return actorSystem;
@@ -59,7 +61,9 @@ public class ActorSystemProvider {
 
   public static Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
     final String hostname = resolve(config.getHostname());
-    final List<String> seedNodes = config.getSeedNodes() == null ? List.of() : config.getSeedNodes().stream().map(ActorSystemProvider::resolve).toList();
+    final List<String> seedNodes = config.getSeedNodes() == null
+        ? List.of()
+        : config.getSeedNodes().stream().map(ActorSystemProvider::resolve).toList();
     final String jdbcUrl = resolve(sqlConfig.getJdbcUrl());
     final String jdbcUser = resolve(sqlConfig.getJdbcUser());
     final String jdbcPassword = resolve(sqlConfig.getJdbcPassword());
@@ -101,10 +105,8 @@ public class ActorSystemProvider {
             }
           }
         }
-        """.formatted(hostname, config.getPort(),
-        seedNodes.stream().map(StringUtils::wrapInQuotes).collect(Collectors.joining(", ")),
-        jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER,
-        jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER);
+        """.formatted(hostname, config.getPort(), seedNodes.stream().map(StringUtils::wrapInQuotes).collect(Collectors.joining(", ")),
+        jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER, jdbcUrl, jdbcUser, jdbcPassword, DEFAULT_JDBC_DRIVER);
     return ConfigFactory.parseString(hocon).withFallback(ConfigFactory.load());
   }
 

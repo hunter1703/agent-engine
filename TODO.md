@@ -2,6 +2,8 @@
 separate utils:ms:client and utils:ms:server
 optimize or rewrite the [GRPCServerImpl.java](util%2Fms%2Fsrc%2Fmain%2Fjava%2Fcom%2Fagentengine%2Futil%2Fms%2FGRPCServerImpl.java)
 add MANAGER orchestrator
+production grade connectors
+update to inmemory channel and return publisher instead of pekko event channel for runtime service and core communication ---> do this only if needed
 
 
 ## Deferred Test Follow-ups

@@ -11,7 +11,7 @@ ATOMIC=true
 LINT=true
 DRY_RUN=false
 BUILD_IMAGES=true
-SEED_INFRA_CONFIGS=false
+SYNC_CONFIGS=true
 TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-latest}
 EXTRA_VALUES_FILES=""
@@ -21,31 +21,27 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/deploy.sh
-  ./k8s/scripts/deploy.sh runtime core rest
-  ./k8s/scripts/deploy.sh -n agent-engine-prod -f /path/to/override.yaml --set rest.ingress.enabled=true
+  ./k8s/scripts/deploy.sh -n agent-engine-prod
+  ./k8s/scripts/deploy.sh --skip-build
 
 Behavior:
-  - Deploys runtime, core, and rest when no charts are provided.
-  - Builds runtime, core, and rest images automatically before applying charts.
-  - Applies environment overlays from k8s/environments/<environment>/<chart>.yaml.
-  - Enforces dependency order: infra -> runtime -> core -> rest.
-  - Runs helm lint before upgrade by default.
-  - Syncs infra/model/agent configs only when explicitly requested.
+  1. Deploy infra workloads.
+  2. Upsert infra config into MongoDB.
+  3. Deploy runtime, core, and rest.
+  4. Upsert model and agent catalog through REST.
 
 Flags:
-  --no-wait       Do not wait for rollouts/hooks to complete.
-  --no-atomic     Disable atomic rollback on failure.
-  --skip-lint     Skip helm lint before deploy.
-  --skip-build    Skip automatic Docker image builds before deploy.
-  --sync-config   Run infra/model/agent config sync after deployment.
-  --dry-run       Render the release changes without applying them.
-  --timeout <d>   Helm timeout (default: 10m).
+  --no-wait          Do not wait for rollouts/hooks to complete.
+  --no-atomic        Disable atomic rollback on failure.
+  --skip-lint        Skip helm lint before deploy.
+  --skip-build       Skip automatic Docker image builds for runtime/core/rest.
+  --dry-run          Render the release changes without applying them.
+  --timeout <d>      Helm timeout (default: 10m).
 EOF
   print_common_usage
 }
 
 parse_args() {
-  CHART_ARGS=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -e|--environment)
@@ -84,10 +80,6 @@ parse_args() {
         BUILD_IMAGES=false
         shift
         ;;
-      --sync-config)
-        SEED_INFRA_CONFIGS=true
-        shift
-        ;;
       --dry-run)
         DRY_RUN=true
         shift
@@ -101,118 +93,62 @@ parse_args() {
         exit 0
         ;;
       *)
-        CHART_ARGS="$CHART_ARGS $1"
-        shift
+        echo "Unknown argument: $1" >&2
+        exit 1
         ;;
     esac
   done
-
-  # shellcheck disable=SC2086
-  REQUESTED_CHARTS=$(normalize_requested_charts $CHART_ARGS)
 }
 
-build_selected_images() {
-  if [ "$DRY_RUN" = "true" ] || [ "$BUILD_IMAGES" != "true" ]; then
-    return 0
+run_stage() {
+  script_name=$1
+  include_build_flag=$2
+  set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT"
+
+  if [ "$WAIT" = "false" ]; then
+    set -- "$@" --no-wait
   fi
-
-  selected_components=""
-  for component in runtime core rest; do
-    # shellcheck disable=SC2086
-    if chart_selected "$component" $REQUESTED_CHARTS; then
-      selected_components="$selected_components $component"
-    fi
-  done
-
-  if [ -z "${selected_components# }" ]; then
-    return 0
+  if [ "$ATOMIC" = "false" ]; then
+    set -- "$@" --no-atomic
   fi
-
-  require_command docker
-  echo "Building Docker images for:${selected_components}"
-  # shellcheck disable=SC2086
-  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" $selected_components
-}
-
-build_helm_args() {
-  chart=$1
-  release_name=$(chart_release_name "$chart")
+  if [ "$LINT" = "false" ]; then
+    set -- "$@" --skip-lint
+  fi
   if [ "$DRY_RUN" = "true" ]; then
-    set -- template "$release_name" "$(chart_path "$chart")" \
-      --namespace "$NAMESPACE" \
-      --set namespace="$NAMESPACE"
-  else
-    set -- upgrade --install "$release_name" "$(chart_path "$chart")" \
-      --namespace "$NAMESPACE" \
-      --create-namespace \
-      --set namespace="$NAMESPACE" \
-      --timeout "$TIMEOUT"
-
-    if [ "$WAIT" = "true" ]; then
-      set -- "$@" --wait
-    fi
-    if [ "$ATOMIC" = "true" ]; then
-      set -- "$@" --atomic
-    fi
+    set -- "$@" --dry-run
+  fi
+  if [ "$include_build_flag" = "true" ] && [ "$BUILD_IMAGES" = "false" ]; then
+    set -- "$@" --skip-build
+  fi
+  if [ -n "${IMAGE_TAG:-}" ]; then
+    set -- "$@" --image-tag "$IMAGE_TAG"
   fi
 
-  case "$chart" in
-    runtime|core|rest)
-      set -- "$@" --set image.tag="$IMAGE_TAG"
-      ;;
-  esac
-
-  # shellcheck disable=SC2046
-  set -- $(append_env_values_args "$ENVIRONMENT" "$chart" "$@")
-  printf '%s\n' "$*"
-}
-
-lint_chart() {
-  chart=$1
-  release_name=$(chart_release_name "$chart")
-  set -- lint "$(chart_path "$chart")" --namespace "$NAMESPACE" --set namespace="$NAMESPACE"
-  case "$chart" in
-    runtime|core|rest)
-      set -- "$@" --set image.tag="$IMAGE_TAG"
-      ;;
-  esac
-  # shellcheck disable=SC2046
-  set -- $(append_env_values_args "$ENVIRONMENT" "$chart" "$@")
-  helm "$@"
-  echo "Linted $chart ($release_name)"
-}
-
-deploy_chart() {
-  chart=$1
-  # shellcheck disable=SC2046
-  set -- $(build_helm_args "$chart")
-  helm "$@"
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "Rendered $chart for namespace $NAMESPACE"
-  else
-    echo "Deployed $chart to namespace $NAMESPACE"
+  if [ -n "${EXTRA_VALUES_FILES:-}" ]; then
+    for values_file in $EXTRA_VALUES_FILES; do
+      set -- "$@" -f "$values_file"
+    done
   fi
+
+  if [ -n "${SET_ARGUMENTS:-}" ]; then
+    for set_argument in $SET_ARGUMENTS; do
+      set -- "$@" --set "$set_argument"
+    done
+  fi
+
+  sh "$SCRIPT_DIR/$script_name" "$@"
 }
 
 parse_args "$@"
 
-require_command helm
-build_selected_images
+run_stage deploy-infra.sh false
+
 if [ "$DRY_RUN" != "true" ]; then
-  require_command kubectl
-  kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 fi
 
-for chart in $ALL_CHARTS; do
-  # shellcheck disable=SC2086
-  if chart_selected "$chart" $REQUESTED_CHARTS; then
-    if [ "$LINT" = "true" ]; then
-      lint_chart "$chart"
-    fi
-    deploy_chart "$chart"
-  fi
-done
+run_stage deploy-services.sh true
 
-if [ "$DRY_RUN" != "true" ] && [ "$SEED_INFRA_CONFIGS" = "true" ]; then
-  "$SCRIPT_DIR/seed-configs.sh" -n "$NAMESPACE"
+if [ "$DRY_RUN" != "true" ]; then
+  sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 fi

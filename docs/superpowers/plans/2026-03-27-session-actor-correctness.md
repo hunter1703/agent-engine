@@ -122,7 +122,7 @@ Expected: compilation fails on files that still reference the old `SessionEvent 
 package com.agentengine.runtime.projection;
 
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.runtime.actor.SessionFact;
+import com.agentengine.runtime.actor.events.SessionFact;
 import com.agentengine.util.common.JsonUtils;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.ReplaceOptions;
@@ -384,7 +384,7 @@ git commit -m "fix: add JDBC DataSource CDI bean and projection offset store DDL
 ```java
 package com.agentengine.runtime.projection;
 
-import com.agentengine.runtime.actor.SessionFact;
+import com.agentengine.runtime.actor.events.SessionFact;
 import com.mongodb.client.MongoCollection;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;

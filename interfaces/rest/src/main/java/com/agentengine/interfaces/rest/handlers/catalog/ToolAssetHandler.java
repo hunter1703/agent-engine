@@ -51,7 +51,8 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
     }
     List<ToolDescriptor> tools = toolCatalog.getTools();
     final Map<String, ToolDescriptor> nameVsCatalog = CollectionUtils.transformToMap(tools, ToolDescriptor::name, Function.identity());
-    return request.getKeys().stream().map(nameVsCatalog::get).filter(Objects::nonNull).collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
+    return request.getKeys().stream().map(nameVsCatalog::get).filter(Objects::nonNull)
+        .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
   }
 
   @Override

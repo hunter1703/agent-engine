@@ -101,36 +101,31 @@ public final class ContentUtils {
   public static List<Content> stripThoughtParts(final List<Content> contents) {
     return CollectionUtils.nullSafeList(contents).stream()
         .map(content -> content.toBuilder()
-            .parts(content.parts().orElse(List.of()).stream().filter(part -> !part.thought().orElse(false)).toList())
-            .build())
-        .filter(content -> !content.parts().orElse(List.of()).isEmpty())
-        .toList();
+            .parts(content.parts().orElse(List.of()).stream().filter(part -> !part.thought().orElse(false)).toList()).build())
+        .filter(content -> !content.parts().orElse(List.of()).isEmpty()).toList();
   }
 
   public static Content stripToolParts(final Content content) {
-    return content.toBuilder()
-        .parts(content.parts().orElse(List.of()).stream()
-            .filter(part -> part.functionCall().isEmpty() && part.functionResponse().isEmpty())
-            .toList())
-        .build();
+    return content.toBuilder().parts(content.parts().orElse(List.of()).stream()
+        .filter(part -> part.functionCall().isEmpty() && part.functionResponse().isEmpty()).toList()).build();
   }
 
   public static String recentUser(final List<Event> events, final int max) {
-      if (events == null || events.isEmpty()) {
-        return "";
+    if (events == null || events.isEmpty()) {
+      return "";
+    }
+    final List<String> intents = new ArrayList<>();
+    for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
+      final Content content = events.get(i).content().orElse(null);
+      if (content == null || !"user".equals(content.role().orElse(""))) {
+        continue;
       }
-      final List<String> intents = new ArrayList<>();
-      for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
-        final Content content = events.get(i).content().orElse(null);
-        if (content == null || !"user".equals(content.role().orElse(""))) {
-          continue;
-        }
-        final String text = content.text();
-        if (StringUtils.isNotBlank(text)) {
-          intents.add(text);
-        }
+      final String text = content.text();
+      if (StringUtils.isNotBlank(text)) {
+        intents.add(text);
       }
-      return String.join("\n", intents.reversed());
+    }
+    return String.join("\n", intents.reversed());
   }
 
   public static Content buildUserContent(final String message) {
@@ -138,10 +133,10 @@ public final class ContentUtils {
   }
 
   public static Event buildConfirmationEvent(final String confirmationId, final Boolean confirmed, final String answer) {
-      final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
-      final FunctionResponse functionResponse = FunctionResponse.builder().id(confirmationId)
-              .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(JsonUtils.toMap(toolConfirmation)).build();
-      return Event.builder().author("user")
-              .content(Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build())).build()).build();
+    final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
+    final FunctionResponse functionResponse = FunctionResponse.builder().id(confirmationId)
+        .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME).response(JsonUtils.toMap(toolConfirmation)).build();
+    return Event.builder().author("user")
+        .content(Content.builder().role("user").parts(List.of(Part.builder().functionResponse(functionResponse).build())).build()).build();
   }
 }

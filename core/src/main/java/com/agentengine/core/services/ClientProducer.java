@@ -1,7 +1,7 @@
 package com.agentengine.core.services;
 
 import com.agentengine.runtime.actor.SessionHistoryService;
-import com.agentengine.runtime.actor.services.RuntimeService;
+import com.agentengine.runtime.actor.RuntimeService;
 import com.agentengine.util.ms.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;

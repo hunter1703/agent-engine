@@ -8,7 +8,6 @@ import com.agentengine.runtime.guardrails.Guardrail;
 import com.agentengine.runtime.guardrails.GuardrailConstants;
 import com.agentengine.runtime.guardrails.GuardrailContext;
 import com.agentengine.runtime.guardrails.GuardrailDecision;
-import com.agentengine.runtime.utils.RunUtils;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.util.agents.beans.config.RelevanceAnchorStrategy;
 import com.agentengine.util.common.Violation;
@@ -100,31 +99,31 @@ public final class GuardrailUtils {
     };
   }
 
-    public static String buildRelevanceAnchorPrompt(final InvocationContext context, final OutputRelevanceGuardrailRule config) {
-      if (context == null || context.session() == null) {
-        return "";
-      }
-      RelevanceAnchorStrategy strategy = config.anchorStrategyEnum();
-      if (strategy == UNKNOWN) {
-        strategy = LATEST_USER_AND_PLAN;
-      }
-
-      final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
-      final String recentUserMessages = ContentUtils.recentUser(context.session().events(), recency);
-      final String latestUserMessage = ContentUtils.recentUser(context.session().events(), 1);
-
-      String planAnchor = "";
-      final Plan plan = RunUtils.getOrInitState(context).plan();
-      if (plan != null) {
-        final String summary = PlanningUtils.buildPlanSummary(plan);
-        final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);
-        planAnchor = StringUtils.joinNonBlank(List.of(summary, taskFocus));
-      }
-
-      return switch (strategy) {
-        case RECENT_USER -> recentUserMessages;
-        case LATEST_USER_AND_PLAN -> StringUtils.joinNonBlank(List.of(latestUserMessage, planAnchor));
-        default -> throw new IllegalStateException("Unexpected value: " + strategy);
-      };
+  public static String buildRelevanceAnchorPrompt(final InvocationContext context, final OutputRelevanceGuardrailRule config) {
+    if (context == null || context.session() == null) {
+      return "";
     }
+    RelevanceAnchorStrategy strategy = config.anchorStrategyEnum();
+    if (strategy == UNKNOWN) {
+      strategy = LATEST_USER_AND_PLAN;
+    }
+
+    final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
+    final String recentUserMessages = ContentUtils.recentUser(context.session().events(), recency);
+    final String latestUserMessage = ContentUtils.recentUser(context.session().events(), 1);
+
+    String planAnchor = "";
+    final Plan plan = RunUtils.getOrInitState(context).plan();
+    if (plan != null) {
+      final String summary = PlanningUtils.buildPlanSummary(plan);
+      final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);
+      planAnchor = StringUtils.joinNonBlank(List.of(summary, taskFocus));
+    }
+
+    return switch (strategy) {
+      case RECENT_USER -> recentUserMessages;
+      case LATEST_USER_AND_PLAN -> StringUtils.joinNonBlank(List.of(latestUserMessage, planAnchor));
+      default -> throw new IllegalStateException("Unexpected value: " + strategy);
+    };
+  }
 }

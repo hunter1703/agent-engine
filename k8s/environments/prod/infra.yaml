@@ -1,5 +1,5 @@
 mongodb:
-  enabled: false
+  enabled: true
 
 postgres:
-  enabled: false
+  enabled: true

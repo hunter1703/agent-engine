@@ -24,8 +24,8 @@ public class JsonMessageBodyWriter implements MessageBodyWriter<Object> {
       final MediaType mediaType, final MultivaluedMap<String, Object> httpHeaders, final OutputStream entityStream) {
     try {
       JsonUtils.toStream(entityStream, o);
-    } catch (final Exception e) {
-      throw new RuntimeException(String.format("Error serializing JSON with Jackson: %s", e.getMessage()), e);
+    } catch (final Exception exception) {
+      throw new RuntimeException(String.format("Error serializing JSON with Jackson: %s", exception.getMessage()), exception);
     }
   }
 }

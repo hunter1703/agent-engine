@@ -15,7 +15,7 @@ import java.util.Map;
 public final class Utils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private Utils() {
+  private Utils() {
   }
 
   public static Class<?> getClass(final Type type) {

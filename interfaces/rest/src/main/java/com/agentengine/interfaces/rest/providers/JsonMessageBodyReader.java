@@ -24,8 +24,8 @@ public class JsonMessageBodyReader implements MessageBodyReader<Object> {
       final MultivaluedMap<String, String> httpHeaders, final InputStream entityStream) {
     try {
       return JsonUtils.fromStream(entityStream, type);
-    } catch (final Exception e) {
-      throw new IllegalArgumentException(String.format("Error deserializing JSON with Jackson: %s", e.getMessage()), e);
+    } catch (final Exception exception) {
+      throw new IllegalArgumentException(String.format("Error deserializing JSON with Jackson: %s", exception.getMessage()), exception);
     }
   }
 }

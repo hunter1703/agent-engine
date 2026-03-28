@@ -2,7 +2,9 @@ package com.agentengine.util.pekko;
 
 import com.agentengine.util.mongodb.infra.InfraConfig;
 import java.util.List;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
+@BsonDiscriminator(value = "PEKKO")
 public class PekkoConfig extends InfraConfig {
   public static final String TYPE = "PEKKO";
 

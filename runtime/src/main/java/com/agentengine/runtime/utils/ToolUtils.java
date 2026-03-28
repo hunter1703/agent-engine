@@ -3,8 +3,9 @@ package com.agentengine.runtime.utils;
 import static com.agentengine.util.common.Utils.*;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
-import com.agentengine.runtime.actor.SessionActor;
-import com.agentengine.runtime.actor.SessionActorFactory;
+import com.agentengine.runtime.session.SessionActorFactory;
+import com.agentengine.runtime.session.commands.InternalCommand.PauseCommand;
+import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.tools.HumanInTheLoopTool;
 import com.agentengine.runtime.tools.SchemaUtils;
@@ -23,7 +24,12 @@ import com.google.adk.models.LlmResponse;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.*;
+import org.apache.pekko.Done;
+import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
+import org.apache.pekko.japi.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -33,6 +39,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public final class ToolUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(ToolUtils.class);
 
   private ToolUtils() {
   }
@@ -44,8 +51,17 @@ public final class ToolUtils {
    * {@code setEndInvocation}, ADK will re-invoke the LLM before the user has had
    * a chance to respond.
    */
-  public static void requestConfirmationAndPause(final ToolContext toolContext, final String prompt, final Object payload) {
+  public static void requestConfirmationAndPause(final SessionActorFactory actorFactory, final ToolContext toolContext, final String prompt,
+      final Object payload) {
     toolContext.requestConfirmation(prompt, payload);
+    final String confirmationId = toolContext.functionCallId().orElse(null);
+    if (actorFactory != null) {
+      final EntityRef<SessionCommand> sessionActor = actorFactory.entityRef(agentId(toolContext), sessionId(toolContext));
+      sessionActor.ask((Function<ActorRef<Done>, SessionCommand>) replyTo -> PauseCommand.self(confirmationId, replyTo),
+          SessionActorFactory.ASK_TIMEOUT).toCompletableFuture().join();
+    } else {
+      LOG.warn("Skipping PauseCommand emission due to missing SessionActorFactory.");
+    }
     toolContext.eventActions().setEndInvocation(true);
   }
 
@@ -366,10 +382,8 @@ public final class ToolUtils {
       if (event == null) {
         continue;
       }
-      event.functionResponses().stream()
-          .filter(response -> REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(response.name().orElse(null)))
-          .flatMap(response -> response.id().stream())
-          .forEach(ids::add);
+      event.functionResponses().stream().filter(response -> REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(response.name().orElse(null)))
+          .flatMap(response -> response.id().stream()).forEach(ids::add);
     }
     return ids;
   }

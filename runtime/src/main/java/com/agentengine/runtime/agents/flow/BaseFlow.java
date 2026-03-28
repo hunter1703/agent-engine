@@ -32,10 +32,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <ul>
  * <li><b>Event loop termination:</b> The flow emits events until a terminal
  * event is observed. A terminal event has {@code finishReason} set.
- * <li><b>Tool execution events:</b> When a tool sets
- * {@code endInvocation=true}, the resulting event will have
- * {@code finishReason=STOP} (if not already present) and
- * {@code turnComplete=true}.
+ * <li><b>Tool session events:</b> When a tool sets {@code endInvocation=true},
+ * the resulting event will have {@code finishReason=STOP} (if not already
+ * present) and {@code turnComplete=true}.
  * <li><b>Continuation:</b> If an event is terminal but has no
  * {@code finishReason}, the flow continues (loops again). Such events may
  * appear in session history but are marked as internal (implementation detail
@@ -68,7 +67,7 @@ public final class BaseFlow extends SingleFlow {
    *
    * <p>
    * The flow emits events in sequence. When a terminal event (one with
-   * {@code finishReason} set) is observed, the loop terminates. Tool execution
+   * {@code finishReason} set) is observed, the loop terminates. Tool session
    * events with {@code endInvocation=true} are normalized to include
    * {@code finishReason=STOP} and {@code turnComplete=true}.
    *

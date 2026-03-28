@@ -85,7 +85,7 @@ public record BuilderDefinition(Map<String, Object> schema, UILayout layout) {
       return;
     }
     @SuppressWarnings("unchecked")
-    final Map<String, Object> map = (Map<String, Object>) rawMap;
-    removePropertyRecursive(map, property);
+    final Map<String, Object> valueMap = (Map<String, Object>) rawMap;
+    removePropertyRecursive(valueMap, property);
   }
 }

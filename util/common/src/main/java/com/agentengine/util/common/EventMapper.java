@@ -8,8 +8,8 @@ public interface EventMapper<S, T> {
     return source.concatMap(event -> {
       try {
         return map(event);
-      } catch (Exception e) {
-        return Flowable.error(e);
+      } catch (Exception exception) {
+        return Flowable.error(exception);
       }
     }).concatWith(Flowable.defer(this::onComplete)).onErrorResumeNext(this::onError);
   }

@@ -2,7 +2,6 @@ package com.agentengine.util.common;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeoutException;
 
 public final class CompletionUtils {
 
@@ -21,9 +20,9 @@ public final class CompletionUtils {
     }).thenCompose(completionStage -> completionStage);
   }
 
-    public static <T> CompletionStage<T> failedStage(final Throwable throwable) {
-      final CompletableFuture<T> failed = new CompletableFuture<>();
-      failed.completeExceptionally(throwable);
-      return failed;
-    }
+  public static <T> CompletionStage<T> failedStage(final Throwable throwable) {
+    final CompletableFuture<T> failed = new CompletableFuture<>();
+    failed.completeExceptionally(throwable);
+    return failed;
+  }
 }

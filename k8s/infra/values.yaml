@@ -35,9 +35,6 @@ mongodb:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
     readOnlyRootFilesystem: false
   resources:
     requests:
@@ -88,9 +85,6 @@ postgres:
       type: RuntimeDefault
   containerSecurityContext:
     allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
     readOnlyRootFilesystem: false
   resources:
     requests:

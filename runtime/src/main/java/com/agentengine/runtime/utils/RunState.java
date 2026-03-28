@@ -65,8 +65,7 @@ public final class RunState extends BaseAgentState {
       final List<FunctionCall> calls = events.get(i).functionCalls();
       if (!calls.isEmpty()) {
         return calls.stream()
-            .map(functionCall -> new ToolCallSignature(functionCall.name().orElse(null), functionCall.args().orElse(Map.of())))
-            .toList();
+            .map(functionCall -> new ToolCallSignature(functionCall.name().orElse(null), functionCall.args().orElse(Map.of()))).toList();
       }
     }
     return List.of();

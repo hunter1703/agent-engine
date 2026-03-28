@@ -39,8 +39,8 @@ class GrepFilesToolTest {
 
     assertThat(intValue(response, "files_searched")).isEqualTo(1);
     assertThat(intValue(response, "total_matches")).isEqualTo(1);
-    assertThat(matches(response)).singleElement().containsEntry("file", "src/main/java/com/example/App.java")
-        .containsEntry("line_number", 4);
+    assertThat(matches(response)).singleElement().containsEntry("file", "src/main/java/com/example/App.java").containsEntry("line_number",
+        4);
   }
 
   @Test

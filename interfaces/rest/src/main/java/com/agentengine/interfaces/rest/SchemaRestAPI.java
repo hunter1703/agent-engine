@@ -18,7 +18,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -45,7 +44,7 @@ public class SchemaRestAPI {
     }
     try {
       return Response.ok(definitionService.getDefinition(assetType).resolve(requestedMode)).build();
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalArgumentException exception) {
       throw new AssetNotFoundException("Schema", assetType);
     }
   }

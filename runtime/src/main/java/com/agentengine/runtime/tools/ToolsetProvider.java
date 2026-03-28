@@ -2,7 +2,6 @@ package com.agentengine.runtime.tools;
 
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.google.adk.tools.BaseToolset;
-import java.util.List;
 import java.util.Map;
 
 /** Describes a user-facing toolset backed by an ADK {@link BaseToolset}. */

@@ -144,9 +144,9 @@ public final class SecurePropertyConvention implements Convention {
       if (resolvedService != null && resolvedService.isEncryptionEnabled()) {
         try {
           writer.writeString(resolvedService.encrypt(value));
-        } catch (Exception e) {
-          LOG.error("Failed to encrypt value; aborting write to prevent storing plaintext.", e);
-          throw new RuntimeException("Failed to encrypt value", e);
+        } catch (Exception exception) {
+          LOG.error("Failed to encrypt value; aborting write to prevent storing plaintext.", exception);
+          throw new RuntimeException("Failed to encrypt value", exception);
         }
         return;
       }
@@ -171,9 +171,9 @@ public final class SecurePropertyConvention implements Convention {
       }
       try {
         return resolvedService.decrypt(raw);
-      } catch (Exception e) {
-        LOG.error("Failed to decrypt secure value; aborting read to prevent data corruption.", e);
-        throw new RuntimeException("Failed to decrypt secure value", e);
+      } catch (Exception exception) {
+        LOG.error("Failed to decrypt secure value; aborting read to prevent data corruption.", exception);
+        throw new RuntimeException("Failed to decrypt secure value", exception);
       }
     }
 

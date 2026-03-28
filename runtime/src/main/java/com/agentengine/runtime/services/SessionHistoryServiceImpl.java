@@ -1,49 +1,89 @@
 package com.agentengine.runtime.services;
 
+import com.agentengine.runtime.session.SessionActor;
 import com.agentengine.runtime.actor.SessionHistoryService;
+import com.agentengine.runtime.session.events.TurnCommittedFact;
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.common.beans.BaseEntity;
-import com.agentengine.util.common.query.Filter;
-import com.agentengine.util.common.query.Filters;
-import com.agentengine.util.common.query.Query;
-import com.agentengine.util.common.query.Sort;
-import com.agentengine.util.common.validation.ValidationService;
-import com.agentengine.util.mongodb.mongo.AbstractMongoRepository;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
+import com.agentengine.util.pekko.persistence.AbstractJournalReadRepository;
+import com.google.adk.events.Event;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Sorts;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.bson.Document;
+
+import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.actor.typed.SpawnProtocol;
+import org.apache.pekko.persistence.typed.PersistenceId;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Sorts.ascending;
 
 /**
- * MongoDB-backed SessionHistory reading from the session_events projection
- * collection materialized by SessionHistoryProjectionHandler.
+ * Journal-backed SessionHistory reader over committed {@link TurnCommittedFact}
+ * facts.
  *
  * <p>
- * Reads are eventually consistent: if the projection has not caught up to the
- * latest TurnCommitted facts, recent events may be absent. Callers must not
- * rely on this view for real-time decisions during an active run.
+ * Reads are strongly consistent with the durable actor journal.
  */
 @Singleton
-public class SessionHistoryServiceImpl extends AbstractMongoRepository<SessionEvent> implements SessionHistoryService {
+public class SessionHistoryServiceImpl extends AbstractJournalReadRepository implements SessionHistoryService {
+
+  private final MongoCollection<AgentSession> sessions;
 
   @Inject
-  public SessionHistoryServiceImpl(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, AssetClass.SESSION_EVENT, SessionEvent.class, validationService);
+  public SessionHistoryServiceImpl(final ActorSystem<SpawnProtocol.Command> actorSystem, final MongoClientFactory mongoClientFactory) {
+    super(actorSystem);
+    this.sessions = mongoClientFactory.getClient().getDatabase("AGENT_ENGINE").getCollection(AssetClass.AGENT_SESSION, AgentSession.class);
+  }
+
+  public List<Event> events(final String sessionId) {
+    final AgentSession session = findSession(sessionId);
+    if (session == null) {
+      return List.of();
+    }
+
+    final String persistenceId = PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getAgentId() + ":" + sessionId).id();
+    final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
+    final List<Event> history = new ArrayList<>();
+    for (final TurnCommittedFact turn : turns) {
+      history.addAll(turn.getEvents());
+    }
+    return history;
   }
 
   @Override
-  public List<SessionEvent> events(final String sessionId) {
-    final Query query = new Query().withFilter(Filters.eq(SessionEvent.FIELD_SESSION_ID, sessionId)).withSort(new Sort(BaseEntity.FIELD_CREATED_TIME, Sort.Order.ASC));
-    return findByQuery(query).getItems();
+  public List<SessionEvent> getSessionEvents(final String sessionId) {
+    final AgentSession session = findSession(sessionId);
+    if (session == null) {
+      return List.of();
+    }
+
+    final String persistenceId = PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getAgentId() + ":" + sessionId).id();
+    final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
+    final List<SessionEvent> history = new ArrayList<>();
+    for (final TurnCommittedFact turn : turns) {
+      history.addAll(SessionEventUtils.toSessionEvents(session.getRootSessionId(), session.getParentSessionId(), sessionId,
+          turn.getEvents(), turn.getStartSequence()));
+    }
+    return history;
+  }
+
+  private AgentSession findSession(final String sessionId) {
+    if (StringUtils.isBlank(sessionId)) {
+      return null;
+    }
+
+    final AgentSession session = sessions.find(eq("_id", sessionId)).first();
+    if (session == null || StringUtils.isBlank(session.getAgentId())) {
+      return null;
+    }
+    return session;
   }
 }

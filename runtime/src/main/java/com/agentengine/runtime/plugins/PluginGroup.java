@@ -105,8 +105,8 @@ public final class PluginGroup extends BasePlugin {
   @Override
   public Maybe<Event> onEventCallback(final InvocationContext ctx, final Event event) {
     // forward order; first non-empty wins
-    for (final BasePlugin p : plugins) {
-      final Event result = p.onEventCallback(ctx, event).blockingGet();
+    for (final BasePlugin plugin : plugins) {
+      final Event result = plugin.onEventCallback(ctx, event).blockingGet();
       if (result != null)
         return Maybe.just(result);
     }

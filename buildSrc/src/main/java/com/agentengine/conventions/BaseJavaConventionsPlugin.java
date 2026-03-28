@@ -97,7 +97,8 @@ public abstract class BaseJavaConventionsPlugin {
                     .configureEach(
                         task ->
                             task.systemProperty(
-                                "java.util.logging.manager", "org.jboss.logmanager.LogManager")));
+                                "opts",
+                                "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8")));
   }
 
   private static void configureIntegrationTestLane(final Project project) {

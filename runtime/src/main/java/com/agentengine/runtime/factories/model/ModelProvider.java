@@ -2,7 +2,6 @@ package com.agentengine.runtime.factories.model;
 
 import com.agentengine.core.api.services.ModelService;
 import com.agentengine.util.agents.beans.config.ModelConfig;
-import com.agentengine.runtime.factories.model.ModelFactory;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
@@ -26,7 +25,8 @@ public class ModelProvider {
   private final RefCountedCache<String, BaseLlm> cache;
 
   @Inject
-  public ModelProvider(final Instance<ModelFactory<?>> allFactories, final OpenAIModelFactory openAIModelFactory, final ModelService modelService) {
+  public ModelProvider(final Instance<ModelFactory<?>> allFactories, final OpenAIModelFactory openAIModelFactory,
+      final ModelService modelService) {
     this.typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), ModelFactory::type, Function.identity());
     this.defaultFactory = openAIModelFactory;
     this.modelService = modelService;
@@ -51,7 +51,7 @@ public class ModelProvider {
   private BaseLlm buildModel(final String modelId) {
     final ModelConfig config = modelService.getModel(modelId);
     if (config == null) {
-      throw new IllegalStateException("Model config missing in execution package for model_id=" + modelId);
+      throw new IllegalStateException("Model config missing for model_id=" + modelId);
     }
     final ModelFactory<?> factory = typeVsFactory.getOrDefault(config.getType(), defaultFactory);
     return factory.build(config);

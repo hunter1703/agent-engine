@@ -1,24 +1,25 @@
 package com.agentengine.runtime.factories.agent;
 
 import com.agentengine.core.api.services.AgentService;
+import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.agents.DelegatedAgent;
 import com.agentengine.runtime.agents.ParallelOrchestratorAgent;
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.agents.beans.config.OrchestrationMode;
-import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
-import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.runtime.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.runtime.factories.agent.builders.ParallelOrchestratorAgentBuilder;
 import com.agentengine.runtime.factories.agent.builders.SequentialAgentBuilder;
 import com.agentengine.runtime.factories.model.ModelProvider;
-import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.tools.ToolFactory;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.config.OrchestrationMode;
+import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
+import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import io.quarkus.arc.WithCaching;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,7 +62,7 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       }
       final BaseAgentConfig subAgent = agentService.getAgent(subAgentId);
       if (subAgent == null) {
-        throw new IllegalArgumentException("Sub agent config missing in execution package for id: " + subAgentId);
+        throw new IllegalArgumentException("Sub agent config missing for id: " + subAgentId);
       }
       subAgents.add(agentProviderInstance.get().create(subAgent));
     }

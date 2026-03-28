@@ -21,9 +21,14 @@ k8s/
   environments/
     prod/              # The default and only built-in overlay
   scripts/
+    apply-charts.sh    # Internal Helm chart applier used by stage scripts
+    deploy-infra.sh    # Stage 1: deploy MongoDB/PostgreSQL infra
+    deploy-services.sh # Stage 3: deploy runtime, core, and rest
     build-images.sh    # Optional manual image build helper
-    deploy.sh          # Main deployment entrypoint
-    seed-configs.sh    # Seed infra, model, and agent configs
+    deploy.sh          # Main staged deployment entrypoint
+    seed-configs.sh    # Full sync (infra + catalog)
+    seed-infra-configs.sh   # Stage 2: seed infra config
+    seed-catalog-configs.sh # Stage 4: seed model/agent catalog
     cleanup.sh         # Release cleanup
     lint.sh            # Helm lint with environment overlays
     template.sh        # Render manifests locally
@@ -32,13 +37,20 @@ k8s/
 
 ## Deployment Flow
 
-Default deployment uses the `prod` overlay:
+Default deployment uses the staged `prod` overlay flow:
 
 ```bash
 ./k8s/scripts/deploy.sh
 ```
 
-`deploy.sh` builds and deploys `runtime`, `core`, and `rest` by default. Use `--skip-build` when you want to deploy prebuilt or registry-hosted images.
+`deploy.sh` orchestrates:
+
+1. infra deployment
+2. infra config sync
+3. service deployment
+4. catalog sync
+
+Use `--skip-build` when you want to deploy prebuilt or registry-hosted images.
 
 Alternative namespace:
 
@@ -46,11 +58,11 @@ Alternative namespace:
 ./k8s/scripts/deploy.sh -n agent-engine-prod
 ```
 
-Deploy only selected charts while preserving dependency order:
+Run individual stages directly when needed:
 
 ```bash
-./k8s/scripts/deploy.sh runtime core rest
-./k8s/scripts/deploy.sh infra runtime core rest
+./k8s/scripts/deploy-infra.sh
+./k8s/scripts/deploy-services.sh
 ```
 
 Deploy a specific image tag:
@@ -97,11 +109,11 @@ You can stack additional overrides on top:
 
 ## Infra Config Seeding
 
-- `./k8s/scripts/deploy.sh` does not run config sync automatically.
-- Use `--sync-config` when you want deploy + sync in one step:
+- `./k8s/scripts/deploy.sh` runs config sync by default.
+- Use `--skip-sync-config` when you want rollout without config publication:
 
 ```bash
-./k8s/scripts/deploy.sh --sync-config
+./k8s/scripts/deploy.sh --skip-sync-config
 ```
 
 - Run sync separately when you want rollout and config publication to be independent:
@@ -110,6 +122,8 @@ You can stack additional overrides on top:
 ./k8s/scripts/seed-configs.sh
 ```
 
+- `seed-infra-configs.sh` writes infra bootstrap before app rollout.
+- `seed-catalog-configs.sh` writes model/agent catalog after REST is available.
 - The seed step upserts:
   - `configs/infra/` into `INFRA.InfraConfig`
   - `configs/models/` through the model REST upsert API

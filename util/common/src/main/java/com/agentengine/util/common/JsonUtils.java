@@ -68,8 +68,8 @@ public final class JsonUtils {
     }
     try {
       return mapper(includesTypeInfo).readValue(json, clazz);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
   }
 
@@ -84,8 +84,8 @@ public final class JsonUtils {
     try {
       ObjectMapper mapper = mapper(includesTypeInfo);
       return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
   }
 
@@ -99,8 +99,8 @@ public final class JsonUtils {
     }
     try {
       return mapper(includesTypeInfo).readValue(json, typeReference);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
   }
 
@@ -114,8 +114,8 @@ public final class JsonUtils {
     }
     try {
       return mapper(includesTypeInfo).readValue(inputStream, clazz);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
   }
 
@@ -153,8 +153,8 @@ public final class JsonUtils {
     }
     try {
       return getObjectWriter(includeTypeInfo).writeValueAsString(value);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
   }
 

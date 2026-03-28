@@ -6,7 +6,7 @@ import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 import org.apache.pekko.persistence.typed.javadsl.EventHandler;
 import org.apache.pekko.persistence.typed.javadsl.EventSourcedBehavior;
 
-  /**
+/**
  * Abstract base for cluster-sharded, event-sourced entities. Subclasses provide
  * only domain logic via {@link #commandHandler()} and {@link #eventHandler()}.
  * All Pekko boilerplate (persistence ID, snapshot retention, sharding
@@ -74,7 +74,7 @@ public abstract class ShardedEntity<Command, Event, State> extends EventSourcedB
   @Override
   public abstract EventHandler<State, Event> eventHandler();
 
-    public interface ShardedEntityDefinition<M, E> {
-      Entity<M, E> entity();
-    }
+  public interface ShardedEntityDefinition<M, E> {
+    Entity<M, E> entity();
+  }
 }

@@ -208,9 +208,7 @@ public final class PlanningUtils {
   private static Set<String> collectRelevantTaskIds(final Plan plan, final Map<String, Task> tasksById,
       final Map<String, List<Task>> ancestorMap) {
     final Set<String> relevant = new HashSet<>();
-    final List<Task> inProgress = plan.getTasks().stream()
-        .filter(task -> getTaskStatusEnum(task) == TaskStatus.IN_PROGRESS)
-        .toList();
+    final List<Task> inProgress = plan.getTasks().stream().filter(task -> getTaskStatusEnum(task) == TaskStatus.IN_PROGRESS).toList();
 
     for (Task task : inProgress) {
       final String id = getTaskIdValue(task);
@@ -528,15 +526,15 @@ public final class PlanningUtils {
   private static String getStatusesByTerminalFlag(final Class<? extends Enum<?>> enumClass, boolean terminal) {
     final List<String> values = new ArrayList<>();
     if (enumClass == TaskStatus.class) {
-      for (TaskStatus s : TaskStatus.values()) {
-        if (s != TaskStatus.UNKNOWN && s.isTerminal() == terminal) {
-          values.add(s.getValue());
+      for (TaskStatus taskStatus : TaskStatus.values()) {
+        if (taskStatus != TaskStatus.UNKNOWN && taskStatus.isTerminal() == terminal) {
+          values.add(taskStatus.getValue());
         }
       }
     } else if (enumClass == PlanStatus.class) {
-      for (PlanStatus s : PlanStatus.values()) {
-        if (s != PlanStatus.UNKNOWN && s.isTerminal() == terminal) {
-          values.add(s.getValue());
+      for (PlanStatus planStatus : PlanStatus.values()) {
+        if (planStatus != PlanStatus.UNKNOWN && planStatus.isTerminal() == terminal) {
+          values.add(planStatus.getValue());
         }
       }
     }

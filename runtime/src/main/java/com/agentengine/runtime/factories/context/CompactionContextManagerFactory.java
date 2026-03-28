@@ -1,6 +1,6 @@
 package com.agentengine.runtime.factories.context;
 
-import com.agentengine.runtime.services.ProjectionBackedSessionService;
+import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
 import com.agentengine.util.agents.beans.config.ContextStrategyConfig;
@@ -19,11 +19,11 @@ import jakarta.inject.Singleton;
 public class CompactionContextManagerFactory implements ContextManagerFactory<CompactionContextStrategyConfig, ContextManager> {
 
   private final ModelProvider modelProvider;
-  private final ProjectionBackedSessionService sessionService;
+  private final MongoSessionService sessionService;
   private final InfraMongoRepository infraMongoRepository;
 
   @Inject
-  public CompactionContextManagerFactory(final ModelProvider modelProvider, final ProjectionBackedSessionService sessionService,
+  public CompactionContextManagerFactory(final ModelProvider modelProvider, final MongoSessionService sessionService,
       final InfraMongoRepository infraMongoRepository) {
     this.modelProvider = modelProvider;
     this.sessionService = sessionService;

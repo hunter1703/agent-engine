@@ -3,20 +3,16 @@ plugins {
 }
 
 dependencies {
-    api project(':util:pekko')
-    implementation project(':runtime-api')
     implementation project(':util:common')
+    api project(':util:pekko')
     implementation project(':util:agents')
     implementation project(':util:ms')
 
     api platform(libs.pekko.bom)
     api libs.pekko.actor.typed
-    api libs.pekko.cluster.sharding.typed
     api libs.pekko.cluster.typed
+    api libs.pekko.cluster.sharding.typed
     api libs.pekko.persistence.typed
-    api libs.jakarta.enterprise.cdi.api
-    implementation libs.google.genai
 
-    testImplementation libs.junit.jupiter
-    testImplementation libs.assertj.core
+    implementation libs.jakarta.enterprise.cdi.api
 }

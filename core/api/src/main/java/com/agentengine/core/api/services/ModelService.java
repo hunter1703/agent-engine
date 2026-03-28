@@ -6,7 +6,6 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.ms.MicroService;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 
 @MicroService("agent")
 public interface ModelService {

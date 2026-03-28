@@ -23,9 +23,9 @@ class ResponsesEventMapperTest {
   void shouldMapReasoningTextAndCompletionEvents() {
     final Event first = Event.builder().id("evt-1").partial(true)
         .content(Content.builder().role("model").parts(List.of(Part.builder().thought(true).text("thinking ").build())).build()).build();
-    final Event second = Event.builder().id("evt-2").turnComplete(true).finishReason(new FinishReason(FinishReason.Known.STOP))
-        .content(Content.builder().role("model")
-            .parts(List.of(Part.builder().thought(true).text("done").build(), Part.fromText("final answer"))).build())
+    final Event second = Event
+        .builder().id("evt-2").turnComplete(true).finishReason(new FinishReason(FinishReason.Known.STOP)).content(Content.builder()
+            .role("model").parts(List.of(Part.builder().thought(true).text("done").build(), Part.fromText("final answer"))).build())
         .build();
 
     final Flowable<BaseEvent> aguiEvents = new AGUIEventMapper("session-1", "agent-1").map(Flowable.just(first, second));

@@ -1,9 +1,8 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.actor.ChildRegistry;
-import com.agentengine.runtime.actor.SessionActorFactory;
-import com.agentengine.runtime.actor.SessionCommand;
-import com.agentengine.runtime.actor.SessionReply;
+import com.agentengine.runtime.session.SessionActorFactory;
+import com.agentengine.runtime.session.commands.ExternalCommand;
+import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -17,8 +16,8 @@ import java.util.Map;
  *
  * <p>
  * If the child has already completed, returns the result immediately. Otherwise
- * the actor parks the session and this tool requests a lightweight
- * confirmation-pause so the run can be auto-resumed when the child finishes.
+ * this tool requests a lightweight confirmation pause and returns a waiting
+ * status to the caller.
  */
 public final class AwaitAgentTool extends AbstractAgentTool {
 
@@ -32,28 +31,29 @@ public final class AwaitAgentTool extends AbstractAgentTool {
   private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(30);
 
   public AwaitAgentTool(final SessionActorFactory actorFactory) {
-    super(DESCRIPTOR, actorFactory, true);
+    super(DESCRIPTOR, actorFactory);
   }
 
   public Map<String, Object> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) final ToolContext toolContext,
-      @ToolSchema(name = "child_session_id", description = "Session ID returned by spawn_agent") final String childSessionId,
-      @ToolSchema(name = "child_run_id", description = "Run ID returned by " + SpawnAgentTool.TOOL_NAME + " or " + SendMessageTool.TOOL_NAME) final String childRunId) {
-    final ChildRegistry.ChildRunHandle handle = new ChildRegistry.ChildRunHandle(childSessionId, childRunId);
-    final SessionReply.AwaitResult result = actorRef(toolContext).<SessionReply.AwaitResult>ask(
-        replyTo -> new SessionCommand.ExternalCommand.AwaitChildRun(handle, replyTo), AWAIT_TIMEOUT).toCompletableFuture().join();
+      @ToolSchema(name = "child_session_id", description = "Session ID returned by spawn_agent or send_message") final String childSessionId) {
+    final RunResult result = actorRef(toolContext)
+        .<RunResult>ask(replyTo -> new ExternalCommand.AwaitCommand(childSessionId, replyTo), AWAIT_TIMEOUT).toCompletableFuture().join();
 
-    return switch (result) {
-      case SessionReply.AwaitResult.Completed(ChildRegistry.ChildRunResult r) -> r.output() != null
-          ? Map.of("child_session_id", childSessionId, "result", r.output())
-          : Map.of("child_session_id", childSessionId, "status", "completed");
-      case SessionReply.AwaitResult.Failed(String reason) -> Map.of("child_session_id", childSessionId, "error", reason);
-      case SessionReply.AwaitResult.Parked _ -> {
-        ToolUtils.requestConfirmationAndPause(toolContext,
-                "Waiting for child agent run to complete.",
-                Map.of("child_session_id", childSessionId, "child_run_id", childRunId));
-        yield Map.of("child_session_id", childSessionId, "status", "waiting_for_child");
-      }
-    };
+    if (!result.completedRun()) {
+      ToolUtils.requestConfirmationAndPause(sessionActorFactory, toolContext, "Waiting for child agent run to complete.",
+          Map.of("child_session_id", childSessionId));
+      return Map.of("child_session_id", childSessionId, "status", "waiting_for_child");
+    }
+
+    if (result.isFailure()) {
+      return Map.of("child_session_id", childSessionId, "status", "failed", "error", result.failureMessage());
+    }
+
+    if (result.output() != null) {
+      return Map.of("child_session_id", childSessionId, "result", result.output());
+    }
+
+    return Map.of("child_session_id", childSessionId, "status", "completed");
   }
 }

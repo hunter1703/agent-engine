@@ -60,20 +60,20 @@ public final class BuilderDefinitionUtils {
   // ─── Public API ───────────────────────────────────────────────────────────
 
   public static BuilderDefinition generate(final Class<?> rootType) {
-    final Context ctx = new Context();
-    final SchemaBuilder<?, ?> schemaBuilder = buildSchemaForType(rootType, ctx, "");
+    final Context context = new Context();
+    final SchemaBuilder<?, ?> schemaBuilder = buildSchemaForType(rootType, context, "");
     schemaBuilder.withKeyword("$schema", "https://json-schema.org/draft/2020-12/schema");
     final PresetCollection presets = collectPresets(rootType);
     return new BuilderDefinition(toMap(schemaBuilder),
-        new UILayout(attachFieldPresets(ctx.fields, presets.fieldPresets()), presets.rootPresets()));
+        new UILayout(attachFieldPresets(context.fields, presets.fieldPresets()), presets.rootPresets()));
   }
 
   public static <T> T sanitize(final BuilderDefinition definition, final BuilderMode mode, final T payload) {
     if (definition == null || mode == null || payload == null) {
       return payload;
     }
-    final Map<String, Object> map = JsonUtils.toMap(payload);
-    if (map == null) {
+    final Map<String, Object> payloadMap = JsonUtils.toMap(payload);
+    if (payloadMap == null) {
       return payload;
     }
     for (final Map.Entry<String, LayoutField> entry : definition.layout().fields().entrySet()) {
@@ -83,11 +83,11 @@ public final class BuilderDefinitionUtils {
       }
       final UiAccessLevel level = entry.getValue().access().forMode(mode);
       if (level == UiAccessLevel.HIDDEN || (mode == BuilderMode.EDIT && level == UiAccessLevel.READ_ONLY)) {
-        map.remove(pointer.substring(1));
+        payloadMap.remove(pointer.substring(1));
       }
     }
     // noinspection unchecked
-    return (T) JsonUtils.fromMap(map, payload.getClass());
+    return (T) JsonUtils.fromMap(payloadMap, payload.getClass());
   }
 
   // ─── Schema building ──────────────────────────────────────────────────────
@@ -420,26 +420,27 @@ public final class BuilderDefinitionUtils {
 
   private static Object enumValue(final Enum<?> constant) {
     for (final String method : List.of("type", "value", "code", "id")) {
-      final Object v = invokeMethod(constant, method);
-      if (isValidOption(v)) {
-        return v;
+      final Object optionValue = invokeMethod(constant, method);
+      if (isValidOption(optionValue)) {
+        return optionValue;
       }
     }
     return constant.name();
   }
 
   private static boolean isValidOption(final Object value) {
-    return value instanceof String s && !s.isBlank() || value instanceof Number || value instanceof Boolean;
+    return value instanceof String optionString && !optionString.isBlank() || value instanceof Number || value instanceof Boolean;
   }
 
   private static Object invokeMethod(final Enum<?> constant, final String methodName) {
     try {
-      final Method m = constant.getDeclaringClass().getMethod(methodName);
-      final Class<?> ret = m.getReturnType();
-      if (!String.class.equals(ret) && !Number.class.isAssignableFrom(ret) && !ret.isPrimitive() && !Boolean.class.equals(ret)) {
+      final Method method = constant.getDeclaringClass().getMethod(methodName);
+      final Class<?> returnType = method.getReturnType();
+      if (!String.class.equals(returnType) && !Number.class.isAssignableFrom(returnType) && !returnType.isPrimitive()
+          && !Boolean.class.equals(returnType)) {
         return null;
       }
-      return m.invoke(constant);
+      return method.invoke(constant);
     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
       return null;
     }
@@ -598,8 +599,8 @@ public final class BuilderDefinitionUtils {
 
   private static SchemaBuilder<?, ?> enumSchema(final Class<?> clazz) {
     final List<String> values = new ArrayList<>();
-    for (final Object c : clazz.getEnumConstants()) {
-      values.add(c.toString());
+    for (final Object enumConstant : clazz.getEnumConstants()) {
+      values.add(enumConstant.toString());
     }
     return Schemas.stringSchema().withKeyword("enum", values);
   }
@@ -657,23 +658,23 @@ public final class BuilderDefinitionUtils {
 
   private static List<Field> allFields(final Class<?> type) {
     final Deque<Class<?>> hierarchy = new ArrayDeque<>();
-    for (Class<?> c = type; c != null && c != Object.class; c = c.getSuperclass()) {
-      hierarchy.push(c);
+    for (Class<?> currentClass = type; currentClass != null && currentClass != Object.class; currentClass = currentClass.getSuperclass()) {
+      hierarchy.push(currentClass);
     }
     final List<Field> fields = new ArrayList<>();
     final Set<String> seen = new LinkedHashSet<>();
     while (!hierarchy.isEmpty()) {
-      for (final Field f : hierarchy.pop().getDeclaredFields()) {
-        if (seen.add(f.getName()))
-          fields.add(f);
+      for (final Field declaredField : hierarchy.pop().getDeclaredFields()) {
+        if (seen.add(declaredField.getName()))
+          fields.add(declaredField);
       }
     }
     return fields;
   }
 
   private static boolean isSerializable(final Field field) {
-    final int m = field.getModifiers();
-    return !Modifier.isStatic(m) && !Modifier.isTransient(m) && !field.isSynthetic();
+    final int modifiers = field.getModifiers();
+    return !Modifier.isStatic(modifiers) && !Modifier.isTransient(modifiers) && !field.isSynthetic();
   }
 
   private static boolean isRequired(final Class<?> owner, final Field field) {
@@ -734,20 +735,20 @@ public final class BuilderDefinitionUtils {
   private static boolean isSerializableDefault(final Object value) {
     if (value == null)
       return false;
-    if (value instanceof String s)
-      return !s.isBlank();
-    if (value instanceof List<?> l)
-      return !l.isEmpty();
-    if (value instanceof Map<?, ?> m)
-      return !m.isEmpty();
+    if (value instanceof String stringValue)
+      return !stringValue.isBlank();
+    if (value instanceof List<?> listValue)
+      return !listValue.isEmpty();
+    if (value instanceof Map<?, ?> mapValue)
+      return !mapValue.isEmpty();
     return value instanceof Number || value instanceof Boolean || value.getClass().isEnum();
   }
 
   private static Class<?> rawClass(final Type type) {
-    if (type instanceof Class<?> c)
-      return c;
-    if (type instanceof ParameterizedType pt && pt.getRawType() instanceof Class<?> c)
-      return c;
+    if (type instanceof Class<?> classType)
+      return classType;
+    if (type instanceof ParameterizedType parameterizedType && parameterizedType.getRawType() instanceof Class<?> rawTypeClass)
+      return rawTypeClass;
     if (type instanceof GenericArrayType gat) {
       return Array.newInstance(rawClass(gat.getGenericComponentType()), 0).getClass();
     }
@@ -780,11 +781,11 @@ public final class BuilderDefinitionUtils {
   private static String humanize(final String fieldName) {
     final StringBuilder sb = new StringBuilder();
     for (int i = 0; i < fieldName.length(); i++) {
-      final char c = fieldName.charAt(i);
-      if (i > 0 && Character.isUpperCase(c) && Character.isLowerCase(fieldName.charAt(i - 1))) {
+      final char character = fieldName.charAt(i);
+      if (i > 0 && Character.isUpperCase(character) && Character.isLowerCase(fieldName.charAt(i - 1))) {
         sb.append(' ');
       }
-      sb.append(c == '_' ? ' ' : c);
+      sb.append(character == '_' ? ' ' : character);
     }
     return toTitle(sb.toString());
   }

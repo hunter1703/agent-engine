@@ -281,8 +281,8 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
     }
     final List<JsonSchemaElement> elements = new ArrayList<>();
     for (final Object entry : list) {
-      if (entry instanceof final Map<?, ?> map) {
-        elements.add(buildJsonSchemaElement((Map<String, Object>) map));
+      if (entry instanceof final Map<?, ?> entryMap) {
+        elements.add(buildJsonSchemaElement((Map<String, Object>) entryMap));
       }
     }
     return elements;

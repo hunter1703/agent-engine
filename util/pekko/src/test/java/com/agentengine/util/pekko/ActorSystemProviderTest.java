@@ -25,9 +25,9 @@ public class ActorSystemProviderTest {
     pekkoConfig.setClusterName("test-cluster");
     pekkoConfig.setHostname("${POD_NAME}.agent-engine-runtime-internal.${POD_NAMESPACE}.svc.cluster.local");
     pekkoConfig.setPort(2552);
-    pekkoConfig.setSeedNodes(List.of(
-        "pekko://test-cluster@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
-        "pekko://test-cluster@agent-engine-runtime-1.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552"));
+    pekkoConfig.setSeedNodes(
+        List.of("pekko://test-cluster@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
+            "pekko://test-cluster@agent-engine-runtime-1.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552"));
     pekkoConfig.setSnapshotThreshold(100);
 
     final SQLInfraConfig sqlConfig = new SQLInfraConfig();

@@ -1,6 +1,5 @@
 package com.agentengine.interfaces.rest.exception;
 
-import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -11,10 +10,8 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 @Provider
 public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
@@ -38,8 +35,7 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
     }
 
     if (exception instanceof ConfigurationException configurationException) {
-      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", configurationException.getMessage()))
-          .build();
+      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", configurationException.getMessage())).build();
     }
 
     if (exception instanceof ValidationException) {
@@ -48,8 +44,7 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
     }
 
     if (exception instanceof IllegalArgumentException illegalArgumentException) {
-      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", illegalArgumentException.getMessage()))
-          .build();
+      return Response.status(Response.Status.BAD_REQUEST).entity(new ErrorResponse("400", illegalArgumentException.getMessage())).build();
     }
 
     if (exception instanceof StatusRuntimeException grpcEx) {
@@ -68,8 +63,7 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
       return Response.status(status).entity(new ErrorResponse(String.valueOf(status), message)).build();
     }
 
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse("500", "Internal Server Error"))
-        .build();
+    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse("500", "Internal Server Error")).build();
   }
 
   public record ErrorResponse(String code, String message) {

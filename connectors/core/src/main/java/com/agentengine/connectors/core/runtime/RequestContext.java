@@ -20,14 +20,14 @@ public record RequestContext(Map<String, Object> input, Object rawPayload, Map<S
   }
 
   public Map<String, Object> toTemplateVariables() {
-    final Map<String, Object> map = new HashMap<>();
-    map.put("input", input);
-    map.put("rawPayload", rawPayload);
-    map.put("auth", auth);
-    map.put("connection", connection);
-    map.put("previous", previous);
-    map.put("vars", vars);
-    return Collections.unmodifiableMap(map);
+    final Map<String, Object> templateVariables = new HashMap<>();
+    templateVariables.put("input", input);
+    templateVariables.put("rawPayload", rawPayload);
+    templateVariables.put("auth", auth);
+    templateVariables.put("connection", connection);
+    templateVariables.put("previous", previous);
+    templateVariables.put("vars", vars);
+    return Collections.unmodifiableMap(templateVariables);
   }
 
   public RequestContext withPrevious(final Map<String, Object> previousValues) {

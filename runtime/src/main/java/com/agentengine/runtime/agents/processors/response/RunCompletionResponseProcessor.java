@@ -35,8 +35,8 @@ import io.reactivex.rxjava3.core.Single;
  * continues regardless of continuation requests for tool calls.
  * <li><b>Turn limit enforcement:</b> Any non-partial response that keeps the
  * loop alive (tool-call steps or continuation-driven retries) consumes a turn.
- * When the limit is reached, the response receives {@code finishReason=STOP}
- * to terminate the loop.
+ * When the limit is reached, the response receives {@code finishReason=STOP} to
+ * terminate the loop.
  * </ul>
  *
  * <h3>Expectations from upstream</h3>

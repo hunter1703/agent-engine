@@ -1,14 +1,17 @@
 package com.agentengine.runtime.factories.agent;
 
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.model.AbstractLLM;
-import com.agentengine.runtime.agents.Agent;
-import com.agentengine.runtime.factories.agent.AgentFactory;
 import com.agentengine.runtime.tools.ToolFactory;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
+import com.google.adk.tools.BaseTool;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends Agent> implements AgentFactory<C, A> {
   protected final ModelProvider modelProvider;
@@ -27,9 +30,12 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
 
     final LlmAgent.Builder builder = LlmAgent.builder();
     builder.disallowTransferToParent(false).disallowTransferToPeers(false).maxSteps(config.getRuntime().getMaxSteps()).model(model);
+    final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
+    if (config.getRuntime() == null || config.getRuntime().isResumable()) {
+      tools.add(toolFactory.getHITLTool());
+    }
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
-    return baseLlmAgentBuilder.includeHumanInTheLoopTool(config.getRuntime() == null || config.getRuntime().isResumable())
-        .systemInstructions(config.getSystemPrompt()).appendTools(toolFactory.buildTools(config.getTools()))
+    return baseLlmAgentBuilder.systemInstructions(config.getSystemPrompt()).appendTools(tools)
         .appendToolSets(toolFactory.buildToolsets(config.getTools())).agentConfig(config);
   }
 }

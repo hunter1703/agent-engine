@@ -6,7 +6,6 @@ import com.agentengine.util.mongodb.infra.EncryptionInfraConfig;
 import com.agentengine.util.mongodb.infra.InfraMongoRepository;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.event.Observes;
-import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -29,35 +28,35 @@ public class EncryptionServiceImpl implements EncryptionService {
   private static final ThreadLocal<Cipher> CIPHER_CACHE = ThreadLocal.withInitial(() -> {
     try {
       return Cipher.getInstance(ALGORITHM);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to initialize cipher", e);
+    } catch (Exception exception) {
+      throw new RuntimeException("Failed to initialize cipher", exception);
     }
   });
   private LazyLoader<SecretKey> secretKey;
   private final SecureRandom secureRandom = new SecureRandom();
 
-    public EncryptionServiceImpl(InfraMongoRepository infraMongoRepository) {
-        this.secretKey = new LazyLoader<>(() -> {
-          final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
-          if (config == null || config.getKey() == null || config.getKey().isBlank()) {
-            LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
-            return null;
-          }
+  public EncryptionServiceImpl(InfraMongoRepository infraMongoRepository) {
+    this.secretKey = new LazyLoader<>(() -> {
+      final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
+      if (config == null || config.getKey() == null || config.getKey().isBlank()) {
+        LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
+        return null;
+      }
 
-          final byte[] decodedKey;
-          try {
-            decodedKey = Base64.getDecoder().decode(config.getKey());
-          } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Encryption key stored in database is not valid Base64", e);
-          }
-          if (decodedKey.length != 32) {
-            throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
-          }
-          return new SecretKeySpec(decodedKey, "AES");
-        });
-    }
+      final byte[] decodedKey;
+      try {
+        decodedKey = Base64.getDecoder().decode(config.getKey());
+      } catch (IllegalArgumentException exception) {
+        throw new IllegalArgumentException("Encryption key stored in database is not valid Base64", exception);
+      }
+      if (decodedKey.length != 32) {
+        throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
+      }
+      return new SecretKeySpec(decodedKey, "AES");
+    });
+  }
 
-    public void init(@Observes final StartupEvent event) {
+  public void init(@Observes final StartupEvent event) {
 
   }
 
@@ -88,8 +87,8 @@ public class EncryptionServiceImpl implements EncryptionService {
       System.arraycopy(ciphertext, 0, ivAndCiphertext, GCM_IV_LENGTH, ciphertext.length);
 
       return ENCRYPTED_PREFIX_STR + Base64.getEncoder().encodeToString(ivAndCiphertext);
-    } catch (Exception e) {
-      throw new RuntimeException("Encryption failed", e);
+    } catch (Exception exception) {
+      throw new RuntimeException("Encryption failed", exception);
     }
   }
 
@@ -120,8 +119,8 @@ public class EncryptionServiceImpl implements EncryptionService {
 
       final byte[] plaintextBytes = cipher.doFinal(encrypted);
       return new String(plaintextBytes, StandardCharsets.UTF_8);
-    } catch (Exception e) {
-      throw new RuntimeException("Decryption failed", e);
+    } catch (Exception exception) {
+      throw new RuntimeException("Decryption failed", exception);
     }
   }
 }

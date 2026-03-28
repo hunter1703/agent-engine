@@ -17,6 +17,8 @@ java {
 dependencies {
     implementation libs.spotless.gradle.plugin
     implementation libs.jandex.gradle.plugin
+    implementation group: 'io.quarkus', name: 'gradle-application-plugin', version: libs.versions.quarkus.get()
+    implementation group: 'io.quarkus.extension', name: 'gradle-extension-plugin', version: libs.versions.quarkus.get()
 }
 
 gradlePlugin {

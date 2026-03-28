@@ -94,6 +94,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: PEKKO_HOSTNAME
+              value: "$(POD_NAME).{{ .Values.service.headlessName }}.$(POD_NAMESPACE).svc.cluster.local"
             {{- range $name, $value := .Values.extraEnv }}
             - name: {{ $name }}
               value: {{ $value | quote }}

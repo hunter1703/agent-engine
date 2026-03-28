@@ -1,5 +1,6 @@
 package com.agentengine.runtime.tools;
 
+import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.hitl.SessionPauseKind;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.utils.ToolUtils;
@@ -22,8 +23,8 @@ public final class HumanInTheLoopTool extends Tool {
   public static final String CONTEXT = "context";
   public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME, "Request input from the user.", Map.of());
 
-  public HumanInTheLoopTool() {
-    super(DESCRIPTOR);
+  public HumanInTheLoopTool(final SessionActorFactory sessionActorFactory) {
+    super(DESCRIPTOR, sessionActorFactory);
   }
 
   public Map<String, Object> execute(
@@ -44,7 +45,7 @@ public final class HumanInTheLoopTool extends Tool {
     return requestConfirmation(toolContext, prompt, options, context, pauseKind);
   }
 
-  private static Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options,
+  private Map<String, Object> requestConfirmation(final ToolContext toolContext, final String prompt, List<String> options,
       final Map<String, Object> context, final SessionPauseKind pauseKind) {
     final String sanitizedPrompt = StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
     options = CollectionUtils.nullSafeList(options).stream().filter(StringUtils::isNotBlank).map(String::trim)
@@ -57,7 +58,7 @@ public final class HumanInTheLoopTool extends Tool {
     if (CollectionUtils.isNotEmpty(context)) {
       payload.put(CONTEXT, context);
     }
-    ToolUtils.requestConfirmationAndPause(toolContext, sanitizedPrompt, payload);
+    ToolUtils.requestConfirmationAndPause(sessionActorFactory, toolContext, sanitizedPrompt, payload);
     return Map.of();
   }
 

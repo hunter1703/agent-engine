@@ -73,8 +73,8 @@ public final class ApplyPatchTool extends BaseFileTool {
       Patch<String> parsedPatch;
       try {
         parsedPatch = UnifiedDiffUtils.parseUnifiedDiff(patchLines);
-      } catch (Exception e) {
-        return Map.of("error", "Invalid unified diff format: " + e.getMessage(), "success", false);
+      } catch (Exception exception) {
+        return Map.of("error", "Invalid unified diff format: " + exception.getMessage(), "success", false);
       }
 
       final String originalContent = Files.readString(file);
@@ -82,8 +82,8 @@ public final class ApplyPatchTool extends BaseFileTool {
       List<String> patchedLines;
       try {
         patchedLines = DiffUtils.patch(originalLines, parsedPatch);
-      } catch (PatchFailedException e) {
-        return Map.of("error", "Failed to apply patch: " + e.getMessage(), "success", false, "reason",
+      } catch (PatchFailedException exception) {
+        return Map.of("error", "Failed to apply patch: " + exception.getMessage(), "success", false, "reason",
             "Patch context mismatch - file may have changed");
       }
 
@@ -105,8 +105,8 @@ public final class ApplyPatchTool extends BaseFileTool {
         // Clean up backup on success
         try {
           Files.deleteIfExists(backupFile);
-        } catch (IOException e) {
-          LOG.warn("Failed to delete backup file: {}", backupFile, e);
+        } catch (IOException exception) {
+          LOG.warn("Failed to delete backup file: {}", backupFile, exception);
         }
 
         // Calculate stats
@@ -125,18 +125,18 @@ public final class ApplyPatchTool extends BaseFileTool {
 
         return response;
 
-      } catch (IOException e) {
+      } catch (IOException exception) {
         // Rollback on failure
-        LOG.error("Failed to write patched content, rolling back", e);
+        LOG.error("Failed to write patched content, rolling back", exception);
         Files.copy(backupFile, file, StandardCopyOption.REPLACE_EXISTING);
         Files.deleteIfExists(backupFile);
 
-        return Map.of("error", "Failed to write patched file: " + e.getMessage(), "rolled_back", true, "success", false);
+        return Map.of("error", "Failed to write patched file: " + exception.getMessage(), "rolled_back", true, "success", false);
       }
 
-    } catch (IOException e) {
-      LOG.error("Failed to apply patch to {}", filePath, e);
-      return Map.of("error", "Failed to apply patch: " + e.getMessage());
+    } catch (IOException exception) {
+      LOG.error("Failed to apply patch to {}", filePath, exception);
+      return Map.of("error", "Failed to apply patch: " + exception.getMessage());
     }
   }
 }

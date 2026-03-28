@@ -18,8 +18,8 @@ public final class ResourceUtils {
         return "";
       }
       return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      LOG.warn("Failed to load resource as string: {}", path, e);
+    } catch (IOException exception) {
+      LOG.warn("Failed to load resource as string: {}", path, exception);
       return "";
     }
   }

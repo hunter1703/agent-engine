@@ -17,8 +17,7 @@ public class AgentProvider {
   private final DefaultAgentFactory defaultAgentFactory;
 
   @Inject
-  public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories,
-                       final DefaultAgentFactory defaultAgentFactory) {
+  public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories, final DefaultAgentFactory defaultAgentFactory) {
     typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), AgentFactory::type, Function.identity());
     this.defaultAgentFactory = defaultAgentFactory;
   }

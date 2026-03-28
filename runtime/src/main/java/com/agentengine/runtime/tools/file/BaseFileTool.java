@@ -45,13 +45,13 @@ public abstract class BaseFileTool extends Tool {
             selectedLines.add(line);
           }
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      } catch (IOException exception) {
+        throw new RuntimeException(exception);
       }
 
       return new FileDetails(lineCount, HexFormat.of().formatHex(digest.digest()), List.copyOf(selectedLines));
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 algorithm not available", exception);
     }
   }
 

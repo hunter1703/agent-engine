@@ -1,7 +1,6 @@
 package com.agentengine.runtime.agents;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.runtime.agents.Agent;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;

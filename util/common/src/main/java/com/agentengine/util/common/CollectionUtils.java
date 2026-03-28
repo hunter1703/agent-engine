@@ -217,7 +217,7 @@ public final class CollectionUtils {
 
   public static <T, K, V> Map<K, V> transformToMultiKeyMap(final Collection<T> collection,
       final Function<T, ? extends Collection<K>> keysFunction, final Function<T, V> valueFunction) {
-    final Map<K, V> map = new HashMap<>();
+    final Map<K, V> transformedMap = new HashMap<>();
     for (final T item : collection) {
       final Collection<K> keys = keysFunction.apply(item);
       if (CollectionUtils.isEmpty(keys)) {
@@ -225,35 +225,35 @@ public final class CollectionUtils {
       }
       final V value = valueFunction.apply(item);
       for (final K key : keys) {
-        map.put(key, value);
+        transformedMap.put(key, value);
       }
     }
-    return map;
+    return transformedMap;
   }
 
   public static <T, K, V> Map<K, V> transformToMap(final Collection<T> collection, final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
-    final Map<K, V> map = new HashMap<>();
+    final Map<K, V> transformedMap = new HashMap<>();
     if (CollectionUtils.isEmpty(collection)) {
-      return map;
+      return transformedMap;
     }
     for (final T item : collection) {
-      map.put(keyFunction.apply(item), valueFunction.apply(item));
+      transformedMap.put(keyFunction.apply(item), valueFunction.apply(item));
     }
-    return map;
+    return transformedMap;
   }
 
   public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(final Collection<T> collection, final Function<T, K> keyFunction,
       final Function<T, V> valueFunction) {
-    final Map<K, List<V>> map = new HashMap<>();
+    final Map<K, List<V>> transformedMap = new HashMap<>();
     for (final T item : collection) {
       final K key = keyFunction.apply(item);
       if (key == null) {
         continue;
       }
       final V value = valueFunction.apply(item);
-      map.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
+      transformedMap.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
     }
-    return map;
+    return transformedMap;
   }
 }

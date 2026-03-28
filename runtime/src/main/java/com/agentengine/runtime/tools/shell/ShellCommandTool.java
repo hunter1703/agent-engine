@@ -1,5 +1,6 @@
 package com.agentengine.runtime.tools.shell;
 
+import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
@@ -15,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -30,13 +30,13 @@ public final class ShellCommandTool extends Tool {
   private final Duration timeout;
 
   public ShellCommandTool() {
-    this(null);
+    this(null, null);
   }
 
   @ToolConstructor
-  public ShellCommandTool(
+  public ShellCommandTool(SessionActorFactory sessionActorFactory,
       @ToolSchema(name = "timeout_seconds", description = "timeout in seconds for the shell command execution.", optional = true) final Long timeoutSecs) {
-    super(DESCRIPTOR);
+    super(DESCRIPTOR, sessionActorFactory);
     this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
   }
 
@@ -48,7 +48,8 @@ public final class ShellCommandTool extends Tool {
     }
     if (BLOCKED.matcher(command).find()) {
       if (toolContext.toolConfirmation().isEmpty()) {
-        ToolUtils.requestConfirmationAndPause(toolContext, String.format("Should the command `%s` be executed?", command), Map.of("command", command));
+        ToolUtils.requestConfirmationAndPause(sessionActorFactory, toolContext,
+            String.format("Should the command `%s` be executed?", command), Map.of("command", command));
         return Map.of();
       }
       if (!toolContext.toolConfirmation().get().confirmed()) {
@@ -72,9 +73,9 @@ public final class ShellCommandTool extends Tool {
         result = exit == 0 ? output : "(exit=" + exit + ")\n" + output;
       }
       return Map.of("output", result);
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException | InterruptedException exception) {
       Thread.currentThread().interrupt();
-      throw new RuntimeException(e.getMessage(), e);
+      throw new RuntimeException(exception.getMessage(), exception);
     }
   }
 

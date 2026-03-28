@@ -189,9 +189,8 @@ public final class LangChain4jModel extends BaseLlm {
         builder.toolChoice(ToolChoice.AUTO);
       } else if (FunctionCallingConfigMode.Known.ANY.equals(mode.knownEnum())) {
         builder.toolChoice(ToolChoice.REQUIRED);
-        functionCallingConfig.allowedFunctionNames().ifPresent(
-            allowedFunctionNames -> builder.toolSpecifications(
-                toolSpecifications.stream().filter(toolSpecification -> allowedFunctionNames.contains(toolSpecification.name())).toList()));
+        functionCallingConfig.allowedFunctionNames().ifPresent(allowedFunctionNames -> builder.toolSpecifications(
+            toolSpecifications.stream().filter(toolSpecification -> allowedFunctionNames.contains(toolSpecification.name())).toList()));
       } else if (FunctionCallingConfigMode.Known.NONE.equals(mode.knownEnum())) {
         builder.toolSpecifications(List.of());
       }
@@ -319,7 +318,8 @@ public final class LangChain4jModel extends BaseLlm {
   private static JsonObjectSchema toParameters(final Schema schema) {
     if (schema.type().isPresent() && Type.Known.OBJECT.equals(schema.type().get().knownEnum())) {
       final Map<String, JsonSchemaElement> properties = new HashMap<>();
-      schema.properties().orElse(Map.of()).forEach((propertyName, propertySchema) -> properties.put(propertyName, toSchemaElement(propertySchema)));
+      schema.properties().orElse(Map.of())
+          .forEach((propertyName, propertySchema) -> properties.put(propertyName, toSchemaElement(propertySchema)));
       return JsonObjectSchema.builder().addProperties(properties).required(schema.required().orElse(List.of())).build();
     }
     throw new UnsupportedOperationException("Unsupported schema type: " + schema.type());

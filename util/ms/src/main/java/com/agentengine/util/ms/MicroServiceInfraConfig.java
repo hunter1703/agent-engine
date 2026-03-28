@@ -1,6 +1,5 @@
 package com.agentengine.util.ms;
 
-import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.mongodb.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 

@@ -21,20 +21,18 @@ public final class ToolServiceImpl implements ToolService {
 
   @Inject
   public ToolServiceImpl(final @Any Instance<ToolProvider> providers, final @Any Instance<ToolsetProvider> toolsets,
-                         final DiscoveredToolProviders discoveredToolProviders) {
+      final DiscoveredToolProviders discoveredToolProviders) {
     final List<ToolProvider> toolProviders = CollectionUtils.nullSafeMutableList(ServiceUtils.loadServices(providers, ToolProvider.class));
     toolProviders.addAll(discoveredToolProviders.providers());
     final List<ToolsetProvider> toolsetProviders = ServiceUtils.loadServices(toolsets, ToolsetProvider.class);
     this.toolNameVsEntry = toolProviders.stream().filter(toolProvider -> toolProvider.descriptor() != null)
-        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name())).collect(Collectors.toMap(
-            toolProvider -> toolProvider.descriptor().name(),
-            provider -> new ToolEntry(provider.descriptor(), provider),
-            (existingEntry, ignoredDuplicate) -> existingEntry));
+        .filter(toolProvider -> StringUtils.isNotBlank(toolProvider.descriptor().name()))
+        .collect(Collectors.toMap(toolProvider -> toolProvider.descriptor().name(),
+            provider -> new ToolEntry(provider.descriptor(), provider), (existingEntry, ignoredDuplicate) -> existingEntry));
     this.toolsetNameVsEntry = toolsetProviders.stream().filter(toolsetProvider -> toolsetProvider.descriptor() != null)
         .filter(toolsetProvider -> StringUtils.isNotBlank(toolsetProvider.descriptor().name()))
         .collect(Collectors.toMap(toolsetProvider -> toolsetProvider.descriptor().name(),
-            provider -> new ToolsetEntry(provider.descriptor(), provider),
-            (existingEntry, ignoredDuplicate) -> existingEntry));
+            provider -> new ToolsetEntry(provider.descriptor(), provider), (existingEntry, ignoredDuplicate) -> existingEntry));
     this.allTools = List.copyOf(buildAllDescriptors(toolProviders, toolsetProviders));
   }
 

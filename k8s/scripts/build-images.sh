@@ -44,6 +44,25 @@ build_component() {
   echo "Built $image"
 }
 
+build_quarkus_apps() {
+  tasks=""
+  for component in "$@"; do
+    case "$component" in
+      runtime) tasks="$tasks :runtime:quarkusBuild" ;;
+      core) tasks="$tasks :core:quarkusBuild" ;;
+      rest) tasks="$tasks :interfaces:rest:quarkusBuild" ;;
+      *)
+        echo "Unknown component: $component" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  if [ -n "${tasks# }" ]; then
+    (cd "$ROOT_DIR" && ./gradlew $tasks -x test --no-daemon)
+  fi
+}
+
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   usage
   exit 0
@@ -57,6 +76,8 @@ fi
 if [ "$#" -eq 0 ]; then
   set -- runtime core rest
 fi
+
+build_quarkus_apps "$@"
 
 for component in "$@"; do
   case "$component" in

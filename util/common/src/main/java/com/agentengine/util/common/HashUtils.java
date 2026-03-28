@@ -24,8 +24,8 @@ public final class HashUtils {
       final SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey, "HmacSHA256");
       sha256Hmac.init(secretKeySpec);
       return Base64.getEncoder().encodeToString(sha256Hmac.doFinal(input.getBytes(StandardCharsets.UTF_8)));
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to generate HMACSHA256 hash", e);
+    } catch (Exception exception) {
+      throw new RuntimeException("Failed to generate HMACSHA256 hash", exception);
     }
   }
 
@@ -41,7 +41,7 @@ public final class HashUtils {
         digest.update(buffer, 0, bytesRead);
       }
       return Base64.getEncoder().encodeToString(digest.digest());
-    } catch (Exception e) {
+    } catch (Exception exception) {
       return "error";
     }
   }

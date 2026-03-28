@@ -21,8 +21,7 @@ class ModelRestAPITest {
   void shouldThrowBadRequestWhenGetModelCalledWithBlankId() {
     final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-    assertThatThrownBy(() -> api.getModel(" ")).isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Model ID is required");
+    assertThatThrownBy(() -> api.getModel(" ")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Model ID is required");
   }
 
   @Test

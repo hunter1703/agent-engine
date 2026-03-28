@@ -2,7 +2,7 @@ package com.agentengine.runtime.context;
 
 import static com.agentengine.runtime.utils.ContentUtils.estimateTokens;
 
-import com.agentengine.runtime.services.ProjectionBackedSessionService;
+import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.util.common.Cache;
@@ -47,11 +47,11 @@ public final class CompactionContextManager implements ContextManager {
   private final String modelId;
   private final String promptTemplate;
   private final ModelProvider modelProvider;
-  private final ProjectionBackedSessionService sessionService;
+  private final MongoSessionService sessionService;
   private final Cache<String, String> summaryCache;
 
   public CompactionContextManager(final int tokenThreshold, int recencyThreshold, final String modelId, final String promptTemplate,
-      final ModelProvider modelProvider, final ProjectionBackedSessionService sessionService) {
+      final ModelProvider modelProvider, final MongoSessionService sessionService) {
     this.tokenThreshold = Math.max(1, tokenThreshold);
     recencyThreshold = Math.max(1, recencyThreshold);
     this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;

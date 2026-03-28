@@ -36,12 +36,12 @@ containerSecurityContext:
   readOnlyRootFilesystem: false
 
 java:
-  opts: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
+  opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
 bootstrap:
   mongodb:
-    existingSecret: ""
+    existingSecret: "agent-engine-infra-mongodb-connection"
     connectionStringKey: connection-string
 
 config:
@@ -50,6 +50,7 @@ config:
     quarkus.otel.service.name: agent-engine-core
     quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
     quarkus.log.console.json: "true"
+    quarkus.mongodb.connection-string: mongodb://mongodb:27017
 
 extraEnv: {}
 extraEnvFromSecrets: []

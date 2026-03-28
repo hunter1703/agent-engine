@@ -15,7 +15,8 @@ import java.util.stream.IntStream;
 @Singleton
 public final class DefaultResponseMapper {
 
-  private static final Set<Integer> DEFAULT_SUCCESS_STATUS_CODES = IntStream.range(200, 300).boxed().collect(Collectors.toUnmodifiableSet());
+  private static final Set<Integer> DEFAULT_SUCCESS_STATUS_CODES = IntStream.range(200, 300).boxed()
+      .collect(Collectors.toUnmodifiableSet());
 
   private final ErrorClassifier errorClassifier;
   private final TemplateResolver templateResolver;

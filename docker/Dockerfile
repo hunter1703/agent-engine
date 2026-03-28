@@ -20,7 +20,7 @@ COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/*.jar /deployments/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/app/ /deployments/app/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/quarkus/ /deployments/quarkus/
 
-COPY --chown=quarkus plugins/ /deployments/plugins/ 2>/dev/null || true
+RUN mkdir -p /deployments/plugins
 
 ENV QUARKUS_HTTP_PORT=${QUARKUS_HTTP_PORT:-8080}
 ENV QUARKUS_GRPC_SERVER_PORT=${QUARKUS_GRPC_SERVER_PORT:-9000}

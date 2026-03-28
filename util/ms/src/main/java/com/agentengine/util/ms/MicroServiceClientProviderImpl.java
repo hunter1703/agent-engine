@@ -83,7 +83,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
         if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
           channel.shutdownNow();
         }
-      } catch (InterruptedException e) {
+      } catch (InterruptedException exception) {
         channel.shutdownNow();
         Thread.currentThread().interrupt();
       }

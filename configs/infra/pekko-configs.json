@@ -2,7 +2,7 @@
   {
     "id": "pekko",
     "type": "PEKKO",
-    "hostname": "${POD_NAME}.agent-engine-runtime-internal.${POD_NAMESPACE}.svc.cluster.local",
+    "hostname": "${PEKKO_HOSTNAME}",
     "port": 2552,
     "seedNodes": [
       "pekko://agent-engine-runtime@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",

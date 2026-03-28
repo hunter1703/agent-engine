@@ -1,17 +1,13 @@
 package com.agentengine.interfaces.rest.filter;
 
-import com.agentengine.util.common.Utils;
 import io.opentelemetry.api.trace.Span;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 @Provider
 public class RequestLoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {

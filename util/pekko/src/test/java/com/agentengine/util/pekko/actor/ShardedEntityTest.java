@@ -32,7 +32,7 @@ class ShardedEntityTest {
   }
 
   // Minimal counter entity for testing
-  sealed interface CounterCmd extends PekkoSerializable {
+  interface CounterCmd extends PekkoSerializable {
     record Increment(ActorRef<Integer> replyTo) implements CounterCmd {
     }
 
@@ -77,8 +77,7 @@ class ShardedEntityTest {
     @Override
     public EventHandler<CounterState, Incremented> eventHandler() {
       return newEventHandlerBuilder().forAnyState()
-          .onEvent(Incremented.class, (state, incrementedEvent) -> new CounterState(state.count() + 1))
-          .build();
+          .onEvent(Incremented.class, (state, incrementedEvent) -> new CounterState(state.count() + 1)).build();
     }
   }
 

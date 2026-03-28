@@ -80,9 +80,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   public void execute(final Request request, final StreamObserver<Response> responseObserver) {
     try {
       EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
-    } catch (final RejectedExecutionException e) {
-      responseObserver.onError(
-          Status.RESOURCE_EXHAUSTED.withDescription("gRPC virtual thread executor rejected request").withCause(e).asRuntimeException());
+    } catch (final RejectedExecutionException exception) {
+      responseObserver.onError(Status.RESOURCE_EXHAUSTED.withDescription("gRPC virtual thread executor rejected request")
+          .withCause(exception).asRuntimeException());
     }
   }
 
@@ -112,9 +112,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         result = optional.orElse(null);
       }
       sendResult(result, responseObserver);
-    } catch (final Exception e) {
-      LOG.error("Error executing {}/{}", serviceName, methodName, e);
-      responseObserver.onError(rootCauseStatus(e).asRuntimeException());
+    } catch (final Exception exception) {
+      LOG.error("Error executing {}/{}", serviceName, methodName, exception);
+      responseObserver.onError(rootCauseStatus(exception).asRuntimeException());
     }
   }
 
@@ -171,8 +171,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     final Class<?>[] paramTypes = method.getParameterTypes();
     final Object[] typedArgs = new Object[paramCount];
     for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
-      if (rawArgs[index] instanceof Map<?, ?> map) {
-        typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) map, paramTypes[index]);
+      if (rawArgs[index] instanceof Map<?, ?> argumentMap) {
+        typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) argumentMap, paramTypes[index]);
       } else {
         typedArgs[index] = rawArgs[index];
       }

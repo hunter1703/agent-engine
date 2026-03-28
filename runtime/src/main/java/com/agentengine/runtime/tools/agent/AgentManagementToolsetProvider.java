@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.actor.SessionActorFactory;
+import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.tools.AbstractToolsetProvider;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import jakarta.inject.Inject;

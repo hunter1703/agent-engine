@@ -23,12 +23,8 @@ public class MongoRedisTestResource implements QuarkusTestResourceLifecycleManag
 
     final String redisUri = "redis://" + REDIS_CONTAINER.getHost() + ":" + REDIS_CONTAINER.getFirstMappedPort();
 
-    return Map.of(
-        "quarkus.mongodb.devservices.enabled", "false",
-        "mongodb.connection.string", MONGO_CONTAINER.getReplicaSetUrl(),
-        "quarkus.http.test-port", "0",
-        "quarkus.grpc.server.port", "0",
-        "test.redis.uri", redisUri);
+    return Map.of("quarkus.mongodb.devservices.enabled", "false", "mongodb.connection.string", MONGO_CONTAINER.getReplicaSetUrl(),
+        "quarkus.http.test-port", "0", "quarkus.grpc.server.port", "0", "test.redis.uri", redisUri);
   }
 
   @Override

@@ -1,0 +1,36 @@
+package com.agentengine.util.pekko.persistence;
+
+import org.apache.pekko.actor.typed.ActorSystem;
+import org.apache.pekko.persistence.jdbc.query.javadsl.JdbcReadJournal;
+import org.apache.pekko.persistence.query.EventEnvelope;
+import org.apache.pekko.persistence.query.PersistenceQuery;
+import org.apache.pekko.stream.javadsl.Sink;
+
+import java.util.List;
+
+/**
+ * Base support for read paths backed directly by the Pekko persistence journal.
+ */
+public abstract class AbstractJournalReadRepository {
+
+  private final ActorSystem<?> actorSystem;
+  private final JdbcReadJournal readJournal;
+
+  protected AbstractJournalReadRepository(final ActorSystem<?> actorSystem) {
+    this.actorSystem = actorSystem;
+    this.readJournal = PersistenceQuery.get(actorSystem).getReadJournalFor(JdbcReadJournal.class, JdbcReadJournal.Identifier());
+  }
+
+  protected final List<EventEnvelope> currentEventsByPersistenceId(final String persistenceId) {
+    if (persistenceId == null || persistenceId.isBlank()) {
+      return List.of();
+    }
+    return readJournal.currentEventsByPersistenceId(persistenceId, 0L, Long.MAX_VALUE).runWith(Sink.seq(), actorSystem)
+        .toCompletableFuture().join();
+  }
+
+  protected final <T> List<T> currentEventsByPersistenceId(final String persistenceId, final Class<T> eventType) {
+    return currentEventsByPersistenceId(persistenceId).stream().map(EventEnvelope::event).filter(eventType::isInstance).map(eventType::cast)
+        .toList();
+  }
+}

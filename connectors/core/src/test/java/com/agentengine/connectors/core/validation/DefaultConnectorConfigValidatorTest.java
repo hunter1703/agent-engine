@@ -76,8 +76,7 @@ public class DefaultConnectorConfigValidatorTest {
 
   private static ConnectorDefinition validDefinition() {
     return new ConnectorDefinition("test-id", null, endpoint(HttpMethod.GET, "https://api.example.com"),
-        Map.of("Accept", "application/json"), Map.of("limit", 10), null, null, null, PaginationConfig.none(), null,
-        List.of(), true);
+        Map.of("Accept", "application/json"), Map.of("limit", 10), null, null, null, PaginationConfig.none(), null, List.of(), true);
   }
 
   private static ConnectorDefinition withId(final ConnectorDefinition definition, final String id) {

@@ -11,7 +11,6 @@ import com.agentengine.util.common.query.Query;
 import com.agui.core.event.BaseEvent;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
-import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
@@ -71,13 +70,9 @@ public class SessionServiceImpl implements SessionService {
     if (!includeEvents || session == null) {
       return session;
     }
-    // Events come from the projection store and are eventually consistent: events
-    // committed
-    // after the last projection checkpoint will be absent until the projection
-    // catches up.
     final AGUIEventMapper mapper = new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
     final List<BaseEvent> aguiEvents = new ArrayList<>();
-    for (final SessionEvent event : sessionHistoryService.events(session.getId())) {
+    for (final SessionEvent event : sessionHistoryService.getSessionEvents(session.getId())) {
       mapper.map(event).blockingForEach(aguiEvents::add);
     }
     session.setAguiEvents(aguiEvents);

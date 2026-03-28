@@ -16,7 +16,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 
 @Singleton
 @Unremovable

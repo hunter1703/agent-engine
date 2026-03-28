@@ -1,7 +1,6 @@
 package com.agentengine.util.common.events;
 
 import io.reactivex.rxjava3.core.BackpressureOverflowStrategy;
-import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.processors.FlowableProcessor;
 import io.reactivex.rxjava3.processors.PublishProcessor;
 import org.reactivestreams.Publisher;
@@ -19,7 +18,8 @@ import java.util.function.Supplier;
 /**
  * Single-process implementation of {@link EventChannel}.
  * <p>
- * Per-scope linearized subscribe/publish/cancel with per-scope monotonic sequences.
+ * Per-scope linearized subscribe/publish/cancel with per-scope monotonic
+ * sequences.
  */
 public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, Event> {
   private static final int SUBSCRIBER_BUFFER_SIZE = 256;
@@ -63,13 +63,8 @@ public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, E
     private EventSubscription<SequencedEvent<E>> createSubscription() {
       final String subscriptionId = UUID.randomUUID().toString();
       final FlowableProcessor<SequencedEvent<E>> processor = PublishProcessor.<SequencedEvent<E>>create().toSerialized();
-      final Publisher<SequencedEvent<E>> publisher = processor
-          .onBackpressureBuffer(
-              SUBSCRIBER_BUFFER_SIZE,
-              () -> {
-              },
-              BackpressureOverflowStrategy.ERROR)
-          .doFinally(() -> cancel(subscriptionId));
+      final Publisher<SequencedEvent<E>> publisher = processor.onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {
+      }, BackpressureOverflowStrategy.ERROR).doFinally(() -> cancel(subscriptionId));
 
       subscriptions.put(subscriptionId, new SubscriptionState<>(processor));
       return new EventSubscription<>(subscriptionId, publisher, () -> cancel(subscriptionId));

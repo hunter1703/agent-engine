@@ -5,9 +5,11 @@ import com.agentengine.util.ms.MicroService;
 
 import java.util.List;
 
-/** Returns the committed event history for a session from the projection store. */
+/**
+ * Returns the committed event history for a session directly from the journal.
+ */
 @MicroService("runtime")
 public interface SessionHistoryService {
 
-    List<SessionEvent> events(String sessionId);
+  List<SessionEvent> getSessionEvents(String sessionId);
 }
