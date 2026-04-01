@@ -5,6 +5,7 @@ import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.common.beans.UniqueRecord;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -45,7 +46,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                     final String message) {
         final StartSessionResult result = actorRef(toolContext)
                 .<StartSessionResult>ask(
-                        replyTo -> new ExternalCommand.SendMessageCommand(childSessionId, message, replyTo),
+                        replyTo -> new ExternalCommand.SendMessageCommand(childSessionId, new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join();

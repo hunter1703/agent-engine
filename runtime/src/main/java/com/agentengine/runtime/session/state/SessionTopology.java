@@ -22,7 +22,7 @@ public record SessionTopology(String sessionId, String agentId, SessionRole role
         return switch (role) {
             case SessionRole.Root _ -> sessionId;
             case SessionRole.Child childRole -> childRole.rootSessionId();
-            default -> throw new IllegalStateException("Unknown session role: " + role);
+            default -> throw new IllegalStateException("Unknown sessionState role: " + role);
         };
     }
 
@@ -30,7 +30,7 @@ public record SessionTopology(String sessionId, String agentId, SessionRole role
         return switch (role) {
             case SessionRole.Root _ -> null;
             case SessionRole.Child childRole -> childRole.parentSessionId();
-            default -> throw new IllegalStateException("Unknown session role: " + role);
+            default -> throw new IllegalStateException("Unknown sessionState role: " + role);
         };
     }
 
@@ -38,7 +38,7 @@ public record SessionTopology(String sessionId, String agentId, SessionRole role
         return switch (role) {
             case SessionRole.Root _ -> null;
             case SessionRole.Child childRole -> childRole.parentAgentId();
-            default -> throw new IllegalStateException("Unknown session role: " + role);
+            default -> throw new IllegalStateException("Unknown sessionState role: " + role);
         };
     }
 

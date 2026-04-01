@@ -1,63 +1,74 @@
 package com.agentengine.runtime.session.state;
 
+import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
-import java.util.Map;
-import java.util.Set;
+
+import java.util.*;
 
 public final class PauseState {
-    private Set<String> selfConfirmationIds;
-    private Map<String, String> confirmationIdVsChildSessionId;
+    private Set<String> pendingSelfConfirmationIds;
+    private Map<String, Confirmation> receivedSelfConfirmations;
+    private Map<String, String> pendingConfirmationIdVsChildSessionId;
 
     public PauseState() {
-        this(Set.of(), Map.of());
+        this(new HashSet<>(), new HashMap<>(), new HashMap<>());
     }
 
-    public PauseState(final Set<String> selfConfirmationIds, final Map<String, String> confirmationIdVsChildSessionId) {
-        this.selfConfirmationIds = CollectionUtils.nullSafeMutableSet(selfConfirmationIds);
-        this.confirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(confirmationIdVsChildSessionId);
+    public PauseState(
+            final Set<String> pendingSelfConfirmationIds,
+            final Map<String, Confirmation> receivedSelfConfirmations,
+            final Map<String, String> pendingConfirmationIdVsChildSessionId) {
+        this.pendingSelfConfirmationIds = CollectionUtils.nullSafeMutableSet(pendingSelfConfirmationIds);
+        this.receivedSelfConfirmations = CollectionUtils.nullSafeMutableMap(receivedSelfConfirmations);
+        this.pendingConfirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
     }
 
     public PauseState withChildPaused(final String childSessionId, final String confirmationId) {
-        confirmationIdVsChildSessionId.put(confirmationId, childSessionId);
+        pendingConfirmationIdVsChildSessionId.put(confirmationId, childSessionId);
         return this;
     }
 
     public PauseState withSelfPaused(final String confirmationId) {
-        selfConfirmationIds.add(confirmationId);
+        pendingSelfConfirmationIds.add(confirmationId);
         return this;
     }
 
-    public PauseState withSelfResumed(final String confirmationId) {
-        selfConfirmationIds.remove(confirmationId);
+    public PauseState withSelfResumed(final Confirmation confirmation) {
+        receivedSelfConfirmations.put(confirmation.getConfirmationId(), confirmation);
+        pendingSelfConfirmationIds.remove(confirmation.getConfirmationId());
         return this;
     }
 
     public PauseState withChildResumed(final String confirmationId) {
-        confirmationIdVsChildSessionId.remove(confirmationId);
+        pendingConfirmationIdVsChildSessionId.remove(confirmationId);
         return this;
     }
 
-    public boolean isSelfConfirmationId(final String confirmationId) {
-        return selfConfirmationIds.contains(confirmationId);
-    }
-
     public String getPausedChild(final String confirmationId) {
-        return confirmationIdVsChildSessionId.get(confirmationId);
+        return pendingConfirmationIdVsChildSessionId.get(confirmationId);
     }
 
-    public Map<String, String> getConfirmationIdVsChildSessionId() {
-        return confirmationIdVsChildSessionId;
+    public Map<String, String> getPendingConfirmationIdVsChildSessionId() {
+        return pendingConfirmationIdVsChildSessionId;
     }
 
-    public void setConfirmationIdVsChildSessionId(final Map<String, String> confirmationIdVsChildSessionId) {
-        this.confirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(confirmationIdVsChildSessionId);
+    public void setPendingConfirmationIdVsChildSessionId(final Map<String, String> pendingConfirmationIdVsChildSessionId) {
+        this.pendingConfirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
     }
 
-    public Set<String> getSelfConfirmationIds() {
-        return selfConfirmationIds;
+    public Set<String> getPendingSelfConfirmationIds() {
+        return pendingSelfConfirmationIds;
     }
 
-    public void setSelfConfirmationIds(final Set<String> selfConfirmationIds) {
-        this.selfConfirmationIds = CollectionUtils.nullSafeMutableSet(selfConfirmationIds);
+    public void setPendingSelfConfirmationIds(final Set<String> pendingSelfConfirmationIds) {
+        this.pendingSelfConfirmationIds = CollectionUtils.nullSafeMutableSet(pendingSelfConfirmationIds);
+    }
+
+    public Map<String, Confirmation> getReceivedSelfConfirmations() {
+        return receivedSelfConfirmations;
+    }
+
+    public void setReceivedSelfConfirmations(final Map<String, Confirmation> receivedSelfConfirmations) {
+        this.receivedSelfConfirmations = CollectionUtils.nullSafeMutableMap(receivedSelfConfirmations);
     }
 }

@@ -9,6 +9,7 @@ import org.apache.pekko.actor.typed.javadsl.ActorContext;
 import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 import org.apache.pekko.persistence.typed.javadsl.Effect;
 import org.apache.pekko.persistence.typed.javadsl.EventHandler;
+import org.apache.pekko.persistence.typed.javadsl.RetentionCriteria;
 
 /** Persistent sharded broadcaster with bounded replay for gap healing. */
 public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, BroadcasterFact, BroadcasterState> {
@@ -27,6 +28,11 @@ public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, B
     @Override
     public BroadcasterState emptyState() {
         return BroadcasterState.empty();
+    }
+
+    @Override
+    public RetentionCriteria retentionCriteria() {
+        return RetentionCriteria.snapshotEvery(MAX_RETAINED_EVENTS, 1);
     }
 
     @Override

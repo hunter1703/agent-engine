@@ -4,6 +4,7 @@ import com.agentengine.runtime.actor.SessionEventChannel;
 import com.agentengine.runtime.factories.RunnerFactory;
 import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.runtime.session.commands.SessionCommand;
+import com.agentengine.util.pekko.PekkoConfig;
 import com.agentengine.util.pekko.actor.ShardedEntityFactory;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -25,6 +26,7 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
     @Inject
     public SessionActorFactory(
             final ActorSystem<SpawnProtocol.Command> actorSystem,
+            final PekkoConfig pekkoConfig,
             final SessionEventChannel sessionEventChannel,
             final RunnerFactory runnerFactory,
             final MongoSessionService sessionService) {
@@ -34,6 +36,7 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
                 entityContext -> Behaviors.setup(actorCtx -> new SessionActor(
                         actorCtx,
                         entityContext.getEntityId(),
+                        pekkoConfig.getSnapshotThreshold(),
                         sessionEventChannel,
                         refSupplier(actorSystem),
                         runnerFactory,

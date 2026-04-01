@@ -1,12 +1,13 @@
 package com.agentengine.runtime.actor;
 
+import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.ms.MicroService;
+import java.util.concurrent.CompletionStage;
 
 @MicroService("runtime")
 public interface RuntimeService {
 
-    StartSessionResult startSession(String agentId, String sessionId, String message);
+    CompletionStage<StartSessionResult> startSession(String agentId, String sessionId, String message);
 
-    ResumeResult resumeSession(
-            String agentId, String sessionId, String confirmationId, boolean confirmed, String answer);
+    CompletionStage<ConfirmResult> confirmSession(String agentId, String sessionId, Confirmation confirmation);
 }

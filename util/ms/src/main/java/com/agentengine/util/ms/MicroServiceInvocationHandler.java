@@ -13,6 +13,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -48,9 +50,13 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
         Request request = buildRequest(method, args);
         // noinspection ReactiveStreamsUnusedPublisher
-        return method.getReturnType().equals(Flowable.class)
-                ? streamingCall(request, method)
-                : blockingCall(request, method);
+        if (method.getReturnType().equals(Flowable.class)) {
+            return streamingCall(request, method);
+        }
+        final Object result = blockingCall(request, method);
+        return method.getReturnType().equals(CompletionStage.class)
+                ? CompletableFuture.completedFuture(result)
+                : result;
     }
 
     private Request buildRequest(Method method, Object[] args) {
@@ -87,8 +93,11 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             return null;
         }
 
-        String payload = responseIterator.next().getPayload().toStringUtf8();
-        Object result = JsonUtils.fromJson(payload, method.getGenericReturnType(), true);
+        final String payload = responseIterator.next().getPayload().toStringUtf8();
+        final Type deserializationType = CompletionStage.class.isAssignableFrom(method.getReturnType())
+                ? firstTypeArgument(method.getGenericReturnType())
+                : method.getGenericReturnType();
+        Object result = JsonUtils.fromJson(payload, deserializationType, true);
 
         if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
             return Optional.empty();

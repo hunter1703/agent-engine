@@ -1,5 +1,7 @@
 package com.agentengine.util.common.beans;
 
+import java.util.Objects;
+
 public abstract class BaseEntity {
     public static final String FIELD_ID = "id";
     public static final String FIELD_CREATED_TIME = "createdTime";
@@ -36,5 +38,17 @@ public abstract class BaseEntity {
 
     public void setUpdatedTime(final long updatedTime) {
         this.updatedTime = updatedTime;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        final BaseEntity that = (BaseEntity) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

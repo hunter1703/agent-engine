@@ -439,7 +439,7 @@ public final class ToolUtils {
                 || toolContext.invocationContext() == null
                 || toolContext.invocationContext().session() == null
                 || toolContext.invocationContext().session().id() == null) {
-            throw new IllegalStateException("Agent tools require an active invocation context with a session id.");
+            throw new IllegalStateException("Agent tools require an active invocation context with a sessionState id.");
         }
         return toolContext.invocationContext().session().id();
     }

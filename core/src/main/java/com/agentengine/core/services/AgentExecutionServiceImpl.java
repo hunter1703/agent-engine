@@ -2,11 +2,12 @@ package com.agentengine.core.services;
 
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.SessionService;
-import com.agentengine.runtime.actor.ResumeResult;
+import com.agentengine.runtime.actor.ConfirmResult;
 import com.agentengine.runtime.actor.RuntimeService;
 import com.agentengine.runtime.actor.SessionEventChannel;
 import com.agentengine.runtime.actor.StartSessionResult;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
+import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.AssetClass;
@@ -47,15 +48,16 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     public Publisher<BaseEvent> run(final String agentId, final String text) {
         final String sessionId = UUID.randomUUID().toString();
         return Flowable.fromCompletionStage(sessionEventChannel.subscribe(sessionId))
-                .flatMap(subscription -> Flowable.just(runtimeService.startSession(agentId, sessionId, text))
-                        .flatMap(startResult -> {
-                            if (startResult instanceof StartSessionResult.Rejected(String reason)) {
-                                cancelQuietly(subscription, "run start rejected for session " + sessionId);
-                                return Flowable.error(new IllegalStateException("Run rejected: " + reason));
-                            }
-                            return Flowable.fromPublisher(mapEvents(agentId, sessionId, subscription));
-                        })
-                        .doOnError(error -> cancelQuietly(subscription, "run start failed for session " + sessionId)));
+                .flatMap(subscription ->
+                        Flowable.fromCompletionStage(runtimeService.startSession(agentId, sessionId, text))
+                                .flatMap(startResult -> {
+                                    if (startResult instanceof StartSessionResult.Rejected(String reason)) {
+                                        cancelQuietly(subscription, "run start rejected for session " + sessionId);
+                                        return Flowable.error(new IllegalStateException("Run rejected: " + reason));
+                                    }
+                                    return Flowable.fromPublisher(mapEvents(agentId, sessionId, subscription));
+                                })
+                                .doOnError(error -> cancelQuietly(subscription, "run start failed for session " + sessionId)));
     }
 
     @Override
@@ -68,20 +70,20 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
 
         final String rootSessionId = session.getRootSessionId();
         final String rootAgentId = session.getRootAgentId();
+        final Confirmation confirmation = new Confirmation(confirmationId, confirmed != null && confirmed, answer);
 
-        final ResumeResult resumeStage = runtimeService.resumeSession(
-                rootAgentId, rootSessionId, confirmationId, confirmed != null && confirmed, answer);
-
+        // Subscribe before confirming so no events published immediately after confirm are missed
         return Flowable.fromCompletionStage(sessionEventChannel.subscribe(rootSessionId))
-                .flatMap(subscription -> Flowable.just(resumeStage)
-                        .flatMap(result -> {
-                            if (result instanceof ResumeResult.Rejected(String reason)) {
-                                cancelQuietly(subscription, "resume rejected for session " + rootSessionId);
-                                return Flowable.error(new IllegalStateException("Resume rejected: " + reason));
-                            }
-                            return Flowable.fromPublisher(mapEvents(rootAgentId, rootSessionId, subscription));
-                        })
-                        .doOnError(error -> cancelQuietly(subscription, "resume failed for session " + rootSessionId)));
+                .flatMap(subscription ->
+                        Flowable.fromCompletionStage(runtimeService.confirmSession(rootAgentId, rootSessionId, confirmation))
+                                .flatMap(result -> {
+                                    if (result instanceof ConfirmResult.Rejected(String reason)) {
+                                        cancelQuietly(subscription, "resume rejected for session " + rootSessionId);
+                                        return Flowable.error(new IllegalStateException("Resume rejected: " + reason));
+                                    }
+                                    return Flowable.fromPublisher(mapEvents(rootAgentId, rootSessionId, subscription));
+                                })
+                                .doOnError(error -> cancelQuietly(subscription, "resume failed for session " + rootSessionId)));
     }
 
     private static Publisher<BaseEvent> mapEvents(

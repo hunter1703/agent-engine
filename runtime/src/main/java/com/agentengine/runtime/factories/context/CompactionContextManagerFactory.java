@@ -38,11 +38,10 @@ public class CompactionContextManagerFactory
         if (!config.isEnabled()) {
             return NoOpContextManager.INSTANCE;
         }
-        final String modelId = resolveModelId(config, agentConfig);
         return new CompactionContextManager(
                 config.getTokenThreshold(),
                 config.getRecencyThreshold(),
-                modelId,
+                resolveModelId(config, agentConfig),
                 config.getPromptTemplate(),
                 modelProvider,
                 sessionService);

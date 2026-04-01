@@ -7,6 +7,7 @@ import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigValueFactory;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
@@ -27,17 +28,18 @@ import org.apache.pekko.stream.Materializer;
 public class ActorSystemProvider {
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
     private static final String DEFAULT_JDBC_DRIVER = "org.postgresql.Driver";
+    private final PekkoConfig pekkoConfig;
     private final LazyLoader<ActorSystem<SpawnProtocol.Command>> system;
     private final LazyLoader<Materializer> materializer;
 
     public ActorSystemProvider(
             final InfraMongoRepository repository,
             final Instance<ShardedEntity.ShardedEntityDefinition<?, ?>> definitions) {
+        this.pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
         this.system = new LazyLoader<>(() -> {
-            final PekkoConfig pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
             final SQLInfraConfig sqlConfig = repository.findOneByType(SQLInfraConfig.TYPE);
             final ActorSystem<SpawnProtocol.Command> actorSystem = ActorSystem.create(
-                    SpawnProtocol.create(), pekkoConfig.getClusterName(), buildConfig(pekkoConfig, sqlConfig));
+                    SpawnProtocol.create(), this.pekkoConfig.getClusterName(), buildConfig(this.pekkoConfig, sqlConfig));
             final ClusterSharding sharding = ClusterSharding.get(actorSystem);
             for (final ShardedEntity.ShardedEntityDefinition<?, ?> definition : definitions) {
                 sharding.init(definition.entity());
@@ -45,6 +47,12 @@ public class ActorSystemProvider {
             return actorSystem;
         });
         this.materializer = new LazyLoader<>(() -> Materializer.createMaterializer(system.get()));
+    }
+
+    @Produces
+    @Singleton
+    public PekkoConfig pekkoConfig() {
+        return pekkoConfig;
     }
 
     @Produces
@@ -69,9 +77,13 @@ public class ActorSystemProvider {
         final String jdbcUrl = resolve(sqlConfig.getJdbcUrl());
         final String jdbcUser = resolve(sqlConfig.getJdbcUser());
         final String jdbcPassword = resolve(sqlConfig.getJdbcPassword());
+        // Credentials are injected via withValue so they never appear in a logged HOCON string
         final String hocon = """
         pekko {
-          actor.provider = cluster
+          actor {
+            provider = cluster
+            default-dispatcher.executor = virtual-thread-executor
+          }
           remote.artery.canonical {
             hostname = "%s"
             port = %d
@@ -85,41 +97,28 @@ public class ActorSystemProvider {
             snapshot-store.plugin = "jdbc-snapshot-store"
           }
         }
-        jdbc-journal {
-          slick {
-            profile = "slick.jdbc.PostgresProfile$"
-            db {
-              url = "%s"
-              user = "%s"
-              password = "%s"
-              driver = "%s"
-            }
-          }
+        jdbc-journal.slick {
+          profile = "slick.jdbc.PostgresProfile$"
+          db.driver = "%s"
         }
-        jdbc-snapshot-store {
-          slick {
-            profile = "slick.jdbc.PostgresProfile$"
-            db {
-              url = "%s"
-              user = "%s"
-              password = "%s"
-              driver = "%s"
-            }
-          }
+        jdbc-snapshot-store.slick {
+          profile = "slick.jdbc.PostgresProfile$"
+          db.driver = "%s"
         }
         """.formatted(
                         hostname,
                         config.getPort(),
                         seedNodes.stream().map(StringUtils::wrapInQuotes).collect(Collectors.joining(", ")),
-                        jdbcUrl,
-                        jdbcUser,
-                        jdbcPassword,
                         DEFAULT_JDBC_DRIVER,
-                        jdbcUrl,
-                        jdbcUser,
-                        jdbcPassword,
                         DEFAULT_JDBC_DRIVER);
-        return ConfigFactory.parseString(hocon).withFallback(ConfigFactory.load());
+        return ConfigFactory.parseString(hocon)
+                .withValue("jdbc-journal.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
+                .withValue("jdbc-journal.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
+                .withValue("jdbc-journal.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
+                .withValue("jdbc-snapshot-store.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
+                .withValue("jdbc-snapshot-store.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
+                .withValue("jdbc-snapshot-store.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
+                .withFallback(ConfigFactory.load());
     }
 
     private static String resolve(final String rawValue) {

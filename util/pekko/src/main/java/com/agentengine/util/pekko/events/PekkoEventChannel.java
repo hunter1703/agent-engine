@@ -58,33 +58,32 @@ public class PekkoEventChannel<Scope, Event>
         final String subscriptionId = UUID.randomUUID().toString();
         final FlowableProcessor<SequencedEvent<?>> processor =
                 PublishProcessor.<SequencedEvent<?>>create().toSerialized();
-
         final Behavior<SubscriberCommand> subscriberBehavior =
                 SubscriberActor.create(subscriptionId, broadcaster(scope), processor);
-        final ActorRef<SubscriberCommand> subscriberActor =
-                system.systemActorOf(subscriberBehavior, "event-subscriber-" + subscriptionId, Props.empty());
 
-        final Publisher<SequencedEvent<Event>> publisher = processor
-                .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
-                .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()))
-                .doFinally(() -> stopSubscriber(subscriberActor).exceptionally(ignored -> null));
+        return CompletionUtils.completeWithRootCause(
+                AskPattern.ask(
+                        system,
+                        (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>) replyTo -> new SpawnProtocol.Spawn<>(subscriberBehavior, "event-subscriber-" + subscriptionId, Props.empty(), replyTo), COMMAND_TIMEOUT, system.scheduler())
+                        .thenCompose(subscriberActor -> {
+                            final Publisher<SequencedEvent<Event>> publisher = processor
+                                    .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
+                                    .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()))
+                                    .doFinally(() -> subscriberActor.tell(new SubscriberCommand.UnsubscribeCommand(system.ignoreRef())));
 
-        return CompletionUtils.completeWithRootCause(AskPattern.ask(
-                        subscriberActor,
-                        (Function<ActorRef<SubscriberCommandResult>, SubscriberCommand>)
-                                SubscriberCommand.SubscribeCommand::new,
-                        COMMAND_TIMEOUT,
-                        system.scheduler())
-                .thenCompose(result -> {
-                    if (result instanceof SubscriberCommandResult.Failed(Throwable cause)) {
-                        if (!processor.hasComplete() && !processor.hasThrowable()) {
-                            processor.onError(cause);
-                        }
-                        return CompletionUtils.failedStage(cause);
-                    }
-                    return CompletableFuture.completedFuture(
-                            new EventSubscription<>(subscriptionId, publisher, () -> stopSubscriber(subscriberActor)));
-                }));
+                            return AskPattern.ask(
+                                            subscriberActor,
+                                            (Function<ActorRef<SubscriberCommandResult>, SubscriberCommand>) SubscriberCommand.SubscribeCommand::new,
+                                            COMMAND_TIMEOUT,
+                                            system.scheduler())
+                                    .thenCompose(result -> {
+                                        if (result instanceof SubscriberCommandResult.Failed(Throwable cause)) {
+                                            return CompletionUtils.failedStage(cause);
+                                        }
+                                        return CompletableFuture.completedFuture(new EventSubscription<>(
+                                                subscriptionId, publisher, () -> stopSubscriber(subscriberActor)));
+                                    });
+                        }));
     }
 
     @Override

@@ -77,7 +77,7 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
                     session.getParentSessionId(),
                     sessionId,
                     turn.getEvents(),
-                    turn.getStartSequence()));
+                    0L));
         }
         return history;
     }
