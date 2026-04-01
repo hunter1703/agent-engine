@@ -4,7 +4,7 @@ import com.agentengine.runtime.api.services.ToolCatalog;
 
 public interface ToolService extends ToolCatalog {
 
-  ToolProvider getToolProvider(String toolName);
+    ToolProvider getToolProvider(String toolName);
 
-  ToolsetProvider getToolsetProvider(String toolsetName);
+    ToolsetProvider getToolsetProvider(String toolsetName);
 }

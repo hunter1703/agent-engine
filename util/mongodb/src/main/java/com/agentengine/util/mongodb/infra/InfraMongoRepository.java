@@ -14,15 +14,16 @@ import jakarta.inject.Singleton;
 @Singleton
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
-  @Inject
-  public InfraMongoRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class, validationService);
-  }
+    @Inject
+    public InfraMongoRepository(
+            final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+        super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class, validationService);
+    }
 
-  @SuppressWarnings("unchecked")
-  public <T extends InfraConfig> T findOneByType(final String type) {
-    final Query query = new Query().withFilter(Filters.eq("type", type)).withPage(new Page(0, 1));
-    final PaginatedResult<T> result = (PaginatedResult<T>) findByQuery(query);
-    return CollectionUtils.getFirst(result.getItems());
-  }
+    @SuppressWarnings("unchecked")
+    public <T extends InfraConfig> T findOneByType(final String type) {
+        final Query query = new Query().withFilter(Filters.eq("type", type)).withPage(new Page(0, 1));
+        final PaginatedResult<T> result = (PaginatedResult<T>) findByQuery(query);
+        return CollectionUtils.getFirst(result.getItems());
+    }
 }

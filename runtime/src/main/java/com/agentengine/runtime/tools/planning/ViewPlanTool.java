@@ -9,16 +9,17 @@ import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
 public final class ViewPlanTool extends Tool {
-  private static final String TOOL_NAME = "view_plan";
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
-      "View the complete plan including all tasks, their statuses, and results.", Map.of());
+    private static final String TOOL_NAME = "view_plan";
+    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
+            TOOL_NAME, "View the complete plan including all tasks, their statuses, and results.", Map.of());
 
-  public ViewPlanTool() {
-    super(DESCRIPTOR);
-  }
+    public ViewPlanTool() {
+        super(DESCRIPTOR);
+    }
 
-  public Plan execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true) ToolContext toolContext) {
-    return RunUtils.getOrInitState(toolContext.invocationContext()).plan();
-  }
+    public Plan execute(
+            @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+                    ToolContext toolContext) {
+        return RunUtils.getOrInitState(toolContext.invocationContext()).plan();
+    }
 }

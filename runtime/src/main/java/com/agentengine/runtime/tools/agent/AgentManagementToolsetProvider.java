@@ -11,14 +11,18 @@ import java.util.Map;
 @Singleton
 public final class AgentManagementToolsetProvider extends AbstractToolsetProvider {
 
-  private static final ToolDescriptor TOOLSET_DESCRIPTOR = new ToolDescriptor("agent_tools",
-      "Tools for spawning child agents, sending follow-up work, and awaiting their results.", Map.of());
+    private static final ToolDescriptor TOOLSET_DESCRIPTOR = new ToolDescriptor(
+            "agent_tools",
+            "Tools for spawning child agents, sending follow-up work, and awaiting their results.",
+            Map.of());
 
-  @Inject
-  public AgentManagementToolsetProvider(final SessionActorFactory actorFactory) {
-    super(TOOLSET_DESCRIPTOR,
-        List.of(new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorFactory)),
-            new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorFactory)),
-            new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorFactory))));
-  }
+    @Inject
+    public AgentManagementToolsetProvider(final SessionActorFactory actorFactory) {
+        super(
+                TOOLSET_DESCRIPTOR,
+                List.of(
+                        new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorFactory)),
+                        new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorFactory)),
+                        new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorFactory))));
+    }
 }

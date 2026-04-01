@@ -7,25 +7,26 @@ import java.util.Map;
 
 public final class RunUtils {
 
-  private RunUtils() {
-  }
+    private RunUtils() {}
 
-  public static RunState getOrInitState(final InvocationContext context) {
-    final Map<String, BaseAgentState> agentStates = context.agentStates();
-    final String agentId = agentId(context);
-    final Object rawState = ((Map<?, ?>) agentStates).get(agentId);
-    if (rawState instanceof RunState runState) {
-      return runState;
+    public static RunState getOrInitState(final InvocationContext context) {
+        final Map<String, BaseAgentState> agentStates = context.agentStates();
+        final String agentId = agentId(context);
+        final Object rawState = ((Map<?, ?>) agentStates).get(agentId);
+        if (rawState instanceof RunState runState) {
+            return runState;
+        }
+        final RunState created = RunState.buildFrom(context.session().events());
+        agentStates.put(agentId, created);
+        return created;
     }
-    final RunState created = RunState.buildFrom(context.session().events());
-    agentStates.put(agentId, created);
-    return created;
-  }
 
-  private static String agentId(final InvocationContext context) {
-    if (context == null || context.agent() == null || StringUtils.isBlank(context.agent().name())) {
-      return "unknown";
+    private static String agentId(final InvocationContext context) {
+        if (context == null
+                || context.agent() == null
+                || StringUtils.isBlank(context.agent().name())) {
+            return "unknown";
+        }
+        return context.agent().name();
     }
-    return context.agent().name();
-  }
 }

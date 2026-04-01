@@ -2,30 +2,29 @@ package com.agentengine.runtime.session.events;
 
 public final class ChildStartedFact extends SessionFact {
 
-  private String sessionId;
-  private String agentId;
+    private String sessionId;
+    private String agentId;
 
-  public ChildStartedFact() {
-  }
+    public ChildStartedFact() {}
 
-  public ChildStartedFact(final String sessionId, final String agentId) {
-    this.sessionId = sessionId;
-    this.agentId = agentId;
-  }
+    public ChildStartedFact(final String sessionId, final String agentId) {
+        this.sessionId = sessionId;
+        this.agentId = agentId;
+    }
 
-  public String getSessionId() {
-    return sessionId;
-  }
+    public String getSessionId() {
+        return sessionId;
+    }
 
-  public void setSessionId(final String sessionId) {
-    this.sessionId = sessionId;
-  }
+    public void setSessionId(final String sessionId) {
+        this.sessionId = sessionId;
+    }
 
-  public String getAgentId() {
-    return agentId;
-  }
+    public String getAgentId() {
+        return agentId;
+    }
 
-  public void setAgentId(final String agentId) {
-    this.agentId = agentId;
-  }
+    public void setAgentId(final String agentId) {
+        this.agentId = agentId;
+    }
 }

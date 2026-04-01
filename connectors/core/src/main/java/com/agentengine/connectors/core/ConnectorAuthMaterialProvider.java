@@ -4,5 +4,5 @@ import java.util.Map;
 
 public interface ConnectorAuthMaterialProvider {
 
-  Map<String, Object> resolve(String appName);
+    Map<String, Object> resolve(String appName);
 }

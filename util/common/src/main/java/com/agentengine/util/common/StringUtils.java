@@ -5,62 +5,64 @@ import org.apache.commons.text.StringEscapeUtils;
 
 public final class StringUtils {
 
-  private StringUtils() {
-  }
+    private StringUtils() {}
 
-  public static boolean isEmpty(final String str) {
-    return str == null || str.isEmpty();
-  }
+    public static boolean isEmpty(final String str) {
+        return str == null || str.isEmpty();
+    }
 
-  public static boolean isBlank(final String str) {
-    return str == null || str.isBlank();
-  }
+    public static boolean isBlank(final String str) {
+        return str == null || str.isBlank();
+    }
 
-  public static boolean isNotEmpty(final String str) {
-    return !isBlank(str);
-  }
+    public static boolean isNotEmpty(final String str) {
+        return !isBlank(str);
+    }
 
-  public static boolean isNotBlank(final String str) {
-    return !isBlank(str);
-  }
+    public static boolean isNotBlank(final String str) {
+        return !isBlank(str);
+    }
 
-  public static String substring(final String str, int start, int end) {
-    if (str == null) {
-      return null;
+    public static String substring(final String str, int start, int end) {
+        if (str == null) {
+            return null;
+        }
+        if (end < 0) {
+            end = str.length() + end;
+        }
+        if (start < 0) {
+            start = str.length() + start;
+        }
+        if (end > str.length()) {
+            end = str.length();
+        }
+        if (start > end) {
+            return "";
+        }
+        if (start < 0) {
+            start = 0;
+        }
+        if (end < 0) {
+            end = 0;
+        }
+        return str.substring(start, end);
     }
-    if (end < 0) {
-      end = str.length() + end;
-    }
-    if (start < 0) {
-      start = str.length() + start;
-    }
-    if (end > str.length()) {
-      end = str.length();
-    }
-    if (start > end) {
-      return "";
-    }
-    if (start < 0) {
-      start = 0;
-    }
-    if (end < 0) {
-      end = 0;
-    }
-    return str.substring(start, end);
-  }
 
-  public static int estimateTextContent(final String text) {
-    if (isBlank(text)) {
-      return 1;
+    public static int estimateTextContent(final String text) {
+        if (isBlank(text)) {
+            return 1;
+        }
+        return Math.max(1, text.trim().split("\\s+").length);
     }
-    return Math.max(1, text.trim().split("\\s+").length);
-  }
 
-  public static String joinNonBlank(final List<String> values) {
-    return values.stream().filter(StringUtils::isNotBlank).reduce((existingText, nextText) -> existingText + "\n" + nextText).orElse("");
-  }
+    public static String joinNonBlank(final List<String> values) {
+        return values.stream()
+                .filter(StringUtils::isNotBlank)
+                .reduce((existingText, nextText) -> existingText + "\n" + nextText)
+                .orElse("");
+    }
 
-  public static String wrapInQuotes(final String value) {
-    return "\"" + StringEscapeUtils.escapeJava(value) + "\"";
-  }
+    public static String wrapInQuotes(final String value) {
+        return "\"" + StringEscapeUtils.escapeJava(value) + "\"";
+    }
 }

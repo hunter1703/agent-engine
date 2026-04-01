@@ -9,17 +9,17 @@ import java.util.Map;
 
 @MicroService("agent")
 public interface AgentService {
-  PaginatedResult<BaseAgentConfig> findAgents(Query query);
+    PaginatedResult<BaseAgentConfig> findAgents(Query query);
 
-  BaseAgentConfig getAgent(String id);
+    BaseAgentConfig getAgent(String id);
 
-  Map<String, BaseAgentConfig> getAgents(Collection<String> ids);
+    Map<String, BaseAgentConfig> getAgents(Collection<String> ids);
 
-  BaseAgentConfig createAgent(BaseAgentConfig agent);
+    BaseAgentConfig createAgent(BaseAgentConfig agent);
 
-  BaseAgentConfig saveAgent(BaseAgentConfig agent);
+    BaseAgentConfig saveAgent(BaseAgentConfig agent);
 
-  BaseAgentConfig updateAgent(String id, BaseAgentConfig agent);
+    BaseAgentConfig updateAgent(String id, BaseAgentConfig agent);
 
-  boolean deleteAgent(String id);
+    boolean deleteAgent(String id);
 }

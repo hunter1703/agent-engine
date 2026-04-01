@@ -48,7 +48,8 @@ public abstract class BaseJavaConventionsPlugin {
                 "src/main/java/**/*.java",
                 "src/test/java/**/*.java",
                 "src/integrationTest/java/**/*.java");
-            java.eclipse().configFile(project.getRootProject().file("configs/spotless/eclipse.xml"));
+              java.palantirJavaFormat("2.90.0");
+//            java.eclipse().configFile(project.getRootProject().file("configs/spotless/eclipse.xml"));
             java.removeUnusedImports();
           });
 

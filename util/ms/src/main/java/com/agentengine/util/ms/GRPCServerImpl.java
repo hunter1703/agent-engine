@@ -36,184 +36,207 @@ import org.slf4j.LoggerFactory;
 @Singleton
 @GrpcService
 public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
-  private static final String NAME_PREFIX = "agent-grpc-vt-";
-  private static final ExecutorService EXECUTOR_SERVICE = newVirtualThreadExecutor(NAME_PREFIX);
-  private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
+    private static final String NAME_PREFIX = "agent-grpc-vt-";
+    private static final ExecutorService EXECUTOR_SERVICE = newVirtualThreadExecutor(NAME_PREFIX);
+    private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
 
-  private Map<String, ServiceEntry> registry = new HashMap<>();
+    private Map<String, ServiceEntry> registry = new HashMap<>();
 
-  public GRPCServerImpl() {
-  }
+    public GRPCServerImpl() {}
 
-  public GRPCServerImpl(final List<Object> services) {
-    services.forEach(instance -> {
-      final Class<?> iface = microServiceInterface(instance.getClass());
-      if (iface != null) {
-        this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
-      }
-    });
-  }
-
-  @PostConstruct
-  public void init() {
-    LOG.info("Initializing GRPCServerImpl. Scanning beans for @MicroService via Arc...");
-
-    final ArcContainer container = Arc.container();
-    this.registry = container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
-        .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
-        .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
-        .map(bean -> container.instance(bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
-        .filter(InstanceHandle::isAvailable).map(handle -> {
-          final Object instance = handle.get();
-          LOG.info("Checking instance: {}", instance.getClass().getName());
-          return instance;
-        }).flatMap(instance -> Optional.ofNullable(microServiceInterface(instance.getClass())).map(iface -> {
-          LOG.info("Discovered MicroService: {} implemented by {}", iface.getSimpleName(), instance.getClass().getName());
-          return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
-        }).stream()).collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
-
-    LOG.info("Registered MicroServices: {}", registry.keySet());
-    registry.forEach((name, entry) -> LOG.debug("  {} -> methods: {}", name, entry.methods().keySet()));
-  }
-
-  @Override
-  public void execute(final Request request, final StreamObserver<Response> responseObserver) {
-    try {
-      EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
-    } catch (final RejectedExecutionException exception) {
-      responseObserver.onError(Status.RESOURCE_EXHAUSTED.withDescription("gRPC virtual thread executor rejected request")
-          .withCause(exception).asRuntimeException());
-    }
-  }
-
-  private void executeInternal(final Request request, final StreamObserver<Response> responseObserver) {
-    final String serviceName = request.getService();
-    final String methodName = request.getMethod();
-    LOG.debug("GRPCServerImpl.execute called for {}/{}", serviceName, methodName);
-
-    final ServiceEntry entry = registry.get(serviceName);
-    if (entry == null) {
-      LOG.error("Service not found: {}. Available: {}", serviceName, registry.keySet());
-      responseObserver.onError(Status.NOT_FOUND.withDescription("Service not found: " + serviceName).asRuntimeException());
-      return;
+    public GRPCServerImpl(final List<Object> services) {
+        services.forEach(instance -> {
+            final Class<?> iface = microServiceInterface(instance.getClass());
+            if (iface != null) {
+                this.registry.put(iface.getSimpleName(), new ServiceEntry(instance, iface));
+            }
+        });
     }
 
-    final Method method = entry.methods().get(methodName);
-    if (method == null) {
-      LOG.error("Method not found: {}/{}", serviceName, methodName);
-      responseObserver.onError(Status.NOT_FOUND.withDescription("Method not found: " + methodName).asRuntimeException());
-      return;
+    @PostConstruct
+    public void init() {
+        LOG.info("Initializing GRPCServerImpl. Scanning beans for @MicroService via Arc...");
+
+        final ArcContainer container = Arc.container();
+        this.registry = container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
+                .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
+                .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
+                .map(bean -> container.instance(
+                        bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
+                .filter(InstanceHandle::isAvailable)
+                .map(handle -> {
+                    final Object instance = handle.get();
+                    LOG.info("Checking instance: {}", instance.getClass().getName());
+                    return instance;
+                })
+                .flatMap(instance -> Optional.ofNullable(microServiceInterface(instance.getClass()))
+                        .map(iface -> {
+                            LOG.info(
+                                    "Discovered MicroService: {} implemented by {}",
+                                    iface.getSimpleName(),
+                                    instance.getClass().getName());
+                            return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
+                        })
+                        .stream())
+                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue, (first, __) -> first));
+
+        LOG.info("Registered MicroServices: {}", registry.keySet());
+        registry.forEach((name, entry) ->
+                LOG.debug("  {} -> methods: {}", name, entry.methods().keySet()));
     }
 
-    try {
-      final Object[] args = deserializeArgs(request, method);
-      Object result = method.invoke(entry.bean(), args);
-      if (result instanceof Optional<?> optional) {
-        result = optional.orElse(null);
-      }
-      sendResult(result, responseObserver);
-    } catch (final Exception exception) {
-      LOG.error("Error executing {}/{}", serviceName, methodName, exception);
-      responseObserver.onError(rootCauseStatus(exception).asRuntimeException());
-    }
-  }
-
-  private static Throwable rootCause(final Throwable throwable) {
-    Throwable current = throwable;
-    while (current.getCause() != null && current.getCause() != current) {
-      current = current.getCause();
-    }
-    return current;
-  }
-
-  private static Status rootCauseStatus(final Throwable throwable) {
-    final Throwable cause = rootCause(throwable);
-    if (cause instanceof AssetNotFoundException) {
-      return Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
-    }
-    if (cause instanceof DuplicateAssetException) {
-      return Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
-    }
-    if (cause instanceof IllegalArgumentException || cause instanceof ConfigurationException) {
-      return Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
-    }
-    return Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
-  }
-
-  private static Class<?> microServiceInterface(final Class<?> clazz) {
-    if (clazz == null || clazz == Object.class) {
-      return null;
-    }
-    for (final Class<?> iface : clazz.getInterfaces()) {
-      if (iface.isAnnotationPresent(MicroService.class)) {
-        return iface;
-      }
-      final Class<?> found = microServiceInterface(iface);
-      if (found != null) {
-        return found;
-      }
-    }
-    return microServiceInterface(clazz.getSuperclass());
-  }
-
-  @SuppressWarnings("unchecked")
-  private Object[] deserializeArgs(final Request request, final Method method) {
-    final int paramCount = method.getParameterCount();
-    if (paramCount == 0 || request.getPayload().isEmpty()) {
-      return new Object[paramCount];
+    @Override
+    public void execute(final Request request, final StreamObserver<Response> responseObserver) {
+        try {
+            EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
+        } catch (final RejectedExecutionException exception) {
+            responseObserver.onError(Status.RESOURCE_EXHAUSTED
+                    .withDescription("gRPC virtual thread executor rejected request")
+                    .withCause(exception)
+                    .asRuntimeException());
+        }
     }
 
-    final Object[] rawArgs = JsonUtils.fromJson(request.getPayload().toStringUtf8(), Object[].class);
-    if (rawArgs == null) {
-      return new Object[paramCount];
+    private void executeInternal(final Request request, final StreamObserver<Response> responseObserver) {
+        final String serviceName = request.getService();
+        final String methodName = request.getMethod();
+        LOG.debug("GRPCServerImpl.execute called for {}/{}", serviceName, methodName);
+
+        final ServiceEntry entry = registry.get(serviceName);
+        if (entry == null) {
+            LOG.error("Service not found: {}. Available: {}", serviceName, registry.keySet());
+            responseObserver.onError(Status.NOT_FOUND
+                    .withDescription("Service not found: " + serviceName)
+                    .asRuntimeException());
+            return;
+        }
+
+        final Method method = entry.methods().get(methodName);
+        if (method == null) {
+            LOG.error("Method not found: {}/{}", serviceName, methodName);
+            responseObserver.onError(Status.NOT_FOUND
+                    .withDescription("Method not found: " + methodName)
+                    .asRuntimeException());
+            return;
+        }
+
+        try {
+            final Object[] args = deserializeArgs(request, method);
+            Object result = method.invoke(entry.bean(), args);
+            if (result instanceof Optional<?> optional) {
+                result = optional.orElse(null);
+            }
+            sendResult(result, responseObserver);
+        } catch (final Exception exception) {
+            LOG.error("Error executing {}/{}", serviceName, methodName, exception);
+            responseObserver.onError(rootCauseStatus(exception).asRuntimeException());
+        }
     }
 
-    final Class<?>[] paramTypes = method.getParameterTypes();
-    final Object[] typedArgs = new Object[paramCount];
-    for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
-      if (rawArgs[index] instanceof Map<?, ?> argumentMap) {
-        typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) argumentMap, paramTypes[index]);
-      } else {
-        typedArgs[index] = rawArgs[index];
-      }
+    private static Throwable rootCause(final Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
     }
-    return typedArgs;
-  }
 
-  private void sendResult(final Object result, final StreamObserver<Response> observer) {
-    if (result instanceof Flowable<?> flowable) {
-      LOG.debug("Subscribing to Flowable result...");
-      flowable.subscribe(item -> {
-        LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
-        sendPayload(observer, item);
-      }, err -> {
-        LOG.error("Flowable error", err);
-        observer.onError(rootCauseStatus(err).asRuntimeException());
-      }, () -> {
-        LOG.debug("Flowable complete");
+    private static Status rootCauseStatus(final Throwable throwable) {
+        final Throwable cause = rootCause(throwable);
+        if (cause instanceof AssetNotFoundException) {
+            return Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
+        }
+        if (cause instanceof DuplicateAssetException) {
+            return Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
+        }
+        if (cause instanceof IllegalArgumentException || cause instanceof ConfigurationException) {
+            return Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
+        }
+        return Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
+    }
+
+    private static Class<?> microServiceInterface(final Class<?> clazz) {
+        if (clazz == null || clazz == Object.class) {
+            return null;
+        }
+        for (final Class<?> iface : clazz.getInterfaces()) {
+            if (iface.isAnnotationPresent(MicroService.class)) {
+                return iface;
+            }
+            final Class<?> found = microServiceInterface(iface);
+            if (found != null) {
+                return found;
+            }
+        }
+        return microServiceInterface(clazz.getSuperclass());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object[] deserializeArgs(final Request request, final Method method) {
+        final int paramCount = method.getParameterCount();
+        if (paramCount == 0 || request.getPayload().isEmpty()) {
+            return new Object[paramCount];
+        }
+
+        final Object[] rawArgs = JsonUtils.fromJson(request.getPayload().toStringUtf8(), Object[].class);
+        if (rawArgs == null) {
+            return new Object[paramCount];
+        }
+
+        final Class<?>[] paramTypes = method.getParameterTypes();
+        final Object[] typedArgs = new Object[paramCount];
+        for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
+            if (rawArgs[index] instanceof Map<?, ?> argumentMap) {
+                typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) argumentMap, paramTypes[index]);
+            } else {
+                typedArgs[index] = rawArgs[index];
+            }
+        }
+        return typedArgs;
+    }
+
+    private void sendResult(final Object result, final StreamObserver<Response> observer) {
+        if (result instanceof Flowable<?> flowable) {
+            LOG.debug("Subscribing to Flowable result...");
+            flowable.subscribe(
+                    item -> {
+                        LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
+                        sendPayload(observer, item);
+                    },
+                    err -> {
+                        LOG.error("Flowable error", err);
+                        observer.onError(rootCauseStatus(err).asRuntimeException());
+                    },
+                    () -> {
+                        LOG.debug("Flowable complete");
+                        observer.onCompleted();
+                    });
+            return;
+        }
+        if (result != null) {
+            sendPayload(observer, result);
+        }
         observer.onCompleted();
-      });
-      return;
     }
-    if (result != null) {
-      sendPayload(observer, result);
+
+    private void sendPayload(final StreamObserver<Response> observer, final Object value) {
+        observer.onNext(Response.newBuilder()
+                .setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value, true)))
+                .build());
     }
-    observer.onCompleted();
-  }
 
-  private void sendPayload(final StreamObserver<Response> observer, final Object value) {
-    observer.onNext(Response.newBuilder().setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value, true))).build());
-  }
-
-  private static ExecutorService newVirtualThreadExecutor(final String namePrefix) {
-    final ThreadFactory factory = Thread.ofVirtual().name(namePrefix, 0).factory();
-    return Executors.newThreadPerTaskExecutor(factory);
-  }
-
-  private record ServiceEntry(Object bean, Map<String, Method> methods) {
-    private ServiceEntry(final Object bean, final Class<?> iface) {
-      this(bean,
-          Arrays.stream(iface.getMethods()).collect(Collectors.toUnmodifiableMap(Method::getName, method -> method, (first, __) -> first)));
+    private static ExecutorService newVirtualThreadExecutor(final String namePrefix) {
+        final ThreadFactory factory = Thread.ofVirtual().name(namePrefix, 0).factory();
+        return Executors.newThreadPerTaskExecutor(factory);
     }
-  }
+
+    private record ServiceEntry(Object bean, Map<String, Method> methods) {
+        private ServiceEntry(final Object bean, final Class<?> iface) {
+            this(
+                    bean,
+                    Arrays.stream(iface.getMethods())
+                            .collect(Collectors.toUnmodifiableMap(
+                                    Method::getName, method -> method, (first, __) -> first)));
+        }
+    }
 }

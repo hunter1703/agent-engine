@@ -7,16 +7,13 @@ import org.apache.pekko.persistence.typed.javadsl.EventHandler;
 import org.apache.pekko.persistence.typed.javadsl.EventSourcedBehavior;
 
 /**
- * Abstract base for cluster-sharded, event-sourced entities. Subclasses provide
- * only domain logic via {@link #commandHandler()} and {@link #eventHandler()}.
- * All Pekko boilerplate (persistence ID, snapshot retention, sharding
- * registration) lives here
+ * Abstract base for cluster-sharded, event-sourced entities. Subclasses provide only domain logic
+ * via {@link #commandHandler()} and {@link #eventHandler()}. All Pekko boilerplate (persistence ID,
+ * snapshot retention, sharding registration) lives here
  *
- * <p>
- * Concrete subclass pattern:
+ * <p>Concrete subclass pattern:
  *
- * <pre>
- * {@code
+ * <pre>{@code
  * public class FooEntity extends ShardedEntity<FooEntity.Command, FooEntity.Event, FooEntity.State> {
  *   static final EntityTypeKey<Command> TYPE_KEY = EntityTypeKey.create(Command.class, "Foo");
  *
@@ -34,47 +31,39 @@ import org.apache.pekko.persistence.typed.javadsl.EventSourcedBehavior;
  *     return ClusterSharding.get(system).entityRefFor(TYPE_KEY, id);
  *   }
  * }
- * }
- * </pre>
+ * }</pre>
  *
- * @param <Command>
- *          command type
- * @param <Event>
- *          event type
- * @param <State>
- *          state type
+ * @param <Command> command type
+ * @param <Event> event type
+ * @param <State> state type
  */
 public abstract class ShardedEntity<Command, Event, State> extends EventSourcedBehavior<Command, Event, State> {
 
-  /**
-   * Derives the persistence ID from the type key name and the shard entity ID,
-   * following the Pekko convention of
-   * {@code PersistenceId.of(typeKey.name(), entityId)}.
-   *
-   * <p>
-   * Note: {@code getClass().getSimpleName()} cannot be used here because
-   * {@code getClass()} is not accessible before the supertype constructor
-   * completes. Pass {@code TYPE_KEY.name()} as {@code typeKeyName}.
-   *
-   * @param typeKeyName
-   *          the entity type key name — pass {@code TYPE_KEY.name()}
-   * @param entityId
-   *          the shard entity ID
-   */
-  protected ShardedEntity(final String typeKeyName, final String entityId) {
-    super(PersistenceId.of(typeKeyName, entityId));
-  }
+    /**
+     * Derives the persistence ID from the type key name and the shard entity ID, following the Pekko
+     * convention of {@code PersistenceId.of(typeKey.name(), entityId)}.
+     *
+     * <p>Note: {@code getClass().getSimpleName()} cannot be used here because {@code getClass()} is
+     * not accessible before the supertype constructor completes. Pass {@code TYPE_KEY.name()} as
+     * {@code typeKeyName}.
+     *
+     * @param typeKeyName the entity type key name — pass {@code TYPE_KEY.name()}
+     * @param entityId the shard entity ID
+     */
+    protected ShardedEntity(final String typeKeyName, final String entityId) {
+        super(PersistenceId.of(typeKeyName, entityId));
+    }
 
-  @Override
-  public abstract State emptyState();
+    @Override
+    public abstract State emptyState();
 
-  @Override
-  public abstract CommandHandler<Command, Event, State> commandHandler();
+    @Override
+    public abstract CommandHandler<Command, Event, State> commandHandler();
 
-  @Override
-  public abstract EventHandler<State, Event> eventHandler();
+    @Override
+    public abstract EventHandler<State, Event> eventHandler();
 
-  public interface ShardedEntityDefinition<M, E> {
-    Entity<M, E> entity();
-  }
+    public interface ShardedEntityDefinition<M, E> {
+        Entity<M, E> entity();
+    }
 }

@@ -3,14 +3,14 @@ package com.agentengine.interfaces.rest;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
 import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -40,118 +40,138 @@ import org.reactivestreams.Publisher;
 @Tag(name = "Agent", description = "Agent Management and Execution APIs")
 @RunOnVirtualThread
 public class AgentRestAPI {
-  private final AgentService agentService;
-  private final SessionService sessionService;
-  private final AgentExecutionService agentExecutionService;
+    private final AgentService agentService;
+    private final SessionService sessionService;
+    private final AgentExecutionService agentExecutionService;
 
-  @Inject
-  public AgentRestAPI(final AgentService agentService, final SessionService sessionService,
-      final AgentExecutionService agentExecutionService) {
-    this.agentService = agentService;
-    this.sessionService = sessionService;
-    this.agentExecutionService = agentExecutionService;
-  }
+    @Inject
+    public AgentRestAPI(
+            final AgentService agentService,
+            final SessionService sessionService,
+            final AgentExecutionService agentExecutionService) {
+        this.agentService = agentService;
+        this.sessionService = sessionService;
+        this.agentExecutionService = agentExecutionService;
+    }
 
-  @POST
-  @Path("/events")
-  @Produces(SERVER_SENT_EVENTS)
-  @RestStreamElementType(APPLICATION_JSON)
-  @Operation(summary = "Stream agent events")
-  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format", content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
-  @APIResponse(responseCode = "400", description = "Invalid request parameters")
-  @APIResponse(responseCode = "404", description = "Agent not found")
-  @APIResponse(responseCode = "500", description = "Internal server error")
-  public Publisher<BaseEvent> events(@Valid final AgentRequest request) {
-    if (agentService.getAgent(request.getAgentId()) == null) {
-      throw new AssetNotFoundException(AssetClass.AGENT, request.getAgentId());
+    @POST
+    @Path("/events")
+    @Produces(SERVER_SENT_EVENTS)
+    @RestStreamElementType(APPLICATION_JSON)
+    @Operation(summary = "Stream agent events")
+    @APIResponse(
+            responseCode = "200",
+            description = "SSE event stream in AG-UI format",
+            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
+    @APIResponse(responseCode = "400", description = "Invalid request parameters")
+    @APIResponse(responseCode = "404", description = "Agent not found")
+    @APIResponse(responseCode = "500", description = "Internal server error")
+    public Publisher<BaseEvent> events(@Valid final AgentRequest request) {
+        if (agentService.getAgent(request.getAgentId()) == null) {
+            throw new AssetNotFoundException(AssetClass.AGENT, request.getAgentId());
+        }
+        return agentExecutionService.run(request.getAgentId(), request.getMessage());
     }
-    return agentExecutionService.run(request.getAgentId(), request.getMessage());
-  }
 
-  @POST
-  @Path("/")
-  @Operation(summary = "Create an agent")
-  @APIResponse(responseCode = "201", description = "Agent created", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
-  @APIResponse(responseCode = "409", description = "Agent already exists")
-  public BaseAgentConfig createAgent(final BaseAgentConfig agentConfig) {
-    if (agentConfig == null) {
-      throw new IllegalArgumentException("Agent config is required");
+    @POST
+    @Path("/")
+    @Operation(summary = "Create an agent")
+    @APIResponse(
+            responseCode = "201",
+            description = "Agent created",
+            content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+    @APIResponse(responseCode = "409", description = "Agent already exists")
+    public BaseAgentConfig createAgent(final BaseAgentConfig agentConfig) {
+        if (agentConfig == null) {
+            throw new IllegalArgumentException("Agent config is required");
+        }
+        return agentService.createAgent(agentConfig);
     }
-    return agentService.createAgent(agentConfig);
-  }
 
-  @POST
-  @Path("/upsert")
-  @Operation(summary = "Upsert an agent")
-  @APIResponse(responseCode = "200", description = "Agent created or updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
-  public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
-    if (agentConfig == null) {
-      throw new WebApplicationException("Agent config is required", 400);
+    @POST
+    @Path("/upsert")
+    @Operation(summary = "Upsert an agent")
+    @APIResponse(
+            responseCode = "200",
+            description = "Agent created or updated",
+            content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+    public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
+        if (agentConfig == null) {
+            throw new WebApplicationException("Agent config is required", 400);
+        }
+        if (StringUtils.isBlank(agentConfig.getId())) {
+            throw new IllegalArgumentException("Agent ID is required");
+        }
+        return agentService.saveAgent(agentConfig);
     }
-    if (StringUtils.isBlank(agentConfig.getId())) {
-      throw new IllegalArgumentException("Agent ID is required");
-    }
-    return agentService.saveAgent(agentConfig);
-  }
 
-  @PUT
-  @Path("/{agentId}")
-  @Operation(summary = "Update an agent")
-  @APIResponse(responseCode = "200", description = "Agent updated", content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
-  @APIResponse(responseCode = "400", description = "Path agentId must match payload id")
-  @APIResponse(responseCode = "404", description = "Agent not found")
-  public BaseAgentConfig updateAgent(@PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
-    if (agentConfig == null) {
-      throw new IllegalArgumentException("Agent config is required");
+    @PUT
+    @Path("/{agentId}")
+    @Operation(summary = "Update an agent")
+    @APIResponse(
+            responseCode = "200",
+            description = "Agent updated",
+            content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+    @APIResponse(responseCode = "400", description = "Path agentId must match payload id")
+    @APIResponse(responseCode = "404", description = "Agent not found")
+    public BaseAgentConfig updateAgent(@PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
+        if (agentConfig == null) {
+            throw new IllegalArgumentException("Agent config is required");
+        }
+        if (StringUtils.isBlank(agentId)) {
+            throw new IllegalArgumentException("Agent ID is required");
+        }
+        if (StringUtils.isNotBlank(agentConfig.getId()) && !agentId.equals(agentConfig.getId())) {
+            throw new IllegalArgumentException("Path agentId must match payload id");
+        }
+        return agentService.updateAgent(agentId, agentConfig);
     }
-    if (StringUtils.isBlank(agentId)) {
-      throw new IllegalArgumentException("Agent ID is required");
-    }
-    if (StringUtils.isNotBlank(agentConfig.getId()) && !agentId.equals(agentConfig.getId())) {
-      throw new IllegalArgumentException("Path agentId must match payload id");
-    }
-    return agentService.updateAgent(agentId, agentConfig);
-  }
 
-  @DELETE
-  @Path("/{agentId}")
-  @Operation(summary = "Delete an agent")
-  @APIResponse(responseCode = "204", description = "Agent deleted")
-  @APIResponse(responseCode = "404", description = "Agent not found")
-  public boolean deleteAgent(@PathParam("agentId") final String agentId) {
-    if (StringUtils.isBlank(agentId)) {
-      throw new IllegalArgumentException("Agent ID is required");
+    @DELETE
+    @Path("/{agentId}")
+    @Operation(summary = "Delete an agent")
+    @APIResponse(responseCode = "204", description = "Agent deleted")
+    @APIResponse(responseCode = "404", description = "Agent not found")
+    public boolean deleteAgent(@PathParam("agentId") final String agentId) {
+        if (StringUtils.isBlank(agentId)) {
+            throw new IllegalArgumentException("Agent ID is required");
+        }
+        final boolean deleted = agentService.deleteAgent(agentId);
+        if (!deleted) {
+            throw new AssetNotFoundException(AssetClass.AGENT, agentId);
+        }
+        return true;
     }
-    final boolean deleted = agentService.deleteAgent(agentId);
-    if (!deleted) {
-      throw new AssetNotFoundException(AssetClass.AGENT, agentId);
-    }
-    return true;
-  }
 
-  @POST
-  @Path("/session/resume/events")
-  @Produces(SERVER_SENT_EVENTS)
-  @RestStreamElementType(APPLICATION_JSON)
-  @Operation(summary = "Resume a paused session and stream events")
-  @APIResponse(responseCode = "200", description = "SSE event stream in AG-UI format", content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
-  @APIResponse(responseCode = "400", description = "Invalid resume payload")
-  @APIResponse(responseCode = "404", description = "Session not found")
-  @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
-  public Publisher<BaseEvent> resumeEvents(@Valid @NotNull final ResumeSessionRequest resumeRequest) {
-    return agentExecutionService.resumeSession(resumeRequest.getSessionId(), resumeRequest.getConfirmationId(),
-        resumeRequest.getConfirmed(), resumeRequest.getMessage());
-  }
-
-  @DELETE
-  @Path("/session/{sessionId}")
-  @Operation(summary = "Delete a session")
-  @APIResponse(responseCode = "204", description = "Session deleted")
-  @APIResponse(responseCode = "404", description = "Session not found")
-  public void deleteSession(@PathParam("sessionId") final String sessionId) {
-    if (StringUtils.isBlank(sessionId)) {
-      throw new IllegalArgumentException("Session ID is required");
+    @POST
+    @Path("/session/resume/events")
+    @Produces(SERVER_SENT_EVENTS)
+    @RestStreamElementType(APPLICATION_JSON)
+    @Operation(summary = "Resume a paused session and stream events")
+    @APIResponse(
+            responseCode = "200",
+            description = "SSE event stream in AG-UI format",
+            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
+    @APIResponse(responseCode = "400", description = "Invalid resume payload")
+    @APIResponse(responseCode = "404", description = "Session not found")
+    @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
+    public Publisher<BaseEvent> resumeEvents(@Valid @NotNull final ResumeSessionRequest resumeRequest) {
+        return agentExecutionService.resumeSession(
+                resumeRequest.getSessionId(),
+                resumeRequest.getConfirmationId(),
+                resumeRequest.getConfirmed(),
+                resumeRequest.getMessage());
     }
-    sessionService.deleteSession(sessionId);
-  }
+
+    @DELETE
+    @Path("/session/{sessionId}")
+    @Operation(summary = "Delete a session")
+    @APIResponse(responseCode = "204", description = "Session deleted")
+    @APIResponse(responseCode = "404", description = "Session not found")
+    public void deleteSession(@PathParam("sessionId") final String sessionId) {
+        if (StringUtils.isBlank(sessionId)) {
+            throw new IllegalArgumentException("Session ID is required");
+        }
+        sessionService.deleteSession(sessionId);
+    }
 }

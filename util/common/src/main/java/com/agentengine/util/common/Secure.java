@@ -6,11 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that a field contains sensitive data and should be encrypted when
- * persisted. This annotation is strictly for persistence-layer encryption and
- * does not affect in-memory structures.
+ * Indicates that a field contains sensitive data and should be encrypted when persisted. This
+ * annotation is strictly for persistence-layer encryption and does not affect in-memory structures.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD})
-public @interface Secure {
-}
+public @interface Secure {}

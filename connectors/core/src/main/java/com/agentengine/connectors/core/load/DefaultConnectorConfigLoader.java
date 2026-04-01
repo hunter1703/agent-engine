@@ -10,38 +10,38 @@ import java.nio.file.Path;
 @Singleton
 public final class DefaultConnectorConfigLoader implements ConnectorConfigLoader {
 
-  @Override
-  public ConnectorDefinition load(final Path path) {
-    try {
-      final String content = Files.readString(path);
-      return parse(content);
-    } catch (IOException ex) {
-      throw new ConnectorConfigLoadException("Failed to load connector config from path: " + path, ex);
+    @Override
+    public ConnectorDefinition load(final Path path) {
+        try {
+            final String content = Files.readString(path);
+            return parse(content);
+        } catch (IOException ex) {
+            throw new ConnectorConfigLoadException("Failed to load connector config from path: " + path, ex);
+        }
     }
-  }
 
-  @Override
-  public ConnectorDefinition load(final String rawConfig) {
-    try {
-      return parse(rawConfig);
-    } catch (RuntimeException ex) {
-      throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
+    @Override
+    public ConnectorDefinition load(final String rawConfig) {
+        try {
+            return parse(rawConfig);
+        } catch (RuntimeException ex) {
+            throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
+        }
     }
-  }
 
-  private ConnectorDefinition parse(final String content) {
-    try {
-      return JsonUtils.fromJson(content, ConnectorDefinition.class);
-    } catch (RuntimeException ex) {
-      throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
+    private ConnectorDefinition parse(final String content) {
+        try {
+            return JsonUtils.fromJson(content, ConnectorDefinition.class);
+        } catch (RuntimeException ex) {
+            throw new ConnectorConfigLoadException("Failed to parse connector config", ex);
+        }
     }
-  }
 
-  private static boolean looksLikeJson(final String content) {
-    if (content == null) {
-      return false;
+    private static boolean looksLikeJson(final String content) {
+        if (content == null) {
+            return false;
+        }
+        final String trimmed = content.trim();
+        return trimmed.startsWith("{") || trimmed.startsWith("[");
     }
-    final String trimmed = content.trim();
-    return trimmed.startsWith("{") || trimmed.startsWith("[");
-  }
 }

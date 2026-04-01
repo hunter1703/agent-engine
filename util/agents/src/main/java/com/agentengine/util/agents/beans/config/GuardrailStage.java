@@ -4,21 +4,21 @@ import java.util.Locale;
 
 /** Runtime stage at which a guardrail rule is evaluated. */
 public enum GuardrailStage {
-  /** Fallback for invalid or missing config values. */
-  UNKNOWN,
-  /** Evaluate before agent execution starts (user input validation). */
-  INPUT,
-  /** Evaluate before model output is emitted to the client. */
-  OUTPUT;
+    /** Fallback for invalid or missing config values. */
+    UNKNOWN,
+    /** Evaluate before agent execution starts (user input validation). */
+    INPUT,
+    /** Evaluate before model output is emitted to the client. */
+    OUTPUT;
 
-  public static GuardrailStage valueOfOrDefault(final String value) {
-    if (value == null || value.isBlank()) {
-      return UNKNOWN;
+    public static GuardrailStage valueOfOrDefault(final String value) {
+        if (value == null || value.isBlank()) {
+            return UNKNOWN;
+        }
+        try {
+            return GuardrailStage.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return UNKNOWN;
+        }
     }
-    try {
-      return GuardrailStage.valueOf(value.trim().toUpperCase(Locale.ROOT));
-    } catch (IllegalArgumentException ex) {
-      return UNKNOWN;
-    }
-  }
 }

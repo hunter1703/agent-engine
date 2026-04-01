@@ -5,7 +5,7 @@ import java.nio.file.Path;
 
 public interface ConnectorConfigLoader {
 
-  ConnectorDefinition load(Path path);
+    ConnectorDefinition load(Path path);
 
-  ConnectorDefinition load(String rawConfig);
+    ConnectorDefinition load(String rawConfig);
 }

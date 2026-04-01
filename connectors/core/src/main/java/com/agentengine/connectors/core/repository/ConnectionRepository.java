@@ -15,17 +15,19 @@ import jakarta.inject.Singleton;
 @Singleton
 public class ConnectionRepository extends AbstractMongoRepository<Connection> {
 
-  @Inject
-  public ConnectionRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-    super(mongoClientFactory, "Connection", Connection.class, validationService);
-  }
-
-  public Connection findByAppName(final String appName) {
-    if (appName == null || appName.isBlank()) {
-      return null;
+    @Inject
+    public ConnectionRepository(
+            final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+        super(mongoClientFactory, "Connection", Connection.class, validationService);
     }
-    final Query query = new Query().withFilter(Filters.eq("appName", appName)).withPage(new Page(0, 1));
-    final PaginatedResult<Connection> result = findByQuery(query);
-    return CollectionUtils.getFirst(result.getItems());
-  }
+
+    public Connection findByAppName(final String appName) {
+        if (appName == null || appName.isBlank()) {
+            return null;
+        }
+        final Query query =
+                new Query().withFilter(Filters.eq("appName", appName)).withPage(new Page(0, 1));
+        final PaginatedResult<Connection> result = findByQuery(query);
+        return CollectionUtils.getFirst(result.getItems());
+    }
 }

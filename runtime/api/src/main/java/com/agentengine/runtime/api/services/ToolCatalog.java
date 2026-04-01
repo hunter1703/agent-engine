@@ -6,7 +6,7 @@ import java.util.List;
 
 @MicroService("runtime")
 public interface ToolCatalog {
-  List<ToolDescriptor> getTools();
+    List<ToolDescriptor> getTools();
 
-  ToolDescriptor getToolByName(String toolName);
+    ToolDescriptor getToolByName(String toolName);
 }

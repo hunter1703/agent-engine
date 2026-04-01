@@ -11,23 +11,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class DelegatingLLMModel extends AbstractLLM {
-  private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
-  private final BaseLlm delegate;
+    private static final Logger LOG = LoggerFactory.getLogger(DelegatingLLMModel.class);
+    private final BaseLlm delegate;
 
-  public DelegatingLLMModel(final BaseLlm delegate, final Parser parser) {
-    super(Objects.requireNonNull(delegate, "delegate cannot be null").model(), parser);
-    this.delegate = delegate;
-  }
+    public DelegatingLLMModel(final BaseLlm delegate, final Parser parser) {
+        super(Objects.requireNonNull(delegate, "delegate cannot be null").model(), parser);
+        this.delegate = delegate;
+    }
 
-  @Override
-  public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
-    final LlmRequest requestForModel = parser.preProcess(llmRequest);
-    LOG.debug("Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
-    return delegate.generateContent(requestForModel, stream).map(parser::postProcess);
-  }
+    @Override
+    public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
+        final LlmRequest requestForModel = parser.preProcess(llmRequest);
+        LOG.debug("Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
+        return delegate.generateContent(requestForModel, stream).map(parser::postProcess);
+    }
 
-  @Override
-  public BaseLlmConnection connect(final LlmRequest llmRequest) {
-    return delegate.connect(llmRequest);
-  }
+    @Override
+    public BaseLlmConnection connect(final LlmRequest llmRequest) {
+        return delegate.connect(llmRequest);
+    }
 }

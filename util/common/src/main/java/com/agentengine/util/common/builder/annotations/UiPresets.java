@@ -11,10 +11,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface UiPresets {
-  /**
-   * Presets declared for the annotated type.
-   *
-   * @return preset definitions
-   */
-  UiPreset[] value();
+    /**
+     * Presets declared for the annotated type.
+     *
+     * @return preset definitions
+     */
+    UiPreset[] value();
 }

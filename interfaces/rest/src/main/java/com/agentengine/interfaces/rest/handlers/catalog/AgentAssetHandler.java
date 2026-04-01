@@ -1,8 +1,8 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
+import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.query.PaginatedResult;
 import jakarta.inject.Inject;
@@ -12,25 +12,25 @@ import java.util.Map;
 @Singleton
 public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
 
-  private final AgentService agentService;
+    private final AgentService agentService;
 
-  @Inject
-  public AgentAssetHandler(AgentService agentService) {
-    this.agentService = agentService;
-  }
+    @Inject
+    public AgentAssetHandler(AgentService agentService) {
+        this.agentService = agentService;
+    }
 
-  @Override
-  public String getAssetType() {
-    return AssetClass.AGENT;
-  }
+    @Override
+    public String getAssetType() {
+        return AssetClass.AGENT;
+    }
 
-  @Override
-  public PaginatedResult<BaseAgentConfig> findAssets(AssetRequest request) {
-    return agentService.findAgents(request.getQuery());
-  }
+    @Override
+    public PaginatedResult<BaseAgentConfig> findAssets(AssetRequest request) {
+        return agentService.findAgents(request.getQuery());
+    }
 
-  @Override
-  public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
-    return agentService.getAgents(request.getKeys());
-  }
+    @Override
+    public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
+        return agentService.getAgents(request.getKeys());
+    }
 }

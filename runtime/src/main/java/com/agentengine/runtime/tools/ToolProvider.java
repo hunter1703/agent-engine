@@ -6,7 +6,7 @@ import java.util.Map;
 
 public interface ToolProvider {
 
-  ToolDescriptor descriptor();
+    ToolDescriptor descriptor();
 
-  BaseTool create(Map<String, Object> toolConfig);
+    BaseTool create(Map<String, Object> toolConfig);
 }

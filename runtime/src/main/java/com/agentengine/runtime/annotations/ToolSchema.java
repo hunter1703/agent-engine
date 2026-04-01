@@ -11,11 +11,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.RECORD_COMPONENT})
 public @interface ToolSchema {
-  String name() default "";
+    String name() default "";
 
-  String description() default "";
+    String description() default "";
 
-  boolean optional() default false;
+    boolean optional() default false;
 
-  String[] enums() default {};
+    String[] enums() default {};
 }

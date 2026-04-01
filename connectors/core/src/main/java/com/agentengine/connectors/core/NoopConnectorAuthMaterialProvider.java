@@ -4,8 +4,8 @@ import java.util.Map;
 
 public final class NoopConnectorAuthMaterialProvider implements ConnectorAuthMaterialProvider {
 
-  @Override
-  public Map<String, Object> resolve(final String appName) {
-    return Map.of();
-  }
+    @Override
+    public Map<String, Object> resolve(final String appName) {
+        return Map.of();
+    }
 }

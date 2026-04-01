@@ -9,16 +9,14 @@ import java.lang.annotation.Target;
 /**
  * Renders the field as an async catalog lookup selector.
  *
- * <p>
- * On collection fields ({@code List}, {@code Set}, arrays) the selection mode
- * is automatically set to {@code "multiple"}; on scalar fields it is
- * {@code "single"}.
+ * <p>On collection fields ({@code List}, {@code Set}, arrays) the selection mode is automatically
+ * set to {@code "multiple"}; on scalar fields it is {@code "single"}.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiLookup {
 
-  /** Asset type to query through the resource catalog API. */
-  String assetType();
+    /** Asset type to query through the resource catalog API. */
+    String assetType();
 }

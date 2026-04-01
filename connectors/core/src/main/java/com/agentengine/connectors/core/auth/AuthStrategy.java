@@ -4,7 +4,7 @@ import com.agentengine.connectors.core.config.AuthType;
 
 public interface AuthStrategy {
 
-  AuthType type();
+    AuthType type();
 
-  void apply(AuthRequestContext requestContext);
+    void apply(AuthRequestContext requestContext);
 }

@@ -9,15 +9,15 @@ import java.util.Map;
 
 @MicroService("agent")
 public interface SessionService {
-  AgentSession getSession(String id);
+    AgentSession getSession(String id);
 
-  AgentSession getSession(String id, boolean includeEvents);
+    AgentSession getSession(String id, boolean includeEvents);
 
-  Map<String, AgentSession> getSessions(Collection<String> ids);
+    Map<String, AgentSession> getSessions(Collection<String> ids);
 
-  Map<String, AgentSession> getSessions(Collection<String> ids, boolean includeEvents);
+    Map<String, AgentSession> getSessions(Collection<String> ids, boolean includeEvents);
 
-  PaginatedResult<AgentSession> findSessions(Query query);
+    PaginatedResult<AgentSession> findSessions(Query query);
 
-  boolean deleteSession(String id);
+    boolean deleteSession(String id);
 }

@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface TemplateFunctionProvider {
 
-  String name();
+    String name();
 
-  Object apply(List<Object> args);
+    Object apply(List<Object> args);
 }

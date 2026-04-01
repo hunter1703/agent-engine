@@ -10,19 +10,19 @@ import java.util.Map;
 @Singleton
 public class ConnectorAuthMaterialProviderImpl implements ConnectorAuthMaterialProvider {
 
-  private final ConnectionRepository connectionRepository;
+    private final ConnectionRepository connectionRepository;
 
-  @Inject
-  public ConnectorAuthMaterialProviderImpl(final ConnectionRepository connectionRepository) {
-    this.connectionRepository = connectionRepository;
-  }
-
-  @Override
-  public Map<String, Object> resolve(final String appName) {
-    final Connection config = connectionRepository.findByAppName(appName);
-    if (config == null) {
-      return Map.of();
+    @Inject
+    public ConnectorAuthMaterialProviderImpl(final ConnectionRepository connectionRepository) {
+        this.connectionRepository = connectionRepository;
     }
-    return config.inputs() == null ? Map.of() : Map.copyOf(config.inputs());
-  }
+
+    @Override
+    public Map<String, Object> resolve(final String appName) {
+        final Connection config = connectionRepository.findByAppName(appName);
+        if (config == null) {
+            return Map.of();
+        }
+        return config.inputs() == null ? Map.of() : Map.copyOf(config.inputs());
+    }
 }

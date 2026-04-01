@@ -12,63 +12,79 @@ import java.util.Map;
 @Singleton
 public final class DefaultErrorClassifier implements ErrorClassifier {
 
-  private final TemplateResolver templateResolver;
+    private final TemplateResolver templateResolver;
 
-  @Inject
-  public DefaultErrorClassifier(final TemplateResolver templateResolver) {
-    this.templateResolver = templateResolver;
-  }
-
-  @Override
-  public ClassifiedError classify(final ConnectorDefinition definition, final HttpResponseData responseData) {
-    for (ErrorMappingRule mappingRule : definition.errorMappings()) {
-      if (!matches(mappingRule, responseData)) {
-        continue;
-      }
-      final String message = mappingRule.message() != null && !mappingRule.message().isBlank()
-          ? mappingRule.message()
-          : "Connector request failed";
-      final String code = mappingRule.errorCode() == null || mappingRule.errorCode().isBlank()
-          ? "HTTP_" + responseData.statusCode()
-          : mappingRule.errorCode();
-      return new ClassifiedError(code, message, mappingRule.retryable());
+    @Inject
+    public DefaultErrorClassifier(final TemplateResolver templateResolver) {
+        this.templateResolver = templateResolver;
     }
 
-    final Map<String, Object> templateVariables = Map.of("response", responseData.body(), "statusCode", responseData.statusCode(),
-        "headers", responseData.headers());
-    final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+    @Override
+    public ClassifiedError classify(final ConnectorDefinition definition, final HttpResponseData responseData) {
+        for (ErrorMappingRule mappingRule : definition.errorMappings()) {
+            if (!matches(mappingRule, responseData)) {
+                continue;
+            }
+            final String message =
+                    mappingRule.message() != null && !mappingRule.message().isBlank()
+                            ? mappingRule.message()
+                            : "Connector request failed";
+            final String code =
+                    mappingRule.errorCode() == null || mappingRule.errorCode().isBlank()
+                            ? "HTTP_" + responseData.statusCode()
+                            : mappingRule.errorCode();
+            return new ClassifiedError(code, message, mappingRule.retryable());
+        }
 
-    final Object codeValue = definition.responseMapping().errorCode() != null
-        ? templateResolver.resolve(definition.responseMapping().errorCode(), context, null).value()
-        : null;
-    final Object messageValue = definition.responseMapping().errorMessage() != null
-        ? templateResolver.resolve(definition.responseMapping().errorMessage(), context, null).value()
-        : null;
+        final Map<String, Object> templateVariables = Map.of(
+                "response",
+                responseData.body(),
+                "statusCode",
+                responseData.statusCode(),
+                "headers",
+                responseData.headers());
+        final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
 
-    final String code = codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
-    final String message = messageValue == null
-        ? "Connector request failed with status " + responseData.statusCode()
-        : String.valueOf(messageValue);
-    final boolean retryable = definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
-    return new ClassifiedError(code, message, retryable);
-  }
+        final Object codeValue = definition.responseMapping().errorCode() != null
+                ? templateResolver
+                        .resolve(definition.responseMapping().errorCode(), context, null)
+                        .value()
+                : null;
+        final Object messageValue = definition.responseMapping().errorMessage() != null
+                ? templateResolver
+                        .resolve(definition.responseMapping().errorMessage(), context, null)
+                        .value()
+                : null;
 
-  private boolean matches(final ErrorMappingRule rule, final HttpResponseData responseData) {
-    if (rule.statusCode() != null && rule.statusCode() != responseData.statusCode()) {
-      return false;
+        final String code = codeValue == null ? "HTTP_" + responseData.statusCode() : String.valueOf(codeValue);
+        final String message = messageValue == null
+                ? "Connector request failed with status " + responseData.statusCode()
+                : String.valueOf(messageValue);
+        final boolean retryable =
+                definition.retryPolicy().retryableStatusCodes().contains(responseData.statusCode());
+        return new ClassifiedError(code, message, retryable);
     }
 
-    if (rule.bodyContains() != null && !rule.bodyContains().isBlank() && !responseData.body().contains(rule.bodyContains())) {
-      return false;
-    }
+    private boolean matches(final ErrorMappingRule rule, final HttpResponseData responseData) {
+        if (rule.statusCode() != null && rule.statusCode() != responseData.statusCode()) {
+            return false;
+        }
 
-    if (rule.body() != null && !rule.body().isBlank()) {
-      final Map<String, Object> templateVariables = Map.of("response", responseData.body());
-      final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
-      final Object value = templateResolver.resolve(rule.body(), context, null).value();
-      return value != null;
-    }
+        if (rule.bodyContains() != null
+                && !rule.bodyContains().isBlank()
+                && !responseData.body().contains(rule.bodyContains())) {
+            return false;
+        }
 
-    return true;
-  }
+        if (rule.body() != null && !rule.body().isBlank()) {
+            final Map<String, Object> templateVariables = Map.of("response", responseData.body());
+            final RequestContext context =
+                    new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+            final Object value =
+                    templateResolver.resolve(rule.body(), context, null).value();
+            return value != null;
+        }
+
+        return true;
+    }
 }

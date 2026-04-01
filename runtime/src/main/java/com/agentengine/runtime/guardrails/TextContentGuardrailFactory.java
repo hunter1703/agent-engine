@@ -7,16 +7,16 @@ import jakarta.inject.Singleton;
 @Singleton
 public final class TextContentGuardrailFactory implements GuardrailFactory<TextContentGuardrailRule> {
 
-  @Override
-  public GuardrailRuleType type() {
-    return GuardrailRuleType.TEXT_CONTENT;
-  }
-
-  @Override
-  public Guardrail create(final TextContentGuardrailRule rule) {
-    if (rule == null) {
-      return null;
+    @Override
+    public GuardrailRuleType type() {
+        return GuardrailRuleType.TEXT_CONTENT;
     }
-    return new TextContentGuardrail(rule);
-  }
+
+    @Override
+    public Guardrail create(final TextContentGuardrailRule rule) {
+        if (rule == null) {
+            return null;
+        }
+        return new TextContentGuardrail(rule);
+    }
 }

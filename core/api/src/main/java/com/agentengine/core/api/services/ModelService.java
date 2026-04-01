@@ -9,17 +9,17 @@ import java.util.Map;
 
 @MicroService("agent")
 public interface ModelService {
-  PaginatedResult<ModelConfig> findModels(Query query);
+    PaginatedResult<ModelConfig> findModels(Query query);
 
-  ModelConfig getModel(String id);
+    ModelConfig getModel(String id);
 
-  Map<String, ModelConfig> getModels(Collection<String> ids);
+    Map<String, ModelConfig> getModels(Collection<String> ids);
 
-  ModelConfig createModel(ModelConfig model);
+    ModelConfig createModel(ModelConfig model);
 
-  ModelConfig saveModel(ModelConfig model);
+    ModelConfig saveModel(ModelConfig model);
 
-  ModelConfig updateModel(String id, ModelConfig model);
+    ModelConfig updateModel(String id, ModelConfig model);
 
-  boolean deleteModel(String id);
+    boolean deleteModel(String id);
 }

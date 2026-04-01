@@ -6,21 +6,21 @@ import org.junit.jupiter.api.Test;
 
 class BroadcasterStateTest {
 
-  @Test
-  void shouldAddSubscriptionToEmptyState() {
-    final BroadcasterState state = BroadcasterState.empty();
+    @Test
+    void shouldAddSubscriptionToEmptyState() {
+        final BroadcasterState state = BroadcasterState.empty();
 
-    state.withSubscription("sub-1");
+        state.withSubscription("sub-1");
 
-    assertThat(state.subscriptions()).containsExactly("sub-1");
-  }
+        assertThat(state.subscriptions()).containsExactly("sub-1");
+    }
 
-  @Test
-  void shouldRemoveSubscriptionFromState() {
-    final BroadcasterState state = BroadcasterState.empty().withSubscription("sub-1");
+    @Test
+    void shouldRemoveSubscriptionFromState() {
+        final BroadcasterState state = BroadcasterState.empty().withSubscription("sub-1");
 
-    state.withoutSubscription("sub-1");
+        state.withoutSubscription("sub-1");
 
-    assertThat(state.subscriptions()).isEmpty();
-  }
+        assertThat(state.subscriptions()).isEmpty();
+    }
 }

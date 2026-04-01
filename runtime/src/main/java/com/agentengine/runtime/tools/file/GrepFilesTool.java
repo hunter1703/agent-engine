@@ -1,13 +1,14 @@
 package com.agentengine.runtime.tools.file;
 
-import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.JsonUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.SimpleFileVisitor;
@@ -20,235 +21,265 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-
-import com.agentengine.util.common.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Tool for searching file contents using regex patterns. Similar to
- * grep/ripgrep with configurable limits and file filtering.
+ * Tool for searching file contents using regex patterns. Similar to grep/ripgrep with configurable
+ * limits and file filtering.
  */
 @DiscoverableTool
 public final class GrepFilesTool extends BaseFileTool {
-  private static final Logger LOG = LoggerFactory.getLogger(GrepFilesTool.class);
-  private static final String TOOL_NAME = "grep_files";
-  private static final int DEFAULT_LIMIT = 100;
-  private static final int MAX_LIMIT = 2000;
-  private static final int MAX_LINE_LENGTH = 500;
+    private static final Logger LOG = LoggerFactory.getLogger(GrepFilesTool.class);
+    private static final String TOOL_NAME = "grep_files";
+    private static final int DEFAULT_LIMIT = 100;
+    private static final int MAX_LIMIT = 2000;
+    private static final int MAX_LINE_LENGTH = 500;
 
-  public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(TOOL_NAME,
-      "Search for text patterns in files using regex. Returns matching lines with file paths and line numbers. "
-          + "Supports include patterns for file filtering.",
-      Map.of(), ToolRiskLevel.LOW);
+    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
+            TOOL_NAME,
+            "Search for text patterns in files using regex. Returns matching lines with file paths and line numbers. "
+                    + "Supports include patterns for file filtering.",
+            Map.of(),
+            ToolRiskLevel.LOW);
 
-  public GrepFilesTool() {
-    super(DESCRIPTOR);
-  }
-
-  public Map<String, Object> execute(
-      @ToolSchema(name = "pattern", description = "Regex pattern to search for", optional = false) String pattern,
-      @ToolSchema(name = "path", description = "Directory path to search in (default: current directory)", optional = true) String searchPath,
-      @ToolSchema(name = "include", description = "Glob pattern for files to include (exception.g., '*.java', '*.md')", optional = true) String includePattern,
-      @ToolSchema(name = "limit", description = "Maximum number of matches to return (default: 100, max: 2000)", optional = true) Integer limit,
-      @ToolSchema(name = "case_sensitive", description = "Whether search is case-sensitive (default: false)", optional = true) Boolean caseSensitive) {
-
-    if (pattern == null || pattern.isBlank()) {
-      return Map.of("error", "pattern is required");
+    public GrepFilesTool() {
+        super(DESCRIPTOR);
     }
 
-    final int maxMatches = limit != null ? Math.max(1, Math.min(limit, MAX_LIMIT)) : DEFAULT_LIMIT;
-    final boolean isCaseSensitive = caseSensitive != null && caseSensitive;
-    final String basePath = searchPath != null ? searchPath : System.getProperty("user.dir", ".");
+    public Map<String, Object> execute(
+            @ToolSchema(name = "pattern", description = "Regex pattern to search for", optional = false) String pattern,
+            @ToolSchema(
+                            name = "path",
+                            description = "Directory path to search in (default: current directory)",
+                            optional = true)
+                    String searchPath,
+            @ToolSchema(
+                            name = "include",
+                            description = "Glob pattern for files to include (exception.g., '*.java', '*.md')",
+                            optional = true)
+                    String includePattern,
+            @ToolSchema(
+                            name = "limit",
+                            description = "Maximum number of matches to return (default: 100, max: 2000)",
+                            optional = true)
+                    Integer limit,
+            @ToolSchema(
+                            name = "case_sensitive",
+                            description = "Whether search is case-sensitive (default: false)",
+                            optional = true)
+                    Boolean caseSensitive) {
 
-    try {
-      final Pattern regexPattern = Pattern.compile(pattern, isCaseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
-      final Path baseDir = resolvePath(basePath);
-
-      if (!Files.exists(baseDir)) {
-        return Map.of("error", "Search path not found: " + basePath);
-      }
-
-      if (!Files.isDirectory(baseDir)) {
-        return Map.of("error", "Search path is not a directory: " + basePath);
-      }
-
-      final SearchState searchState = new SearchState(maxMatches);
-      Files.walkFileTree(baseDir, new SearchVisitor(baseDir, regexPattern, searchState, includePattern));
-
-      final List<Map<String, Object>> resultsJson = searchState.matches().stream().map(JsonUtils::toMap).toList();
-      final boolean truncated = searchState.isTruncated();
-
-      LOG.info("Grep search: pattern='{}' in {} files, found {} matches (limit: {})", pattern, searchState.filesSearched(),
-          resultsJson.size(), maxMatches);
-
-      final Map<String, Object> response = new HashMap<>();
-      response.put("matches", resultsJson);
-      response.put("pattern", pattern);
-      response.put("search_path", basePath);
-      response.put("files_searched", searchState.filesSearched());
-      response.put("total_matches", searchState.totalMatches());
-      response.put("matches_returned", resultsJson.size());
-      response.put("truncated", truncated);
-
-      if (includePattern != null) {
-        response.put("include_pattern", includePattern);
-      }
-
-      if (truncated) {
-        response.put("limit", maxMatches);
-        response.put("message", "Results truncated at " + maxMatches + " matches. Use a more specific pattern or increase limit.");
-      }
-
-      return response;
-
-    } catch (PatternSyntaxException exception) {
-      LOG.error("Invalid regex pattern: {}", pattern, exception);
-      return Map.of("error", "Invalid regex pattern: " + exception.getDescription());
-    } catch (IOException exception) {
-      LOG.error("Failed to search files: {}", basePath, exception);
-      return Map.of("error", "Failed to search files: " + exception.getMessage());
-    }
-  }
-
-  private static final class SearchVisitor extends SimpleFileVisitor<Path> {
-    private final Path baseDir;
-    private final Pattern regexPattern;
-    private final SearchState searchState;
-    private final Predicate<Path> patternMatches;
-
-    private SearchVisitor(final Path baseDir, final Pattern regexPattern, final SearchState searchState, final String includePattern) {
-      this.baseDir = baseDir;
-      this.regexPattern = regexPattern;
-      this.searchState = searchState;
-      this.patternMatches = creatMatcher(baseDir, includePattern);
-    }
-
-    @Override
-    public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) {
-      if (searchState.shouldStop()) {
-        return FileVisitResult.TERMINATE;
-      }
-      if (!dir.equals(baseDir) && isHiddenPath(dir)) {
-        return FileVisitResult.SKIP_SUBTREE;
-      }
-      return FileVisitResult.CONTINUE;
-    }
-
-    @Override
-    public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
-      if (searchState.shouldStop()) {
-        return FileVisitResult.TERMINATE;
-      }
-      if (!attrs.isRegularFile() || isHiddenPath(file)) {
-        return FileVisitResult.CONTINUE;
-      }
-
-      final Path relativePath = baseDir.relativize(file);
-      if (!patternMatches.test(relativePath)) {
-        return FileVisitResult.CONTINUE;
-      }
-
-      searchState.incrementFilesSearched();
-      try {
-        try (BufferedReader reader = Files.newBufferedReader(file)) {
-          String line;
-          int lineNumber = 0;
-
-          while ((line = reader.readLine()) != null && !searchState.shouldStop()) {
-            lineNumber++;
-            final Matcher matcher = regexPattern.matcher(line);
-
-            if (matcher.find()) {
-              final Path fileRelativePath = baseDir.relativize(file);
-              final String truncatedLine = truncate(line, MAX_LINE_LENGTH);
-              searchState.recordMatch(new MatchResult(fileRelativePath.toString(), lineNumber, truncatedLine, matcher.group()));
-            }
-          }
+        if (pattern == null || pattern.isBlank()) {
+            return Map.of("error", "pattern is required");
         }
-      } catch (IOException exception) {
-        LOG.debug("Skipping unreadable file during grep search: {}", file, exception);
-      }
-      return FileVisitResult.CONTINUE;
+
+        final int maxMatches = limit != null ? Math.max(1, Math.min(limit, MAX_LIMIT)) : DEFAULT_LIMIT;
+        final boolean isCaseSensitive = caseSensitive != null && caseSensitive;
+        final String basePath = searchPath != null ? searchPath : System.getProperty("user.dir", ".");
+
+        try {
+            final Pattern regexPattern = Pattern.compile(pattern, isCaseSensitive ? 0 : Pattern.CASE_INSENSITIVE);
+            final Path baseDir = resolvePath(basePath);
+
+            if (!Files.exists(baseDir)) {
+                return Map.of("error", "Search path not found: " + basePath);
+            }
+
+            if (!Files.isDirectory(baseDir)) {
+                return Map.of("error", "Search path is not a directory: " + basePath);
+            }
+
+            final SearchState searchState = new SearchState(maxMatches);
+            Files.walkFileTree(baseDir, new SearchVisitor(baseDir, regexPattern, searchState, includePattern));
+
+            final List<Map<String, Object>> resultsJson =
+                    searchState.matches().stream().map(JsonUtils::toMap).toList();
+            final boolean truncated = searchState.isTruncated();
+
+            LOG.info(
+                    "Grep search: pattern='{}' in {} files, found {} matches (limit: {})",
+                    pattern,
+                    searchState.filesSearched(),
+                    resultsJson.size(),
+                    maxMatches);
+
+            final Map<String, Object> response = new HashMap<>();
+            response.put("matches", resultsJson);
+            response.put("pattern", pattern);
+            response.put("search_path", basePath);
+            response.put("files_searched", searchState.filesSearched());
+            response.put("total_matches", searchState.totalMatches());
+            response.put("matches_returned", resultsJson.size());
+            response.put("truncated", truncated);
+
+            if (includePattern != null) {
+                response.put("include_pattern", includePattern);
+            }
+
+            if (truncated) {
+                response.put("limit", maxMatches);
+                response.put(
+                        "message",
+                        "Results truncated at "
+                                + maxMatches
+                                + " matches. Use a more specific pattern or increase limit.");
+            }
+
+            return response;
+
+        } catch (PatternSyntaxException exception) {
+            LOG.error("Invalid regex pattern: {}", pattern, exception);
+            return Map.of("error", "Invalid regex pattern: " + exception.getDescription());
+        } catch (IOException exception) {
+            LOG.error("Failed to search files: {}", basePath, exception);
+            return Map.of("error", "Failed to search files: " + exception.getMessage());
+        }
     }
 
-    @Override
-    public FileVisitResult visitFileFailed(final Path file, final IOException exc) {
-      LOG.debug("Skipping file that could not be visited during grep search: {}", file, exc);
-      return searchState.shouldStop() ? FileVisitResult.TERMINATE : FileVisitResult.CONTINUE;
+    private static final class SearchVisitor extends SimpleFileVisitor<Path> {
+        private final Path baseDir;
+        private final Pattern regexPattern;
+        private final SearchState searchState;
+        private final Predicate<Path> patternMatches;
+
+        private SearchVisitor(
+                final Path baseDir,
+                final Pattern regexPattern,
+                final SearchState searchState,
+                final String includePattern) {
+            this.baseDir = baseDir;
+            this.regexPattern = regexPattern;
+            this.searchState = searchState;
+            this.patternMatches = creatMatcher(baseDir, includePattern);
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) {
+            if (searchState.shouldStop()) {
+                return FileVisitResult.TERMINATE;
+            }
+            if (!dir.equals(baseDir) && isHiddenPath(dir)) {
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+            if (searchState.shouldStop()) {
+                return FileVisitResult.TERMINATE;
+            }
+            if (!attrs.isRegularFile() || isHiddenPath(file)) {
+                return FileVisitResult.CONTINUE;
+            }
+
+            final Path relativePath = baseDir.relativize(file);
+            if (!patternMatches.test(relativePath)) {
+                return FileVisitResult.CONTINUE;
+            }
+
+            searchState.incrementFilesSearched();
+            try {
+                try (BufferedReader reader = Files.newBufferedReader(file)) {
+                    String line;
+                    int lineNumber = 0;
+
+                    while ((line = reader.readLine()) != null && !searchState.shouldStop()) {
+                        lineNumber++;
+                        final Matcher matcher = regexPattern.matcher(line);
+
+                        if (matcher.find()) {
+                            final Path fileRelativePath = baseDir.relativize(file);
+                            final String truncatedLine = truncate(line, MAX_LINE_LENGTH);
+                            searchState.recordMatch(new MatchResult(
+                                    fileRelativePath.toString(), lineNumber, truncatedLine, matcher.group()));
+                        }
+                    }
+                }
+            } catch (IOException exception) {
+                LOG.debug("Skipping unreadable file during grep search: {}", file, exception);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFileFailed(final Path file, final IOException exc) {
+            LOG.debug("Skipping file that could not be visited during grep search: {}", file, exc);
+            return searchState.shouldStop() ? FileVisitResult.TERMINATE : FileVisitResult.CONTINUE;
+        }
+
+        private static boolean isHiddenPath(Path path) {
+            final Path fileName = path.getFileName();
+            if (fileName == null) {
+                return false;
+            }
+            final String name = fileName.toString();
+            return name.startsWith(".") || name.startsWith("_");
+        }
+
+        private static Predicate<Path> creatMatcher(final Path baseDir, final String includePattern) {
+            if (includePattern == null || includePattern.isBlank()) {
+                return relativePath -> true;
+            }
+
+            final String separator = baseDir.getFileSystem().getSeparator();
+            final String normalizedPattern =
+                    includePattern.replace("\\", separator).replace("/", separator);
+            final PathMatcher pathMatcher = baseDir.getFileSystem().getPathMatcher("glob:" + normalizedPattern);
+            final boolean fileNameOnly = !normalizedPattern.contains(separator);
+
+            if (!fileNameOnly) {
+                return pathMatcher::matches;
+            }
+
+            return relativePath -> pathMatcher.matches(relativePath)
+                    || (relativePath.getFileName() != null && pathMatcher.matches(relativePath.getFileName()));
+        }
     }
 
-    private static boolean isHiddenPath(Path path) {
-      final Path fileName = path.getFileName();
-      if (fileName == null) {
-        return false;
-      }
-      final String name = fileName.toString();
-      return name.startsWith(".") || name.startsWith("_");
+    private static final class SearchState {
+        private final int maxMatches;
+        private final ArrayList<MatchResult> matches;
+        private int filesSearched;
+        private int totalMatches;
+
+        private SearchState(final int maxMatches) {
+            this.maxMatches = maxMatches;
+            this.matches = new ArrayList<>(Math.min(maxMatches, 128));
+        }
+
+        private void incrementFilesSearched() {
+            filesSearched++;
+        }
+
+        private void recordMatch(final MatchResult match) {
+            totalMatches++;
+            if (matches.size() < maxMatches) {
+                matches.add(match);
+            }
+        }
+
+        private boolean shouldStop() {
+            return totalMatches > maxMatches;
+        }
+
+        private boolean isTruncated() {
+            return totalMatches > maxMatches;
+        }
+
+        private int filesSearched() {
+            return filesSearched;
+        }
+
+        private int totalMatches() {
+            return totalMatches;
+        }
+
+        private List<MatchResult> matches() {
+            return matches;
+        }
     }
 
-    private static Predicate<Path> creatMatcher(final Path baseDir, final String includePattern) {
-      if (includePattern == null || includePattern.isBlank()) {
-        return relativePath -> true;
-      }
-
-      final String separator = baseDir.getFileSystem().getSeparator();
-      final String normalizedPattern = includePattern.replace("\\", separator).replace("/", separator);
-      final PathMatcher pathMatcher = baseDir.getFileSystem().getPathMatcher("glob:" + normalizedPattern);
-      final boolean fileNameOnly = !normalizedPattern.contains(separator);
-
-      if (!fileNameOnly) {
-        return pathMatcher::matches;
-      }
-
-      return relativePath -> pathMatcher.matches(relativePath)
-          || (relativePath.getFileName() != null && pathMatcher.matches(relativePath.getFileName()));
-    }
-  }
-
-  private static final class SearchState {
-    private final int maxMatches;
-    private final ArrayList<MatchResult> matches;
-    private int filesSearched;
-    private int totalMatches;
-
-    private SearchState(final int maxMatches) {
-      this.maxMatches = maxMatches;
-      this.matches = new ArrayList<>(Math.min(maxMatches, 128));
-    }
-
-    private void incrementFilesSearched() {
-      filesSearched++;
-    }
-
-    private void recordMatch(final MatchResult match) {
-      totalMatches++;
-      if (matches.size() < maxMatches) {
-        matches.add(match);
-      }
-    }
-
-    private boolean shouldStop() {
-      return totalMatches > maxMatches;
-    }
-
-    private boolean isTruncated() {
-      return totalMatches > maxMatches;
-    }
-
-    private int filesSearched() {
-      return filesSearched;
-    }
-
-    private int totalMatches() {
-      return totalMatches;
-    }
-
-    private List<MatchResult> matches() {
-      return matches;
-    }
-  }
-
-  private record MatchResult(String file, int lineNumber, String line, String matchedText) {
-  }
+    private record MatchResult(String file, int lineNumber, String line, String matchedText) {}
 }

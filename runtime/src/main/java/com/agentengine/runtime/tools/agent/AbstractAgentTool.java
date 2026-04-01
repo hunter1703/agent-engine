@@ -10,11 +10,11 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 
 public class AbstractAgentTool extends Tool {
 
-  protected AbstractAgentTool(final ToolDescriptor toolDescriptor, final SessionActorFactory actorFactory) {
-    super(toolDescriptor, actorFactory);
-  }
+    protected AbstractAgentTool(final ToolDescriptor toolDescriptor, final SessionActorFactory actorFactory) {
+        super(toolDescriptor, actorFactory);
+    }
 
-  protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
-    return sessionActorFactory.entityRef(ToolUtils.agentId(toolContext), ToolUtils.sessionId(toolContext));
-  }
+    protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
+        return sessionActorFactory.entityRef(ToolUtils.agentId(toolContext), ToolUtils.sessionId(toolContext));
+    }
 }

@@ -5,5 +5,5 @@ import com.agentengine.connectors.core.http.HttpResponseData;
 
 public interface ErrorClassifier {
 
-  ClassifiedError classify(ConnectorDefinition definition, HttpResponseData responseData);
+    ClassifiedError classify(ConnectorDefinition definition, HttpResponseData responseData);
 }

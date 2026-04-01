@@ -5,11 +5,12 @@ import com.agentengine.connectors.core.config.PaginationType;
 
 public interface PaginationStrategy {
 
-  PaginationType type();
+    PaginationType type();
 
-  PaginationState initialState(PaginationConfig config);
+    PaginationState initialState(PaginationConfig config);
 
-  PaginationDirective buildRequest(PaginationConfig config, PaginationState state);
+    PaginationDirective buildRequest(PaginationConfig config, PaginationState state);
 
-  PaginationState updateState(PaginationConfig config, PaginationState currentState, String responseBody, Object mappedData);
+    PaginationState updateState(
+            PaginationConfig config, PaginationState currentState, String responseBody, Object mappedData);
 }

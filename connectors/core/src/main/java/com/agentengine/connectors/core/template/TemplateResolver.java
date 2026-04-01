@@ -4,5 +4,5 @@ import com.agentengine.connectors.core.runtime.RequestContext;
 
 public interface TemplateResolver {
 
-  ResolvedValue resolve(Object template, RequestContext context, TemplateResolutionOptions options);
+    ResolvedValue resolve(Object template, RequestContext context, TemplateResolutionOptions options);
 }

@@ -5,21 +5,15 @@ import com.agentengine.util.pekko.PekkoSerializable;
 import org.apache.pekko.actor.typed.ActorRef;
 
 public interface SubscriberCommand extends PekkoSerializable {
-  record SubscribeCommand(ActorRef<SubscriberCommandResult> replyTo) implements SubscriberCommand {
-  }
+    record SubscribeCommand(ActorRef<SubscriberCommandResult> replyTo) implements SubscriberCommand {}
 
-  record UnsubscribeCommand(ActorRef<SubscriberCommandResult> replyTo) implements SubscriberCommand {
-  }
+    record UnsubscribeCommand(ActorRef<SubscriberCommandResult> replyTo) implements SubscriberCommand {}
 
-  record DeliverCommand(SequencedEvent<?> event) implements SubscriberCommand {
-  }
+    record DeliverCommand(SequencedEvent<?> event) implements SubscriberCommand {}
 
-  record BroadcasterTerminatedCommand() implements SubscriberCommand {
-  }
+    record BroadcasterTerminatedCommand() implements SubscriberCommand {}
 
-  record ResubscribeCommand() implements SubscriberCommand {
-  }
+    record ResubscribeCommand() implements SubscriberCommand {}
 
-  record SubscribeResultCommand(SubscribeAck ack, Throwable error) implements SubscriberCommand {
-  }
+    record SubscribeResultCommand(SubscribeAck ack, Throwable error) implements SubscriberCommand {}
 }

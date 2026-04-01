@@ -1,44 +1,45 @@
 package com.agentengine.runtime.factories.agent.builders;
 
+import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.agents.ParallelOrchestratorAgent;
 import com.agentengine.util.agents.beans.config.ParallelAggregationPolicy;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
-import com.agentengine.runtime.agents.Agent;
 
-public class ParallelOrchestratorAgentBuilder extends Agent.Builder<ParallelOrchestratorAgentBuilder, ParallelOrchestratorAgent> {
-  private ParallelAggregationPolicy aggregationPolicy;
-  private ParallelStoppingPolicy stoppingPolicy;
-  private int quorum = 1;
+public class ParallelOrchestratorAgentBuilder
+        extends Agent.Builder<ParallelOrchestratorAgentBuilder, ParallelOrchestratorAgent> {
+    private ParallelAggregationPolicy aggregationPolicy;
+    private ParallelStoppingPolicy stoppingPolicy;
+    private int quorum = 1;
 
-  public ParallelOrchestratorAgentBuilder aggregationPolicy(final ParallelAggregationPolicy aggregationPolicy) {
-    this.aggregationPolicy = aggregationPolicy;
-    return this;
-  }
+    public ParallelOrchestratorAgentBuilder aggregationPolicy(final ParallelAggregationPolicy aggregationPolicy) {
+        this.aggregationPolicy = aggregationPolicy;
+        return this;
+    }
 
-  public ParallelOrchestratorAgentBuilder stoppingPolicy(final ParallelStoppingPolicy stoppingPolicy) {
-    this.stoppingPolicy = stoppingPolicy;
-    return this;
-  }
+    public ParallelOrchestratorAgentBuilder stoppingPolicy(final ParallelStoppingPolicy stoppingPolicy) {
+        this.stoppingPolicy = stoppingPolicy;
+        return this;
+    }
 
-  public ParallelOrchestratorAgentBuilder quorum(final int quorum) {
-    this.quorum = quorum;
-    return this;
-  }
+    public ParallelOrchestratorAgentBuilder quorum(final int quorum) {
+        this.quorum = quorum;
+        return this;
+    }
 
-  public ParallelAggregationPolicy aggregationPolicy() {
-    return aggregationPolicy;
-  }
+    public ParallelAggregationPolicy aggregationPolicy() {
+        return aggregationPolicy;
+    }
 
-  public ParallelStoppingPolicy stoppingPolicy() {
-    return stoppingPolicy;
-  }
+    public ParallelStoppingPolicy stoppingPolicy() {
+        return stoppingPolicy;
+    }
 
-  public int quorum() {
-    return quorum;
-  }
+    public int quorum() {
+        return quorum;
+    }
 
-  @Override
-  public ParallelOrchestratorAgent build() {
-    return new ParallelOrchestratorAgent(this);
-  }
+    @Override
+    public ParallelOrchestratorAgent build() {
+        return new ParallelOrchestratorAgent(this);
+    }
 }

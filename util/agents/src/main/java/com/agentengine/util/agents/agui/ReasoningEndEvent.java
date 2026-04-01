@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReasoningEndEvent extends BaseReasoningEvent {
 
-  @JsonProperty("type")
-  public String getTypeName() {
-    return "REASONING_END";
-  }
+    @JsonProperty("type")
+    public String getTypeName() {
+        return "REASONING_END";
+    }
 }

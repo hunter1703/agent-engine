@@ -12,38 +12,38 @@ import java.util.Optional;
 
 @Singleton
 public class ClasspathConnectorRegistry implements ConnectorRegistry {
-  private final ConnectorConfigLoader loader;
+    private final ConnectorConfigLoader loader;
 
-  @Inject
-  public ClasspathConnectorRegistry(ConnectorConfigLoader loader) {
-    this.loader = loader;
-  }
-
-  @Override
-  public Optional<ConnectorDefinition> getConnector(String id) {
-    final Optional<ConnectorDefinition> jsonDefinition = loadFromResource(id, ".json");
-    if (jsonDefinition.isPresent()) {
-      return jsonDefinition;
+    @Inject
+    public ClasspathConnectorRegistry(ConnectorConfigLoader loader) {
+        this.loader = loader;
     }
 
-    final Optional<ConnectorDefinition> yamlDefinition = loadFromResource(id, ".yaml");
-    if (yamlDefinition.isPresent()) {
-      return yamlDefinition;
+    @Override
+    public Optional<ConnectorDefinition> getConnector(String id) {
+        final Optional<ConnectorDefinition> jsonDefinition = loadFromResource(id, ".json");
+        if (jsonDefinition.isPresent()) {
+            return jsonDefinition;
+        }
+
+        final Optional<ConnectorDefinition> yamlDefinition = loadFromResource(id, ".yaml");
+        if (yamlDefinition.isPresent()) {
+            return yamlDefinition;
+        }
+
+        return loadFromResource(id, ".yml");
     }
 
-    return loadFromResource(id, ".yml");
-  }
-
-  private Optional<ConnectorDefinition> loadFromResource(final String id, final String extension) {
-    final String resourcePath = "/connectors/" + id + extension;
-    try (InputStream stream = getClass().getResourceAsStream(resourcePath)) {
-      if (stream != null) {
-        final String config = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-        return Optional.of(loader.load(config));
-      }
-      return Optional.empty();
-    } catch (IOException ex) {
-      throw new ConnectorConfigLoadException("Failed to read connector config: " + resourcePath, ex);
+    private Optional<ConnectorDefinition> loadFromResource(final String id, final String extension) {
+        final String resourcePath = "/connectors/" + id + extension;
+        try (InputStream stream = getClass().getResourceAsStream(resourcePath)) {
+            if (stream != null) {
+                final String config = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+                return Optional.of(loader.load(config));
+            }
+            return Optional.empty();
+        } catch (IOException ex) {
+            throw new ConnectorConfigLoadException("Failed to read connector config: " + resourcePath, ex);
+        }
     }
-  }
 }

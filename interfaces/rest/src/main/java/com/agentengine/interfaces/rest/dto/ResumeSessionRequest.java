@@ -3,36 +3,36 @@ package com.agentengine.interfaces.rest.dto;
 import jakarta.validation.constraints.NotBlank;
 
 public class ResumeSessionRequest extends AgentRequest {
-  private Boolean confirmed;
-  @NotBlank(message = "Confirmation Id is required")
-  private String confirmationId;
+    private Boolean confirmed;
 
-  public ResumeSessionRequest() {
-  }
+    @NotBlank(message = "Confirmation Id is required")
+    private String confirmationId;
 
-  public ResumeSessionRequest(final String answer) {
-    this(answer, null, null);
-  }
+    public ResumeSessionRequest() {}
 
-  public ResumeSessionRequest(final String answer, final Boolean confirmed, final String confirmationId) {
-    setMessage(answer);
-    this.confirmed = confirmed;
-    this.confirmationId = confirmationId;
-  }
+    public ResumeSessionRequest(final String answer) {
+        this(answer, null, null);
+    }
 
-  public Boolean getConfirmed() {
-    return confirmed;
-  }
+    public ResumeSessionRequest(final String answer, final Boolean confirmed, final String confirmationId) {
+        setMessage(answer);
+        this.confirmed = confirmed;
+        this.confirmationId = confirmationId;
+    }
 
-  public void setConfirmed(final Boolean confirmed) {
-    this.confirmed = confirmed;
-  }
+    public Boolean getConfirmed() {
+        return confirmed;
+    }
 
-  public String getConfirmationId() {
-    return confirmationId;
-  }
+    public void setConfirmed(final Boolean confirmed) {
+        this.confirmed = confirmed;
+    }
 
-  public void setConfirmationId(final String confirmationId) {
-    this.confirmationId = confirmationId;
-  }
+    public String getConfirmationId() {
+        return confirmationId;
+    }
+
+    public void setConfirmationId(final String confirmationId) {
+        this.confirmationId = confirmationId;
+    }
 }

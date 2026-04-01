@@ -11,22 +11,26 @@ import java.util.Map;
 @Singleton
 public final class PaginationStrategyRegistry {
 
-  private final Map<PaginationType, PaginationStrategy> strategies;
+    private final Map<PaginationType, PaginationStrategy> strategies;
 
-  @Inject
-  public PaginationStrategyRegistry() {
-    this(List.of(new NoPaginationStrategy(), new PagePaginationStrategy(), new OffsetPaginationStrategy(), new CursorPaginationStrategy(),
-        new NextPageUrlPaginationStrategy()));
-  }
+    @Inject
+    public PaginationStrategyRegistry() {
+        this(List.of(
+                new NoPaginationStrategy(),
+                new PagePaginationStrategy(),
+                new OffsetPaginationStrategy(),
+                new CursorPaginationStrategy(),
+                new NextPageUrlPaginationStrategy()));
+    }
 
-  public PaginationStrategyRegistry(final Collection<PaginationStrategy> customStrategies) {
-    final Map<PaginationType, PaginationStrategy> mutableMap = new EnumMap<>(PaginationType.class);
-    customStrategies.forEach(strategy -> mutableMap.put(strategy.type(), strategy));
-    strategies = Map.copyOf(mutableMap);
-  }
+    public PaginationStrategyRegistry(final Collection<PaginationStrategy> customStrategies) {
+        final Map<PaginationType, PaginationStrategy> mutableMap = new EnumMap<>(PaginationType.class);
+        customStrategies.forEach(strategy -> mutableMap.put(strategy.type(), strategy));
+        strategies = Map.copyOf(mutableMap);
+    }
 
-  public PaginationStrategy resolve(final PaginationType type) {
-    final PaginationType normalizedType = type == null ? PaginationType.NONE : type;
-    return strategies.getOrDefault(normalizedType, strategies.get(PaginationType.NONE));
-  }
+    public PaginationStrategy resolve(final PaginationType type) {
+        final PaginationType normalizedType = type == null ? PaginationType.NONE : type;
+        return strategies.getOrDefault(normalizedType, strategies.get(PaginationType.NONE));
+    }
 }

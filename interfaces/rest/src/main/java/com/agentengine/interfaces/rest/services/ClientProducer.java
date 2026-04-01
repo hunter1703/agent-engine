@@ -14,39 +14,38 @@ import jakarta.inject.Singleton;
 @Singleton
 public class ClientProducer {
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public ToolCatalog toolCatalogService(MicroServiceClientProvider provider) {
-    return provider.get(ToolCatalog.class);
-  }
+    @Produces
+    @Singleton
+    @DefaultBean
+    public ToolCatalog toolCatalogService(MicroServiceClientProvider provider) {
+        return provider.get(ToolCatalog.class);
+    }
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public AgentService agentService(MicroServiceClientProvider provider) {
-    return provider.get(AgentService.class);
-  }
+    @Produces
+    @Singleton
+    @DefaultBean
+    public AgentService agentService(MicroServiceClientProvider provider) {
+        return provider.get(AgentService.class);
+    }
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public ModelService modelService(MicroServiceClientProvider provider) {
-    return provider.get(ModelService.class);
-  }
+    @Produces
+    @Singleton
+    @DefaultBean
+    public ModelService modelService(MicroServiceClientProvider provider) {
+        return provider.get(ModelService.class);
+    }
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public AgentExecutionService agentExecutionService(MicroServiceClientProvider provider) {
-    return provider.get(AgentExecutionService.class);
-  }
+    @Produces
+    @Singleton
+    @DefaultBean
+    public AgentExecutionService agentExecutionService(MicroServiceClientProvider provider) {
+        return provider.get(AgentExecutionService.class);
+    }
 
-  @Produces
-  @Singleton
-  @DefaultBean
-  public SessionService sessionService(MicroServiceClientProvider provider) {
-    return provider.get(SessionService.class);
-  }
-
+    @Produces
+    @Singleton
+    @DefaultBean
+    public SessionService sessionService(MicroServiceClientProvider provider) {
+        return provider.get(SessionService.class);
+    }
 }

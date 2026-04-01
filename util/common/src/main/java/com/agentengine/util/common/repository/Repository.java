@@ -6,42 +6,36 @@ import com.agentengine.util.common.update.Update;
 /**
  * Generic repository interface providing basic CRUD operations
  *
- * @param <T>
- *          the entity type
+ * @param <T> the entity type
  */
 public interface Repository<T extends BaseEntity> extends ReadRepository<T> {
 
-  T insert(T entity);
+    T insert(T entity);
 
-  T update(String id, T entity);
+    T update(String id, T entity);
 
-  /**
-   * Apply a partial update to an entity.
-   *
-   * @param id
-   *          the entity ID
-   * @param update
-   *          the update operations
-   * @return the updated entity
-   */
-  T update(String id, Update update);
+    /**
+     * Apply a partial update to an entity.
+     *
+     * @param id the entity ID
+     * @param update the update operations
+     * @return the updated entity
+     */
+    T update(String id, Update update);
 
-  /**
-   * Save an entity. If the entity already exists, it will be updated.
-   *
-   * @param entity
-   *          the entity to save
-   * @return the saved entity
-   */
-  T save(T entity);
+    /**
+     * Save an entity. If the entity already exists, it will be updated.
+     *
+     * @param entity the entity to save
+     * @return the saved entity
+     */
+    T save(T entity);
 
-  /**
-   * Delete an entity by its ID
-   *
-   * @param id
-   *          the entity ID
-   * @return true if the entity was deleted, false if it didn't exist
-   */
-  boolean deleteById(String id);
-
+    /**
+     * Delete an entity by its ID
+     *
+     * @param id the entity ID
+     * @return true if the entity was deleted, false if it didn't exist
+     */
+    boolean deleteById(String id);
 }

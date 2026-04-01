@@ -5,8 +5,8 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class OllamaModelFactory extends LangchainModelFactory {
-  @Override
-  public String type() {
-    return ModelConfig.Provider.OLLAMA.name();
-  }
+    @Override
+    public String type() {
+        return ModelConfig.Provider.OLLAMA.name();
+    }
 }

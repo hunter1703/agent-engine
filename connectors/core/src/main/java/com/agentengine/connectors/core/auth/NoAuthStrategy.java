@@ -6,13 +6,13 @@ import jakarta.inject.Singleton;
 @Singleton
 public final class NoAuthStrategy implements AuthStrategy {
 
-  @Override
-  public AuthType type() {
-    return AuthType.NONE;
-  }
+    @Override
+    public AuthType type() {
+        return AuthType.NONE;
+    }
 
-  @Override
-  public void apply(final AuthRequestContext requestContext) {
-    // Intentionally empty.
-  }
+    @Override
+    public void apply(final AuthRequestContext requestContext) {
+        // Intentionally empty.
+    }
 }

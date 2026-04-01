@@ -14,5 +14,4 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Stereotype
 @Target(ElementType.TYPE)
-public @interface DiscoverableTool {
-}
+public @interface DiscoverableTool {}

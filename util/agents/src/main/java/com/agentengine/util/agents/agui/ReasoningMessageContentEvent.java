@@ -3,18 +3,18 @@ package com.agentengine.util.agents.agui;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ReasoningMessageContentEvent extends BaseReasoningEvent {
-  private String delta;
+    private String delta;
 
-  @JsonProperty("type")
-  public String getTypeName() {
-    return "REASONING_MESSAGE_CONTENT";
-  }
+    @JsonProperty("type")
+    public String getTypeName() {
+        return "REASONING_MESSAGE_CONTENT";
+    }
 
-  public String getDelta() {
-    return delta;
-  }
+    public String getDelta() {
+        return delta;
+    }
 
-  public void setDelta(final String delta) {
-    this.delta = delta;
-  }
+    public void setDelta(final String delta) {
+        this.delta = delta;
+    }
 }

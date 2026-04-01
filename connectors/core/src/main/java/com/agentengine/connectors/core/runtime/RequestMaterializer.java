@@ -22,161 +22,191 @@ import java.util.Map;
 @Singleton
 public final class RequestMaterializer {
 
-  private static final String JSON_CONTENT_TYPE = "application/json";
-  private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
-  private static final String TEXT_CONTENT_TYPE = "text/plain";
+    private static final String JSON_CONTENT_TYPE = "application/json";
+    private static final String FORM_CONTENT_TYPE = "application/x-www-form-urlencoded";
+    private static final String TEXT_CONTENT_TYPE = "text/plain";
 
-  private final TemplateResolver templateResolver;
-  private final AuthStrategyRegistry authRegistry;
+    private final TemplateResolver templateResolver;
+    private final AuthStrategyRegistry authRegistry;
 
-  @Inject
-  public RequestMaterializer(final TemplateResolver templateResolver, final AuthStrategyRegistry authStrategyRegistry) {
-    this.templateResolver = templateResolver;
-    this.authRegistry = authStrategyRegistry;
-  }
-
-  public HttpRequestData materialize(final ConnectorDefinition definition, final RequestContext context,
-      final PaginationDirective paginationDirective) {
-    final EndpointConfig endpoint = definition.endpoint();
-    final boolean strictUnresolved = definition.strictUnresolvedVariables();
-
-    final String baseUrl = resolveStringValue(endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
-    final String resolvedPath = resolveStringValue(endpoint.path(), endpoint.pathTemplate(), context, strictUnresolved);
-
-    String resolvedUrl = joinUrl(baseUrl, resolvedPath);
-    if (paginationDirective.overrideUrl() != null && !paginationDirective.overrideUrl().isBlank()) {
-      resolvedUrl = paginationDirective.overrideUrl();
+    @Inject
+    public RequestMaterializer(
+            final TemplateResolver templateResolver, final AuthStrategyRegistry authStrategyRegistry) {
+        this.templateResolver = templateResolver;
+        this.authRegistry = authStrategyRegistry;
     }
 
-    final Map<String, String> headers = resolveMap(definition.headers(), context, strictUnresolved, endpoint.omitNullHeaders());
-    final Map<String, String> query = resolveMap(definition.query(), context, strictUnresolved, endpoint.omitNullQuery());
-    query.putAll(paginationDirective.queryOverrides());
+    public HttpRequestData materialize(
+            final ConnectorDefinition definition,
+            final RequestContext context,
+            final PaginationDirective paginationDirective) {
+        final EndpointConfig endpoint = definition.endpoint();
+        final boolean strictUnresolved = definition.strictUnresolvedVariables();
 
-    final String body = resolveBody(definition, context);
-    final String contentType = resolveContentType(definition);
+        final String baseUrl =
+                resolveStringValue(endpoint.baseUrl(), endpoint.baseUrlTemplate(), context, strictUnresolved);
+        final String resolvedPath =
+                resolveStringValue(endpoint.path(), endpoint.pathTemplate(), context, strictUnresolved);
 
-    authRegistry.apply(new AuthRequestContext(definition.auth(), context, templateResolver, strictUnresolved, headers, query));
+        String resolvedUrl = joinUrl(baseUrl, resolvedPath);
+        if (paginationDirective.overrideUrl() != null
+                && !paginationDirective.overrideUrl().isBlank()) {
+            resolvedUrl = paginationDirective.overrideUrl();
+        }
 
-    return new HttpRequestData(endpoint.methodEnum(), resolvedUrl, headers, query, body, contentType, endpoint.connectTimeoutMs(),
-        endpoint.readTimeoutMs(), endpoint.writeTimeoutMs());
-  }
+        final Map<String, String> headers =
+                resolveMap(definition.headers(), context, strictUnresolved, endpoint.omitNullHeaders());
+        final Map<String, String> query =
+                resolveMap(definition.query(), context, strictUnresolved, endpoint.omitNullQuery());
+        query.putAll(paginationDirective.queryOverrides());
 
-  @SuppressWarnings("unchecked")
-  private Map<String, String> resolveMap(final Map<String, Object> mapTemplate, final RequestContext context,
-      final boolean strictUnresolved, final boolean omitNulls) {
-    final ResolvedValue resolvedValue = templateResolver.resolve(mapTemplate, context,
-        new TemplateResolutionOptions(strictUnresolved, omitNulls));
+        final String body = resolveBody(definition, context);
+        final String contentType = resolveContentType(definition);
 
-    if (resolvedValue.status() == ResolvedValueStatus.NULL_VALUE || resolvedValue.value() == null) {
-      return new LinkedHashMap<>();
+        authRegistry.apply(
+                new AuthRequestContext(definition.auth(), context, templateResolver, strictUnresolved, headers, query));
+
+        return new HttpRequestData(
+                endpoint.methodEnum(),
+                resolvedUrl,
+                headers,
+                query,
+                body,
+                contentType,
+                endpoint.connectTimeoutMs(),
+                endpoint.readTimeoutMs(),
+                endpoint.writeTimeoutMs());
     }
 
-    if (!(resolvedValue.value() instanceof Map<?, ?> resolvedMap)) {
-      throw new ConnectorExecutionException("Expected map template to resolve into a map value");
+    @SuppressWarnings("unchecked")
+    private Map<String, String> resolveMap(
+            final Map<String, Object> mapTemplate,
+            final RequestContext context,
+            final boolean strictUnresolved,
+            final boolean omitNulls) {
+        final ResolvedValue resolvedValue = templateResolver.resolve(
+                mapTemplate, context, new TemplateResolutionOptions(strictUnresolved, omitNulls));
+
+        if (resolvedValue.status() == ResolvedValueStatus.NULL_VALUE || resolvedValue.value() == null) {
+            return new LinkedHashMap<>();
+        }
+
+        if (!(resolvedValue.value() instanceof Map<?, ?> resolvedMap)) {
+            throw new ConnectorExecutionException("Expected map template to resolve into a map value");
+        }
+
+        final Map<String, String> output = new LinkedHashMap<>();
+        resolvedMap.forEach((key, value) -> {
+            if (value == null && omitNulls) {
+                return;
+            }
+            output.put(String.valueOf(key), value == null ? null : String.valueOf(value));
+        });
+        return output;
     }
 
-    final Map<String, String> output = new LinkedHashMap<>();
-    resolvedMap.forEach((key, value) -> {
-      if (value == null && omitNulls) {
-        return;
-      }
-      output.put(String.valueOf(key), value == null ? null : String.valueOf(value));
-    });
-    return output;
-  }
+    private String resolveBody(final ConnectorDefinition definition, final RequestContext context) {
+        if (definition.body() == null || definition.body().template() == null) {
+            return null;
+        }
 
-  private String resolveBody(final ConnectorDefinition definition, final RequestContext context) {
-    if (definition.body() == null || definition.body().template() == null) {
-      return null;
+        final ResolvedValue resolvedBody = templateResolver.resolve(
+                definition.body().template(),
+                context,
+                new TemplateResolutionOptions(
+                        definition.strictUnresolvedVariables(),
+                        definition.body().omitNulls()));
+
+        if (resolvedBody.status() == ResolvedValueStatus.NULL_VALUE) {
+            return null;
+        }
+
+        final Object value = resolvedBody.value();
+        final BodyType bodyType = definition.body().typeEnum();
+
+        return switch (bodyType) {
+            case JSON -> writeJson(value);
+            case FORM_URLENCODED -> toFormEncoded(value);
+            case TEXT -> value == null ? null : String.valueOf(value);
+            case UNKNOWN -> throw new ConnectorExecutionException("Body type is required when body is present");
+        };
     }
 
-    final ResolvedValue resolvedBody = templateResolver.resolve(definition.body().template(), context,
-        new TemplateResolutionOptions(definition.strictUnresolvedVariables(), definition.body().omitNulls()));
-
-    if (resolvedBody.status() == ResolvedValueStatus.NULL_VALUE) {
-      return null;
+    private static String resolveContentType(final ConnectorDefinition definition) {
+        if (definition.body() == null || definition.body().template() == null) {
+            return null;
+        }
+        if (definition.body().contentType() != null
+                && !definition.body().contentType().isBlank()) {
+            return definition.body().contentType();
+        }
+        return switch (definition.body().typeEnum()) {
+            case JSON -> JSON_CONTENT_TYPE;
+            case FORM_URLENCODED -> FORM_CONTENT_TYPE;
+            case TEXT -> TEXT_CONTENT_TYPE;
+            case UNKNOWN -> null;
+        };
     }
 
-    final Object value = resolvedBody.value();
-    final BodyType bodyType = definition.body().typeEnum();
+    @SuppressWarnings("unchecked")
+    private static String toFormEncoded(final Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof Map<?, ?> mapValue)) {
+            throw new ConnectorExecutionException("FORM_URLENCODED body must resolve to a map");
+        }
 
-    return switch (bodyType) {
-      case JSON -> writeJson(value);
-      case FORM_URLENCODED -> toFormEncoded(value);
-      case TEXT -> value == null ? null : String.valueOf(value);
-      case UNKNOWN -> throw new ConnectorExecutionException("Body type is required when body is present");
-    };
-  }
-
-  private static String resolveContentType(final ConnectorDefinition definition) {
-    if (definition.body() == null || definition.body().template() == null) {
-      return null;
-    }
-    if (definition.body().contentType() != null && !definition.body().contentType().isBlank()) {
-      return definition.body().contentType();
-    }
-    return switch (definition.body().typeEnum()) {
-      case JSON -> JSON_CONTENT_TYPE;
-      case FORM_URLENCODED -> FORM_CONTENT_TYPE;
-      case TEXT -> TEXT_CONTENT_TYPE;
-      case UNKNOWN -> null;
-    };
-  }
-
-  @SuppressWarnings("unchecked")
-  private static String toFormEncoded(final Object value) {
-    if (value == null) {
-      return null;
-    }
-    if (!(value instanceof Map<?, ?> mapValue)) {
-      throw new ConnectorExecutionException("FORM_URLENCODED body must resolve to a map");
+        final StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<?, ?> entry : mapValue.entrySet()) {
+            if (!first) {
+                builder.append('&');
+            }
+            first = false;
+            builder.append(URLEncoder.encode(String.valueOf(entry.getKey()), StandardCharsets.UTF_8))
+                    .append('=')
+                    .append(URLEncoder.encode(
+                            entry.getValue() == null ? "" : String.valueOf(entry.getValue()), StandardCharsets.UTF_8));
+        }
+        return builder.toString();
     }
 
-    final StringBuilder builder = new StringBuilder();
-    boolean first = true;
-    for (Map.Entry<?, ?> entry : mapValue.entrySet()) {
-      if (!first) {
-        builder.append('&');
-      }
-      first = false;
-      builder.append(URLEncoder.encode(String.valueOf(entry.getKey()), StandardCharsets.UTF_8)).append('=')
-          .append(URLEncoder.encode(entry.getValue() == null ? "" : String.valueOf(entry.getValue()), StandardCharsets.UTF_8));
-    }
-    return builder.toString();
-  }
-
-  private String writeJson(final Object value) {
-    return JsonUtils.toJson(value);
-  }
-
-  private String resolveStringValue(final String staticValue, final String templateValue, final RequestContext context,
-      final boolean strictUnresolved) {
-    if (templateValue != null && !templateValue.isBlank()) {
-      final ResolvedValue resolvedValue = templateResolver.resolve(templateValue, context,
-          new TemplateResolutionOptions(strictUnresolved, false));
-      return resolvedValue.value() == null ? null : String.valueOf(resolvedValue.value());
-    }
-    return staticValue;
-  }
-
-  private static String joinUrl(final String baseUrl, final String path) {
-    if (baseUrl == null || baseUrl.isBlank()) {
-      throw new ConnectorExecutionException("Resolved base URL cannot be empty");
+    private String writeJson(final Object value) {
+        return JsonUtils.toJson(value);
     }
 
-    if (path == null || path.isBlank()) {
-      return baseUrl;
+    private String resolveStringValue(
+            final String staticValue,
+            final String templateValue,
+            final RequestContext context,
+            final boolean strictUnresolved) {
+        if (templateValue != null && !templateValue.isBlank()) {
+            final ResolvedValue resolvedValue = templateResolver.resolve(
+                    templateValue, context, new TemplateResolutionOptions(strictUnresolved, false));
+            return resolvedValue.value() == null ? null : String.valueOf(resolvedValue.value());
+        }
+        return staticValue;
     }
 
-    final boolean baseEndsWithSlash = baseUrl.endsWith("/");
-    final boolean pathStartsWithSlash = path.startsWith("/");
+    private static String joinUrl(final String baseUrl, final String path) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new ConnectorExecutionException("Resolved base URL cannot be empty");
+        }
 
-    if (baseEndsWithSlash && pathStartsWithSlash) {
-      return baseUrl + path.substring(1);
+        if (path == null || path.isBlank()) {
+            return baseUrl;
+        }
+
+        final boolean baseEndsWithSlash = baseUrl.endsWith("/");
+        final boolean pathStartsWithSlash = path.startsWith("/");
+
+        if (baseEndsWithSlash && pathStartsWithSlash) {
+            return baseUrl + path.substring(1);
+        }
+        if (!baseEndsWithSlash && !pathStartsWithSlash) {
+            return baseUrl + "/" + path;
+        }
+        return baseUrl + path;
     }
-    if (!baseEndsWithSlash && !pathStartsWithSlash) {
-      return baseUrl + "/" + path;
-    }
-    return baseUrl + path;
-  }
 }

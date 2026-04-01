@@ -4,5 +4,7 @@ import com.agentengine.util.pekko.PekkoSerializable;
 
 /** Minimal session lifecycle for a session actor. */
 public enum SessionState implements PekkoSerializable {
-  IDLE, RUNNING, PAUSED
+    IDLE,
+    RUNNING,
+    PAUSED
 }

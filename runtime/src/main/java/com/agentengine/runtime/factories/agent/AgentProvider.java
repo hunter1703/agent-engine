@@ -13,18 +13,21 @@ import java.util.function.Function;
 @Singleton
 public class AgentProvider {
 
-  private final Map<String, AgentFactory<?, ?>> typeVsFactory;
-  private final DefaultAgentFactory defaultAgentFactory;
+    private final Map<String, AgentFactory<?, ?>> typeVsFactory;
+    private final DefaultAgentFactory defaultAgentFactory;
 
-  @Inject
-  public AgentProvider(final @Any Instance<AgentFactory<?, ?>> allFactories, final DefaultAgentFactory defaultAgentFactory) {
-    typeVsFactory = CollectionUtils.transformToMap(allFactories.stream().toList(), AgentFactory::type, Function.identity());
-    this.defaultAgentFactory = defaultAgentFactory;
-  }
+    @Inject
+    public AgentProvider(
+            final @Any Instance<AgentFactory<?, ?>> allFactories, final DefaultAgentFactory defaultAgentFactory) {
+        typeVsFactory =
+                CollectionUtils.transformToMap(allFactories.stream().toList(), AgentFactory::type, Function.identity());
+        this.defaultAgentFactory = defaultAgentFactory;
+    }
 
-  public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {
-    // noinspection unchecked
-    final AgentFactory<C, A> factory = (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);
-    return factory.build(config);
-  }
+    public <C extends BaseAgentConfig, A extends Agent> A create(final C config) {
+        // noinspection unchecked
+        final AgentFactory<C, A> factory =
+                (AgentFactory<C, A>) typeVsFactory.getOrDefault(config.getType(), defaultAgentFactory);
+        return factory.build(config);
+    }
 }

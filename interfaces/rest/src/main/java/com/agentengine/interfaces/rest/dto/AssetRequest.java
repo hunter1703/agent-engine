@@ -2,56 +2,55 @@ package com.agentengine.interfaces.rest.dto;
 
 import com.agentengine.util.common.query.Query;
 import jakarta.validation.constraints.NotBlank;
-
 import java.util.List;
 import java.util.Map;
 
 public class AssetRequest {
 
-  @NotBlank(message = "Asset type is required")
-  private String assetType;
-  private List<String> keys;
-  private Query query;
-  private Map<String, Object> options;
+    @NotBlank(message = "Asset type is required")
+    private String assetType;
 
-  public AssetRequest() {
-  }
+    private List<String> keys;
+    private Query query;
+    private Map<String, Object> options;
 
-  public AssetRequest(String assetType, List<String> keys, Query query) {
-    this.assetType = assetType;
-    this.keys = keys;
-    this.query = query;
-  }
+    public AssetRequest() {}
 
-  public String getAssetType() {
-    return assetType;
-  }
+    public AssetRequest(String assetType, List<String> keys, Query query) {
+        this.assetType = assetType;
+        this.keys = keys;
+        this.query = query;
+    }
 
-  public void setAssetType(String assetType) {
-    this.assetType = assetType;
-  }
+    public String getAssetType() {
+        return assetType;
+    }
 
-  public List<String> getKeys() {
-    return keys;
-  }
+    public void setAssetType(String assetType) {
+        this.assetType = assetType;
+    }
 
-  public void setKeys(List<String> keys) {
-    this.keys = keys;
-  }
+    public List<String> getKeys() {
+        return keys;
+    }
 
-  public Query getQuery() {
-    return query;
-  }
+    public void setKeys(List<String> keys) {
+        this.keys = keys;
+    }
 
-  public void setQuery(final Query query) {
-    this.query = query;
-  }
+    public Query getQuery() {
+        return query;
+    }
 
-  public Map<String, Object> getOptions() {
-    return options;
-  }
+    public void setQuery(final Query query) {
+        this.query = query;
+    }
 
-  public void setOptions(final Map<String, Object> options) {
-    this.options = options;
-  }
+    public Map<String, Object> getOptions() {
+        return options;
+    }
+
+    public void setOptions(final Map<String, Object> options) {
+        this.options = options;
+    }
 }

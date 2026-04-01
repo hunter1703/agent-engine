@@ -15,46 +15,77 @@ import java.util.stream.IntStream;
 @Singleton
 public final class DefaultResponseMapper {
 
-  private static final Set<Integer> DEFAULT_SUCCESS_STATUS_CODES = IntStream.range(200, 300).boxed()
-      .collect(Collectors.toUnmodifiableSet());
+    private static final Set<Integer> DEFAULT_SUCCESS_STATUS_CODES =
+            IntStream.range(200, 300).boxed().collect(Collectors.toUnmodifiableSet());
 
-  private final ErrorClassifier errorClassifier;
-  private final TemplateResolver templateResolver;
+    private final ErrorClassifier errorClassifier;
+    private final TemplateResolver templateResolver;
 
-  @Inject
-  public DefaultResponseMapper(final ErrorClassifier errorClassifier, final TemplateResolver templateResolver) {
-    this.errorClassifier = errorClassifier;
-    this.templateResolver = templateResolver;
-  }
-
-  public ConnectorExecutionResult map(final ConnectorDefinition definition, final HttpResponseData responseData, final String requestUrl,
-      final String method) {
-    final boolean success = isSuccess(definition, responseData.statusCode());
-
-    final Map<String, Object> templateVariables = Map.of("response", responseData.body(), "statusCode", responseData.statusCode(),
-        "headers", responseData.headers());
-    final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
-
-    final Object data = templateResolver.resolve(definition.responseMapping().output(), context, null).value();
-    final Object metadata = definition.responseMapping().metadata() != null
-        ? templateResolver.resolve(definition.responseMapping().metadata(), context, null).value()
-        : null;
-
-    if (success) {
-      return new ConnectorExecutionResult(responseData.statusCode(), true, requestUrl, method, responseData.flattenHeaders(), data,
-          metadata, definition.responseMapping().includeRawBody() ? responseData.body() : null, null, null, false);
+    @Inject
+    public DefaultResponseMapper(final ErrorClassifier errorClassifier, final TemplateResolver templateResolver) {
+        this.errorClassifier = errorClassifier;
+        this.templateResolver = templateResolver;
     }
 
-    final ClassifiedError classifiedError = errorClassifier.classify(definition, responseData);
-    return new ConnectorExecutionResult(responseData.statusCode(), false, requestUrl, method, responseData.flattenHeaders(), data, metadata,
-        definition.responseMapping().includeRawBody() ? responseData.body() : null, classifiedError.code(), classifiedError.message(),
-        classifiedError.retryable());
-  }
+    public ConnectorExecutionResult map(
+            final ConnectorDefinition definition,
+            final HttpResponseData responseData,
+            final String requestUrl,
+            final String method) {
+        final boolean success = isSuccess(definition, responseData.statusCode());
 
-  private boolean isSuccess(final ConnectorDefinition definition, final int statusCode) {
-    if (definition.responseMapping().hasCustomSuccessStatusCodes()) {
-      return definition.responseMapping().successStatusCodes().contains(statusCode);
+        final Map<String, Object> templateVariables = Map.of(
+                "response",
+                responseData.body(),
+                "statusCode",
+                responseData.statusCode(),
+                "headers",
+                responseData.headers());
+        final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+
+        final Object data = templateResolver
+                .resolve(definition.responseMapping().output(), context, null)
+                .value();
+        final Object metadata = definition.responseMapping().metadata() != null
+                ? templateResolver
+                        .resolve(definition.responseMapping().metadata(), context, null)
+                        .value()
+                : null;
+
+        if (success) {
+            return new ConnectorExecutionResult(
+                    responseData.statusCode(),
+                    true,
+                    requestUrl,
+                    method,
+                    responseData.flattenHeaders(),
+                    data,
+                    metadata,
+                    definition.responseMapping().includeRawBody() ? responseData.body() : null,
+                    null,
+                    null,
+                    false);
+        }
+
+        final ClassifiedError classifiedError = errorClassifier.classify(definition, responseData);
+        return new ConnectorExecutionResult(
+                responseData.statusCode(),
+                false,
+                requestUrl,
+                method,
+                responseData.flattenHeaders(),
+                data,
+                metadata,
+                definition.responseMapping().includeRawBody() ? responseData.body() : null,
+                classifiedError.code(),
+                classifiedError.message(),
+                classifiedError.retryable());
     }
-    return DEFAULT_SUCCESS_STATUS_CODES.contains(statusCode);
-  }
+
+    private boolean isSuccess(final ConnectorDefinition definition, final int statusCode) {
+        if (definition.responseMapping().hasCustomSuccessStatusCodes()) {
+            return definition.responseMapping().successStatusCodes().contains(statusCode);
+        }
+        return DEFAULT_SUCCESS_STATUS_CODES.contains(statusCode);
+    }
 }
