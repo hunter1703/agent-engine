@@ -1,9 +1,0 @@
-plugins {
-    id 'com.agentengine.java-library-conventions'
-}
-
-dependencies {
-    implementation project(':util:common')
-    implementation project(':util:mongodb')
-    implementation project(':util:ms')
-}

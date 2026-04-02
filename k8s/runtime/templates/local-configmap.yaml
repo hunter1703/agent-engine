@@ -1,0 +1,15 @@
+{{- if .Values.applicationConfig.localProperties }}
+{{- $ctx := dict "root" . "component" .Values.component -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-engine.base.localPropertiesConfigMapName" $ctx }}
+  namespace: {{ include "agent-engine.base.namespace" $ctx }}
+  labels:
+    {{- include "agent-engine.base.labels" $ctx | nindent 4 }}
+data:
+  local.properties: |-
+    {{- range $key, $value := .Values.applicationConfig.localProperties }}
+    {{ $key }}={{ $value }}
+    {{- end }}
+{{- end }}

@@ -1,6 +1,6 @@
 apiVersion: v2
 name: agent-engine-global-properties
-description: Shared bootstrap properties for Agent Engine services
+description: Shared application config properties for Agent Engine services
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

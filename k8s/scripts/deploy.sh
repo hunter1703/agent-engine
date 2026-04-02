@@ -11,7 +11,8 @@ ATOMIC=true
 LINT=true
 DRY_RUN=false
 BUILD_IMAGES=true
-SYNC_CONFIGS=true
+SKIP_SEED_INFRA=false
+SKIP_SEED_CATALOG=false
 TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-latest}
 EXTRA_VALUES_FILES=""
@@ -21,22 +22,28 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/deploy.sh
-  ./k8s/scripts/deploy.sh -n agent-engine-prod
-  ./k8s/scripts/deploy.sh --skip-build
+  ./k8s/scripts/deploy.sh --skip-build --skip-seed-infra --skip-seed-catalog
 
-Behavior:
-  1. Deploy infra workloads.
-  2. Upsert infra config into MongoDB.
-  3. Deploy runtime, core, and rest.
-  4. Upsert model and agent catalog through REST.
+Phases:
+  1. Build Docker images for runtime, core, and rest.
+  2. Deploy infrastructure workloads (MongoDB, Postgres).
+  3. Seed infrastructure configuration into MongoDB (Pekko, SQL, microservices, default model).
+  4. Deploy application workloads (runtime, core, rest).
+  5. Seed application catalog (models, agents) through the REST API.
+
+  In production, steps 3 and 5 are the responsibility of the DevOps team.
 
 Flags:
-  --no-wait          Do not wait for rollouts/hooks to complete.
-  --no-atomic        Disable atomic rollback on failure.
-  --skip-lint        Skip helm lint before deploy.
-  --skip-build       Skip automatic Docker image builds for runtime/core/rest.
-  --dry-run          Render the release changes without applying them.
-  --timeout <d>      Helm timeout (default: 10m).
+  --skip-build          Skip Docker image builds (step 1). Use when images are pre-built.
+  --skip-seed-infra     Skip infra config seeding (step 3). Use on re-deploys when
+                        infra config is already present and unchanged.
+  --skip-seed-catalog   Skip catalog seeding (step 5). Use on re-deploys when
+                        agent/model catalog is already present and unchanged.
+  --no-wait             Do not wait for rollouts to complete.
+  --no-atomic           Disable atomic rollback on Helm failure.
+  --skip-lint           Skip helm lint before deploy.
+  --dry-run             Render release changes without applying them (implies --skip-build).
+  --timeout <d>         Helm timeout (default: 10m).
 EOF
   print_common_usage
 }
@@ -80,6 +87,14 @@ parse_args() {
         BUILD_IMAGES=false
         shift
         ;;
+      --skip-seed-infra)
+        SKIP_SEED_INFRA=true
+        shift
+        ;;
+      --skip-seed-catalog)
+        SKIP_SEED_CATALOG=true
+        shift
+        ;;
       --dry-run)
         DRY_RUN=true
         shift
@@ -100,55 +115,55 @@ parse_args() {
   done
 }
 
-run_stage() {
-  script_name=$1
-  include_build_flag=$2
-  set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT"
-
-  if [ "$WAIT" = "false" ]; then
-    set -- "$@" --no-wait
-  fi
-  if [ "$ATOMIC" = "false" ]; then
-    set -- "$@" --no-atomic
-  fi
-  if [ "$LINT" = "false" ]; then
-    set -- "$@" --skip-lint
-  fi
-  if [ "$DRY_RUN" = "true" ]; then
-    set -- "$@" --dry-run
-  fi
-  if [ "$include_build_flag" = "true" ] && [ "$BUILD_IMAGES" = "false" ]; then
-    set -- "$@" --skip-build
-  fi
-  if [ -n "${IMAGE_TAG:-}" ]; then
-    set -- "$@" --image-tag "$IMAGE_TAG"
-  fi
-
+helm_flags() {
+  set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT" --skip-build
+  [ "$WAIT"   = "false" ] && set -- "$@" --no-wait
+  [ "$ATOMIC" = "false" ] && set -- "$@" --no-atomic
+  [ "$LINT"   = "false" ] && set -- "$@" --skip-lint
+  [ "$DRY_RUN" = "true"  ] && set -- "$@" --dry-run
+  [ -n "${IMAGE_TAG:-}"  ] && set -- "$@" --image-tag "$IMAGE_TAG"
   if [ -n "${EXTRA_VALUES_FILES:-}" ]; then
-    for values_file in $EXTRA_VALUES_FILES; do
-      set -- "$@" -f "$values_file"
-    done
+    for f in $EXTRA_VALUES_FILES; do set -- "$@" -f "$f"; done
   fi
-
   if [ -n "${SET_ARGUMENTS:-}" ]; then
-    for set_argument in $SET_ARGUMENTS; do
-      set -- "$@" --set "$set_argument"
-    done
+    for s in $SET_ARGUMENTS; do set -- "$@" --set "$s"; done
   fi
-
-  sh "$SCRIPT_DIR/$script_name" "$@"
+  printf '%s\n' "$*"
 }
 
 parse_args "$@"
 
-run_stage deploy-infra.sh false
-
-if [ "$DRY_RUN" != "true" ]; then
-  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
+# ── Phase 1: Build ────────────────────────────────────────────────────────────
+if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
+  echo "==> Phase 1: Building Docker images"
+  require_command docker
+  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest
+else
+  echo "==> Phase 1: Skipping image build"
 fi
 
-run_stage deploy-services.sh true
+# ── Phase 2: Deploy infrastructure ───────────────────────────────────────────
+echo "==> Phase 2: Deploying infrastructure workloads"
+# shellcheck disable=SC2046
+sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
 
-if [ "$DRY_RUN" != "true" ]; then
+# ── Phase 3: Seed infrastructure configuration ───────────────────────────────
+if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_INFRA" != "true" ]; then
+  echo "==> Phase 3: Seeding infrastructure configuration"
+  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
+else
+  echo "==> Phase 3: Skipping infra config seeding"
+fi
+
+# ── Phase 4: Deploy application workloads ────────────────────────────────────
+echo "==> Phase 4: Deploying application workloads"
+# shellcheck disable=SC2046
+sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags)
+
+# ── Phase 5: Seed application catalog ────────────────────────────────────────
+if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_CATALOG" != "true" ]; then
+  echo "==> Phase 5: Seeding application catalog"
   sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
+else
+  echo "==> Phase 5: Skipping catalog seeding"
 fi

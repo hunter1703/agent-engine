@@ -13,8 +13,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class HumanInTheLoopTool extends Tool {
+    private static final Logger LOG = LoggerFactory.getLogger(HumanInTheLoopTool.class);
     public static final String TOOL_NAME = "human_in_the_loop";
     public static final String PROMPT = "prompt";
     public static final String KIND = "kind";
@@ -45,9 +48,15 @@ public final class HumanInTheLoopTool extends Tool {
         final SessionPauseKind pauseKind = SessionPauseKind.valueOfOrDefault(kind);
         final ToolConfirmation confirmation = toolContext.toolConfirmation().orElse(null);
         if (confirmation != null) {
+            LOG.info(
+                    "Consuming HITL confirmation kind={} confirmed={} payloadPresent={}",
+                    pauseKind,
+                    confirmation.confirmed(),
+                    confirmation.payload() != null);
             return confirm(confirmation, pauseKind);
         }
 
+        LOG.info("Requesting HITL confirmation kind={}", pauseKind);
         return requestConfirmation(toolContext, prompt, options, context, pauseKind);
     }
 

@@ -1,9 +1,10 @@
 namespace: agent-engine
 nameOverride: ""
 fullnameOverride: ""
+component: core
 replicas: 1
 revisionHistoryLimit: 3
-terminationGracePeriodSeconds: 60
+terminationGracePeriodSeconds: 90
 priorityClassName: ""
 
 commonLabels: {}
@@ -39,10 +40,10 @@ java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
-bootstrap:
-  mongodb:
-    existingSecret: "agent-engine-infra-mongodb-connection"
-    connectionStringKey: connection-string
+applicationConfig:
+  globalConfigMapName: "global-properties-agent-engine-configmap"
+  localProperties:
+    pekko.cluster.roles: core
 
 config:
   existingConfigMap: ""
@@ -50,7 +51,6 @@ config:
     quarkus.otel.service.name: agent-engine-core
     quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
     quarkus.log.console.json: "true"
-    quarkus.mongodb.connection-string: mongodb://mongodb:27017
 
 extraEnv: {}
 extraEnvFromSecrets: []
@@ -76,18 +76,27 @@ tmpVolume:
 
 probes:
   readiness:
+    path: /q/health/ready
     periodSeconds: 10
     failureThreshold: 3
-    timeoutSeconds: 1
+    timeoutSeconds: 3
   liveness:
+    path: /q/health/live
     periodSeconds: 20
     failureThreshold: 3
-    timeoutSeconds: 1
+    timeoutSeconds: 3
   startup:
     enabled: true
+    path: /q/health/live
     periodSeconds: 10
     failureThreshold: 30
-    timeoutSeconds: 1
+    timeoutSeconds: 3
+
+# Seconds to sleep in preStop hook before SIGTERM — lets Pekko port drain.
+preStopSleepSeconds: 15
+
+# Seconds a pod must be ready before the Deployment proceeds to the next replacement.
+minReadySeconds: 20
 
 strategy:
   type: RollingUpdate

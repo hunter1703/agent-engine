@@ -198,6 +198,7 @@ fi
 for chart in $ALL_CHARTS; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
+    ensure_chart_dependencies "$chart"
     if [ "$LINT" = "true" ]; then
       lint_chart "$chart"
     fi

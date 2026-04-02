@@ -6,7 +6,7 @@ This directory now ships as an operator-friendly Helm layout with:
 - a single built-in production overlay under `k8s/environments/prod/`
 - versioned infra config payloads under `configs/infra/`
 - repeatable entrypoint scripts under `k8s/scripts/`
-- safer defaults for probes, security context, PDBs, rollout settings, and secret-backed bootstrap
+- safer defaults for probes, security context, PDBs, rollout settings, and layered global/local application config
 - externalized runtime config via mounted `application.properties`
 
 ## Structure
@@ -14,7 +14,7 @@ This directory now ships as an operator-friendly Helm layout with:
 ```text
 k8s/
   core/                # Helm chart for the core gRPC service
-  global-properties/   # Legacy shared properties chart (optional)
+  global-properties/   # Shared global properties ConfigMap chart
   infra/               # Optional local/dev MongoDB and PostgreSQL
   rest/                # REST gateway chart, optional ingress
   runtime/             # Runtime StatefulSet and headless service
@@ -23,7 +23,7 @@ k8s/
   scripts/
     apply-charts.sh    # Internal Helm chart applier used by stage scripts
     deploy-infra.sh    # Stage 1: deploy MongoDB/PostgreSQL infra
-    deploy-services.sh # Stage 3: deploy runtime, core, and rest
+    deploy-services.sh # Stage 3: deploy global-properties, runtime, core, and rest
     build-images.sh    # Optional manual image build helper
     deploy.sh          # Main staged deployment entrypoint
     seed-configs.sh    # Full sync (infra + catalog)
@@ -95,6 +95,7 @@ Remove the default application stack:
 The built-in production overlay is:
 
 - `k8s/environments/prod/infra.yaml`
+- `k8s/environments/prod/global-properties.yaml`
 - `k8s/environments/prod/runtime.yaml`
 - `k8s/environments/prod/core.yaml`
 - `k8s/environments/prod/rest.yaml`
@@ -122,7 +123,7 @@ You can stack additional overrides on top:
 ./k8s/scripts/seed-configs.sh
 ```
 
-- `seed-infra-configs.sh` writes infra bootstrap before app rollout.
+- `seed-infra-configs.sh` writes infra runtime config before app rollout.
 - `seed-catalog-configs.sh` writes model/agent catalog after REST is available.
 - The seed step upserts:
   - `configs/infra/` into `INFRA.InfraConfig`
@@ -157,7 +158,7 @@ For Docker Desktop Kubernetes, local Docker images tagged as `agent-engine/runti
 - The built-in overlay is production-oriented and deploys application workloads only by default.
 - Runtime, core, and REST charts support image pull secrets, topology spread, service accounts, pod labels/annotations, and extra env/config injection.
 - Each service mounts a single external `/config/application.properties` file from a ConfigMap and sets `QUARKUS_CONFIG_LOCATIONS=file:/config/application.properties`.
-- Infra credentials are not stored directly in ConfigMaps. Mongo bootstrap comes directly from the Secret-backed `MONGODB_CONNECTION_STRING` environment variable, while non-secret runtime config lives in the mounted ConfigMap file.
+- Shared static settings are mounted from `/config/global.properties`, and service-specific overrides are mounted from `/config/local.properties`, while non-secret runtime config lives in `/config/application.properties`.
 - Runtime pods receive `POD_NAME` and `POD_NAMESPACE` through the Kubernetes downward API, and `ActorSystemProvider` resolves those placeholders when building the Pekko config at startup.
 - Seed nodes are only the bootstrap set for cluster formation. By default the seed step writes the first three StatefulSet ordinals, so scaling runtime replicas up does not require changing the seed list.
 - If you need to seed different model IDs, SQL settings, service names, or seed-node fanout, set environment variables such as `DEFAULT_MODEL_ID`, `TITLE_MODEL_ID`, `COMPACTION_MODEL_ID`, `EVALUATOR_MODEL_ID`, `SQL_JDBC_URL`, `CORE_SERVICE_NAME`, `RUNTIME_SERVICE_NAME`, or `RUNTIME_SEED_NODE_COUNT` before running the seed step.
@@ -170,9 +171,10 @@ If you want local/dev in-cluster databases, explicitly deploy the `infra` chart.
 
 If you want external or pre-created credentials:
 
-1. Point `runtime.bootstrap.mongodb.existingSecret`, `core.bootstrap.mongodb.existingSecret`, and `rest.bootstrap.mongodb.existingSecret` at the secret containing `connection-string`.
-2. Set `SQL_JDBC_URL`, `POSTGRES_SECRET_NAME`, and related env overrides when running config sync if PostgreSQL is external.
-3. When using the optional `infra` chart, set `infra.mongodb.connectionString`, `infra.mongodb.auth.existingSecret`, `infra.postgres.jdbcUrl`, or `infra.postgres.existingSecret` as appropriate.
+1. Set `global-properties.globalProperties.infra.mongodb.uri` to the correct MongoDB URI (and keep `infra.mongodb.database` / `app.mongodb.database` aligned with your deployment).
+2. Keep `runtime.applicationConfig.globalConfigMapName`, `core.applicationConfig.globalConfigMapName`, and `rest.applicationConfig.globalConfigMapName` pointed to the shared ConfigMap containing `global.properties`.
+3. Set `SQL_JDBC_URL`, `POSTGRES_SECRET_NAME`, and related env overrides when running config sync if PostgreSQL is external.
+4. When using the optional `infra` chart, set `infra.mongodb.connectionString`, `infra.mongodb.auth.existingSecret`, `infra.postgres.jdbcUrl`, or `infra.postgres.existingSecret` as appropriate.
 
 ## Default Assumptions
 

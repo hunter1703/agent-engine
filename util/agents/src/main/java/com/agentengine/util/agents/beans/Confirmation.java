@@ -1,16 +1,15 @@
 package com.agentengine.util.agents.beans;
 
 import jakarta.validation.constraints.NotBlank;
-
 import java.util.Objects;
 
 public final class Confirmation {
     @NotBlank(message = "Confirmation Id is required")
     private String confirmationId;
+
     private Boolean confirmed;
 
-    public Confirmation() {
-    }
+    public Confirmation() {}
 
     private String answer;
 
@@ -49,9 +48,9 @@ public final class Confirmation {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (Confirmation) obj;
-        return Objects.equals(this.confirmationId, that.confirmationId) &&
-                Objects.equals(this.confirmed, that.confirmed) &&
-                Objects.equals(this.answer, that.answer);
+        return Objects.equals(this.confirmationId, that.confirmationId)
+                && Objects.equals(this.confirmed, that.confirmed)
+                && Objects.equals(this.answer, that.answer);
     }
 
     @Override
@@ -61,10 +60,9 @@ public final class Confirmation {
 
     @Override
     public String toString() {
-        return "Confirmation[" +
-                "confirmationId=" + confirmationId + ", " +
-                "confirmed=" + confirmed + ", " +
-                "answer=" + answer + ']';
+        return "Confirmation[" + "confirmationId="
+                + confirmationId + ", " + "confirmed="
+                + confirmed + ", " + "answer="
+                + answer + ']';
     }
-
 }

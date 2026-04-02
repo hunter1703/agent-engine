@@ -1,10 +1,11 @@
+{{- $ctx := dict "root" . "component" .Values.component -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "agent-engine-rest.fullname" . }}
-  namespace: {{ include "agent-engine-rest.namespace" . }}
+  name: {{ include "agent-engine.base.fullname" $ctx }}
+  namespace: {{ include "agent-engine.base.namespace" $ctx }}
   labels:
-    {{- include "agent-engine-rest.labels" . | nindent 4 }}
+    {{- include "agent-engine.base.labels" $ctx | nindent 4 }}
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -12,7 +13,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "agent-engine-rest.selectorLabels" . | nindent 4 }}
+    {{- include "agent-engine.base.selectorLabels" $ctx | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.service.httpPort }}

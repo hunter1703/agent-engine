@@ -1,6 +1,6 @@
 {{- if .Values.mongodb.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mongodb
   namespace: {{ include "agent-engine-infra.namespace" . }}
@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/name: mongodb
     {{- include "agent-engine-infra.labels" . | nindent 4 }}
 spec:
+  serviceName: mongodb-headless
   replicas: 1
   selector:
     matchLabels:
@@ -44,6 +45,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: 30
       containers:
         - name: mongodb
           image: {{ include "agent-engine-infra.mongodbImage" . | quote }}
@@ -66,9 +68,20 @@ spec:
           ports:
             - name: mongo
               containerPort: {{ .Values.mongodb.port }}
-          readinessProbe:
+          startupProbe:
             tcpSocket:
               port: mongo
+            periodSeconds: {{ .Values.mongodb.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.mongodb.probes.startup.failureThreshold }}
+            timeoutSeconds: {{ .Values.mongodb.probes.startup.timeoutSeconds }}
+          readinessProbe:
+            {{- if not .Values.mongodb.auth.enabled }}
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            {{- else }}
+            tcpSocket:
+              port: mongo
+            {{- end }}
             periodSeconds: {{ .Values.mongodb.probes.readiness.periodSeconds }}
             failureThreshold: {{ .Values.mongodb.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.mongodb.probes.readiness.timeoutSeconds }}
@@ -83,12 +96,23 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data/db
+      {{- if not .Values.mongodb.persistence.enabled }}
       volumes:
         - name: data
-{{- if .Values.mongodb.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: mongodb-data
-{{- else }}
           emptyDir: {}
-{{- end }}
+      {{- end }}
+  {{- if .Values.mongodb.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.mongodb.persistence.storageClassName }}
+        storageClassName: {{ .Values.mongodb.persistence.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.persistence.size }}
+  {{- end }}
 {{- end }}

@@ -55,7 +55,7 @@ public class RunnerFactory {
                 .plugins(buildPlugins(agent))
                 .rootAgent(agent)
                 .name(agentId)
-                .resumabilityConfig(new ResumabilityConfig(true))
+                .resumabilityConfig(new ResumabilityConfig(config.getRuntime().isResumable()))
                 .build();
         final Runner runner = Runner.builder()
                 .app(app)

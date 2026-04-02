@@ -1,25 +1,33 @@
 package com.agentengine.runtime.session;
 
+import com.agentengine.runtime.hitl.SessionPause;
+import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.runtime.session.commands.InternalCommand.PublishEventCommand;
 import com.agentengine.runtime.session.commands.InternalCommand.RunFailedCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
-import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.runtime.utils.ContentUtils;
+import com.agentengine.runtime.utils.SessionUtils;
+import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.google.adk.agents.RunConfig;
+import com.google.adk.events.Event;
 import com.google.adk.runner.Runner;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.pekko.actor.typed.ActorRef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Session-scoped adapter around ADK {@link Runner}. */
 public final class SessionRunner {
+    private static final Logger LOG = LoggerFactory.getLogger(SessionRunner.class);
     private static final ExecutorService RUN_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
     private static final Scheduler SCHEDULER = Schedulers.from(RUN_EXECUTOR);
 
@@ -36,12 +44,18 @@ public final class SessionRunner {
     private final String sessionId;
     private final ActorRef<SessionCommand> sessionActor;
     private final Runner runner;
+    private final MongoSessionService sessionService;
     private Disposable disposable;
 
-    public SessionRunner(final String sessionId, final ActorRef<SessionCommand> sessionActor, final Runner runner) {
+    public SessionRunner(
+            final String sessionId,
+            final ActorRef<SessionCommand> sessionActor,
+            final Runner runner,
+            final MongoSessionService sessionService) {
         this.sessionId = sessionId;
         this.sessionActor = sessionActor;
         this.runner = runner;
+        this.sessionService = sessionService;
     }
 
     public synchronized void start(final String message) {
@@ -49,6 +63,14 @@ public final class SessionRunner {
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID, sessionId, ContentUtils.buildUserContent(message), runConfig())
                 .subscribeOn(SCHEDULER)
+                .doOnNext(event -> LOG.debug(
+                        "[{}] runAsync onNext: author={} turnComplete={} finalResponse={}",
+                        sessionId,
+                        event.author(),
+                        event.turnComplete().orElse(false),
+                        event.finalResponse()))
+                .doOnComplete(() -> LOG.debug("[{}] runAsync onComplete", sessionId))
+                .doOnError(error -> LOG.error("[{}] runAsync onError", sessionId, error))
                 .subscribe(
                         event -> sessionActor.tell(new PublishEventCommand(event)),
                         error -> sessionActor.tell(new RunFailedCommand(errorMessage(error))));
@@ -59,7 +81,7 @@ public final class SessionRunner {
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID,
                         sessionId,
-                        //TODO: how to pass multiple confirmations?
+                        // TODO: how to pass multiple confirmations?
                         ContentUtils.buildConfirmationContents(confirmations).getFirst(),
                         runConfig())
                 .subscribeOn(SCHEDULER)

@@ -29,6 +29,8 @@ public final class SessionEvent extends BaseEntity {
     private long sequence;
     private Map<String, Object> metadata;
 
+    public SessionEvent() {}
+
     public SessionEvent(
             String id,
             String rootSessionId,

@@ -4,7 +4,7 @@ plugins {
 
 
 dependencies {
-    implementation project(':util:ms')
+    implementation project(':util:ms:client')
     implementation project(':util:common')
     implementation project(':util:agents')
 

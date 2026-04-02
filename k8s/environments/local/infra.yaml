@@ -1,0 +1,15 @@
+# Local Docker Desktop development overlay.
+# Persistence is disabled — data is ephemeral (re-seeded on every deploy).
+# For production, use the prod environment: ./k8s/scripts/deploy.sh -e prod
+
+mongodb:
+  enabled: true
+  auth:
+    enabled: false
+  persistence:
+    enabled: false
+
+postgres:
+  enabled: true
+  persistence:
+    enabled: false

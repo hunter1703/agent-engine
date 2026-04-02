@@ -13,8 +13,7 @@ public final class TurnCommittedFact extends SessionFact {
         this(List.of(), null, null);
     }
 
-    public TurnCommittedFact(
-            final List<Event> events, final String failure, final String finalAnswer) {
+    public TurnCommittedFact(final List<Event> events, final String failure, final String finalAnswer) {
         setEvents(events);
         this.failure = failure;
         this.finalAnswer = finalAnswer;

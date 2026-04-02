@@ -1,0 +1,21 @@
+{{- if .Values.postgres.enabled }}
+# Headless service required by the Postgres StatefulSet for pod DNS identity.
+# Application pods connect to Postgres via the regular ClusterIP service (postgres).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: {{ include "agent-engine-infra.namespace" . }}
+  labels:
+    app.kubernetes.io/name: postgres
+    {{- include "agent-engine-infra.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.port }}
+      targetPort: postgres
+{{- end }}

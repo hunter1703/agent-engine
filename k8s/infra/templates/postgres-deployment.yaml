@@ -1,6 +1,6 @@
 {{- if .Values.postgres.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: postgres
   namespace: {{ include "agent-engine-infra.namespace" . }}
@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/name: postgres
     {{- include "agent-engine-infra.labels" . | nindent 4 }}
 spec:
+  serviceName: postgres-headless
   replicas: 1
   selector:
     matchLabels:
@@ -44,6 +45,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: 30
       containers:
         - name: postgres
           image: {{ include "agent-engine-infra.postgresImage" . | quote }}
@@ -66,9 +68,15 @@ spec:
           ports:
             - name: postgres
               containerPort: {{ .Values.postgres.port }}
+          startupProbe:
+            exec:
+              command: ["pg_isready"]
+            periodSeconds: {{ .Values.postgres.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.postgres.probes.startup.failureThreshold }}
+            timeoutSeconds: {{ .Values.postgres.probes.startup.timeoutSeconds }}
           readinessProbe:
-            tcpSocket:
-              port: postgres
+            exec:
+              command: ["pg_isready"]
             periodSeconds: {{ .Values.postgres.probes.readiness.periodSeconds }}
             failureThreshold: {{ .Values.postgres.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.postgres.probes.readiness.timeoutSeconds }}
@@ -83,12 +91,24 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+      {{- if not .Values.postgres.persistence.enabled }}
       volumes:
         - name: data
-{{- if .Values.postgres.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: postgres-data
-{{- else }}
           emptyDir: {}
-{{- end }}
+      {{- end }}
+  {{- if .Values.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.postgres.persistence.storageClassName }}
+        storageClassName: {{ .Values.postgres.persistence.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.persistence.size }}
+  {{- end }}
 {{- end }}

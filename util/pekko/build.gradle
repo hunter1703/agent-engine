@@ -8,15 +8,14 @@ dependencies {
     implementation libs.mongodb.bson
 
     implementation platform(libs.pekko.bom)
-    implementation libs.jakarta.enterprise.cdi.api
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
     implementation libs.pekko.actor.typed
-    implementation libs.pekko.cluster.typed
     implementation libs.pekko.cluster.sharding.typed
     implementation libs.pekko.persistence.typed
     implementation libs.pekko.persistence.jdbc
     implementation libs.pekko.serialization.jackson
     implementation libs.pekko.streams
-    implementation libs.pekko.streams.typed
     implementation libs.rxjava
 
     testImplementation libs.pekko.testkit

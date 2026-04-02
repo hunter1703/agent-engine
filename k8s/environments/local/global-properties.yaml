@@ -1,0 +1,4 @@
+globalProperties:
+  infra.mongodb.uri: mongodb://mongodb:27017
+  infra.mongodb.database: INFRA
+  app.mongodb.database: AGENT_ENGINE

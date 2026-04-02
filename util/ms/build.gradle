@@ -1,21 +1,12 @@
 plugins {
     id 'com.agentengine.java-library-conventions'
-    alias(libs.plugins.protobuf)
 }
 
 dependencies {
+    api project(':util:ms:client')
     implementation project(':util:common')
-    implementation project(':util:mongodb')
-    implementation libs.mongodb.driver.sync
-    implementation libs.grpc.stub
-    implementation libs.grpc.protobuf
-    implementation libs.protobuf.java
-    implementation libs.javax.annotation.api
-    implementation libs.jakarta.annotation.api
-    implementation libs.jakarta.inject.api
-    implementation libs.jakarta.enterprise.cdi.api
 
-    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc
     implementation libs.quarkus.grpc
     implementation libs.rxjava
@@ -23,20 +14,4 @@ dependencies {
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core
-}
-
-protobuf {
-    protoc {
-        artifact = libs.protobuf.protoc.get().toString()
-    }
-    plugins {
-        grpc {
-            artifact = libs.grpc.protoc.gen.java.get().toString()
-        }
-    }
-    generateProtoTasks {
-        all()*.plugins {
-            grpc {}
-        }
-    }
 }

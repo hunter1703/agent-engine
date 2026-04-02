@@ -3,7 +3,7 @@
   "model": "dolphin-mistral-24b-venice-edition-q4_k_m",
   "name": "Dolphin Mistral 24B Venice Edition",
   "type": "open_ai_compatible",
-  "baseUrl": "http://127.0.0.1:17007/v1",
+  "baseUrl": "http://host.docker.internal:17007/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "--hf-repo",

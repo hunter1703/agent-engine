@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -125,6 +126,17 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
             Object result = method.invoke(entry.bean(), args);
             if (result instanceof Optional<?> optional) {
                 result = optional.orElse(null);
+            }
+            if (result instanceof CompletionStage<?> stage) {
+                stage.whenComplete((value, ex) -> {
+                    if (ex != null) {
+                        LOG.error("Error executing {}/{}", serviceName, methodName, ex);
+                        responseObserver.onError(rootCauseStatus(ex).asRuntimeException());
+                    } else {
+                        sendResult(value, responseObserver);
+                    }
+                });
+                return;
             }
             sendResult(result, responseObserver);
         } catch (final Exception exception) {

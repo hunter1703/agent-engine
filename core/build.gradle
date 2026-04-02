@@ -3,23 +3,19 @@ plugins {
 }
 
 dependencies {
-    implementation project(':core-api')
-    implementation project(':runtime-api')
-    implementation project(':runtime-actor')
+    implementation project(':core:api')
+    implementation project(':runtime:api')
     implementation project(':util:common')
     implementation project(':util:mongodb')
     implementation project(':util:agents')
     implementation project(':util:ms')
 
+    implementation platform(libs.quarkus.bom)
     implementation libs.ag.ui.core
-    implementation(enforcedPlatform(libs.quarkus.bom))
-    implementation libs.quarkus.mongodb.client
     implementation libs.quarkus.arc
     implementation libs.quarkus.hibernate.validator
     implementation libs.quarkus.opentelemetry
-    implementation libs.quarkus.jackson
-    implementation libs.google.genai
-
+    implementation libs.quarkus.smallrye.health
     implementation libs.slf4j.api
     implementation libs.rxjava
 }

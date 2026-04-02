@@ -32,7 +32,8 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public CompletionStage<StartSessionResult> startSession(final String agentId, final String sessionId, final String message) {
+    public CompletionStage<StartSessionResult> startSession(
+            final String agentId, final String sessionId, final String message) {
         LOG.info("Starting session {}:{}", agentId, sessionId);
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(agentId, sessionId);
         final SessionTopology topology = SessionTopology.root(agentId, sessionId);
@@ -40,7 +41,8 @@ public class RuntimeServiceImpl implements RuntimeService {
                         replyTo -> new ExternalCommand.InitializeCommand(topology, replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .thenCompose(ignored -> ref.<StartSessionResult>ask(
-                        replyTo -> new ExternalCommand.StartCommand(new UniqueRecord<>(message), replyTo), SessionActorFactory.ASK_TIMEOUT))
+                        replyTo -> new ExternalCommand.StartCommand(new UniqueRecord<>(message), replyTo),
+                        SessionActorFactory.ASK_TIMEOUT))
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         LOG.error("Failed to start session {}:{}", agentId, sessionId, ex);
@@ -52,9 +54,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     @Override
     public CompletionStage<ConfirmResult> confirmSession(
-            final String agentId,
-            final String sessionId,
-            final Confirmation confirmation) {
+            final String agentId, final String sessionId, final Confirmation confirmation) {
         LOG.info("Resuming session {}:{} with confirmation '{}'", agentId, sessionId, confirmation.getConfirmationId());
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(agentId, sessionId);
         return ref.<ConfirmResult>ask(

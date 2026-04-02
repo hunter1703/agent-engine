@@ -3,10 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation project(':util:ms')
-    implementation project(':util:common')
+    implementation project(':util:ms:client')
     implementation project(':util:agents')
 
-    implementation libs.ag.ui.core
-    implementation libs.rxjava
+    api libs.reactive.streams
 }

@@ -16,7 +16,7 @@ Usage:
 
 Behavior:
   - Removes the requested releases in reverse dependency order.
-  - With no charts, removes the default application stack (runtime, core, rest).
+  - With no charts, removes the default application stack (global-properties, runtime, core, rest).
 EOF
   cat <<'EOF'
 Additional options:
@@ -56,7 +56,7 @@ parse_args() {
 parse_args "$@"
 require_command helm
 
-for chart in rest core runtime infra; do
+for chart in rest core runtime global-properties infra; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     release_name=$(chart_release_name "$chart")

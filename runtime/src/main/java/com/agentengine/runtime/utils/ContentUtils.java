@@ -161,12 +161,16 @@ public final class ContentUtils {
     public static List<Content> buildConfirmationContents(final Collection<Confirmation> confirmations) {
         final List<Content> contents = new ArrayList<>();
         for (final Confirmation confirmation : CollectionUtils.nullSafeList(confirmations)) {
-            buildConfirmationEvent(confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()).content().ifPresent(contents::add);
+            buildConfirmationEvent(
+                            confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer())
+                    .content()
+                    .ifPresent(contents::add);
         }
         return contents;
     }
 
-    private static Event buildConfirmationEvent(final String confirmationId, final Boolean confirmed, final String answer) {
+    private static Event buildConfirmationEvent(
+            final String confirmationId, final Boolean confirmed, final String answer) {
         final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
         final FunctionResponse functionResponse = FunctionResponse.builder()
                 .id(confirmationId)

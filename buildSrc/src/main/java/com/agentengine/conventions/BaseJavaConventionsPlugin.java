@@ -48,9 +48,7 @@ public abstract class BaseJavaConventionsPlugin {
                 "src/main/java/**/*.java",
                 "src/test/java/**/*.java",
                 "src/integrationTest/java/**/*.java");
-              java.palantirJavaFormat("2.90.0");
-//            java.eclipse().configFile(project.getRootProject().file("configs/spotless/eclipse.xml"));
-            java.removeUnusedImports();
+            java.palantirJavaFormat("2.90.0");
           });
 
       spotless.format(
@@ -103,18 +101,10 @@ public abstract class BaseJavaConventionsPlugin {
   }
 
   private static void configureIntegrationTestLane(final Project project) {
-    project
-        .getPluginManager()
-        .withPlugin(
-            "io.quarkus",
-            ignored -> setupIntegrationTestLane(project, false));
-
-    project.afterEvaluate(
-        ignored -> {
-          if (!project.getPluginManager().hasPlugin("io.quarkus")) {
-            setupIntegrationTestLane(project, true);
-          }
-        });
+    project.afterEvaluate(ignored -> {
+      final boolean hasQuarkus = project.getPluginManager().hasPlugin("io.quarkus");
+      setupIntegrationTestLane(project, !hasQuarkus);
+    });
   }
 
   private static void setupIntegrationTestLane(

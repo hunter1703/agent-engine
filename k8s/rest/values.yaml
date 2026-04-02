@@ -1,8 +1,10 @@
 namespace: agent-engine
 nameOverride: ""
 fullnameOverride: ""
+component: rest
 replicas: 2
 revisionHistoryLimit: 3
+minReadySeconds: 20
 terminationGracePeriodSeconds: 60
 priorityClassName: ""
 
@@ -39,10 +41,9 @@ java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
-bootstrap:
-  mongodb:
-    existingSecret: ""
-    connectionStringKey: connection-string
+applicationConfig:
+  globalConfigMapName: "global-properties-agent-engine-configmap"
+  localProperties: {}
 
 config:
   existingConfigMap: ""

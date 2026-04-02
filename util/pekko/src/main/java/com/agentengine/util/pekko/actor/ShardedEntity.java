@@ -1,6 +1,5 @@
 package com.agentengine.util.pekko.actor;
 
-import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 import org.apache.pekko.persistence.typed.javadsl.EventHandler;
@@ -62,8 +61,4 @@ public abstract class ShardedEntity<Command, Event, State> extends EventSourcedB
 
     @Override
     public abstract EventHandler<State, Event> eventHandler();
-
-    public interface ShardedEntityDefinition<M, E> {
-        Entity<M, E> entity();
-    }
 }

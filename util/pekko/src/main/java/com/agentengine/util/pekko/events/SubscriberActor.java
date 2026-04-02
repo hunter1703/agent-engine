@@ -6,6 +6,8 @@ import com.agentengine.util.pekko.events.SubscriberCommand.ResubscribeCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeResultCommand;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.PostStop;
@@ -60,16 +62,15 @@ import org.reactivestreams.Subscriber;
  *       because the actor can no longer reconstruct a contiguous stream.
  * </ul>
  *
- * <p>Intentional limitation:
+ * <p>Pre-activation buffering:
  *
  * <ul>
- *   <li>If a live event is ignored before activation and no later event arrives, that missing tail
- *       event remains undetected until another publish occurs. In other words, gap detection is
- *       triggered by observing a later sequence, not by background polling.
+ *   <li>Live {@code DeliverCommand} messages that arrive before the subscribe ack is processed are
+ *       buffered in memory and flushed after the backlog is applied. {@code applyEvent} deduplicates
+ *       by sequence, so any overlap between the backlog and the buffer is harmless. This ensures
+ *       events published during the subscription handshake window are never silently lost, including
+ *       the case where a short run completes entirely within that window.
  * </ul>
- *
- * <p>This tradeoff is intentional. The actor favors a simple and low-overhead steady-state path,
- * while still providing bounded replay-based recovery instead of strict lossless delivery.
  */
 final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
@@ -85,6 +86,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
     private Throwable terminalError;
     private Long lastSeenSequence;
     private boolean subscribeInFlight;
+    // Events received before activation are buffered and flushed after the subscribe ack so that
+    // events published during the subscription handshake window are never lost.
+    private final List<SequencedEvent<?>> preActivationBuffer = new ArrayList<>();
 
     private SubscriberActor(
             final ActorContext<SubscriberCommand> context,
@@ -193,6 +197,10 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
         try {
             ack.backlog().forEach(this::applyEvent);
+            // Flush events that arrived during the subscription handshake window. applyEvent
+            // deduplicates by sequence so overlap with the backlog is safe.
+            preActivationBuffer.forEach(this::applyEvent);
+            preActivationBuffer.clear();
         } catch (final Throwable error) {
             terminalError = error;
             if (pendingSubscribeReplyTo != null) {
@@ -222,6 +230,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
     private Behavior<SubscriberCommand> deliver(final SubscriberCommand.DeliverCommand command) {
         if (!isActive()) {
+            // Buffer deliveries that arrive before the subscribe ack so they are not silently
+            // lost. They are flushed in subscribeResult() after the backlog is applied.
+            preActivationBuffer.add(command.event());
             return this;
         }
 

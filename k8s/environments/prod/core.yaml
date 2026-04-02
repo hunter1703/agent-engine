@@ -2,9 +2,6 @@ replicas: 2
 pdb:
   enabled: true
   minAvailable: 1
-bootstrap:
-  mongodb:
-    existingSecret: agent-engine-infra-mongodb-connection
 topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: kubernetes.io/hostname

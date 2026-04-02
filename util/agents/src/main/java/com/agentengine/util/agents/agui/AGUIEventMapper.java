@@ -3,7 +3,6 @@ package com.agentengine.util.agents.agui;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.CorrectionMetadata;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EventMapper;
 import com.agentengine.util.common.ExceptionUtils;
 import com.agui.core.event.BaseEvent;
@@ -19,7 +18,6 @@ import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,14 +63,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         }
 
         return eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
-    }
-
-    public boolean isTerminalEvent(final BaseEvent event) {
-        @SuppressWarnings("unchecked")
-        final String threadId =
-                CollectionUtils.getStringValueFromMap((Map<String, Object>) event.getRawEvent(), "threadId");
-        return (event instanceof RunFinishedEvent || event instanceof RunErrorEvent)
-                && Objects.equals(state.sessionId(), threadId);
     }
 
     @Override

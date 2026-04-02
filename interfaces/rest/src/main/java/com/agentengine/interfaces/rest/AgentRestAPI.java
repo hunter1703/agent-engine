@@ -1,22 +1,13 @@
 package com.agentengine.interfaces.rest;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
-
-import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.SessionService;
-import com.agentengine.interfaces.rest.dto.AgentRequest;
-import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agui.core.event.BaseEvent;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
@@ -31,46 +22,20 @@ import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
-import org.jboss.resteasy.reactive.RestStreamElementType;
-import org.reactivestreams.Publisher;
 
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@Tag(name = "Agent", description = "Agent Management and Execution APIs")
+@Tag(name = "Agent", description = "Agent Management APIs")
 @RunOnVirtualThread
 public class AgentRestAPI {
     private final AgentService agentService;
     private final SessionService sessionService;
-    private final AgentExecutionService agentExecutionService;
 
     @Inject
-    public AgentRestAPI(
-            final AgentService agentService,
-            final SessionService sessionService,
-            final AgentExecutionService agentExecutionService) {
+    public AgentRestAPI(final AgentService agentService, final SessionService sessionService) {
         this.agentService = agentService;
         this.sessionService = sessionService;
-        this.agentExecutionService = agentExecutionService;
-    }
-
-    @POST
-    @Path("/events")
-    @Produces(SERVER_SENT_EVENTS)
-    @RestStreamElementType(APPLICATION_JSON)
-    @Operation(summary = "Stream agent events")
-    @APIResponse(
-            responseCode = "200",
-            description = "SSE event stream in AG-UI format",
-            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
-    @APIResponse(responseCode = "400", description = "Invalid request parameters")
-    @APIResponse(responseCode = "404", description = "Agent not found")
-    @APIResponse(responseCode = "500", description = "Internal server error")
-    public Publisher<BaseEvent> events(@Valid final AgentRequest request) {
-        if (agentService.getAgent(request.getAgentId()) == null) {
-            throw new AssetNotFoundException(AssetClass.AGENT, request.getAgentId());
-        }
-        return agentExecutionService.run(request.getAgentId(), request.getMessage());
     }
 
     @POST
@@ -132,7 +97,7 @@ public class AgentRestAPI {
     @Operation(summary = "Delete an agent")
     @APIResponse(responseCode = "204", description = "Agent deleted")
     @APIResponse(responseCode = "404", description = "Agent not found")
-    public boolean deleteAgent(@PathParam("agentId") final String agentId) {
+    public void deleteAgent(@PathParam("agentId") final String agentId) {
         if (StringUtils.isBlank(agentId)) {
             throw new IllegalArgumentException("Agent ID is required");
         }
@@ -140,27 +105,6 @@ public class AgentRestAPI {
         if (!deleted) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
-        return true;
-    }
-
-    @POST
-    @Path("/session/resume/events")
-    @Produces(SERVER_SENT_EVENTS)
-    @RestStreamElementType(APPLICATION_JSON)
-    @Operation(summary = "Resume a paused session and stream events")
-    @APIResponse(
-            responseCode = "200",
-            description = "SSE event stream in AG-UI format",
-            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
-    @APIResponse(responseCode = "400", description = "Invalid resume payload")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
-    public Publisher<BaseEvent> resumeEvents(@Valid @NotNull final ResumeSessionRequest resumeRequest) {
-        return agentExecutionService.resumeSession(
-                resumeRequest.getSessionId(),
-                resumeRequest.getConfirmationId(),
-                resumeRequest.getConfirmed(),
-                resumeRequest.getMessage());
     }
 
     @DELETE

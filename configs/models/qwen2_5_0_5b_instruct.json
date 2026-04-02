@@ -3,7 +3,7 @@
   "model": "qwen2.5-0.5b-instruct-q4_k_m",
   "name": "Qwen2.5 0.5B Instruct",
   "type": "open_ai_compatible",
-  "baseUrl": "http://127.0.0.1:17006/v1",
+  "baseUrl": "http://host.docker.internal:17006/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m",

@@ -1,0 +1,5 @@
+replicas: 2
+pdb:
+  enabled: false
+ingress:
+  enabled: false

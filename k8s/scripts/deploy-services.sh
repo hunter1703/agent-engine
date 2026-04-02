@@ -3,4 +3,4 @@
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
-exec sh "$SCRIPT_DIR/apply-charts.sh" "$@" runtime core rest
+exec sh "$SCRIPT_DIR/apply-charts.sh" "$@"

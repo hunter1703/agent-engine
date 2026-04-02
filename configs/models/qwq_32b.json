@@ -3,7 +3,7 @@
   "model": "qwq-32b",
   "name": "QwQ 32B",
   "type": "open_ai_compatible",
-  "baseUrl": "http://127.0.0.1:17004/v1",
+  "baseUrl": "http://host.docker.internal:17004/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m",

@@ -1,12 +1,9 @@
 package com.agentengine.util.mongodb.encryption;
 
 import com.agentengine.util.common.EncryptionService;
-import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.mongodb.infra.EncryptionInfraConfig;
 import com.agentengine.util.mongodb.infra.InfraMongoRepository;
-import io.quarkus.runtime.StartupEvent;
-import jakarta.enterprise.event.Observes;
-import jakarta.inject.Singleton;
+import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -17,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Singleton
+@ApplicationScoped
 public class EncryptionServiceImpl implements EncryptionService {
     private static final String ENCRYPTED_PREFIX = "enc";
     private static final String ENCRYPTED_PREFIX_STR = ENCRYPTED_PREFIX + "::";
@@ -32,17 +29,15 @@ public class EncryptionServiceImpl implements EncryptionService {
             throw new RuntimeException("Failed to initialize cipher", exception);
         }
     });
-    private LazyLoader<SecretKey> secretKey;
+    private final SecretKey secretKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public EncryptionServiceImpl(InfraMongoRepository infraMongoRepository) {
-        this.secretKey = new LazyLoader<>(() -> {
-            final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
-            if (config == null || config.getKey() == null || config.getKey().isBlank()) {
-                LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
-                return null;
-            }
-
+    public EncryptionServiceImpl(final InfraMongoRepository infraMongoRepository) {
+        final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
+        if (config == null || config.getKey() == null || config.getKey().isBlank()) {
+            LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
+            this.secretKey = null;
+        } else {
             final byte[] decodedKey;
             try {
                 decodedKey = Base64.getDecoder().decode(config.getKey());
@@ -52,15 +47,13 @@ public class EncryptionServiceImpl implements EncryptionService {
             if (decodedKey.length != 32) {
                 throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
             }
-            return new SecretKeySpec(decodedKey, "AES");
-        });
+            this.secretKey = new SecretKeySpec(decodedKey, "AES");
+        }
     }
-
-    public void init(@Observes final StartupEvent event) {}
 
     @Override
     public boolean isEncryptionEnabled() {
-        return secretKey.get() != null;
+        return secretKey != null;
     }
 
     @Override
@@ -77,7 +70,7 @@ public class EncryptionServiceImpl implements EncryptionService {
             secureRandom.nextBytes(iv);
             final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
 
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey.get(), parameterSpec);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
             final byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
             final byte[] ivAndCiphertext = new byte[GCM_IV_LENGTH + ciphertext.length];
@@ -113,7 +106,7 @@ public class EncryptionServiceImpl implements EncryptionService {
 
             final Cipher cipher = CIPHER_CACHE.get();
             final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey.get(), parameterSpec);
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
 
             final byte[] plaintextBytes = cipher.doFinal(encrypted);
             return new String(plaintextBytes, StandardCharsets.UTF_8);

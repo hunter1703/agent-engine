@@ -3,28 +3,23 @@ plugins {
 }
 
 dependencies {
-    implementation project(':core-api')
-    implementation project(':runtime-api')
+    implementation project(':core:api')
+    implementation project(':runtime:api')
     implementation project(':util:agents')
     implementation project(':util:common')
-    implementation project(':util:ms')
+    implementation project(':util:ms:client')
 
-    implementation(enforcedPlatform(libs.quarkus.bom))
+    implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.logging.json
     implementation libs.quarkus.opentelemetry
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.openapi
-    implementation libs.quarkus.mongodb.client
     implementation libs.quarkus.smallrye.health
-    implementation libs.quarkus.micrometer.registry.prometheus
     implementation libs.quarkus.hibernate.validator
-    implementation libs.quarkus.smallrye.fault.tolerance
-    implementation libs.quarkus.grpc
     implementation libs.quarkus.arc
     implementation libs.ag.ui.core
     implementation libs.rxjava
     implementation libs.slf4j.api
-    implementation libs.jackson.databind
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core

@@ -1,8 +1,8 @@
 package com.agentengine.runtime.session.commands;
 
-import com.agentengine.runtime.actor.ConfirmResult;
-import com.agentengine.runtime.actor.StartSessionResult;
+import com.agentengine.runtime.session.ConfirmResult;
 import com.agentengine.runtime.session.StartChildResult;
+import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.google.adk.events.Event;
 import org.apache.pekko.Done;
@@ -30,7 +30,8 @@ public interface InternalCommand extends SessionCommand {
 
     record RunFailedCommand(String error) implements InternalCommand {}
 
-    record ConfirmChildCommand(Confirmation confirmation, ActorRef<ConfirmResult> replyTo, ConfirmResult result, String error)
+    record ConfirmChildCommand(
+            Confirmation confirmation, ActorRef<ConfirmResult> replyTo, ConfirmResult result, String error)
             implements InternalCommand {}
 
     record StartChildCompletedCommand(

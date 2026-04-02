@@ -1,20 +1,15 @@
 package com.agentengine.runtime.session;
 
-import com.agentengine.runtime.actor.SessionEventChannel;
 import com.agentengine.runtime.factories.RunnerFactory;
 import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.runtime.session.commands.SessionCommand;
-import com.agentengine.util.pekko.PekkoConfig;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ShardedEntityFactory;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
-import java.util.function.BiFunction;
-import org.apache.pekko.actor.typed.ActorSystem;
-import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
-import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 
 @Singleton
@@ -25,29 +20,24 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
 
     @Inject
     public SessionActorFactory(
-            final ActorSystem<SpawnProtocol.Command> actorSystem,
-            final PekkoConfig pekkoConfig,
+            final ActorSystemProvider actorSystemProvider,
             final SessionEventChannel sessionEventChannel,
             final RunnerFactory runnerFactory,
             final MongoSessionService sessionService) {
         super(
-                actorSystem,
+                actorSystemProvider,
                 SessionActor.TYPE_KEY,
                 entityContext -> Behaviors.setup(actorCtx -> new SessionActor(
                         actorCtx,
                         entityContext.getEntityId(),
-                        pekkoConfig.getSnapshotThreshold(),
+                        actorSystemProvider.pekkoConfig().getSnapshotThreshold(),
                         sessionEventChannel,
-                        refSupplier(actorSystem),
+                        (agentId, sessionId) ->
+                                actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, agentId + ":" + sessionId),
                         runnerFactory,
                         sessionService)),
-                Duration.ofHours(1));
-    }
-
-    private static BiFunction<String, String, EntityRef<SessionCommand>> refSupplier(
-            final ActorSystem<SpawnProtocol.Command> actorSystem) {
-        final ClusterSharding sharding = ClusterSharding.get(actorSystem);
-        return (agentId, sessionId) -> sharding.entityRefFor(SessionActor.TYPE_KEY, agentId + ":" + sessionId);
+                Duration.ofHours(1),
+                "runtime");
     }
 
     public EntityRef<SessionCommand> entityRef(final String agentId, final String sessionId) {

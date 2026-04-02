@@ -2,24 +2,19 @@ package com.agentengine.core.services;
 
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.SessionService;
-import com.agentengine.runtime.actor.ConfirmResult;
-import com.agentengine.runtime.actor.RuntimeService;
-import com.agentengine.runtime.actor.SessionEventChannel;
-import com.agentengine.runtime.actor.StartSessionResult;
+import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.common.events.EventSubscription;
-import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.core.event.BaseEvent;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.UUID;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,32 +27,18 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
 
     private final SessionService sessionService;
     private final RuntimeService runtimeService;
-    private final SessionEventChannel sessionEventChannel;
 
     @Inject
-    public AgentExecutionServiceImpl(
-            final SessionService sessionService,
-            final RuntimeService runtimeService,
-            final SessionEventChannel sessionEventChannel) {
+    public AgentExecutionServiceImpl(final SessionService sessionService, final RuntimeService runtimeService) {
         this.sessionService = sessionService;
         this.runtimeService = runtimeService;
-        this.sessionEventChannel = sessionEventChannel;
     }
 
     @Override
     public Publisher<BaseEvent> run(final String agentId, final String text) {
-        final String sessionId = UUID.randomUUID().toString();
-        return Flowable.fromCompletionStage(sessionEventChannel.subscribe(sessionId))
-                .flatMap(subscription ->
-                        Flowable.fromCompletionStage(runtimeService.startSession(agentId, sessionId, text))
-                                .flatMap(startResult -> {
-                                    if (startResult instanceof StartSessionResult.Rejected(String reason)) {
-                                        cancelQuietly(subscription, "run start rejected for session " + sessionId);
-                                        return Flowable.error(new IllegalStateException("Run rejected: " + reason));
-                                    }
-                                    return Flowable.fromPublisher(mapEvents(agentId, sessionId, subscription));
-                                })
-                                .doOnError(error -> cancelQuietly(subscription, "run start failed for session " + sessionId)));
+        final StartEventMapper mapper = new StartEventMapper(agentId);
+        return Flowable.fromPublisher(runtimeService.startSession(agentId, text))
+                .concatMap(mapper::map);
     }
 
     @Override
@@ -72,37 +53,28 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
         final String rootAgentId = session.getRootAgentId();
         final Confirmation confirmation = new Confirmation(confirmationId, confirmed != null && confirmed, answer);
 
-        // Subscribe before confirming so no events published immediately after confirm are missed
-        return Flowable.fromCompletionStage(sessionEventChannel.subscribe(rootSessionId))
-                .flatMap(subscription ->
-                        Flowable.fromCompletionStage(runtimeService.confirmSession(rootAgentId, rootSessionId, confirmation))
-                                .flatMap(result -> {
-                                    if (result instanceof ConfirmResult.Rejected(String reason)) {
-                                        cancelQuietly(subscription, "resume rejected for session " + rootSessionId);
-                                        return Flowable.error(new IllegalStateException("Resume rejected: " + reason));
-                                    }
-                                    return Flowable.fromPublisher(mapEvents(rootAgentId, rootSessionId, subscription));
-                                })
-                                .doOnError(error -> cancelQuietly(subscription, "resume failed for session " + rootSessionId)));
+        final AGUIEventMapper mapper = new AGUIEventMapper(rootSessionId, rootAgentId);
+        return Flowable.fromPublisher(runtimeService.confirmSession(rootSessionId, confirmation))
+                .concatMap(mapper::map);
     }
 
-    private static Publisher<BaseEvent> mapEvents(
-            final String agentId,
-            final String sessionId,
-            final EventSubscription<SequencedEvent<SessionEvent>> subscription) {
-        final AGUIEventMapper mapper = new AGUIEventMapper(sessionId, agentId);
-        return Flowable.fromPublisher(subscription.publisher())
-                .concatMap(event -> mapper.map(event.payload()))
-                .takeUntil(mapper::isTerminalEvent)
-                .doFinally(() -> cancelQuietly(subscription, null));
-    }
+    private static final class StartEventMapper {
+        private final String agentId;
+        private AGUIEventMapper mapper;
 
-    private static void cancelQuietly(
-            final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String reason) {
-        subscription.cancel().whenComplete((ignored, error) -> {
-            if (error != null) {
-                LOG.debug("Failed to cancel subscription after {}", reason, error);
+        private StartEventMapper(final String agentId) {
+            this.agentId = agentId;
+        }
+
+        private Flowable<BaseEvent> map(final SessionEvent event) {
+            if (mapper == null) {
+                final String sessionId = event.getRootSessionId();
+                if (StringUtils.isBlank(sessionId)) {
+                    throw new IllegalStateException("Runtime emitted start event without rootSessionId");
+                }
+                mapper = new AGUIEventMapper(sessionId, agentId);
             }
-        });
+            return mapper.map(event);
+        }
     }
 }

@@ -36,7 +36,7 @@ Usage:
 
 Behavior:
   - Upserts configs/infra into INFRA.InfraConfig directly from the existing MongoDB pod.
-  - Writes Pekko, SQL, and microservice bootstrap config before app rollout.
+  - Writes Pekko, SQL, and microservice application config before app rollout.
 EOF
 }
 
@@ -281,7 +281,7 @@ for (const config of configs.map(applyDeploymentOverrides)) {
 }
 EOF
 
-kubectl wait --for=condition=available --timeout="$WAIT_TIMEOUT" deployment/mongodb --namespace "$NAMESPACE" >/dev/null
+kubectl rollout status statefulset/mongodb --timeout="$WAIT_TIMEOUT" --namespace "$NAMESPACE" >/dev/null
 MONGODB_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=mongodb -o jsonpath='{.items[0].metadata.name}')
 
 kubectl exec --namespace "$NAMESPACE" -i "$MONGODB_POD" -- sh -c 'cat >/tmp/import.js && mongosh "$1" --quiet /tmp/import.js' sh \

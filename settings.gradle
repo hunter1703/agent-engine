@@ -7,14 +7,11 @@ rootProject.name = 'agent-engine'
 include 'runtime'
 project(':runtime').projectDir = file('runtime')
 
-include 'runtime-api'
-project(':runtime-api').projectDir = file('runtime/api')
+include 'runtime:api'
+project(':runtime:api').projectDir = file('runtime/api')
 
-include 'runtime-actor'
-project(':runtime-actor').projectDir = file('runtime/actor')
-
-include 'core-api'
-project(':core-api').projectDir = file('core/api')
+include 'core:api'
+project(':core:api').projectDir = file('core/api')
 
 include 'core'
 project(':core').projectDir = file('core')
@@ -33,6 +30,9 @@ project(':util:mongodb').projectDir = file('util/mongodb')
 
 include 'util:ms'
 project(':util:ms').projectDir = file('util/ms')
+
+include 'util:ms:client'
+project(':util:ms:client').projectDir = file('util/ms/client')
 
 include 'util:agents'
 project(':util:agents').projectDir = file('util/agents')

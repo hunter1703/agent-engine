@@ -2,7 +2,7 @@ package com.agentengine.runtime.services;
 
 import static com.mongodb.client.model.Filters.eq;
 
-import com.agentengine.runtime.actor.SessionHistoryService;
+import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.session.SessionActor;
 import com.agentengine.runtime.session.events.TurnCommittedFact;
 import com.agentengine.util.agents.SessionEventUtils;
@@ -11,6 +11,7 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.persistence.AbstractJournalReadRepository;
 import com.google.adk.events.Event;
 import com.mongodb.client.MongoCollection;
@@ -18,8 +19,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.pekko.actor.typed.ActorSystem;
-import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.persistence.typed.PersistenceId;
 
 /**
@@ -34,8 +33,8 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
 
     @Inject
     public SessionHistoryServiceImpl(
-            final ActorSystem<SpawnProtocol.Command> actorSystem, final MongoClientFactory mongoClientFactory) {
-        super(actorSystem);
+            final ActorSystemProvider actorSystemProvider, final MongoClientFactory mongoClientFactory) {
+        super(actorSystemProvider);
         this.sessions = mongoClientFactory
                 .getClient()
                 .getDatabase("AGENT_ENGINE")
@@ -73,11 +72,7 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
         final List<SessionEvent> history = new ArrayList<>();
         for (final TurnCommittedFact turn : turns) {
             history.addAll(SessionEventUtils.toSessionEvents(
-                    session.getRootSessionId(),
-                    session.getParentSessionId(),
-                    sessionId,
-                    turn.getEvents(),
-                    0L));
+                    session.getRootSessionId(), session.getParentSessionId(), sessionId, turn.getEvents(), 0L));
         }
         return history;
     }

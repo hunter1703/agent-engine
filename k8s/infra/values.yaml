@@ -44,6 +44,10 @@ mongodb:
       cpu: "1"
       memory: 1Gi
   probes:
+    startup:
+      periodSeconds: 5
+      failureThreshold: 30
+      timeoutSeconds: 5
     readiness:
       periodSeconds: 10
       failureThreshold: 6
@@ -94,6 +98,10 @@ postgres:
       cpu: "1"
       memory: 1Gi
   probes:
+    startup:
+      periodSeconds: 5
+      failureThreshold: 30
+      timeoutSeconds: 5
     readiness:
       periodSeconds: 10
       failureThreshold: 6

@@ -3,7 +3,7 @@
   "model": "llama3.1-8b",
   "name": "Llama 3.1 8B",
   "type": "open_ai_compatible",
-  "baseUrl": "http://127.0.0.1:17005/v1",
+  "baseUrl": "http://host.docker.internal:17005/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m",

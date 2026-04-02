@@ -5,8 +5,7 @@ import java.util.UUID;
 public class UniqueRecord<T> extends BaseEntity {
     private T record;
 
-    public UniqueRecord() {
-    }
+    public UniqueRecord() {}
 
     public UniqueRecord(T record) {
         super(UUID.randomUUID().toString());

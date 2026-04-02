@@ -15,7 +15,8 @@ import jakarta.inject.Singleton;
 public class InfraMongoRepository extends AbstractMongoRepository<InfraConfig> {
 
     @Inject
-    public InfraMongoRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+    public InfraMongoRepository(
+            final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
         super(mongoClientFactory, "INFRA", "InfraConfig", InfraConfig.class, validationService);
     }
 

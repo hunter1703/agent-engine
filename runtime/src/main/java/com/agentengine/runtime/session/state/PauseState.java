@@ -2,7 +2,6 @@ package com.agentengine.runtime.session.state;
 
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
-
 import java.util.*;
 
 public final class PauseState {
@@ -20,7 +19,8 @@ public final class PauseState {
             final Map<String, String> pendingConfirmationIdVsChildSessionId) {
         this.pendingSelfConfirmationIds = CollectionUtils.nullSafeMutableSet(pendingSelfConfirmationIds);
         this.receivedSelfConfirmations = CollectionUtils.nullSafeMutableMap(receivedSelfConfirmations);
-        this.pendingConfirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
+        this.pendingConfirmationIdVsChildSessionId =
+                CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
     }
 
     public PauseState withChildPaused(final String childSessionId, final String confirmationId) {
@@ -52,8 +52,10 @@ public final class PauseState {
         return pendingConfirmationIdVsChildSessionId;
     }
 
-    public void setPendingConfirmationIdVsChildSessionId(final Map<String, String> pendingConfirmationIdVsChildSessionId) {
-        this.pendingConfirmationIdVsChildSessionId = CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
+    public void setPendingConfirmationIdVsChildSessionId(
+            final Map<String, String> pendingConfirmationIdVsChildSessionId) {
+        this.pendingConfirmationIdVsChildSessionId =
+                CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
     }
 
     public Set<String> getPendingSelfConfirmationIds() {

@@ -1,9 +1,9 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.actor.StartSessionResult;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.StartChildResult;
+import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -39,7 +39,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                     final String message) {
         final StartChildResult startChildResult = actorRef(toolContext)
                 .<StartChildResult>ask(
-                        replyTo -> new ExternalCommand.StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
+                        replyTo -> new ExternalCommand.StartChildCommand(
+                                childAgentId, new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join();

@@ -1,24 +1,26 @@
+{{- $ctx := dict "root" . "component" .Values.component -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "agent-engine-runtime.fullname" . }}
-  namespace: {{ include "agent-engine-runtime.namespace" . }}
+  name: {{ include "agent-engine.base.fullname" $ctx }}
+  namespace: {{ include "agent-engine.base.namespace" $ctx }}
   labels:
-    {{- include "agent-engine-runtime.labels" . | nindent 4 }}
+    {{- include "agent-engine.base.labels" $ctx | nindent 4 }}
 spec:
   serviceName: {{ .Values.service.headlessName }}
   replicas: {{ .Values.replicas }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   podManagementPolicy: {{ .Values.podManagementPolicy }}
+  minReadySeconds: {{ .Values.minReadySeconds | default 20 }}
   updateStrategy:
     {{- toYaml .Values.updateStrategy | nindent 4 }}
   selector:
     matchLabels:
-      {{- include "agent-engine-runtime.selectorLabels" . | nindent 6 }}
+      {{- include "agent-engine.base.selectorLabels" $ctx | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "agent-engine-runtime.selectorLabels" . | nindent 8 }}
+        {{- include "agent-engine.base.selectorLabels" $ctx | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -26,11 +28,14 @@ spec:
         {{- if not .Values.config.existingConfigMap }}
         checksum/application-properties: {{ .Values.config.applicationProperties | toYaml | sha256sum }}
         {{- end }}
+        {{- if .Values.applicationConfig.localProperties }}
+        checksum/local-properties: {{ .Values.applicationConfig.localProperties | toYaml | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      serviceAccountName: {{ include "agent-engine-runtime.serviceAccountName" . }}
+      serviceAccountName: {{ include "agent-engine.base.serviceAccountName" $ctx }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- if .Values.priorityClassName }}
@@ -60,8 +65,12 @@ spec:
       {{- end }}
       containers:
         - name: runtime
-          image: {{ include "agent-engine-runtime.image" . | quote }}
+          image: {{ include "agent-engine.base.image" $ctx | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.preStopSleepSeconds | default 15 }}"]
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
@@ -69,13 +78,6 @@ spec:
               value: {{ .Values.service.httpPort | quote }}
             - name: QUARKUS_GRPC_SERVER_PORT
               value: {{ .Values.service.grpcPort | quote }}
-            {{- if .Values.bootstrap.mongodb.existingSecret }}
-            - name: MONGODB_CONNECTION_STRING
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.bootstrap.mongodb.existingSecret }}
-                  key: {{ .Values.bootstrap.mongodb.connectionStringKey }}
-            {{- end }}
             - name: QUARKUS_CONFIG_LOCATIONS
               value: file:/config/application.properties
             {{- if .Values.java.opts }}
@@ -123,21 +125,24 @@ spec:
             - name: pekko
               containerPort: {{ .Values.service.pekkoPort }}
           readinessProbe:
-            tcpSocket:
-              port: grpc
+            httpGet:
+              path: {{ .Values.probes.readiness.path | default "/q/health/ready" }}
+              port: http
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
             failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
           livenessProbe:
-            tcpSocket:
-              port: grpc
+            httpGet:
+              path: {{ .Values.probes.liveness.path | default "/q/health/live" }}
+              port: http
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
             timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
           {{- if .Values.probes.startup.enabled }}
           startupProbe:
-            tcpSocket:
-              port: grpc
+            httpGet:
+              path: {{ .Values.probes.startup.path | default "/q/health" }}
+              port: http
             periodSeconds: {{ .Values.probes.startup.periodSeconds }}
             failureThreshold: {{ .Values.probes.startup.failureThreshold }}
             timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
@@ -149,6 +154,16 @@ spec:
               mountPath: /config/application.properties
               subPath: application.properties
               readOnly: true
+            - name: global-properties
+              mountPath: /config/global.properties
+              subPath: global.properties
+              readOnly: true
+            {{- if .Values.applicationConfig.localProperties }}
+            - name: local-properties
+              mountPath: /config/local.properties
+              subPath: local.properties
+              readOnly: true
+            {{- end }}
             {{- if .Values.tmpVolume.enabled }}
             - name: tmp
               mountPath: /tmp
@@ -156,7 +171,15 @@ spec:
       volumes:
         - name: application-properties
           configMap:
-            name: {{ include "agent-engine-runtime.applicationPropertiesConfigMapName" . }}
+            name: {{ include "agent-engine.base.applicationPropertiesConfigMapName" $ctx }}
+        - name: global-properties
+          configMap:
+            name: {{ .Values.applicationConfig.globalConfigMapName }}
+        {{- if .Values.applicationConfig.localProperties }}
+        - name: local-properties
+          configMap:
+            name: {{ include "agent-engine.base.localPropertiesConfigMapName" $ctx }}
+        {{- end }}
         {{- if .Values.tmpVolume.enabled }}
         - name: tmp
           emptyDir:

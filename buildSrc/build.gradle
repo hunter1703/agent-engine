@@ -19,6 +19,10 @@ dependencies {
     implementation libs.jandex.gradle.plugin
     implementation group: 'io.quarkus', name: 'gradle-application-plugin', version: libs.versions.quarkus.get()
     implementation group: 'io.quarkus.extension', name: 'gradle-extension-plugin', version: libs.versions.quarkus.get()
+    // functionaljava must be on the buildscript classpath so spotless's FeatureClassLoader
+    // can resolve it when running palantir-java-format (declared 'runtime' scope in its POM,
+    // so Spotless's dependency resolver does not pull it in automatically).
+    implementation 'org.functionaljava:functionaljava:5.0'
 }
 
 gradlePlugin {

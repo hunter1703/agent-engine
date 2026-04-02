@@ -1,0 +1,5 @@
+apiVersion: v2
+name: base
+description: Shared Helm library templates for Agent Engine service charts
+type: library
+version: 0.1.0

@@ -3,9 +3,9 @@ nameOverride: ""
 fullnameOverride: ""
 replicas: 3
 revisionHistoryLimit: 3
-terminationGracePeriodSeconds: 120
+terminationGracePeriodSeconds: 150
 priorityClassName: ""
-podManagementPolicy: OrderedReady
+podManagementPolicy: Parallel
 
 commonLabels: {}
 podLabels: {}
@@ -41,9 +41,8 @@ java:
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
 bootstrap:
-  mongodb:
-    existingSecret: ""
-    connectionStringKey: connection-string
+  existingSecret: "agent-engine-infra-bootstrap"
+  bootstrapPropertiesKey: bootstrap.properties
 
 config:
   existingConfigMap: ""
@@ -80,18 +79,30 @@ tmpVolume:
 
 probes:
   readiness:
+    path: /q/health/ready
     periodSeconds: 10
     failureThreshold: 3
-    timeoutSeconds: 1
+    timeoutSeconds: 3
   liveness:
+    path: /q/health/live
     periodSeconds: 20
     failureThreshold: 3
-    timeoutSeconds: 1
+    timeoutSeconds: 3
   startup:
     enabled: true
+    path: /q/health/live
     periodSeconds: 10
     failureThreshold: 45
-    timeoutSeconds: 1
+    timeoutSeconds: 3
+
+# Seconds to sleep in preStop hook before the container receives SIGTERM.
+# Gives Kubernetes time to remove the pod from service endpoints and lets
+# the old Pekko Artery port (2552) drain before the replacement pod starts.
+preStopSleepSeconds: 15
+
+# Seconds a pod must be ready before the StatefulSet considers it available
+# and proceeds to the next pod in a rolling update.
+minReadySeconds: 20
 
 updateStrategy:
   type: RollingUpdate

@@ -1,14 +1,15 @@
 {{- if and .Values.pdb.enabled (gt (int .Values.replicas) 1) }}
+{{- $ctx := dict "root" . "component" .Values.component -}}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "agent-engine-runtime.fullname" . }}
-  namespace: {{ include "agent-engine-runtime.namespace" . }}
+  name: {{ include "agent-engine.base.fullname" $ctx }}
+  namespace: {{ include "agent-engine.base.namespace" $ctx }}
   labels:
-    {{- include "agent-engine-runtime.labels" . | nindent 4 }}
+    {{- include "agent-engine.base.labels" $ctx | nindent 4 }}
 spec:
   minAvailable: {{ .Values.pdb.minAvailable }}
   selector:
     matchLabels:
-      {{- include "agent-engine-runtime.selectorLabels" . | nindent 6 }}
+      {{- include "agent-engine.base.selectorLabels" $ctx | nindent 6 }}
 {{- end }}

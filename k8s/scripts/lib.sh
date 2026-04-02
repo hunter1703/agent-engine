@@ -5,14 +5,15 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 K8S_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 DEFAULT_NAMESPACE=agent-engine
-DEFAULT_ENVIRONMENT=prod
+DEFAULT_ENVIRONMENT=local
 DEFAULT_TIMEOUT=10m
-DEFAULT_CHARTS="runtime core rest"
-ALL_CHARTS="infra runtime core rest"
+DEFAULT_CHARTS="global-properties runtime core rest"
+ALL_CHARTS="infra global-properties runtime core rest"
 
 chart_release_name() {
   case "$1" in
     infra) echo "agent-engine-infra" ;;
+    global-properties) echo "agent-engine-global-properties" ;;
     runtime) echo "agent-engine-runtime" ;;
     core) echo "agent-engine-core" ;;
     rest) echo "agent-engine-rest" ;;
@@ -29,6 +30,11 @@ chart_path() {
 
 chart_env_values_file() {
   echo "$K8S_DIR/environments/$1/$2.yaml"
+}
+
+ensure_chart_dependencies() {
+  chart=$1
+  helm dependency build "$(chart_path "$chart")" >/dev/null
 }
 
 require_command() {

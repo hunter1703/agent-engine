@@ -64,6 +64,7 @@ require_command helm
 for chart in $ALL_CHARTS; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
+    ensure_chart_dependencies "$chart"
     release_name=$(chart_release_name "$chart")
     echo "---"
     echo "# $chart ($release_name)"

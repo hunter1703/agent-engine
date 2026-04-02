@@ -45,16 +45,4 @@ public record SessionTopology(String sessionId, String agentId, SessionRole role
     public boolean isRoot() {
         return role instanceof SessionRole.Root;
     }
-
-    public interface SessionRole extends PekkoSerializable {
-        record Root() implements SessionRole {}
-
-        record Child(String rootSessionId, String parentSessionId, String parentAgentId) implements SessionRole {
-            public Child {
-                if (rootSessionId == null || parentSessionId == null || parentAgentId == null) {
-                    throw new IllegalArgumentException("Child topology fields must not be null");
-                }
-            }
-        }
-    }
 }

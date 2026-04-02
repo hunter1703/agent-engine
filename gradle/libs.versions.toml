@@ -34,9 +34,10 @@ protobuf-plugin = "0.9.5"
 grpc = "1.70.0"
 
 # Utilities
-guava = "33.4.8-jre"
+guava = "33.5.0-jre"
 groovy = "4.0.28"
 rxjava = "3.1.12"
+reactive-streams = "1.0.4"
 java-diff-utils = "4.16"
 stateless4j = "2.6.0"
 slf4j = "2.0.17"
@@ -45,7 +46,7 @@ commons-text = "1.13.1"
 # Database & Drivers
 mongodb = "5.6.3"
 postgresql = "42.7.7"
-vertx = "5.0.6"
+vertx = "4.5.25"
 
 # Jakarta & MicroProfile
 jakarta-validation = "3.0.2"
@@ -86,7 +87,7 @@ pekko-projection-jdbc = { module = "org.apache.pekko:pekko-projection-jdbc_2.13"
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 # Google AI
-google-adk-core = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
+google-adk = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
 google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
 google-genai = { group = "com.google.genai", name = "google-genai", version.ref = "google-genai" }
 
@@ -121,6 +122,7 @@ microprofile-openapi-api = { group = "org.eclipse.microprofile.openapi", name = 
 # Logging
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 rxjava = { group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava" }
+reactive-streams = { group = "org.reactivestreams", name = "reactive-streams", version.ref = "reactive-streams" }
 stateless4j = { group = "com.github.stateless4j", name = "stateless4j", version.ref = "stateless4j" }
 
 # Testing

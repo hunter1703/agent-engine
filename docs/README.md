@@ -31,7 +31,6 @@ It is intentionally independent from the existing `README.md` and `docs/` conten
 - Runtime-facing APIs and behaviors below are derived from current source under:
   - `runtime/`
   - `runtime/api/`
-  - `runtime/actor/`
   - `core/`
   - `core/api/`
   - `interfaces/rest/`

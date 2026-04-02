@@ -207,7 +207,6 @@ The repository is structured to separate transport, control, and runtime concern
 
 - **`runtime/`**: Agent execution, tool wiring, model factories, and context handling.
 - **`runtime/api/`**: Runtime-facing service contracts.
-- **`runtime/actor/`**: Session actor and event-stream infrastructure.
 - **`core/`**: Config CRUD, AG-UI mapping, and orchestration entrypoints.
 - **`core/api/`**: Core service contracts used across modules.
 - **`interfaces/rest/`**: REST gateway exposing user-facing HTTP endpoints.

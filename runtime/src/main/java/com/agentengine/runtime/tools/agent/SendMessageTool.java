@@ -1,8 +1,8 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.actor.StartSessionResult;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
+import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -46,7 +46,8 @@ public final class SendMessageTool extends AbstractAgentTool {
                     final String message) {
         final StartSessionResult result = actorRef(toolContext)
                 .<StartSessionResult>ask(
-                        replyTo -> new ExternalCommand.SendMessageCommand(childSessionId, new UniqueRecord<>(message), replyTo),
+                        replyTo -> new ExternalCommand.SendMessageCommand(
+                                childSessionId, new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join();

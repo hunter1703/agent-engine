@@ -2,7 +2,7 @@ package com.agentengine.core.services;
 
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.core.repository.SessionRepository;
-import com.agentengine.runtime.actor.SessionHistoryService;
+import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
