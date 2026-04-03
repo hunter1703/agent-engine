@@ -47,10 +47,13 @@ public final class ResponseUtils {
             throw new IllegalArgumentException("either confirmation or answer is required");
         }
         final ToolConfirmation.Builder builder = ToolConfirmation.builder();
+        if (StringUtils.isNotBlank(answer)) {
+            builder.payload(Map.of("answer", answer));
+        }
         if (confirmed != null) {
             builder.confirmed(confirmed);
         } else if (StringUtils.isNotBlank(answer)) {
-            builder.confirmed(true).payload(Map.of("answer", answer));
+            builder.confirmed(true);
         }
         return builder.build();
     }

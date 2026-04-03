@@ -2,15 +2,17 @@ package com.agentengine.util.mongodb.infra;
 
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(value = "default_model")
-public class DefaultModelConfig extends InfraConfig {
-    public static final String TYPE = "default_model";
+@BsonDiscriminator(value = "default_models")
+public class DefaultModelsConfig extends InfraConfig {
+    public static final String TYPE = "default_models";
+    public static final String CATEGORY = "DEFAULT_MODELS";
+    public static final String CONFIG_ID = "default";
 
     private String titleModelId;
     private String compactionModelId;
     private String evaluatorModelId;
 
-    public DefaultModelConfig() {
+    public DefaultModelsConfig() {
         super(TYPE);
     }
 

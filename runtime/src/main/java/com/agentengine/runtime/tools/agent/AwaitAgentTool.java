@@ -1,11 +1,11 @@
 package com.agentengine.runtime.tools.agent;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;
 import java.util.Map;
@@ -28,8 +28,8 @@ public final class AwaitAgentTool extends AbstractAgentTool {
 
     private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(30);
 
-    public AwaitAgentTool(final SessionActorFactory actorFactory) {
-        super(DESCRIPTOR, actorFactory);
+    public AwaitAgentTool(final ActorSystemProvider actorSystemProvider) {
+        super(DESCRIPTOR, actorSystemProvider);
     }
 
     public Map<String, Object> execute(
@@ -44,7 +44,6 @@ public final class AwaitAgentTool extends AbstractAgentTool {
 
         if (!result.completedRun()) {
             ToolUtils.requestConfirmationAndPause(
-                    sessionActorFactory,
                     toolContext,
                     "Waiting for child agent run to complete.",
                     Map.of("child_session_id", childSessionId));

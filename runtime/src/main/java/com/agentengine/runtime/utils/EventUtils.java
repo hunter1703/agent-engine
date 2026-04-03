@@ -2,10 +2,18 @@ package com.agentengine.runtime.utils;
 
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
+import com.google.adk.events.ToolConfirmation;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.State;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionResponse;
+import com.google.genai.types.Part;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,13 +21,6 @@ import java.util.concurrent.ConcurrentMap;
 
 /** Utilities for working with runtime {@link Event} objects. */
 public final class EventUtils {
-    /**
-     * Key used to mark an event as internal (pipeline-only).
-     *
-     * <p>Uses the {@link State#TEMP_PREFIX} so the value is not merged into session state, but is
-     * preserved in the event's {@code stateDelta} through serialisation round-trips.
-     */
-    public static final String INTERNAL_KEY = State.TEMP_PREFIX + SessionEventUtils.INTERNAL;
 
     private EventUtils() {}
 
@@ -40,6 +41,10 @@ public final class EventUtils {
      * while remaining fully visible to the LLM as session history.
      */
     public static void markAsInternal(final Event event) {
+        addMetadata(event, SessionEventUtils.INTERNAL, true);
+    }
+
+    public static void addMetadata(final Event event, final String key, final Object value) {
         if (event == null) {
             return;
         }
@@ -51,7 +56,7 @@ public final class EventUtils {
         if (delta == null) {
             delta = new ConcurrentHashMap<>();
         }
-        delta.put(INTERNAL_KEY, Boolean.TRUE);
+        delta.put(State.TEMP_PREFIX + key, value);
         event.setActions(actions.toBuilder().stateDelta(delta).build());
     }
 
@@ -76,5 +81,42 @@ public final class EventUtils {
             return State.REMOVED.equals(value) ? null : value;
         }
         return null;
+    }
+
+    public static String recentUser(final List<Event> events, final int max) {
+        if (events == null || events.isEmpty()) {
+            return "";
+        }
+        final List<String> intents = new ArrayList<>();
+        for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
+            final Content content = events.get(i).content().orElse(null);
+            if (content == null || !"user".equals(content.role().orElse(""))) {
+                continue;
+            }
+            final String text = content.text();
+            if (StringUtils.isNotBlank(text)) {
+                intents.add(text);
+            }
+        }
+        return String.join("\n", intents.reversed());
+    }
+
+    static Event buildConfirmationEvent(
+            final String confirmationId, final Boolean confirmed, final String answer) {
+        final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
+        final FunctionResponse functionResponse = FunctionResponse.builder()
+                .id(confirmationId)
+                .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
+                .response(JsonUtils.toMap(toolConfirmation))
+                .build();
+        return Event.builder()
+                .author("user")
+                .content(Content.builder()
+                        .role("user")
+                        .parts(List.of(Part.builder()
+                                .functionResponse(functionResponse)
+                                .build()))
+                        .build())
+                .build();
     }
 }

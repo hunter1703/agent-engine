@@ -23,12 +23,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
-        {{- if not .Values.config.existingConfigMap }}
         checksum/application-properties: {{ .Values.config.applicationProperties | toYaml | sha256sum }}
-        {{- end }}
-        {{- if .Values.applicationConfig.localProperties }}
-        checksum/local-properties: {{ .Values.applicationConfig.localProperties | toYaml | sha256sum }}
-        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -98,23 +93,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-            - name: PEKKO_HOSTNAME
-              value: "$(POD_IP)"
-            {{- range $name, $value := .Values.extraEnv }}
-            - name: {{ $name }}
-              value: {{ $value | quote }}
-            {{- end }}
-          {{- if or .Values.extraEnvFromSecrets .Values.extraEnvFromConfigMaps }}
-          envFrom:
-            {{- range .Values.extraEnvFromSecrets }}
-            - secretRef:
-                name: {{ . }}
-            {{- end }}
-            {{- range .Values.extraEnvFromConfigMaps }}
-            - configMapRef:
-                name: {{ . }}
-            {{- end }}
-          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.httpPort }}
@@ -154,12 +132,6 @@ spec:
               mountPath: /config/global.properties
               subPath: global.properties
               readOnly: true
-            {{- if .Values.applicationConfig.localProperties }}
-            - name: local-properties
-              mountPath: /config/local.properties
-              subPath: local.properties
-              readOnly: true
-            {{- end }}
             {{- if .Values.tmpVolume.enabled }}
             - name: tmp
               mountPath: /tmp
@@ -170,12 +142,7 @@ spec:
             name: {{ include "agent-engine.base.applicationPropertiesConfigMapName" $ctx }}
         - name: global-properties
           configMap:
-            name: {{ .Values.applicationConfig.globalConfigMapName }}
-        {{- if .Values.applicationConfig.localProperties }}
-        - name: local-properties
-          configMap:
-            name: {{ include "agent-engine.base.localPropertiesConfigMapName" $ctx }}
-        {{- end }}
+            name: global-properties-agent-engine-configmap
         {{- if .Values.tmpVolume.enabled }}
         - name: tmp
           emptyDir:

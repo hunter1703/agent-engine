@@ -12,21 +12,8 @@ public interface InternalCommand extends SessionCommand {
 
     record PublishEventCommand(Event event) implements InternalCommand {}
 
-    record PauseCommand(String childSessionId, String confirmationId, ActorRef<Done> replyTo)
-            implements InternalCommand {
-        public static PauseCommand self(final String confirmationId, final ActorRef<Done> replyTo) {
-            return new PauseCommand(null, confirmationId, replyTo);
-        }
-
-        public static PauseCommand child(
-                final String childSessionId, final String confirmationId, final ActorRef<Done> replyTo) {
-            return new PauseCommand(childSessionId, confirmationId, replyTo);
-        }
-
-        public boolean forChild() {
-            return childSessionId != null && !childSessionId.isBlank();
-        }
-    }
+    record ChildPausedCommand(String childSessionId, String confirmationId, ActorRef<Done> replyTo)
+            implements InternalCommand {}
 
     record RunFailedCommand(String error) implements InternalCommand {}
 

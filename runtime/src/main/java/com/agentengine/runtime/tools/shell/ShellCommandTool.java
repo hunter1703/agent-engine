@@ -3,7 +3,6 @@ package com.agentengine.runtime.tools.shell;
 import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -31,18 +30,17 @@ public final class ShellCommandTool extends Tool {
     private final Duration timeout;
 
     public ShellCommandTool() {
-        this(null, null);
+        this(null);
     }
 
     @ToolConstructor
     public ShellCommandTool(
-            SessionActorFactory sessionActorFactory,
             @ToolSchema(
                             name = "timeout_seconds",
                             description = "timeout in seconds for the shell command execution.",
                             optional = true)
                     final Long timeoutSecs) {
-        super(DESCRIPTOR, sessionActorFactory);
+        super(DESCRIPTOR);
         this.timeout = timeoutSecs == null ? Duration.ofMinutes(30) : Duration.ofSeconds(timeoutSecs);
     }
 
@@ -60,7 +58,6 @@ public final class ShellCommandTool extends Tool {
         if (BLOCKED.matcher(command).find()) {
             if (toolContext.toolConfirmation().isEmpty()) {
                 ToolUtils.requestConfirmationAndPause(
-                        sessionActorFactory,
                         toolContext,
                         String.format("Should the command `%s` be executed?", command),
                         Map.of("command", command));

@@ -1,9 +1,7 @@
 # TODO
-separate utils:ms:client and utils:ms:server
 optimize or rewrite the [GRPCServerImpl.java](util%2Fms%2Fsrc%2Fmain%2Fjava%2Fcom%2Fagentengine%2Futil%2Fms%2FGRPCServerImpl.java)
 add MANAGER orchestrator
 production grade connectors
-update to inmemory channel and return publisher instead of pekko event channel for runtime service and core communication ---> do this only if needed
 
 
 ## Deferred Test Follow-ups
@@ -13,40 +11,28 @@ update to inmemory channel and return publisher instead of pekko event channel f
   - parallel policy validation paths (including quorum bounds for `stoppingPolicy=QUORUM`).
 - Add integration tests for mixed context-strategy graph validation and compaction compatibility checks.
 - Add integration tests for native confirmation resume adapter (non-empty text -> approval payload mapping).
+- Add deployed end-to-end regression coverage for pause/resume SSE:
+  - `POST /v1/agent/events` must emit a pausing tool call and return a resumable `threadId`/`toolCallId`
+  - `POST /v1/agent/session/resume/events` must resume the same run and terminate without hanging
+  - include a negative case for unknown `confirmationId` so the endpoint fails fast instead of leaving the stream open.
+- Add a deterministic integration test that starts a session during node churn and asserts no event loss at the REST stream.
+- Add regression test for BroadcasterEntity recovery with ADK confirmation payloads (`ToolConfirmationDeserializer` fix).
 
 
-## Session Actor — Deferred Correctness Gaps
+## Deferred Production Issues From E2E Testing
 
-- **`resumeChildCompletion` result injection**: When a parked session resumes after child completion,
-  `resumeChildCompletion` should inject the child result as a function-response event into session
-  history before re-running, so the ADK runner can continue from the `await_agent` call site.
-  Without this, the ADK re-execution may not correctly deliver the child result to the LLM.
+- **Add detection and eviction for wedged REST stream workers**: Because a blocked SSE request can leave a REST pod
+  apparently `Running` while it is unhealthy for streaming traffic, add a custom readiness check that fails fast
+  when the REST node cannot serve SSE safely, rather than relying on manual pod restarts. The preStop drain hook
+  reduces the symptom window during rollouts but does not guard against wedged workers in stable deployments.
+- **Rebuilt `core`/`runtime` images can crash on startup with a Quarkus/Vert.x linkage error**: During follow-up
+  deployment of the serializer fix, new `agent-engine-core` and `agent-engine-runtime` pods failed immediately with
+  `NoSuchMethodError: io.vertx.core.metrics.MetricsOptions.setFactory(io.vertx.core.spi.VertxMetricsFactory)` from
+  Quarkus OpenTelemetry startup. This is a separate platform/build issue, not the original SSE bug, and it blocks
+  validating new runtime/core images in-cluster. Investigate dependency convergence and image packaging before relying
+  on freshly rebuilt `core`/`runtime` artifacts for production-like testing.
 
-## Session Actor Rebuild — Deferred Correctness Gaps
 
-- **ClusterSingleton for projection**: `SessionHistoryProjection` starts on every node. Wrap with
-  `ClusterSingleton` or guard with Pekko cluster-aware startup to prevent duplicate projection
-  runners.
-- **CDI bean wiring for projection**: `SessionHistoryProjection`, `SessionHistoryProjectionHandler`,
-  and `DefaultSessionHistory` are not yet wired as CDI beans (no `@ApplicationScoped`/`@Singleton`
-  on the projection class with injected `MongoCollection`). Wire via Quarkus CDI and confirm startup.
-- **Child actor dispatch**: `SessionActor` logs spawned children but does not yet dispatch
-  `SpawnChild` / `SendChildTask` / `AwaitChildRun` through a real `ChildRegistry`. Implement
-  `ChildRegistry` dispatch and cross-shard child lookup.
-- **`SessionTopology` assembly**: `DefaultAgentRunner` receives a `SessionTopology` but the
-  factory that constructs it from `AgentDefinition` + loaded tools has not been wired. Implement
-  `SessionTopologyFactory`.
-- **Recovery cleanup on restart**: After an actor recovers from a crash mid-run, any in-flight
-  `RUNNING` execution state should be transitioned to `FAILED` at startup. Add a `RecoveryCleanup`
-  guard in `SessionActor.forState`.
-- **`atLeastOnce` idempotency**: `SessionHistoryProjectionHandler` uses `atLeastOnceAsync`, so
-  `writeTurnEvents` may be called more than once for the same sequence. Add sequence-based
-  upsert (`$setOnInsert`) to the MongoDB write to make it idempotent.
-- **Projection offset store**: The JDBC offset store used by `SessionHistoryProjection` requires a
-  `pekko_projection_offset_store` table. Add the schema migration / DDL init.
-- **`SessionHistory` in `SessionServiceImpl`**: `SessionServiceImpl` now injects `SessionHistory`
-  but the injection point is not guarded against `null` events from projections that haven't caught
-  up. Add a documented eventual-consistency note and consider a fallback read from the actor.
 
 ## Deferred Agent-Engine Work For Agent-Console UX Parity
 - Move Builder Contract generation from runtime warm-cache to dedicated build-time artifact generation task and wire it into module resource packaging.

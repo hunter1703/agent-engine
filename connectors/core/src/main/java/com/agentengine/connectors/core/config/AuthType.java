@@ -17,7 +17,7 @@ public enum AuthType {
         }
         try {
             return AuthType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException exception) {
             return UNKNOWN;
         }
     }

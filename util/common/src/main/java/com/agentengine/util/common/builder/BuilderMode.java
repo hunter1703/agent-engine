@@ -13,7 +13,7 @@ public enum BuilderMode {
         }
         try {
             return BuilderMode.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException exception) {
             return null;
         }
     }

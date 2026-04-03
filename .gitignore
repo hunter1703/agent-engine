@@ -23,6 +23,7 @@ deploy/connections.json
 !gradlew
 !gradlew.bat
 !gradle/wrapper/
+gradle/gradle-daemon-jvm.properties
 .worktrees/
 k8s/*/Chart.lock
 k8s/*/charts/

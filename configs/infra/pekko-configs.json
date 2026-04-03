@@ -1,9 +1,7 @@
 [
   {
-    "id": "pekko",
+    "id": "PEKKO:default",
     "type": "PEKKO",
-    "hostname": "${PEKKO_HOSTNAME}",
-    "port": 2552,
     "seedNodes": [
       "pekko://agent-engine-runtime@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
       "pekko://agent-engine-runtime@agent-engine-runtime-1.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",

@@ -23,6 +23,8 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
 {{- define "agent-engine-infra.mongodbAuthSecretName" -}}
 {{- if .Values.mongodb.auth.existingSecret -}}
 {{- .Values.mongodb.auth.existingSecret -}}
+{{- else if .Values.requireExistingSecrets -}}
+{{- required "mongodb.auth.existingSecret must be set when requireExistingSecrets is true" .Values.mongodb.auth.existingSecret -}}
 {{- else -}}
 {{- printf "%s-mongodb-auth" (include "agent-engine-infra.fullname" .) -}}
 {{- end -}}
@@ -31,6 +33,8 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
 {{- define "agent-engine-infra.postgresSecretName" -}}
 {{- if .Values.postgres.existingSecret -}}
 {{- .Values.postgres.existingSecret -}}
+{{- else if .Values.requireExistingSecrets -}}
+{{- required "postgres.existingSecret must be set when requireExistingSecrets is true" .Values.postgres.existingSecret -}}
 {{- else -}}
 {{- printf "%s-postgres-auth" (include "agent-engine-infra.fullname" .) -}}
 {{- end -}}

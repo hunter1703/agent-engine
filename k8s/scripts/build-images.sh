@@ -3,7 +3,7 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
-TAG=${TAG:-latest}
+TAG=${TAG:-$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")}
 REGISTRY_PREFIX=${REGISTRY_PREFIX:-}
 PUSH=false
 

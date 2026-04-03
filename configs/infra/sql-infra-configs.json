@@ -1,6 +1,6 @@
 [
   {
-    "id": "sql-main",
+    "id": "SQL:default",
     "type": "sql",
     "jdbcUrl": "jdbc:postgresql://postgres:5432/agent_engine_events",
     "jdbcUser": "agentengine",

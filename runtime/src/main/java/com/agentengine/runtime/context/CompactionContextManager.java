@@ -2,8 +2,8 @@ package com.agentengine.runtime.context;
 
 import static com.agentengine.runtime.utils.ContentUtils.estimateTokens;
 
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.factories.model.ModelProvider;
-import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
@@ -45,7 +45,7 @@ public final class CompactionContextManager implements ContextManager {
     private final String modelId;
     private final String promptTemplate;
     private final ModelProvider modelProvider;
-    private final MongoSessionService sessionService;
+    private final SessionService sessionService;
     private final Cache<String, String> summaryCache;
 
     public CompactionContextManager(
@@ -54,7 +54,7 @@ public final class CompactionContextManager implements ContextManager {
             final String modelId,
             final String promptTemplate,
             final ModelProvider modelProvider,
-            final MongoSessionService sessionService) {
+            final SessionService sessionService) {
         this.tokenThreshold = Math.max(1, tokenThreshold);
         recencyThreshold = Math.max(1, recencyThreshold);
         this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
@@ -185,14 +185,14 @@ public final class CompactionContextManager implements ContextManager {
     }
 
     private String loadSummary(final String sessionId) {
-        return Optional.ofNullable(sessionService.findById(sessionId))
+        return Optional.ofNullable(sessionService.getSession(sessionId))
                 .map(AgentSession::getSummary)
                 .orElse(null);
     }
 
     private void persistSummary(final String sessionId, final String summary) {
         try {
-            sessionService.update(
+            sessionService.updateSession(
                     sessionId,
                     Update.of(
                             Operation.set(AgentSession.FIELD_SUMMARY, summary),

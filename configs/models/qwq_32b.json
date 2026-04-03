@@ -9,7 +9,7 @@
     "-m",
     "/Users/rhp/Projects/agent-engine/llamacpp_models/qwq-32b.gguf",
     "--host",
-    "127.0.0.1",
+    "0.0.0.0",
     "--port",
     "17004"
   ],

@@ -2,19 +2,22 @@
 # DevOps team must provide:
 #   mongodb.auth.existingSecret  — Secret with 'username' and 'password' keys for MongoDB root
 #   postgres.existingSecret      — Secret with 'username' and 'password' keys for Postgres
+# Helm will fail at render time if either value is left blank.
+
+requireExistingSecrets: true
 
 mongodb:
   enabled: true
   auth:
     enabled: true
-    existingSecret: ""   # REQUIRED: set to name of pre-existing Secret
+    existingSecret: ""   # REQUIRED: set to name of pre-existing Secret before deploying
   persistence:
     enabled: true
     size: 10Gi
 
 postgres:
   enabled: true
-  existingSecret: ""     # REQUIRED: set to name of pre-existing Secret
+  existingSecret: ""     # REQUIRED: set to name of pre-existing Secret before deploying
   persistence:
     enabled: true
     size: 20Gi

@@ -2,6 +2,7 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.core'
 
 dependencies {
     implementation project(':util:ms:client')

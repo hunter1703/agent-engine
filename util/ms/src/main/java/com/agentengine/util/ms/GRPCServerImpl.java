@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -56,26 +57,17 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
     @PostConstruct
     public void init() {
-        LOG.info("Initializing GRPCServerImpl. Scanning beans for @MicroService via Arc...");
-
         final ArcContainer container = Arc.container();
         this.registry = container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
                 .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
                 .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
-                .map(bean -> container.instance(
-                        bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0])))
-                .filter(InstanceHandle::isAvailable)
-                .map(handle -> {
-                    final Object instance = handle.get();
-                    LOG.info("Checking instance: {}", instance.getClass().getName());
-                    return instance;
-                })
-                .flatMap(instance -> Optional.ofNullable(microServiceInterface(instance.getClass()))
+                .flatMap(bean -> Optional.ofNullable(microServiceInterface(bean.getBeanClass()))
                         .map(iface -> {
-                            LOG.info(
-                                    "Discovered MicroService: {} implemented by {}",
-                                    iface.getSimpleName(),
-                                    instance.getClass().getName());
+                            final InstanceHandle<?> handle = container.instance(
+                                    bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0]));
+                            if (!handle.isAvailable()) return null;
+                            final Object instance = handle.get();
+                            LOG.info("Discovered MicroService: {} implemented by {}", iface.getSimpleName(), instance.getClass().getName());
                             return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
                         })
                         .stream())
@@ -114,7 +106,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
         final Method method = entry.methods().get(methodName);
         if (method == null) {
-            LOG.error("Method not found: {}/{}", serviceName, methodName);
+            LOG.error("Method not found: {}/{} (available: {})", serviceName, methodName, entry.methods().keySet());
             responseObserver.onError(Status.NOT_FOUND
                     .withDescription("Method not found: " + methodName)
                     .asRuntimeException());
@@ -183,7 +175,6 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         return microServiceInterface(clazz.getSuperclass());
     }
 
-    @SuppressWarnings("unchecked")
     private Object[] deserializeArgs(final Request request, final Method method) {
         final int paramCount = method.getParameterCount();
         if (paramCount == 0 || request.getPayload().isEmpty()) {
@@ -242,13 +233,19 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         return Executors.newThreadPerTaskExecutor(factory);
     }
 
+    private static String methodKey(final Method method) {
+        return method.getName() + "#" + Arrays.stream(method.getParameterTypes())
+                .map(Class::getSimpleName)
+                .collect(Collectors.joining(","));
+    }
+
     private record ServiceEntry(Object bean, Map<String, Method> methods) {
         private ServiceEntry(final Object bean, final Class<?> iface) {
             this(
                     bean,
                     Arrays.stream(iface.getMethods())
                             .collect(Collectors.toUnmodifiableMap(
-                                    Method::getName, method -> method, (first, __) -> first)));
+                                    GRPCServerImpl::methodKey, m -> m, (first, __) -> first)));
         }
     }
 }

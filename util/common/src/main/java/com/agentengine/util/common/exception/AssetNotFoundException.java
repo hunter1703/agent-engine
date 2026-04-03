@@ -25,6 +25,6 @@ public class AssetNotFoundException extends RuntimeException {
     }
 
     private static String buildMessage(final String assetType, final String assetId) {
-        return "Asset not found: type=" + String.valueOf(assetType) + ", id=" + String.valueOf(assetId);
+        return "Asset not found: type=" + String.valueOf(assetType) + ", identifier=" + String.valueOf(assetId);
     }
 }

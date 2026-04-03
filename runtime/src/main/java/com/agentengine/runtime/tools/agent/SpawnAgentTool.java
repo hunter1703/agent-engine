@@ -7,6 +7,7 @@ import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -27,8 +28,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                     + "without waiting for the child to complete. Use await_agent to collect the result.",
             Map.of());
 
-    public SpawnAgentTool(final SessionActorFactory actorFactory) {
-        super(DESCRIPTOR, actorFactory);
+    public SpawnAgentTool(final ActorSystemProvider actorSystemProvider) {
+        super(DESCRIPTOR, actorSystemProvider);
     }
 
     public Map<String, Object> execute(

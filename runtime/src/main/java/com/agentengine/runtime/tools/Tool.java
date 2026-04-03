@@ -1,7 +1,6 @@
 package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -47,16 +46,10 @@ public abstract class Tool extends BaseTool {
     private final FunctionDeclaration declaration;
     private final List<ParameterBinding> parameterBindings;
     private final ToolDescriptor toolDescriptor;
-    protected final SessionActorFactory sessionActorFactory;
 
     protected Tool(final ToolDescriptor toolDescriptor) {
-        this(toolDescriptor, null);
-    }
-
-    protected Tool(final ToolDescriptor toolDescriptor, final SessionActorFactory sessionActorFactory) {
         super(toolDescriptor.name(), toolDescriptor.description());
         this.toolDescriptor = toolDescriptor;
-        this.sessionActorFactory = sessionActorFactory;
         this.executeMethod = getExecuteMethod();
         this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
         this.parameterBindings = PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
@@ -82,7 +75,6 @@ public abstract class Tool extends BaseTool {
             if (toolRiskLevel == ToolRiskLevel.HIGH || toolRiskLevel == ToolRiskLevel.CRITICAL) {
                 if (toolContext.toolConfirmation().isEmpty()) {
                     ToolUtils.requestConfirmationAndPause(
-                            sessionActorFactory,
                             toolContext,
                             String.format(
                                     "Please approve or reject the tool call %s() by responding with a"
@@ -240,8 +232,8 @@ public abstract class Tool extends BaseTool {
     private static List<ParameterBinding> buildParameterBindings(final Method method) {
         final Parameter[] parameters = method.getParameters();
         final List<ParameterBinding> bindings = new ArrayList<>(parameters.length);
-        for (int i = 0; i < parameters.length; i++) {
-            final Parameter parameter = parameters[i];
+        for (int index = 0; index < parameters.length; index++) {
+            final Parameter parameter = parameters[index];
             final String name = ToolUtils.resolveParameterName(parameter);
             final boolean isToolContext =
                     "toolContext".equals(name) || ToolContext.class.isAssignableFrom(parameter.getType());
@@ -259,7 +251,16 @@ public abstract class Tool extends BaseTool {
                 elementType = Utils.constructType(element);
             }
             bindings.add(new ParameterBinding(
-                    i, name, optional, rawType, javaType, elementType, isList, isMap, isToolContext, isInputStream));
+                    index,
+                    name,
+                    optional,
+                    rawType,
+                    javaType,
+                    elementType,
+                    isList,
+                    isMap,
+                    isToolContext,
+                    isInputStream));
         }
         return List.copyOf(bindings);
     }

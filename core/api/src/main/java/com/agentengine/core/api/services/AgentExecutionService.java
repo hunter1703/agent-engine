@@ -9,5 +9,5 @@ public interface AgentExecutionService {
 
     Publisher<BaseEvent> run(String agentId, String text);
 
-    Publisher<BaseEvent> resumeSession(String sessionId, String confirmationId, Boolean confirmed, String answer);
+    Publisher<BaseEvent> confirmSession(String sessionId, String confirmationId, Boolean confirmed, String answer);
 }

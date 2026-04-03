@@ -6,6 +6,7 @@ import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -33,8 +34,8 @@ public final class SendMessageTool extends AbstractAgentTool {
                     + " to collect the result.",
             Map.of());
 
-    public SendMessageTool(final SessionActorFactory actorFactory) {
-        super(DESCRIPTOR, actorFactory);
+    public SendMessageTool(final ActorSystemProvider actorSystemProvider) {
+        super(DESCRIPTOR, actorSystemProvider);
     }
 
     public Map<String, Object> execute(

@@ -2,6 +2,7 @@ package com.agentengine.runtime.session.state;
 
 import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.PekkoSerializable;
@@ -19,7 +20,7 @@ public record SessionActorState(
         RunResult lastResult,
         PauseState pauseState,
         UniqueRecord<String> currentMessage,
-        String lastPersistedEventId)
+        List<Event> lastCommittedEvents)
         implements PekkoSerializable {
 
     public static SessionActorState initial() {
@@ -47,7 +48,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState,
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState withTopology(final SessionTopology updatedTopology) {
@@ -61,7 +62,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState,
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState withRunResult(final RunResult result) {
@@ -75,7 +76,7 @@ public record SessionActorState(
                 result,
                 pauseState,
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState withCurrentMessage(final UniqueRecord<String> updatedCurrentMessage) {
@@ -89,7 +90,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState,
                 updatedCurrentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState clearCurrentMessage() {
@@ -103,7 +104,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState,
                 null,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState enqueue(final UniqueRecord<String> message) {
@@ -117,8 +118,6 @@ public record SessionActorState(
     }
 
     public SessionActorState withCommitedEvents(final List<Event> events) {
-        final String newLastEventId =
-                events.isEmpty() ? lastPersistedEventId : events.getLast().id();
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -129,7 +128,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState,
                 null,
-                newLastEventId);
+                events);
     }
 
     public Optional<ChildSession> child(final String childSessionId) {
@@ -158,10 +157,10 @@ public record SessionActorState(
                 lastResult,
                 pauseState.withChildPaused(childSessionId, confirmationId),
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
-    public SessionActorState selfPaused(final String confirmationId) {
+    public SessionActorState selfPaused(final String confirmationId, final String wrapperCallId) {
         return new SessionActorState(
                 SessionState.PAUSED,
                 queue,
@@ -170,9 +169,9 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withSelfPaused(confirmationId),
+                pauseState.withSelfPaused(confirmationId, wrapperCallId),
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public String getPausedChild(final Confirmation confirmation) {
@@ -204,7 +203,7 @@ public record SessionActorState(
                 lastResult,
                 pauseState.withSelfResumed(confirmation),
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public SessionActorState childResume(final Confirmation confirmation) {
@@ -218,10 +217,38 @@ public record SessionActorState(
                 lastResult,
                 pauseState.withChildResumed(confirmation.getConfirmationId()),
                 currentMessage,
-                lastPersistedEventId);
+                lastCommittedEvents);
     }
 
     public boolean isDuplicateTurn(final List<Event> turnEvents) {
-        return Objects.equals(lastPersistedEventId, turnEvents.getLast().id());
+        final Event last = CollectionUtils.getLast(lastCommittedEvents);
+        return Objects.equals(last == null ? null : last.id(), turnEvents.getLast().id());
+    }
+
+    /**
+     * Returns a new state with fresh copies of all mutable collections.
+     *
+     * <p>The per-event methods ({@code enqueue}, {@code dequeue}, {@code startingChild},
+     * {@code startedChild}) mutate their backing collections in place and return {@code this} to
+     * keep event-replay O(1). As a consequence, states produced by copy-style factory methods
+     * ({@code withSessionState}, etc.) share the same {@link LinkedList}/{@link HashMap}/
+     * {@link HashSet} instances until the next in-place mutation. This is safe during normal
+     * event sourcing because Pekko discards old state references after each event handler
+     * returns. At snapshot boundaries, however, the state leaves the actor's private domain, so
+     * fresh copies are taken here to ensure the snapshot is fully isolated from any subsequent
+     * mutations.
+     */
+    public SessionActorState copy() {
+        return new SessionActorState(
+                sessionState,
+                new LinkedList<>(queue),
+                new HashMap<>(childRegistry),
+                new HashSet<>(startingChildren),
+                nextSequence,
+                topology,
+                lastResult,
+                pauseState,
+                currentMessage,
+                lastCommittedEvents);
     }
 }

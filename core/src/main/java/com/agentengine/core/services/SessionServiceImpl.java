@@ -8,6 +8,7 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.update.Update;
 import com.agui.core.event.BaseEvent;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
@@ -65,6 +66,16 @@ public class SessionServiceImpl implements SessionService {
     @WithSpan
     public boolean deleteSession(final String id) {
         return sessionRepository.deleteById(id);
+    }
+
+    @Override
+    public AgentSession updateSession(final String id, final Update update) {
+        return sessionRepository.update(id, update);
+    }
+
+    @Override
+    public AgentSession create(final AgentSession session) {
+        return sessionRepository.insert(session);
     }
 
     private AgentSession sanitizeSession(final AgentSession session, final boolean includeEvents) {

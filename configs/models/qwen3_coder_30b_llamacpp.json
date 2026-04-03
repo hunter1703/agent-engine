@@ -7,7 +7,7 @@
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
     "-m", "/Users/rhp/Projects/agent-engine/llamacpp_models/qwen3-coder-30b.gguf",
-    "--host", "127.0.0.1",
+    "--host", "0.0.0.0",
     "--port", "17001",
     "--chat-template-file", "/Users/rhp/Projects/agent-engine/configs/models/templates/qwen3_coder_30b_llamacpp.jinja"
   ],
@@ -16,6 +16,6 @@
   "topK": 40,
   "topP": 0.85,
   "repeatPenalty": 1.05,
-  "toolCallingEnabled": false,
+  "toolCallingEnabled": true,
   "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call. Never repeat or restate previously emitted text; always continue from where you left off without re-sending earlier content."
 }

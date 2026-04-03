@@ -18,6 +18,8 @@ import org.apache.pekko.actor.typed.javadsl.Receive;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.japi.function.Function;
 import org.reactivestreams.Subscriber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Client-side actor that bridges the broadcaster protocol to a reactive-stream subscriber.
@@ -74,6 +76,7 @@ import org.reactivestreams.Subscriber;
  */
 final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SubscriberActor.class);
     private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration RETRY_DELAY = Duration.ofSeconds(1);
 
@@ -163,6 +166,11 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
         if (command.error() != null) {
             broadcaster = null;
+            LOG.warn(
+                    "Subscribe failed for id={}, retrying in {}ms: {}",
+                    subscriptionId,
+                    RETRY_DELAY.toMillis(),
+                    command.error().getMessage());
 
             if (pendingSubscribeReplyTo != null) {
                 terminalError = command.error();
@@ -176,6 +184,12 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         }
 
         final SubscribeAck ack = command.ack();
+        LOG.debug(
+                "Subscribe ack id={} replayAccepted={} backlogSize={} lastSeen={}",
+                subscriptionId,
+                ack.replayAccepted(),
+                ack.backlog().size(),
+                lastSeenSequence);
         if (!ack.replayAccepted()) {
             terminalError = new IllegalStateException(
                     "Replay gap exceeded retained window for subscription '%s'. Expected from sequence %d, oldest available is %d, latest available is %d."
@@ -244,6 +258,11 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         }
 
         if (lastSeenSequence != null && sequence != lastSeenSequence + 1L) {
+            LOG.warn(
+                    "Gap detected for id={}: expected seq={} got seq={}, resubscribing",
+                    subscriptionId,
+                    lastSeenSequence + 1L,
+                    sequence);
             requestSubscribe();
             return this;
         }
@@ -267,6 +286,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
     }
 
     private Behavior<SubscriberCommand> onBroadcasterTerminated(final BroadcasterTerminatedCommand command) {
+        LOG.warn("Broadcaster terminated for id={}, resubscribing in {}ms", subscriptionId, RETRY_DELAY.toMillis());
         broadcaster = null;
         getContext().scheduleOnce(RETRY_DELAY, getContext().getSelf(), new ResubscribeCommand());
         return this;

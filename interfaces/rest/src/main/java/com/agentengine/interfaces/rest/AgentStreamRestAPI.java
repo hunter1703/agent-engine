@@ -6,7 +6,7 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.interfaces.rest.dto.AgentRequest;
-import com.agentengine.interfaces.rest.dto.ResumeSessionRequest;
+import com.agentengine.interfaces.rest.dto.ConfirmSessionRequest;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.core.event.BaseEvent;
@@ -59,20 +59,20 @@ public class AgentStreamRestAPI {
     }
 
     @POST
-    @Path("/session/resume/events")
-    @Operation(summary = "Resume a paused session and stream events")
+    @Path("/session/confirm/events")
+    @Operation(summary = "Confirm a paused session and stream resumed events")
     @APIResponse(
             responseCode = "200",
             description = "SSE event stream in AG-UI format",
             content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
-    @APIResponse(responseCode = "400", description = "Invalid resume payload")
+    @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
     @APIResponse(responseCode = "404", description = "Session not found")
     @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
-    public Publisher<BaseEvent> resumeEvents(@Valid @NotNull final ResumeSessionRequest resumeRequest) {
-        return agentExecutionService.resumeSession(
-                resumeRequest.getSessionId(),
-                resumeRequest.getConfirmationId(),
-                resumeRequest.getConfirmed(),
-                resumeRequest.getMessage());
+    public Publisher<BaseEvent> confirmEvents(@Valid @NotNull final ConfirmSessionRequest confirmRequest) {
+        return agentExecutionService.confirmSession(
+                confirmRequest.getSessionId(),
+                confirmRequest.getConfirmationId(),
+                confirmRequest.getConfirmed(),
+                confirmRequest.getMessage());
     }
 }

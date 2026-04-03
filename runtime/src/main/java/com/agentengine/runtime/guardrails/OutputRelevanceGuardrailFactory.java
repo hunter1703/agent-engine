@@ -4,21 +4,21 @@ import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.util.agents.beans.config.GuardrailRuleType;
 import com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.mongodb.infra.DefaultModelConfig;
-import com.agentengine.util.mongodb.infra.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
+import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 @Singleton
 public final class OutputRelevanceGuardrailFactory implements GuardrailFactory<OutputRelevanceGuardrailRule> {
     private final ModelProvider modelProvider;
-    private final InfraMongoRepository infraMongoRepository;
+    private final InfraConfigService infraConfigService;
 
     @Inject
     public OutputRelevanceGuardrailFactory(
-            final ModelProvider modelProvider, final InfraMongoRepository infraMongoRepository) {
+            final ModelProvider modelProvider, final InfraConfigService infraConfigService) {
         this.modelProvider = modelProvider;
-        this.infraMongoRepository = infraMongoRepository;
+        this.infraConfigService = infraConfigService;
     }
 
     @Override
@@ -42,7 +42,8 @@ public final class OutputRelevanceGuardrailFactory implements GuardrailFactory<O
 
     private String resolveDefaultModelId() {
         try {
-            final DefaultModelConfig defaults = infraMongoRepository.findOneByType(DefaultModelConfig.TYPE);
+            final DefaultModelsConfig defaults =
+                    infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
             return defaults == null ? null : defaults.getEvaluatorModelId();
         } catch (Exception ex) {
             return null;

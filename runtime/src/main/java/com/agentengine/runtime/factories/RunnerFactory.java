@@ -1,18 +1,22 @@
 package com.agentengine.runtime.factories;
 
 import com.agentengine.core.api.services.AgentService;
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.agents.Agent;
 import com.agentengine.runtime.context.ContextManager;
 import com.agentengine.runtime.factories.agent.AgentProvider;
 import com.agentengine.runtime.factories.context.ContextManagerProvider;
 import com.agentengine.runtime.guardrails.GuardrailPolicyFactory;
+import com.agentengine.runtime.plugins.AddEventMetadataPlugin;
 import com.agentengine.runtime.plugins.ContextManagementPlugin;
 import com.agentengine.runtime.plugins.GuardrailPlugin;
 import com.agentengine.runtime.plugins.PluginGroup;
-import com.agentengine.runtime.services.MongoSessionService;
+import com.agentengine.runtime.services.SessionHistoryServiceImpl;
 import com.agentengine.runtime.session.SessionRunner;
 import com.agentengine.runtime.session.commands.SessionCommand;
+import com.agentengine.runtime.utils.SessionUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
@@ -21,8 +25,11 @@ import com.google.adk.artifacts.InMemoryArtifactService;
 import com.google.adk.memory.InMemoryMemoryService;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.runner.Runner;
+import com.google.adk.sessions.InMemorySessionService;
+import com.google.adk.sessions.Session;
 import jakarta.inject.Singleton;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.pekko.actor.typed.ActorRef;
 
 @Singleton
@@ -32,19 +39,22 @@ public class RunnerFactory {
     private final AgentProvider agentProvider;
     private final ContextManagerProvider contextManagerProvider;
     private final GuardrailPolicyFactory guardrailPolicyFactory;
-    private final MongoSessionService sessionService;
+    private final SessionService sessionService;
+    private final SessionHistoryServiceImpl historyService;
 
     public RunnerFactory(
             AgentService agentService,
             AgentProvider agentProvider,
             ContextManagerProvider contextManagerProvider,
             GuardrailPolicyFactory guardrailPolicyFactory,
-            MongoSessionService sessionService) {
+            SessionService sessionService,
+            final SessionHistoryServiceImpl historyService) {
         this.agentService = agentService;
         this.agentProvider = agentProvider;
         this.contextManagerProvider = contextManagerProvider;
         this.guardrailPolicyFactory = guardrailPolicyFactory;
         this.sessionService = sessionService;
+        this.historyService = historyService;
     }
 
     public SessionRunner buildRunner(
@@ -57,13 +67,35 @@ public class RunnerFactory {
                 .name(agentId)
                 .resumabilityConfig(new ResumabilityConfig(config.getRuntime().isResumable()))
                 .build();
+        final InMemorySessionService inMemorySessionService = buildInMemorySessionService(agentId, sessionId);
         final Runner runner = Runner.builder()
                 .app(app)
                 .artifactService(new InMemoryArtifactService())
-                .sessionService(sessionService)
+                .sessionService(inMemorySessionService)
                 .memoryService(new InMemoryMemoryService())
                 .build();
         return new SessionRunner(sessionId, actor, runner);
+    }
+
+    private InMemorySessionService buildInMemorySessionService(final String agentId, final String sessionId) {
+        final InMemorySessionService inMemorySessionService = new InMemorySessionService();
+        final AgentSession agentSession = sessionService.getSession(sessionId, true);
+        final Session persistedSession = SessionUtils.toSession(agentSession, historyService.getEvents(sessionId));
+
+        final ConcurrentHashMap<String, Object> initialState = persistedSession == null
+                ? new ConcurrentHashMap<>()
+                : new ConcurrentHashMap<>(persistedSession.state() == null ? Map.of() : persistedSession.state());
+        final Session session = inMemorySessionService
+                .createSession(agentId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
+                .blockingGet();
+
+        if (persistedSession != null) {
+
+            for (final var event : CollectionUtils.nullSafeList(persistedSession.events())) {
+                inMemorySessionService.appendEvent(session, event).blockingGet();
+            }
+        }
+        return inMemorySessionService;
     }
 
     private List<BasePlugin> buildPlugins(final Agent rootAgent) {
@@ -92,6 +124,6 @@ public class RunnerFactory {
         }
 
         return List.of(new PluginGroup(
-                "engine", List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers))));
+                "engine", List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers))), AddEventMetadataPlugin.INSTANCE);
     }
 }

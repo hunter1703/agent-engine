@@ -81,6 +81,10 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
+        if (SessionEventUtils.isConfirmationRequested(event)) {
+            return mapConfirmationRequested(event);
+        }
+
         Flowable<BaseEvent> flowable = startStepIfNeeded();
         if (SessionEventUtils.isCorrectionEvent(event)) {
             return flowable.concatWith(mapCorrectionEvent(event)).concatWith(finishStepIfNeeded(event));
@@ -176,6 +180,18 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         decorator.decorate(event);
         LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", event.getStepName());
         return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
+    }
+
+    private Flowable<BaseEvent> mapConfirmationRequested(final SessionEvent event) {
+        // Close any open step — the session is pausing and awaiting human input.
+        final Flowable<BaseEvent> closeStep = state.hasStartedStep() ? finishStep() : Flowable.empty();
+        final Map<String, Object> metadata = event.getMetadata();
+        final String confirmationId =
+                metadata == null ? null : (String) metadata.get(SessionEventUtils.CONFIRMATION_ID);
+        final ConfirmationRequestedEvent confirmationEvent = new ConfirmationRequestedEvent(confirmationId);
+        decorator.decorate(confirmationEvent);
+        LOG.debug("Generated output event - eventType=ConfirmationRequestedEvent, confirmationId={}", confirmationId);
+        return closeStep.concatWith(Flowable.just(confirmationEvent));
     }
 
     private Flowable<BaseEvent> mapCorrectionEvent(final SessionEvent event) {

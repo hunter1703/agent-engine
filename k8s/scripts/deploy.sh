@@ -17,6 +17,8 @@ TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-latest}
 EXTRA_VALUES_FILES=""
 SET_ARGUMENTS=""
+LOCAL=false
+LOCAL_PORT=${LOCAL_PORT:-8080}
 
 usage() {
   cat <<'EOF'
@@ -28,10 +30,10 @@ Phases:
   1. Build Docker images for runtime, core, and rest.
   2. Deploy infrastructure workloads (MongoDB, Postgres).
   3. Seed infrastructure configuration into MongoDB (Pekko, SQL, microservices, default model).
+     Also initializes the PostgreSQL Pekko journal schema (CREATE TABLE IF NOT EXISTS).
   4. Deploy application workloads (runtime, core, rest).
   5. Seed application catalog (models, agents) through the REST API.
-
-  In production, steps 3 and 5 are the responsibility of the DevOps team.
+  6. [--local only] Port-forward the REST service to localhost.
 
 Flags:
   --skip-build          Skip Docker image builds (step 1). Use when images are pre-built.
@@ -39,6 +41,8 @@ Flags:
                         infra config is already present and unchanged.
   --skip-seed-catalog   Skip catalog seeding (step 5). Use on re-deploys when
                         agent/model catalog is already present and unchanged.
+  --local               After deploy, port-forward agent-engine-rest to localhost.
+                        Set LOCAL_PORT to override the local port (default: 8080).
   --no-wait             Do not wait for rollouts to complete.
   --no-atomic           Disable atomic rollback on Helm failure.
   --skip-lint           Skip helm lint before deploy.
@@ -97,6 +101,10 @@ parse_args() {
         ;;
       --dry-run)
         DRY_RUN=true
+        shift
+        ;;
+      --local)
+        LOCAL=true
         shift
         ;;
       --timeout)
@@ -166,4 +174,16 @@ if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_CATALOG" != "true" ]; then
   sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 else
   echo "==> Phase 5: Skipping catalog seeding"
+fi
+
+# ── Phase 6: Local port-forward ───────────────────────────────────────────────
+if [ "$LOCAL" = "true" ] && [ "$DRY_RUN" != "true" ]; then
+  echo "==> Phase 6: Port-forwarding agent-engine-rest:8080 → localhost:${LOCAL_PORT}"
+  echo "    REST API available at http://localhost:${LOCAL_PORT}"
+  echo "    Press Ctrl+C to stop."
+  while true; do
+    kubectl port-forward -n "$NAMESPACE" svc/agent-engine-rest "${LOCAL_PORT}:8080" || true
+    echo "    Port-forward dropped, restarting..."
+    sleep 2
+  done
 fi

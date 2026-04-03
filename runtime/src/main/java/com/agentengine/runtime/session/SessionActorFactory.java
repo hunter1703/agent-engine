@@ -1,7 +1,7 @@
 package com.agentengine.runtime.session;
 
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.factories.RunnerFactory;
-import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ShardedEntityFactory;
@@ -10,7 +10,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.time.Duration;
 import org.apache.pekko.actor.typed.javadsl.Behaviors;
-import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 
 @Singleton
 @Unremovable
@@ -23,7 +22,7 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
             final ActorSystemProvider actorSystemProvider,
             final SessionEventChannel sessionEventChannel,
             final RunnerFactory runnerFactory,
-            final MongoSessionService sessionService) {
+            final SessionService sessionService) {
         super(
                 actorSystemProvider,
                 SessionActor.TYPE_KEY,
@@ -32,15 +31,10 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
                         entityContext.getEntityId(),
                         actorSystemProvider.pekkoConfig().getSnapshotThreshold(),
                         sessionEventChannel,
-                        (agentId, sessionId) ->
-                                actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, agentId + ":" + sessionId),
+                        (sessionId) -> actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, sessionId),
                         runnerFactory,
                         sessionService)),
                 Duration.ofHours(1),
                 "runtime");
-    }
-
-    public EntityRef<SessionCommand> entityRef(final String agentId, final String sessionId) {
-        return entityRef(agentId + ":" + sessionId);
     }
 }

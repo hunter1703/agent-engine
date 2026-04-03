@@ -2,14 +2,9 @@ package com.agentengine.runtime.utils;
 
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
-import com.google.adk.events.Event;
-import com.google.adk.events.ToolConfirmation;
-import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
-import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -133,24 +128,6 @@ public final class ContentUtils {
                 .build();
     }
 
-    public static String recentUser(final List<Event> events, final int max) {
-        if (events == null || events.isEmpty()) {
-            return "";
-        }
-        final List<String> intents = new ArrayList<>();
-        for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
-            final Content content = events.get(i).content().orElse(null);
-            if (content == null || !"user".equals(content.role().orElse(""))) {
-                continue;
-            }
-            final String text = content.text();
-            if (StringUtils.isNotBlank(text)) {
-                intents.add(text);
-            }
-        }
-        return String.join("\n", intents.reversed());
-    }
-
     public static Content buildUserContent(final String message) {
         return Content.builder()
                 .role("user")
@@ -161,7 +138,7 @@ public final class ContentUtils {
     public static List<Content> buildConfirmationContents(final Collection<Confirmation> confirmations) {
         final List<Content> contents = new ArrayList<>();
         for (final Confirmation confirmation : CollectionUtils.nullSafeList(confirmations)) {
-            buildConfirmationEvent(
+            EventUtils.buildConfirmationEvent(
                             confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer())
                     .content()
                     .ifPresent(contents::add);
@@ -169,22 +146,4 @@ public final class ContentUtils {
         return contents;
     }
 
-    private static Event buildConfirmationEvent(
-            final String confirmationId, final Boolean confirmed, final String answer) {
-        final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
-        final FunctionResponse functionResponse = FunctionResponse.builder()
-                .id(confirmationId)
-                .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
-                .response(JsonUtils.toMap(toolConfirmation))
-                .build();
-        return Event.builder()
-                .author("user")
-                .content(Content.builder()
-                        .role("user")
-                        .parts(List.of(Part.builder()
-                                .functionResponse(functionResponse)
-                                .build()))
-                        .build())
-                .build();
-    }
 }

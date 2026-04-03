@@ -10,10 +10,13 @@ import org.apache.pekko.persistence.typed.javadsl.CommandHandler;
 import org.apache.pekko.persistence.typed.javadsl.Effect;
 import org.apache.pekko.persistence.typed.javadsl.EventHandler;
 import org.apache.pekko.persistence.typed.javadsl.RetentionCriteria;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Persistent sharded broadcaster with bounded replay for gap healing. */
 public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, BroadcasterFact, BroadcasterState> {
 
+    private static final Logger LOG = LoggerFactory.getLogger(BroadcasterEntity.class);
     private static final int MAX_RETAINED_EVENTS = 256;
 
     private final ActorContext<BroadcasterCommand> context;
@@ -59,6 +62,13 @@ public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, B
             final BroadcasterState state, final BroadcasterCommand.SubscribeCommand command) {
 
         final boolean replayAccepted = state.canReplayFrom(command.lastSeenSequence());
+        LOG.debug(
+                "subscribe id={} lastSeen={} replayAccepted={} oldest={} latest={}",
+                command.subscriptionId(),
+                command.lastSeenSequence(),
+                replayAccepted,
+                state.oldestRetainedSequence(),
+                state.latestPublishedSequence());
 
         return Effect().none().thenRun(ignored -> {
             if (replayAccepted) {
@@ -77,7 +87,9 @@ public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, B
     private Effect<BroadcasterFact, BroadcasterState> publish(
             final BroadcasterState state, final BroadcasterCommand.PublishCommand<?> command) {
 
-        final SequencedEvent<?> event = new SequencedEvent<>(state.latestPublishedSequence() + 1, command.payload());
+        final long nextSeq = state.latestPublishedSequence() + 1;
+        final SequencedEvent<?> event = new SequencedEvent<>(nextSeq, command.payload());
+        LOG.debug("publish seq={} subscribers={}", nextSeq, subscribers.size());
         return Effect()
                 .persist(new BroadcasterFact.PublishedFact(event))
                 .thenRun(ignored -> subscribers.forEach(

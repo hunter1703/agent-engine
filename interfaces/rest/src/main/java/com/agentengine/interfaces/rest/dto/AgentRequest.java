@@ -71,7 +71,7 @@ public class AgentRequest {
             }
             try {
                 return RequestType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
+            } catch (IllegalArgumentException exception) {
                 return UNKNOWN;
             }
         }

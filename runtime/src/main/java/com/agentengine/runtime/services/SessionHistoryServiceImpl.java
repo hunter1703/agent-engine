@@ -20,6 +20,7 @@ import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.pekko.persistence.typed.PersistenceId;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Journal-backed SessionHistory reader over committed {@link TurnCommittedFact} facts.
@@ -41,21 +42,12 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
                 .getCollection(AssetClass.AGENT_SESSION, AgentSession.class);
     }
 
-    public List<Event> events(final String sessionId) {
+    public List<Event> getEvents(final String sessionId) {
         final AgentSession session = findSession(sessionId);
         if (session == null) {
             return List.of();
         }
-
-        final String persistenceId = PersistenceId.of(
-                        SessionActor.TYPE_KEY.name(), session.getAgentId() + ":" + sessionId)
-                .id();
-        final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
-        final List<Event> history = new ArrayList<>();
-        for (final TurnCommittedFact turn : turns) {
-            history.addAll(turn.getEvents());
-        }
-        return history;
+        return _getEvents(session);
     }
 
     @Override
@@ -64,17 +56,8 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
         if (session == null) {
             return List.of();
         }
-
-        final String persistenceId = PersistenceId.of(
-                        SessionActor.TYPE_KEY.name(), session.getAgentId() + ":" + sessionId)
-                .id();
-        final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
-        final List<SessionEvent> history = new ArrayList<>();
-        for (final TurnCommittedFact turn : turns) {
-            history.addAll(SessionEventUtils.toSessionEvents(
-                    session.getRootSessionId(), session.getParentSessionId(), sessionId, turn.getEvents(), 0L));
-        }
-        return history;
+        return SessionEventUtils.toSessionEvents(
+                session.getRootSessionId(), session.getParentSessionId(), sessionId, _getEvents(session), 0L);
     }
 
     private AgentSession findSession(final String sessionId) {
@@ -87,5 +70,16 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
             return null;
         }
         return session;
+    }
+
+    private @NonNull List<Event> _getEvents(final AgentSession session) {
+        final String persistenceId =
+                PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
+        final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
+        final List<Event> history = new ArrayList<>();
+        for (final TurnCommittedFact turn : turns) {
+            history.addAll(turn.getEvents());
+        }
+        return history;
     }
 }

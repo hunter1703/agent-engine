@@ -40,15 +40,7 @@ app.kubernetes.io/instance: {{ .root.Release.Name }}
 {{- end -}}
 
 {{- define "agent-engine.base.applicationPropertiesConfigMapName" -}}
-{{- if .root.Values.config.existingConfigMap -}}
-{{- .root.Values.config.existingConfigMap -}}
-{{- else -}}
 {{- printf "%s-application-properties-configmap" (include "agent-engine.base.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "agent-engine.base.localPropertiesConfigMapName" -}}
-{{- printf "%s-local-properties-configmap" (include "agent-engine.base.fullname" .) -}}
 {{- end -}}
 
 {{- define "agent-engine.base.image" -}}

@@ -44,7 +44,10 @@ public class MongoClientFactory {
     }
 
     public MongoClient getClient() {
-        return MongoClients.create(buildClientSettings(applicationConfig.getString(INFRA_MONGO_URI_KEY), getBsonDiscriminators(mongoClientSupport), encryptionService));
+        return MongoClients.create(buildClientSettings(
+                applicationConfig.getString(INFRA_MONGO_URI_KEY),
+                getBsonDiscriminators(mongoClientSupport),
+                encryptionService));
     }
 
     private static List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {

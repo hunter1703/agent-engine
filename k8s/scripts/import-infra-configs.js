@@ -16,7 +16,7 @@ function loadConfigs() {
 function applyDeploymentOverrides(config) {
   const next = { ...config };
 
-  if (next.type === "default_model") {
+  if (next.type === "default_models") {
     next.titleModelId = process.env.TITLE_MODEL_ID || next.titleModelId;
     next.compactionModelId = process.env.COMPACTION_MODEL_ID || next.compactionModelId;
     next.evaluatorModelId = process.env.EVALUATOR_MODEL_ID || next.evaluatorModelId;

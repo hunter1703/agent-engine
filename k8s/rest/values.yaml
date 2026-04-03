@@ -1,29 +1,20 @@
-namespace: agent-engine
-nameOverride: ""
-fullnameOverride: ""
 component: rest
 replicas: 2
 revisionHistoryLimit: 3
-minReadySeconds: 20
-terminationGracePeriodSeconds: 60
-priorityClassName: ""
+terminationGracePeriodSeconds: 90
 
-commonLabels: {}
-podLabels: {}
-podAnnotations: {}
-
-imagePullSecrets: []
+lifecycle:
+  # Delay before the container starts shutting down, giving the load balancer time to drain.
+  # terminationGracePeriodSeconds must exceed preStopSleepSeconds + quarkus.shutdown.timeout.
+  preStopSleepSeconds: 20
 
 image:
   repository: agent-engine/rest
   tag: "latest"
-  digest: ""
   pullPolicy: IfNotPresent
 
 serviceAccount:
   create: true
-  name: ""
-  annotations: {}
   automountToken: false
 
 podSecurityContext:
@@ -41,20 +32,13 @@ java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
-applicationConfig:
-  globalConfigMapName: "global-properties-agent-engine-configmap"
-  localProperties: {}
-
 config:
-  existingConfigMap: ""
   applicationProperties:
     quarkus.otel.service.name: agent-engine-rest
-    quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
+    # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+    quarkus.otel.sdk.disabled: "true"
     quarkus.log.console.json: "true"
-
-extraEnv: {}
-extraEnvFromSecrets: []
-extraEnvFromConfigMaps: []
+    quarkus.shutdown.timeout: 60S
 
 resources:
   requests:
@@ -66,7 +50,6 @@ resources:
 
 service:
   type: ClusterIP
-  annotations: {}
   httpPort: 8080
 
 tmpVolume:
@@ -97,22 +80,5 @@ strategy:
     maxSurge: 1
     maxUnavailable: 0
 
-pdb:
-  enabled: true
-  minAvailable: 1
-
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: agent-engine.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
-topologySpreadConstraints: []

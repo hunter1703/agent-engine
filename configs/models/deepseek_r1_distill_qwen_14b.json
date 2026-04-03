@@ -9,7 +9,7 @@
     "-m",
     "/Users/rhp/Projects/agent-engine/llamacpp_models/deepseek-r1-distill-qwen-14b-q4_k_m.gguf",
     "--host",
-    "127.0.0.1",
+    "0.0.0.0",
     "--port",
     "17002"
   ],

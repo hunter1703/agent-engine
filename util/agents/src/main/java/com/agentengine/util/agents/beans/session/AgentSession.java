@@ -5,7 +5,6 @@ import com.agentengine.util.common.beans.NamedEntity;
 import com.agui.core.event.BaseEvent;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class AgentSession extends NamedEntity {
@@ -23,8 +22,8 @@ public class AgentSession extends NamedEntity {
     private String parentSessionId;
     private int depth;
     private String spawnedByAgentId;
-    private String status = AgentSessionStatus.PENDING_INIT.name();
     private String summary;
+    private SessionStatus status;
 
     public AgentSession() {}
 
@@ -37,7 +36,6 @@ public class AgentSession extends NamedEntity {
         this.state = state == null ? new HashMap<>() : new HashMap<>(state);
         this.rootSessionId = id;
         this.depth = 0;
-        this.status = AgentSessionStatus.PENDING_INIT.name();
     }
 
     public String getAgentId() {
@@ -110,14 +108,6 @@ public class AgentSession extends NamedEntity {
         this.spawnedByAgentId = spawnedByAgentId;
     }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(final String status) {
-        this.status = AgentSessionStatus.valueOfOrDefault(status).name();
-    }
-
     public String getSummary() {
         return summary;
     }
@@ -126,28 +116,11 @@ public class AgentSession extends NamedEntity {
         this.summary = summary;
     }
 
-    public enum AgentSessionStatus {
-        UNKNOWN,
-        PENDING_INIT,
-        RUNNING,
-        INTERRUPTED,
-        COMPLETED,
-        ERRORED,
-        CLOSED;
+    public SessionStatus getStatus() {
+        return status;
+    }
 
-        public static AgentSessionStatus valueOfOrDefault(final String value) {
-            if (value == null || value.isBlank()) {
-                return UNKNOWN;
-            }
-            try {
-                return AgentSessionStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
-                return UNKNOWN;
-            }
-        }
-
-        public boolean isTerminal() {
-            return this == INTERRUPTED || this == COMPLETED || this == ERRORED || this == CLOSED;
-        }
+    public void setStatus(final SessionStatus status) {
+        this.status = status;
     }
 }

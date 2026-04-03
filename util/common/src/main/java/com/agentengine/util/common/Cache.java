@@ -26,8 +26,8 @@ public class Cache<K, V> {
         try {
             final Holder<? extends V> holder = delegate.get(key, () -> loader.apply(key));
             return holder.value;
-        } catch (ExecutionException ex) {
-            throw new RuntimeException(ex);
+        } catch (ExecutionException exception) {
+            throw new RuntimeException(exception);
         }
     }
 

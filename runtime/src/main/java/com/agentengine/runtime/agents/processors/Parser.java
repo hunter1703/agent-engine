@@ -1,6 +1,7 @@
 package com.agentengine.runtime.agents.processors;
 
 import com.agentengine.runtime.utils.ContentUtils;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -98,10 +99,9 @@ public final class Parser {
         final String finalAnswer = StringUtils.isBlank(processedText) ? "" : processedText.trim();
         final List<Part> allParts = new ArrayList<>(thoughtParts);
         if (StringUtils.isNotBlank(finalAnswer)) {
-            allParts.add(Part.builder().text(finalAnswer).build());
+            allParts.add(Part.builder().text(finalAnswer).thought(CollectionUtils.isNotEmpty(toolCallParts)).build());
         }
         allParts.addAll(toolCallParts);
-
         return content.toBuilder().parts(allParts).build();
     }
 }

@@ -5,6 +5,8 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "encryption")
 public class EncryptionInfraConfig extends InfraConfig {
     public static final String TYPE = "encryption";
+    public static final String CATEGORY = "ENCRYPTION";
+    public static final String CONFIG_ID = "default";
 
     /** MongoDB document field name for the encryption key; matches the shell script upsert. */
     public static final String KEY_FIELD = "key";

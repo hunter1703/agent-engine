@@ -2,7 +2,7 @@ package com.agentengine.util.mongodb.encryption;
 
 import com.agentengine.util.common.EncryptionService;
 import com.agentengine.util.mongodb.infra.EncryptionInfraConfig;
-import com.agentengine.util.mongodb.infra.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -32,8 +32,9 @@ public class EncryptionServiceImpl implements EncryptionService {
     private final SecretKey secretKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public EncryptionServiceImpl(final InfraMongoRepository infraMongoRepository) {
-        final EncryptionInfraConfig config = infraMongoRepository.findOneByType(EncryptionInfraConfig.TYPE);
+    public EncryptionServiceImpl(final InfraConfigService infraConfigService) {
+        final EncryptionInfraConfig config =
+                infraConfigService.findById(EncryptionInfraConfig.CATEGORY, EncryptionInfraConfig.CONFIG_ID);
         if (config == null || config.getKey() == null || config.getKey().isBlank()) {
             LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
             this.secretKey = null;

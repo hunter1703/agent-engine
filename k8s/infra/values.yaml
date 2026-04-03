@@ -2,6 +2,10 @@ namespace: agent-engine
 nameOverride: ""
 fullnameOverride: ""
 
+# When true, helm will fail if mongodb.auth.existingSecret or postgres.existingSecret is not set.
+# Enable this in production to prevent accidental deployment with auto-generated credentials.
+requireExistingSecrets: false
+
 commonLabels: {}
 imagePullSecrets: []
 

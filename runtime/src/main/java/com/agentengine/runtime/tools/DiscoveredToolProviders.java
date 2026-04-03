@@ -2,13 +2,13 @@ package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Schema;
 import jakarta.enterprise.inject.Any;
@@ -33,18 +33,16 @@ public final class DiscoveredToolProviders {
     private final LazyLoader<List<ToolProvider>> providers;
 
     @Inject
-    public DiscoveredToolProviders(
-            final @Any Instance<Tool> tools, final Instance<SessionActorFactory> sessionActorFactoryInstance) {
+    public DiscoveredToolProviders(final @Any Instance<Tool> tools, final ActorSystemProvider actorSystemProvider) {
 
         this.providers = new LazyLoader<>(() -> {
             final Map<String, ToolProvider> resolvedProviders = new LinkedHashMap<>();
-            final SessionActorFactory sessionActorFactory = sessionActorFactoryInstance.get();
             for (final Tool tool : tools) {
                 try {
                     final ToolDefinition definition = buildDefinition(tool.getClass());
                     resolvedProviders.putIfAbsent(
                             definition.descriptor().name(),
-                            new DiscoveredToolProvider(definition, sessionActorFactory));
+                            new DiscoveredToolProvider(definition, actorSystemProvider));
                 } finally {
                     tools.destroy(tool);
                 }
@@ -91,7 +89,7 @@ public final class DiscoveredToolProviders {
         final Parameter[] parameters = constructor.getParameters();
         final List<ConstructorParam> params = new ArrayList<>(parameters.length);
         for (final Parameter parameter : parameters) {
-            final boolean injected = SessionActorFactory.class.equals(parameter.getType());
+            final boolean injected = ActorSystemProvider.class.equals(parameter.getType());
             final String key = injected ? parameter.getType().getSimpleName() : resolveKey(parameter);
             final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
             final String description = schema == null ? null : schema.description();
@@ -212,7 +210,7 @@ public final class DiscoveredToolProviders {
             List<String> enumValues,
             boolean injected) {}
 
-    private record DiscoveredToolProvider(ToolDefinition definition, SessionActorFactory sessionActorFactory)
+    private record DiscoveredToolProvider(ToolDefinition definition, ActorSystemProvider actorSystemProvider)
             implements ToolProvider {
         @Override
         public ToolDescriptor descriptor() {
@@ -239,7 +237,7 @@ public final class DiscoveredToolProviders {
             for (int index = 0; index < params.size(); index++) {
                 final ConstructorParam param = params.get(index);
                 if (param.injected()) {
-                    args[index] = sessionActorFactory;
+                    args[index] = actorSystemProvider;
                     continue;
                 }
                 final Object rawValue = CollectionUtils.getValueFromMap(toolConfig, param.key());

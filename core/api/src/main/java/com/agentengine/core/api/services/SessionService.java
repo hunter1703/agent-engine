@@ -3,6 +3,7 @@ package com.agentengine.core.api.services;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.common.update.Update;
 import com.agentengine.util.ms.MicroService;
 import java.util.Collection;
 import java.util.Map;
@@ -20,4 +21,8 @@ public interface SessionService {
     PaginatedResult<AgentSession> findSessions(Query query);
 
     boolean deleteSession(String id);
+
+    AgentSession updateSession(String id, Update update);
+
+    AgentSession create(AgentSession session);
 }

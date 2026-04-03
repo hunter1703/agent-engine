@@ -20,7 +20,7 @@ class SessionActorTurnCommittedTest {
                 SessionActor.applyCommittedTurn(pausedState, new TurnCommittedFact(List.of(event), null, null));
 
         assertThat(newState.sessionState()).isEqualTo(SessionState.PAUSED);
-        assertThat(newState.lastPersistedEventId()).isEqualTo("event-1");
+        assertThat(newState.lastCommittedEvents()).isEqualTo("event-1");
     }
 
     @Test
@@ -32,6 +32,6 @@ class SessionActorTurnCommittedTest {
                 SessionActor.applyCommittedTurn(runningState, new TurnCommittedFact(List.of(event), null, null));
 
         assertThat(newState.sessionState()).isEqualTo(SessionState.RUNNING);
-        assertThat(newState.lastPersistedEventId()).isEqualTo("event-2");
+        assertThat(newState.lastCommittedEvents()).isEqualTo("event-2");
     }
 }

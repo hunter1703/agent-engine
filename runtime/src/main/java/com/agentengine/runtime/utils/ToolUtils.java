@@ -4,9 +4,6 @@ import static com.agentengine.util.common.Utils.*;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.session.SessionActorFactory;
-import com.agentengine.runtime.session.commands.InternalCommand.PauseCommand;
-import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.tools.HumanInTheLoopTool;
 import com.agentengine.runtime.tools.SchemaUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -14,6 +11,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
@@ -30,44 +28,22 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
-import org.apache.pekko.Done;
-import org.apache.pekko.actor.typed.ActorRef;
-import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
-import org.apache.pekko.japi.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class ToolUtils {
     private static final Logger LOG = LoggerFactory.getLogger(ToolUtils.class);
+    private static final String ARG_ORIGINAL_FUNCTION_CALL = "originalFunctionCall";
 
     private ToolUtils() {}
 
     /**
-     * Requests confirmation from the user and ends the current invocation, pausing the agentic loop
-     * until the user responds. Both calls are required together: {@code requestConfirmation} alone
-     * does not stop the loop; without {@code setEndInvocation}, ADK will re-invoke the LLM before the
-     * user has had a chance to respond.
+     * Requests confirmation from the user and ends the current invocation. The session actor infers
+     * the pause automatically when it observes the resulting {@code adk_request_confirmation} event.
      */
     public static void requestConfirmationAndPause(
-            final SessionActorFactory actorFactory,
-            final ToolContext toolContext,
-            final String prompt,
-            final Object payload) {
+            final ToolContext toolContext, final String prompt, final Object payload) {
         toolContext.requestConfirmation(prompt, payload);
-        final String confirmationId = toolContext.functionCallId().orElse(null);
-        if (actorFactory != null) {
-            final EntityRef<SessionCommand> sessionActor =
-                    actorFactory.entityRef(agentId(toolContext), sessionId(toolContext));
-            sessionActor
-                    .ask(
-                            (Function<ActorRef<Done>, SessionCommand>)
-                                    replyTo -> PauseCommand.self(confirmationId, replyTo),
-                            SessionActorFactory.ASK_TIMEOUT)
-                    .toCompletableFuture()
-                    .join();
-        } else {
-            LOG.warn("Skipping PauseCommand emission due to missing SessionActorFactory.");
-        }
         toolContext.eventActions().setEndInvocation(true);
     }
 
@@ -377,16 +353,18 @@ public final class ToolUtils {
     }
 
     public static String originalToolName(final FunctionCall functionCall) {
-        if (functionCall == null) {
-            return null;
-        }
-        final Map<String, Object> args = functionCall.args().orElse(Map.of());
-        final Object original = args.get("originalFunctionCall");
-        if (!(original instanceof Map<?, ?> originalMap)) {
-            return null;
-        }
-        final Object name = originalMap.get("name");
-        return name == null ? null : String.valueOf(name);
+        return extractOriginalFunctionCall(functionCall).name().orElse(null);
+    }
+
+    public static String originalFunctionCallId(final FunctionCall functionCall) {
+        return extractOriginalFunctionCall(functionCall).id().orElse(null);
+    }
+
+    private static FunctionCall extractOriginalFunctionCall(final FunctionCall confirmationCall) {
+        final Map<String, Object> args = CollectionUtils.nullSafeMap(
+                confirmationCall == null ? null : confirmationCall.args().orElse(Map.of()));
+        return Utils.toType(
+                CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), new TypeReference<>() {});
     }
 
     public static boolean isHumanInTheLoopToolCall(final FunctionCall functionCall) {

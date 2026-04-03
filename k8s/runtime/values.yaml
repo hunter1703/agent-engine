@@ -1,28 +1,16 @@
-namespace: agent-engine
-nameOverride: ""
-fullnameOverride: ""
+component: runtime
 replicas: 3
 revisionHistoryLimit: 3
 terminationGracePeriodSeconds: 150
-priorityClassName: ""
 podManagementPolicy: Parallel
-
-commonLabels: {}
-podLabels: {}
-podAnnotations: {}
-
-imagePullSecrets: []
 
 image:
   repository: agent-engine/runtime
   tag: "latest"
-  digest: ""
   pullPolicy: IfNotPresent
 
 serviceAccount:
   create: true
-  name: ""
-  annotations: {}
   automountToken: false
 
 podSecurityContext:
@@ -40,21 +28,14 @@ java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
   args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
 
-bootstrap:
-  existingSecret: "agent-engine-infra-bootstrap"
-  bootstrapPropertiesKey: bootstrap.properties
-
 config:
-  existingConfigMap: ""
   applicationProperties:
+    pekko.cluster.roles: runtime
     quarkus.otel.service.name: agent-engine-runtime
-    quarkus.otel.exporter.otlp.endpoint: http://otel-collector:4317
+    # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+    quarkus.otel.sdk.disabled: "true"
     quarkus.log.console.json: "true"
     agent-engine.session-actor.passivation.idle-timeout: PT1H
-
-extraEnv: {}
-extraEnvFromSecrets: []
-extraEnvFromConfigMaps: []
 
 resources:
   requests:
@@ -66,7 +47,6 @@ resources:
 
 service:
   type: ClusterIP
-  annotations: {}
   httpPort: 8080
   grpcPort: 9000
   pekkoPort: 2552
@@ -95,23 +75,13 @@ probes:
     failureThreshold: 45
     timeoutSeconds: 3
 
-# Seconds to sleep in preStop hook before the container receives SIGTERM.
-# Gives Kubernetes time to remove the pod from service endpoints and lets
-# the old Pekko Artery port (2552) drain before the replacement pod starts.
-preStopSleepSeconds: 15
-
-# Seconds a pod must be ready before the StatefulSet considers it available
-# and proceeds to the next pod in a rolling update.
-minReadySeconds: 20
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/component: runtime
 
 updateStrategy:
   type: RollingUpdate
-
-pdb:
-  enabled: true
-  minAvailable: 2
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
-topologySpreadConstraints: []

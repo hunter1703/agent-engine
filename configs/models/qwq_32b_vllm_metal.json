@@ -9,7 +9,7 @@
     "--model",
     "mlx-community/QwQ-32B-8bit",
     "--host",
-    "127.0.0.1",
+    "0.0.0.0",
     "--port",
     "17005"
   ],

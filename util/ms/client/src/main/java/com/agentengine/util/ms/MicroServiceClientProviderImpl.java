@@ -1,5 +1,6 @@
 package com.agentengine.util.ms;
 
+import com.agentengine.util.mongodb.infra.InfraConfigService;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.quarkus.arc.Arc;
@@ -30,13 +31,15 @@ import org.slf4j.LoggerFactory;
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(MicroServiceClientProviderImpl.class);
+    private static final String DEFAULT_HOST = "localhost";
+    private static final int DEFAULT_PORT = 9000;
 
     private final ConcurrentMap<Class<?>, ManagedChannel> channels = new ConcurrentHashMap<>();
-    private final MicroServiceEndpointResolver endpointResolver;
+    private final InfraConfigService infraConfigService;
 
     @Inject
-    public MicroServiceClientProviderImpl(MicroServiceEndpointResolver endpointResolver) {
-        this.endpointResolver = endpointResolver;
+    public MicroServiceClientProviderImpl(final InfraConfigService infraConfigService) {
+        this.infraConfigService = infraConfigService;
     }
 
     @Override
@@ -62,11 +65,14 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
         // Fall back to a transparent gRPC proxy for remote services, reusing the
         // channel per service
-        ManagedChannel channel = channels.computeIfAbsent(serviceClass, cls -> {
-            MicroServiceEndpoint endpoint = endpointResolver.resolve(cls);
-            return ManagedChannelBuilder.forAddress(endpoint.host(), endpoint.port())
-                    .usePlaintext()
-                    .build();
+        final ManagedChannel channel = channels.computeIfAbsent(serviceClass, cls -> {
+            final String serverId = cls.getAnnotation(MicroService.class).value();
+            final MicroServiceInfraConfig config =
+                    infraConfigService.findById(MicroServiceInfraConfig.CATEGORY, serverId);
+            final String host = config != null ? config.getHost() : DEFAULT_HOST;
+            final int port = config != null ? config.getPort() : DEFAULT_PORT;
+            LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
+            return ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
         });
 
         // noinspection unchecked

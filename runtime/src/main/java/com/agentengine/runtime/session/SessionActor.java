@@ -2,33 +2,37 @@ package com.agentengine.runtime.session;
 
 import static com.agentengine.runtime.session.SessionActorFactory.ASK_TIMEOUT;
 
-import com.agentengine.runtime.actor.ConfirmResult;
-import com.agentengine.runtime.actor.SessionEventChannel;
-import com.agentengine.runtime.actor.StartSessionResult;
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.factories.RunnerFactory;
-import com.agentengine.runtime.services.MongoSessionService;
 import com.agentengine.runtime.session.commands.ExternalCommand.*;
 import com.agentengine.runtime.session.commands.InternalCommand.*;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.session.events.*;
 import com.agentengine.runtime.session.state.*;
 import com.agentengine.runtime.utils.EventUtils;
+import com.agentengine.runtime.utils.SessionUtils;
+import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.common.update.Operation;
+import com.agentengine.util.common.update.Update;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import com.google.adk.events.Event;
-import com.google.adk.sessions.Session;
+import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.Content;
-import io.reactivex.rxjava3.core.Maybe;
+import com.google.genai.types.FunctionCall;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
-import java.util.function.BiFunction;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.PostStop;
@@ -37,6 +41,7 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 import org.apache.pekko.japi.function.Function;
 import org.apache.pekko.persistence.typed.RecoveryCompleted;
+import org.apache.pekko.persistence.typed.SnapshotAdapter;
 import org.apache.pekko.persistence.typed.javadsl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +59,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     private final int snapshotThreshold;
     private final SessionEventChannel eventChannel;
     private final Queue<Event> turnEvents = new ArrayDeque<>();
-    private final BiFunction<String, String, EntityRef<SessionCommand>> refSupplier;
+    private final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier;
     private final RunnerFactory runnerFactory;
-    private final MongoSessionService sessionService;
+    private final SessionService sessionService;
     private SessionRunner runner;
 
     public SessionActor(
@@ -64,9 +69,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             final String entityId,
             final int snapshotThreshold,
             final SessionEventChannel eventChannel,
-            final BiFunction<String, String, EntityRef<SessionCommand>> refSupplier,
+            final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier,
             final RunnerFactory runnerFactory,
-            final MongoSessionService sessionService) {
+            final SessionService sessionService) {
         super(TYPE_KEY.name(), entityId);
         this.context = context;
         this.self = context.getSelf();
@@ -99,6 +104,28 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         return RetentionCriteria.snapshotEvery(snapshotThreshold, 2);
     }
 
+    /**
+     * Isolates the snapshot from subsequent in-place mutations on the live state.
+     *
+     * <p>Per-event methods ({@code enqueue}, {@code dequeue}, etc.) mutate shared backing
+     * collections for O(1) replay. {@link SessionActorState#copy()} produces fresh
+     * collection instances so the persisted snapshot is never affected by later mutations.
+     */
+    @Override
+    public SnapshotAdapter<SessionActorState> snapshotAdapter() {
+        return new SnapshotAdapter<>() {
+            @Override
+            public Object toJournal(final SessionActorState state) {
+                return state.copy();
+            }
+
+            @Override
+            public SessionActorState fromJournal(final Object from) {
+                return (SessionActorState) from;
+            }
+        };
+    }
+
     private void onRecoveryCompleted(final SessionActorState state) {
         if (state == null) {
             return;
@@ -109,10 +136,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
         final SessionState sessionState = state.sessionState();
         if (sessionState == SessionState.TRIGGERED_RUN) {
-            final Maybe<Session> session = sessionService.getSession(
-                    topology.agentId(), AgentSession.DEFAULT_USER_ID, topology.sessionId(), Optional.empty());
-            if (session.blockingGet() != null) {
-                sessionService.deleteSession(topology.agentId(), AgentSession.DEFAULT_USER_ID, topology.sessionId());
+            final String sessionId = topology.sessionId();
+            final AgentSession session = sessionService.getSession(sessionId);
+            if (session != null) {
+                sessionService.deleteSession(sessionId);
             }
         }
         init(topology);
@@ -120,6 +147,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             case TRIGGERED_RUN -> {
                 // re-start with message; as the recovery state was mid first turn
                 runner.start(state.currentMessage().getRecord());
+                updateSessionStatus(state, SessionStatus.RUNNING);
             }
             case RUNNING -> {
                 for (final StartingChild child : state.startingChildren()) {
@@ -132,6 +160,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 } else {
                     runner.start("continue");
                 }
+                updateSessionStatus(state, SessionStatus.RUNNING);
             }
             case PAUSED -> {
                 if (!topology.isRoot()) {
@@ -139,8 +168,14 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         propagateSelfPauseToParent(topology, confirmationId);
                     }
                 }
+                updateSessionStatus(state, SessionStatus.PAUSED);
             }
             case IDLE -> {
+                updateSessionStatus(
+                        state,
+                        state.lastResult() != null && state.lastResult().isFailure()
+                                ? SessionStatus.FAILED
+                                : SessionStatus.COMPLETED);
                 if (!state.queue().isEmpty()) {
                     self.tell(new StartNextQueuedMessageCommand());
                 }
@@ -159,13 +194,16 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onCommand(ConfirmChildCommand.class, this::confirmChild)
                 .onCommand(ResumeCommand.class, (state, _) -> {
                     final Collection<Confirmation> confirmations = state.getAllReceivedConfirmations();
-                    return Effect().persist(new ResumedFact()).thenRun(_ -> runner.resume(confirmations));
+                    return Effect().persist(new ResumedFact()).thenRun(newState -> {
+                        runner.resume(confirmations);
+                        updateSessionStatus(newState, SessionStatus.RUNNING);
+                    });
                 })
                 .onCommand(AwaitCommand.class, this::await)
                 .onCommand(StartChildCommand.class, this::startChild)
                 .onCommand(SendMessageCommand.class, this::sendMessage)
                 .onCommand(PublishEventCommand.class, this::publishEvent)
-                .onCommand(PauseCommand.class, this::pause)
+                .onCommand(ChildPausedCommand.class, this::childPaused)
                 .onCommand(StartChildCompletedCommand.class, this::startChildCompleted)
                 .onCommand(RunFailedCommand.class, this::runFailed)
                 .onCommand(StartNextQueuedMessageCommand.class, this::startNextQueuedMessage);
@@ -183,12 +221,27 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     }
 
     private void init(final SessionTopology topology) {
-        final Maybe<Session> session = sessionService.getSession(
-                topology.agentId(), AgentSession.DEFAULT_USER_ID, topology.sessionId(), Optional.empty());
-        if (session.blockingGet() == null) {
-            sessionService.createSession(topology.agentId(), topology.sessionId(), topology.parentSessionId(), null);
+        if (runner != null) {
+            return;
         }
-        runner = runnerFactory.buildRunner(topology.agentId(), topology.sessionId(), self);
+        final String sessionId = topology.sessionId();
+        final AgentSession session = sessionService.getSession(sessionId);
+        if (session == null) {
+            final ConcurrentMap<String, Object> initialState = SessionUtils.buildInitialState();
+
+            final AgentSession agentSession = new AgentSession(sessionId, topology.agentId(), initialState);
+            final String parentSessionId = topology.parentSessionId();
+            final AgentSession parentSession =
+                    StringUtils.isNotBlank(parentSessionId) ? sessionService.getSession(parentSessionId) : null;
+            agentSession.setRootSessionId(parentSession == null ? sessionId : resolveRootSessionId(parentSession));
+            agentSession.setParentSessionId(parentSessionId);
+            agentSession.setRootAgentId(parentSession == null ? topology.agentId() : resolveRootAgentId(parentSession));
+            agentSession.setSpawnedByAgentId(parentSession == null ? null : parentSession.getAgentId());
+            agentSession.setDepth(resolveDepth(parentSession));
+            agentSession.setStatus(SessionStatus.INIT);
+            sessionService.create(agentSession);
+        }
+        runner = runnerFactory.buildRunner(topology.agentId(), sessionId, self);
     }
 
     private Effect<SessionFact, SessionActorState> start(final SessionActorState state, final StartCommand command) {
@@ -248,8 +301,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 replyTo, _ -> new ConfirmResult.Rejected("Unknown child session: " + childSessionId));
             }
 
-            final EntityRef<SessionCommand> childRef =
-                    refSupplier.apply(child.get().agentId(), childSessionId);
+            final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
             context.pipeToSelf(
                     childRef.ask(
                             (Function<ActorRef<ConfirmResult>, SessionCommand>)
@@ -266,7 +318,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             return Effect().none().thenReply(replyTo, _ -> new ConfirmResult.UnknownConfirmationId());
         }
 
-        return confirmed(replyTo, confirmation, state.sessionState());
+        return confirmed(
+                replyTo,
+                confirmation,
+                state.pauseState().getPendingSelfConfirmationIds().contains(confirmation.getConfirmationId()));
     }
 
     private Effect<SessionFact, SessionActorState> confirmChild(
@@ -285,20 +340,22 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             return Effect().none().thenReply(replyTo, _ -> rejected);
         }
 
-        return confirmed(replyTo, command.confirmation(), state.sessionState());
+        return confirmed(
+                replyTo,
+                command.confirmation(),
+                state.pauseState()
+                        .getPendingSelfConfirmationIds()
+                        .contains(command.confirmation().getConfirmationId()));
     }
 
     private ReplyEffect<SessionFact, SessionActorState> confirmed(
             final ActorRef<ConfirmResult> replyTo,
             final Confirmation confirmation,
-            final SessionState previousSessionState) {
+            final boolean pendingSelfConfirmation) {
         return Effect()
                 .persist(new ConfirmedFact(confirmation))
                 .thenRun(newState -> {
-                    // The event handler transitions PAUSED → TRIGGERED_RUN via selfResume(), so
-                    // newState.sessionState() is already TRIGGERED_RUN here; check the pre-handler
-                    // state to distinguish a genuine self-resume from a duplicate or child confirm.
-                    if (newState.allConfirmationsReceived() && previousSessionState == SessionState.PAUSED) {
+                    if (pendingSelfConfirmation && newState.allConfirmationsReceived()) {
                         self.tell(new ResumeCommand());
                     }
                 })
@@ -323,7 +380,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     .thenReply(command.replyTo(), _ -> RunResult.failure("Unknown child session: " + childSessionId));
         }
 
-        final EntityRef<SessionCommand> childRef = refSupplier.apply(child.get().agentId(), childSessionId);
+        final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
         childRef.ask(
                         (Function<ActorRef<RunResult>, SessionCommand>) replyTo -> new AwaitCommand(null, replyTo),
                         ASK_TIMEOUT)
@@ -383,7 +440,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             final String childAgentId,
             final String childSessionId,
             final String message) {
-        final EntityRef<SessionCommand> childRef = refSupplier.apply(childAgentId, childSessionId);
+        final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
         final SessionTopology topology = state.topology();
         final SessionTopology childTopology = SessionTopology.child(
                 childAgentId, childSessionId, topology.rootSessionId(), topology.sessionId(), topology.agentId());
@@ -439,7 +496,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                             _ -> new StartSessionResult.Rejected("Unknown child session: " + childSessionId));
         }
 
-        final EntityRef<SessionCommand> childRef = refSupplier.apply(child.get().agentId(), childSessionId);
+        final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
         return Effect()
                 .none()
                 .thenRun(_ -> childRef.ask(
@@ -465,18 +522,67 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             final SessionActorState state, final PublishEventCommand command) {
         final SessionTopology topology = state.topology();
         final Event event = command.event();
-        final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
-                topology.rootSessionId(), topology.parentSessionId(), topology.sessionId(), event);
-        eventChannel.publish(topology.rootSessionId(), sessionEvent).whenComplete((ignored, error) -> {
-            if (error != null) {
-                LOG.error("Failed to publish live event for rootSessionId={}", topology.rootSessionId(), error);
+
+        // Detect self-pause: each adk_request_confirmation call carries both the original tool call
+        // ID (confirmationId) and the wrapper call ID — both available at this point in the stream.
+        final List<SessionFact> pauseFacts = new ArrayList<>();
+        final List<String> newPauseIds = new ArrayList<>();
+        final List<FunctionCall> confirmationCalls = Functions.getAskUserConfirmationFunctionCalls(event);
+        for (final FunctionCall call : confirmationCalls) {
+            final String wrapperCallId = call.id().orElse(null);
+            final String originalCallId = ToolUtils.originalFunctionCallId(call);
+            if (wrapperCallId != null && originalCallId != null) {
+                pauseFacts.add(PausedFact.selfPaused(originalCallId, wrapperCallId));
+                newPauseIds.add(originalCallId);
             }
-        });
+        }
+
+        if (confirmationCalls.isEmpty()) {
+            // Publish the raw ADK event as a standard SessionEvent.
+            final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
+                    topology.rootSessionId(), topology.parentSessionId(), topology.sessionId(), event);
+            eventChannel.publish(topology.rootSessionId(), sessionEvent).whenComplete((ignored, error) -> {
+                if (error != null) {
+                    LOG.error("Failed to publish live event for rootSessionId={}", topology.rootSessionId(), error);
+                }
+            });
+        } else {
+            // adk_request_confirmation is internal ADK plumbing. Replace each confirmation call with
+            // a semantic CONFIRMATION_REQUESTED event so clients never see ADK internals.
+            for (final FunctionCall call : confirmationCalls) {
+                final String originalCallId = ToolUtils.originalFunctionCallId(call);
+                if (originalCallId == null) {
+                    continue;
+                }
+                final SessionEvent confirmationEvent = SessionEventUtils.confirmationRequested(
+                        topology.rootSessionId(),
+                        topology.parentSessionId(),
+                        topology.sessionId(),
+                        event.invocationId(),
+                        originalCallId);
+                eventChannel
+                        .publish(topology.rootSessionId(), confirmationEvent)
+                        .whenComplete((ignored, error) -> {
+                            if (error != null) {
+                                LOG.error(
+                                        "Failed to publish confirmation event for rootSessionId={}",
+                                        topology.rootSessionId(),
+                                        error);
+                            }
+                        });
+            }
+        }
 
         turnEvents.add(event);
 
         if (!event.turnComplete().orElse(false)) {
-            return Effect().none();
+            if (CollectionUtils.isEmpty(pauseFacts)) {
+                return Effect().none();
+            }
+            return Effect().persist(pauseFacts).thenRun(newState -> {
+                newPauseIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
+                updateSessionStatus(newState, SessionStatus.PAUSED);
+            });
         }
         final ArrayList<Event> events = new ArrayList<>(turnEvents);
         turnEvents.clear();
@@ -484,45 +590,41 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         if (state.isDuplicateTurn(events)) {
             return Effect().none();
         }
-        return Effect()
-                .persist(new TurnCommittedFact(
-                        events,
-                        null,
-                        EventUtils.isTerminal(event)
-                                ? event.content()
-                                        .orElse(Content.builder().build())
-                                        .text()
-                                : null))
-                .thenRun(newState -> {
-                    final SessionTopology newTopology = newState.topology();
-                    if (newTopology.isRoot()
-                            && newState.sessionState() == SessionState.IDLE
-                            && !newState.queue().isEmpty()) {
-                        self.tell(new StartNextQueuedMessageCommand());
-                    }
-                });
+        final TurnCommittedFact turnFact = new TurnCommittedFact(
+                events,
+                null,
+                EventUtils.isTerminal(event)
+                        ? event.content().orElse(Content.builder().build()).text()
+                        : null);
+        final List<SessionFact> commitFacts = new ArrayList<>(pauseFacts);
+        commitFacts.add(turnFact);
+        return Effect().persist(commitFacts).thenRun(newState -> {
+            newPauseIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
+            if (newState.sessionState() == SessionState.IDLE) {
+                updateSessionStatus(
+                        newState,
+                        newState.lastResult() != null && newState.lastResult().isFailure()
+                                ? SessionStatus.FAILED
+                                : SessionStatus.COMPLETED);
+                if (newState.topology().isRoot() && !newState.queue().isEmpty()) {
+                    self.tell(new StartNextQueuedMessageCommand());
+                }
+            } else if (newState.sessionState() == SessionState.PAUSED) {
+                updateSessionStatus(newState, SessionStatus.PAUSED);
+            }
+        });
     }
 
-    private Effect<SessionFact, SessionActorState> pause(final SessionActorState state, final PauseCommand command) {
-        final String confirmationId = command.confirmationId();
-
-        final EffectBuilder<SessionFact, SessionActorState> effect;
-        if (command.forChild()) {
-            effect = switch (state.sessionState()) {
-                case TRIGGERED_RUN, PAUSED, RUNNING ->
-                    Effect().persist(PausedFact.childPaused(command.childSessionId(), confirmationId));
-                default -> Effect().none();
-            };
-        } else {
-            effect = switch (state.sessionState()) {
-                case TRIGGERED_RUN, PAUSED, RUNNING ->
-                    Effect()
-                            .persist(PausedFact.selfPaused(confirmationId))
-                            .thenRun(newState -> propagateSelfPauseToParent(newState.topology(), confirmationId));
-                default -> Effect().none();
-            };
-        }
-        return effect.thenReply(command.replyTo(), _ -> Done.done());
+    private Effect<SessionFact, SessionActorState> childPaused(
+            final SessionActorState state, final ChildPausedCommand command) {
+        return switch (state.sessionState()) {
+            case TRIGGERED_RUN, PAUSED, RUNNING ->
+                Effect()
+                        .persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()))
+                        .thenRun(newState -> updateSessionStatus(newState, SessionStatus.PAUSED))
+                        .thenReply(command.replyTo(), _ -> Done.done());
+            default -> Effect().none().thenReply(command.replyTo(), _ -> Done.done());
+        };
     }
 
     private void propagateSelfPauseToParent(final SessionTopology topology, final String confirmationId) {
@@ -533,11 +635,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final String currentSessionId = topology.sessionId();
         final String parentSessionId = topology.parentSessionId();
         final String parentAgentId = topology.parentAgentId();
-        final EntityRef<SessionCommand> parent = refSupplier.apply(parentAgentId, parentSessionId);
+        final EntityRef<SessionCommand> parent = refSupplier.apply(parentSessionId);
 
         parent.ask(
                         (Function<ActorRef<Done>, SessionCommand>)
-                                replyTo -> PauseCommand.child(currentSessionId, confirmationId, replyTo),
+                                replyTo -> new ChildPausedCommand(currentSessionId, confirmationId, replyTo),
                         ASK_TIMEOUT)
                 .whenComplete((ignored, error) -> {
                     if (error != null) {
@@ -561,8 +663,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .persist(new TurnCommittedFact(List.copyOf(turnEvents), command.error(), null))
                 .thenRun(newState -> {
                     turnEvents.clear();
-                    final SessionTopology topology = newState.topology();
-                    if (topology.isRoot()) {
+                    updateSessionStatus(newState, SessionStatus.FAILED);
+                    if (newState.topology().isRoot()) {
                         self.tell(new StartNextQueuedMessageCommand());
                     }
                 });
@@ -575,7 +677,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
 
         final UniqueRecord<String> nextMessage = state.queue().peek();
-        return Effect().persist(new StartedFact(nextMessage)).thenRun(_ -> runner.start(nextMessage.getRecord()));
+        return Effect().persist(new StartedFact(nextMessage)).thenRun(newState -> {
+            updateSessionStatus(newState, SessionStatus.RUNNING);
+            runner.start(nextMessage.getRecord());
+        });
     }
 
     @Override
@@ -603,25 +708,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     if (childSessionId != null) {
                         return state.childPaused(childSessionId, confirmationId);
                     }
-                    return state.selfPaused(confirmationId);
+                    return state.selfPaused(confirmationId, fact.getWrapperCallId());
                 })
-                .onEvent(TurnCommittedFact.class, (state, fact) -> {
-                    final List<Event> events = CollectionUtils.nullSafeList(fact.getEvents());
-                    final SessionActorState newState = state.withCommitedEvents(events);
-                    final String finalAnswer = fact.getFinalAnswer();
-                    final String failure = fact.getFailure();
-                    if (finalAnswer != null) {
-                        return newState.withRunResult(RunResult.success(finalAnswer))
-                                .withSessionState(SessionState.IDLE)
-                                .clearCurrentMessage();
-                    }
-                    if (failure != null) {
-                        return newState.withRunResult(RunResult.failure(failure))
-                                .withSessionState(SessionState.IDLE)
-                                .clearCurrentMessage();
-                    }
-                    return newState.withSessionState(SessionState.RUNNING);
-                })
+                .onEvent(TurnCommittedFact.class, SessionActor::applyCommittedTurn)
                 .onEvent(MessageEnqueuedFact.class, (state, fact) -> state.enqueue(fact.getMessage()))
                 .onEvent(ChildStartingFact.class, (state, fact) -> state.startingChild(fact.getChild()))
                 .onEvent(
@@ -629,5 +718,57 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         (state, fact) ->
                                 state.startedChild(fact.getSessionId(), new ChildSession(fact.getAgentId(), null)))
                 .build();
+    }
+
+    private static SessionActorState applyCommittedTurn(final SessionActorState state, final TurnCommittedFact fact) {
+        final List<Event> events = CollectionUtils.nullSafeList(fact.getEvents());
+        final SessionActorState newState = state.withCommitedEvents(events);
+        final String finalAnswer = fact.getFinalAnswer();
+        final String failure = fact.getFailure();
+        if (finalAnswer != null) {
+            return newState.withRunResult(RunResult.success(finalAnswer))
+                    .withSessionState(SessionState.IDLE)
+                    .clearCurrentMessage();
+        }
+        if (failure != null) {
+            return newState.withRunResult(RunResult.failure(failure))
+                    .withSessionState(SessionState.IDLE)
+                    .clearCurrentMessage();
+        }
+        if (state.sessionState() == SessionState.PAUSED) {
+            return newState.withSessionState(SessionState.PAUSED);
+        }
+        return newState.withSessionState(SessionState.RUNNING);
+    }
+
+    private void updateSessionStatus(final SessionActorState state, final SessionStatus status) {
+        final SessionTopology topology = state.topology();
+        try {
+            sessionService.updateSession(
+                    topology.sessionId(),
+                    Update.of(
+                            Operation.set(AgentSession.FIELD_STATUS, status.name()),
+                            Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
+        } catch (final Exception e) {
+            LOG.warn("Failed to update session status to {} for session {}", status, topology.sessionId(), e);
+        }
+    }
+
+    private static String resolveRootSessionId(final AgentSession parentSession) {
+        if (parentSession == null || StringUtils.isBlank(parentSession.getRootSessionId())) {
+            return parentSession == null ? null : parentSession.getId();
+        }
+        return parentSession.getRootSessionId();
+    }
+
+    private static String resolveRootAgentId(final AgentSession parentSession) {
+        if (parentSession == null || StringUtils.isBlank(parentSession.getRootAgentId())) {
+            return parentSession == null ? null : parentSession.getAgentId();
+        }
+        return parentSession.getRootAgentId();
+    }
+
+    private static int resolveDepth(final AgentSession parent) {
+        return parent == null ? 1 : parent.getDepth() + 1;
     }
 }

@@ -158,7 +158,7 @@ For Docker Desktop Kubernetes, local Docker images tagged as `agent-engine/runti
 - The built-in overlay is production-oriented and deploys application workloads only by default.
 - Runtime, core, and REST charts support image pull secrets, topology spread, service accounts, pod labels/annotations, and extra env/config injection.
 - Each service mounts a single external `/config/application.properties` file from a ConfigMap and sets `QUARKUS_CONFIG_LOCATIONS=file:/config/application.properties`.
-- Shared static settings are mounted from `/config/global.properties`, and service-specific overrides are mounted from `/config/local.properties`, while non-secret runtime config lives in `/config/application.properties`.
+- Shared static settings are mounted from `/config/global.properties`, while service-specific non-secret runtime config lives in `/config/application.properties`.
 - Runtime pods receive `POD_NAME` and `POD_NAMESPACE` through the Kubernetes downward API, and `ActorSystemProvider` resolves those placeholders when building the Pekko config at startup.
 - Seed nodes are only the bootstrap set for cluster formation. By default the seed step writes the first three StatefulSet ordinals, so scaling runtime replicas up does not require changing the seed list.
 - If you need to seed different model IDs, SQL settings, service names, or seed-node fanout, set environment variables such as `DEFAULT_MODEL_ID`, `TITLE_MODEL_ID`, `COMPACTION_MODEL_ID`, `EVALUATOR_MODEL_ID`, `SQL_JDBC_URL`, `CORE_SERVICE_NAME`, `RUNTIME_SERVICE_NAME`, or `RUNTIME_SEED_NODE_COUNT` before running the seed step.
@@ -172,7 +172,7 @@ If you want local/dev in-cluster databases, explicitly deploy the `infra` chart.
 If you want external or pre-created credentials:
 
 1. Set `global-properties.globalProperties.infra.mongodb.uri` to the correct MongoDB URI (and keep `infra.mongodb.database` / `app.mongodb.database` aligned with your deployment).
-2. Keep `runtime.applicationConfig.globalConfigMapName`, `core.applicationConfig.globalConfigMapName`, and `rest.applicationConfig.globalConfigMapName` pointed to the shared ConfigMap containing `global.properties`.
+2. Keep `runtime.config.globalConfigMapName`, `core.config.globalConfigMapName`, and `rest.config.globalConfigMapName` pointed to the shared ConfigMap containing `global.properties`.
 3. Set `SQL_JDBC_URL`, `POSTGRES_SECRET_NAME`, and related env overrides when running config sync if PostgreSQL is external.
 4. When using the optional `infra` chart, set `infra.mongodb.connectionString`, `infra.mongodb.auth.existingSecret`, `infra.postgres.jdbcUrl`, or `infra.postgres.existingSecret` as appropriate.
 

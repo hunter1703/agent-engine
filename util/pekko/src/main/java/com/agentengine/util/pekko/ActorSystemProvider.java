@@ -1,8 +1,8 @@
 package com.agentengine.util.pekko;
 
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.mongodb.config.ApplicationConfig;
-import com.agentengine.util.mongodb.infra.InfraMongoRepository;
+import com.agentengine.util.mongodb.infra.InfraConfigService;
 import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
 import com.typesafe.config.Config;
@@ -14,8 +14,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.apache.pekko.actor.typed.SpawnProtocol;
@@ -25,18 +23,16 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Central access point for the Pekko {@link ActorSystem} and related infrastructure.
- */
+/** Central access point for the Pekko {@link ActorSystem} and related infrastructure. */
 @Singleton
 public class ActorSystemProvider {
     private static final Logger LOG = LoggerFactory.getLogger(ActorSystemProvider.class);
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+    private static final int PEKKO_PORT = 2552;
     private static final String PEKKO_CLUSTER_ROLES_KEY = "pekko.cluster.roles";
-    private static final String PEKKO_JACKSON_MODULES_KEY = "pekko.serialization.jackson.modules";
+    private static final String JACKSON_MODULES_KEY = "pekko.serialization.jackson.jackson-modules";
 
     private final ApplicationConfig applicationConfig;
-    private final InfraMongoRepository repository;
+    private final InfraConfigService infraConfigService;
     private final Instance<ShardedEntityDefinition> entityDefinitions;
     private volatile PekkoConfig pekkoConfig;
     private volatile ActorSystem<SpawnProtocol.Command> system;
@@ -44,23 +40,24 @@ public class ActorSystemProvider {
 
     @Inject
     public ActorSystemProvider(
-            final InfraMongoRepository repository,
+            final InfraConfigService infraConfigService,
             final Instance<ShardedEntityDefinition> entityDefinitions,
             final ApplicationConfig applicationConfig) {
         this.applicationConfig = applicationConfig;
-        this.repository = repository;
+        this.infraConfigService = infraConfigService;
         this.entityDefinitions = entityDefinitions;
     }
 
     /**
      * Initializes the Pekko runtime eagerly at application startup so configuration or sharding
      * wiring issues fail fast during deployment instead of on first request.
-     * <p>
-     * Not initializing in constructor as some ShardedEntityDefinitions require ActorSystemProvider and hence would result into circular dependency
+     *
+     * <p>Not initializing in constructor as some ShardedEntityDefinitions require ActorSystemProvider
+     * and hence would result into circular dependency.
      */
     public void onStart(@Observes final StartupEvent event) {
-        this.pekkoConfig = repository.findOneByType(PekkoConfig.TYPE);
-        final SQLInfraConfig sqlConfig = repository.findOneByType(SQLInfraConfig.TYPE);
+        this.pekkoConfig = infraConfigService.findById(PekkoConfig.CATEGORY, PekkoConfig.CONFIG_ID);
+        final SQLInfraConfig sqlConfig = infraConfigService.findById(SQLInfraConfig.CATEGORY, SQLInfraConfig.CONFIG_ID);
         LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
         final Config config = buildConfig(pekkoConfig, sqlConfig);
         final ActorSystem<SpawnProtocol.Command> actorSystem =
@@ -91,30 +88,32 @@ public class ActorSystemProvider {
     }
 
     private Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
-        final String hostname = resolve(config.getHostname());
-        final List<String> seedNodes = config.getSeedNodes() == null
-                ? List.of()
-                : config.getSeedNodes().stream().map(this::resolve).toList();
-        final String jdbcUrl = resolve(sqlConfig.getJdbcUrl());
-        final String jdbcUser = resolve(sqlConfig.getJdbcUser());
-        final String jdbcPassword = resolve(sqlConfig.getJdbcPassword());
-        final Config baseConfig = ConfigFactory.parseResources("pekko-base.conf");
-        final List<String> jacksonModules = Stream.concat(
-                        baseConfig.getStringList("pekko.serialization.jackson.jackson-modules").stream(),
-                        applicationConfig.getListOfString(PEKKO_JACKSON_MODULES_KEY).stream())
-                .toList();
-        // Static structure is in pekko-base.conf; dynamic/sensitive values are overlaid via withValue so they are never
-        // present in a logged HOCON string.
+        final String hostname = EnvUtils.getHostname();
+        final List<String> seedNodes = config.getSeedNodes() == null ? List.of() : config.getSeedNodes();
+        final String jdbcUrl = sqlConfig.getJdbcUrl();
+        final String jdbcUser = sqlConfig.getJdbcUser();
+        final String jdbcPassword = sqlConfig.getJdbcPassword();
+        // Parse pekko-base.conf with reference.conf as fallback so that its += operators (e.g. for
+        // jackson-modules) resolve against Pekko's defaults rather than starting from an empty list.
+        // This preserves PekkoJacksonModule (the ActorRef serializer) from Pekko's reference.conf.
+        final Config baseConfig = ConfigFactory.parseResources("pekko-base.conf")
+                .withFallback(ConfigFactory.defaultReference())
+                .resolve();
+        final List<String> extraModules = applicationConfig.getListOfString("pekko.serialization.modules");
+        final List<String> baseModules = baseConfig.getStringList(JACKSON_MODULES_KEY);
+        final List<String> allJacksonModules =
+                Stream.concat(baseModules.stream(), extraModules.stream()).toList();
+        // Static structure is in pekko-base.conf; dynamic/sensitive values are overlaid via withValue
+        // so they are never present in a logged HOCON string.
         return baseConfig
                 .withValue("pekko.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(hostname))
-                .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(config.getPort()))
-                .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(config.getPort()))
+                .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
+                .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
                 .withValue("pekko.cluster.seed-nodes", ConfigValueFactory.fromIterable(seedNodes))
                 .withValue(
                         "pekko.cluster.roles",
                         ConfigValueFactory.fromIterable(applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY)))
-                .withValue(
-                        "pekko.serialization.jackson.jackson-modules", ConfigValueFactory.fromIterable(jacksonModules))
+                .withValue(JACKSON_MODULES_KEY, ConfigValueFactory.fromIterable(allJacksonModules))
                 .withValue("jdbc-journal.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
                 .withValue("jdbc-journal.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
                 .withValue("jdbc-journal.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
@@ -124,22 +123,15 @@ public class ActorSystemProvider {
                 .withValue("jdbc-read-journal.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
                 .withValue("jdbc-read-journal.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
                 .withValue("jdbc-read-journal.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
+                .withValue(
+                        "pekko-persistence-jdbc.shared-databases.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
+                .withValue(
+                        "pekko-persistence-jdbc.shared-databases.slick.db.user",
+                        ConfigValueFactory.fromAnyRef(jdbcUser))
+                .withValue(
+                        "pekko-persistence-jdbc.shared-databases.slick.db.password",
+                        ConfigValueFactory.fromAnyRef(jdbcPassword))
                 .withFallback(ConfigFactory.load())
                 .resolve();
-    }
-
-    private String resolve(final String rawValue) {
-        if (StringUtils.isBlank(rawValue)) {
-            return rawValue;
-        }
-        final Matcher matcher = PLACEHOLDER_PATTERN.matcher(rawValue);
-        final StringBuilder resolved = new StringBuilder();
-        while (matcher.find()) {
-            final String key = matcher.group(1);
-            final String replacement = applicationConfig.getString(key);
-            matcher.appendReplacement(resolved, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(resolved);
-        return resolved.toString();
     }
 }

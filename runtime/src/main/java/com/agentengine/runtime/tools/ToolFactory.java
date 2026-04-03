@@ -1,11 +1,9 @@
 package com.agentengine.runtime.tools;
 
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.util.agents.beans.config.ToolsConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.BaseToolset;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
@@ -16,16 +14,14 @@ import java.util.Map;
 public final class ToolFactory {
 
     private final ToolService toolService;
-    private final Instance<SessionActorFactory> sessionActorFactory;
 
     @Inject
-    public ToolFactory(final ToolService toolService, final Instance<SessionActorFactory> sessionActorFactory) {
+    public ToolFactory(final ToolService toolService) {
         this.toolService = toolService;
-        this.sessionActorFactory = sessionActorFactory;
     }
 
     public HumanInTheLoopTool getHITLTool() {
-        return new HumanInTheLoopTool(sessionActorFactory.get());
+        return new HumanInTheLoopTool();
     }
 
     public List<BaseTool> buildTools(final List<ToolsConfig> toolConfigs) {

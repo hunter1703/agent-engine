@@ -124,9 +124,9 @@ public final class GuardrailUtils {
 
         final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
         final String recentUserMessages =
-                ContentUtils.recentUser(context.session().events(), recency);
+                EventUtils.recentUser(context.session().events(), recency);
         final String latestUserMessage =
-                ContentUtils.recentUser(context.session().events(), 1);
+                EventUtils.recentUser(context.session().events(), 1);
 
         String planAnchor = "";
         final Plan plan = RunUtils.getOrInitState(context).plan();

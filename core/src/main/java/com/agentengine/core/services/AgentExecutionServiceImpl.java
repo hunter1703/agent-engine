@@ -42,7 +42,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     }
 
     @Override
-    public Publisher<BaseEvent> resumeSession(
+    public Publisher<BaseEvent> confirmSession(
             final String sessionId, final String confirmationId, final Boolean confirmed, final String answer) {
         final AgentSession session = sessionService.getSession(sessionId);
         if (session == null) {

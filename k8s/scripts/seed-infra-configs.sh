@@ -109,8 +109,6 @@ CORE_GRPC_PORT=$(service_port "$CORE_SERVICE_NAME" grpc 9000)
 RUNTIME_GRPC_PORT=$(service_port "$RUNTIME_SERVICE_NAME" grpc 9000)
 RUNTIME_PEKKO_PORT=$(service_port "$RUNTIME_HEADLESS_SERVICE" pekko 2552)
 RUNTIME_REPLICAS=$(statefulset_replicas "$RUNTIME_STATEFULSET_NAME" 3)
-PEKKO_HOSTNAME_TEMPLATE="\${PEKKO_HOSTNAME}"
-
 seed_node_count=$RUNTIME_SEED_NODE_COUNT
 if [ "$seed_node_count" -gt "$RUNTIME_REPLICAS" ]; then
   seed_node_count=$RUNTIME_REPLICAS
@@ -178,7 +176,6 @@ CORE_SERVICE_NAME_B64=$(printf '%s' "$CORE_SERVICE_NAME" | encode_base64)
 CORE_GRPC_PORT_B64=$(printf '%s' "$CORE_GRPC_PORT" | encode_base64)
 RUNTIME_SERVICE_NAME_B64=$(printf '%s' "$RUNTIME_SERVICE_NAME" | encode_base64)
 RUNTIME_GRPC_PORT_B64=$(printf '%s' "$RUNTIME_GRPC_PORT" | encode_base64)
-PEKKO_HOSTNAME_TEMPLATE_B64=$(printf '%s' "$PEKKO_HOSTNAME_TEMPLATE" | encode_base64)
 RUNTIME_SEED_NODES_JSON_B64=$(printf '%s' "$RUNTIME_SEED_NODES_JSON" | encode_base64)
 RUNTIME_CLUSTER_NAME_B64=$(printf '%s' "$RUNTIME_CLUSTER_NAME" | encode_base64)
 PEKKO_SNAPSHOT_THRESHOLD_B64=$(printf '%s' "$PEKKO_SNAPSHOT_THRESHOLD" | encode_base64)
@@ -202,7 +199,6 @@ const coreServiceName = decode("${CORE_SERVICE_NAME_B64}");
 const coreGrpcPort = Number(decode("${CORE_GRPC_PORT_B64}"));
 const runtimeServiceName = decode("${RUNTIME_SERVICE_NAME_B64}");
 const runtimeGrpcPort = Number(decode("${RUNTIME_GRPC_PORT_B64}"));
-const pekkoHostnameTemplate = decode("${PEKKO_HOSTNAME_TEMPLATE_B64}");
 const runtimeSeedNodes = JSON.parse(decode("${RUNTIME_SEED_NODES_JSON_B64}"));
 const runtimeClusterName = decode("${RUNTIME_CLUSTER_NAME_B64}");
 const pekkoSnapshotThreshold = Number(decode("${PEKKO_SNAPSHOT_THRESHOLD_B64}"));
@@ -216,7 +212,7 @@ const evaluatorModelId = decode("${EVALUATOR_MODEL_ID_B64}");
 function applyDeploymentOverrides(config) {
   const next = { ...config };
 
-  if (next.type === "default_model") {
+  if (next.type === "default_models") {
     next.titleModelId = titleModelId || next.titleModelId;
     next.compactionModelId = compactionModelId || next.compactionModelId;
     next.evaluatorModelId = evaluatorModelId || next.evaluatorModelId;
@@ -224,8 +220,6 @@ function applyDeploymentOverrides(config) {
   }
 
   if (next.type === "PEKKO") {
-    next.hostname = pekkoHostnameTemplate || next.hostname;
-    next.port = Number(next.port);
     next.seedNodes = runtimeSeedNodes;
     next.clusterName = runtimeClusterName || next.clusterName;
     next.snapshotThreshold = pekkoSnapshotThreshold;
@@ -280,6 +274,46 @@ for (const config of configs.map(applyDeploymentOverrides)) {
   upsertConfig(collection, config);
 }
 EOF
+
+kubectl rollout status statefulset/postgres --timeout="$WAIT_TIMEOUT" --namespace "$NAMESPACE" >/dev/null
+POSTGRES_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=postgres -o jsonpath='{.items[0].metadata.name}')
+POSTGRES_USER=$(json_secret_value "$POSTGRES_SECRET_NAME" "$POSTGRES_USERNAME_KEY")
+POSTGRES_PASSWORD=$(json_secret_value "$POSTGRES_SECRET_NAME" "$POSTGRES_PASSWORD_KEY")
+
+kubectl exec --namespace "$NAMESPACE" -i "$POSTGRES_POD" -- \
+  env PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d "$POSTGRES_DATABASE" -q <<'EOSQL'
+CREATE TABLE IF NOT EXISTS event_journal (
+  ordering        BIGSERIAL,
+  persistence_id  VARCHAR(255) NOT NULL,
+  sequence_number BIGINT       NOT NULL,
+  deleted         BOOLEAN      DEFAULT FALSE NOT NULL,
+  writer          VARCHAR(255) NOT NULL,
+  write_timestamp BIGINT       NOT NULL,
+  adapter_manifest VARCHAR(255),
+  event_ser_id    INTEGER      NOT NULL,
+  event_ser_manifest VARCHAR(255) NOT NULL,
+  event_payload   BYTEA        NOT NULL,
+  meta_ser_id     INTEGER,
+  meta_ser_manifest VARCHAR(255),
+  meta_payload    BYTEA,
+  PRIMARY KEY (persistence_id, sequence_number)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS event_journal_ordering_idx ON event_journal (ordering);
+
+CREATE TABLE IF NOT EXISTS snapshot (
+  persistence_id  VARCHAR(255) NOT NULL,
+  sequence_number BIGINT       NOT NULL,
+  created         BIGINT       NOT NULL,
+  snapshot_ser_id INTEGER      NOT NULL,
+  snapshot_ser_manifest VARCHAR(255) NOT NULL,
+  snapshot_payload BYTEA       NOT NULL,
+  meta_ser_id     INTEGER,
+  meta_ser_manifest VARCHAR(255),
+  meta_payload    BYTEA,
+  PRIMARY KEY (persistence_id, sequence_number)
+);
+EOSQL
+echo "PostgreSQL Pekko schema initialized"
 
 kubectl rollout status statefulset/mongodb --timeout="$WAIT_TIMEOUT" --namespace "$NAMESPACE" >/dev/null
 MONGODB_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=mongodb -o jsonpath='{.items[0].metadata.name}')

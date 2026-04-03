@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
 public final class ApplicationConfig {
 
     private static final Logger LOG = LoggerFactory.getLogger(ApplicationConfig.class);
-    private static final String CLASSPATH_CONFIG = "application.properties";
+    private static final String CLASSPATH_CONFIG_PATH = "application.properties";
     private static final String GLOBAL_CONFIG_PATH = "/config/global.properties";
-    private static final String LOCAL_CONFIG_PATH = "/config/local.properties";
+    private static final String APPLICATION_CONFIG_PATH = "/config/application.properties";
 
     private final Properties properties;
 
@@ -27,6 +27,7 @@ public final class ApplicationConfig {
     public String getString(final String key) {
         return properties.getProperty(key);
     }
+
     public String getString(final String key, final String defaultValue) {
         return properties.getProperty(key, defaultValue);
     }
@@ -43,26 +44,26 @@ public final class ApplicationConfig {
         final Properties loadedProperties = new Properties();
         loadPropertiesFromClasspath(loadedProperties);
         loadPropertiesFromPath(loadedProperties, GLOBAL_CONFIG_PATH);
-        loadPropertiesFromPath(loadedProperties, LOCAL_CONFIG_PATH);
+        loadPropertiesFromPath(loadedProperties, APPLICATION_CONFIG_PATH);
         return loadedProperties;
     }
 
     private static void loadPropertiesFromClasspath(final Properties loadedProperties) {
         try (InputStream inputStream =
-                Thread.currentThread().getContextClassLoader().getResourceAsStream(CLASSPATH_CONFIG)) {
+                Thread.currentThread().getContextClassLoader().getResourceAsStream(CLASSPATH_CONFIG_PATH)) {
             if (inputStream == null) {
-                LOG.warn("Application config not found in classpath at '{}' - skipping", CLASSPATH_CONFIG);
+                LOG.warn("Application config not found in classpath at '{}' - skipping", CLASSPATH_CONFIG_PATH);
                 return;
             }
             loadedProperties.load(inputStream);
-            LOG.info("Loaded application config from classpath {}", CLASSPATH_CONFIG);
+            LOG.info("Loaded application config from classpath {}", CLASSPATH_CONFIG_PATH);
         } catch (final IOException exception) {
-            LOG.warn("Failed loading classpath application config '{}'", CLASSPATH_CONFIG, exception);
+            LOG.warn("Failed loading classpath application config '{}'", CLASSPATH_CONFIG_PATH, exception);
         }
     }
 
     private static void loadPropertiesFromPath(final Properties loadedProperties, final String path) {
-        try (InputStream inputStream = new FileInputStream(path)) {
+        try (FileInputStream inputStream = new FileInputStream(path)) {
             loadedProperties.load(inputStream);
             LOG.info("Loaded application config from {}", path);
         } catch (final IOException exception) {

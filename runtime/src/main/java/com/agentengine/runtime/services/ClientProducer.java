@@ -2,6 +2,7 @@ package com.agentengine.runtime.services;
 
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.ModelService;
+import com.agentengine.core.api.services.SessionService;
 import com.agentengine.util.ms.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;
@@ -23,5 +24,12 @@ public class ClientProducer {
     @DefaultBean
     public ModelService modelService(MicroServiceClientProvider provider) {
         return provider.get(ModelService.class);
+    }
+
+    @Produces
+    @Singleton
+    @DefaultBean
+    public SessionService sessionService(MicroServiceClientProvider provider) {
+        return provider.get(SessionService.class);
     }
 }

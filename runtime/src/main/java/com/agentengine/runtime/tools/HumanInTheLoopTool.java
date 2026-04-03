@@ -2,7 +2,6 @@ package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.hitl.SessionPauseKind;
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
@@ -26,8 +25,8 @@ public final class HumanInTheLoopTool extends Tool {
     public static final ToolDescriptor DESCRIPTOR =
             new ToolDescriptor(TOOL_NAME, "Request input from the user.", Map.of());
 
-    public HumanInTheLoopTool(final SessionActorFactory sessionActorFactory) {
-        super(DESCRIPTOR, sessionActorFactory);
+    public HumanInTheLoopTool() {
+        super(DESCRIPTOR);
     }
 
     public Map<String, Object> execute(
@@ -82,7 +81,7 @@ public final class HumanInTheLoopTool extends Tool {
         if (CollectionUtils.isNotEmpty(context)) {
             payload.put(CONTEXT, context);
         }
-        ToolUtils.requestConfirmationAndPause(sessionActorFactory, toolContext, sanitizedPrompt, payload);
+        ToolUtils.requestConfirmationAndPause(toolContext, sanitizedPrompt, payload);
         return Map.of();
     }
 

@@ -1,4 +1,3 @@
-{{- if not .Values.config.existingConfigMap }}
 {{- $ctx := dict "root" . "component" .Values.component -}}
 apiVersion: v1
 kind: ConfigMap
@@ -12,4 +11,3 @@ data:
     {{- range $key, $value := .Values.config.applicationProperties }}
     {{ $key }}={{ $value }}
     {{- end }}
-{{- end }}

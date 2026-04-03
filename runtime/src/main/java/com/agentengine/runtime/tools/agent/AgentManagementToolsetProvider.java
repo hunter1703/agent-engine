@@ -1,8 +1,8 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.tools.AbstractToolsetProvider;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -17,12 +17,12 @@ public final class AgentManagementToolsetProvider extends AbstractToolsetProvide
             Map.of());
 
     @Inject
-    public AgentManagementToolsetProvider(final SessionActorFactory actorFactory) {
+    public AgentManagementToolsetProvider(final ActorSystemProvider actorSystemProvider) {
         super(
                 TOOLSET_DESCRIPTOR,
                 List.of(
-                        new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorFactory)),
-                        new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorFactory)),
-                        new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorFactory))));
+                        new ToolDefinition(SpawnAgentTool.DESCRIPTOR, () -> new SpawnAgentTool(actorSystemProvider)),
+                        new ToolDefinition(SendMessageTool.DESCRIPTOR, () -> new SendMessageTool(actorSystemProvider)),
+                        new ToolDefinition(AwaitAgentTool.DESCRIPTOR, () -> new AwaitAgentTool(actorSystemProvider))));
     }
 }

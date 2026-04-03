@@ -6,6 +6,8 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @BsonDiscriminator(value = "sql")
 public class SQLInfraConfig extends InfraConfig {
     public static final String TYPE = "sql";
+    public static final String CATEGORY = "SQL";
+    public static final String CONFIG_ID = "default";
 
     private String jdbcUrl;
     private String jdbcUser;
