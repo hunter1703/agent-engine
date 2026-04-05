@@ -230,6 +230,8 @@ public final class SessionEvent extends BaseEntity {
                 + "timestamp="
                 + timestamp
                 + ", "
+                + "sequence="
+                + sequence
                 + ", "
                 + "metadata="
                 + metadata

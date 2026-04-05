@@ -226,6 +226,10 @@ if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
   kubectl rollout restart deployment/agent-engine-core -n "$NAMESPACE"
   kubectl rollout restart deployment/agent-engine-rest -n "$NAMESPACE"
   kubectl rollout restart statefulset/agent-engine-runtime -n "$NAMESPACE"
+  print_step "Waiting for rollouts to complete"
+  kubectl rollout status deployment/agent-engine-core -n "$NAMESPACE" --timeout=120s
+  kubectl rollout status deployment/agent-engine-rest -n "$NAMESPACE" --timeout=120s
+  kubectl rollout status statefulset/agent-engine-runtime -n "$NAMESPACE" --timeout=120s
 fi
 
 # ── Phase 5: Seed application catalog ────────────────────────────────────────

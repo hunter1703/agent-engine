@@ -568,8 +568,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         EventUtils.isTerminal(event)
                                 ? event.content().orElse(Content.builder().build()).text()
                                 : null);
-                final List<SessionFact> commitFacts = new ArrayList<>(pauseFacts);
+                final List<SessionFact> commitFacts = new ArrayList<>();
                 commitFacts.add(turnFact);
+                commitFacts.addAll(pauseFacts);
                 effectBuilder = Effect().persist(commitFacts).thenRun(newState -> {
                     newPauseIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
                     if (newState.sessionState() == SessionState.IDLE) {
