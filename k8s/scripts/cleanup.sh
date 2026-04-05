@@ -6,6 +6,7 @@ set -eu
 
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
 DELETE_NAMESPACE=false
+DELETE_VOLUMES=false
 
 usage() {
   cat <<'EOF'
@@ -13,16 +14,20 @@ Usage:
   ./k8s/scripts/cleanup.sh
   ./k8s/scripts/cleanup.sh runtime core rest
   ./k8s/scripts/cleanup.sh --delete-namespace
+  ./k8s/scripts/cleanup.sh --delete-volumes
 
 Behavior:
   - Removes the requested releases in reverse dependency order.
   - With no charts, removes the default application stack (global-properties, runtime, core, rest).
+  - Infrastructure (MongoDB, Postgres) is preserved unless explicitly specified.
+  - PVCs are preserved unless --delete-volumes is used.
 EOF
   cat <<'EOF'
 Additional options:
   -n, --namespace <name>  Kubernetes namespace (default: agent-engine)
   -h, --help             Show help
-  --delete-namespace  Delete the namespace after release removal.
+  --delete-namespace     Delete the namespace after release removal.
+  --delete-volumes       Also delete PVCs (MongoDB and Postgres data volumes).
 EOF
 }
 
@@ -36,6 +41,10 @@ parse_args() {
         ;;
       --delete-namespace)
         DELETE_NAMESPACE=true
+        shift
+        ;;
+      --delete-volumes)
+        DELETE_VOLUMES=true
         shift
         ;;
       -h|--help)
@@ -64,6 +73,13 @@ for chart in rest core runtime global-properties infra; do
     echo "Removed $chart from namespace $NAMESPACE"
   fi
 done
+
+if [ "$DELETE_VOLUMES" = "true" ]; then
+  require_command kubectl
+  echo "Deleting PVCs (data volumes)..."
+  kubectl delete pvc -n "$NAMESPACE" --all --ignore-not-found
+  echo "Deleted all PVCs from namespace $NAMESPACE"
+fi
 
 if [ "$DELETE_NAMESPACE" = "true" ]; then
   require_command kubectl

@@ -27,7 +27,7 @@ mongodb:
     usernameKey: username
     passwordKey: password
   persistence:
-    enabled: false
+    enabled: true
     size: 10Gi
     storageClassName: ""
   service:
@@ -81,7 +81,7 @@ postgres:
   usernameKey: username
   passwordKey: password
   persistence:
-    enabled: false
+    enabled: true
     size: 10Gi
     storageClassName: ""
   service:

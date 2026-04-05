@@ -4,6 +4,59 @@ set -eu
 
 . "$(CDPATH= cd -- "$(dirname "$0")" && pwd)/lib.sh"
 
+# Color codes using printf-compatible format
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# Helper functions for colored output
+print_phase() {
+  printf "\n${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+  printf "${BOLD}${BLUE}  %s${RESET}\n" "$1"
+  printf "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+}
+
+print_step() {
+  printf "${CYAN}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+  printf "    ${GREEN}→ %s${RESET}\n" "$1"
+  printf "${CYAN}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n"
+}
+
+print_info() { printf "    ${GREEN}✓${RESET} %s\n" "$1"; }
+print_warn() { printf "    ${YELLOW}⚠ %s${RESET}\n" "$1"; }
+print_note() { printf "    ${YELLOW}ℹ${RESET} %s\n" "$1"; }
+
+# Signal handler for graceful shutdown
+stop_workloads() {
+  printf "\n${BOLD}${YELLOW}⚠ Shutdown signal received. Deleting workloads (preserving volumes)...${RESET}\n"
+  
+  printf "${CYAN}  → Stopping port-forward...${RESET}\n"
+  pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
+  
+  printf "${CYAN}  → Deleting deployments...${RESET}\n"
+  kubectl delete deployment agent-engine-core agent-engine-rest -n "$NAMESPACE" 2>/dev/null || true
+  
+  printf "${CYAN}  → Deleting statefulsets (preserving PVCs)...${RESET}\n"
+  kubectl delete statefulset agent-engine-runtime mongodb postgres -n "$NAMESPACE" 2>/dev/null || true
+  
+  printf "${CYAN}  → Deleting services (except headless for PVC retention)...${RESET}\n"
+  kubectl delete service agent-engine-core agent-engine-rest agent-engine-runtime -n "$NAMESPACE" 2>/dev/null || true
+  
+  printf "${CYAN}  → Deleting configmaps and secrets...${RESET}\n"
+  kubectl delete configmap -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete secret -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
+  
+  printf "${BOLD}${GREEN}✓ Workloads deleted. PVCs preserved for next deployment.${RESET}\n"
+  printf "${BOLD}${BLUE}Run 'sh k8s/scripts/deploy.sh --local' to recreate resources.${RESET}\n\n"
+  exit 0
+}
+
+# Trap Ctrl+C and SIGTERM
+trap stop_workloads INT TERM
+
 ENVIRONMENT=$DEFAULT_ENVIRONMENT
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
 WAIT=true
@@ -143,47 +196,56 @@ parse_args "$@"
 
 # ── Phase 1: Build ────────────────────────────────────────────────────────────
 if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
-  echo "==> Phase 1: Building Docker images"
+  print_phase "Phase 1: Building Docker images"
   require_command docker
   TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest
 else
-  echo "==> Phase 1: Skipping image build"
+  print_phase "Phase 1: Skipping image build"
 fi
 
 # ── Phase 2: Deploy infrastructure ───────────────────────────────────────────
-echo "==> Phase 2: Deploying infrastructure workloads"
+print_phase "Phase 2: Deploying infrastructure workloads"
 # shellcheck disable=SC2046
 sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
 
 # ── Phase 3: Seed infrastructure configuration ───────────────────────────────
+print_phase "Phase 3: Seeding infrastructure configuration"
 if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_INFRA" != "true" ]; then
-  echo "==> Phase 3: Seeding infrastructure configuration"
   sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
-else
-  echo "==> Phase 3: Skipping infra config seeding"
 fi
 
 # ── Phase 4: Deploy application workloads ────────────────────────────────────
-echo "==> Phase 4: Deploying application workloads"
+print_phase "Phase 4: Deploying application workloads"
+print_step "Linting and deploying service charts"
 # shellcheck disable=SC2046
 sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags)
 
+# ── Phase 4b: Restart workloads to pull new images ───────────────────────────
+if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
+  print_step "Restarting workloads to pull new images"
+  kubectl rollout restart deployment/agent-engine-core -n "$NAMESPACE"
+  kubectl rollout restart deployment/agent-engine-rest -n "$NAMESPACE"
+  kubectl rollout restart statefulset/agent-engine-runtime -n "$NAMESPACE"
+fi
+
 # ── Phase 5: Seed application catalog ────────────────────────────────────────
+print_phase "Phase 5: Seeding application catalog"
 if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_CATALOG" != "true" ]; then
-  echo "==> Phase 5: Seeding application catalog"
   sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
-else
-  echo "==> Phase 5: Skipping catalog seeding"
 fi
 
 # ── Phase 6: Local port-forward ───────────────────────────────────────────────
 if [ "$LOCAL" = "true" ] && [ "$DRY_RUN" != "true" ]; then
-  echo "==> Phase 6: Port-forwarding agent-engine-rest:8080 → localhost:${LOCAL_PORT}"
-  echo "    REST API available at http://localhost:${LOCAL_PORT}"
-  echo "    Press Ctrl+C to stop."
+  print_phase "Phase 6: Local port-forward"
+  print_step "Clearing existing port-forwards on port ${LOCAL_PORT}"
+  pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
+  sleep 1
+  print_step "Starting port-forward agent-engine-rest:8080 → localhost:${LOCAL_PORT}"
+  print_info "REST API available at http://localhost:${LOCAL_PORT}"
+  print_note "Press Ctrl+C to stop."
   while true; do
     kubectl port-forward -n "$NAMESPACE" svc/agent-engine-rest "${LOCAL_PORT}:8080" || true
-    echo "    Port-forward dropped, restarting..."
+    print_warn "Port-forward dropped, restarting..."
     sleep 2
   done
 fi

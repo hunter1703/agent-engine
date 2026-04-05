@@ -61,7 +61,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                         buildOllamaStreaming(modelConfig, responseFormat),
                         responseFormat);
             case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
-                ModelUtils.ensureRunning(modelConfig);
+//                ModelUtils.ensureRunning(modelConfig);
                 yield new ChatModels(
                         buildOpenAI(modelConfig, responseFormat),
                         buildOpenAIStreaming(modelConfig, responseFormat),
