@@ -4,8 +4,8 @@ import static com.agentengine.util.common.Utils.*;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.tools.HumanInTheLoopTool;
 import com.agentengine.runtime.tools.SchemaUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -368,7 +368,7 @@ public final class ToolUtils {
     }
 
     public static boolean isHumanInTheLoopToolCall(final FunctionCall functionCall) {
-        return HumanInTheLoopTool.TOOL_NAME.equals(functionCall.name().orElse(null));
+        return Constants.HITL_TOOL_NAME.equals(functionCall.name().orElse(null));
     }
 
     public static boolean isHumanInTheLoopToolEvent(final Event event) {
@@ -380,11 +380,11 @@ public final class ToolUtils {
         }
         if (event.functionResponses().stream()
                 .anyMatch(response ->
-                        HumanInTheLoopTool.TOOL_NAME.equals(response.name().orElse(null)))) {
+                        Constants.HITL_TOOL_NAME.equals(response.name().orElse(null)))) {
             return true;
         }
         return Functions.getAskUserConfirmationFunctionCalls(event).stream()
-                .anyMatch(call -> HumanInTheLoopTool.TOOL_NAME.equals(originalToolName(call)));
+                .anyMatch(call -> Constants.HITL_TOOL_NAME.equals(originalToolName(call)));
     }
 
     public static Set<String> findRespondedConfirmationIds(final List<Event> events) {

@@ -2,7 +2,6 @@ package com.agentengine.runtime.session.state;
 
 import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.util.agents.beans.Confirmation;
-import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.PekkoSerializable;
@@ -160,7 +159,7 @@ public record SessionActorState(
                 lastCommittedEvents);
     }
 
-    public SessionActorState selfPaused(final String confirmationId, final String wrapperCallId) {
+    public SessionActorState selfPaused(final String confirmationId) {
         return new SessionActorState(
                 SessionState.PAUSED,
                 queue,
@@ -169,7 +168,7 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withSelfPaused(confirmationId, wrapperCallId),
+                pauseState.withSelfPaused(confirmationId),
                 currentMessage,
                 lastCommittedEvents);
     }
@@ -180,16 +179,16 @@ public record SessionActorState(
 
     public boolean isSelfConfirmation(final Confirmation confirmation) {
         final String id = confirmation.getConfirmationId();
-        return pauseState.getPendingSelfConfirmationIds().contains(id)
-                || pauseState.getReceivedSelfConfirmations().containsKey(id);
+        return pauseState.pendingSelfConfirmationIds().contains(id)
+                || pauseState.receivedSelfConfirmations().containsKey(id);
     }
 
     public boolean allConfirmationsReceived() {
-        return CollectionUtils.isEmpty(pauseState.getPendingSelfConfirmationIds());
+        return CollectionUtils.isEmpty(pauseState.pendingSelfConfirmationIds());
     }
 
     public Collection<Confirmation> getAllReceivedConfirmations() {
-        return pauseState.getReceivedSelfConfirmations().values();
+        return pauseState.receivedSelfConfirmations().values();
     }
 
     public SessionActorState selfResume(final Confirmation confirmation) {

@@ -101,7 +101,7 @@ public final class EventUtils {
         return String.join("\n", intents.reversed());
     }
 
-    static Event buildConfirmationEvent(
+    public static Event buildConfirmationEvent(
             final String confirmationId, final Boolean confirmed, final String answer) {
         final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
         final FunctionResponse functionResponse = FunctionResponse.builder()
@@ -109,7 +109,7 @@ public final class EventUtils {
                 .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
                 .response(JsonUtils.toMap(toolConfirmation))
                 .build();
-        return Event.builder()
+        return Event.builder().id(confirmationId)
                 .author("user")
                 .content(Content.builder()
                         .role("user")

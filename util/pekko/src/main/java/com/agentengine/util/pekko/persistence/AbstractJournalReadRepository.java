@@ -21,7 +21,7 @@ public abstract class AbstractJournalReadRepository {
                 .getReadJournalFor(JdbcReadJournal.class, JdbcReadJournal.Identifier()));
     }
 
-    protected final List<EventEnvelope> currentEventsByPersistenceId(final String persistenceId) {
+    protected final List<EventEnvelope> getJournalEvents(final String persistenceId) {
         if (persistenceId == null || persistenceId.isBlank()) {
             return List.of();
         }
@@ -32,13 +32,5 @@ public abstract class AbstractJournalReadRepository {
                 .runWith(Sink.seq(), system)
                 .toCompletableFuture()
                 .join();
-    }
-
-    protected final <T> List<T> currentEventsByPersistenceId(final String persistenceId, final Class<T> eventType) {
-        return currentEventsByPersistenceId(persistenceId).stream()
-                .map(EventEnvelope::event)
-                .filter(eventType::isInstance)
-                .map(eventType::cast)
-                .toList();
     }
 }

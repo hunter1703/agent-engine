@@ -2,7 +2,6 @@ package com.agentengine.util.agents;
 
 import com.agentengine.util.agents.beans.CorrectionMetadata;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.beans.SessionEventType;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.events.Event;
 import java.util.ArrayList;
@@ -18,7 +17,7 @@ public final class SessionEventUtils {
     public static final String CORRECTION_CODE = "correction_code";
     public static final String CORRECTION_MESSAGE = "correction_message";
     public static final String INTERNAL = "internal";
-    public static final String CONFIRMATION_ID = "confirmationId";
+    public static final String SESSION_ID = "sessionId";
 
     private SessionEventUtils() {}
 
@@ -43,39 +42,6 @@ public final class SessionEventUtils {
         return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(metadata, INTERNAL));
     }
 
-    public static boolean isConfirmationRequested(final SessionEvent event) {
-        return event != null && SessionEventType.CONFIRMATION_REQUESTED == event.getType();
-    }
-
-    /**
-     * Builds a synthetic {@code CONFIRMATION_REQUESTED} event that replaces the internal {@code
-     * adk_request_confirmation} function call in the public event stream. Clients use the {@code
-     * confirmationId} from this event's metadata to submit a confirmation via the confirm endpoint.
-     */
-    public static SessionEvent confirmationRequested(
-            final String rootSessionId,
-            final String parentSessionId,
-            final String sessionId,
-            final String runId,
-            final String confirmationId) {
-        final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(CONFIRMATION_ID, confirmationId);
-        return new SessionEvent(
-                        UUID.randomUUID().toString(),
-                        rootSessionId,
-                        parentSessionId,
-                        sessionId,
-                        runId,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        System.currentTimeMillis(),
-                        metadata)
-                .withType(SessionEventType.CONFIRMATION_REQUESTED);
-    }
-
     public static SessionEvent toSessionEvent(
             final String rootSessionId, final String parentSessionId, final String sessionId, final Event event) {
         return toSessionEvent(rootSessionId, parentSessionId, sessionId, event, 0L);
@@ -98,9 +64,8 @@ public final class SessionEventUtils {
                         event.partial().orElse(false),
                         event.turnComplete().orElse(false),
                         event.finishReason().orElse(null),
-                        event.timestamp(),
-                        extractMetadata(event))
-                .withSequence(sequence);
+                        event.timestamp(), sequence,
+                        extractMetadata(event));
     }
 
     public static List<SessionEvent> toSessionEvents(

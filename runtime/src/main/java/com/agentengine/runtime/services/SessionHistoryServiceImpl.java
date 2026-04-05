@@ -4,8 +4,11 @@ import static com.mongodb.client.model.Filters.eq;
 
 import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.session.SessionActor;
+import com.agentengine.runtime.session.events.ConfirmedFact;
 import com.agentengine.runtime.session.events.TurnCommittedFact;
+import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.util.agents.SessionEventUtils;
+import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.StringUtils;
@@ -19,6 +22,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.jspecify.annotations.NonNull;
 
@@ -73,13 +78,17 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
     }
 
     private @NonNull List<Event> _getEvents(final AgentSession session) {
-        final String persistenceId =
-                PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
-        final List<TurnCommittedFact> turns = currentEventsByPersistenceId(persistenceId, TurnCommittedFact.class);
-        final List<Event> history = new ArrayList<>();
-        for (final TurnCommittedFact turn : turns) {
-            history.addAll(turn.getEvents());
-        }
-        return history;
+        final String persistenceId = PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
+        return getJournalEvents(persistenceId).stream().map(EventEnvelope::event)
+                .filter(event -> event instanceof TurnCommittedFact || event instanceof ConfirmedFact)
+                .map(event -> {
+                    if (event instanceof TurnCommittedFact turnCommittedFact) {
+                        return turnCommittedFact.getEvents();
+                    } else {
+                        final Confirmation confirmation = ((ConfirmedFact) event).getConfirmation();
+                        return List.of(EventUtils.buildConfirmationEvent(confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()));
+                    }
+                }).flatMap(List::stream)
+                .toList();
     }
 }

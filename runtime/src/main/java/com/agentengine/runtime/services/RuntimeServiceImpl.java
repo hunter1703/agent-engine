@@ -11,15 +11,17 @@ import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.session.state.SessionTopology;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.agents.beans.SessionEventType;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.functions.Predicate;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+
+import java.util.Objects;
 import java.util.UUID;
 import org.apache.pekko.Done;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -72,10 +74,7 @@ public class RuntimeServiceImpl implements RuntimeService {
                     }
                 });
 
-        return Flowable.fromPublisher(subscription.publisher())
-                .map(SequencedEvent::payload)
-                .takeUntil(sessionEvent -> sessionEvent.getType() == SessionEventType.RUN_FINISHED)
-                .doFinally(subscription::cancel);
+        return getSubscribedEvents(subscription, sessionId);
     }
 
     @Override
@@ -105,9 +104,17 @@ public class RuntimeServiceImpl implements RuntimeService {
                     }
                 });
 
+        return getSubscribedEvents(subscription, rootSessionId);
+    }
+
+    private static Flowable<SessionEvent> getSubscribedEvents(final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String rootSessionId) {
         return Flowable.fromPublisher(subscription.publisher())
                 .map(SequencedEvent::payload)
-                .takeUntil(sessionEvent -> sessionEvent.getType() == SessionEventType.RUN_FINISHED)
+                .cast(SessionEvent.class)
+                .takeUntil(sessionEvent -> {
+                    // root session completed that mean the whole agent graph is completed
+                    return Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.getFinishReason() != null;
+                })
                 .doFinally(subscription::cancel);
     }
 }

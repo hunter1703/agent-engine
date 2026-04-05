@@ -6,7 +6,6 @@ import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -135,15 +134,20 @@ public final class ContentUtils {
                 .build();
     }
 
-    public static List<Content> buildConfirmationContents(final Collection<Confirmation> confirmations) {
-        final List<Content> contents = new ArrayList<>();
-        for (final Confirmation confirmation : CollectionUtils.nullSafeList(confirmations)) {
-            EventUtils.buildConfirmationEvent(
-                            confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer())
-                    .content()
-                    .ifPresent(contents::add);
-        }
-        return contents;
+    public static Content buildConfirmationsContent(final Collection<Confirmation> confirmations) {
+        final List<Part> parts = CollectionUtils.nullSafeList(confirmations).stream()
+                .map(confirmation -> EventUtils.buildConfirmationEvent(confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()))
+                .flatMap(event -> event.content().stream())
+                .flatMap(content -> content.parts().stream())
+                .flatMap(List::stream)
+                .toList();
+        return Content.builder().role("user").parts(parts).build();
+    }
+
+    public static Content buildConfirmationsContent(final Confirmation confirmation) {
+        return EventUtils.buildConfirmationEvent(
+                        confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer())
+                .content().orElse(null);
     }
 
 }

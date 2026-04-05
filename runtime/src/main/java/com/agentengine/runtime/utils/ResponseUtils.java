@@ -2,6 +2,7 @@ package com.agentengine.runtime.utils;
 
 import com.agentengine.runtime.hitl.SessionPauseKind;
 import com.agentengine.runtime.tools.HumanInTheLoopTool;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
@@ -63,7 +64,7 @@ public final class ResponseUtils {
                 StringUtils.isBlank(prompt) ? "User confirmation is required to continue." : prompt.trim();
         final FunctionCall functionCall = FunctionCall.builder()
                 .id(Functions.generateClientFunctionCallId())
-                .name(HumanInTheLoopTool.TOOL_NAME)
+                .name(Constants.HITL_TOOL_NAME)
                 .args(Map.of(
                         HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, SessionPauseKind.DECISION.name()))
                 .build();

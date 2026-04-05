@@ -28,7 +28,6 @@ public final class SessionEvent extends BaseEntity {
     private long timestamp;
     private long sequence;
     private Map<String, Object> metadata;
-    private SessionEventType type;
 
     public SessionEvent() {}
 
@@ -45,7 +44,7 @@ public final class SessionEvent extends BaseEntity {
             FinishReason finishReason,
             long timestamp,
             long sequence,
-            Map<String, Object> metadata, SessionEventType type) {
+            Map<String, Object> metadata) {
         setId(id);
         this.rootSessionId = rootSessionId;
         this.parentSessionId = parentSessionId;
@@ -59,7 +58,6 @@ public final class SessionEvent extends BaseEntity {
         this.timestamp = timestamp;
         this.sequence = sequence;
         this.metadata = metadata;
-        this.type = type;
     }
 
     public String getRootSessionId() {
@@ -127,8 +125,7 @@ public final class SessionEvent extends BaseEntity {
                 && Objects.equals(this.finishReason, that.finishReason)
                 && this.timestamp == that.timestamp
                 && this.sequence == that.sequence
-                && Objects.equals(this.metadata, that.metadata)
-                && this.type == that.type;
+                && Objects.equals(this.metadata, that.metadata);
     }
 
     public void setRootSessionId(final String rootSessionId) {
@@ -179,14 +176,6 @@ public final class SessionEvent extends BaseEntity {
         this.metadata = metadata;
     }
 
-    public SessionEventType getType() {
-        return type;
-    }
-
-    public void setType(final SessionEventType type) {
-        this.type = type;
-    }
-
     @Override
     public int hashCode() {
         return Objects.hash(
@@ -202,8 +191,7 @@ public final class SessionEvent extends BaseEntity {
                 finishReason,
                 timestamp,
                 sequence,
-                metadata,
-                type);
+                metadata);
     }
 
     @Override
@@ -245,13 +233,6 @@ public final class SessionEvent extends BaseEntity {
                 + ", "
                 + "metadata="
                 + metadata
-                + ", "
-                + "type="
-                + type
                 + ']';
-    }
-
-    public static SessionEvent completed(final String sessionId) {
-        return new SessionEvent(null, null, null, sessionId, null, null, null, null, null, null, 0L, Long.MAX_VALUE, null, SessionEventType.RUN_FINISHED);
     }
 }

@@ -3,6 +3,7 @@ package com.agentengine.runtime.tools;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.hitl.SessionPauseKind;
 import com.agentengine.runtime.utils.ToolUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -17,13 +18,12 @@ import org.slf4j.LoggerFactory;
 
 public final class HumanInTheLoopTool extends Tool {
     private static final Logger LOG = LoggerFactory.getLogger(HumanInTheLoopTool.class);
-    public static final String TOOL_NAME = "human_in_the_loop";
     public static final String PROMPT = "prompt";
     public static final String KIND = "kind";
     public static final String RESPONSE_OPTIONS = "options";
     public static final String CONTEXT = "context";
     public static final ToolDescriptor DESCRIPTOR =
-            new ToolDescriptor(TOOL_NAME, "Request input from the user.", Map.of());
+            new ToolDescriptor(Constants.HITL_TOOL_NAME, "Request input from the user.", Map.of());
 
     public HumanInTheLoopTool() {
         super(DESCRIPTOR);

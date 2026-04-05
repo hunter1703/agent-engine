@@ -15,8 +15,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.pekko.actor.typed.ActorRef;
 import org.slf4j.Logger;
@@ -72,11 +70,10 @@ public final class SessionRunner {
 
     public synchronized void resume(final Collection<Confirmation> confirmations) {
         cancel();
-        // TODO: how to pass multiple confirmations?
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID,
                         sessionId,
-                        ContentUtils.buildConfirmationContents(confirmations).getFirst(),
+                        ContentUtils.buildConfirmationsContent(confirmations),
                         runConfig())
                 .subscribeOn(SCHEDULER)
                 .doOnNext(event -> LOG.debug(
