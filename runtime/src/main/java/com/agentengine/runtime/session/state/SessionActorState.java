@@ -221,7 +221,8 @@ public record SessionActorState(
 
     public boolean isDuplicateTurn(final List<Event> turnEvents) {
         final Event last = CollectionUtils.getLast(lastCommittedEvents);
-        return Objects.equals(last == null ? null : last.id(), turnEvents.getLast().id());
+        return Objects.equals(
+                last == null ? null : last.id(), turnEvents.getLast().id());
     }
 
     /**

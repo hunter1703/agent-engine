@@ -5,6 +5,7 @@ import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Event emitted by a session actor during execution.
@@ -28,6 +29,7 @@ public final class SessionEvent extends BaseEntity {
     private long timestamp;
     private long sequence;
     private Map<String, Object> metadata;
+    private boolean terminal;
 
     public SessionEvent() {}
 
@@ -44,7 +46,7 @@ public final class SessionEvent extends BaseEntity {
             FinishReason finishReason,
             long timestamp,
             long sequence,
-            Map<String, Object> metadata) {
+            Map<String, Object> metadata, final boolean terminal) {
         setId(id);
         this.rootSessionId = rootSessionId;
         this.parentSessionId = parentSessionId;
@@ -58,6 +60,7 @@ public final class SessionEvent extends BaseEntity {
         this.timestamp = timestamp;
         this.sequence = sequence;
         this.metadata = metadata;
+        this.terminal = terminal;
     }
 
     public String getRootSessionId() {
@@ -176,6 +179,22 @@ public final class SessionEvent extends BaseEntity {
         this.metadata = metadata;
     }
 
+    public boolean isTerminal() {
+        return terminal;
+    }
+
+    public void setTerminal(final boolean terminal) {
+        this.terminal = terminal;
+    }
+
+    public Boolean getTurnComplete() {
+        return turnComplete;
+    }
+
+    public Boolean getPartial() {
+        return partial;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(
@@ -236,5 +255,9 @@ public final class SessionEvent extends BaseEntity {
                 + "metadata="
                 + metadata
                 + ']';
+    }
+
+    public static SessionEvent terminal(String sessionId) {
+        return new SessionEvent(UUID.randomUUID().toString(), null, null, sessionId, null, null, null, null, null, null, System.currentTimeMillis(), Long.MAX_VALUE, null, true);
     }
 }

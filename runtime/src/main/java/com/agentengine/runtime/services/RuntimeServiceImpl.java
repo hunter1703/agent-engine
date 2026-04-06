@@ -12,6 +12,7 @@ import com.agentengine.runtime.session.state.SessionTopology;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
@@ -50,31 +51,31 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public Publisher<SessionEvent> startSession(final String agentId, final String message) {
-        final String sessionId = UUID.randomUUID().toString();
-        LOG.info("Starting session {}:{}", agentId, sessionId);
+    public Publisher<SessionEvent> startSession(final String agentId, final String sessionId, final String message) {
+        final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+        LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
 
         // Subscribe before sending commands so no events are missed during the startup window.
         final EventSubscription<SequencedEvent<SessionEvent>> subscription =
-                eventChannel.subscribe(sessionId).toCompletableFuture().join();
+                eventChannel.subscribe(resolvedSessionId).toCompletableFuture().join();
 
-        final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
+        final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(resolvedSessionId);
         ref.<Done>ask(
                         replyTo -> new ExternalCommand.InitializeCommand(
-                                SessionTopology.root(agentId, sessionId), replyTo),
+                                SessionTopology.root(agentId, resolvedSessionId), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .thenCompose(ignored -> ref.<StartSessionResult>ask(
                         replyTo -> new ExternalCommand.StartCommand(new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT))
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        LOG.error("Failed to start session {}:{}", agentId, sessionId, ex);
+                        LOG.error("Failed to start session {}:{}", agentId, resolvedSessionId, ex);
                     } else {
-                        LOG.info("Session {}:{} start result: {}", agentId, sessionId, result);
+                        LOG.info("Session {}:{} start result: {}", agentId, resolvedSessionId, result);
                     }
                 });
 
-        return getSubscribedEvents(subscription, sessionId);
+        return getSubscribedEvents(subscription, resolvedSessionId);
     }
 
     @Override
@@ -111,10 +112,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         return Flowable.fromPublisher(subscription.publisher())
                 .map(SequencedEvent::payload)
                 .cast(SessionEvent.class)
-                .takeUntil(sessionEvent -> {
-                    // root session completed that mean the whole agent graph is completed
-                    return Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.getFinishReason() != null;
-                })
+                .takeUntil(sessionEvent -> Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.isTerminal())
                 .doFinally(subscription::cancel);
     }
 }

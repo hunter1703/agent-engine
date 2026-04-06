@@ -139,15 +139,12 @@ public final class RunState extends BaseAgentState {
     }
 
     public boolean consumeTurn(final int limit) {
-        return ++turnsUsed >= limit;
+        return ++turnsUsed <= limit;
     }
 
-    public void requestContinuation() {
+    public void requestContinuation(Violation violation) {
+        addViolation(violation);
         this.continuationRequested = true;
-    }
-
-    public boolean hasContinuationRequested() {
-        return continuationRequested;
     }
 
     public boolean consumeContinuation() {

@@ -15,6 +15,7 @@ import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Violation;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -96,11 +97,13 @@ public final class GuardrailPlugin extends BasePlugin {
             return Maybe.empty();
         }
         if (decision.action() == GuardrailAction.WARN) {
-            GuardrailUtils.recordViolation(invocationContext, decision);
+            RunUtils.getOrInitState(invocationContext)
+                    .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
             return Maybe.empty();
         }
 
-        GuardrailUtils.recordViolation(invocationContext, decision);
+        RunUtils.getOrInitState(invocationContext)
+                .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
         if (decision.action() == GuardrailAction.ESCALATE) {
             return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
         }
@@ -115,13 +118,16 @@ public final class GuardrailPlugin extends BasePlugin {
         if (decision.action() == GuardrailAction.ALLOW) {
             return Maybe.empty();
         }
-        GuardrailUtils.recordViolation(invocationContext, decision);
+        final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
         if (decision.action() == GuardrailAction.WARN) {
             if (!requiresRegeneration(decision)) {
+                RunUtils.getOrInitState(invocationContext).addViolation(violation);
                 return Maybe.empty();
             }
-            RunUtils.getOrInitState(invocationContext).requestContinuation();
+            RunUtils.getOrInitState(invocationContext).requestContinuation(violation);
             return Maybe.empty();
+        } else if (violation != null) {
+            RunUtils.getOrInitState(invocationContext).addViolation(violation);
         }
 
         if (decision.action() == GuardrailAction.ESCALATE) {

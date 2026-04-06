@@ -55,7 +55,7 @@ public class AgentStreamRestAPI {
         if (agentService.getAgent(request.getAgentId()) == null) {
             throw new AssetNotFoundException(AssetClass.AGENT, request.getAgentId());
         }
-        return agentExecutionService.run(request.getAgentId(), request.getMessage());
+        return agentExecutionService.run(request.getAgentId(), request.getSessionId(), request.getMessage());
     }
 
     @POST

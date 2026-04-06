@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import org.apache.pekko.actor.typed.ActorRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +40,7 @@ public final class SessionRunner {
     private final Runner runner;
     private Disposable disposable;
 
-    public SessionRunner(
-            final String sessionId,
-            final ActorRef<SessionCommand> sessionActor,
-            final Runner runner) {
+    public SessionRunner(final String sessionId, final ActorRef<SessionCommand> sessionActor, final Runner runner) {
         this.sessionId = sessionId;
         this.sessionActor = sessionActor;
         this.runner = runner;
@@ -99,6 +95,7 @@ public final class SessionRunner {
     private static RunConfig runConfig() {
         return RunConfig.builder()
                 .setToolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
+                .setStreamingMode(RunConfig.StreamingMode.SSE)
                 .build();
     }
 

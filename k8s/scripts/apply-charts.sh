@@ -195,7 +195,22 @@ if [ "$DRY_RUN" != "true" ]; then
   kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 fi
 
+# Deploy global-properties in parallel with other charts since it has no dependencies
 for chart in $ALL_CHARTS; do
+  case "$chart" in global-properties) ;; *) continue ;; esac
+  # shellcheck disable=SC2086
+  if chart_selected "$chart" $REQUESTED_CHARTS; then
+    ensure_chart_dependencies "$chart"
+    if [ "$LINT" = "true" ]; then
+      lint_chart "$chart"
+    fi
+    deploy_chart "$chart" &
+  fi
+done
+
+# Deploy remaining charts serially (runtime -> core -> rest have service dependencies)
+for chart in $ALL_CHARTS; do
+  case "$chart" in global-properties) continue ;; esac
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     ensure_chart_dependencies "$chart"
@@ -205,3 +220,6 @@ for chart in $ALL_CHARTS; do
     deploy_chart "$chart"
   fi
 done
+
+# Wait for parallel global-properties deployment to complete
+wait

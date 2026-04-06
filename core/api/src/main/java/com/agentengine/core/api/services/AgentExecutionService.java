@@ -7,7 +7,7 @@ import org.reactivestreams.Publisher;
 @MicroService("agent")
 public interface AgentExecutionService {
 
-    Publisher<BaseEvent> run(String agentId, String text);
+    Publisher<BaseEvent> run(String agentId, String sessionId, String text);
 
     Publisher<BaseEvent> confirmSession(String sessionId, String confirmationId, Boolean confirmed, String answer);
 }

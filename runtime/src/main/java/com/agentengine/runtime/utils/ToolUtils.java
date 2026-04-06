@@ -37,16 +37,6 @@ public final class ToolUtils {
 
     private ToolUtils() {}
 
-    /**
-     * Requests confirmation from the user and ends the current invocation. The session actor infers
-     * the pause automatically when it observes the resulting {@code adk_request_confirmation} event.
-     */
-    public static void requestConfirmationAndPause(
-            final ToolContext toolContext, final String prompt, final Object payload) {
-        toolContext.requestConfirmation(prompt, payload);
-        toolContext.eventActions().setEndInvocation(true);
-    }
-
     public static String resolveParameterName(final Parameter parameter) {
         if (parameter.isAnnotationPresent(ToolSchema.class)) {
             String name = parameter.getAnnotation(ToolSchema.class).name();

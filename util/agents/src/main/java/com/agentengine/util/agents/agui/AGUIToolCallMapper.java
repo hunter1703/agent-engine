@@ -1,6 +1,9 @@
 package com.agentengine.util.agents.agui;
 
+import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
+
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agui.core.event.BaseEvent;
@@ -15,11 +18,10 @@ import com.google.genai.types.FunctionResponse;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 public final class AGUIToolCallMapper {
 
@@ -92,18 +94,27 @@ public final class AGUIToolCallMapper {
         final String confirmationId = call.id().orElseThrow();
         final Map<String, Object> args = CollectionUtils.nullSafeMap(call.args().orElse(Map.of()));
 
-        final String originalToolCallId = CollectionUtils.getStringValueFromMapSafe(
-                CollectionUtils.getMapFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), "id");
+        final FunctionCall originalFunctionCall = CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL);
+        if (originalFunctionCall == null) {
+            LOG.warn("Missing originalFunctionCall in confirmation args - args='{}'", JsonUtils.toJson(args));
+            return Flowable.empty();
+        }
+        
+        final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
-        final ToolConfirmation toolConfirmation = JsonUtils.fromMap(
-                CollectionUtils.getMapFromMap(args, ARG_TOOL_CONFIRMATION), ToolConfirmation.class);
-        final String prompt = toolConfirmation != null ? toolConfirmation.hint() : null;
+        final ToolConfirmation toolConfirmation = CollectionUtils.getValueFromMap(args, ARG_TOOL_CONFIRMATION);
+        if (toolConfirmation == null) {
+            LOG.warn("Missing toolConfirmation in confirmation args - args='{}'", JsonUtils.toJson(args));
+            return Flowable.empty();
+        }
+        
+        final String prompt = toolConfirmation.hint();
         @SuppressWarnings("unchecked")
         final List<String> options = CollectionUtils.getListFromMap(
-                (Map<String, Object>) (toolConfirmation != null ? toolConfirmation.payload() : null), "options");
+                (Map<String, Object>) toolConfirmation.payload(), "options");
 
         final ConfirmationRequestedEvent event =
-                new ConfirmationRequestedEvent(confirmationId, prompt, originalToolCallId, options);
+                new ConfirmationRequestedEvent(confirmationId, prompt, originalToolCallId, options, Objects.equals(Constants.HITL_TOOL_NAME, originalFunctionCall.name().orElse(null)) ? ConfirmationKind.TEXT : ConfirmationKind.DECISION);
         decorator.decorate(event);
         LOG.debug(
                 "Generated output event - eventType=ConfirmationRequestedEvent, confirmationId={}, originalToolCallId={}",

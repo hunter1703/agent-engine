@@ -16,12 +16,8 @@ import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -185,7 +181,7 @@ public final class ParallelOrchestratorAgent extends Agent {
         try {
             final List<Event> events = CollectionUtils.nullSafeList(
                     branchSpec.subAgent().runAsync(invocationContext).toList().blockingGet());
-            final boolean successful = EventUtils.isTerminal(CollectionUtils.getLast(events));
+            final boolean successful = CollectionUtils.isNotEmpty(events) && Objects.requireNonNull(CollectionUtils.getLast(events)).finishReason().isPresent();
             final String outputText = extractLatestText(events);
             return BranchExecution.completed(branchSpec.order(), branchSpec.subAgentId(), outputText, successful);
         } catch (Exception ignored) {

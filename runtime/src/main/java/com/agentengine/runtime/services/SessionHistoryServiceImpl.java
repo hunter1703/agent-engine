@@ -20,9 +20,7 @@ import com.google.adk.events.Event;
 import com.mongodb.client.MongoCollection;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.jspecify.annotations.NonNull;
@@ -78,17 +76,16 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
     }
 
     private @NonNull List<Event> _getEvents(final AgentSession session) {
-        final String persistenceId = PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
-        return getJournalEvents(persistenceId).stream().map(EventEnvelope::event)
-                .filter(event -> event instanceof TurnCommittedFact || event instanceof ConfirmedFact)
+        final String persistenceId =
+                PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
+        return getJournalEvents(persistenceId).stream()
+                .map(EventEnvelope::event)
+                .filter(event -> event instanceof TurnCommittedFact)
                 .map(event -> {
-                    if (event instanceof TurnCommittedFact turnCommittedFact) {
-                        return turnCommittedFact.getEvents();
-                    } else {
-                        final Confirmation confirmation = ((ConfirmedFact) event).getConfirmation();
-                        return List.of(EventUtils.buildConfirmationEvent(confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()));
-                    }
-                }).flatMap(List::stream)
+                    TurnCommittedFact turnCommittedFact = (TurnCommittedFact) event;
+                    return turnCommittedFact.getEvents();
+                })
+                .flatMap(List::stream)
                 .toList();
     }
 }

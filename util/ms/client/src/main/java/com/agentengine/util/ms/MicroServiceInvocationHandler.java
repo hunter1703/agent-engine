@@ -15,11 +15,11 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,9 +116,10 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     }
 
     private static String methodKey(final Method method) {
-        return method.getName() + "#" + Arrays.stream(method.getParameterTypes())
-                .map(Class::getSimpleName)
-                .collect(Collectors.joining(","));
+        return method.getName() + "#"
+                + Arrays.stream(method.getParameterTypes())
+                        .map(Class::getSimpleName)
+                        .collect(Collectors.joining(","));
     }
 
     /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */

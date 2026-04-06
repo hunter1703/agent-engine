@@ -24,6 +24,7 @@ import com.google.adk.apps.ResumabilityConfig;
 import com.google.adk.artifacts.InMemoryArtifactService;
 import com.google.adk.memory.InMemoryMemoryService;
 import com.google.adk.plugins.BasePlugin;
+import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
@@ -123,7 +124,7 @@ public class RunnerFactory {
             }
         }
 
-        return List.of(new PluginGroup(
-                "engine", List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers))), AddEventMetadataPlugin.INSTANCE);
+        final List<BasePlugin> plugins = List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers), new LoggingPlugin());
+        return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
     }
 }

@@ -4,7 +4,6 @@ import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
-import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.google.adk.tools.ToolContext;
@@ -57,10 +56,8 @@ public final class ShellCommandTool extends Tool {
         }
         if (BLOCKED.matcher(command).find()) {
             if (toolContext.toolConfirmation().isEmpty()) {
-                ToolUtils.requestConfirmationAndPause(
-                        toolContext,
-                        String.format("Should the command `%s` be executed?", command),
-                        Map.of("command", command));
+                toolContext.requestConfirmation(
+                        String.format("Should the command `%s` be executed?", command), Map.of("command", command));
                 return Map.of();
             }
             if (!toolContext.toolConfirmation().get().confirmed()) {

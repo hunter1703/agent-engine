@@ -3,7 +3,6 @@ package com.agentengine.runtime.tools.agent;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.commands.ExternalCommand;
 import com.agentengine.runtime.session.events.RunResult;
-import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
@@ -43,10 +42,8 @@ public final class AwaitAgentTool extends AbstractAgentTool {
                 .join();
 
         if (!result.completedRun()) {
-            ToolUtils.requestConfirmationAndPause(
-                    toolContext,
-                    "Waiting for child agent run to complete.",
-                    Map.of("child_session_id", childSessionId));
+            toolContext.requestConfirmation(
+                    "Waiting for child agent run to complete.", Map.of("child_session_id", childSessionId));
             return Map.of("child_session_id", childSessionId, "status", "waiting_for_child");
         }
 

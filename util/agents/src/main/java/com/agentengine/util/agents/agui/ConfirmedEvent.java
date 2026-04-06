@@ -18,6 +18,10 @@ public final class ConfirmedEvent extends BaseCustomEvent {
         this.answer = answer;
     }
 
+    public ConfirmedEvent() {
+        super("confirmed");
+    }
+
     public String getConfirmationId() {
         return confirmationId;
     }

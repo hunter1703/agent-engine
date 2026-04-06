@@ -136,18 +136,12 @@ public final class ContentUtils {
 
     public static Content buildConfirmationsContent(final Collection<Confirmation> confirmations) {
         final List<Part> parts = CollectionUtils.nullSafeList(confirmations).stream()
-                .map(confirmation -> EventUtils.buildConfirmationEvent(confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()))
+                .map(confirmation -> EventUtils.buildConfirmationEvent(
+                        confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()))
                 .flatMap(event -> event.content().stream())
                 .flatMap(content -> content.parts().stream())
                 .flatMap(List::stream)
                 .toList();
         return Content.builder().role("user").parts(parts).build();
     }
-
-    public static Content buildConfirmationsContent(final Confirmation confirmation) {
-        return EventUtils.buildConfirmationEvent(
-                        confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer())
-                .content().orElse(null);
-    }
-
 }

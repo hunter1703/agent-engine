@@ -8,6 +8,7 @@ dependencies {
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml
     implementation libs.jackson.datatype.jdk8
+    implementation libs.jackson.datatype.guava
     implementation libs.vertx.json.schema
 
     implementation libs.guava

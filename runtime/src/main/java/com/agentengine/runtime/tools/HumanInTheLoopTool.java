@@ -1,8 +1,7 @@
 package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.hitl.SessionPauseKind;
-import com.agentengine.runtime.utils.ToolUtils;
+import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
@@ -44,7 +43,7 @@ public final class HumanInTheLoopTool extends Tool {
         if (toolContext == null) {
             return Map.of("message", "Invocation context is not available for request_human_input.");
         }
-        final SessionPauseKind pauseKind = SessionPauseKind.valueOfOrDefault(kind);
+        final ConfirmationKind pauseKind = ConfirmationKind.valueOfOrDefault(kind);
         final ToolConfirmation confirmation = toolContext.toolConfirmation().orElse(null);
         if (confirmation != null) {
             LOG.info(
@@ -64,7 +63,7 @@ public final class HumanInTheLoopTool extends Tool {
             final String prompt,
             List<String> options,
             final Map<String, Object> context,
-            final SessionPauseKind pauseKind) {
+            final ConfirmationKind pauseKind) {
         final String sanitizedPrompt =
                 StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
         options = CollectionUtils.nullSafeList(options).stream()
@@ -81,12 +80,12 @@ public final class HumanInTheLoopTool extends Tool {
         if (CollectionUtils.isNotEmpty(context)) {
             payload.put(CONTEXT, context);
         }
-        ToolUtils.requestConfirmationAndPause(toolContext, sanitizedPrompt, payload);
+        toolContext.requestConfirmation(sanitizedPrompt, payload);
         return Map.of();
     }
 
-    private static Map<String, Object> confirm(final ToolConfirmation confirmation, final SessionPauseKind pauseKind) {
-        return switch (pauseKind) {
+    private static Map<String, Object> confirm(final ToolConfirmation confirmation, final ConfirmationKind confirmationKind) {
+        return switch (confirmationKind) {
             // The decision is surfaced in the function response so the LLM can reason about
             // whether to proceed or abort — especially critical in the rejection case where
             // the LLM must not continue with the originally requested action.

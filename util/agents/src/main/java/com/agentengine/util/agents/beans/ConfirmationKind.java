@@ -1,18 +1,18 @@
-package com.agentengine.runtime.hitl;
+package com.agentengine.util.agents.beans;
 
 import java.util.Locale;
 
-public enum SessionPauseKind {
+public enum ConfirmationKind {
     UNKNOWN,
     DECISION,
     TEXT;
 
-    public static SessionPauseKind valueOfOrDefault(final String value) {
+    public static ConfirmationKind valueOfOrDefault(final String value) {
         if (value == null || value.isBlank()) {
             return UNKNOWN;
         }
         try {
-            return SessionPauseKind.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            return ConfirmationKind.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ignored) {
             return UNKNOWN;
         }

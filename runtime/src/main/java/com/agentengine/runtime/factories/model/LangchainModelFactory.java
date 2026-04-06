@@ -1,7 +1,6 @@
 package com.agentengine.runtime.factories.model;
 
 import com.agentengine.runtime.model.LangChain4jModel;
-import com.agentengine.runtime.utils.ModelUtils;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -61,7 +60,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                         buildOllamaStreaming(modelConfig, responseFormat),
                         responseFormat);
             case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
-//                ModelUtils.ensureRunning(modelConfig);
+                //                ModelUtils.ensureRunning(modelConfig);
                 yield new ChatModels(
                         buildOpenAI(modelConfig, responseFormat),
                         buildOpenAIStreaming(modelConfig, responseFormat),

@@ -14,6 +14,10 @@ public class CorrectionEvent extends BaseCustomEvent {
         this.message = correctionMetadata.message();
     }
 
+    public CorrectionEvent() {
+        super("correction");
+    }
+
     public String getCorrectionType() {
         return correctionType;
     }

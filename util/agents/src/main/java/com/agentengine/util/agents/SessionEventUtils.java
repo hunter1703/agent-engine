@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public final class SessionEventUtils {
 
@@ -54,18 +53,19 @@ public final class SessionEventUtils {
             final Event event,
             final long sequence) {
         return new SessionEvent(
-                        event.id(),
-                        rootSessionId,
-                        parentSessionId,
-                        sessionId,
-                        event.invocationId(),
-                        event.author(),
-                        event.content().orElse(null),
-                        event.partial().orElse(false),
-                        event.turnComplete().orElse(false),
-                        event.finishReason().orElse(null),
-                        event.timestamp(), sequence,
-                        extractMetadata(event));
+                event.id(),
+                rootSessionId,
+                parentSessionId,
+                sessionId,
+                event.invocationId(),
+                event.author(),
+                event.content().orElse(null),
+                event.partial().orElse(false),
+                event.turnComplete().orElse(false),
+                event.finishReason().orElse(null),
+                event.timestamp(),
+                sequence,
+                extractMetadata(event), event.finishReason().isPresent());
     }
 
     public static List<SessionEvent> toSessionEvents(

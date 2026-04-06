@@ -12,7 +12,6 @@ import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +108,8 @@ public final class EventUtils {
                 .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
                 .response(JsonUtils.toMap(toolConfirmation))
                 .build();
-        return Event.builder().id(confirmationId)
+        return Event.builder()
+                .id(confirmationId)
                 .author("user")
                 .content(Content.builder()
                         .role("user")

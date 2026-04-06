@@ -4,6 +4,9 @@ add MANAGER orchestrator
 production grade connectors
 
 
+## Deferred Improvements
+- Mark continuation intermediate answers as internal in BaseFlow so they don't surface to the user during plan-loop retries.
+
 ## Deferred Test Follow-ups
 - Add regression tests for orchestrator mode validation matrix:
   - model requirement by mode (`TRANSFER` vs `SEQUENTIAL`/`PARALLEL`)

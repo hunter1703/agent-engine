@@ -1,6 +1,6 @@
 package com.agentengine.runtime.utils;
 
-import com.agentengine.runtime.hitl.SessionPauseKind;
+import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.runtime.tools.HumanInTheLoopTool;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.StringUtils;
@@ -66,7 +66,7 @@ public final class ResponseUtils {
                 .id(Functions.generateClientFunctionCallId())
                 .name(Constants.HITL_TOOL_NAME)
                 .args(Map.of(
-                        HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, SessionPauseKind.DECISION.name()))
+                        HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, ConfirmationKind.DECISION.name()))
                 .build();
         final Content content = Content.builder()
                 .role("model")

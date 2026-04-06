@@ -18,6 +18,7 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -29,11 +30,9 @@ import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
-
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
-
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.PostStop;
@@ -157,7 +156,12 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 final int num = lastCommitedEvents.size();
 
                 for (int i = 0; i < num; i++) {
-                    final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(topology.rootSessionId(), topology.parentSessionId(), topology.sessionId(), lastCommitedEvents.get(i), state.nextSequence() - num + i);
+                    final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
+                            topology.rootSessionId(),
+                            topology.parentSessionId(),
+                            topology.sessionId(),
+                            lastCommitedEvents.get(i),
+                            state.nextSequence() - num + i);
                     eventChannel.publish(topology.rootSessionId(), sessionEvent);
                 }
 
@@ -379,7 +383,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             // await is on current session
             return switch (state.sessionState()) {
                 case PAUSED, TRIGGERED_RUN, RUNNING ->
-                        Effect().none().thenReply(command.replyTo(), _ -> RunResult.incomplete());
+                    Effect().none().thenReply(command.replyTo(), _ -> RunResult.incomplete());
                 default -> Effect().none().thenReply(command.replyTo(), _ -> state.lastResult());
             };
         }
@@ -418,29 +422,31 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                             _ -> new StartChildResult(childSessionId, new StartSessionResult.Accepted()));
         }
         return switch (state.sessionState()) {
-            case RUNNING -> Effect()
-                    .persist(new ChildStartingFact(
-                            new StartingChild(command.agentId(), childSessionId, commandMessage)))
-                    .thenRun(_ -> {
-                        startChildSession(state, childAgentId, childSessionId, message)
-                                .whenComplete((result, error) -> {
-                                    self.tell(new StartChildCompletedCommand(
-                                            childSessionId,
-                                            childAgentId,
-                                            command.replyTo(),
-                                            result,
-                                            error == null ? null : ExceptionUtils.getErrorMessage(error)));
-                                });
-                    });
-            default -> Effect()
-                    .none()
-                    .thenReply(
-                            command.replyTo(),
-                            _ -> new StartChildResult(
-                                    null,
-                                    new StartSessionResult.Rejected("The current session is in "
-                                            + state.sessionState()
-                                            + " state and cannot spawn a new child")));
+            case RUNNING ->
+                Effect()
+                        .persist(new ChildStartingFact(
+                                new StartingChild(command.agentId(), childSessionId, commandMessage)))
+                        .thenRun(_ -> {
+                            startChildSession(state, childAgentId, childSessionId, message)
+                                    .whenComplete((result, error) -> {
+                                        self.tell(new StartChildCompletedCommand(
+                                                childSessionId,
+                                                childAgentId,
+                                                command.replyTo(),
+                                                result,
+                                                error == null ? null : ExceptionUtils.getErrorMessage(error)));
+                                    });
+                        });
+            default ->
+                Effect()
+                        .none()
+                        .thenReply(
+                                command.replyTo(),
+                                _ -> new StartChildResult(
+                                        null,
+                                        new StartSessionResult.Rejected("The current session is in "
+                                                + state.sessionState()
+                                                + " state and cannot spawn a new child")));
         };
     }
 
@@ -527,7 +533,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         }));
     }
 
-    private Effect<SessionFact, SessionActorState> publishEvent(final SessionActorState state, final PublishEventCommand command) {
+    private Effect<SessionFact, SessionActorState> publishEvent(
+            final SessionActorState state, final PublishEventCommand command) {
         final Event event = command.event();
 
         // Detect self-pause: the adk_request_confirmation call ID is the confirmationId the client
@@ -543,13 +550,18 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             }
         }
 
+        LOG.info("Publishing event : {}", JsonUtils.toJson(event));
         turnEvents.add(event);
 
+        final SessionTopology topology = state.topology();
+        final String rootSessionId = topology.rootSessionId();
         EffectBuilder<SessionFact, SessionActorState> effectBuilder;
         if (!event.turnComplete().orElse(false)) {
             if (CollectionUtils.isEmpty(pauseFacts)) {
+                LOG.info("Publishing without any effect");
                 effectBuilder = Effect().none();
             } else {
+                LOG.info("Publishing with pause effect");
                 effectBuilder = Effect().persist(pauseFacts).thenRun(newState -> {
                     newPauseIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
                     updateSessionStatus(newState, SessionStatus.PAUSED);
@@ -557,26 +569,32 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             }
         } else {
             final ArrayList<Event> events = new ArrayList<>(turnEvents);
+            LOG.info("committing on turn completion : {}", JsonUtils.toJson(events));
             turnEvents.clear();
 
             if (state.isDuplicateTurn(events)) {
+                LOG.info("duplicate turn detected");
                 effectBuilder = Effect().none();
             } else {
                 final TurnCommittedFact turnFact = new TurnCommittedFact(
                         events,
                         null,
-                        EventUtils.isTerminal(event)
-                                ? event.content().orElse(Content.builder().build()).text()
+                        event.finishReason().isPresent()
+                                ? event.content()
+                                        .orElse(Content.builder().build())
+                                        .text()
                                 : null);
                 final List<SessionFact> commitFacts = new ArrayList<>();
                 commitFacts.add(turnFact);
                 commitFacts.addAll(pauseFacts);
+                LOG.info("Publishing with commit effect");
                 effectBuilder = Effect().persist(commitFacts).thenRun(newState -> {
                     newPauseIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
                     if (newState.sessionState() == SessionState.IDLE) {
                         updateSessionStatus(
                                 newState,
-                                newState.lastResult() != null && newState.lastResult().isFailure()
+                                newState.lastResult() != null
+                                                && newState.lastResult().isFailure()
                                         ? SessionStatus.FAILED
                                         : SessionStatus.COMPLETED);
                         if (newState.topology().isRoot() && !newState.queue().isEmpty()) {
@@ -588,18 +606,35 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 });
             }
         }
-        final SessionTopology topology = state.topology();
-        final String rootSessionId = topology.rootSessionId();
-        return effectBuilder.thenRun(_ -> eventChannel.publish(rootSessionId, SessionEventUtils.toSessionEvent(rootSessionId, topology.parentSessionId(), topology.sessionId(), event, state.nextSequence() + turnEvents.size())));
+        return effectBuilder.thenRun(_ -> {
+            final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
+                    rootSessionId,
+                    topology.parentSessionId(),
+                    topology.sessionId(),
+                    event,
+                    state.nextSequence() + turnEvents.size());
+            LOG.info("Publishing adk event : {} as session event :{}", JsonUtils.toJson(event), JsonUtils.toJson(sessionEvent));
+            eventChannel.publish(
+                    rootSessionId,
+                    sessionEvent);
+        }).thenRun(newState -> {
+            if (newState.sessionState().isTerminal() && event.turnComplete().orElse(false)) {
+                LOG.info("Found the session in terminal state");
+                eventChannel.publish(rootSessionId, SessionEvent.terminal(topology.sessionId()));
+            } else {
+                LOG.info("Found the session in non-terminal state");
+            }
+        });
     }
 
     private Effect<SessionFact, SessionActorState> childPaused(
             final SessionActorState state, final ChildPausedCommand command) {
         return switch (state.sessionState()) {
-            case TRIGGERED_RUN, PAUSED, RUNNING -> Effect()
-                    .persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()))
-                    .thenRun(newState -> updateSessionStatus(newState, SessionStatus.PAUSED))
-                    .thenReply(command.replyTo(), _ -> Done.done());
+            case TRIGGERED_RUN, PAUSED, RUNNING ->
+                Effect()
+                        .persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()))
+                        .thenRun(newState -> updateSessionStatus(newState, SessionStatus.PAUSED))
+                        .thenReply(command.replyTo(), _ -> Done.done());
             default -> Effect().none().thenReply(command.replyTo(), _ -> Done.done());
         };
     }

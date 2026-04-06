@@ -1,13 +1,11 @@
 package com.agentengine.util.agents.agui;
 
-import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
-
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.CorrectionMetadata;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.EventMapper;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.agui.core.event.RunFinishedEvent;
@@ -54,7 +52,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
     @Override
     public Flowable<BaseEvent> map(final SessionEvent event) {
-        LOG.debug("Input event received for mapping - eventId={}, author={}", event.getId(), event.getAuthor());
+        LOG.info("Input event received for mapping - event={}", JsonUtils.toJson(event));
         if (SessionEvent.AUTHOR_USER.equalsIgnoreCase(event.getAuthor())) {
             return mode == Mode.REPLAY ? textMapper.mapUserMessage(event) : Flowable.empty();
         }
@@ -84,6 +82,10 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
+        LOG.info("mapEventInternal called - sessionId={}, author={}, hasContent={}, turnComplete={}, partial={}, terminal={}", 
+                event.getSessionId(), event.getAuthor(), 
+                event.getContent() != null, event.getTurnComplete(), event.isPartial(), event.isTerminal());
+        
         Flowable<BaseEvent> flowable = startStepIfNeeded();
         if (SessionEventUtils.isCorrectionEvent(event)) {
             return flowable.concatWith(mapCorrectionEvent(event)).concatWith(finishStepIfNeeded(event));
@@ -91,11 +93,15 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
         final Optional<Content> content = Optional.ofNullable(event.getContent());
         if (content.isEmpty()) {
+            LOG.info("Event has no content - calling finishStepIfNeeded");
             return flowable.concatWith(finishStepIfNeeded(event));
         }
 
         final boolean partial = Boolean.TRUE.equals(event.isPartial());
         final boolean internal = SessionEventUtils.isInternal(event);
+        LOG.info("Processing content - partial={}, internal={}, partsCount={}", 
+                partial, internal, content.get().parts().map(List::size).orElse(0));
+        
         for (final Part part : content.get().parts().orElse(List.of())) {
             flowable = flowable.concatWith(mapPart(part, partial, internal));
         }
@@ -155,21 +161,28 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
     private Flowable<BaseEvent> startStepIfNeeded() {
         if (state.hasStartedStep()) {
-            LOG.debug("Step already started, skipping StepStartedEvent generation");
+            LOG.info("Step already started - skipping StepStartedEvent generation");
             return Flowable.empty();
         }
 
         final StepStartedEvent stepEvent = new StepStartedEvent();
         stepEvent.setStepName(state.startNextStep());
         decorator.decorate(stepEvent);
-        LOG.debug("Generated output event - eventType=StepStartedEvent, stepName={}", stepEvent.getStepName());
+        LOG.info("STEP STARTED - Generated StepStartedEvent, stepName={}", stepEvent.getStepName());
         return Flowable.just(stepEvent);
     }
 
     private Flowable<BaseEvent> finishStepIfNeeded(final SessionEvent event) {
+        LOG.info("finishStepIfNeeded called - sessionId={}, turnComplete={}, hasStartedStep={}, event={}", 
+                event.getSessionId(), event.getTurnComplete(), state.hasStartedStep(), JsonUtils.toJson(event));
+        
         if (!Boolean.TRUE.equals(event.isTurnComplete()) || !state.hasStartedStep()) {
+            LOG.info("Step NOT finished - conditions not met: turnComplete={}, hasStartedStep={}", 
+                    event.getTurnComplete(), state.hasStartedStep());
             return Flowable.empty();
         }
+        
+        LOG.info("Step WILL finish - all conditions met: turnComplete={}, hasStartedStep={}", event.getTurnComplete(), true);
         return finishStep();
     }
 
@@ -177,7 +190,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         final StepFinishedEvent event = new StepFinishedEvent();
         event.setStepName(state.finishStep());
         decorator.decorate(event);
-        LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", event.getStepName());
+        LOG.info("STEP FINISHED - Generated StepFinishedEvent, stepName={}", event.getStepName());
         return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
     }
 

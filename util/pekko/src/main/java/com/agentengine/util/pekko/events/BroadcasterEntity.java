@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import java.util.LinkedHashMap;
@@ -89,7 +90,7 @@ public final class BroadcasterEntity extends ShardedEntity<BroadcasterCommand, B
 
         final long nextSeq = state.latestPublishedSequence() + 1;
         final SequencedEvent<?> event = new SequencedEvent<>(nextSeq, command.payload());
-        LOG.debug("publish seq={} subscribers={}", nextSeq, subscribers.size());
+        LOG.info("publish payload={} subscribers={}", JsonUtils.toJson(command.payload()), subscribers.size());
         return Effect()
                 .persist(new BroadcasterFact.PublishedFact(event))
                 .thenRun(ignored -> subscribers.forEach(

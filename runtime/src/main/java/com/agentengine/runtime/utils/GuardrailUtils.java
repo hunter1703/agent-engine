@@ -49,21 +49,19 @@ public final class GuardrailUtils {
         return decision;
     }
 
-    public static void recordViolation(final InvocationContext invocationContext, final GuardrailDecision decision) {
+    public static Violation buildViolation(
+            final InvocationContext invocationContext, final GuardrailDecision decision) {
         if (invocationContext == null || decision == null) {
-            return;
+            return null;
         }
-        RunUtils.getOrInitState(invocationContext)
-                .addViolation(Violation.builder(
-                                StringUtils.isBlank(decision.code())
-                                        ? GuardrailConstants.Code.VIOLATION
-                                        : decision.code())
-                        .message(
-                                StringUtils.isBlank(decision.message())
-                                        ? "Guardrail policy was triggered."
-                                        : decision.message())
-                        .details(decision.details())
-                        .build());
+        return Violation.builder(
+                        StringUtils.isBlank(decision.code()) ? GuardrailConstants.Code.VIOLATION : decision.code())
+                .message(
+                        StringUtils.isBlank(decision.message())
+                                ? "Guardrail policy was triggered."
+                                : decision.message())
+                .details(decision.details())
+                .build();
     }
 
     public static LlmResponse buildGuardrailResponse(final String message) {
@@ -125,8 +123,7 @@ public final class GuardrailUtils {
         final int recency = strategy == RECENT_USER ? Math.max(1, config.getRecency()) : 1;
         final String recentUserMessages =
                 EventUtils.recentUser(context.session().events(), recency);
-        final String latestUserMessage =
-                EventUtils.recentUser(context.session().events(), 1);
+        final String latestUserMessage = EventUtils.recentUser(context.session().events(), 1);
 
         String planAnchor = "";
         final Plan plan = RunUtils.getOrInitState(context).plan();

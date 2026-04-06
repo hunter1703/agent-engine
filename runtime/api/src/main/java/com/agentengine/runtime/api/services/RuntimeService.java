@@ -8,7 +8,7 @@ import org.reactivestreams.Publisher;
 @MicroService("runtime")
 public interface RuntimeService {
 
-    Publisher<SessionEvent> startSession(String agentId, String message);
+    Publisher<SessionEvent> startSession(String agentId, String sessionId, String message);
 
     Publisher<SessionEvent> confirmSession(String sessionId, Confirmation confirmation);
 }

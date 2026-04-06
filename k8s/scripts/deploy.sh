@@ -220,18 +220,6 @@ print_step "Linting and deploying service charts"
 # shellcheck disable=SC2046
 sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags)
 
-# ── Phase 4b: Restart workloads to pull new images ───────────────────────────
-if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
-  print_step "Restarting workloads to pull new images"
-  kubectl rollout restart deployment/agent-engine-core -n "$NAMESPACE"
-  kubectl rollout restart deployment/agent-engine-rest -n "$NAMESPACE"
-  kubectl rollout restart statefulset/agent-engine-runtime -n "$NAMESPACE"
-  print_step "Waiting for rollouts to complete"
-  kubectl rollout status deployment/agent-engine-core -n "$NAMESPACE" --timeout=120s
-  kubectl rollout status deployment/agent-engine-rest -n "$NAMESPACE" --timeout=120s
-  kubectl rollout status statefulset/agent-engine-runtime -n "$NAMESPACE" --timeout=120s
-fi
-
 # ── Phase 5: Seed application catalog ────────────────────────────────────────
 print_phase "Phase 5: Seeding application catalog"
 if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_CATALOG" != "true" ]; then

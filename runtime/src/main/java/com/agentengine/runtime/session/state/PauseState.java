@@ -9,8 +9,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public record PauseState(Set<String> pendingSelfConfirmationIds, Map<String, Confirmation> receivedSelfConfirmations,
-                         Map<String, String> pendingConfirmationIdVsChildSessionId) {
+public record PauseState(
+        Set<String> pendingSelfConfirmationIds,
+        Map<String, Confirmation> receivedSelfConfirmations,
+        Map<String, String> pendingConfirmationIdVsChildSessionId) {
     public PauseState() {
         this(new HashSet<>(), new HashMap<>(), new HashMap<>());
     }
@@ -19,7 +21,8 @@ public record PauseState(Set<String> pendingSelfConfirmationIds, Map<String, Con
     public PauseState(
             @JsonProperty("pendingSelfConfirmationIds") final Set<String> pendingSelfConfirmationIds,
             @JsonProperty("receivedSelfConfirmations") final Map<String, Confirmation> receivedSelfConfirmations,
-            @JsonProperty("pendingConfirmationIdVsChildSessionId") final Map<String, String> pendingConfirmationIdVsChildSessionId) {
+            @JsonProperty("pendingConfirmationIdVsChildSessionId")
+                    final Map<String, String> pendingConfirmationIdVsChildSessionId) {
         this.pendingSelfConfirmationIds =
                 pendingSelfConfirmationIds == null ? new HashSet<>() : new HashSet<>(pendingSelfConfirmationIds);
         this.receivedSelfConfirmations = CollectionUtils.nullSafeMutableMap(receivedSelfConfirmations);

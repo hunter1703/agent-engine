@@ -35,9 +35,9 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     }
 
     @Override
-    public Publisher<BaseEvent> run(final String agentId, final String text) {
+    public Publisher<BaseEvent> run(final String agentId, final String sessionId, final String text) {
         final StartEventMapper mapper = new StartEventMapper(agentId);
-        return Flowable.fromPublisher(runtimeService.startSession(agentId, text))
+        return Flowable.fromPublisher(runtimeService.startSession(agentId, sessionId, text))
                 .concatMap(mapper::map);
     }
 
@@ -51,7 +51,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
 
         final String rootSessionId = session.getRootSessionId();
         final String rootAgentId = session.getRootAgentId();
-        final Confirmation confirmation = new Confirmation(confirmationId, confirmed != null && confirmed, answer);
+        final Confirmation confirmation = new Confirmation(confirmationId, confirmed, answer);
 
         final AGUIEventMapper mapper = new AGUIEventMapper(rootSessionId, rootAgentId);
         return Flowable.fromPublisher(runtimeService.confirmSession(rootSessionId, confirmation))

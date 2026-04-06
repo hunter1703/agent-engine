@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -67,7 +66,10 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                                     bean.getBeanClass(), bean.getQualifiers().toArray(new Annotation[0]));
                             if (!handle.isAvailable()) return null;
                             final Object instance = handle.get();
-                            LOG.info("Discovered MicroService: {} implemented by {}", iface.getSimpleName(), instance.getClass().getName());
+                            LOG.info(
+                                    "Discovered MicroService: {} implemented by {}",
+                                    iface.getSimpleName(),
+                                    instance.getClass().getName());
                             return Map.entry(iface.getSimpleName(), new ServiceEntry(instance, iface));
                         })
                         .stream())
@@ -106,7 +108,11 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
         final Method method = entry.methods().get(methodName);
         if (method == null) {
-            LOG.error("Method not found: {}/{} (available: {})", serviceName, methodName, entry.methods().keySet());
+            LOG.error(
+                    "Method not found: {}/{} (available: {})",
+                    serviceName,
+                    methodName,
+                    entry.methods().keySet());
             responseObserver.onError(Status.NOT_FOUND
                     .withDescription("Method not found: " + methodName)
                     .asRuntimeException());
@@ -234,9 +240,10 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
 
     private static String methodKey(final Method method) {
-        return method.getName() + "#" + Arrays.stream(method.getParameterTypes())
-                .map(Class::getSimpleName)
-                .collect(Collectors.joining(","));
+        return method.getName() + "#"
+                + Arrays.stream(method.getParameterTypes())
+                        .map(Class::getSimpleName)
+                        .collect(Collectors.joining(","));
     }
 
     private record ServiceEntry(Object bean, Map<String, Method> methods) {

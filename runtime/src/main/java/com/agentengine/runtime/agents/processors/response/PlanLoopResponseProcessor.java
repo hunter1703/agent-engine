@@ -62,10 +62,9 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
         if (StringUtils.isBlank(planViolation)) {
             return ResponseUtils.single(response);
         }
-        runState.addViolation(Violation.builder("final_answer_validation")
+        runState.requestContinuation(Violation.builder("final_answer_validation")
                 .message(planViolation)
                 .build());
-        runState.requestContinuation();
         return ResponseUtils.single(response);
     }
 }

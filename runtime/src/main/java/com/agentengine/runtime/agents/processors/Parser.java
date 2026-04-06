@@ -99,7 +99,10 @@ public final class Parser {
         final String finalAnswer = StringUtils.isBlank(processedText) ? "" : processedText.trim();
         final List<Part> allParts = new ArrayList<>(thoughtParts);
         if (StringUtils.isNotBlank(finalAnswer)) {
-            allParts.add(Part.builder().text(finalAnswer).thought(CollectionUtils.isNotEmpty(toolCallParts)).build());
+            allParts.add(Part.builder()
+                    .text(finalAnswer)
+                    .thought(CollectionUtils.isNotEmpty(toolCallParts))
+                    .build());
         }
         allParts.addAll(toolCallParts);
         return content.toBuilder().parts(allParts).build();

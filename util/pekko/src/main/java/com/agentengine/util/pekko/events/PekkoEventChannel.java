@@ -70,7 +70,9 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
                         COMMAND_TIMEOUT,
                         system.scheduler())
                 .thenCompose(subscriberActor -> {
-                    // not unsubscribing on publisher complete as this publisher is supposed to be long-lived and only way to close this is via com.agentengine.util.common.events.EventSubscription.cancel which will anyway send unsubscription command
+                    // not unsubscribing on publisher complete as this publisher is supposed to be long-lived and only
+                    // way to close this is via com.agentengine.util.common.events.EventSubscription.cancel which will
+                    // anyway send unsubscription command
                     final Publisher<SequencedEvent<Event>> publisher = processor
                             .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
                             .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
