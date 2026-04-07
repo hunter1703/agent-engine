@@ -99,7 +99,7 @@ public final class AGUIToolCallMapper {
             LOG.warn("Missing originalFunctionCall in confirmation args - args='{}'", JsonUtils.toJson(args));
             return Flowable.empty();
         }
-        
+
         final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
         final ToolConfirmation toolConfirmation = CollectionUtils.getValueFromMap(args, ARG_TOOL_CONFIRMATION);
@@ -107,14 +107,22 @@ public final class AGUIToolCallMapper {
             LOG.warn("Missing toolConfirmation in confirmation args - args='{}'", JsonUtils.toJson(args));
             return Flowable.empty();
         }
-        
+
         final String prompt = toolConfirmation.hint();
         @SuppressWarnings("unchecked")
-        final List<String> options = CollectionUtils.getListFromMap(
-                (Map<String, Object>) toolConfirmation.payload(), "options");
+        final List<String> options =
+                CollectionUtils.getListFromMap((Map<String, Object>) toolConfirmation.payload(), "options");
 
-        final ConfirmationRequestedEvent event =
-                new ConfirmationRequestedEvent(confirmationId, prompt, originalToolCallId, options, Objects.equals(Constants.HITL_TOOL_NAME, originalFunctionCall.name().orElse(null)) ? ConfirmationKind.TEXT : ConfirmationKind.DECISION);
+        final ConfirmationRequestedEvent event = new ConfirmationRequestedEvent(
+                confirmationId,
+                prompt,
+                originalToolCallId,
+                options,
+                Objects.equals(
+                                Constants.HITL_TOOL_NAME,
+                                originalFunctionCall.name().orElse(null))
+                        ? ConfirmationKind.TEXT
+                        : ConfirmationKind.DECISION);
         decorator.decorate(event);
         LOG.debug(
                 "Generated output event - eventType=ConfirmationRequestedEvent, confirmationId={}, originalToolCallId={}",

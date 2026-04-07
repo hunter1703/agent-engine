@@ -17,8 +17,8 @@ class DefaultTemplateResolverTest {
         final RequestContext context = RequestContext.empty().withVars(Map.of("env", "prod", "id", 42));
 
         final ResolvedValue staticValue = resolver.resolve("hello", context, TemplateResolutionOptions.strict());
-        final ResolvedValue inlineValue = resolver.resolve(
-                "https://${vars.env}.api.com/{{ vars.id }}", context, TemplateResolutionOptions.strict());
+        final ResolvedValue inlineValue =
+                resolver.resolve("https://${env}.api.com/{{ id }}", context, TemplateResolutionOptions.strict());
 
         assertThat(staticValue.value()).isEqualTo("hello");
         assertThat(inlineValue.value()).isEqualTo("https://prod.api.com/42");
@@ -27,8 +27,8 @@ class DefaultTemplateResolverTest {
     @Test
     void resolvesMapsAndListsRecursively() {
         final RequestContext context = RequestContext.empty().withVars(Map.of("a", "A", "b", "B"));
-        final Map<String, Object> mapTemplate = Map.of("first", TemplateDirective.expr("vars.a"));
-        final List<Object> listTemplate = List.of(TemplateDirective.expr("vars.a"), TemplateDirective.expr("vars.b"));
+        final Map<String, Object> mapTemplate = Map.of("first", TemplateDirective.expr("a"));
+        final List<Object> listTemplate = List.of(TemplateDirective.expr("a"), TemplateDirective.expr("b"));
 
         final ResolvedValue mapValue = resolver.resolve(mapTemplate, context, TemplateResolutionOptions.strict());
         final ResolvedValue listValue = resolver.resolve(listTemplate, context, TemplateResolutionOptions.strict());
@@ -40,8 +40,7 @@ class DefaultTemplateResolverTest {
     @Test
     void optionalDirectiveOmitsMissingValues() {
         final RequestContext context = RequestContext.empty();
-        final Map<String, Object> template =
-                Map.of("always", "x", "optional", TemplateDirective.optional("vars.missing"));
+        final Map<String, Object> template = Map.of("always", "x", "optional", TemplateDirective.optional("missing"));
 
         final ResolvedValue value = resolver.resolve(template, context, TemplateResolutionOptions.strict());
 
@@ -52,7 +51,7 @@ class DefaultTemplateResolverTest {
     void includeIfDirectiveControlsPresence() {
         final RequestContext trueContext = RequestContext.empty().withVars(Map.of("enabled", true));
         final RequestContext falseContext = RequestContext.empty().withVars(Map.of("enabled", false));
-        final Object directive = TemplateDirective.includeIf("vars.enabled", Map.of("name", "test"));
+        final Object directive = TemplateDirective.includeIf("enabled", Map.of("name", "test"));
 
         final ResolvedValue included = resolver.resolve(directive, trueContext, TemplateResolutionOptions.strict());
         final ResolvedValue omitted = resolver.resolve(directive, falseContext, TemplateResolutionOptions.strict());
@@ -63,15 +62,15 @@ class DefaultTemplateResolverTest {
 
     @Test
     void strictModeThrowsForMissingVariables() {
-        assertThatThrownBy(() -> resolver.resolve(
-                        "{{ vars.missing }}", RequestContext.empty(), TemplateResolutionOptions.strict()))
+        assertThatThrownBy(() ->
+                        resolver.resolve("{{ missing }}", RequestContext.empty(), TemplateResolutionOptions.strict()))
                 .isInstanceOf(TemplateResolutionException.class);
     }
 
     @Test
     void lenientModeReturnsUnresolvedForMissingVariables() {
-        final ResolvedValue value = resolver.resolve(
-                "{{ vars.missing }}", RequestContext.empty(), new TemplateResolutionOptions(false, false));
+        final ResolvedValue value =
+                resolver.resolve("{{ missing }}", RequestContext.empty(), new TemplateResolutionOptions(false, false));
 
         assertThat(value.status()).isEqualTo(ResolvedValueStatus.UNRESOLVED);
     }

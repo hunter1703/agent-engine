@@ -46,7 +46,8 @@ public final class SessionEvent extends BaseEntity {
             FinishReason finishReason,
             long timestamp,
             long sequence,
-            Map<String, Object> metadata, final boolean terminal) {
+            Map<String, Object> metadata,
+            final boolean terminal) {
         setId(id);
         this.rootSessionId = rootSessionId;
         this.parentSessionId = parentSessionId;
@@ -258,6 +259,20 @@ public final class SessionEvent extends BaseEntity {
     }
 
     public static SessionEvent terminal(String sessionId) {
-        return new SessionEvent(UUID.randomUUID().toString(), null, null, sessionId, null, null, null, null, null, null, System.currentTimeMillis(), Long.MAX_VALUE, null, true);
+        return new SessionEvent(
+                UUID.randomUUID().toString(),
+                null,
+                null,
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                System.currentTimeMillis(),
+                Long.MAX_VALUE,
+                null,
+                true);
     }
 }

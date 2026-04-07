@@ -1,8 +1,8 @@
 package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -21,14 +21,13 @@ public final class HumanInTheLoopTool extends Tool {
     public static final String KIND = "kind";
     public static final String RESPONSE_OPTIONS = "options";
     public static final String CONTEXT = "context";
-    public static final ToolDescriptor DESCRIPTOR =
-            new ToolDescriptor(
-                    Constants.HITL_TOOL_NAME,
-                    "Pause and ask the user for required input ONLY when you cannot make MEANINGFUL progress WITHOUT human clarification, preference, approval, or a decision. " +
-                            "DO NOT use this tool for errors, retries, status updates, confirmations that are not required, or to present a final answer. " +
-                            "If the request can be completed reasonably using available context or sensible defaults, do not call this tool.",
-                    Map.of()
-            );
+    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
+            Constants.HITL_TOOL_NAME,
+            "Request user input ONLY when execution is BLOCKED by genuinely missing information that cannot be reasonably inferred or defaulted. "
+                    + "Use ONLY when: (1) critical parameters are absent and no reasonable default exists, (2) the user must choose between mutually exclusive alternatives with no clear preference, or (3) a destructive action requires explicit approval. "
+                    + "DO NOT use this tool to: confirm the user's stated intent, ask if they want what they explicitly requested, present unnecessary options, report errors, provide status updates, or deliver final answers. "
+                    + "If you can proceed with the request as stated, DO NOT call this tool.",
+            Map.of());
 
     public HumanInTheLoopTool() {
         super(DESCRIPTOR);
@@ -37,14 +36,27 @@ public final class HumanInTheLoopTool extends Tool {
     public Map<String, Object> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
-            @ToolSchema(name = PROMPT, description = "A short, specific question asking only for the missing information, preference, approval, or decision needed to continue. Do NOT use this field to provide a final answer, explain internal errors, or include large amounts of generated content.") final String prompt,
-            @ToolSchema(name = KIND, description = "Type of user input required. Use TEXT when the user must provide missing information or clarification. Use DECISION when the user must choose, approve, reject, or select from explicit options.") final String kind,
+            @ToolSchema(
+                            name = PROMPT,
+                            description =
+                                    "Concise question requesting ONLY information that is genuinely absent and blocks execution. Do NOT restate the user's request, ask for confirmation of stated intent, or use this field for answers, explanations, or error messages.")
+                    final String prompt,
+            @ToolSchema(
+                            name = KIND,
+                            description =
+                                    "Type of input required. TEXT: critical information is missing with no reasonable default. DECISION: user must approve a destructive action or choose between mutually exclusive options with no clear preference. Do NOT use for routine confirmations.")
+                    final String kind,
             @ToolSchema(
                             name = RESPONSE_OPTIONS,
-                            description = "Required when kind is DECISION. A small list of explicit user-selectable choices, such as ['Yes', 'No'] or ['Use Option A', 'Use Option B']. Do not include this for TEXT unless the choices are genuinely constrained.",
+                            description =
+                                    "Required when kind is DECISION. A small list of explicit user-selectable choices, such as ['Yes', 'No'] or ['Use Option A', 'Use Option B']. Do not include this for TEXT unless the choices are genuinely constrained.",
                             optional = true)
                     List<String> options,
-            @ToolSchema(name = CONTEXT, description = "Optional structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.", optional = true)
+            @ToolSchema(
+                            name = CONTEXT,
+                            description =
+                                    "Optional structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.",
+                            optional = true)
                     final Map<String, Object> context) {
         if (toolContext == null) {
             return Map.of("message", "Invocation context is not available for request_human_input.");
@@ -90,7 +102,8 @@ public final class HumanInTheLoopTool extends Tool {
         return Map.of();
     }
 
-    private static Map<String, Object> confirm(final ToolConfirmation confirmation, final ConfirmationKind confirmationKind) {
+    private static Map<String, Object> confirm(
+            final ToolConfirmation confirmation, final ConfirmationKind confirmationKind) {
         return switch (confirmationKind) {
             // The decision is surfaced in the function response so the LLM can reason about
             // whether to proceed or abort — especially critical in the rejection case where

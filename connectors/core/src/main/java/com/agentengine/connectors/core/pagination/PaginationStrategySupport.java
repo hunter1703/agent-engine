@@ -45,9 +45,9 @@ final class PaginationStrategySupport {
             return null;
         }
         try {
-            final Map<String, Object> templateVariables = Map.of("response", responseBody);
+            final Map<String, Object> responseVariables = Map.of("response", responseBody);
             final RequestContext context =
-                    new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+                    new RequestContext(Map.of(), null, Map.of(), null, Map.of(), responseVariables);
             final ResolvedValue resolved = templateResolver.resolve(template, context, null);
             return resolved.value() == null ? null : String.valueOf(resolved.value());
         } catch (RuntimeException ex) {

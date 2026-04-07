@@ -26,12 +26,12 @@ public record RequestContext(
 
     public Map<String, Object> toTemplateVariables() {
         final Map<String, Object> templateVariables = new HashMap<>();
+        templateVariables.putAll(vars);
         templateVariables.put("input", input);
         templateVariables.put("rawPayload", rawPayload);
         templateVariables.put("auth", auth);
         templateVariables.put("connection", connection);
         templateVariables.put("previous", previous);
-        templateVariables.put("vars", vars);
         return Collections.unmodifiableMap(templateVariables);
     }
 

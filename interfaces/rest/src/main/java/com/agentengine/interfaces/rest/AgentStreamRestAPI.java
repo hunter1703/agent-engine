@@ -5,8 +5,8 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.AgentService;
-import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.interfaces.rest.dto.ConfirmSessionRequest;
+import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.core.event.BaseEvent;
@@ -49,7 +49,8 @@ public class AgentStreamRestAPI {
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
     @APIResponse(responseCode = "404", description = "Agent not found")
     @APIResponse(responseCode = "500", description = "Internal server error")
-    public Publisher<BaseEvent> events(@NotBlank @PathParam ("agentId") String agentId, @Valid final InvokeAgentRequest request) {
+    public Publisher<BaseEvent> events(
+            @NotBlank @PathParam("agentId") String agentId, @Valid final InvokeAgentRequest request) {
         if (agentService.getAgent(agentId) == null) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
@@ -66,11 +67,11 @@ public class AgentStreamRestAPI {
     @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
     @APIResponse(responseCode = "404", description = "Session not found")
     @APIResponse(responseCode = "408", description = "Pending confirmation timed out")
-    public Publisher<BaseEvent> confirmEvents(@NotBlank @PathParam("sessionId") String sessionId, @NotBlank @PathParam("confirmationId") String confirmationId, @Valid @NotNull final ConfirmSessionRequest confirmRequest) {
+    public Publisher<BaseEvent> confirmEvents(
+            @NotBlank @PathParam("sessionId") String sessionId,
+            @NotBlank @PathParam("confirmationId") String confirmationId,
+            @Valid @NotNull final ConfirmSessionRequest confirmRequest) {
         return agentExecutionService.confirmSession(
-                sessionId,
-                confirmationId,
-                confirmRequest.getConfirmed(),
-                confirmRequest.getMessage());
+                sessionId, confirmationId, confirmRequest.getConfirmed(), confirmRequest.getMessage());
     }
 }

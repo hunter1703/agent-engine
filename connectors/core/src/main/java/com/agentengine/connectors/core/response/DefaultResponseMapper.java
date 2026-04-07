@@ -34,14 +34,14 @@ public final class DefaultResponseMapper {
             final String method) {
         final boolean success = isSuccess(definition, responseData.statusCode());
 
-        final Map<String, Object> templateVariables = Map.of(
+        final Map<String, Object> responseVariables = Map.of(
                 "response",
                 responseData.body(),
                 "statusCode",
                 responseData.statusCode(),
                 "headers",
                 responseData.headers());
-        final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+        final RequestContext context = new RequestContext(Map.of(), null, Map.of(), null, Map.of(), responseVariables);
 
         final Object data = templateResolver
                 .resolve(definition.responseMapping().output(), context, null)

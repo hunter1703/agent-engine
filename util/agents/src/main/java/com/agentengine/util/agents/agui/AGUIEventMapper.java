@@ -82,10 +82,15 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
-        LOG.info("mapEventInternal called - sessionId={}, author={}, hasContent={}, turnComplete={}, partial={}, terminal={}", 
-                event.getSessionId(), event.getAuthor(), 
-                event.getContent() != null, event.getTurnComplete(), event.isPartial(), event.isTerminal());
-        
+        LOG.info(
+                "mapEventInternal called - sessionId={}, author={}, hasContent={}, turnComplete={}, partial={}, terminal={}",
+                event.getSessionId(),
+                event.getAuthor(),
+                event.getContent() != null,
+                event.getTurnComplete(),
+                event.isPartial(),
+                event.isTerminal());
+
         Flowable<BaseEvent> flowable = startStepIfNeeded();
         if (SessionEventUtils.isCorrectionEvent(event)) {
             return flowable.concatWith(mapCorrectionEvent(event)).concatWith(finishStepIfNeeded(event));
@@ -99,9 +104,12 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
         final boolean partial = Boolean.TRUE.equals(event.isPartial());
         final boolean internal = SessionEventUtils.isInternal(event);
-        LOG.info("Processing content - partial={}, internal={}, partsCount={}", 
-                partial, internal, content.get().parts().map(List::size).orElse(0));
-        
+        LOG.info(
+                "Processing content - partial={}, internal={}, partsCount={}",
+                partial,
+                internal,
+                content.get().parts().map(List::size).orElse(0));
+
         for (final Part part : content.get().parts().orElse(List.of())) {
             flowable = flowable.concatWith(mapPart(part, partial, internal));
         }
@@ -173,16 +181,25 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> finishStepIfNeeded(final SessionEvent event) {
-        LOG.info("finishStepIfNeeded called - sessionId={}, turnComplete={}, hasStartedStep={}, event={}", 
-                event.getSessionId(), event.getTurnComplete(), state.hasStartedStep(), JsonUtils.toJson(event));
-        
+        LOG.info(
+                "finishStepIfNeeded called - sessionId={}, turnComplete={}, hasStartedStep={}, event={}",
+                event.getSessionId(),
+                event.getTurnComplete(),
+                state.hasStartedStep(),
+                JsonUtils.toJson(event));
+
         if (!Boolean.TRUE.equals(event.isTurnComplete()) || !state.hasStartedStep()) {
-            LOG.info("Step NOT finished - conditions not met: turnComplete={}, hasStartedStep={}", 
-                    event.getTurnComplete(), state.hasStartedStep());
+            LOG.info(
+                    "Step NOT finished - conditions not met: turnComplete={}, hasStartedStep={}",
+                    event.getTurnComplete(),
+                    state.hasStartedStep());
             return Flowable.empty();
         }
-        
-        LOG.info("Step WILL finish - all conditions met: turnComplete={}, hasStartedStep={}", event.getTurnComplete(), true);
+
+        LOG.info(
+                "Step WILL finish - all conditions met: turnComplete={}, hasStartedStep={}",
+                event.getTurnComplete(),
+                true);
         return finishStep();
     }
 

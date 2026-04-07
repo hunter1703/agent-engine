@@ -116,7 +116,8 @@ public final class BaseFlow extends SingleFlow {
                     return outcome == TurnOutcome.CONTINUE
                             ? turnCompletedEvent.concatWith(Flowable.defer(() -> runLoop(invocationContext)))
                             : turnCompletedEvent;
-                })).doOnNext(event -> LOG.info("baseflow : {}", JsonUtils.toJson(event)));
+                }))
+                .doOnNext(event -> LOG.info("baseflow : {}", JsonUtils.toJson(event)));
     }
 
     private static TurnOutcome resolveOutcome(

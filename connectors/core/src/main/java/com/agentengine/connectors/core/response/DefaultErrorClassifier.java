@@ -36,14 +36,14 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
             return new ClassifiedError(code, message, mappingRule.retryable());
         }
 
-        final Map<String, Object> templateVariables = Map.of(
+        final Map<String, Object> responseVariables = Map.of(
                 "response",
                 responseData.body(),
                 "statusCode",
                 responseData.statusCode(),
                 "headers",
                 responseData.headers());
-        final RequestContext context = new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+        final RequestContext context = new RequestContext(Map.of(), null, Map.of(), null, Map.of(), responseVariables);
 
         final Object codeValue = definition.responseMapping().errorCode() != null
                 ? templateResolver
@@ -77,9 +77,9 @@ public final class DefaultErrorClassifier implements ErrorClassifier {
         }
 
         if (rule.body() != null && !rule.body().isBlank()) {
-            final Map<String, Object> templateVariables = Map.of("response", responseData.body());
+            final Map<String, Object> responseVariables = Map.of("response", responseData.body());
             final RequestContext context =
-                    new RequestContext(templateVariables, null, Map.of(), null, Map.of(), Map.of());
+                    new RequestContext(Map.of(), null, Map.of(), null, Map.of(), responseVariables);
             final Object value =
                     templateResolver.resolve(rule.body(), context, null).value();
             return value != null;

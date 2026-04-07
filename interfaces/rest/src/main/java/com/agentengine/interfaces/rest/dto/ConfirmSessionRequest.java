@@ -1,7 +1,5 @@
 package com.agentengine.interfaces.rest.dto;
 
-import jakarta.validation.constraints.NotBlank;
-
 public class ConfirmSessionRequest {
     private Boolean confirmed;
     private String message;

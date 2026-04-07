@@ -5,6 +5,7 @@ import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -52,6 +53,7 @@ public abstract class Tool extends BaseTool {
         this.toolDescriptor = toolDescriptor;
         this.executeMethod = getExecuteMethod();
         this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
+        LOG.info("descriptor : {}, declaration : {}", JsonUtils.toJson(toolDescriptor), JsonUtils.toJson(declaration));
         this.parameterBindings = PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
     }
 

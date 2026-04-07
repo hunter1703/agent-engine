@@ -4,11 +4,8 @@ import static com.mongodb.client.model.Filters.eq;
 
 import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.session.SessionActor;
-import com.agentengine.runtime.session.events.ConfirmedFact;
 import com.agentengine.runtime.session.events.TurnCommittedFact;
-import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.util.agents.SessionEventUtils;
-import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.StringUtils;

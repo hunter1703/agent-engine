@@ -1,7 +1,6 @@
 package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.beans.ConfirmationKind;
-
 import java.util.List;
 
 /**
@@ -22,7 +21,8 @@ public final class ConfirmationRequestedEvent extends BaseCustomEvent {
             final String confirmationId,
             final String prompt,
             final String originalToolCallId,
-            final List<String> options, ConfirmationKind kind) {
+            final List<String> options,
+            ConfirmationKind kind) {
         super("confirmation_requested");
         this.confirmationId = confirmationId;
         this.prompt = prompt;

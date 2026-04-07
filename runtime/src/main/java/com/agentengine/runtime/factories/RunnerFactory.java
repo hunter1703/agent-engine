@@ -124,7 +124,8 @@ public class RunnerFactory {
             }
         }
 
-        final List<BasePlugin> plugins = List.of(new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers), new LoggingPlugin());
+        final List<BasePlugin> plugins = List.of(
+                new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers), new LoggingPlugin());
         return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
     }
 }

@@ -18,10 +18,8 @@ import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.functions.Predicate;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.pekko.Done;
@@ -52,7 +50,8 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     @Override
     public Publisher<SessionEvent> startSession(final String agentId, final String sessionId, final String message) {
-        final String resolvedSessionId = StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+        final String resolvedSessionId =
+                StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
         LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
 
         // Subscribe before sending commands so no events are missed during the startup window.
@@ -108,11 +107,13 @@ public class RuntimeServiceImpl implements RuntimeService {
         return getSubscribedEvents(subscription, rootSessionId);
     }
 
-    private static Flowable<SessionEvent> getSubscribedEvents(final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String rootSessionId) {
+    private static Flowable<SessionEvent> getSubscribedEvents(
+            final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String rootSessionId) {
         return Flowable.fromPublisher(subscription.publisher())
                 .map(SequencedEvent::payload)
                 .cast(SessionEvent.class)
-                .takeUntil(sessionEvent -> Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.isTerminal())
+                .takeUntil(sessionEvent ->
+                        Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.isTerminal())
                 .doFinally(subscription::cancel);
     }
 }

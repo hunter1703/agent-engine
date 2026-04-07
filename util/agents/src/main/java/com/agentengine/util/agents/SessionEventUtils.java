@@ -65,7 +65,8 @@ public final class SessionEventUtils {
                 event.finishReason().orElse(null),
                 event.timestamp(),
                 sequence,
-                extractMetadata(event), event.finishReason().isPresent());
+                extractMetadata(event),
+                event.finishReason().isPresent());
     }
 
     public static List<SessionEvent> toSessionEvents(

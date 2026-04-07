@@ -9,7 +9,6 @@ import com.agentengine.runtime.session.commands.InternalCommand.*;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.session.events.*;
 import com.agentengine.runtime.session.state.*;
-import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.runtime.utils.SessionUtils;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.Confirmation;
@@ -606,25 +605,29 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 });
             }
         }
-        return effectBuilder.thenRun(_ -> {
-            final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
-                    rootSessionId,
-                    topology.parentSessionId(),
-                    topology.sessionId(),
-                    event,
-                    state.nextSequence() + turnEvents.size());
-            LOG.info("Publishing adk event : {} as session event :{}", JsonUtils.toJson(event), JsonUtils.toJson(sessionEvent));
-            eventChannel.publish(
-                    rootSessionId,
-                    sessionEvent);
-        }).thenRun(newState -> {
-            if (newState.sessionState().isTerminal() && event.turnComplete().orElse(false)) {
-                LOG.info("Found the session in terminal state");
-                eventChannel.publish(rootSessionId, SessionEvent.terminal(topology.sessionId()));
-            } else {
-                LOG.info("Found the session in non-terminal state");
-            }
-        });
+        return effectBuilder
+                .thenRun(_ -> {
+                    final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
+                            rootSessionId,
+                            topology.parentSessionId(),
+                            topology.sessionId(),
+                            event,
+                            state.nextSequence() + turnEvents.size());
+                    LOG.info(
+                            "Publishing adk event : {} as session event :{}",
+                            JsonUtils.toJson(event),
+                            JsonUtils.toJson(sessionEvent));
+                    eventChannel.publish(rootSessionId, sessionEvent);
+                })
+                .thenRun(newState -> {
+                    if (newState.sessionState().isTerminal()
+                            && event.turnComplete().orElse(false)) {
+                        LOG.info("Found the session in terminal state");
+                        eventChannel.publish(rootSessionId, SessionEvent.terminal(topology.sessionId()));
+                    } else {
+                        LOG.info("Found the session in non-terminal state");
+                    }
+                });
     }
 
     private Effect<SessionFact, SessionActorState> childPaused(
