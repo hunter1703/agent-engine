@@ -64,7 +64,7 @@ public final class ShellCommandTool extends Tool {
                 return Map.of("error", "This command is rejected.");
             }
         }
-        final ProcessBuilder builder = new ProcessBuilder("bash", "-lc", command);
+        final ProcessBuilder builder = new ProcessBuilder("sh", "-lc", command);
         builder.directory(Path.of(System.getProperty("user.home")).toFile());
         builder.redirectErrorStream(true);
         try {

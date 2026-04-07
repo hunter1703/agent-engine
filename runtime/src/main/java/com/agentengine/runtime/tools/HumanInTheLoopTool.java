@@ -22,7 +22,13 @@ public final class HumanInTheLoopTool extends Tool {
     public static final String RESPONSE_OPTIONS = "options";
     public static final String CONTEXT = "context";
     public static final ToolDescriptor DESCRIPTOR =
-            new ToolDescriptor(Constants.HITL_TOOL_NAME, "Request input from the user.", Map.of());
+            new ToolDescriptor(
+                    Constants.HITL_TOOL_NAME,
+                    "Pause and ask the user for required input ONLY when you cannot make MEANINGFUL progress WITHOUT human clarification, preference, approval, or a decision. " +
+                            "DO NOT use this tool for errors, retries, status updates, confirmations that are not required, or to present a final answer. " +
+                            "If the request can be completed reasonably using available context or sensible defaults, do not call this tool.",
+                    Map.of()
+            );
 
     public HumanInTheLoopTool() {
         super(DESCRIPTOR);
@@ -31,14 +37,14 @@ public final class HumanInTheLoopTool extends Tool {
     public Map<String, Object> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
-            @ToolSchema(name = PROMPT, description = "Prompt shown to the user") final String prompt,
-            @ToolSchema(name = KIND, description = "Input kind: TEXT or DECISION") final String kind,
+            @ToolSchema(name = PROMPT, description = "A short, specific question asking only for the missing information, preference, approval, or decision needed to continue. Do NOT use this field to provide a final answer, explain internal errors, or include large amounts of generated content.") final String prompt,
+            @ToolSchema(name = KIND, description = "Type of user input required. Use TEXT when the user must provide missing information or clarification. Use DECISION when the user must choose, approve, reject, or select from explicit options.") final String kind,
             @ToolSchema(
                             name = RESPONSE_OPTIONS,
-                            description = "Optional answer options the user can choose from",
+                            description = "Required when kind is DECISION. A small list of explicit user-selectable choices, such as ['Yes', 'No'] or ['Use Option A', 'Use Option B']. Do not include this for TEXT unless the choices are genuinely constrained.",
                             optional = true)
                     List<String> options,
-            @ToolSchema(name = CONTEXT, description = "Optional context metadata for the pause", optional = true)
+            @ToolSchema(name = CONTEXT, description = "Optional structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.", optional = true)
                     final Map<String, Object> context) {
         if (toolContext == null) {
             return Map.of("message", "Invocation context is not available for request_human_input.");
