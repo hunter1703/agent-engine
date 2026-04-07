@@ -1,15 +1,26 @@
 # Local Docker Desktop development overlay.
-# Persistence is disabled — data is ephemeral (re-seeded on every deploy).
-# For production, use the prod environment: ./k8s/scripts/deploy.sh -e prod
+# Mirrors production settings for realistic testing.
+# Note: Uses 'hostpath' storage class which auto-provisions but has Delete reclaim policy.
+# Data persists as long as PVCs are not deleted (cleanup.sh deletes them by default).
+
+requireExistingSecrets: false
 
 mongodb:
   enabled: true
   auth:
-    enabled: false
+    enabled: true
+    username: agentengine
+    password: agentengine
   persistence:
-    enabled: false
+    enabled: true
+    size: 10Gi
+    storageClassName: "hostpath"
 
 postgres:
   enabled: true
+  username: agentengine
+  password: agentengine
   persistence:
-    enabled: false
+    enabled: true
+    size: 20Gi
+    storageClassName: "hostpath"

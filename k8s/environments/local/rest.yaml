@@ -1,5 +1,14 @@
-replicas: 2
+replicas: 3
 pdb:
-  enabled: false
+  enabled: true
+  minAvailable: 2
 ingress:
   enabled: false
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: agent-engine-rest
+        app.kubernetes.io/instance: agent-engine-rest

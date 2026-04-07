@@ -1,4 +1,4 @@
 globalProperties:
-  infra.mongodb.uri: mongodb://mongodb:27017
+  infra.mongodb.uri: mongodb://agentengine:agentengine@mongodb:27017/?authSource=admin
   infra.mongodb.database: INFRA
   app.mongodb.database: AGENT_ENGINE

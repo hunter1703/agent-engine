@@ -50,7 +50,7 @@ stop_workloads() {
   kubectl delete secret -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${BOLD}${GREEN}✓ Workloads deleted. PVCs preserved for next deployment.${RESET}\n"
-  printf "${BOLD}${BLUE}Run 'sh k8s/scripts/deploy.sh --local' to recreate resources.${RESET}\n\n"
+  printf "${BOLD}${BLUE}Run 'sh k8s/scripts/deploy.sh' to recreate resources.${RESET}\n\n"
   exit 0
 }
 
@@ -59,25 +59,20 @@ trap stop_workloads INT TERM
 
 ENVIRONMENT=$DEFAULT_ENVIRONMENT
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
-WAIT=true
 ATOMIC=true
 LINT=true
 DRY_RUN=false
-BUILD_IMAGES=true
-SKIP_SEED_INFRA=false
-SKIP_SEED_CATALOG=false
 TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-latest}
 EXTRA_VALUES_FILES=""
 SET_ARGUMENTS=""
-LOCAL=false
 LOCAL_PORT=${LOCAL_PORT:-8080}
 
 usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/deploy.sh
-  ./k8s/scripts/deploy.sh --skip-build --skip-seed-infra --skip-seed-catalog
+  ./k8s/scripts/deploy.sh -e prod
 
 Phases:
   1. Build Docker images for runtime, core, and rest.
@@ -86,21 +81,13 @@ Phases:
      Also initializes the PostgreSQL Pekko journal schema (CREATE TABLE IF NOT EXISTS).
   4. Deploy application workloads (runtime, core, rest).
   5. Seed application catalog (models, agents) through the REST API.
-  6. [--local only] Port-forward the REST service to localhost.
+  6. [local environment only] Port-forward the REST service to localhost.
 
 Flags:
-  --skip-build          Skip Docker image builds (step 1). Use when images are pre-built.
-  --skip-seed-infra     Skip infra config seeding (step 3). Use on re-deploys when
-                        infra config is already present and unchanged.
-  --skip-seed-catalog   Skip catalog seeding (step 5). Use on re-deploys when
-                        agent/model catalog is already present and unchanged.
-  --local               After deploy, port-forward agent-engine-rest to localhost.
-                        Set LOCAL_PORT to override the local port (default: 8080).
-  --no-wait             Do not wait for rollouts to complete.
-  --no-atomic           Disable atomic rollback on Helm failure.
-  --skip-lint           Skip helm lint before deploy.
-  --dry-run             Render release changes without applying them (implies --skip-build).
-  --timeout <d>         Helm timeout (default: 10m).
+  --no-atomic       Disable atomic rollback on Helm failure.
+  --skip-lint       Skip helm lint before deploy.
+  --dry-run         Render release changes without applying them.
+  --timeout <d>     Helm timeout (default: 10m).
 EOF
   print_common_usage
 }
@@ -128,10 +115,6 @@ parse_args() {
         IMAGE_TAG=$2
         shift 2
         ;;
-      --no-wait)
-        WAIT=false
-        shift
-        ;;
       --no-atomic)
         ATOMIC=false
         shift
@@ -140,24 +123,8 @@ parse_args() {
         LINT=false
         shift
         ;;
-      --skip-build)
-        BUILD_IMAGES=false
-        shift
-        ;;
-      --skip-seed-infra)
-        SKIP_SEED_INFRA=true
-        shift
-        ;;
-      --skip-seed-catalog)
-        SKIP_SEED_CATALOG=true
-        shift
-        ;;
       --dry-run)
         DRY_RUN=true
-        shift
-        ;;
-      --local)
-        LOCAL=true
         shift
         ;;
       --timeout)
@@ -177,8 +144,7 @@ parse_args() {
 }
 
 helm_flags() {
-  set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT" --skip-build
-  [ "$WAIT"   = "false" ] && set -- "$@" --no-wait
+  set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT"
   [ "$ATOMIC" = "false" ] && set -- "$@" --no-atomic
   [ "$LINT"   = "false" ] && set -- "$@" --skip-lint
   [ "$DRY_RUN" = "true"  ] && set -- "$@" --dry-run
@@ -195,12 +161,12 @@ helm_flags() {
 parse_args "$@"
 
 # ── Phase 1: Build ────────────────────────────────────────────────────────────
-if [ "$DRY_RUN" != "true" ] && [ "$BUILD_IMAGES" = "true" ]; then
+if [ "$DRY_RUN" != "true" ]; then
   print_phase "Phase 1: Building Docker images"
   require_command docker
   TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest
 else
-  print_phase "Phase 1: Skipping image build"
+  print_phase "Phase 1: Skipping image build (dry-run)"
 fi
 
 # ── Phase 2: Deploy infrastructure ───────────────────────────────────────────
@@ -210,7 +176,7 @@ sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
 
 # ── Phase 3: Seed infrastructure configuration ───────────────────────────────
 print_phase "Phase 3: Seeding infrastructure configuration"
-if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_INFRA" != "true" ]; then
+if [ "$DRY_RUN" != "true" ]; then
   sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 fi
 
@@ -222,13 +188,13 @@ sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags)
 
 # ── Phase 5: Seed application catalog ────────────────────────────────────────
 print_phase "Phase 5: Seeding application catalog"
-if [ "$DRY_RUN" != "true" ] && [ "$SKIP_SEED_CATALOG" != "true" ]; then
+if [ "$DRY_RUN" != "true" ]; then
   sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 fi
 
-# ── Phase 6: Local port-forward ───────────────────────────────────────────────
-if [ "$LOCAL" = "true" ] && [ "$DRY_RUN" != "true" ]; then
-  print_phase "Phase 6: Local port-forward"
+# ── Phase 6: Port-forward ────────────────────────────────────────────────────
+if [ "$ENVIRONMENT" = "local" ] && [ "$DRY_RUN" != "true" ]; then
+  print_phase "Phase 6: Port-forward"
   print_step "Clearing existing port-forwards on port ${LOCAL_PORT}"
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   sleep 1

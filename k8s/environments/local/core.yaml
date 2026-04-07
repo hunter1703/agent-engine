@@ -1,3 +1,12 @@
-replicas: 1
+replicas: 2
 pdb:
-  enabled: false
+  enabled: true
+  minAvailable: 1
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: agent-engine-core
+        app.kubernetes.io/instance: agent-engine-core

@@ -6,7 +6,7 @@ set -eu
 
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
 DELETE_NAMESPACE=false
-DELETE_VOLUMES=false
+DELETE_VOLUMES=true
 
 usage() {
   cat <<'EOF'
@@ -14,20 +14,19 @@ Usage:
   ./k8s/scripts/cleanup.sh
   ./k8s/scripts/cleanup.sh runtime core rest
   ./k8s/scripts/cleanup.sh --delete-namespace
-  ./k8s/scripts/cleanup.sh --delete-volumes
+  ./k8s/scripts/cleanup.sh --keep-volumes
 
 Behavior:
   - Removes the requested releases in reverse dependency order.
-  - With no charts, removes the default application stack (global-properties, runtime, core, rest).
-  - Infrastructure (MongoDB, Postgres) is preserved unless explicitly specified.
-  - PVCs are preserved unless --delete-volumes is used.
+  - With no charts, removes ALL charts including infrastructure (MongoDB, Postgres).
+  - PVCs are deleted by default for a clean slate. Use --keep-volumes to preserve data.
 EOF
   cat <<'EOF'
 Additional options:
   -n, --namespace <name>  Kubernetes namespace (default: agent-engine)
   -h, --help             Show help
   --delete-namespace     Delete the namespace after release removal.
-  --delete-volumes       Also delete PVCs (MongoDB and Postgres data volumes).
+  --keep-volumes         Preserve PVCs (MongoDB and Postgres data volumes).
 EOF
 }
 
@@ -43,8 +42,8 @@ parse_args() {
         DELETE_NAMESPACE=true
         shift
         ;;
-      --delete-volumes)
-        DELETE_VOLUMES=true
+      --keep-volumes)
+        DELETE_VOLUMES=false
         shift
         ;;
       -h|--help)
@@ -58,8 +57,13 @@ parse_args() {
     esac
   done
 
-  # shellcheck disable=SC2086
-  REQUESTED_CHARTS=$(normalize_requested_charts $CHART_ARGS)
+  # For cleanup, default to all charts including infra
+  if [ -z "$CHART_ARGS" ]; then
+    REQUESTED_CHARTS="$ALL_CHARTS"
+  else
+    # shellcheck disable=SC2086
+    REQUESTED_CHARTS=$(normalize_requested_charts $CHART_ARGS)
+  fi
 }
 
 parse_args "$@"

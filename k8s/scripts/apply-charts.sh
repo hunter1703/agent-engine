@@ -6,11 +6,9 @@ set -eu
 
 ENVIRONMENT=$DEFAULT_ENVIRONMENT
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
-WAIT=true
 ATOMIC=true
 LINT=true
 DRY_RUN=false
-BUILD_IMAGES=true
 TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "dev")}
 EXTRA_VALUES_FILES=""
@@ -57,20 +55,12 @@ parse_args() {
         IMAGE_TAG=$2
         shift 2
         ;;
-      --no-wait)
-        WAIT=false
-        shift
-        ;;
       --no-atomic)
         ATOMIC=false
         shift
         ;;
       --skip-lint)
         LINT=false
-        shift
-        ;;
-      --skip-build)
-        BUILD_IMAGES=false
         shift
         ;;
       --dry-run)
@@ -97,7 +87,7 @@ parse_args() {
 }
 
 build_selected_images() {
-  if [ "$DRY_RUN" = "true" ] || [ "$BUILD_IMAGES" != "true" ]; then
+  if [ "$DRY_RUN" = "true" ]; then
     return 0
   fi
 
@@ -134,9 +124,6 @@ build_helm_args() {
       --set namespace="$NAMESPACE" \
       --timeout "$TIMEOUT"
 
-    if [ "$WAIT" = "true" ]; then
-      set -- "$@" --wait
-    fi
     if [ "$ATOMIC" = "true" ]; then
       set -- "$@" --atomic
     fi
