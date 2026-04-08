@@ -16,5 +16,6 @@
   "temperature": 0.2,
   "topK": 50,
   "topP": 0.88,
-  "repeatPenalty": 1.08
+  "repeatPenalty": 1.08,
+  "thoughtsEnabled": false
 }

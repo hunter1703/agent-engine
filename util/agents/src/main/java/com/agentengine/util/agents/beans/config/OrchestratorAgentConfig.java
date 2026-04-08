@@ -10,13 +10,13 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeName("ORCHESTRATOR")
 @BsonDiscriminator(value = "ORCHESTRATOR")
 public class OrchestratorAgentConfig extends BaseAgentConfig {
-    private static final String DEFAULT_ORCHESTRATION_MODE = OrchestrationMode.TRANSFER.name();
+    private static final String DEFAULT_ORCHESTRATION_MODE = OrchestrationMode.MANAGER.name();
 
-    @UiField(label = "Orchestration Mode", step = "identity", section = "identity", order = 70)
+    @UiField(label = "Orchestration Mode", step = "identity", order = 70)
     @UiSelect(enumType = OrchestrationMode.class)
     private String orchestrationMode = DEFAULT_ORCHESTRATION_MODE;
 
-    @UiField(label = "Parallel Orchestration", step = "identity", section = "identity", order = 80)
+    @UiField(label = "Parallel Orchestration", step = "identity", order = 80)
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
             field = "orchestrationMode",

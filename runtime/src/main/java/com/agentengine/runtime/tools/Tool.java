@@ -49,7 +49,11 @@ public abstract class Tool extends BaseTool {
     private final ToolDescriptor toolDescriptor;
 
     protected Tool(final ToolDescriptor toolDescriptor) {
-        super(toolDescriptor.name(), toolDescriptor.description());
+        this(toolDescriptor, false);
+    }
+
+    protected Tool(final ToolDescriptor toolDescriptor, final boolean isLongRunning) {
+        super(toolDescriptor.name(), toolDescriptor.description(), isLongRunning);
         this.toolDescriptor = toolDescriptor;
         this.executeMethod = getExecuteMethod();
         this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
@@ -88,9 +92,13 @@ public abstract class Tool extends BaseTool {
                     return Single.just(ImmutableMap.of("error", "This tool call is rejected."));
                 }
             }
+            // Tools that call toolContext.requestConfirmation() should return empty map or null.
+            // ADK emits both confirmation event and function response event. BaseFlow filters out
+            // empty function responses when confirmation is requested, preventing placeholder results
+            // from reaching the LLM. On resume, tool is called again and returns actual result.
             return call(CollectionUtils.nullSafeMap(args), toolContext).defaultIfEmpty(ImmutableMap.of());
         } catch (Exception exception) {
-            LOG.error("Exception occurred while calling function tool: " + executeMethod.getName(), exception);
+            LOG.error("Exception occurred while calling function tool: {}", executeMethod.getName(), exception);
             return Single.just(ImmutableMap.of("status", "error", "message", "An internal error occurred."));
         }
     }
@@ -135,6 +143,21 @@ public abstract class Tool extends BaseTool {
                         "The parameter '%s' was not found in the arguments provided by the model.", binding.name()));
             }
             Object argValue = args.get(binding.name());
+
+            // Handle case where LLM passes JSON string for complex types (common with some models like llama3.1)
+            // If value is a string but expected type is not a simple/primitive type, parse as JSON
+            if (argValue instanceof String stringValue && !Utils.isSimpleType(binding.rawType())) {
+                try {
+                    argValue = JsonUtils.fromJson(stringValue, binding.javaType());
+                } catch (Exception e) {
+                    throw new IllegalArgumentException(
+                            String.format(
+                                    "Failed to parse JSON string for parameter '%s': %s",
+                                    binding.name(), e.getMessage()),
+                            e);
+                }
+            }
+
             if (binding.isList()) {
                 if (argValue instanceof List<?> values) {
                     JavaType elementType = binding.elementType();

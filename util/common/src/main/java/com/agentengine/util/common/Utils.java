@@ -119,7 +119,7 @@ public final class Utils {
         return OBJECT_MAPPER.convertValue(rawValue, typeReference);
     }
 
-    public static Object convertValue(final Object rawValue, final JavaType targetType) {
+    public static <T> T convertValue(final Object rawValue, final JavaType targetType) {
         return OBJECT_MAPPER.convertValue(rawValue, targetType);
     }
 

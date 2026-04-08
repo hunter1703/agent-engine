@@ -116,7 +116,8 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
                                 SubscriberCommand.UnsubscribeCommand::new,
                         COMMAND_TIMEOUT,
                         actorSystemProvider.system().scheduler())
-                .thenApply(ignored -> null);
+                .thenApply(ignored -> (Void) null)
+                .exceptionally(ignored -> null);
     }
 
     private EntityRef<BroadcasterCommand> broadcaster(final Scope scope) {

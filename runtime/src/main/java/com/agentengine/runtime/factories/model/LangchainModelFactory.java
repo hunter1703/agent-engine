@@ -90,11 +90,12 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
         return OpenAiChatModel.builder()
                 .modelName(config.getModel())
                 .baseUrl(config.getBaseUrl())
+                .apiKey(config.getApiKey())
                 .temperature(config.getTemperature())
                 .topP(config.getTopP())
                 .stop(config.getStopTokens())
                 .responseFormat(format)
-                .returnThinking(true)
+                .returnThinking(config.isThoughtsEnabled())
                 .build();
     }
 
@@ -120,11 +121,12 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
         return OpenAiStreamingChatModel.builder()
                 .modelName(config.getModel())
                 .baseUrl(config.getBaseUrl())
+                .apiKey(config.getApiKey())
                 .temperature(config.getTemperature())
                 .topP(config.getTopP())
                 .stop(config.getStopTokens())
                 .responseFormat(format)
-                .returnThinking(true)
+                .returnThinking(config.isThoughtsEnabled())
                 .build();
     }
 

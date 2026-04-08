@@ -39,6 +39,14 @@ config:
     quarkus.otel.sdk.disabled: "true"
     quarkus.log.console.json: "true"
     quarkus.shutdown.timeout: 60S
+    # CORS configuration for React frontend
+    quarkus.http.cors.enabled: "true"
+    quarkus.http.cors.origins: "http://localhost:3000,http://localhost:3001"
+    quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+    quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"
+    quarkus.http.cors.exposed-headers: "Content-Disposition"
+    quarkus.http.cors.access-control-max-age: "24H"
+    quarkus.http.cors.access-control-allow-credentials: "true"
 
 resources:
   requests:

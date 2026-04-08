@@ -21,6 +21,7 @@ public final class AGUIMapperState {
     private String finalAnswer;
     private long currentSourceTimestamp;
     private String currentSourceEventId;
+    private String currentAuthor;
     private int stepSequence;
     private int textMessageSequence;
     private int reasoningSequence;
@@ -34,6 +35,7 @@ public final class AGUIMapperState {
     public void recordSourceEvent(final SessionEvent event) {
         currentSourceTimestamp = event.getTimestamp();
         currentSourceEventId = event.getId();
+        currentAuthor = event.getAuthor();
     }
 
     public boolean hasNewRun(final String candidateRunId) {
@@ -168,6 +170,10 @@ public final class AGUIMapperState {
 
     public String agentId() {
         return agentId;
+    }
+
+    public String currentAuthor() {
+        return currentAuthor != null ? currentAuthor : agentId;
     }
 
     private static String stableReplayId(final String prefix, final String sourceEventId, final int sequence) {

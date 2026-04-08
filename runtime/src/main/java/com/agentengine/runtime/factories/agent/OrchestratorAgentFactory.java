@@ -6,15 +6,18 @@ import com.agentengine.runtime.agents.DelegatedAgent;
 import com.agentengine.runtime.agents.ParallelOrchestratorAgent;
 import com.agentengine.runtime.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.runtime.factories.agent.builders.ParallelOrchestratorAgentBuilder;
-import com.agentengine.runtime.factories.agent.builders.SequentialAgentBuilder;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.tools.ToolFactory;
+import com.agentengine.runtime.tools.agent.AwaitAgentTool;
+import com.agentengine.runtime.tools.agent.SendMessageTool;
+import com.agentengine.runtime.tools.agent.SpawnAgentTool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestrationMode;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorParallelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.pekko.ActorSystemProvider;
 import io.quarkus.arc.WithCaching;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -26,30 +29,34 @@ import java.util.List;
 public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorAgentConfig, Agent> {
     private final AgentService agentService;
     protected final Instance<AgentProvider> agentProviderInstance;
+    private final ActorSystemProvider actorSystemProvider;
 
     @Inject
     public OrchestratorAgentFactory(
             final ModelProvider modelProvider,
             final ToolFactory toolFactory,
             @WithCaching final Instance<AgentProvider> agentProviderInstance,
-            final AgentService agentService) {
+            final AgentService agentService,
+            final ActorSystemProvider actorSystemProvider) {
         super(modelProvider, toolFactory);
         this.agentService = agentService;
         this.agentProviderInstance = agentProviderInstance;
+        this.actorSystemProvider = actorSystemProvider;
     }
 
     @Override
     public Agent build(final OrchestratorAgentConfig config) {
-        final List<? extends Agent> subAgents = buildSubAgents(config.getSubAgentIds());
         OrchestrationMode mode = config.orchestrationModeEnum();
         if (mode == OrchestrationMode.UNKNOWN) {
-            mode = OrchestrationMode.TRANSFER;
+            mode = OrchestrationMode.MANAGER;
         }
         return switch (mode) {
-            case SEQUENTIAL -> buildSequential(config, subAgents);
-            case PARALLEL -> buildParallel(config, subAgents);
-            case TRANSFER -> buildTransfer(config, subAgents);
-            default -> throw new IllegalStateException("Unexpected value: " + mode);
+            case MANAGER -> buildManager(config);
+            case TRANSFER -> buildTransfer(config);
+            case PARALLEL -> buildParallel(config);
+            default ->
+                throw new IllegalArgumentException(
+                        "Unsupported orchestration mode: " + mode + " for agent_id=" + config.getId());
         };
     }
 
@@ -71,19 +78,12 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
         return subAgents;
     }
 
-    private DelegatedAgent buildSequential(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+    private ParallelOrchestratorAgent buildParallel(final OrchestratorAgentConfig config) {
+        final List<? extends Agent> subAgents = buildSubAgents(config.getSubAgentIds());
         if (CollectionUtils.isEmpty(subAgents)) {
             throw new IllegalArgumentException(
-                    "orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id=" + config.getId());
+                    "orchestrator mode PARALLEL requires non-empty subAgentIds for agent_id=" + config.getId());
         }
-        return new SequentialAgentBuilder()
-                .agentConfig(config)
-                .subAgents(subAgents)
-                .build();
-    }
-
-    private static ParallelOrchestratorAgent buildParallel(
-            final OrchestratorAgentConfig config, final List<? extends Agent> subAgents) {
         final OrchestratorParallelConfig parallel = config.getParallel();
         return new ParallelOrchestratorAgentBuilder()
                 .subAgents(subAgents)
@@ -94,11 +94,22 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
                 .build();
     }
 
-    private DelegatedAgent buildTransfer(final BaseAgentConfig config, final List<? extends Agent> subAgents) {
+    private DelegatedAgent buildTransfer(final OrchestratorAgentConfig config) {
+        final List<? extends Agent> subAgents = buildSubAgents(config.getSubAgentIds());
         final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
         if (CollectionUtils.isNotEmpty(subAgents)) {
             builder.subAgents(subAgents);
         }
+        return builder.build();
+    }
+
+    private DelegatedAgent buildManager(final OrchestratorAgentConfig config) {
+        final List<String> subAgentIds = CollectionUtils.nullSafeList(config.getSubAgentIds());
+        final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
+        builder.appendTools(List.of(
+                new SpawnAgentTool(actorSystemProvider, subAgentIds),
+                new SendMessageTool(actorSystemProvider),
+                new AwaitAgentTool(actorSystemProvider)));
         return builder.build();
     }
 

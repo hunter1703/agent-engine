@@ -8,7 +8,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeName("LAST_N")
 @BsonDiscriminator(value = "LAST_N")
 public class LastNContextStrategyConfig extends ContextStrategyConfig {
-    @UiField(label = "Keep Last Tokens", order = 20)
+    @UiField(label = "Keep Last Tokens", step = "model", section = "context", order = 20)
     @UiNumber
     private int keepLastTokens = 1024;
 

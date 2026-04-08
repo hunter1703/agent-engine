@@ -27,7 +27,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 })
 @BsonDiscriminator(key = "type")
 public abstract class ContextStrategyConfig {
-    @UiField(label = "Strategy Type", order = 10)
+    @UiField(label = "Strategy Type", step = "model", section = "context", order = 10)
     @UiSelect(enumType = ContextStrategyType.class)
     private String type;
 

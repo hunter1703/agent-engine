@@ -4,8 +4,11 @@ import com.agentengine.core.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.NamedEntity;
+import com.agentengine.util.common.query.Filter;
+import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import jakarta.inject.Inject;
@@ -18,7 +21,6 @@ import java.util.Map;
 public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
 
     public static final String INCLUDE_EVENTS_OPTION = "includeEvents";
-    private static final String ASSET_TYPE = "session";
 
     private final SessionService sessionService;
 
@@ -29,19 +31,18 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
 
     @Override
     public String getAssetType() {
-        return ASSET_TYPE;
+        return AssetClass.AGENT_SESSION;
     }
 
     @Override
     public PaginatedResult<AgentSession> findAssets(final AssetRequest request) {
-        final Query query = request == null || request.getQuery() == null ? new Query() : request.getQuery();
+        final Query query = sanitizedQuery(request);
         return sessionService.findSessions(query);
     }
 
     @Override
     public PaginatedResult<AgentSession> listAssets(final AssetRequest request) {
-        Query query = request.getQuery();
-        query = query == null ? new Query() : query;
+        Query query = sanitizedQuery(request);
         query.withIncludeFields(List.of(
                 BaseEntity.FIELD_ID,
                 BaseEntity.FIELD_CREATED_TIME,
@@ -66,5 +67,13 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
             return false;
         }
         return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(request.getOptions(), INCLUDE_EVENTS_OPTION));
+    }
+
+    private static Query sanitizedQuery(final AssetRequest request) {
+        final Query query = request == null || request.getQuery() == null ? new Query() : request.getQuery();
+        Filter filter = query.getFilter();
+        final Filter rootSession = Filters.notExists(AgentSession.FIELD_PARENT_SESSION_ID);
+        filter = filter == null ? rootSession : Filters.and(filter, rootSession);
+        return query.withFilter(filter);
     }
 }

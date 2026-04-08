@@ -85,15 +85,19 @@ public final class ContentUtils {
     }
 
     public static List<Part> getToolCallParts(final Content content) {
-        return content.parts().orElse(List.of()).stream()
-                .filter(part -> part.functionCall().isPresent())
-                .toList();
+        return content == null
+                ? List.of()
+                : content.parts().orElse(List.of()).stream()
+                        .filter(part -> part.functionCall().isPresent())
+                        .toList();
     }
 
     public static List<Part> getToolResponseParts(final Content content) {
-        return content.parts().orElse(List.of()).stream()
-                .filter(part -> part.functionResponse().isPresent())
-                .toList();
+        return content == null
+                ? List.of()
+                : content.parts().orElse(List.of()).stream()
+                        .filter(part -> part.functionResponse().isPresent())
+                        .toList();
     }
 
     public static boolean hasVisibleText(final Content content) {
@@ -118,7 +122,7 @@ public final class ContentUtils {
                 .toList();
     }
 
-    public static Content stripToolParts(final Content content) {
+    public static Content stripNonToolParts(final Content content) {
         return content.toBuilder()
                 .parts(content.parts().orElse(List.of()).stream()
                         .filter(part -> part.functionCall().isEmpty()

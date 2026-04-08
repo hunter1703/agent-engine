@@ -3,6 +3,7 @@ package com.agentengine.interfaces.rest.services;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.Cache;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.builder.BuilderDefinition;
 import com.agentengine.util.common.builder.BuilderDefinitionUtils;
 import com.google.common.cache.CacheBuilder;
@@ -20,8 +21,8 @@ public class BuilderDefinitionService {
 
     private BuilderDefinition generateDefinition(final String assetType) {
         return switch (assetType) {
-            case "agent" -> BuilderDefinitionUtils.generate(BaseAgentConfig.class);
-            case "model" -> BuilderDefinitionUtils.generate(ModelConfig.class);
+            case AssetClass.AGENT -> BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+            case AssetClass.MODEL -> BuilderDefinitionUtils.generate(ModelConfig.class);
             default -> throw new IllegalArgumentException("Unsupported assetType: " + assetType);
         };
     }

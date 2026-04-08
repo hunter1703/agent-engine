@@ -21,10 +21,10 @@ RUNTIME_HEADLESS_SERVICE=${RUNTIME_HEADLESS_SERVICE:-agent-engine-runtime-intern
 RUNTIME_STATEFULSET_NAME=${RUNTIME_STATEFULSET_NAME:-agent-engine-runtime}
 RUNTIME_CLUSTER_NAME=${RUNTIME_CLUSTER_NAME:-agent-engine-runtime}
 PEKKO_SNAPSHOT_THRESHOLD=${PEKKO_SNAPSHOT_THRESHOLD:-100}
-DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-qwen3-coder-30b}
-TITLE_MODEL_ID=${TITLE_MODEL_ID:-$DEFAULT_MODEL_ID}
-COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-$DEFAULT_MODEL_ID}
-EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-$DEFAULT_MODEL_ID}
+DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-}
+TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
+COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
+EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
 WAIT_TIMEOUT=${WAIT_TIMEOUT:-180s}
 
 usage() {
@@ -213,9 +213,9 @@ function applyDeploymentOverrides(config) {
   const next = { ...config };
 
   if (next.type === "default_models") {
-    next.titleModelId = titleModelId || next.titleModelId;
-    next.compactionModelId = compactionModelId || next.compactionModelId;
-    next.evaluatorModelId = evaluatorModelId || next.evaluatorModelId;
+    if (titleModelId) next.titleModelId = titleModelId;
+    if (compactionModelId) next.compactionModelId = compactionModelId;
+    if (evaluatorModelId) next.evaluatorModelId = evaluatorModelId;
     return next;
   }
 

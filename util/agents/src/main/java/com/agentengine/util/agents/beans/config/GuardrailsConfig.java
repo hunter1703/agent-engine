@@ -2,20 +2,22 @@ package com.agentengine.util.agents.beans.config;
 
 import com.agentengine.util.common.builder.annotations.UiBoolean;
 import com.agentengine.util.common.builder.annotations.UiField;
+import com.agentengine.util.common.builder.annotations.UiSelect;
 import java.util.ArrayList;
 import java.util.List;
 
 public class GuardrailsConfig {
     private static final String DEFAULT_ON_ERROR = GuardrailErrorMode.FAIL_OPEN.name();
 
-    @UiField(label = "Enabled", order = 10)
+    @UiField(label = "Enabled", step = "guardrails", order = 10)
     @UiBoolean
     private boolean enabled = true;
 
-    @UiField(label = "Default On Error", order = 20)
+    @UiField(label = "Default On Error", step = "guardrails", order = 20)
+    @UiSelect(enumType = GuardrailErrorMode.class)
     private String defaultOnError = DEFAULT_ON_ERROR;
 
-    @UiField(label = "Rules", order = 30)
+    @UiField(label = "Rules", step = "guardrails", order = 30)
     private List<GuardrailRule> rules = new ArrayList<>();
 
     public boolean isEnabled() {

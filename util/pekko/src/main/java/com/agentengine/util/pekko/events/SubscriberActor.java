@@ -5,6 +5,7 @@ import com.agentengine.util.pekko.events.SubscriberCommand.BroadcasterTerminated
 import com.agentengine.util.pekko.events.SubscriberCommand.ResubscribeCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeResultCommand;
+import io.reactivex.rxjava3.processors.FlowableProcessor;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,6 @@ import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.actor.typed.javadsl.Receive;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.japi.function.Function;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +82,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
     private final String subscriptionId;
     private final EntityRef<BroadcasterCommand> broadcasterEntity;
-    private final Subscriber<SequencedEvent<?>> processor;
+    private final FlowableProcessor<SequencedEvent<?>> processor;
 
     private ActorRef<BroadcasterCommand> broadcaster;
     private ActorRef<SubscriberCommandResult> pendingSubscribeReplyTo;
@@ -97,7 +97,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
             final ActorContext<SubscriberCommand> context,
             final String subscriptionId,
             final EntityRef<BroadcasterCommand> broadcasterEntity,
-            final Subscriber<SequencedEvent<?>> processor) {
+            final FlowableProcessor<SequencedEvent<?>> processor) {
         super(context);
         this.subscriptionId = subscriptionId;
         this.broadcasterEntity = broadcasterEntity;
@@ -107,7 +107,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
     public static Behavior<SubscriberCommand> create(
             final String subscriptionId,
             final EntityRef<BroadcasterCommand> broadcasterEntity,
-            final Subscriber<SequencedEvent<?>> downstream) {
+            final FlowableProcessor<SequencedEvent<?>> downstream) {
         return Behaviors.setup(context -> new SubscriberActor(context, subscriptionId, broadcasterEntity, downstream));
     }
 
@@ -270,6 +270,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         try {
             processor.onNext(event);
             lastSeenSequence = sequence;
+            if (!processor.hasSubscribers()) {
+                return Behaviors.stopped();
+            }
             return this;
         } catch (final Throwable error) {
             terminalError = error;
@@ -334,5 +337,8 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
         processor.onNext(event);
         lastSeenSequence = sequence;
+        if (!processor.hasSubscribers()) {
+            throw new IllegalStateException("Downstream terminated during event delivery");
+        }
     }
 }

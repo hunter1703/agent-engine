@@ -30,7 +30,7 @@ public final class HumanInTheLoopTool extends Tool {
             Map.of());
 
     public HumanInTheLoopTool() {
-        super(DESCRIPTOR);
+        super(DESCRIPTOR, true);
     }
 
     public Map<String, Object> execute(
@@ -73,10 +73,11 @@ public final class HumanInTheLoopTool extends Tool {
         }
 
         LOG.info("Requesting HITL confirmation kind={}", pauseKind);
-        return requestConfirmation(toolContext, prompt, options, context, pauseKind);
+        requestConfirmation(toolContext, prompt, options, context, pauseKind);
+        return null;
     }
 
-    private Map<String, Object> requestConfirmation(
+    private void requestConfirmation(
             final ToolContext toolContext,
             final String prompt,
             List<String> options,
@@ -99,7 +100,6 @@ public final class HumanInTheLoopTool extends Tool {
             payload.put(CONTEXT, context);
         }
         toolContext.requestConfirmation(sanitizedPrompt, payload);
-        return Map.of();
     }
 
     private static Map<String, Object> confirm(

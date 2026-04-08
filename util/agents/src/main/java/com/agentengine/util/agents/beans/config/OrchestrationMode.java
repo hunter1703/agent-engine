@@ -11,7 +11,9 @@ public enum OrchestrationMode {
     /** Deterministic sequential execution over sub-agents. */
     SEQUENTIAL,
     /** Deterministic parallel execution over sub-agents. */
-    PARALLEL;
+    PARALLEL,
+    /** LLM-driven manager that spawns, messages, and awaits configurable sub-agents. */
+    MANAGER;
 
     public static OrchestrationMode valueOfOrDefault(final String value) {
         if (value == null || value.isBlank()) {

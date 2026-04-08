@@ -4,12 +4,17 @@ import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.StartChildResult;
 import com.agentengine.runtime.session.StartSessionResult;
-import com.agentengine.runtime.session.commands.ExternalCommand;
+import com.agentengine.runtime.session.commands.SelfCommand.StartChildCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
+import com.google.genai.types.FunctionDeclaration;
+import com.google.genai.types.Schema;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Spawns a new child agent session and starts it with the given message.
@@ -28,8 +33,43 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                     + "without waiting for the child to complete. Use await_agent to collect the result.",
             Map.of());
 
-    public SpawnAgentTool(final ActorSystemProvider actorSystemProvider) {
+    private final List<String> subAgentIds;
+
+    public SpawnAgentTool(final ActorSystemProvider actorSystemProvider, final List<String> subAgentIds) {
         super(DESCRIPTOR, actorSystemProvider);
+        this.subAgentIds = List.copyOf(subAgentIds);
+    }
+
+    @Override
+    public Optional<FunctionDeclaration> declaration() {
+        if (subAgentIds.isEmpty()) {
+            return super.declaration();
+        }
+        final String agentList = String.join(", ", subAgentIds);
+        final Map<String, Schema> properties = new LinkedHashMap<>();
+        properties.put(
+                "agent_id",
+                Schema.builder()
+                        .type("STRING")
+                        .enum_(subAgentIds)
+                        .description("ID of the agent to spawn. Available agents: " + agentList + ". Required.")
+                        .build());
+        properties.put(
+                "message",
+                Schema.builder()
+                        .type("STRING")
+                        .description("Initial message to send to the spawned agent. Required.")
+                        .build());
+        final Schema params = Schema.builder()
+                .type("OBJECT")
+                .properties(properties)
+                .required(List.of("agent_id", "message"))
+                .build();
+        return Optional.of(FunctionDeclaration.builder()
+                .name(TOOL_NAME)
+                .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
+                .parameters(params)
+                .build());
     }
 
     public Map<String, Object> execute(
@@ -40,8 +80,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                     final String message) {
         final StartChildResult startChildResult = actorRef(toolContext)
                 .<StartChildResult>ask(
-                        replyTo -> new ExternalCommand.StartChildCommand(
-                                childAgentId, new UniqueRecord<>(message), replyTo),
+                        replyTo -> new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join();

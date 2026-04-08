@@ -14,7 +14,14 @@ public class AbstractAgentTool extends Tool {
     protected final ActorSystemProvider actorSystemProvider;
 
     protected AbstractAgentTool(final ToolDescriptor toolDescriptor, final ActorSystemProvider actorSystemProvider) {
-        super(toolDescriptor);
+        this(toolDescriptor, actorSystemProvider, false);
+    }
+
+    protected AbstractAgentTool(
+            final ToolDescriptor toolDescriptor,
+            final ActorSystemProvider actorSystemProvider,
+            final boolean isLongRunning) {
+        super(toolDescriptor, isLongRunning);
         this.actorSystemProvider = actorSystemProvider;
     }
 

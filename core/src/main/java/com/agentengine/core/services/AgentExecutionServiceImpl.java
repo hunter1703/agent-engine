@@ -15,6 +15,7 @@ import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.Map;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,7 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
 
         final String rootSessionId = session.getRootSessionId();
         final String rootAgentId = session.getRootAgentId();
-        final Confirmation confirmation = new Confirmation(confirmationId, confirmed, answer);
+        final Confirmation confirmation = new Confirmation(confirmationId, confirmed, Map.of("answer", answer));
 
         final AGUIEventMapper mapper = new AGUIEventMapper(rootSessionId, rootAgentId);
         return Flowable.fromPublisher(runtimeService.confirmSession(rootSessionId, confirmation))

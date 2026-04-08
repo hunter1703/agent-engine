@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 public final class ToolUtils {
     private static final Logger LOG = LoggerFactory.getLogger(ToolUtils.class);
-    private static final String ARG_ORIGINAL_FUNCTION_CALL = "originalFunctionCall";
 
     private ToolUtils() {}
 
@@ -354,7 +353,7 @@ public final class ToolUtils {
         final Map<String, Object> args = CollectionUtils.nullSafeMap(
                 confirmationCall == null ? null : confirmationCall.args().orElse(Map.of()));
         return Utils.toType(
-                CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL), new TypeReference<>() {});
+                CollectionUtils.getValueFromMap(args, Constants.ARG_ORIGINAL_FUNCTION_CALL), new TypeReference<>() {});
     }
 
     public static boolean isHumanInTheLoopToolCall(final FunctionCall functionCall) {

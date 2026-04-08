@@ -3,19 +3,7 @@ package com.agentengine.util.common.builder;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.SchemaUtils;
 import com.agentengine.util.common.Secure;
-import com.agentengine.util.common.builder.annotations.UiAccess;
-import com.agentengine.util.common.builder.annotations.UiAccessLevel;
-import com.agentengine.util.common.builder.annotations.UiBoolean;
-import com.agentengine.util.common.builder.annotations.UiDynamicSchema;
-import com.agentengine.util.common.builder.annotations.UiExpression;
-import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiGroup;
-import com.agentengine.util.common.builder.annotations.UiLookup;
-import com.agentengine.util.common.builder.annotations.UiNumber;
-import com.agentengine.util.common.builder.annotations.UiPreset;
-import com.agentengine.util.common.builder.annotations.UiRule;
-import com.agentengine.util.common.builder.annotations.UiSelect;
-import com.agentengine.util.common.builder.annotations.UiText;
+import com.agentengine.util.common.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -69,9 +57,40 @@ public final class BuilderDefinitionUtils {
         final SchemaBuilder<?, ?> schemaBuilder = buildSchemaForType(rootType, context, "");
         schemaBuilder.withKeyword("$schema", "https://json-schema.org/draft/2020-12/schema");
         final PresetCollection presets = collectPresets(rootType);
+        final List<LayoutStep> steps = extractLayoutSteps(rootType);
         return new BuilderDefinition(
                 toMap(schemaBuilder),
-                new UILayout(attachFieldPresets(context.fields, presets.fieldPresets()), presets.rootPresets()));
+                new UILayout(attachFieldPresets(context.fields, presets.fieldPresets()), presets.rootPresets(), steps));
+    }
+
+    private static List<LayoutStep> extractLayoutSteps(final Class<?> rootType) {
+        final UiSteps stepsAnnotation = rootType.getAnnotation(UiSteps.class);
+        if (stepsAnnotation == null) {
+            return null;
+        }
+
+        final List<LayoutStep> steps = new ArrayList<>();
+
+        for (final UiStep stepAnnotation : stepsAnnotation.steps()) {
+            final List<LayoutSection> sections = new ArrayList<>();
+
+            for (final UiSection sectionAnnotation : stepAnnotation.sections()) {
+                sections.add(new LayoutSection(
+                        sectionAnnotation.id(),
+                        sectionAnnotation.label(),
+                        sectionAnnotation.description().isBlank() ? null : sectionAnnotation.description(),
+                        sectionAnnotation.order()));
+            }
+
+            steps.add(new LayoutStep(
+                    stepAnnotation.id(),
+                    stepAnnotation.label(),
+                    stepAnnotation.description().isBlank() ? null : stepAnnotation.description(),
+                    stepAnnotation.order(),
+                    sections.isEmpty() ? null : List.copyOf(sections)));
+        }
+
+        return steps.isEmpty() ? null : List.copyOf(steps);
     }
 
     public static <T> T sanitize(final BuilderDefinition definition, final BuilderMode mode, final T payload) {
@@ -219,7 +238,11 @@ public final class BuilderDefinitionUtils {
                 final String subtypeName = entry.getKey();
                 final Class<?> subtype = entry.getValue();
                 final Object subtypeDefaults = instantiate(subtype);
-                final Map<String, Object> autoExpr = Map.of("===", List.of(Map.of("var", discriminator), subtypeName));
+                // Use full pointer path for discriminator in nested polymorphic types
+                final String discriminatorPath =
+                        pointer.isBlank() ? discriminator : pointer.substring(1) + "." + discriminator;
+                final Map<String, Object> autoExpr =
+                        Map.of("===", List.of(Map.of("var", discriminatorPath), subtypeName));
                 for (final Field field : subtype.getDeclaredFields()) {
                     if (!isSerializable(field) || !registered.add(field.getName())) {
                         continue;
@@ -298,15 +321,14 @@ public final class BuilderDefinitionUtils {
         }
 
         final UiField meta = find(owner, field, UiField.class);
-        final UiGroup group = owner.getAnnotation(UiGroup.class);
         final Widget widget = detectWidget(owner, field);
 
         final String label = meta != null && !meta.label().isBlank() ? meta.label() : humanize(field.getName());
-        final int order = meta != null ? meta.order() : (group != null ? group.order() : 100);
+        final int order = meta != null ? meta.order() : 100;
         final boolean advanced = meta != null && meta.advanced();
 
-        final String step = resolveStep(meta, group);
-        final String section = resolveSection(meta, group);
+        final String step = resolveStep(meta);
+        final String section = resolveSection(meta);
 
         final LayoutAccessPolicy access = buildAccess(find(owner, field, UiAccess.class), field.getName());
         final boolean collection = isCollection(field);
@@ -826,15 +848,13 @@ public final class BuilderDefinitionUtils {
 
     // ─── String helpers ───────────────────────────────────────────────────────
 
-    private static String resolveStep(final UiField meta, final UiGroup group) {
+    private static String resolveStep(final UiField meta) {
         if (meta != null && !meta.step().isBlank()) return meta.step();
-        if (group != null && !group.step().isBlank()) return group.step();
         return "general";
     }
 
-    private static String resolveSection(final UiField meta, final UiGroup group) {
+    private static String resolveSection(final UiField meta) {
         if (meta != null && !meta.section().isBlank()) return meta.section();
-        if (group != null && !group.section().isBlank()) return group.section();
         return "general";
     }
 

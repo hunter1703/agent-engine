@@ -11,15 +11,17 @@ import com.agentengine.util.common.JsonUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.AgentTransfer;
-import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.flows.llmflows.RequestProcessor;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
 import com.google.common.collect.ImmutableList;
+import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
+import com.google.genai.types.FunctionResponse;
+import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.Optional;
-import java.util.UUID;
+import io.vertx.core.impl.ConcurrentHashSet;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,16 +86,32 @@ public final class BaseFlow extends SingleFlow {
         }
 
         final AtomicBoolean endInvocation = new AtomicBoolean();
-        final AtomicBoolean confirmationRequested = new AtomicBoolean();
         final AtomicBoolean foundFinalAnswer = new AtomicBoolean();
-
+        // original tool call id that requested the confirmation
+        final ConcurrentHashSet<String> confirmationRequested = new ConcurrentHashSet<>();
         return super.run(invocationContext)
                 .map(event -> {
+                    confirmationRequested.addAll(
+                            event.actions().requestedToolConfirmations().keySet());
+                    final Content content =
+                            event.content().orElse(Content.builder().build());
+
+                    // every tool needs to return something, even if it requires confirmation; tools that require
+                    // confirmation can emit empty response, so filter out before emitting to the stream for correctness
+                    final List<Part> filteredParts = content.parts().orElse(List.of()).stream()
+                            .filter(part -> {
+                                final FunctionResponse response =
+                                        part.functionResponse().orElse(null);
+                                return response == null
+                                        || !confirmationRequested.contains(
+                                                response.id().orElse(null))
+                                        || CollectionUtils.isNotEmpty(
+                                                response.response().orElse(Map.of()));
+                            })
+                            .toList();
+
                     if (event.actions().endInvocation().orElse(false)) {
                         endInvocation.set(true);
-                    }
-                    if (CollectionUtils.isNotEmpty(Functions.getAskUserConfirmationFunctionCalls(event))) {
-                        confirmationRequested.set(true);
                     }
                     if (event.finalResponse()) {
                         foundFinalAnswer.set(true);
@@ -101,6 +119,7 @@ public final class BaseFlow extends SingleFlow {
                     // Strip turnComplete and finishReason — the synthetic boundary event is the
                     // sole authoritative commit point for the turn.
                     return event.toBuilder()
+                            .content(content.toBuilder().parts(filteredParts).build())
                             .turnComplete(Optional.empty())
                             .finishReason(Optional.empty())
                             .build();
@@ -108,7 +127,7 @@ public final class BaseFlow extends SingleFlow {
                 .concatWith(Flowable.defer(() -> {
                     final TurnOutcome outcome = resolveOutcome(
                             endInvocation.get(),
-                            confirmationRequested.get(),
+                            CollectionUtils.isNotEmpty(confirmationRequested),
                             foundFinalAnswer.get(),
                             runState.consumeContinuation());
                     final Flowable<Event> turnCompletedEvent =

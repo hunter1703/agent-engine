@@ -2,7 +2,7 @@
   {
     "id": "DEFAULT_MODELS:default",
     "type": "default_models",
-    "titleModelId": "qwen2.5-1.5b-instruct-q5_k_m",
+    "titleModelId": "devstral",
     "compactionModelId": "llama3.1-8b",
     "evaluatorModelId": "llama3.1-8b"
   }

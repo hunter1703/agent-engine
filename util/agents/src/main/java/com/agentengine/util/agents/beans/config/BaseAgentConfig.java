@@ -1,6 +1,7 @@
 package com.agentengine.util.agents.beans.config;
 
 import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.builder.annotations.*;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -32,25 +33,43 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")
 })
 @BsonDiscriminator(key = "type")
-@UiGroup(step = "identity", section = "identity", order = 0)
+@UiSteps(
+        steps = {
+            @UiStep(id = "identity", label = "Identity", order = 0),
+            @UiStep(
+                    id = "model",
+                    label = "Model Configuration",
+                    order = 1,
+                    sections = {
+                        @UiSection(id = "model", label = "Model", order = 0),
+                        @UiSection(id = "context", label = "Context", order = 1)
+                    }),
+            @UiStep(id = "guardrails", label = "Guardrails", order = 2),
+            @UiStep(id = "runtime", label = "Runtime", order = 3)
+        })
 public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
-    @UiField(label = "Agent Type", step = "identity", section = "identity", order = 20)
+    @UiField(label = "Agent Type", step = "identity", order = 20)
     @UiSelect(enumType = AgentType.class)
     @NotBlank
     private String type;
 
-    @UiField(label = "Description", step = "identity", section = "identity", order = 40)
+    @UiField(label = "Description", step = "identity", order = 40)
     @UiText
     @Secure
     private String description;
 
-    @UiField(label = "Avatar", step = "identity", section = "identity", order = 50)
+    @UiField(label = "Avatar", step = "identity", order = 50)
     @UiText
     private String avatar;
 
+    @UiField(label = "Capabilities", step = "identity", order = 55)
+    @UiText
+    private List<String> capabilities = new ArrayList<>();
+
     @UiField(label = "Model ID", step = "model", section = "model", order = 10)
-    @UiLookup(assetType = "model")
+    @UiLookup(assetType = AssetClass.MODEL)
+    @NotBlank
     private String modelId;
 
     @UiField(label = "System Prompt", step = "model", section = "model", order = 20)
@@ -67,8 +86,8 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     @UiField(label = "Tools", step = "model", section = "model", order = 40)
     private List<ToolsConfig> tools = new ArrayList<>();
 
-    @UiField(label = "Sub Agents", step = "identity", section = "identity", order = 60)
-    @UiLookup(assetType = "agent")
+    @UiField(label = "Sub Agents", step = "identity", order = 25)
+    @UiLookup(assetType = AssetClass.AGENT)
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
             field = "type",
@@ -76,13 +95,13 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
             values = {"ORCHESTRATOR"})
     private List<String> subAgentIds = new ArrayList<>();
 
-    @UiField(label = "Guardrails", step = "guardrails", section = "guardrails", order = 10)
+    @UiField(label = "Guardrails", step = "guardrails", order = 10)
     private GuardrailsConfig guardrails = new GuardrailsConfig();
 
-    @UiField(label = "Runtime", step = "runtime", section = "runtime", order = 10)
+    @UiField(label = "Runtime", step = "runtime", order = 10)
     private AgentRuntimeConfig runtime = new AgentRuntimeConfig();
 
-    @UiField(label = "Tool Execution Mode", step = "runtime", section = "runtime", order = 20)
+    @UiField(label = "Tool Execution Mode", step = "runtime", order = 20)
     @UiSelect(enumType = ToolExecutionMode.class)
     private String toolExecutionMode = ToolExecutionMode.PARALLEL.name();
 
@@ -95,7 +114,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     }
 
     @Override
-    @UiField(label = "ID", step = "identity", section = "identity", order = 0)
+    @UiField(label = "ID", step = "identity", order = 0)
     @UiText
     @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
     public String getId() {
@@ -109,7 +128,7 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     }
 
     @Override
-    @UiField(label = "Name", step = "identity", section = "identity", order = 10)
+    @UiField(label = "Name", step = "identity", order = 10)
     @UiText
     @Secure
     public String getName() {
@@ -145,6 +164,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     public void setAvatar(final String avatar) {
         this.avatar = avatar;
+    }
+
+    public List<String> getCapabilities() {
+        return capabilities;
+    }
+
+    public void setCapabilities(final List<String> capabilities) {
+        this.capabilities = capabilities == null ? new ArrayList<>() : new ArrayList<>(capabilities);
     }
 
     public String getModelId() {

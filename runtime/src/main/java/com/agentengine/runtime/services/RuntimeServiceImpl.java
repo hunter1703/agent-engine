@@ -2,11 +2,10 @@ package com.agentengine.runtime.services;
 
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.api.services.RuntimeService;
-import com.agentengine.runtime.session.ConfirmResult;
-import com.agentengine.runtime.session.SessionActorFactory;
-import com.agentengine.runtime.session.SessionEventChannel;
-import com.agentengine.runtime.session.StartSessionResult;
-import com.agentengine.runtime.session.commands.ExternalCommand;
+import com.agentengine.runtime.session.*;
+import com.agentengine.runtime.session.commands.ExternalCommand.ConfirmCommand;
+import com.agentengine.runtime.session.commands.ExternalCommand.StartCommand;
+import com.agentengine.runtime.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.session.state.SessionTopology;
 import com.agentengine.util.agents.beans.Confirmation;
@@ -16,6 +15,8 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
+import com.agentengine.util.common.update.Operation;
+import com.agentengine.util.common.update.Update;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
 import jakarta.inject.Inject;
@@ -37,15 +38,18 @@ public class RuntimeServiceImpl implements RuntimeService {
     private final SessionActorFactory sessionActorFactory;
     private final SessionEventChannel eventChannel;
     private final SessionService sessionService;
+    private final SessionTitleGenerator sessionTitleGenerator;
 
     @Inject
     public RuntimeServiceImpl(
             final SessionActorFactory sessionActorFactory,
             final SessionEventChannel eventChannel,
-            final SessionService sessionService) {
+            final SessionService sessionService,
+            final SessionTitleGenerator sessionTitleGenerator) {
         this.sessionActorFactory = sessionActorFactory;
         this.eventChannel = eventChannel;
         this.sessionService = sessionService;
+        this.sessionTitleGenerator = sessionTitleGenerator;
     }
 
     @Override
@@ -60,11 +64,10 @@ public class RuntimeServiceImpl implements RuntimeService {
 
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(resolvedSessionId);
         ref.<Done>ask(
-                        replyTo -> new ExternalCommand.InitializeCommand(
-                                SessionTopology.root(agentId, resolvedSessionId), replyTo),
+                        replyTo -> new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .thenCompose(ignored -> ref.<StartSessionResult>ask(
-                        replyTo -> new ExternalCommand.StartCommand(new UniqueRecord<>(message), replyTo),
+                        replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT))
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
@@ -93,9 +96,7 @@ public class RuntimeServiceImpl implements RuntimeService {
                 eventChannel.subscribe(rootSessionId).toCompletableFuture().join();
 
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
-        ref.<ConfirmResult>ask(
-                        replyTo -> new ExternalCommand.ConfirmCommand(confirmation, replyTo),
-                        SessionActorFactory.ASK_TIMEOUT)
+        ref.<ConfirmResult>ask(replyTo -> new ConfirmCommand(confirmation, replyTo), SessionActorFactory.ASK_TIMEOUT)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         LOG.error("Failed to confirm session {}", sessionId, ex);
@@ -107,13 +108,20 @@ public class RuntimeServiceImpl implements RuntimeService {
         return getSubscribedEvents(subscription, rootSessionId);
     }
 
-    private static Flowable<SessionEvent> getSubscribedEvents(
+    private Flowable<SessionEvent> getSubscribedEvents(
             final EventSubscription<SequencedEvent<SessionEvent>> subscription, final String rootSessionId) {
         return Flowable.fromPublisher(subscription.publisher())
                 .map(SequencedEvent::payload)
                 .cast(SessionEvent.class)
-                .takeUntil(sessionEvent ->
-                        Objects.equals(rootSessionId, sessionEvent.getSessionId()) && sessionEvent.isTerminal())
-                .doFinally(subscription::cancel);
+                .takeWhile(sessionEvent ->
+                        !Objects.equals(rootSessionId, sessionEvent.getSessionId()) || !sessionEvent.isTerminal())
+                .doFinally(() -> {
+                    final String title = sessionTitleGenerator.generateTitle(rootSessionId);
+                    if (StringUtils.isNotBlank(title)) {
+                        sessionService.updateSession(
+                                rootSessionId, Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
+                    }
+                    subscription.cancel();
+                });
     }
 }

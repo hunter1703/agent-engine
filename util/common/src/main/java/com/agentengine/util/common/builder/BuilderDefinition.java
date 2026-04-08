@@ -39,7 +39,8 @@ public record BuilderDefinition(Map<String, Object> schema, UILayout layout) {
                 resolvedSchema,
                 new UILayout(
                         new LinkedHashMap<>(resolvedFields),
-                        layout.presets() == null || layout.presets().isEmpty() ? null : List.copyOf(layout.presets())));
+                        layout.presets() == null || layout.presets().isEmpty() ? null : List.copyOf(layout.presets()),
+                        layout.steps()));
     }
 
     private static Map<String, Object> deepCopySchema(final Map<String, Object> input) {

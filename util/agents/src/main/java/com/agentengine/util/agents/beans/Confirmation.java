@@ -1,6 +1,7 @@
 package com.agentengine.util.agents.beans;
 
 import jakarta.validation.constraints.NotBlank;
+import java.util.Map;
 import java.util.Objects;
 
 public final class Confirmation {
@@ -11,9 +12,9 @@ public final class Confirmation {
 
     public Confirmation() {}
 
-    private String answer;
+    private Map<String, Object> answer;
 
-    public Confirmation(String confirmationId, Boolean confirmed, String answer) {
+    public Confirmation(String confirmationId, Boolean confirmed, Map<String, Object> answer) {
         this.confirmationId = confirmationId;
         this.confirmed = confirmed;
         this.answer = answer;
@@ -27,7 +28,7 @@ public final class Confirmation {
         return confirmed;
     }
 
-    public String getAnswer() {
+    public Map<String, Object> getAnswer() {
         return answer;
     }
 
@@ -39,7 +40,7 @@ public final class Confirmation {
         this.confirmed = confirmed;
     }
 
-    public void setAnswer(final String answer) {
+    public void setAnswer(final Map<String, Object> answer) {
         this.answer = answer;
     }
 

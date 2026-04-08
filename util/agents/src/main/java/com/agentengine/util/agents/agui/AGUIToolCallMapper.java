@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.agui;
 
+import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 import com.agentengine.util.agents.Constants;
@@ -26,7 +27,6 @@ import org.slf4j.LoggerFactory;
 public final class AGUIToolCallMapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(AGUIToolCallMapper.class);
-    private static final String ARG_ORIGINAL_FUNCTION_CALL = "originalFunctionCall";
     private static final String ARG_TOOL_CONFIRMATION = "toolConfirmation";
 
     private final AGUIMapperState state;
@@ -42,6 +42,8 @@ public final class AGUIToolCallMapper {
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(callName)) {
             return mapConfirmationCall(call);
         } else if (Constants.HITL_TOOL_NAME.equals(callName)) {
+            // HITL requires confirmation id which comes from adk_request_confirmation tool call so suppress the HITL
+            // event, as confirmation is requested via adk_request_confirmation tool call
             return Flowable.empty();
         }
         final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
@@ -94,20 +96,17 @@ public final class AGUIToolCallMapper {
         final String confirmationId = call.id().orElseThrow();
         final Map<String, Object> args = CollectionUtils.nullSafeMap(call.args().orElse(Map.of()));
 
-        final FunctionCall originalFunctionCall = CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL);
-        if (originalFunctionCall == null) {
-            LOG.warn("Missing originalFunctionCall in confirmation args - args='{}'", JsonUtils.toJson(args));
+        final FunctionCall originalFunctionCall =
+                Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+        // paused by a tool whose confirmation is not supposed to be given by user, so suppress that event
+        if (Objects.equals(
+                Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
             return Flowable.empty();
         }
-
         final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
-        final ToolConfirmation toolConfirmation = CollectionUtils.getValueFromMap(args, ARG_TOOL_CONFIRMATION);
-        if (toolConfirmation == null) {
-            LOG.warn("Missing toolConfirmation in confirmation args - args='{}'", JsonUtils.toJson(args));
-            return Flowable.empty();
-        }
-
+        final ToolConfirmation toolConfirmation =
+                Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_TOOL_CONFIRMATION));
         final String prompt = toolConfirmation.hint();
         @SuppressWarnings("unchecked")
         final List<String> options =

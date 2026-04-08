@@ -43,20 +43,15 @@ public final class ResponseUtils {
         return ContentUtils.hasVisibleText(response.content().orElse(null));
     }
 
-    public static ToolConfirmation buildToolConfirmation(final Boolean confirmed, final String answer) {
-        if (confirmed == null && StringUtils.isBlank(answer)) {
+    public static ToolConfirmation buildToolConfirmation(final Boolean confirmed, final Map<String, Object> answer) {
+        if (confirmed == null && answer == null) {
             throw new IllegalArgumentException("either confirmation or answer is required");
         }
         final ToolConfirmation.Builder builder = ToolConfirmation.builder();
-        if (StringUtils.isNotBlank(answer)) {
-            builder.payload(Map.of("answer", answer));
+        if (answer != null) {
+            builder.payload(answer);
         }
-        if (confirmed != null) {
-            builder.confirmed(confirmed);
-        } else if (StringUtils.isNotBlank(answer)) {
-            builder.confirmed(true);
-        }
-        return builder.build();
+        return builder.confirmed(Objects.requireNonNullElse(confirmed, true)).build();
     }
 
     public static LlmResponse requestHumanToDecide(final String prompt) {

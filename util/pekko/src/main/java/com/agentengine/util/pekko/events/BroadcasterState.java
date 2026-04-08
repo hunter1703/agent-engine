@@ -14,11 +14,12 @@ public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents) implemen
     }
 
     public BroadcasterState withPublished(final SequencedEvent<?> event, final int maxRetainedEvents) {
-        retainedEvents.add(event);
-        if (retainedEvents.size() > maxRetainedEvents) {
-            retainedEvents.pollFirst();
+        final LinkedList<SequencedEvent<?>> next = new LinkedList<>(retainedEvents);
+        next.add(event);
+        if (next.size() > maxRetainedEvents) {
+            next.pollFirst();
         }
-        return new BroadcasterState(retainedEvents);
+        return new BroadcasterState(next);
     }
 
     public boolean canReplayFrom(final Long lastSeenSequence) {

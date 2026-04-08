@@ -214,14 +214,16 @@ public final class AGUITextMapper {
         final String messageId = state.currentTextMessageId();
         final String finalAnswer = state.completeTextMessage();
         Flowable<BaseEvent> flowable = Flowable.empty();
-        if (StringUtils.isNotBlank(finalAnswer)) {
-            final TextMessageContentEvent content = new TextMessageContentEvent();
-            content.setMessageId(messageId);
-            content.setDelta(finalAnswer);
-            decorator.decorate(content);
-            LOG.debug("Generated output event - eventType=TextMessageContentEvent, msgId={}", content.getMessageId());
-            flowable = flowable.concatWith(Flowable.just(content));
-        }
+        // only output chunks, not fully formed text, its the client's responsibility
+        //        if (StringUtils.isNotBlank(finalAnswer)) {
+        //            final TextMessageContentEvent content = new TextMessageContentEvent();
+        //            content.setMessageId(messageId);
+        //            content.setDelta(finalAnswer);
+        //            decorator.decorate(content);
+        //            LOG.debug("Generated output event - eventType=TextMessageContentEvent, msgId={}",
+        // content.getMessageId());
+        //            flowable = flowable.concatWith(Flowable.just(content));
+        //        }
 
         final TextMessageEndEvent end = new TextMessageEndEvent();
         end.setMessageId(messageId);

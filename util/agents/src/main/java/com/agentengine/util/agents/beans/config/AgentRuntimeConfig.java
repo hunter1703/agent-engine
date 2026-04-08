@@ -5,11 +5,11 @@ import com.agentengine.util.common.builder.annotations.UiField;
 import com.agentengine.util.common.builder.annotations.UiNumber;
 
 public class AgentRuntimeConfig {
-    @UiField(label = "Resumable", order = 10)
+    @UiField(label = "Resumable", step = "runtime", order = 10)
     @UiBoolean
     private boolean resumable = true;
 
-    @UiField(label = "Max Steps", order = 20)
+    @UiField(label = "Max Steps", step = "runtime", order = 20)
     @UiNumber
     private int maxSteps = 50;
 

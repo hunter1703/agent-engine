@@ -101,7 +101,7 @@ public final class EventUtils {
     }
 
     public static Event buildConfirmationEvent(
-            final String confirmationId, final Boolean confirmed, final String answer) {
+            final String confirmationId, final Boolean confirmed, final Map<String, Object> answer) {
         final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
         final FunctionResponse functionResponse = FunctionResponse.builder()
                 .id(confirmationId)

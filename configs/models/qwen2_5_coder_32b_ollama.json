@@ -1,0 +1,15 @@
+{
+  "id": "qwen3-coder-30b",
+  "model": "qwen3-coder:30b",
+  "name": "Qwen 3 Coder 30B (Ollama)",
+  "type": "open_ai_compatible",
+  "baseUrl": "http://host.docker.internal:11434/v1",
+  "temperature": 0.15,
+  "numPredict": 120,
+  "topK": 40,
+  "topP": 0.85,
+  "repeatPenalty": 1.05,
+  "toolCallingEnabled": true,
+  "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call. Never repeat or restate previously emitted text; always continue from where you left off without re-sending earlier content.",
+  "thoughtsEnabled": false
+}

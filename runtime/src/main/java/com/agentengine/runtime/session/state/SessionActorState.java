@@ -18,8 +18,7 @@ public record SessionActorState(
         SessionTopology topology,
         RunResult lastResult,
         PauseState pauseState,
-        UniqueRecord<String> currentMessage,
-        List<Event> lastCommittedEvents)
+        RunState runState)
         implements PekkoSerializable {
 
     public static SessionActorState initial() {
@@ -32,8 +31,7 @@ public record SessionActorState(
                 null,
                 null,
                 new PauseState(),
-                null,
-                null);
+                new RunState(null, null));
     }
 
     public SessionActorState withSessionState(final SessionState sessionState) {
@@ -46,8 +44,7 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState,
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 
     public SessionActorState withTopology(final SessionTopology updatedTopology) {
@@ -60,8 +57,7 @@ public record SessionActorState(
                 updatedTopology,
                 lastResult,
                 pauseState,
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 
     public SessionActorState withRunResult(final RunResult result) {
@@ -74,8 +70,7 @@ public record SessionActorState(
                 topology,
                 result,
                 pauseState,
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 
     public SessionActorState withCurrentMessage(final UniqueRecord<String> updatedCurrentMessage) {
@@ -88,22 +83,11 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState,
-                updatedCurrentMessage,
-                lastCommittedEvents);
+                runState.withMessage(updatedCurrentMessage));
     }
 
-    public SessionActorState clearCurrentMessage() {
-        return new SessionActorState(
-                sessionState,
-                queue,
-                childRegistry,
-                startingChildren,
-                nextSequence,
-                topology,
-                lastResult,
-                pauseState,
-                null,
-                lastCommittedEvents);
+    public SessionActorState completeRun(RunResult result) {
+        return withRunResult(result).withSessionState(SessionState.IDLE).withCurrentMessage(null);
     }
 
     public SessionActorState enqueue(final UniqueRecord<String> message) {
@@ -126,8 +110,7 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState,
-                null,
-                events);
+                runState.withEvents(events));
     }
 
     public Optional<ChildSession> child(final String childSessionId) {
@@ -145,6 +128,11 @@ public record SessionActorState(
         return this;
     }
 
+    public SessionActorState childStartFailed(final String sessionId) {
+        startingChildren.removeIf(child -> Objects.equals(child.sessionId(), sessionId));
+        return this;
+    }
+
     public SessionActorState childPaused(final String childSessionId, final String confirmationId) {
         return new SessionActorState(
                 sessionState,
@@ -155,8 +143,7 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState.withChildPaused(childSessionId, confirmationId),
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 
     public SessionActorState selfPaused(final String confirmationId) {
@@ -169,8 +156,7 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState.withSelfPaused(confirmationId),
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 
     public String getPausedChild(final Confirmation confirmation) {
@@ -178,34 +164,51 @@ public record SessionActorState(
     }
 
     public boolean isSelfConfirmation(final Confirmation confirmation) {
+        return isExternalSelfConfirmation(confirmation)
+                || pauseState
+                        .correlationIdVsPendingInternalConfirmationId()
+                        .containsValue(confirmation.getConfirmationId());
+    }
+
+    public boolean isExternalSelfConfirmation(final Confirmation confirmation) {
         final String id = confirmation.getConfirmationId();
-        return pauseState.pendingSelfConfirmationIds().contains(id)
+        return pauseState.pendingExternalSelfConfirmationIds().contains(id)
                 || pauseState.receivedSelfConfirmations().containsKey(id);
     }
 
     public boolean allConfirmationsReceived() {
-        return CollectionUtils.isEmpty(pauseState.pendingSelfConfirmationIds());
+        return CollectionUtils.isEmpty(pauseState.pendingExternalSelfConfirmationIds())
+                && CollectionUtils.isEmpty(pauseState.correlationIdVsPendingInternalConfirmationId());
     }
 
     public Collection<Confirmation> getAllReceivedConfirmations() {
         return pauseState.receivedSelfConfirmations().values();
     }
 
-    public SessionActorState selfResume(final Confirmation confirmation) {
+    public SessionActorState withInternalSelfPause(final String correlationId, final String confirmationId) {
         return new SessionActorState(
-                SessionState.TRIGGERED_RUN,
+                SessionState.PAUSED,
                 queue,
                 childRegistry,
                 startingChildren,
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withSelfResumed(confirmation),
-                currentMessage,
-                lastCommittedEvents);
+                pauseState.withInternalSelfPause(correlationId, confirmationId),
+                runState);
     }
 
-    public SessionActorState childResume(final Confirmation confirmation) {
+    public boolean isPausedOnExternalConfirmations() {
+        return sessionState == SessionState.PAUSED
+                && CollectionUtils.isNotEmpty(pauseState.pendingExternalSelfConfirmationIds())
+                && CollectionUtils.isNotEmpty(pauseState.pendingConfirmationIdVsChildSessionId());
+    }
+
+    public String getInternalConfirmationId(final String correlationId) {
+        return pauseState().correlationIdVsPendingInternalConfirmationId().get(correlationId);
+    }
+
+    public SessionActorState selfConfirm(final Confirmation confirmation) {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -214,15 +217,47 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withChildResumed(confirmation.getConfirmationId()),
-                currentMessage,
-                lastCommittedEvents);
+                pauseState.withSelfConfirmed(confirmation),
+                runState);
+    }
+
+    public SessionActorState childConfirm(final Confirmation confirmation) {
+        return new SessionActorState(
+                sessionState,
+                queue,
+                childRegistry,
+                startingChildren,
+                nextSequence,
+                topology,
+                lastResult,
+                pauseState.withChildConfirmed(confirmation.getConfirmationId()),
+                runState);
     }
 
     public boolean isDuplicateTurn(final List<Event> turnEvents) {
-        final Event last = CollectionUtils.getLast(lastCommittedEvents);
+        if (runState == null) {
+            return false;
+        }
+        final Event last = CollectionUtils.getLast(runState.lastCommittedTurn());
         return Objects.equals(
                 last == null ? null : last.id(), turnEvents.getLast().id());
+    }
+
+    public SessionActorState clearSelfConfirmationStates() {
+        return new SessionActorState(
+                sessionState,
+                queue,
+                childRegistry,
+                startingChildren,
+                nextSequence,
+                topology,
+                lastResult,
+                new PauseState(
+                        new HashSet<>(),
+                        new HashMap<>(),
+                        pauseState.pendingConfirmationIdVsChildSessionId(),
+                        new HashMap<>()),
+                runState);
     }
 
     /**
@@ -248,7 +283,6 @@ public record SessionActorState(
                 topology,
                 lastResult,
                 pauseState,
-                currentMessage,
-                lastCommittedEvents);
+                runState);
     }
 }

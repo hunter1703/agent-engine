@@ -43,7 +43,8 @@ public final class MongoUtils {
             return new Document();
         }
         if (filter.getOp().isCompound()) {
-            final List<Bson> subFilters = filter.getValues().stream()
+            final List<Bson> subFilters = CollectionUtils.nullSafeList(filter.getValues()).stream()
+                    .filter(Objects::nonNull)
                     .map(value -> toBson((Filter) value))
                     .toList();
             return switch (filter.getOp()) {

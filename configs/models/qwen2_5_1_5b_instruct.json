@@ -5,9 +5,17 @@
   "type": "open_ai_compatible",
   "baseUrl": "http://host.docker.internal:17000/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
-  "serverArgs": ["-m", "/Users/rhp/Projects/agent-engine/llamacpp_models/qwen2.5-1.5b-instruct-q5_k_m.gguf", "--host", "0.0.0.0", "--port", "17000"],
+  "serverArgs": [
+    "-m",
+    "/Users/rhp/Projects/agent-engine/llamacpp_models/qwen2.5-1.5b-instruct-q5_k_m.gguf",
+    "--host",
+    "0.0.0.0",
+    "--port",
+    "17000"
+  ],
   "temperature": 0.25,
   "topK": 50,
   "topP": 0.9,
-  "repeatPenalty": 1.05
+  "repeatPenalty": 1.05,
+  "thoughtsEnabled": false
 }

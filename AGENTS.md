@@ -59,7 +59,7 @@ docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 - Unit tests: `src/test/java`, class `<ClassName>Test`, method `should<Behavior>When<Condition>`
 - Integration tests: `src/integrationTest/java`, class `<Feature>IT`; use `@QuarkusTest` with container-backed resources
 - Use mocks/fakes for pure logic; use real containers (Testcontainers) when runtime wiring matters
-- Bug fix workflow: write a failing test first → fix → verify passing
+- **Bug fix workflow**: When fixing a bug, first write a test that fails (demonstrating the bug), then fix the code, then verify the test passes
 
 ## Key Gotchas
 
@@ -94,7 +94,7 @@ the reader and the runtime equally.
 
 ## Development Guidelines
 
-1. For any new feature, bug fix, or behavior change, add or update corresponding tests.
+1. **Write tests for all features**: Add or update tests for any new feature, bug fix, or behavior change.
 2. Favor small, focused changes; avoid unnecessary refactors.
 3. Update relevant documentation when behavior changes.
 4. Add abstractions only when they clarify ownership and reduce duplication.
@@ -102,7 +102,7 @@ the reader and the runtime equally.
 6. Prefer `static` methods for utility semantics.
 7. Make an explicit choice to treat classes as singleton services or utility classes.
 8. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
-9. When fixing a bug, first write a failing unit test, then fix, then verify passing.
+9. **Bug fix protocol**: When fixing a bug, first write a test that fails (demonstrating the bug exists), then fix the code, then verify the test passes. This ensures the bug is captured and won't regress.
 10. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
 11. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
 12. Avoid redundant or low-value tests that do not exercise functional behavior.

@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.beans.config;
 
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.builder.annotations.UiConditionOperator;
 import com.agentengine.util.common.builder.annotations.UiField;
 import com.agentengine.util.common.builder.annotations.UiLookup;
@@ -17,7 +18,7 @@ public class OutputRelevanceGuardrailRule extends GuardrailRule {
     private static final String DEFAULT_ANCHOR_STRATEGY = RelevanceAnchorStrategy.LATEST_USER_AND_PLAN.name();
 
     @UiField(label = "Evaluator Model ID", order = 10)
-    @UiLookup(assetType = "model")
+    @UiLookup(assetType = AssetClass.MODEL)
     private String evaluatorModelId;
 
     @UiField(label = "Mode", order = 20)

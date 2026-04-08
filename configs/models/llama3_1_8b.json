@@ -1,20 +1,13 @@
 {
   "id": "llama3.1-8b",
-  "model": "llama3.1-8b",
-  "name": "Llama 3.1 8B",
+  "model": "llama3.1:8b",
+  "name": "Llama 3.1 8B (Ollama)",
   "type": "open_ai_compatible",
-  "baseUrl": "http://host.docker.internal:17005/v1",
-  "serverCommand": "/opt/homebrew/bin/llama-server",
-  "serverArgs": [
-    "-m",
-    "/Users/rhp/Projects/agent-engine/llamacpp_models/llama3.1-8b.gguf",
-    "--host",
-    "0.0.0.0",
-    "--port",
-    "17005"
-  ],
+  "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,
   "topK": 50,
   "topP": 0.92,
-  "repeatPenalty": 1.05
+  "repeatPenalty": 1.05,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": false
 }

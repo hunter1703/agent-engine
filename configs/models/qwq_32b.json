@@ -1,21 +1,13 @@
 {
   "id": "qwq-32b",
-  "model": "qwq-32b",
-  "name": "QwQ 32B",
+  "model": "qwq:32b",
+  "name": "QwQ 32B (Ollama)",
   "type": "open_ai_compatible",
-  "baseUrl": "http://host.docker.internal:17004/v1",
-  "serverCommand": "/opt/homebrew/bin/llama-server",
-  "serverArgs": [
-    "-m",
-    "/Users/rhp/Projects/agent-engine/llamacpp_models/qwq-32b.gguf",
-    "--host",
-    "0.0.0.0",
-    "--port",
-    "17004"
-  ],
+  "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,
   "topK": 40,
   "topP": 0.9,
   "repeatPenalty": 1.05,
-  "toolCallingEnabled": false
+  "toolCallingEnabled": false,
+  "thoughtsEnabled": false
 }

@@ -1,18 +1,19 @@
 package com.agentengine.runtime.session;
 
-import com.agentengine.runtime.session.commands.InternalCommand.PublishEventCommand;
-import com.agentengine.runtime.session.commands.InternalCommand.RunFailedCommand;
+import com.agentengine.runtime.session.commands.SelfCommand.CompleteRunCommand;
+import com.agentengine.runtime.session.commands.SelfCommand.PublishEventCommand;
+import com.agentengine.runtime.session.commands.SelfCommand.RunFailedCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.utils.ContentUtils;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.common.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.Collection;
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.pekko.actor.typed.ActorRef;
@@ -57,11 +58,14 @@ public final class SessionRunner {
                         event.author(),
                         event.turnComplete().orElse(false),
                         event.finalResponse()))
-                .doOnComplete(() -> LOG.debug("[{}] runAsync onComplete", sessionId))
+                .doOnComplete(() -> {
+                    LOG.debug("[{}] runAsync onComplete", sessionId);
+                    sessionActor.tell(new CompleteRunCommand());
+                })
                 .doOnError(error -> LOG.error("[{}] runAsync onError", sessionId, error))
                 .subscribe(
                         event -> sessionActor.tell(new PublishEventCommand(event)),
-                        error -> sessionActor.tell(new RunFailedCommand(errorMessage(error))));
+                        error -> sessionActor.tell(new RunFailedCommand(ExceptionUtils.getErrorMessage(error))));
     }
 
     public synchronized void resume(final Collection<Confirmation> confirmations) {
@@ -78,11 +82,14 @@ public final class SessionRunner {
                         event.author(),
                         event.turnComplete().orElse(false),
                         event.finalResponse()))
-                .doOnComplete(() -> LOG.debug("[{}] resume onComplete", sessionId))
+                .doOnComplete(() -> {
+                    LOG.debug("[{}] resume onComplete", sessionId);
+                    sessionActor.tell(new CompleteRunCommand());
+                })
                 .doOnError(error -> LOG.error("[{}] resume onError", sessionId, error))
                 .subscribe(
                         event -> sessionActor.tell(new PublishEventCommand(event)),
-                        error -> sessionActor.tell(new RunFailedCommand(errorMessage(error))));
+                        error -> sessionActor.tell(new RunFailedCommand(ExceptionUtils.getErrorMessage(error))));
     }
 
     public synchronized void cancel() {
@@ -97,13 +104,5 @@ public final class SessionRunner {
                 .setToolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
                 .setStreamingMode(RunConfig.StreamingMode.SSE)
                 .build();
-    }
-
-    private static String errorMessage(final Throwable error) {
-        if (error == null) {
-            return "Unknown runner error";
-        }
-        final String message = error.getMessage();
-        return Objects.requireNonNullElse(message, error.getClass().getSimpleName());
     }
 }

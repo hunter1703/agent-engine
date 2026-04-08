@@ -8,19 +8,24 @@ import com.agentengine.util.common.builder.annotations.UiAccessLevel;
 import com.agentengine.util.common.builder.annotations.UiBoolean;
 import com.agentengine.util.common.builder.annotations.UiConditionOperator;
 import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiGroup;
 import com.agentengine.util.common.builder.annotations.UiNumber;
 import com.agentengine.util.common.builder.annotations.UiPreset;
 import com.agentengine.util.common.builder.annotations.UiRule;
 import com.agentengine.util.common.builder.annotations.UiRuleEffect;
 import com.agentengine.util.common.builder.annotations.UiSelect;
+import com.agentengine.util.common.builder.annotations.UiStep;
+import com.agentengine.util.common.builder.annotations.UiSteps;
 import com.agentengine.util.common.builder.annotations.UiText;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Locale;
 
-@UiGroup(step = "identity", section = "identity", order = 0)
+@UiSteps(
+        steps = {
+            @UiStep(id = "identity", label = "Identity", order = 0),
+            @UiStep(id = "integration", label = "Integration", order = 1),
+            @UiStep(id = "sampling", label = "Sampling Parameters", order = 2)
+        })
 @UiPreset(
         id = "balanced",
         label = "Balanced",
@@ -72,17 +77,17 @@ public class ModelConfig extends NamedEntity implements Config {
         }
     }
 
-    @UiField(label = "Provider Type", step = "identity", section = "identity", order = 20)
+    @UiField(label = "Provider Type", step = "identity", order = 20)
     @UiSelect(enumType = Provider.class)
     @NotBlank
     private String type;
 
-    @UiField(label = "Model Identifier", step = "identity", section = "identity", order = 30)
+    @UiField(label = "Model Identifier", step = "identity", order = 30)
     @UiText
     @NotBlank
     private String model;
 
-    @UiField(label = "Base URL", step = "integration", section = "integration", order = 10)
+    @UiField(label = "Base URL", step = "integration", order = 10)
     @UiText
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
@@ -91,17 +96,16 @@ public class ModelConfig extends NamedEntity implements Config {
             values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
     private String baseUrl;
 
-    @UiField(label = "API Key", step = "integration", section = "integration", order = 20)
+    @UiField(label = "API Key", step = "integration", order = 20)
     @UiText
     @Secure
-    @JsonIgnore
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
             field = "type",
-            values = {"GEMINI"})
+            values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
     private String apiKey;
 
-    @UiField(label = "Server Command", step = "integration", section = "integration", order = 30)
+    @UiField(label = "Server Command", step = "integration", order = 30)
     @UiText
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
@@ -109,7 +113,7 @@ public class ModelConfig extends NamedEntity implements Config {
             values = {"OPEN_AI_COMPATIBLE"})
     private String serverCommand;
 
-    @UiField(label = "Server Arguments", step = "integration", section = "integration", order = 40)
+    @UiField(label = "Server Arguments", step = "integration", order = 40)
     @UiText(multiline = true, rows = 3)
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
@@ -117,7 +121,7 @@ public class ModelConfig extends NamedEntity implements Config {
             values = {"OPEN_AI_COMPATIBLE"})
     private List<String> serverArgs;
 
-    @UiField(label = "Server Working Directory", step = "integration", section = "integration", order = 50)
+    @UiField(label = "Server Working Directory", step = "integration", order = 50)
     @UiText
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
@@ -125,48 +129,52 @@ public class ModelConfig extends NamedEntity implements Config {
             values = {"OPEN_AI_COMPATIBLE"})
     private String serverWorkdir;
 
-    @UiField(label = "Model Instructions", step = "integration", section = "integration", order = 60)
+    @UiField(label = "Model Instructions", step = "integration", order = 60)
     @UiText(multiline = true, rows = 4)
     private String instructions;
 
-    @UiField(label = "Response Format", step = "integration", section = "integration", order = 70, advanced = true)
+    @UiField(label = "Response Format", step = "integration", order = 70, advanced = true)
     @UiText
     private String responseFormat;
 
-    @UiField(label = "Enable Tool Calling", step = "integration", section = "integration", order = 80)
+    @UiField(label = "Enable Tool Calling", step = "integration", order = 80)
     @UiBoolean
     private boolean toolCallingEnabled = false;
 
-    @UiField(label = "Temperature", step = "sampling", section = "sampling", order = 10)
+    @UiField(label = "Thoughts Enabled", step = "integration", order = 90, advanced = true)
+    @UiBoolean
+    private boolean thoughtsEnabled = true;
+
+    @UiField(label = "Temperature", step = "sampling", order = 10)
     @UiNumber
     private Double temperature;
 
-    @UiField(label = "Max Tokens to Generate", step = "sampling", section = "sampling", order = 20)
+    @UiField(label = "Max Tokens to Generate", step = "sampling", order = 20)
     @UiNumber
     private Integer numPredict;
 
-    @UiField(label = "Top-K", step = "sampling", section = "sampling", order = 30)
+    @UiField(label = "Top-K", step = "sampling", order = 30)
     @UiNumber
     private Integer topK;
 
-    @UiField(label = "Top-P", step = "sampling", section = "sampling", order = 40)
+    @UiField(label = "Top-P", step = "sampling", order = 40)
     @UiNumber
     private Double topP;
 
-    @UiField(label = "Repeat Penalty", step = "sampling", section = "sampling", order = 50)
+    @UiField(label = "Repeat Penalty", step = "sampling", order = 50)
     @UiNumber
     private Double repeatPenalty;
 
-    @UiField(label = "Max Context Length", step = "sampling", section = "sampling", order = 60, advanced = true)
+    @UiField(label = "Max Context Length", step = "sampling", order = 60, advanced = true)
     @UiNumber
     private Integer maxContextLength;
 
-    @UiField(label = "Stop Tokens", step = "sampling", section = "sampling", order = 70, advanced = true)
+    @UiField(label = "Stop Tokens", step = "sampling", order = 70, advanced = true)
     @UiText
     private List<String> stopTokens;
 
     @Override
-    @UiField(label = "ID", step = "identity", section = "identity", order = 0)
+    @UiField(label = "ID", step = "identity", order = 0)
     @UiText
     @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
     public String getId() {
@@ -180,7 +188,7 @@ public class ModelConfig extends NamedEntity implements Config {
     }
 
     @Override
-    @UiField(label = "Name", step = "identity", section = "identity", order = 10)
+    @UiField(label = "Name", step = "identity", order = 10)
     @UiText
     public String getName() {
         return super.getName();
@@ -294,6 +302,14 @@ public class ModelConfig extends NamedEntity implements Config {
 
     public void setToolCallingEnabled(final boolean toolCallingEnabled) {
         this.toolCallingEnabled = toolCallingEnabled;
+    }
+
+    public boolean isThoughtsEnabled() {
+        return thoughtsEnabled;
+    }
+
+    public void setThoughtsEnabled(final boolean thoughtsEnabled) {
+        this.thoughtsEnabled = thoughtsEnabled;
     }
 
     public String getServerCommand() {

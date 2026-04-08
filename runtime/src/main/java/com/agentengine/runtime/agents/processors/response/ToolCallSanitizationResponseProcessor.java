@@ -42,7 +42,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
             return ResponseUtils.single(response);
         }
         return ResponseUtils.single(response.toBuilder()
-                .content(ContentUtils.stripToolParts(content))
+                .content(ContentUtils.stripNonToolParts(content))
                 .build());
     }
 }

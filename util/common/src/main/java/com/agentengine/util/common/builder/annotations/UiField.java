@@ -31,14 +31,12 @@ public @interface UiField {
     boolean advanced() default false;
 
     /**
-     * Overrides the step that this field belongs to. When blank, inherits from {@link UiGroup} on the
-     * declaring class, or falls back to {@code "general"}.
+     * The step that this field belongs to. When blank, defaults to {@code "general"}.
      */
     String step() default "";
 
     /**
-     * Overrides the section within the step. When blank, inherits from {@link UiGroup} on the
-     * declaring class, or falls back to {@code "general"}.
+     * The section within the step. When blank, defaults to {@code "general"}.
      */
     String section() default "";
 }

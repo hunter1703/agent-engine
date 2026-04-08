@@ -1,8 +1,9 @@
 package com.agentengine.util.agents.beans.config;
 
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.builder.annotations.UiDynamicSchema;
 import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiText;
+import com.agentengine.util.common.builder.annotations.UiLookup;
 import jakarta.validation.constraints.NotBlank;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,12 +11,12 @@ import java.util.Map;
 public final class ToolsConfig {
 
     @UiField(label = "Tool Name", order = 10)
-    @UiText
+    @UiLookup(assetType = AssetClass.TOOL)
     @NotBlank
     private String toolName;
 
     @UiField(label = "Configuration", order = 20)
-    @UiDynamicSchema(assetType = "tool_configs", assetIdExpr = "$item.toolName", contextIdExpr = "$.id")
+    @UiDynamicSchema(assetType = AssetClass.TOOL_CONFIGS, assetIdExpr = "$item.toolName", contextIdExpr = "$.id")
     private Map<String, Object> configs = new HashMap<>();
 
     public ToolsConfig() {}

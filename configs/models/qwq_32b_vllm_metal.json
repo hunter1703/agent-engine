@@ -17,5 +17,6 @@
   "topK": 40,
   "topP": 0.9,
   "repeatPenalty": 1.05,
-  "toolCallingEnabled": false
+  "toolCallingEnabled": false,
+  "thoughtsEnabled": false
 }

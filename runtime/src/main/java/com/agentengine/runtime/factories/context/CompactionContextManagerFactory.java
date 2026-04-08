@@ -3,7 +3,6 @@ package com.agentengine.runtime.factories.context;
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.context.CompactionContextManager;
 import com.agentengine.runtime.context.ContextManager;
-import com.agentengine.runtime.context.NoOpContextManager;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig;
@@ -35,9 +34,6 @@ public class CompactionContextManagerFactory
 
     @Override
     public ContextManager build(final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
-        if (!config.isEnabled()) {
-            return NoOpContextManager.INSTANCE;
-        }
         return new CompactionContextManager(
                 config.getTokenThreshold(),
                 config.getRecencyThreshold(),

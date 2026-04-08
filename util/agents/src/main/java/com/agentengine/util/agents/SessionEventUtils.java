@@ -66,7 +66,7 @@ public final class SessionEventUtils {
                 event.timestamp(),
                 sequence,
                 extractMetadata(event),
-                event.finishReason().isPresent());
+                false); // terminal flag is set explicitly by SessionActor when session is truly complete
     }
 
     public static List<SessionEvent> toSessionEvents(

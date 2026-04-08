@@ -3,7 +3,8 @@ package com.agentengine.runtime.tools.agent;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.StartSessionResult;
-import com.agentengine.runtime.session.commands.ExternalCommand;
+import com.agentengine.runtime.session.commands.SelfCommand.SendMessageCommand;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -30,7 +31,7 @@ public final class SendMessageTool extends AbstractAgentTool {
             "Send a new message to an already-spawned child agent, preserving its conversation context. "
                     + "The child must have completed its previous message. Returns child_session_id. "
                     + "Use "
-                    + AwaitAgentTool.TOOL_NAME
+                    + Constants.AWAIT_AGENT_TOOL_NAME
                     + " to collect the result.",
             Map.of());
 
@@ -47,8 +48,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                     final String message) {
         final StartSessionResult result = actorRef(toolContext)
                 .<StartSessionResult>ask(
-                        replyTo -> new ExternalCommand.SendMessageCommand(
-                                childSessionId, new UniqueRecord<>(message), replyTo),
+                        replyTo -> new SendMessageCommand(childSessionId, new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join();

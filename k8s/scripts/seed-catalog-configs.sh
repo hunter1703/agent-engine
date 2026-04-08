@@ -9,7 +9,6 @@ ENVIRONMENT=${ENVIRONMENT:-$DEFAULT_ENVIRONMENT}
 REST_SERVICE_NAME=${REST_SERVICE_NAME:-agent-engine-rest}
 REST_READY_PATH=${REST_READY_PATH:-/q/health/ready}
 LOCAL_PORT=${LOCAL_PORT:-18080}
-MAX_AGENT_PASSES=${MAX_AGENT_PASSES:-10}
 
 usage() {
   cat <<'EOF'
@@ -21,8 +20,8 @@ Usage:
 Behavior:
   - Upserts configs/models and configs/agents through the REST API.
   - Uses a temporary local port-forward instead of an extra in-cluster seed pod.
-  - Retries agent upserts across multiple passes so dependency-ordered configs converge.
-  - Fails with explicit per-file diagnostics when any config still cannot be seeded.
+  - Topologically sorts agent configs (children before parents) so each upsert
+    succeeds on the first attempt without retries.
 EOF
 }
 
@@ -70,6 +69,60 @@ pick_config_files() {
       fi
     done
   fi
+}
+
+# Sort agent file paths (one per line from $1) in topological order so that
+# every agent's subAgentIds are seeded before the agent itself.  Uses repeated
+# passes over a "remaining" set, emitting any file whose declared dependencies
+# are already in the resolved set, until all files are emitted.  Files with no
+# subAgentIds (leaves) are emitted first; root agents last.
+topo_sort_agents() {
+  input_file=$1
+  resolved=$(mktemp)
+  output=$(mktemp)
+  remaining=$(mktemp)
+  cp "$input_file" "$remaining"
+
+  while [ -s "$remaining" ]; do
+    next=$(mktemp)
+    progress=0
+
+    while IFS= read -r file; do
+      [ -n "$file" ] || continue
+
+      # Extract declared sub-agent IDs from "subAgentIds": [ ... ]
+      deps=$(awk '
+        /"subAgentIds"/ { p=1; next }
+        p && match($0, /"[a-zA-Z][^"]*"/) { print substr($0, RSTART+1, RLENGTH-2) }
+        p && /\]/ { p=0 }
+      ' "$file")
+
+      all_resolved=1
+      for dep in $deps; do
+        grep -qxF "$dep" "$resolved" || { all_resolved=0; break; }
+      done
+
+      if [ "$all_resolved" -eq 1 ]; then
+        printf '%s\n' "$file" >>"$output"
+        id=$(sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" | head -1)
+        [ -n "$id" ] && printf '%s\n' "$id" >>"$resolved"
+        progress=$((progress + 1))
+      else
+        printf '%s\n' "$file" >>"$next"
+      fi
+    done <"$remaining"
+
+    mv "$next" "$remaining"
+
+    if [ "$progress" -eq 0 ]; then
+      # No progress — circular or unresolvable deps; append remaining as-is
+      cat "$remaining" >>"$output"
+      break
+    fi
+  done
+
+  cat "$output"
+  rm -f "$resolved" "$output" "$remaining"
 }
 
 require_command kubectl
@@ -154,45 +207,15 @@ pick_config_files "$AGENT_BASE_DIR" "$AGENT_OVERLAY_DIR" | while IFS= read -r fi
   printf '%s\n' "$file" >>"$PENDING_FILE"
 done
 
-pass=1
-while [ "$pass" -le "$MAX_AGENT_PASSES" ] && [ -s "$PENDING_FILE" ]; do
-  next_pending="$ERROR_DIR/pending.next"
-  : >"$next_pending"
-  pass_success=0
+SORTED_FILE="$ERROR_DIR/sorted.txt"
+topo_sort_agents "$PENDING_FILE" >"$SORTED_FILE"
 
-  while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    if request_path "$file" "/v1/agent/upsert"; then
-      echo "Seeded agent $(basename "$file")"
-      pass_success=$((pass_success + 1))
-      continue
-    fi
-    printf '%s\n' "$file" >>"$next_pending"
-  done <"$PENDING_FILE"
-
-  if [ ! -s "$next_pending" ]; then
-    mv "$next_pending" "$PENDING_FILE"
-    break
-  fi
-
-  if [ "$pass_success" -eq 0 ]; then
-    echo "Catalog sync stalled on pass $pass. Remaining failures:" >&2
-    while IFS= read -r file; do
-      [ -n "$file" ] || continue
-      print_error "$file"
-    done <"$next_pending"
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  if request_path "$file" "/v1/agent/upsert"; then
+    echo "Seeded agent $(basename "$file")"
+  else
+    print_error "$file"
     exit 1
   fi
-
-  mv "$next_pending" "$PENDING_FILE"
-  pass=$((pass + 1))
-done
-
-if [ -s "$PENDING_FILE" ]; then
-  echo "Catalog sync exhausted $MAX_AGENT_PASSES passes. Remaining failures:" >&2
-  while IFS= read -r file; do
-    [ -n "$file" ] || continue
-    print_error "$file"
-  done <"$PENDING_FILE"
-  exit 1
-fi
+done <"$SORTED_FILE"

@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.builder.annotations.UiBoolean;
+import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.builder.annotations.UiField;
 import com.agentengine.util.common.builder.annotations.UiLookup;
 import com.agentengine.util.common.builder.annotations.UiNumber;
@@ -11,36 +11,24 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeName("COMPACTION")
 @BsonDiscriminator(value = "COMPACTION")
 public class CompactionContextStrategyConfig extends ContextStrategyConfig {
-    @UiField(label = "Enabled", order = 20)
-    @UiBoolean
-    private boolean enabled = true;
-
-    @UiField(label = "Token Threshold", order = 30)
+    @UiField(label = "Token Threshold", step = "model", section = "context", order = 30)
     @UiNumber
     private int tokenThreshold = 4096;
 
-    @UiField(label = "Recency Threshold", order = 40)
+    @UiField(label = "Recency Threshold", step = "model", section = "context", order = 40)
     @UiNumber
     private int recencyThreshold = 1024;
 
-    @UiField(label = "Compaction Model ID", order = 50)
-    @UiLookup(assetType = "model")
+    @UiField(label = "Compaction Model ID", step = "model", section = "context", order = 50)
+    @UiLookup(assetType = AssetClass.MODEL)
     private String modelId;
 
-    @UiField(label = "Prompt Template", order = 60)
+    @UiField(label = "Prompt Template", step = "model", section = "context", order = 60)
     @UiText(multiline = true, rows = 4)
     private String promptTemplate;
 
     public CompactionContextStrategyConfig() {
         super(ContextStrategyType.COMPACTION);
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(final boolean enabled) {
-        this.enabled = enabled;
     }
 
     public int getTokenThreshold() {
