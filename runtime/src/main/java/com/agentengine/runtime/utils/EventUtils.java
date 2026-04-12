@@ -1,6 +1,8 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.session.state.SessionActorState;
 import com.agentengine.util.agents.SessionEventUtils;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -15,6 +17,7 @@ import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -117,6 +120,27 @@ public final class EventUtils {
                                 .functionResponse(functionResponse)
                                 .build()))
                         .build())
+                .build();
+    }
+
+    public static Event buildUserEvent(final String userMessage, final String invocationId) {
+        final Content userContent = ContentUtils.buildUserContent(userMessage);
+        return buildEvent(invocationId, userContent);
+    }
+
+    public static Event buildConfirmationsEvent(final SessionActorState state, final String invocationId) {
+        final Content confirmationsContent =
+                ContentUtils.buildConfirmationsContent(state.getAllReceivedConfirmations());
+        return buildEvent(invocationId, confirmationsContent);
+    }
+
+    private static Event buildEvent(final String invocationId, final Content content) {
+        return Event.builder()
+                .id(UUID.randomUUID().toString())
+                .invocationId(invocationId)
+                .author(SessionEvent.AUTHOR_USER)
+                .content(content)
+                .timestamp(System.currentTimeMillis())
                 .build();
     }
 }

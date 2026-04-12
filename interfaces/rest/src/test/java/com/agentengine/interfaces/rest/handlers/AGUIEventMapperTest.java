@@ -251,7 +251,9 @@ public class AGUIEventMapperTest {
                         .filter(id -> id != null)
                         .toList();
 
-        assertThat(firstReplayIds).isEqualTo(secondReplayIds).contains("step-event-1", "msg-event-1", "run-1");
+        assertThat(firstReplayIds)
+                .isEqualTo(secondReplayIds)
+                .contains("step-run-1-event-1", "msg-run-1-event-1", "run-1");
     }
 
     @Test
@@ -303,7 +305,7 @@ public class AGUIEventMapperTest {
         final List<String> secondMessageIds = extractMessageIds(
                 new AGUIEventMapper("session-1", "agent-1").map(event).toList().blockingGet());
 
-        assertThat(firstMessageIds).containsExactly("msg-event-1", "msg-event-1", "msg-event-1");
+        assertThat(firstMessageIds).containsExactly("msg-run-1-event-1", "msg-run-1-event-1", "msg-run-1-event-1");
         assertThat(secondMessageIds).isEqualTo(firstMessageIds);
     }
 
@@ -313,8 +315,8 @@ public class AGUIEventMapperTest {
         final Map<String, List<String>> secondRead = mapMessageIdsByRun();
 
         assertThat(firstRead.keySet()).containsExactly("run-1", "run-2");
-        assertThat(firstRead.get("run-1")).isNotEmpty().allMatch(id -> id.equals("msg-event-1"));
-        assertThat(firstRead.get("run-2")).isNotEmpty().allMatch(id -> id.equals("msg-event-2"));
+        assertThat(firstRead.get("run-1")).isNotEmpty().allMatch(id -> id.equals("msg-run-1-event-1"));
+        assertThat(firstRead.get("run-2")).isNotEmpty().allMatch(id -> id.equals("msg-run-2-event-2"));
         assertThat(secondRead)
                 .withFailMessage(() -> "firstRead=" + firstRead + " secondRead=" + secondRead)
                 .isEqualTo(firstRead);

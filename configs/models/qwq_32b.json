@@ -2,7 +2,7 @@
   "id": "qwq-32b",
   "model": "qwq:32b",
   "name": "QwQ 32B (Ollama)",
-  "type": "open_ai_compatible",
+  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,
   "topK": 40,

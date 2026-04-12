@@ -3,7 +3,7 @@ package com.agentengine.util.pekko.persistence;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import java.util.List;
-import org.apache.pekko.actor.typed.ActorSystem;
+import java.util.concurrent.TimeUnit;
 import org.apache.pekko.persistence.jdbc.query.javadsl.JdbcReadJournal;
 import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.query.PersistenceQuery;
@@ -11,6 +11,8 @@ import org.apache.pekko.stream.javadsl.Sink;
 
 /** Base support for read paths backed directly by the Pekko persistence journal. */
 public abstract class AbstractJournalReadRepository {
+
+    private static final int QUERY_TIMEOUT_SECONDS = 30;
 
     private final ActorSystemProvider actorSystemProvider;
     private final LazyLoader<JdbcReadJournal> readJournal;
@@ -25,12 +27,12 @@ public abstract class AbstractJournalReadRepository {
         if (persistenceId == null || persistenceId.isBlank()) {
             return List.of();
         }
-        final ActorSystem<?> system = actorSystemProvider.system();
         return readJournal
                 .get()
                 .currentEventsByPersistenceId(persistenceId, 0L, Long.MAX_VALUE)
-                .runWith(Sink.seq(), system)
+                .runWith(Sink.seq(), actorSystemProvider.system())
                 .toCompletableFuture()
+                .orTimeout(QUERY_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .join();
     }
 }

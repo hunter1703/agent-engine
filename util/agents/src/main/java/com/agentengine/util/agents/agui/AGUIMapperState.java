@@ -61,7 +61,9 @@ public final class AGUIMapperState {
     }
 
     public String startNextStep() {
-        currentStepName = stableReplayId("step-", currentSourceEventId, ++stepSequence);
+        // Include runId to ensure uniqueness across runs in the same session
+        final String prefix = runId != null ? "step-" + runId + "-" : "step-";
+        currentStepName = stableReplayId(prefix, currentSourceEventId, ++stepSequence);
         return currentStepName;
     }
 
@@ -86,7 +88,9 @@ public final class AGUIMapperState {
     }
 
     public String nextReplayTextMessageId(final String sourceEventId) {
-        return stableReplayId("msg-", sourceEventId, ++textMessageSequence);
+        // Include runId to ensure uniqueness across runs in the same session
+        final String prefix = runId != null ? "msg-" + runId + "-" : "msg-";
+        return stableReplayId(prefix, sourceEventId, ++textMessageSequence);
     }
 
     public String currentTextMessageId() {
@@ -122,7 +126,9 @@ public final class AGUIMapperState {
     }
 
     public String startNextReasoning() {
-        currentReasoningId = stableReplayId("reasoning-", currentSourceEventId, ++reasoningSequence);
+        // Include runId to ensure uniqueness across runs in the same session
+        final String prefix = runId != null ? "reasoning-" + runId + "-" : "reasoning-";
+        currentReasoningId = stableReplayId(prefix, currentSourceEventId, ++reasoningSequence);
         return currentReasoningId;
     }
 
@@ -135,7 +141,9 @@ public final class AGUIMapperState {
     }
 
     public String startNextReasoningMessage() {
-        currentReasoningMessageId = stableReplayId("reasoning-msg-", currentSourceEventId, ++reasoningMessageSequence);
+        // Include runId to ensure uniqueness across runs in the same session
+        final String prefix = runId != null ? "reasoning-msg-" + runId + "-" : "reasoning-msg-";
+        currentReasoningMessageId = stableReplayId(prefix, currentSourceEventId, ++reasoningMessageSequence);
         return currentReasoningMessageId;
     }
 

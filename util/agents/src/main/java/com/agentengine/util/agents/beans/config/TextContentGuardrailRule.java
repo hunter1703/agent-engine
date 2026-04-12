@@ -9,7 +9,7 @@ import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeName("TEXT_CONTENT")
-@BsonDiscriminator(value = "TEXT_CONTENT")
+@BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.TextContentGuardrailRule")
 public class TextContentGuardrailRule extends GuardrailRule {
     @UiField(label = "Max Text Length", order = 10)
     @UiNumber

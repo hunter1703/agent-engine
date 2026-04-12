@@ -3,7 +3,7 @@ package com.agentengine.util.mongodb.infra;
 import com.agentengine.util.common.beans.BaseEntity;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(key = "type")
+@BsonDiscriminator
 public abstract class InfraConfig extends BaseEntity {
     private String type;
 

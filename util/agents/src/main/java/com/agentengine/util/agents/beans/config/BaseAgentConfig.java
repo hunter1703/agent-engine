@@ -32,7 +32,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     @JsonSubTypes.Type(value = DefaultAgentConfig.class, name = "DEFAULT"),
     @JsonSubTypes.Type(value = OrchestratorAgentConfig.class, name = "ORCHESTRATOR")
 })
-@BsonDiscriminator(key = "type")
+@BsonDiscriminator
 @UiSteps(
         steps = {
             @UiStep(id = "identity", label = "Identity", order = 0),
@@ -48,6 +48,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
             @UiStep(id = "runtime", label = "Runtime", order = 3)
         })
 public abstract class BaseAgentConfig extends NamedEntity implements Config {
+    public static final String FIELD_DESCRIPTION = "description";
 
     @UiField(label = "Agent Type", step = "identity", order = 20)
     @UiSelect(enumType = AgentType.class)

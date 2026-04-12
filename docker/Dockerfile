@@ -29,7 +29,6 @@ EXPOSE 8080 9000 2552
 
 USER quarkus
 ENV AB_JOLOKIA_OFF=""
-ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 ENV PLUGIN_DIR="/deployments/plugins"
 

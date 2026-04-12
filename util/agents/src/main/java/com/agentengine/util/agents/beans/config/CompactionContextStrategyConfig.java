@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeName("COMPACTION")
-@BsonDiscriminator(value = "COMPACTION")
+@BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.CompactionContextStrategyConfig")
 public class CompactionContextStrategyConfig extends ContextStrategyConfig {
     @UiField(label = "Token Threshold", step = "model", section = "context", order = 30)
     @UiNumber

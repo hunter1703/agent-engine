@@ -3,7 +3,7 @@ package com.agentengine.util.mongodb.infra;
 import com.agentengine.util.common.Secure;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(value = "sql")
+@BsonDiscriminator(value = "com.agentengine.util.mongodb.infra.SQLInfraConfig")
 public class SQLInfraConfig extends InfraConfig {
     public static final String TYPE = "sql";
     public static final String CATEGORY = "SQL";

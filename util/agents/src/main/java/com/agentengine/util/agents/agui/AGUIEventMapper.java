@@ -52,18 +52,46 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
     @Override
     public Flowable<BaseEvent> map(final SessionEvent event) {
-        LOG.info("Input event received for mapping - event={}", JsonUtils.toJson(event));
+        LOG.info("=== AGUIEventMapper.map() START ===");
+        LOG.info(
+                "Input SessionEvent - id={}, runId={}, author={}, turnComplete={}, finishReason={}, hasContent={}, terminal={}",
+                event.getId(),
+                event.getRunId(),
+                event.getAuthor(),
+                event.getTurnComplete(),
+                event.getFinishReason(),
+                event.getContent() != null,
+                event.isTerminal());
+        LOG.info(
+                "Current mapper state BEFORE processing - currentRunId={}, hasStartedStep={}",
+                state.currentRunId(),
+                state.hasStartedStep());
+
         if (SessionEvent.AUTHOR_USER.equalsIgnoreCase(event.getAuthor())) {
+            LOG.info("Skipping user event");
             return mode == Mode.REPLAY ? textMapper.mapUserMessage(event) : Flowable.empty();
         }
 
         state.recordSourceEvent(event);
         Flowable<BaseEvent> eventFlow = Flowable.empty();
-        if (state.hasNewRun(event.getRunId())) {
+
+        final boolean hasNewRun = state.hasNewRun(event.getRunId());
+        LOG.info(
+                "hasNewRun check - eventRunId={}, currentStateRunId={}, hasNewRun={}",
+                event.getRunId(),
+                state.currentRunId(),
+                hasNewRun);
+
+        if (hasNewRun) {
+            LOG.info("Starting new run - runId={}", event.getRunId());
             eventFlow = eventFlow.concatWith(startRun(event.getRunId()));
         }
 
-        return eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
+        final Flowable<BaseEvent> result =
+                eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
+
+        LOG.info("=== AGUIEventMapper.map() END - will emit events ===");
+        return result;
     }
 
     @Override
@@ -142,6 +170,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> startRun(final String runId) {
+        LOG.info(">>> EMITTING RUN_STARTED - runId={}", runId);
         state.startRun(runId);
         final RunStartedEvent event = new RunStartedEvent();
         event.setRunId(state.currentRunId());
@@ -152,13 +181,26 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> finishRunIfNeeded(final SessionEvent event) {
+        LOG.info(
+                "finishRunIfNeeded - eventFinishReason={}, currentRunId={}",
+                event.getFinishReason(),
+                state.currentRunId());
+
         if (event.getFinishReason() == null) {
+            LOG.info("No finishReason - not finishing run");
             return Flowable.empty();
         }
 
+        LOG.info(">>> EMITTING RUN_FINISHED - about to call state.finishRun()");
         final RunFinishedEvent finishedEvent = new RunFinishedEvent();
         finishedEvent.setThreadId(state.sessionId());
-        finishedEvent.setRunId(state.finishRun());
+        final String finishedRunId = state.finishRun();
+        finishedEvent.setRunId(finishedRunId);
+        LOG.info(
+                ">>> RUN_FINISHED - finishedRunId={}, state.currentRunId() is now={}",
+                finishedRunId,
+                state.currentRunId());
+
         if (state.finalAnswer() != null) {
             finishedEvent.setResult(state.finalAnswer());
         }

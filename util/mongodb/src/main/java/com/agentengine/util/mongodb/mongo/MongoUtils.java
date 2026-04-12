@@ -1,6 +1,7 @@
 package com.agentengine.util.mongodb.mongo;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Operator;
@@ -13,6 +14,7 @@ import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import org.bson.Document;
@@ -45,7 +47,7 @@ public final class MongoUtils {
         if (filter.getOp().isCompound()) {
             final List<Bson> subFilters = CollectionUtils.nullSafeList(filter.getValues()).stream()
                     .filter(Objects::nonNull)
-                    .map(value -> toBson((Filter) value))
+                    .map(value -> toBson(convertToFilter(value)))
                     .toList();
             return switch (filter.getOp()) {
                 case AND -> Filters.and(subFilters.toArray(new Bson[0]));
@@ -56,6 +58,20 @@ public final class MongoUtils {
         } else {
             return toSimpleFilterBson(filter);
         }
+    }
+
+    /**
+     * Converts an object to a Filter using JsonUtils.fromMap for proper deserialization.
+     */
+    private static Filter convertToFilter(Object value) {
+        if (value instanceof Filter) {
+            return (Filter) value;
+        }
+        if (value instanceof Map<?, ?> map) {
+            // Use JsonUtils.fromMap to convert LinkedHashMap to Filter
+            return JsonUtils.fromMap((Map<String, Object>) map, Filter.class);
+        }
+        throw new IllegalArgumentException("Cannot convert value to Filter: " + value.getClass());
     }
 
     private static Bson toSimpleFilterBson(Filter filter) {

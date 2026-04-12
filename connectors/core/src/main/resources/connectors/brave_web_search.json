@@ -7,13 +7,12 @@
     "path": "/res/v1/llm/context"
   },
   "headers": {
-    "accept": "application/json",
-    "Accept-Encoding": "gzip"
+    "accept": "application/json"
   },
   "auth": {
     "type": "API_KEY_HEADER",
     "headerName": "x-subscription-token",
-    "apiKeyTemplate": "${input.auth.token}"
+    "apiKeyTemplate": "BSA87VeS50GKnb4pp_PecDqzdPcLIN0"
   },
   "body": {
     "type": "JSON",

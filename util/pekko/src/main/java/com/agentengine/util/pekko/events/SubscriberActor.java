@@ -3,9 +3,8 @@ package com.agentengine.util.pekko.events;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.events.SubscriberCommand.BroadcasterTerminatedCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.ResubscribeCommand;
-import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.SubscribeResultCommand;
-import io.reactivex.rxjava3.processors.FlowableProcessor;
+import io.reactivex.rxjava3.core.FlowableEmitter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,16 +24,16 @@ import org.slf4j.LoggerFactory;
  * Client-side actor that bridges the broadcaster protocol to a reactive-stream subscriber.
  *
  * <p>This actor is intentionally local and ephemeral. It does not own durable subscription
- * progress; instead, it tracks the in-memory sequence position of the attached downstream processor
+ * progress; instead, it tracks the in-memory sequence position of the attached downstream emitter
  * and re-subscribes to the broadcaster when it detects that it may have missed events.
  *
  * <p>Behavior summary:
  *
  * <ul>
  *   <li>Subscription becomes active only after the subscribe ack has been processed.
- *   <li>Until activation, direct live deliveries from the broadcaster are ignored.
+ *   <li>Until activation, direct live deliveries from the broadcaster are buffered.
  *   <li>On subscribe ack, the actor consumes the retained backlog supplied by the broadcaster and
- *       advances its local checkpoint as those events are accepted by the downstream processor.
+ *       advances its local checkpoint as those events are accepted by the downstream emitter.
  *   <li>After activation, delivery is contiguous: the next accepted event must have sequence {@code
  *       lastSeenSequence + 1}. Duplicate or stale events are ignored.
  *   <li>If a later event exposes a sequence gap, the actor re-subscribes and relies on the
@@ -42,36 +41,25 @@ import org.slf4j.LoggerFactory;
  *   <li>If the broadcaster terminates, the actor re-subscribes after a retry delay.
  * </ul>
  *
- * <p>Sequence semantics:
+ * <p>New vs. re-subscription semantics:
  *
  * <ul>
- *   <li>{@code lastSeenSequence} represents the highest contiguous sequence successfully handed to
- *       the downstream processor.
- *   <li>The checkpoint advances only after {@code processor.onNext(...)} returns successfully for
- *       that event.
- *   <li>This provides effectively-once style local progression for synchronous downstream
- *       consumers: duplicates are ignored, out-of-order forward jumps are rejected, and replay is
- *       requested on detected gaps.
- * </ul>
- *
- * <p>Bounded gap healing:
- *
- * <ul>
- *   <li>The broadcaster retains only a bounded replay window.
- *   <li>If the subscriber falls behind but the missing range is still retained, re-subscription
- *       heals the gap.
- *   <li>If the missing range has already fallen out of the retained window, subscription fails
- *       because the actor can no longer reconstruct a contiguous stream.
+ *   <li>A fresh subscription ({@code lastSeenSequence == null}) receives no backlog: the broadcaster
+ *       returns {@code replayAccepted=false} and an empty backlog. The actor initialises its
+ *       checkpoint to the broadcaster's current {@code latestAvailableSequence} so that only live
+ *       events published after subscription are delivered.
+ *   <li>A re-subscription ({@code lastSeenSequence != null}) requests a catch-up replay from the
+ *       broadcaster. If the gap exceeds the broadcaster's bounded retention window, the subscription
+ *       fails with an unrecoverable error.
  * </ul>
  *
  * <p>Pre-activation buffering:
  *
  * <ul>
- *   <li>Live {@code DeliverCommand} messages that arrive before the subscribe ack is processed are
- *       buffered in memory and flushed after the backlog is applied. {@code applyEvent} deduplicates
- *       by sequence, so any overlap between the backlog and the buffer is harmless. This ensures
- *       events published during the subscription handshake window are never silently lost, including
- *       the case where a short run completes entirely within that window.
+ *   <li>The subscribe ack travels via {@code pipeToSelf} (an extra dispatch hop), while a
+ *       concurrent {@code DeliverCommand} from the broadcaster is a direct tell. Live events can
+ *       therefore arrive before the ack is processed. They are buffered and flushed after the
+ *       backlog; {@code applyEvent} deduplicates by sequence so overlap is harmless.
  * </ul>
  */
 final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
@@ -82,39 +70,42 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
     private final String subscriptionId;
     private final EntityRef<BroadcasterCommand> broadcasterEntity;
-    private final FlowableProcessor<SequencedEvent<?>> processor;
+    private final FlowableEmitter<SequencedEvent<?>> emitter;
 
     private ActorRef<BroadcasterCommand> broadcaster;
-    private ActorRef<SubscriberCommandResult> pendingSubscribeReplyTo;
     private Throwable terminalError;
     private Long lastSeenSequence;
     private boolean subscribeInFlight;
-    // Events received before activation are buffered and flushed after the subscribe ack so that
-    // events published during the subscription handshake window are never lost.
+    // DeliverCommands from a concurrent publication can arrive before SubscribeResultCommand because
+    // the ack travels via pipeToSelf (an extra dispatch hop) while DeliverCommand is a direct tell.
+    // Events are buffered here and flushed after the backlog is applied; applyEvent deduplicates.
     private final List<SequencedEvent<?>> preActivationBuffer = new ArrayList<>();
 
     private SubscriberActor(
             final ActorContext<SubscriberCommand> context,
             final String subscriptionId,
             final EntityRef<BroadcasterCommand> broadcasterEntity,
-            final FlowableProcessor<SequencedEvent<?>> processor) {
+            final FlowableEmitter<SequencedEvent<?>> emitter) {
         super(context);
         this.subscriptionId = subscriptionId;
         this.broadcasterEntity = broadcasterEntity;
-        this.processor = processor;
+        this.emitter = emitter;
     }
 
     public static Behavior<SubscriberCommand> create(
             final String subscriptionId,
             final EntityRef<BroadcasterCommand> broadcasterEntity,
-            final FlowableProcessor<SequencedEvent<?>> downstream) {
-        return Behaviors.setup(context -> new SubscriberActor(context, subscriptionId, broadcasterEntity, downstream));
+            final FlowableEmitter<SequencedEvent<?>> emitter) {
+        return Behaviors.setup(ctx -> {
+            final SubscriberActor actor = new SubscriberActor(ctx, subscriptionId, broadcasterEntity, emitter.serialize());
+            actor.requestSubscribe();
+            return actor;
+        });
     }
 
     @Override
     public Receive<SubscriberCommand> createReceive() {
         return newReceiveBuilder()
-                .onMessage(SubscribeCommand.class, this::subscribe)
                 .onMessage(SubscribeResultCommand.class, this::subscribeResult)
                 .onMessage(ResubscribeCommand.class, ignored -> {
                     requestSubscribe();
@@ -125,20 +116,6 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
                 .onMessage(BroadcasterTerminatedCommand.class, this::onBroadcasterTerminated)
                 .onSignal(PostStop.class, ignored -> onPostStop())
                 .build();
-    }
-
-    private Behavior<SubscriberCommand> subscribe(final SubscribeCommand command) {
-        final ActorRef<SubscriberCommandResult> replyTo = command.replyTo();
-
-        if (replyTo != null && isActive()) {
-            replyTo.tell(new SubscriberCommandResult.Successful());
-            return this;
-        } else if (replyTo != null) {
-            pendingSubscribeReplyTo = replyTo;
-        }
-
-        requestSubscribe();
-        return this;
     }
 
     private void requestSubscribe() {
@@ -171,14 +148,6 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
                     subscriptionId,
                     RETRY_DELAY.toMillis(),
                     command.error().getMessage());
-
-            if (pendingSubscribeReplyTo != null) {
-                terminalError = command.error();
-                pendingSubscribeReplyTo.tell(new SubscriberCommandResult.Failed(terminalError));
-                pendingSubscribeReplyTo = null;
-                return Behaviors.stopped();
-            }
-
             getContext().scheduleOnce(RETRY_DELAY, getContext().getSelf(), new ResubscribeCommand());
             return this;
         }
@@ -190,7 +159,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
                 ack.replayAccepted(),
                 ack.backlog().size(),
                 lastSeenSequence);
-        if (!ack.replayAccepted()) {
+
+        // replayAccepted=false with a prior checkpoint means the gap exceeded the retention window.
+        if (!ack.replayAccepted() && lastSeenSequence != null) {
             terminalError = new IllegalStateException(
                     "Replay gap exceeded retained window for subscription '%s'. Expected from sequence %d, oldest available is %d, latest available is %d."
                             .formatted(
@@ -198,18 +169,19 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
                                     lastSeenSequence + 1L,
                                     ack.oldestAvailableSequence(),
                                     ack.latestAvailableSequence()));
-
-            if (pendingSubscribeReplyTo != null) {
-                pendingSubscribeReplyTo.tell(new SubscriberCommandResult.Failed(terminalError));
-                pendingSubscribeReplyTo = null;
-            }
-
             return Behaviors.stopped();
         }
 
         watchBroadcaster(ack.broadcasterRef());
 
+        // For a fresh subscription (no prior checkpoint), initialize to the broadcaster's current
+        // position so that only live events published after subscription are delivered.
+        if (lastSeenSequence == null) {
+            lastSeenSequence = ack.latestAvailableSequence();
+        }
+
         try {
+            // backlog is empty for fresh subscriptions; non-empty for catch-up re-subscriptions.
             ack.backlog().forEach(this::applyEvent);
             // Flush events that arrived during the subscription handshake window. applyEvent
             // deduplicates by sequence so overlap with the backlog is safe.
@@ -217,21 +189,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
             preActivationBuffer.clear();
         } catch (final Throwable error) {
             terminalError = error;
-            if (pendingSubscribeReplyTo != null) {
-                pendingSubscribeReplyTo.tell(new SubscriberCommandResult.Failed(error));
-                pendingSubscribeReplyTo = null;
-            }
             return Behaviors.stopped();
         }
 
-        if (pendingSubscribeReplyTo != null) {
-            pendingSubscribeReplyTo.tell(new SubscriberCommandResult.Successful());
-            pendingSubscribeReplyTo = null;
-        }
-
-        if (lastSeenSequence == null) {
-            lastSeenSequence = 0L;
-        }
         return this;
     }
 
@@ -253,11 +213,11 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         final SequencedEvent<?> event = command.event();
         final long sequence = event.sequence();
 
-        if (lastSeenSequence != null && sequence <= lastSeenSequence) {
+        if (sequence <= lastSeenSequence) {
             return this;
         }
 
-        if (lastSeenSequence != null && sequence != lastSeenSequence + 1L) {
+        if (sequence != lastSeenSequence + 1L) {
             LOG.warn(
                     "Gap detected for id={}: expected seq={} got seq={}, resubscribing",
                     subscriptionId,
@@ -268,9 +228,9 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         }
 
         try {
-            processor.onNext(event);
+            emitter.onNext(event);
             lastSeenSequence = sequence;
-            if (!processor.hasSubscribers()) {
+            if (emitter.isCancelled()) {
                 return Behaviors.stopped();
             }
             return this;
@@ -307,16 +267,10 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
         broadcasterEntity.tell(new BroadcasterCommand.UnsubscribeCommand(subscriptionId));
 
-        if (pendingSubscribeReplyTo != null) {
-            pendingSubscribeReplyTo.tell(new SubscriberCommandResult.Failed(
-                    new IllegalStateException("Subscriber stopped before subscription completed")));
-            pendingSubscribeReplyTo = null;
-        }
-
         if (terminalError != null) {
-            processor.onError(terminalError);
+            emitter.onError(terminalError);
         } else {
-            processor.onComplete();
+            emitter.onComplete();
         }
 
         return this;
@@ -324,21 +278,17 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
     private void applyEvent(final SequencedEvent<?> event) {
         final long sequence = event.sequence();
-
-        if (lastSeenSequence != null) {
-            if (sequence <= lastSeenSequence) {
-                return;
-            }
-            if (sequence != lastSeenSequence + 1L) {
-                throw new IllegalStateException(
-                        "Non-contiguous sequence. Expected " + (lastSeenSequence + 1L) + " but got " + sequence);
-            }
+        if (sequence <= lastSeenSequence) {
+            return;
         }
-
-        processor.onNext(event);
+        if (sequence != lastSeenSequence + 1L) {
+            throw new IllegalStateException(
+                    "Non-contiguous sequence. Expected " + (lastSeenSequence + 1L) + " but got " + sequence);
+        }
         lastSeenSequence = sequence;
-        if (!processor.hasSubscribers()) {
-            throw new IllegalStateException("Downstream terminated during event delivery");
+        if (emitter.isCancelled()) {
+            throw new IllegalStateException("Downstream cancelled during event delivery");
         }
+        emitter.onNext(event);
     }
 }

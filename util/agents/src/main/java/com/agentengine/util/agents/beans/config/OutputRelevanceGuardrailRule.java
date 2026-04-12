@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeName("RELEVANCE")
-@BsonDiscriminator(value = "RELEVANCE")
+@BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.OutputRelevanceGuardrailRule")
 public class OutputRelevanceGuardrailRule extends GuardrailRule {
     private static final String DEFAULT_MODE = RelevanceMode.STEER_THEN_BLOCK.name();
     private static final String DEFAULT_ANCHOR_STRATEGY = RelevanceAnchorStrategy.LATEST_USER_AND_PLAN.name();

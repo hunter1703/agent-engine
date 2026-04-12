@@ -4,7 +4,7 @@ import com.agentengine.util.mongodb.infra.InfraConfig;
 import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(value = "PEKKO")
+@BsonDiscriminator(value = "com.agentengine.util.pekko.PekkoConfig")
 public class PekkoConfig extends InfraConfig {
     public static final String TYPE = "PEKKO";
     public static final String CATEGORY = "PEKKO";

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @JsonTypeName("ORCHESTRATOR")
-@BsonDiscriminator(value = "ORCHESTRATOR")
+@BsonDiscriminator("com.agentengine.util.agents.beans.config.OrchestratorAgentConfig")
 public class OrchestratorAgentConfig extends BaseAgentConfig {
     private static final String DEFAULT_ORCHESTRATION_MODE = OrchestrationMode.MANAGER.name();
 

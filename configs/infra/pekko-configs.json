@@ -2,6 +2,7 @@
   {
     "id": "PEKKO:default",
     "type": "PEKKO",
+    "_t": "com.agentengine.util.pekko.PekkoConfig",
     "seedNodes": [
       "pekko://agent-engine-runtime@agent-engine-runtime-0.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",
       "pekko://agent-engine-runtime@agent-engine-runtime-1.agent-engine-runtime-internal.agent-engine.svc.cluster.local:2552",

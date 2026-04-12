@@ -68,7 +68,7 @@ public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, E
                     .doFinally(() -> cancel(subscriptionId));
 
             subscriptions.put(subscriptionId, new SubscriptionState<>(processor));
-            return new EventSubscription<>(subscriptionId, publisher, () -> cancel(subscriptionId));
+            return new EventSubscription<>(subscriptionId, publisher);
         }
 
         private long doPublish(final E event) {

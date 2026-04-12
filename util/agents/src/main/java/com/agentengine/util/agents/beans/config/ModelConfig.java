@@ -18,7 +18,6 @@ import com.agentengine.util.common.builder.annotations.UiSteps;
 import com.agentengine.util.common.builder.annotations.UiText;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
-import java.util.Locale;
 
 @UiSteps(
         steps = {
@@ -70,7 +69,7 @@ public class ModelConfig extends NamedEntity implements Config {
                 return UNKNOWN;
             }
             try {
-                return Provider.valueOf(value.trim().toUpperCase(Locale.ROOT));
+                return Provider.valueOf(value);
             } catch (IllegalArgumentException ex) {
                 return UNKNOWN;
             }

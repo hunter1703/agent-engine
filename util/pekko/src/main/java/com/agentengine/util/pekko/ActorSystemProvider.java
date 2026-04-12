@@ -60,14 +60,15 @@ public class ActorSystemProvider {
         final SQLInfraConfig sqlConfig = infraConfigService.findById(SQLInfraConfig.CATEGORY, SQLInfraConfig.CONFIG_ID);
         LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
         final Config config = buildConfig(pekkoConfig, sqlConfig);
-        final ActorSystem<SpawnProtocol.Command> actorSystem =
-                ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);
-        final ClusterSharding clusterSharding = ClusterSharding.get(actorSystem);
+        this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);
+        // Publish system before initialising sharding: remember-entities triggers entity recovery
+        // on actor dispatcher threads immediately upon init(), and those actors call back into
+        // actorSystemProvider.system(). If system is still null at that point we get a NPE.
+        final ClusterSharding clusterSharding = ClusterSharding.get(this.system);
         for (final ShardedEntityDefinition definition : entityDefinitions) {
-            clusterSharding.init(definition.entity(actorSystem));
+            clusterSharding.init(definition.entity(this.system));
             LOG.info("Registered sharded entity: {}", definition.getClass().getSimpleName());
         }
-        this.system = actorSystem;
         this.sharding = clusterSharding;
     }
 

@@ -13,6 +13,7 @@ import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.session.events.*;
 import com.agentengine.runtime.session.state.*;
 import com.agentengine.runtime.tools.agent.AwaitAgentTool;
+import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.runtime.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
@@ -590,6 +591,13 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             final SessionActorState state, final PublishEventCommand command) {
         final Event event = command.event();
 
+        LOG.info(
+                "[USER_MESSAGE_TRACE][{}] SessionActor.publishEvent() received event: author={} turnComplete={} content={}",
+                state.topology().sessionId(),
+                event.author(),
+                event.turnComplete().orElse(false),
+                event.content().map(c -> c.text()).orElse("<no-content>"));
+
         // Detect self-pause: the adk_request_confirmation call ID is the confirmationId the client
         // echoes back, so it is used directly as the pause key.
         final List<SessionFact> pauseFacts = new ArrayList<>();
@@ -614,12 +622,20 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         LOG.info("Publishing event : {}", JsonUtils.toJson(event));
         runStarted = true;
         turnEvents.add(event);
+        LOG.info(
+                "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
+                state.topology().sessionId(),
+                turnEvents.size());
         final long eventSequence = state.nextSequence() + turnEvents.size() - 1;
 
         final SessionTopology topology = state.topology();
         final String rootSessionId = topology.rootSessionId();
         EffectBuilder<SessionFact, SessionActorState> effectBuilder;
         if (!event.turnComplete().orElse(false)) {
+            LOG.info(
+                    "[USER_MESSAGE_TRACE][{}] Turn NOT complete, pauseFacts.isEmpty()={}",
+                    topology.sessionId(),
+                    CollectionUtils.isEmpty(pauseFacts));
             if (CollectionUtils.isEmpty(pauseFacts)) {
                 LOG.info("Publishing without any effect");
                 effectBuilder = Effect().none();
@@ -632,6 +648,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             }
         } else {
             final ArrayList<Event> events = new ArrayList<>(turnEvents);
+            LOG.info(
+                    "[USER_MESSAGE_TRACE][{}] Turn COMPLETE! Committing {} events to TurnCommittedFact",
+                    topology.sessionId(),
+                    events.size());
             LOG.info("committing on turn completion : {}", JsonUtils.toJson(events));
             turnEvents.clear();
 
@@ -639,7 +659,47 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 LOG.warn("Duplicate turn detected for session {}, skipping commit", topology.sessionId());
                 effectBuilder = Effect().none();
             } else {
+                // Prepend user message/confirmations on first turn
+                final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
+                if (isFirstTurn) {
+                    final String invocationId = events.getFirst().invocationId();
+                    if (state.runState().message() != null) {
+                        // Initial user message
+                        final UniqueRecord<String> userMessage =
+                                state.runState().message();
+                        final Event userEvent = EventUtils.buildUserEvent(userMessage.getRecord(), invocationId);
+                        events.addFirst(userEvent);
+                        LOG.info(
+                                "[USER_MESSAGE_TRACE][{}] First turn - prepended user message event: '{}' with invocationId: {}",
+                                topology.sessionId(),
+                                userMessage.getRecord(),
+                                invocationId);
+                    } else if (!state.getAllReceivedConfirmations().isEmpty()) {
+                        // Resume with confirmations
+                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(state, invocationId);
+                        events.addFirst(confirmationEvent);
+                        LOG.info(
+                                "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",
+                                topology.sessionId(),
+                                state.getAllReceivedConfirmations().size(),
+                                invocationId);
+                    }
+                }
+
                 final TurnCommittedFact turnFact = new TurnCommittedFact(events);
+                LOG.info(
+                        "[USER_MESSAGE_TRACE][{}] Creating TurnCommittedFact with {} events. Event details:",
+                        topology.sessionId(),
+                        events.size());
+                for (int i = 0; i < events.size(); i++) {
+                    final Event evt = events.get(i);
+                    LOG.info(
+                            "[USER_MESSAGE_TRACE][{}]   Event #{}: author={}, content={}",
+                            topology.sessionId(),
+                            i,
+                            evt.author(),
+                            evt.content().map(c -> c.text()).orElse("<no-content>"));
+                }
                 final List<SessionFact> commitFacts = new ArrayList<>();
                 commitFacts.add(turnFact);
                 commitFacts.addAll(pauseFacts);
@@ -652,28 +712,15 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 });
             }
         }
-        return effectBuilder
-                .thenRun(_ -> {
-                    final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
-                            rootSessionId, topology.parentSessionId(), topology.sessionId(), event, eventSequence);
-                    LOG.info(
-                            "Publishing adk event : {} as session event :{}",
-                            JsonUtils.toJson(event),
-                            JsonUtils.toJson(sessionEvent));
-                    eventChannel.publish(rootSessionId, sessionEvent);
-                })
-                .thenRun(newState -> {
-                    if (newState.sessionState().isTerminal()
-                            && event.turnComplete().orElse(false)
-                            && newState.isPausedOnExternalConfirmations()) {
-                        // only terminate if need external input; if need internal (e.g. await child), then the client
-                        // should wait
-                        LOG.info("Found the session in terminal state");
-                        eventChannel.publish(rootSessionId, SessionEvent.terminal(topology.sessionId()));
-                    } else {
-                        LOG.info("Found the session in non-terminal state");
-                    }
-                });
+        return effectBuilder.thenRun(_ -> {
+            final SessionEvent sessionEvent = SessionEventUtils.toSessionEvent(
+                    rootSessionId, topology.parentSessionId(), topology.sessionId(), event, eventSequence);
+            LOG.info(
+                    "Publishing adk event : {} as session event :{}",
+                    JsonUtils.toJson(event),
+                    JsonUtils.toJson(sessionEvent));
+            eventChannel.publish(rootSessionId, sessionEvent);
+        });
     }
 
     private Effect<SessionFact, SessionActorState> childPaused(
@@ -737,6 +784,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
 
         final UniqueRecord<String> nextMessage = state.queue().peek();
+        LOG.info(
+                "[USER_MESSAGE_TRACE][{}] Starting next queued message: '{}'",
+                state.topology().sessionId(),
+                nextMessage.getRecord());
         return Effect().persist(new StartedFact(nextMessage)).thenRun(newState -> {
             updateSessionStatus(newState, SessionStatus.RUNNING);
             runner.start(nextMessage.getRecord());
@@ -750,11 +801,15 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onEvent(
                         InitializedFact.class,
                         (_, fact) -> SessionActorState.initial().withTopology(fact.getTopology()))
-                .onEvent(
-                        StartedFact.class,
-                        (state, fact) -> state.dequeue()
-                                .withSessionState(SessionState.TRIGGERED_RUN)
-                                .withCurrentMessage(fact.getMessage()))
+                .onEvent(StartedFact.class, (state, fact) -> {
+                    LOG.info(
+                            "[USER_MESSAGE_TRACE][{}] Applying StartedFact event handler. Message: '{}'",
+                            state.topology().sessionId(),
+                            fact.getMessage().getRecord());
+                    return state.dequeue()
+                            .withSessionState(SessionState.TRIGGERED_RUN)
+                            .withCurrentMessage(fact.getMessage());
+                })
                 .onEvent(ConfirmedFact.class, (state, fact) -> {
                     final Confirmation confirmation = fact.getConfirmation();
                     LOG.info(

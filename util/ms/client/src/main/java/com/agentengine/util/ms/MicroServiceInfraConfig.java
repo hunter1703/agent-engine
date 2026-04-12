@@ -9,7 +9,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
  * <p>One document per server ID (e.g. {@code "agent"}), stored in the {@code MicroServiceConfig}
  * collection of the {@code INFRA} database.
  */
-@BsonDiscriminator(value = "microservice")
+@BsonDiscriminator(value = "com.agentengine.util.ms.MicroServiceInfraConfig")
 public class MicroServiceInfraConfig extends InfraConfig {
     public static final String TYPE = "microservice";
     public static final String CATEGORY = "MICROSERVICE";

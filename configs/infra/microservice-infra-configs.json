@@ -2,6 +2,7 @@
   {
     "id": "MICROSERVICE:agent",
     "type": "microservice",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "agent",
     "host": "agent-engine-core.agent-engine.svc.cluster.local",
     "port": 9000
@@ -9,6 +10,7 @@
   {
     "id": "MICROSERVICE:runtime",
     "type": "microservice",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "runtime",
     "host": "agent-engine-runtime.agent-engine.svc.cluster.local",
     "port": 9000

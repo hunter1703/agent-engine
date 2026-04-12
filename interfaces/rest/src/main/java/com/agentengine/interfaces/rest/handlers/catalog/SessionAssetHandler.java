@@ -47,7 +47,8 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
                 BaseEntity.FIELD_ID,
                 BaseEntity.FIELD_CREATED_TIME,
                 BaseEntity.FIELD_UPDATED_TIME,
-                NamedEntity.FIELD_NAME));
+                NamedEntity.FIELD_NAME,
+                AgentSession.FIELD_AGENT_ID));
         return findAssets(request);
     }
 

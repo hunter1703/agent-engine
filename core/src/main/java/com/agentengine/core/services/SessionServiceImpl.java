@@ -18,10 +18,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 @Unremovable
 public class SessionServiceImpl implements SessionService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SessionServiceImpl.class);
 
     private final SessionRepository sessionRepository;
     private final SessionHistoryService sessionHistoryService;
@@ -82,12 +86,36 @@ public class SessionServiceImpl implements SessionService {
         if (!includeEvents || session == null) {
             return session;
         }
+        LOG.info("=== sanitizeSession START - sessionId={}, agentId={} ===", session.getId(), session.getAgentId());
+
         final AGUIEventMapper mapper =
                 new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
         final List<BaseEvent> aguiEvents = new ArrayList<>();
-        for (final SessionEvent event : sessionHistoryService.getSessionEvents(session.getId())) {
-            mapper.map(event).blockingForEach(aguiEvents::add);
+        final boolean isRootSession = session.getParentSessionId() == null;
+        final List<SessionEvent> events = isRootSession
+                ? sessionHistoryService.getAllSessionEvents(session.getId())
+                : sessionHistoryService.getSessionEvents(session.getId());
+
+        LOG.info("Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());
+
+        int eventIndex = 0;
+        for (final SessionEvent event : events) {
+            LOG.info(
+                    "Processing SessionEvent #{} - id={}, runId={}, author={}, turnComplete={}, terminal={}",
+                    eventIndex++,
+                    event.getId(),
+                    event.getRunId(),
+                    event.getAuthor(),
+                    event.getTurnComplete(),
+                    event.isTerminal());
+
+            mapper.map(event).blockingForEach(aguiEvent -> {
+                LOG.info("  -> Generated AGUI event: {}", aguiEvent.getClass().getSimpleName());
+                aguiEvents.add(aguiEvent);
+            });
         }
+
+        LOG.info("=== sanitizeSession END - generated {} AGUI events ===", aguiEvents.size());
         session.setAguiEvents(aguiEvents);
         return session;
     }

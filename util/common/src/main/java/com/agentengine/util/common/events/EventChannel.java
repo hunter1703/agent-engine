@@ -16,8 +16,8 @@ import java.util.function.Predicate;
  *   <li>{@link #subscribe} linearizes at acknowledgement: all events published after the returned
  *       stage completes are delivered at least once to the subscriber's mailbox.
  *   <li>{@link #publish} linearizes at acknowledgement and returns the assigned monotonic sequence.
- *   <li>Cancellation is via {@link EventSubscription#cancel()}; once that stage completes, no
- *       further events are delivered and broadcaster state is cleaned up.
+ *   <li>Cancellation happens automatically when the stream terminates; broadcaster state is
+ *       cleaned up automatically.
  *   <li>If a subscriber dies, it must re-subscribe; the channel cleans up stale state
  *       automatically.
  * </ul>
@@ -36,7 +36,6 @@ public interface EventChannel<Scope, Event> {
                                 .filter(predicate::test)
                                 .firstOrError()
                                 .timeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                                .doFinally(subscription::cancel)
                                 .toCompletionStage()));
     }
 }

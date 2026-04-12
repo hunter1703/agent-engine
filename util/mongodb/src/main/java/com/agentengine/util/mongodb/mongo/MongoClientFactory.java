@@ -71,6 +71,11 @@ public class MongoClientFactory {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         for (final String discriminator : CollectionUtils.nullSafeList(bsonDiscriminators)) {
             try {
+                // enableDiscriminator(true) primes the ClassModel's discriminator before
+                // conventions run, ensuring the discriminator registry is populated and
+                // the DiscriminatorLookup can find concrete subtypes at decode time.
+                // @BsonDiscriminator annotations (processed by ANNOTATION_CONVENTION) then
+                // override the key/value as specified on each class.
                 pojoCodecProviderBuilder.register(ClassModel.builder(Class.forName(discriminator, true, classLoader))
                         .enableDiscriminator(true)
                         .conventions(conventions)

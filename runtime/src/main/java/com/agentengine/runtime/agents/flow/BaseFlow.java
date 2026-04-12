@@ -8,6 +8,7 @@ import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.AgentTransfer;
@@ -91,6 +92,11 @@ public final class BaseFlow extends SingleFlow {
         final ConcurrentHashSet<String> confirmationRequested = new ConcurrentHashSet<>();
         return super.run(invocationContext)
                 .map(event -> {
+                    // ADK may emit events with null IDs (e.g. adk_request_confirmation); assign a
+                    // generated ID to provide reliable guarantee
+                    if (StringUtils.isBlank(event.id())) {
+                        event = event.toBuilder().id(Event.generateEventId()).build();
+                    }
                     confirmationRequested.addAll(
                             event.actions().requestedToolConfirmations().keySet());
                     final Content content =

@@ -20,7 +20,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
     @JsonSubTypes.Type(value = TextContentGuardrailRule.class, name = "TEXT_CONTENT"),
     @JsonSubTypes.Type(value = OutputRelevanceGuardrailRule.class, name = "RELEVANCE")
 })
-@BsonDiscriminator(key = "type")
+@BsonDiscriminator
 public abstract class GuardrailRule {
     private static final String DEFAULT_STAGE = GuardrailStage.UNKNOWN.name();
     private static final String DEFAULT_ACTION = GuardrailAction.WARN.name();

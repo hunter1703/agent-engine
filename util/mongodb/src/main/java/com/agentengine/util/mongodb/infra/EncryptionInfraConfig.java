@@ -2,7 +2,7 @@ package com.agentengine.util.mongodb.infra;
 
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
-@BsonDiscriminator(value = "encryption")
+@BsonDiscriminator(value = "com.agentengine.util.mongodb.infra.EncryptionInfraConfig")
 public class EncryptionInfraConfig extends InfraConfig {
     public static final String TYPE = "encryption";
     public static final String CATEGORY = "ENCRYPTION";

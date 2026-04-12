@@ -13,6 +13,8 @@ public class AgentSession extends NamedEntity {
     public static final String FIELD_SUMMARY = "summary";
     public static final String FIELD_STATUS = "status";
     public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
+    public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
+    public static final String FIELD_AGENT_ID = "agentId";
 
     private String agentId;
     private Map<String, Object> state = new HashMap<>();

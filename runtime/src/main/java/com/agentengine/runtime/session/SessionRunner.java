@@ -48,23 +48,40 @@ public final class SessionRunner {
     }
 
     public synchronized void start(final String message) {
+        LOG.info("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called with message: '{}'", sessionId, message);
         cancel();
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID, sessionId, ContentUtils.buildUserContent(message), runConfig())
                 .subscribeOn(SCHEDULER)
-                .doOnNext(event -> LOG.debug(
-                        "[{}] runAsync onNext: author={} turnComplete={} finalResponse={}",
-                        sessionId,
-                        event.author(),
-                        event.turnComplete().orElse(false),
-                        event.finalResponse()))
+                .doOnNext(event -> {
+                    LOG.info(
+                            "[USER_MESSAGE_TRACE][{}] ADK runAsync emitted event: author={} turnComplete={} finalResponse={} content={}",
+                            sessionId,
+                            event.author(),
+                            event.turnComplete().orElse(false),
+                            event.finalResponse(),
+                            event.content().map(c -> c.text()).orElse("<no-content>"));
+                    LOG.debug(
+                            "[{}] runAsync onNext: author={} turnComplete={} finalResponse={}",
+                            sessionId,
+                            event.author(),
+                            event.turnComplete().orElse(false),
+                            event.finalResponse());
+                })
                 .doOnComplete(() -> {
+                    LOG.info("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
                     LOG.debug("[{}] runAsync onComplete", sessionId);
                     sessionActor.tell(new CompleteRunCommand());
                 })
-                .doOnError(error -> LOG.error("[{}] runAsync onError", sessionId, error))
+                .doOnError(error -> {
+                    LOG.error("[USER_MESSAGE_TRACE][{}] ADK runAsync stream error", sessionId, error);
+                    LOG.error("[{}] runAsync onError", sessionId, error);
+                })
                 .subscribe(
-                        event -> sessionActor.tell(new PublishEventCommand(event)),
+                        event -> {
+                            LOG.info("[USER_MESSAGE_TRACE][{}] Sending PublishEventCommand to SessionActor", sessionId);
+                            sessionActor.tell(new PublishEventCommand(event));
+                        },
                         error -> sessionActor.tell(new RunFailedCommand(ExceptionUtils.getErrorMessage(error))));
     }
 

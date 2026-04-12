@@ -9,9 +9,9 @@ langchain4j = "1.10.0"
 langchain4j-plugin = "1.10.0"
 google-adk = "0.5.1-SNAPSHOT"
 google-genai = "1.44.0"
-pekko = "1.1.5"
+pekko = "1.2.1"
 pekko-persistence-jdbc = "1.2.0"
-pekko-projections = "1.1.0"
+pekko-projections = "1.1.1"
 
 # Jackson & JSON
 jackson = "2.18.6"

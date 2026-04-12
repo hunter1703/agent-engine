@@ -23,8 +23,8 @@ public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents) implemen
     }
 
     public boolean canReplayFrom(final Long lastSeenSequence) {
-        if (retainedEvents.isEmpty() || lastSeenSequence == null) {
-            return true;
+        if (lastSeenSequence == null) {
+            return false; // new subscription — no replay needed or requested
         }
         return lastSeenSequence >= oldestRetainedSequence() - 1L;
     }
@@ -41,13 +41,13 @@ public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents) implemen
     }
 
     public List<SequencedEvent<?>> eventsAfter(final Long lastSeenSequence) {
-        if (retainedEvents.isEmpty()) {
+        if (lastSeenSequence == null || retainedEvents.isEmpty()) {
             return List.of();
         }
 
         final ArrayList<SequencedEvent<?>> result = new ArrayList<>();
         for (final SequencedEvent<?> event : retainedEvents) {
-            if (lastSeenSequence == null || event.sequence() > lastSeenSequence) {
+            if (event.sequence() > lastSeenSequence) {
                 result.add(event);
             }
         }

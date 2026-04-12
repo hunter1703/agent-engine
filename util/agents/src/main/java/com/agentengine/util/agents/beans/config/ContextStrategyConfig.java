@@ -25,7 +25,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     @JsonSubTypes.Type(value = CompactionContextStrategyConfig.class, name = "COMPACTION"),
     @JsonSubTypes.Type(value = LastNContextStrategyConfig.class, name = "LAST_N")
 })
-@BsonDiscriminator(key = "type")
+@BsonDiscriminator
 public abstract class ContextStrategyConfig {
     @UiField(label = "Strategy Type", step = "model", section = "context", order = 10)
     @UiSelect(enumType = ContextStrategyType.class)

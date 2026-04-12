@@ -57,6 +57,9 @@ public final class CreatePlanTool extends Tool {
 
         LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
         return Map.of(
-                "status", "Success. Plan '" + title + "' has been created and saved with " + tasks.size() + " tasks. ");
+                "status",
+                "Success. Plan '" + title + "' has been created and saved with " + tasks.size() + " tasks. ",
+                "createdPlan",
+                currentPlan);
     }
 }

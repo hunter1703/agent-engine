@@ -8,15 +8,14 @@ import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.RequesterFirstAllocationStrategy;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
 import io.reactivex.rxjava3.core.BackpressureOverflowStrategy;
-import io.reactivex.rxjava3.processors.FlowableProcessor;
-import io.reactivex.rxjava3.processors.PublishProcessor;
+import io.reactivex.rxjava3.core.BackpressureStrategy;
+import io.reactivex.rxjava3.core.Flowable;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.ActorSystem;
-import org.apache.pekko.actor.typed.Behavior;
 import org.apache.pekko.actor.typed.Props;
 import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.actor.typed.javadsl.AskPattern;
@@ -53,44 +52,27 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
     @SuppressWarnings("unchecked")
     public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
         final String subscriptionId = UUID.randomUUID().toString();
-        final FlowableProcessor<SequencedEvent<?>> processor =
-                PublishProcessor.<SequencedEvent<?>>create().toSerialized();
-        final Behavior<SubscriberCommand> subscriberBehavior =
-                SubscriberActor.create(subscriptionId, broadcaster(scope), processor);
 
-        final ActorSystem<SpawnProtocol.Command> system = actorSystemProvider.system();
-        return CompletionUtils.completeWithRootCause(AskPattern.ask(
-                        system,
-                        (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
-                                replyTo -> new SpawnProtocol.Spawn<>(
-                                        subscriberBehavior,
-                                        "event-subscriber-" + subscriptionId,
-                                        Props.empty(),
-                                        replyTo),
-                        COMMAND_TIMEOUT,
-                        system.scheduler())
-                .thenCompose(subscriberActor -> {
-                    // not unsubscribing on publisher complete as this publisher is supposed to be long-lived and only
-                    // way to close this is via com.agentengine.util.common.events.EventSubscription.cancel which will
-                    // anyway send unsubscription command
-                    final Publisher<SequencedEvent<Event>> publisher = processor
-                            .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
-                            .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
-
-                    return AskPattern.ask(
-                                    subscriberActor,
-                                    (Function<ActorRef<SubscriberCommandResult>, SubscriberCommand>)
-                                            SubscriberCommand.SubscribeCommand::new,
+        final Publisher<SequencedEvent<Event>> publisher = Flowable
+                .<SequencedEvent<?>>create(emitter -> {
+                    final ActorRef<SubscriberCommand> actor = AskPattern.ask(
+                                    actorSystemProvider.system(),
+                                    (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
+                                            replyTo -> new SpawnProtocol.Spawn<>(
+                                                    SubscriberActor.create(subscriptionId, broadcaster(scope), emitter),
+                                                    "event-subscriber-" + subscriptionId,
+                                                    Props.empty(),
+                                                    replyTo),
                                     COMMAND_TIMEOUT,
-                                    system.scheduler())
-                            .thenCompose(result -> {
-                                if (result instanceof SubscriberCommandResult.Failed(Throwable cause)) {
-                                    return CompletionUtils.failedStage(cause);
-                                }
-                                return CompletableFuture.completedFuture(new EventSubscription<>(
-                                        subscriptionId, publisher, () -> stopSubscriber(subscriberActor)));
-                            });
-                }));
+                                    actorSystemProvider.system().scheduler())
+                            .toCompletableFuture()
+                            .join();
+                    emitter.setCancellable(() -> actor.tell(new SubscriberCommand.UnsubscribeCommand(null)));
+                }, BackpressureStrategy.MISSING)
+                .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
+                .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
+
+        return CompletableFuture.completedFuture(new EventSubscription<>(subscriptionId, publisher));
     }
 
     @Override
@@ -107,17 +89,6 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
     @SuppressWarnings("unchecked")
     public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
         return (Entity<M, E>) entityDef;
-    }
-
-    private CompletionStage<Void> stopSubscriber(final ActorRef<SubscriberCommand> subscriberActor) {
-        return AskPattern.ask(
-                        subscriberActor,
-                        (Function<ActorRef<SubscriberCommandResult>, SubscriberCommand>)
-                                SubscriberCommand.UnsubscribeCommand::new,
-                        COMMAND_TIMEOUT,
-                        actorSystemProvider.system().scheduler())
-                .thenApply(ignored -> (Void) null)
-                .exceptionally(ignored -> null);
     }
 
     private EntityRef<BroadcasterCommand> broadcaster(final Scope scope) {

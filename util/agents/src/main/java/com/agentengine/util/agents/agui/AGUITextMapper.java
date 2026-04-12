@@ -4,7 +4,6 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.StringUtils;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.TextMessageChunkEvent;
-import com.agui.core.event.TextMessageContentEvent;
 import com.agui.core.event.TextMessageEndEvent;
 import com.agui.core.event.TextMessageStartEvent;
 import io.reactivex.rxjava3.core.Flowable;
@@ -79,9 +78,10 @@ public final class AGUITextMapper {
         start.setRole("user");
         decorator.decorate(start);
 
-        final TextMessageContentEvent content = new TextMessageContentEvent();
+        final TextMessageChunkEvent content = new TextMessageChunkEvent();
         content.setMessageId(messageId);
         content.setDelta(text);
+        content.setRole("user");
         decorator.decorate(content);
 
         final TextMessageEndEvent end = new TextMessageEndEvent();

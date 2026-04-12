@@ -121,7 +121,6 @@ public class RuntimeServiceImpl implements RuntimeService {
                         sessionService.updateSession(
                                 rootSessionId, Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
                     }
-                    subscription.cancel();
                 });
     }
 }
