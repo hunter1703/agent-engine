@@ -31,48 +31,23 @@ public final class WebSearchTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "query", description = "The search query.") final String query,
-            @ToolSchema(name = "country", description = "Country code for search localization.", optional = true)
-                    final String country,
-            @ToolSchema(name = "search_lang", description = "Language code for search localization.", optional = true)
-                    final String searchLang,
-            @ToolSchema(
-                            name = "maximum_number_of_tokens",
-                            description = "Maximum number of tokens in the response.",
-                            optional = true)
-                    final Integer maximumNumberOfTokens,
-            @ToolSchema(
-                            name = "detailed",
-                            description =
-                                    "If true, returns comprehensive search results (uses more resources). If false, returns a quick summary. Defaults to false.",
-                            optional = true)
-                    final Boolean detailed) {
+            @ToolSchema(name = "query", description = "The search query.") final String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("Query cannot be empty");
         }
 
-        final boolean useDetailed = detailed != null && detailed;
-
-        if (useDetailed) {
-            return executeBraveSearch(query, country, searchLang, maximumNumberOfTokens);
-        } else {
-            return executeDuckDuckGoLookup(query);
-        }
+        // TODO: For production, switch back to DuckDuckGo first with Brave fallback
+        // return executeDuckDuckGoLookup(query);
+        return executeBraveSearch(query);
     }
 
-    private Map<String, Object> executeBraveSearch(
-            final String query, final String country, final String searchLang, final Integer maximumNumberOfTokens) {
+    private Map<String, Object> executeBraveSearch(final String query) {
         final Map<String, Object> connectorInput = new LinkedHashMap<>();
         connectorInput.put("query", query.trim());
-        connectorInput.put("country", country == null || country.isBlank() ? DEFAULT_COUNTRY : country.trim());
-        connectorInput.put(
-                "search_lang", searchLang == null || searchLang.isBlank() ? DEFAULT_LANGUAGE : searchLang.trim());
-        connectorInput.put(
-                "maximum_number_of_tokens",
-                maximumNumberOfTokens == null || maximumNumberOfTokens <= 0
-                        ? DEFAULT_MAX_TOKENS
-                        : maximumNumberOfTokens);
+        connectorInput.put("country", DEFAULT_COUNTRY);
+        connectorInput.put("search_lang", DEFAULT_LANGUAGE);
+        connectorInput.put("maximum_number_of_tokens", DEFAULT_MAX_TOKENS);
 
         final ConnectorExecutionResult result =
                 connectorService.execute(BRAVE_CONNECTOR_ID, Map.copyOf(connectorInput));
@@ -93,7 +68,8 @@ public final class WebSearchTool extends Tool {
         // noinspection unchecked
         final Map<String, Object> mappedData = CollectionUtils.nullSafeMap((Map<String, Object>) result.mappedData());
         if (StringUtils.isBlank(CollectionUtils.getStringValueFromMap(mappedData, "abstract"))) {
-            return executeBraveSearch(query, null, null, null);
+            // DuckDuckGo returned empty results, fallback to Brave
+            return executeBraveSearch(query);
         }
 
         return Map.of("result", mappedData);

@@ -34,6 +34,9 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
     private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(10);
     private static final int SUBSCRIBER_BUFFER_SIZE = 256;
 
+    // ActorSystemProvider is stored rather than ActorSystem directly because ActorSystemProvider
+    // initialises its system field in @Observes StartupEvent, which fires after CDI constructs
+    // all singletons. Extracting system() eagerly in the constructor would capture null.
     private final ActorSystemProvider actorSystemProvider;
     private final EntityTypeKey<BroadcasterCommand> typeKey;
     private final Entity<BroadcasterCommand, ShardingEnvelope<BroadcasterCommand>> entityDef;
