@@ -33,7 +33,9 @@ public final class ReadFileTool extends BaseFileTool {
                     + "the selected lines along with metadata including total line count, pagination state, and a "
                     + "content hash representing the file's current state at the time of reading. Lines exceeding "
                     + "500 characters are truncated. Tab characters are expanded to 4 spaces. "
-                    + "Returns: { content, file_path, offset, limit, total_lines, lines_read, has_more, content_hash, "
+                    + "Returns: { content, file_path, offset, limit, total_lines, lines_read, has_more, "
+                    + "content_hash (a fingerprint of the file at read time — retain this if you intend to "
+                    + "modify the file, to detect whether it changed since you read it), "
                     + "next_offset (when has_more is true), truncated (when any line was cut) }.",
             Map.of(),
             ToolRiskLevel.LOW);

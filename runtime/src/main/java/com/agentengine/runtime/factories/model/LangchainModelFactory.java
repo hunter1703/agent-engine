@@ -27,6 +27,7 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.Map;
 
 public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseLlm> {
     private static final Map<String, Object> DEFAULT_JSON_RESPONSE_FORMAT;
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
 
     static {
         DEFAULT_JSON_RESPONSE_FORMAT = JsonUtils.fromJson(
@@ -82,6 +84,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                 .numCtx(config.getMaxContextLength())
                 .stop(config.getStopTokens())
                 .responseFormat(responseFormat)
+                .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
 
@@ -96,6 +99,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                 .stop(config.getStopTokens())
                 .responseFormat(format)
                 .returnThinking(config.isThoughtsEnabled())
+                .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
 
@@ -112,6 +116,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                 .numCtx(config.getMaxContextLength())
                 .stop(config.getStopTokens())
                 .responseFormat(responseFormat)
+                .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
 
@@ -127,6 +132,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                 .stop(config.getStopTokens())
                 .responseFormat(format)
                 .returnThinking(config.isThoughtsEnabled())
+                .timeout(DEFAULT_TIMEOUT)
                 .build();
     }
 

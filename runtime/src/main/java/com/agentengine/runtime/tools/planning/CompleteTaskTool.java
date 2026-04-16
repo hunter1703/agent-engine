@@ -15,12 +15,13 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
             "Closes a task by transitioning it to a terminal status — either 'done' (completed successfully) or "
-                    + "'abandoned' (intentionally skipped or cancelled). Call once the work for a task is done and "
-                    + "you are ready to record the outcome and move on. A result describing the outcome is required. "
-                    + "The task must not already be in a terminal state, and all of its child tasks must already be "
-                    + "in a terminal state before the parent can be closed. After completion, the response includes "
-                    + "the next pending task if one exists. "
-                    + "Returns: { status, task_id, new_status, next_task } or { error }.",
+                    + "'abandoned' (intentionally skipped or cancelled). Terminal status is permanent and cannot be "
+                    + "reversed. Call once the work for a task is done and you are ready to record the outcome and "
+                    + "move on. A result describing the outcome is required. The task must not already be in a "
+                    + "terminal state, and all of its child tasks must already be in a terminal state before the "
+                    + "parent can be closed. "
+                    + "Returns: { status, task_id, new_status, next_task } or { error }. next_task is a text hint "
+                    + "in the format '[taskId] (name)' identifying the next pending task, or a message when none remain.",
             Map.of());
 
     public CompleteTaskTool() {

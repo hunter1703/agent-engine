@@ -38,8 +38,8 @@ public final class EchoTool extends Tool {
             @ToolSchema(
                             name = "prefix",
                             description =
-                                    "String to prepend before the text. Overrides any default prefix configured for this "
-                                            + "tool instance. If null or blank, no prefix is added.",
+                                    "String to prepend before the text. Overrides the tool's default prefix for this call. "
+                                            + "If null or blank, no prefix is added.",
                             optional = true)
                     final String prefix) {
         final String resolvedPrefix = StringUtils.isNotBlank(prefix) ? prefix : this.prefix;

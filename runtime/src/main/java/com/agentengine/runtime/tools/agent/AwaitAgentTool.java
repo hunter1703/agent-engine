@@ -27,6 +27,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
             "Blocks until a child agent session finishes processing its current message and returns the result. "
                     + "Call when you need the child's output before you can proceed — either to use it as input to "
                     + "the next step, or to confirm successful completion before taking a dependent action. "
+                    + "If the child has finished, the result is returned immediately otherwise this tool will await for the child to finish.  "
                     + "Times out after 30 minutes. "
                     + "Returns: { child_session_id, result } on success with output; "
                     + "{ child_session_id, status: \"completed\" } on success without output; "

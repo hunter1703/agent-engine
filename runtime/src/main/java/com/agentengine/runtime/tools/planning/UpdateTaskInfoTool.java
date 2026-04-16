@@ -15,7 +15,8 @@ public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
                     + "fields must be provided; fields that are absent or blank are left unchanged. Does not modify "
                     + "task status or result — use dedicated status-transition tools for those. An active plan must "
                     + "exist and task_id must reference an existing task. "
-                    + "Returns: { status: \"success\", task_id, new_status } or { error }.",
+                    + "Returns: { status: \"success\", task_id, new_status } or { error }. "
+                    + "new_status reflects the task's current status, which is not modified by this call.",
             Map.of());
 
     public UpdateTaskInfoTool() {

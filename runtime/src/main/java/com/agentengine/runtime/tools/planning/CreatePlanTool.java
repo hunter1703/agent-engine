@@ -28,7 +28,9 @@ public final class CreatePlanTool extends Tool {
                     + "non-terminal plan is active will fail. Tasks are provided as a flat list; parent_id "
                     + "establishes both hierarchy and execution ordering (parent must be started before children; "
                     + "children must be terminal before parent can complete). "
-                    + "Returns: { status, createdPlan } on success, or { error } on failure.",
+                    + "Returns: { status, createdPlan } on success, where createdPlan contains the full plan "
+                    + "including the assigned taskId for every task — these IDs are required for all subsequent "
+                    + "task operations; or { error } on failure.",
             Map.of());
 
     public CreatePlanTool() {

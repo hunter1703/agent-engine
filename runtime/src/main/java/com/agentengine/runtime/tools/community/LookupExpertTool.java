@@ -27,7 +27,8 @@ public final class LookupExpertTool extends Tool {
             TOOL_NAME,
             "Returns the catalog of expert agents registered in the community, including each expert's identifier, "
                     + "name, description, and declared capabilities. Use this to discover which specialised agents "
-                    + "are available and what tasks they are suited for before delegating work to one. "
+                    + "are available and what tasks they are suited for before delegating work to one. expert_id "
+                    + "is the identifier to provide when invoking that expert. "
                     + "Returns: { experts: [{expert_id, name, description, capabilities}], count }.");
 
     private final CommunityRegistry communityRegistry;

@@ -25,7 +25,8 @@ public final class WebSearchTool extends Tool {
             "Queries a live web search service and returns a synthesised summary of results for the given query. "
                     + "Use for retrieving current information, facts, documentation, news, or any topic not available "
                     + "in the model's training data. Clear, specific queries produce better results than vague ones. "
-                    + "Returns: { result: <structured search output> } on success, or { error } on failure.",
+                    + "Returns: { result } on success, where result is the search provider's synthesised response "
+                    + "including titles, summaries, and source references; or { error } on failure.",
             Map.of(),
             ToolRiskLevel.LOW);
 

@@ -32,7 +32,8 @@ public final class SendMessageTool extends AbstractAgentTool {
                     + "relevant — for example, to give corrections, additional instructions, or a new related "
                     + "request without starting a fresh session. The child session must have already finished "
                     + "processing its previous message before a new one is accepted; sending to an active session "
-                    + "will be rejected. "
+                    + "will be rejected. A successful response confirms the message was accepted and the child "
+                    + "has begun processing — it does not mean the child has finished. "
                     + "Returns: { child_session_id } on success, or { error } on failure.",
             Map.of());
 

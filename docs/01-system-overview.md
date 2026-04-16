@@ -38,7 +38,7 @@ Practical meaning:
 - `runtime` and `runtime:actor` implement execution behavior, model/agent builders, guardrails, tools, and session actors.
 - `core` handles config CRUD, validation, and AG-UI event mapping.
 - `interfaces:rest` exposes the HTTP/SSE API and maps runtime events to client event protocols.
-- `connectors:core` is an independent config-driven HTTP connector framework used by tools (for example `web_lookup`).
+- `connectors:core` is an independent config-driven HTTP connector framework used by tools (for example `web_research`).
 
 ## 1.3 Execution Model in One Pass
 
