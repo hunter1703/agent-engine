@@ -32,8 +32,15 @@ public final class ApplyPatchTool extends BaseFileTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Apply a unified diff patch to a file. Validates patch syntax, optionally verifies file hasn't changed via "
-                    + "content_hash from read_file, and performs atomic file updates with rollback on failure.",
+            "Applies a unified diff patch to a file, modifying it in-place. Use to make targeted, precise edits "
+                    + "to an existing file when you know exactly which lines to change. The patch must be in "
+                    + "standard unified diff format (as produced by `diff -u` or `git diff`), including @@ hunk "
+                    + "headers. Validates patch syntax before applying. Optionally accepts a content hash to guard "
+                    + "against applying a stale patch — if the hash does not match the current file contents, the "
+                    + "operation is rejected. File writes are atomic: either the patch is fully applied or the file "
+                    + "is left unchanged. Maximum patch size: 100,000 characters. "
+                    + "Returns: { success, file_path, additions, deletions, hunks, message } on success, "
+                    + "or { error, validation_failed?, rolled_back? } on failure.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -42,12 +49,23 @@ public final class ApplyPatchTool extends BaseFileTool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "file_path", description = "Path to the file to patch") String filePath,
-            @ToolSchema(name = "patch", description = "Unified diff patch content to apply") String patch,
+            @ToolSchema(
+                            name = "file_path",
+                            description =
+                                    "Absolute or relative path to the file to patch. The file must already exist.")
+                    String filePath,
+            @ToolSchema(
+                            name = "patch",
+                            description =
+                                    "Unified diff content to apply, including @@ hunk headers. Must be valid unified diff "
+                                            + "format. Maximum 100,000 characters.")
+                    String patch,
             @ToolSchema(
                             name = "expected_hash",
                             description =
-                                    "Expected content hash from read_file (first 16 chars of SHA-256). If provided, validates file hasn't changed.",
+                                    "Optional content hash representing the expected file state before patching. When provided, "
+                                            + "the patch is rejected if the file has been modified since this hash was recorded, "
+                                            + "preventing accidental modification of an already-changed file.",
                             optional = true)
                     String expectedHash) {
 

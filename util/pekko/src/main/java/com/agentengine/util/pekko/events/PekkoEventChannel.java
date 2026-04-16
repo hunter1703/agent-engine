@@ -56,22 +56,24 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
     public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
         final String subscriptionId = UUID.randomUUID().toString();
 
-        final Publisher<SequencedEvent<Event>> publisher = Flowable
-                .<SequencedEvent<?>>create(emitter -> {
-                    final ActorRef<SubscriberCommand> actor = AskPattern.ask(
-                                    actorSystemProvider.system(),
-                                    (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
-                                            replyTo -> new SpawnProtocol.Spawn<>(
-                                                    SubscriberActor.create(subscriptionId, broadcaster(scope), emitter),
-                                                    "event-subscriber-" + subscriptionId,
-                                                    Props.empty(),
-                                                    replyTo),
-                                    COMMAND_TIMEOUT,
-                                    actorSystemProvider.system().scheduler())
-                            .toCompletableFuture()
-                            .join();
-                    emitter.setCancellable(() -> actor.tell(new SubscriberCommand.UnsubscribeCommand(null)));
-                }, BackpressureStrategy.MISSING)
+        final Publisher<SequencedEvent<Event>> publisher = Flowable.<SequencedEvent<?>>create(
+                        emitter -> {
+                            final ActorRef<SubscriberCommand> actor = AskPattern.ask(
+                                            actorSystemProvider.system(),
+                                            (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
+                                                    replyTo -> new SpawnProtocol.Spawn<>(
+                                                            SubscriberActor.create(
+                                                                    subscriptionId, broadcaster(scope), emitter),
+                                                            "event-subscriber-" + subscriptionId,
+                                                            Props.empty(),
+                                                            replyTo),
+                                            COMMAND_TIMEOUT,
+                                            actorSystemProvider.system().scheduler())
+                                    .toCompletableFuture()
+                                    .join();
+                            emitter.setCancellable(() -> actor.tell(new SubscriberCommand.UnsubscribeCommand(null)));
+                        },
+                        BackpressureStrategy.MISSING)
                 .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
                 .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
 

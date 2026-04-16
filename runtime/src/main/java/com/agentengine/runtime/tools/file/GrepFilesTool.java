@@ -38,8 +38,15 @@ public final class GrepFilesTool extends BaseFileTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Search for text patterns in files using regex. Returns matching lines with file paths and line numbers. "
-                    + "Supports include patterns for file filtering.",
+            "Searches the text content of files under a directory tree for lines matching a regular expression. "
+                    + "Use when you need to find which files contain a pattern, or locate all occurrences of a "
+                    + "string, symbol, or keyword across a codebase — particularly when you do not know which "
+                    + "specific file to look in. Returns matching lines with their relative file paths, line "
+                    + "numbers, and the matched text segment. Searches are case-insensitive by default. Hidden "
+                    + "files and directories (names starting with '.' or '_') are automatically skipped. Binary or "
+                    + "unreadable files are silently skipped. Results are capped at the configured limit. "
+                    + "Returns: { matches: [{file, lineNumber, line, matchedText}], pattern, search_path, "
+                    + "files_searched, total_matches, matches_returned, truncated }.",
             Map.of(),
             ToolRiskLevel.LOW);
 
@@ -48,25 +55,38 @@ public final class GrepFilesTool extends BaseFileTool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "pattern", description = "Regex pattern to search for", optional = false) String pattern,
+            @ToolSchema(
+                            name = "pattern",
+                            description =
+                                    "regular expression matched against individual lines. The full line "
+                                            + "content is searched; ^ and $ anchors are supported. Special regex characters must be escaped.")
+                    String pattern,
             @ToolSchema(
                             name = "path",
-                            description = "Directory path to search in (default: current directory)",
+                            description =
+                                    "Root directory from which to start the recursive search. Defaults to the process "
+                                            + "working directory. Must be an existing directory.",
                             optional = true)
                     String searchPath,
             @ToolSchema(
                             name = "include",
-                            description = "Glob pattern for files to include (exception.g., '*.java', '*.md')",
+                            description =
+                                    "Glob pattern to restrict which files are searched (e.g., '*.java', '*.md', 'src/**/*.ts'). "
+                                            + "When no directory separator is present, matched against the file name only. "
+                                            + "Defaults to all files.",
                             optional = true)
                     String includePattern,
             @ToolSchema(
                             name = "limit",
-                            description = "Maximum number of matches to return (default: 100, max: 2000)",
+                            description =
+                                    "Maximum number of matching lines to return. Capped at 2,000. Defaults to 100. "
+                                            + "When the result is truncated, the response includes truncated: true.",
                             optional = true)
                     Integer limit,
             @ToolSchema(
                             name = "case_sensitive",
-                            description = "Whether search is case-sensitive (default: false)",
+                            description =
+                                    "Whether the regex match is case-sensitive. Defaults to false (case-insensitive).",
                             optional = true)
                     Boolean caseSensitive) {
 

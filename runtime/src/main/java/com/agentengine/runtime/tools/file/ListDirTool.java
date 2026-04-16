@@ -31,7 +31,14 @@ public final class ListDirTool extends BaseFileTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "List contents of a directory. Supports recursive listing with depth control (default: 2 levels) and pagination.",
+            "Lists the contents of a directory, optionally traversing subdirectories up to a configurable depth. "
+                    + "Use to understand directory structure, discover what files are present, or browse for files "
+                    + "by name when you do not know the exact path. For searching file contents by pattern, use the "
+                    + "search tool instead. Entries are sorted alphabetically at each level and include their type "
+                    + "(file or directory), relative path, depth level, and file size in bytes (files only). "
+                    + "Supports pagination for large directories. "
+                    + "Returns: { entries: [{name, path, type, depth, size_bytes?}], dir_path, offset, limit, "
+                    + "total_entries, entries_returned, has_more, next_offset (when has_more is true) }.",
             Map.of(),
             ToolRiskLevel.LOW);
 
@@ -42,22 +49,26 @@ public final class ListDirTool extends BaseFileTool {
     public Map<String, Object> execute(
             @ToolSchema(
                             name = "dir_path",
-                            description = "Absolute or relative path to the directory to list",
-                            optional = false)
+                            description =
+                                    "Absolute or relative path to the directory to list. Relative paths are resolved "
+                                            + "against the process working directory.")
                     String dirPath,
             @ToolSchema(
                             name = "offset",
-                            description = "1-indexed entry number to start from (default: 1)",
+                            description =
+                                    "1-indexed position of the first entry to return across the full flattened listing. Defaults to 1.",
                             optional = true)
                     Integer offset,
             @ToolSchema(
                             name = "limit",
-                            description = "Maximum number of entries to return (default: 100)",
+                            description = "Maximum number of entries to return. Capped at 1,000. Defaults to 100.",
                             optional = true)
                     Integer limit,
             @ToolSchema(
                             name = "depth",
-                            description = "Recursion depth for subdirectories (default: 2, 0 = no recursion)",
+                            description =
+                                    "Maximum recursion depth into subdirectories. 0 lists only the immediate contents of "
+                                            + "dir_path. Defaults to 2. Capped at 10.",
                             optional = true)
                     Integer depth) {
 

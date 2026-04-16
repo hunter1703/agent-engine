@@ -97,7 +97,8 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
             final EntityRef<BroadcasterCommand> broadcasterEntity,
             final FlowableEmitter<SequencedEvent<?>> emitter) {
         return Behaviors.setup(ctx -> {
-            final SubscriberActor actor = new SubscriberActor(ctx, subscriptionId, broadcasterEntity, emitter.serialize());
+            final SubscriberActor actor =
+                    new SubscriberActor(ctx, subscriptionId, broadcasterEntity, emitter.serialize());
             actor.requestSubscribe();
             return actor;
         });

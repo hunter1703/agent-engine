@@ -4,28 +4,40 @@ import com.agentengine.runtime.annotations.ToolSchema;
 import java.util.UUID;
 
 public class Task {
-    @ToolSchema(description = "Unique identifier for the task", optional = true)
+    @ToolSchema(
+            description =
+                    "Auto-generated unique identifier for this task. Set by the system; do not provide when creating tasks.",
+            optional = true)
     private String taskId = UUID.randomUUID().toString();
 
     @ToolSchema(
             name = "parent_id",
-            description = "Parent task id for creating a hierarchy between tasks.",
+            description =
+                    "ID (taskId) of an existing task that this task is a child of. Establishes both hierarchy and "
+                            + "execution ordering: the parent must be IN_PROGRESS before a child can be started, and "
+                            + "the parent cannot be completed until all children are in a terminal state. Tasks are "
+                            + "executed depth-first (parent before children; children before siblings). "
+                            + "Omit for top-level tasks.",
             optional = true)
     private String parentId;
 
-    @ToolSchema(description = "Short name for the task.")
+    @ToolSchema(description = "Short label identifying this task. Should be unique within the plan.")
     private String name;
 
-    @ToolSchema(description = "The goal or expected result of this task.")
+    @ToolSchema(description = "Concise statement of what this task should produce or achieve when completed.")
     private String goal;
 
-    @ToolSchema(description = "Current status of the task.", optional = true)
+    @ToolSchema(
+            description = "Current lifecycle status of the task: TODO, IN_PROGRESS, DONE, or ABANDONED.",
+            optional = true)
     private TaskStatus status = TaskStatus.TODO;
 
-    @ToolSchema(description = "Actual result of the task once completed.", optional = true)
+    @ToolSchema(
+            description = "The outcome or conclusion recorded when the task was completed or abandoned.",
+            optional = true)
     private String result;
 
-    @ToolSchema(description = "Detailed description of the task.", optional = true)
+    @ToolSchema(description = "Extended context, notes, or instructions for performing this task.", optional = true)
     private String description;
 
     public Task() {}

@@ -11,6 +11,9 @@
   "tools": [
     {
       "toolName": "web_research"
+    },
+    {
+      "toolName": "planning"
     }
   ]
 }

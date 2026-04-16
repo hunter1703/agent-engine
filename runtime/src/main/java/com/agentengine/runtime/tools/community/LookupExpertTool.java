@@ -25,8 +25,10 @@ public final class LookupExpertTool extends Tool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Discover expert agents available in the community. Returns all experts with their IDs, "
-                    + "names, descriptions, and capabilities. Use spawn_agent with the expert_id to invoke an expert.");
+            "Returns the catalog of expert agents registered in the community, including each expert's identifier, "
+                    + "name, description, and declared capabilities. Use this to discover which specialised agents "
+                    + "are available and what tasks they are suited for before delegating work to one. "
+                    + "Returns: { experts: [{expert_id, name, description, capabilities}], count }.");
 
     private final CommunityRegistry communityRegistry;
 
@@ -36,7 +38,12 @@ public final class LookupExpertTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "query", description = "Optional search query (not yet implemented)", optional = true)
+            @ToolSchema(
+                            name = "query",
+                            description =
+                                    "Optional search hint. Not yet active — all registered experts are always returned "
+                                            + "regardless of this value.",
+                            optional = true)
                     final String query) {
         final List<BaseAgentConfig> experts = communityRegistry.findExperts(query);
         final List<Map<String, Object>> expertList = new ArrayList<>();

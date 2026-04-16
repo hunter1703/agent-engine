@@ -21,7 +21,13 @@ public final class WebSearchTool extends Tool {
     private static final String DEFAULT_ERROR = "Unknown error";
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
-            TOOL_NAME, "Search the web for information on a given topic.", Map.of(), ToolRiskLevel.LOW);
+            TOOL_NAME,
+            "Queries a live web search service and returns a synthesised summary of results for the given query. "
+                    + "Use for retrieving current information, facts, documentation, news, or any topic not available "
+                    + "in the model's training data. Clear, specific queries produce better results than vague ones. "
+                    + "Returns: { result: <structured search output> } on success, or { error } on failure.",
+            Map.of(),
+            ToolRiskLevel.LOW);
 
     private final ConnectorService connectorService;
 
@@ -31,7 +37,12 @@ public final class WebSearchTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "query", description = "The search query.") final String query) {
+            @ToolSchema(
+                            name = "query",
+                            description =
+                                    "The search query string. Phrase as a natural-language question or a set of keywords. "
+                                            + "Specific queries produce better results. Must be non-empty.")
+                    final String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("Query cannot be empty");

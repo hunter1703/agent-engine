@@ -29,8 +29,12 @@ public final class SpawnAgentTool extends AbstractAgentTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Spawn a child agent to handle a subtask. Returns child_session_id immediately "
-                    + "without waiting for the child to complete. Use await_agent to collect the result.",
+            "Creates a new subordinate agent session and starts it immediately with an initial message. "
+                    + "Use to delegate a self-contained task to a specialised agent, or to run multiple tasks "
+                    + "concurrently across independent child sessions. Returns a session identifier before the child "
+                    + "has produced any output — the child runs asynchronously. The returned identifier can be used "
+                    + "in subsequent calls to deliver follow-up messages or to wait for the result. "
+                    + "Returns: { child_session_id } on success, or { error } on failure.",
             Map.of());
 
     private final List<String> subAgentIds;
@@ -75,8 +79,17 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     public Map<String, Object> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
-            @ToolSchema(name = "agent_id", description = "ID of the agent to spawn") final String childAgentId,
-            @ToolSchema(name = "message", description = "Initial message to send to the spawned agent")
+            @ToolSchema(
+                            name = "agent_id",
+                            description =
+                                    "Identifier of the agent type to instantiate. Determines the agent's instructions, "
+                                            + "tools, and behaviour profile. Must be one of the available agents in the current deployment.")
+                    final String childAgentId,
+            @ToolSchema(
+                            name = "message",
+                            description =
+                                    "The first message to deliver to the newly created agent session, framing the task "
+                                            + "or question the child should work on.")
                     final String message) {
         final StartChildResult startChildResult = actorRef(toolContext)
                 .<StartChildResult>ask(

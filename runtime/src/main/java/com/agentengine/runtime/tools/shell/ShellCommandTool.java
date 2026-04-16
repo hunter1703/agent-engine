@@ -24,7 +24,16 @@ public final class ShellCommandTool extends Tool {
     private static final String TOOL_NAME = "run_cmd";
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Execute shell commands using `bash -lc`. Supports pipes `|`, redirects `>`, semi-colons `;`, and logic operators `&&`, `||`. Command must be single-line; no heredocs; commands matching `rm` require confirmation.",
+            "Executes a single-line shell command and returns the combined stdout and stderr output as a single "
+                    + "string. Use when no dedicated tool covers the required operation — building projects, running "
+                    + "test suites, installing packages, executing scripts, or other system-level tasks. Prefer "
+                    + "dedicated tools (file read/write, search) when they are available. Supports shell constructs "
+                    + "including pipes (|), output redirects (>), semicolons (;), and logical operators (&&, ||). "
+                    + "Multi-line constructs and heredocs are not supported. Commands that invoke `rm` are paused "
+                    + "for explicit user confirmation before executing. The process runs with the user's home "
+                    + "directory as its working directory. Output is truncated at 12,000 characters with a trailing "
+                    + "...<truncated>... marker. "
+                    + "Returns: { output }. Non-zero exit codes prefix the output with (exit=N); timeouts prefix with (timeout).",
             ToolRiskLevel.MEDIUM);
     private final Duration timeout;
 
@@ -49,7 +58,9 @@ public final class ShellCommandTool extends Tool {
             @ToolSchema(
                             name = "command",
                             description =
-                                    "The shell command to execute. Can include pipes, redirects, and logic operators.")
+                                    "The shell command string to execute on a single line. Supports pipes (|), redirects (>), "
+                                            + "semicolons (;), and logical operators (&&, ||). Heredocs and embedded newlines are "
+                                            + "not supported. Commands invoking `rm` will pause for user confirmation.")
                     final String command) {
         if (command == null || command.isBlank()) {
             throw new IllegalArgumentException("Empty command");

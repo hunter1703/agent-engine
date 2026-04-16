@@ -12,8 +12,13 @@ import java.util.Map;
 
 public final class UpdatePlanTool extends Tool {
     private static final String TOOL_NAME = "update_plan";
-    public static final ToolDescriptor DESCRIPTOR =
-            new ToolDescriptor(TOOL_NAME, "Update the general information of the current plan.", Map.of());
+    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
+            TOOL_NAME,
+            "Revises the title and/or goal of the active plan. Use when the overall objective shifts direction or "
+                    + "the original framing needs correction. At least one of 'title' or 'goal' must be provided; "
+                    + "blank values are ignored. The plan must exist. "
+                    + "Returns: { status: \"success\" } or { error }.",
+            Map.of());
 
     public UpdatePlanTool() {
         super(DESCRIPTOR);
@@ -22,9 +27,18 @@ public final class UpdatePlanTool extends Tool {
     public Map<String, Object> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     ToolContext toolContext,
-            @ToolSchema(name = "title", description = "New title for the plan (optional)", optional = true)
+            @ToolSchema(
+                            name = "title",
+                            description =
+                                    "Replacement title for the plan. Omit or leave blank to retain the current title.",
+                            optional = true)
                     String title,
-            @ToolSchema(name = "goal", description = "New goal for the plan (optional)", optional = true) String goal) {
+            @ToolSchema(
+                            name = "goal",
+                            description =
+                                    "Replacement goal statement for the plan. Omit or leave blank to retain the current goal.",
+                            optional = true)
+                    String goal) {
         final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
         final Plan currentPlan = runState.plan();
         if (currentPlan == null) {

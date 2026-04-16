@@ -27,8 +27,14 @@ public final class ReadFileTool extends BaseFileTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Read contents of a file with optional line range pagination. Use offset (1-indexed) and limit to read specific portions of large files. "
-                    + "Returns content_hash (SHA-256, first 16 chars) for use with apply_patch validation.",
+            "Reads the UTF-8 text content of a file with optional line-range pagination. Use when you have a "
+                    + "specific file path and need to examine or extract its content. For locating files or "
+                    + "searching across multiple files, use the directory listing or search tools instead. Returns "
+                    + "the selected lines along with metadata including total line count, pagination state, and a "
+                    + "content hash representing the file's current state at the time of reading. Lines exceeding "
+                    + "500 characters are truncated. Tab characters are expanded to 4 spaces. "
+                    + "Returns: { content, file_path, offset, limit, total_lines, lines_read, has_more, content_hash, "
+                    + "next_offset (when has_more is true), truncated (when any line was cut) }.",
             Map.of(),
             ToolRiskLevel.LOW);
 
@@ -37,16 +43,22 @@ public final class ReadFileTool extends BaseFileTool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "file_path", description = "Absolute or relative path to the file to read")
+            @ToolSchema(
+                            name = "file_path",
+                            description =
+                                    "Absolute or relative path to the file. Relative paths are resolved against the process working directory.")
                     String filePath,
             @ToolSchema(
                             name = "offset",
-                            description = "0-indexed line number to start reading from (default: 0)",
+                            description =
+                                    "1-indexed line number to begin reading from. Line 1 is the first line of the file. "
+                                            + "Defaults to 1. Use the next_offset value from a prior response to paginate forward.",
                             optional = true)
                     Integer offset,
             @ToolSchema(
                             name = "limit",
-                            description = "Maximum number of lines to return (default: 50)",
+                            description =
+                                    "Maximum number of lines to return. When specified, capped at 1,000. Defaults to 2,000.",
                             optional = true)
                     Integer limit) {
 

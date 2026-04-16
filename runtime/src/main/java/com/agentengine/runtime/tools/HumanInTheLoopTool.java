@@ -23,10 +23,14 @@ public final class HumanInTheLoopTool extends Tool {
     public static final String CONTEXT = "context";
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             Constants.HITL_TOOL_NAME,
-            "Request user input ONLY when execution is BLOCKED by genuinely missing information that cannot be reasonably inferred or defaulted. "
-                    + "Use ONLY when: (1) critical parameters are absent and no reasonable default exists, (2) the user must choose between mutually exclusive alternatives with no clear preference, or (3) a destructive action requires explicit approval. "
-                    + "DO NOT use this tool to: confirm the user's stated intent, ask if they want what they explicitly requested, present unnecessary options, report errors, provide status updates, or deliver final answers. "
-                    + "If you can proceed with the request as stated, DO NOT call this tool.",
+            "Pauses execution to request input from a human operator. Use ONLY when execution is genuinely blocked "
+                    + "by information that cannot be inferred, defaulted, or derived from context: (1) a required "
+                    + "input is absent and no reasonable default exists; (2) the operator must choose between "
+                    + "mutually exclusive alternatives with no stated or inferrable preference; or (3) a destructive "
+                    + "or irreversible action requires explicit approval before proceeding. "
+                    + "Do NOT use to confirm intent already stated, present unnecessary choices, report errors, "
+                    + "deliver answers, or provide status updates. If the request can be fulfilled as-stated, "
+                    + "do not call this tool.",
             Map.of());
 
     public HumanInTheLoopTool() {

@@ -4,7 +4,6 @@ import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.commands.SelfCommand.SendMessageCommand;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -28,11 +27,13 @@ public final class SendMessageTool extends AbstractAgentTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
-            "Send a new message to an already-spawned child agent, preserving its conversation context. "
-                    + "The child must have completed its previous message. Returns child_session_id. "
-                    + "Use "
-                    + Constants.AWAIT_AGENT_TOOL_NAME
-                    + " to collect the result.",
+            "Sends a follow-up message to an existing child agent session, preserving its full conversation history. "
+                    + "Use when the child has completed its previous task but its accumulated context is still "
+                    + "relevant — for example, to give corrections, additional instructions, or a new related "
+                    + "request without starting a fresh session. The child session must have already finished "
+                    + "processing its previous message before a new one is accepted; sending to an active session "
+                    + "will be rejected. "
+                    + "Returns: { child_session_id } on success, or { error } on failure.",
             Map.of());
 
     public SendMessageTool(final ActorSystemProvider actorSystemProvider) {
@@ -42,9 +43,15 @@ public final class SendMessageTool extends AbstractAgentTool {
     public Map<String, Object> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
-            @ToolSchema(name = "child_session_id", description = "Session ID returned by spawn_agent")
+            @ToolSchema(
+                            name = "child_session_id",
+                            description =
+                                    "The opaque identifier of an existing child agent session to deliver the message to.")
                     final String childSessionId,
-            @ToolSchema(name = "message", description = "The next message to send to the child agent")
+            @ToolSchema(
+                            name = "message",
+                            description =
+                                    "The message content to deliver as the next conversation turn to the child session.")
                     final String message) {
         final StartSessionResult result = actorRef(toolContext)
                 .<StartSessionResult>ask(

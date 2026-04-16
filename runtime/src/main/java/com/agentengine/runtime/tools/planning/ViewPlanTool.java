@@ -11,7 +11,12 @@ import java.util.Map;
 public final class ViewPlanTool extends Tool {
     private static final String TOOL_NAME = "view_plan";
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
-            TOOL_NAME, "View the complete plan including all tasks, their statuses, and results.", Map.of());
+            TOOL_NAME,
+            "Retrieves the current plan in its entirety: title, goal, overall status, and all tasks with their "
+                    + "individual statuses, results, and hierarchical relationships. Returns null if no plan exists "
+                    + "for the current session. Use to inspect progress, determine which task to work on next, or "
+                    + "confirm a task's current state before updating it.",
+            Map.of());
 
     public ViewPlanTool() {
         super(DESCRIPTOR);
