@@ -1,9 +1,9 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.core.api.services.AgentExecutionService;
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.ModelService;
 import com.agentengine.core.api.services.SessionService;
+import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.runtime.api.services.ToolCatalog;
 import com.agentengine.util.ms.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
@@ -38,8 +38,8 @@ public class ClientProducer {
     @Produces
     @Singleton
     @DefaultBean
-    public AgentExecutionService agentExecutionService(MicroServiceClientProvider provider) {
-        return provider.get(AgentExecutionService.class);
+    public RuntimeService runtimeService(MicroServiceClientProvider provider) {
+        return provider.get(RuntimeService.class);
     }
 
     @Produces

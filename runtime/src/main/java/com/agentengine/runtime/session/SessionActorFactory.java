@@ -22,7 +22,8 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
             final ActorSystemProvider actorSystemProvider,
             final SessionEventChannel sessionEventChannel,
             final RunnerFactory runnerFactory,
-            final SessionService sessionService) {
+            final SessionService sessionService,
+            final SessionTitleGenerator sessionTitleGenerator) {
         super(
                 actorSystemProvider,
                 SessionActor.TYPE_KEY,
@@ -33,7 +34,8 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
                         sessionEventChannel,
                         (sessionId) -> actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, sessionId),
                         runnerFactory,
-                        sessionService)),
+                        sessionService,
+                        sessionTitleGenerator)),
                 Duration.ofHours(1),
                 "runtime");
     }

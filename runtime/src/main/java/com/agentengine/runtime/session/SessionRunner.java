@@ -2,7 +2,6 @@ package com.agentengine.runtime.session;
 
 import com.agentengine.runtime.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.runtime.session.commands.SelfCommand.PublishEventCommand;
-import com.agentengine.runtime.session.commands.SelfCommand.RunFailedCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
 import com.agentengine.runtime.utils.ContentUtils;
 import com.agentengine.util.agents.beans.Confirmation;
@@ -68,11 +67,6 @@ public final class SessionRunner {
                             event.turnComplete().orElse(false),
                             event.finalResponse());
                 })
-                .doOnComplete(() -> {
-                    LOG.info("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
-                    LOG.debug("[{}] runAsync onComplete", sessionId);
-                    sessionActor.tell(new CompleteRunCommand());
-                })
                 .doOnError(error -> {
                     LOG.error("[USER_MESSAGE_TRACE][{}] ADK runAsync stream error", sessionId, error);
                     LOG.error("[{}] runAsync onError", sessionId, error);
@@ -82,7 +76,12 @@ public final class SessionRunner {
                             LOG.info("[USER_MESSAGE_TRACE][{}] Sending PublishEventCommand to SessionActor", sessionId);
                             sessionActor.tell(new PublishEventCommand(event));
                         },
-                        error -> sessionActor.tell(new RunFailedCommand(ExceptionUtils.getErrorMessage(error))));
+                        error -> sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorMessage(error))),
+                        () -> {
+                            LOG.info("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
+                            LOG.debug("[{}] runAsync onComplete", sessionId);
+                            sessionActor.tell(new CompleteRunCommand());
+                        });
     }
 
     public synchronized void resume(final Collection<Confirmation> confirmations) {
@@ -99,14 +98,14 @@ public final class SessionRunner {
                         event.author(),
                         event.turnComplete().orElse(false),
                         event.finalResponse()))
-                .doOnComplete(() -> {
-                    LOG.debug("[{}] resume onComplete", sessionId);
-                    sessionActor.tell(new CompleteRunCommand());
-                })
                 .doOnError(error -> LOG.error("[{}] resume onError", sessionId, error))
                 .subscribe(
                         event -> sessionActor.tell(new PublishEventCommand(event)),
-                        error -> sessionActor.tell(new RunFailedCommand(ExceptionUtils.getErrorMessage(error))));
+                        error -> sessionActor.tell(new CompleteRunCommand(ExceptionUtils.getErrorMessage(error))),
+                        () -> {
+                            LOG.debug("[{}] resume onComplete", sessionId);
+                            sessionActor.tell(new CompleteRunCommand());
+                        });
     }
 
     public synchronized void cancel() {

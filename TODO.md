@@ -1,5 +1,39 @@
 # TODO
 
+## SessionActor: Pause Propagation to Parent — At-Least-Once Delivery (DEFERRED)
+
+### Status: DEFERRED
+
+### Problem
+`propagateSelfPauseToParent` sends a single `PauseChildCommand` ask to the parent with no retry.
+If the ask times out AND the parent genuinely never received the message (network partition, not just
+a lost reply), the child is left permanently paused with no path to resume:
+
+1. Child pauses → sends `PauseChildCommand` to parent → ask times out
+2. Parent never received it → parent continues running → eventually completes (IDLE)
+3. Child actor crashes and recovers → re-propagates via `pendingExternalSelfConfirmationIds`
+4. Parent is now IDLE → `childPaused` hits `default → Effect().none()` → silently dropped
+5. Child is stuck in PAUSED forever — no one will ever send it a confirmation
+
+### Why Not Fixed Now
+Requires at-least-once delivery with acknowledgement: the child must keep retrying until the parent
+persists the pause, AND the parent must be idempotent about receiving the same pause ID twice.
+Non-trivial to add cleanly. The failure requires two unlikely events simultaneously (network
+partition + parent completing before child recovers), so the practical risk is low.
+
+### Proposed Fix (when prioritised)
+- Child retries `propagateSelfPauseToParent` on a schedule until the parent ACKs (persists `PausedFact`)
+- Parent's `childPaused` handler is already idempotent (`Map.put` with same key/value)
+- Add a `IDLE` case to `childPaused` that accepts re-delivered pauses from children whose
+  confirmation IDs are still in the parent's completed state — or reject with a meaningful error
+  that causes the child to self-fail rather than hang
+
+### Affected Files
+- `runtime/src/main/java/com/agentengine/runtime/session/SessionActor.java`
+  — `propagateSelfPauseToParent()`, `childPaused()`
+
+---
+
 ## Custom Actor-Based Sequential Agent Implementation (DEFERRED)
 
 ### Status: DEFERRED

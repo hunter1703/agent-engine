@@ -3,7 +3,9 @@ package com.agentengine.runtime.session.commands;
 import com.agentengine.runtime.session.ConfirmResult;
 import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.beans.UniqueRecord;
+import java.util.List;
 import org.apache.pekko.actor.typed.ActorRef;
 
 /**
@@ -16,4 +18,12 @@ public interface ExternalCommand extends SessionCommand {
             implements ExternalCommand {}
 
     record ConfirmCommand(Confirmation confirmation, ActorRef<ConfirmResult> replyTo) implements ExternalCommand {}
+
+    /**
+     * Requests the current uncommitted turn events from the session actor.
+     *
+     * <p>The reply contains all events accumulated in {@code SessionActor.turnEvents} since the
+     * last turn commit, mapped to {@link SessionEvent} with correct sequence numbers.
+     */
+    record GetCurrentTurnEventsCommand(ActorRef<List<SessionEvent>> replyTo) implements ExternalCommand {}
 }

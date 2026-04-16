@@ -2,12 +2,16 @@ package com.agentengine.interfaces.rest;
 
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.SessionService;
+import com.agentengine.runtime.api.services.RuntimeService;
+import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
@@ -23,6 +27,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -31,11 +37,16 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class AgentRestAPI {
     private final AgentService agentService;
     private final SessionService sessionService;
+    private final RuntimeService runtimeService;
 
     @Inject
-    public AgentRestAPI(final AgentService agentService, final SessionService sessionService) {
+    public AgentRestAPI(
+            final AgentService agentService,
+            final SessionService sessionService,
+            final RuntimeService runtimeService) {
         this.agentService = agentService;
         this.sessionService = sessionService;
+        this.runtimeService = runtimeService;
     }
 
     @POST
@@ -118,4 +129,24 @@ public class AgentRestAPI {
         }
         sessionService.deleteSession(sessionId);
     }
+
+    @POST
+    @Path("/{agentId}/invoke")
+    @Operation(summary = "Invoke an agent and return the session ID")
+    @APIResponse(
+            responseCode = "200",
+            description = "Session ID for subscribing to the event stream",
+            content = @Content(mediaType = APPLICATION_JSON, schema = @Schema(implementation = InvokeAgentResponse.class)))
+    @APIResponse(responseCode = "400", description = "Invalid request parameters")
+    @APIResponse(responseCode = "404", description = "Agent not found")
+    public InvokeAgentResponse invoke(
+            @NotBlank @PathParam("agentId") final String agentId, @Valid final InvokeAgentRequest request) {
+        if (agentService.getAgent(agentId) == null) {
+            throw new AssetNotFoundException(AssetClass.AGENT, agentId);
+        }
+        final String sessionId = runtimeService.startSession(agentId, request.getSessionId(), request.getMessage());
+        return new InvokeAgentResponse(sessionId);
+    }
+
+    public record InvokeAgentResponse(String sessionId) {}
 }

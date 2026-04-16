@@ -8,7 +8,22 @@ import org.reactivestreams.Publisher;
 @MicroService("runtime")
 public interface RuntimeService {
 
-    Publisher<SessionEvent> startSession(String agentId, String sessionId, String message);
+    /**
+     * Initialises the session actor and enqueues the message. Returns immediately with the
+     * resolved session ID; the agent runs in the background.
+     */
+    String startSession(String agentId, String sessionId, String message);
 
-    Publisher<SessionEvent> confirmSession(String sessionId, Confirmation confirmation);
+    /**
+     * Records a confirmation on the session actor. Returns immediately; resumed events are
+     * delivered via {@link #subscribeToSession}.
+     */
+    void confirmSession(String sessionId, Confirmation confirmation);
+
+    /**
+     * Returns a publisher that emits committed history, then uncommitted current-turn events,
+     * then live events, and completes when the terminal event is received. Safe to call from
+     * multiple concurrent subscribers for the same session.
+     */
+    Publisher<SessionEvent> subscribeToSession(String sessionId);
 }

@@ -25,9 +25,11 @@ public interface SelfCommand extends SessionCommand {
 
     record PublishEventCommand(Event event) implements SelfCommand {}
 
-    record RunFailedCommand(String error) implements SelfCommand {}
-
-    record CompleteRunCommand() implements SelfCommand {}
+    record CompleteRunCommand(String error) implements SelfCommand {
+        public CompleteRunCommand() {
+            this(null);
+        }
+    }
 
     record StartChildCommand(String agentId, UniqueRecord<String> message, ActorRef<StartChildResult> replyTo)
             implements SelfCommand {}
