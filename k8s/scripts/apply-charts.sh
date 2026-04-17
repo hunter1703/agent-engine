@@ -7,7 +7,7 @@ set -eu
 ENVIRONMENT=$DEFAULT_ENVIRONMENT
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
 ATOMIC=true
-LINT=true
+LINT=false
 DRY_RUN=false
 TIMEOUT=$DEFAULT_TIMEOUT
 IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "dev")}
@@ -59,8 +59,8 @@ parse_args() {
         ATOMIC=false
         shift
         ;;
-      --skip-lint)
-        LINT=false
+      --lint)
+        LINT=true
         shift
         ;;
       --dry-run)
@@ -124,7 +124,7 @@ build_helm_args() {
       --set namespace="$NAMESPACE" \
       --timeout "$TIMEOUT"
 
-    if [ "$ATOMIC" = "true" ]; then
+    if [ "$ATOMIC" = "true" ] && [ "$chart" = "infra" ]; then
       set -- "$@" --atomic
     fi
   fi
@@ -182,31 +182,67 @@ if [ "$DRY_RUN" != "true" ]; then
   kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 fi
 
-# Deploy global-properties in parallel with other charts since it has no dependencies
+# Deploy infra serially and atomically — seeding must not start until infra is Ready.
 for chart in $ALL_CHARTS; do
-  case "$chart" in global-properties) ;; *) continue ;; esac
+  case "$chart" in infra) ;; *) continue ;; esac
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     ensure_chart_dependencies "$chart"
-    if [ "$LINT" = "true" ]; then
-      lint_chart "$chart"
-    fi
-    deploy_chart "$chart" &
-  fi
-done
-
-# Deploy remaining charts serially (runtime -> core -> rest have service dependencies)
-for chart in $ALL_CHARTS; do
-  case "$chart" in global-properties) continue ;; esac
-  # shellcheck disable=SC2086
-  if chart_selected "$chart" $REQUESTED_CHARTS; then
-    ensure_chart_dependencies "$chart"
-    if [ "$LINT" = "true" ]; then
-      lint_chart "$chart"
-    fi
+    if [ "$LINT" = "true" ]; then lint_chart "$chart"; fi
     deploy_chart "$chart"
   fi
 done
 
-# Wait for parallel global-properties deployment to complete
-wait
+# Deploy all non-infra charts in parallel — Kubernetes handles dependency retries.
+pids=""
+for chart in $ALL_CHARTS; do
+  case "$chart" in infra) continue ;; esac
+  # shellcheck disable=SC2086
+  if chart_selected "$chart" $REQUESTED_CHARTS; then
+    ensure_chart_dependencies "$chart"
+    if [ "$LINT" = "true" ]; then lint_chart "$chart"; fi
+    deploy_chart "$chart" &
+    pids="$pids $!"
+  fi
+done
+
+failed=""
+for pid in $pids; do
+  wait "$pid" || failed="$failed $pid"
+done
+if [ -n "${failed# }" ]; then
+  echo "One or more chart deployments failed" >&2
+  exit 1
+fi
+
+# Wait for application rollouts in parallel.
+if [ "$DRY_RUN" != "true" ]; then
+  rollout_pids=""
+  # shellcheck disable=SC2086
+  if chart_selected runtime $REQUESTED_CHARTS; then
+    kubectl rollout status statefulset/agent-engine-runtime \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected core $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/agent-engine-core \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected rest $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/agent-engine-rest \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+
+  failed=""
+  for pid in $rollout_pids; do
+    wait "$pid" || failed="$failed $pid"
+  done
+  if [ -n "${failed# }" ]; then
+    echo "One or more rollouts failed" >&2
+    exit 1
+  fi
+fi

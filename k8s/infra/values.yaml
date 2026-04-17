@@ -20,7 +20,7 @@ mongodb:
   port: 27017
   connectionString: ""
   auth:
-    enabled: false
+    enabled: true
     username: agentengine
     password: agentengine
     existingSecret: ""

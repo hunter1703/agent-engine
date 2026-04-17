@@ -61,7 +61,7 @@ public class SessionRestAPI {
         if (session == null) {
             throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
         }
-        final AGUIEventMapper mapper = new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId());
+        final AGUIEventMapper mapper = new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId(), AGUIEventMapper.Mode.REPLAY);
         return Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId)).concatMap(mapper::map);
     }
 

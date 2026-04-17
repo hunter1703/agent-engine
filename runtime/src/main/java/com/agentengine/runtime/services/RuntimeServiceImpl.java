@@ -7,6 +7,7 @@ import com.agentengine.runtime.session.ConfirmResult;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.SessionEventChannel;
 import com.agentengine.runtime.session.StartSessionResult;
+import com.agentengine.runtime.session.CurrentTurnEvents;
 import com.agentengine.runtime.session.commands.ExternalCommand.ConfirmCommand;
 import com.agentengine.runtime.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
 import com.agentengine.runtime.session.commands.ExternalCommand.StartCommand;
@@ -30,7 +31,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -159,13 +159,7 @@ public class RuntimeServiceImpl implements RuntimeService {
                 // actor crash, or passivation), check status and synthesize the terminal so the SSE
                 // client is never left hanging on a stream that will never close.
                 liveSource.filter(event -> seen.add(event.getId()))
-                        .takeWhile(event -> !(Objects.equals(rootSessionId, event.getSessionId()) && event.isTerminal()))
-                        .concatWith(Flowable.defer(() -> {
-                            final AgentSession latestSession = sessionService.getSession(sessionId);
-                            return latestSession != null && isTerminalStatus(latestSession.getStatus())
-                                    ? Flowable.just(SessionEvent.terminal(rootSessionId))
-                                    : Flowable.empty();
-                        }))
+                        .takeWhile(event -> !event.isTerminal())
         );
     }
 
@@ -174,16 +168,16 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
-        return Flowable.fromIterable(sessionHistoryService.getAllSessionEvents(rootSessionId))
-                .concatWith(Flowable.just(SessionEvent.terminal(rootSessionId)));
+        return Flowable.fromIterable(sessionHistoryService.getAllSessionEvents(rootSessionId));
     }
 
     private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
-        return ref.<List<SessionEvent>>ask(
+        return ref.ask(
                         GetCurrentTurnEventsCommand::new,
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
-                .join();
+                .join()
+                .events();
     }
 }

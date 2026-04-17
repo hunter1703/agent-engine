@@ -779,12 +779,13 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     private Effect<SessionFact, SessionActorState> getCurrentTurnEvents(final SessionActorState state, final GetCurrentTurnEventsCommand command) {
         return Effect().none().thenReply(command.replyTo(), newState -> {
             final SessionTopology topology = newState.topology();
-            return SessionEventUtils.toSessionEvents(
+            final List<SessionEvent> events = SessionEventUtils.toSessionEvents(
                     topology.rootSessionId(),
                     topology.parentSessionId(),
                     topology.sessionId(),
                     new ArrayList<>(turnEvents),
                     newState.nextSequence());
+            return new CurrentTurnEvents(events);
         });
     }
 

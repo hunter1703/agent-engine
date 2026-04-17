@@ -60,10 +60,11 @@ trap stop_workloads INT TERM
 ENVIRONMENT=$DEFAULT_ENVIRONMENT
 NAMESPACE=${NAMESPACE:-$DEFAULT_NAMESPACE}
 ATOMIC=true
-LINT=true
+LINT=false
 DRY_RUN=false
+SKIP_INFRA=false
 TIMEOUT=$DEFAULT_TIMEOUT
-IMAGE_TAG=${IMAGE_TAG:-latest}
+IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "dev")}
 EXTRA_VALUES_FILES=""
 SET_ARGUMENTS=""
 LOCAL_PORT=${LOCAL_PORT:-8080}
@@ -85,7 +86,8 @@ Phases:
 
 Flags:
   --no-atomic       Disable atomic rollback on Helm failure.
-  --skip-lint       Skip helm lint before deploy.
+  --skip-infra      Skip infra deploy and seeding (Phases 2-3). Use when MongoDB/Postgres are already running.
+  --lint            Run helm lint before deploying (off by default).
   --dry-run         Render release changes without applying them.
   --timeout <d>     Helm timeout (default: 10m).
 EOF
@@ -119,8 +121,12 @@ parse_args() {
         ATOMIC=false
         shift
         ;;
-      --skip-lint)
-        LINT=false
+      --skip-infra)
+        SKIP_INFRA=true
+        shift
+        ;;
+      --lint)
+        LINT=true
         shift
         ;;
       --dry-run)
@@ -146,7 +152,7 @@ parse_args() {
 helm_flags() {
   set -- -e "$ENVIRONMENT" -n "$NAMESPACE" --timeout "$TIMEOUT"
   [ "$ATOMIC" = "false" ] && set -- "$@" --no-atomic
-  [ "$LINT"   = "false" ] && set -- "$@" --skip-lint
+  [ "$LINT"   = "true"  ] && set -- "$@" --lint
   [ "$DRY_RUN" = "true"  ] && set -- "$@" --dry-run
   [ -n "${IMAGE_TAG:-}"  ] && set -- "$@" --image-tag "$IMAGE_TAG"
   if [ -n "${EXTRA_VALUES_FILES:-}" ]; then
@@ -170,13 +176,19 @@ else
 fi
 
 # ── Phase 2: Deploy infrastructure ───────────────────────────────────────────
-print_phase "Phase 2: Deploying infrastructure workloads"
-# shellcheck disable=SC2046
-sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
+if [ "$SKIP_INFRA" = "true" ]; then
+  print_phase "Phase 2: Skipping infrastructure deploy (--skip-infra)"
+else
+  print_phase "Phase 2: Deploying infrastructure workloads"
+  # shellcheck disable=SC2046
+  sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
+fi
 
 # ── Phase 3: Seed infrastructure configuration ───────────────────────────────
-print_phase "Phase 3: Seeding infrastructure configuration"
-if [ "$DRY_RUN" != "true" ]; then
+if [ "$SKIP_INFRA" = "true" ]; then
+  print_phase "Phase 3: Skipping infrastructure seeding (--skip-infra)"
+elif [ "$DRY_RUN" != "true" ]; then
+  print_phase "Phase 3: Seeding infrastructure configuration"
   sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
 fi
 

@@ -25,7 +25,6 @@ DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-}
 TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
 COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
 EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
-WAIT_TIMEOUT=${WAIT_TIMEOUT:-180s}
 
 usage() {
   cat <<'EOF'
@@ -275,7 +274,6 @@ for (const config of configs.map(applyDeploymentOverrides)) {
 }
 EOF
 
-kubectl rollout status statefulset/postgres --timeout="$WAIT_TIMEOUT" --namespace "$NAMESPACE" >/dev/null
 POSTGRES_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=postgres -o jsonpath='{.items[0].metadata.name}')
 POSTGRES_USER=$(json_secret_value "$POSTGRES_SECRET_NAME" "$POSTGRES_USERNAME_KEY")
 POSTGRES_PASSWORD=$(json_secret_value "$POSTGRES_SECRET_NAME" "$POSTGRES_PASSWORD_KEY")
@@ -315,7 +313,6 @@ CREATE TABLE IF NOT EXISTS snapshot (
 EOSQL
 echo "PostgreSQL Pekko schema initialized"
 
-kubectl rollout status statefulset/mongodb --timeout="$WAIT_TIMEOUT" --namespace "$NAMESPACE" >/dev/null
 MONGODB_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=mongodb -o jsonpath='{.items[0].metadata.name}')
 
 kubectl exec --namespace "$NAMESPACE" -i "$MONGODB_POD" -- sh -c 'cat >/tmp/import.js && mongosh "$1" --quiet /tmp/import.js' sh \

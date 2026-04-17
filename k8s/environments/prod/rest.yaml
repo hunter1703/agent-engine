@@ -12,3 +12,6 @@ topologySpreadConstraints:
       matchLabels:
         app.kubernetes.io/name: agent-engine-rest
         app.kubernetes.io/instance: agent-engine-rest
+config:
+  applicationProperties:
+    quarkus.http.cors.origins: "https://REPLACE_WITH_PROD_DOMAIN"

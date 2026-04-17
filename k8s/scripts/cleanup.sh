@@ -73,10 +73,11 @@ for chart in rest core runtime global-properties infra; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     release_name=$(chart_release_name "$chart")
-    helm uninstall "$release_name" --namespace "$NAMESPACE" 2>/dev/null || true
-    echo "Removed $chart from namespace $NAMESPACE"
+    helm uninstall "$release_name" --namespace "$NAMESPACE" 2>/dev/null || true &
   fi
 done
+wait
+echo "Removed selected releases from namespace $NAMESPACE"
 
 if [ "$DELETE_VOLUMES" = "true" ]; then
   require_command kubectl

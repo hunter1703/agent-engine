@@ -75,13 +75,18 @@ spec:
             failureThreshold: {{ .Values.mongodb.probes.startup.failureThreshold }}
             timeoutSeconds: {{ .Values.mongodb.probes.startup.timeoutSeconds }}
           readinessProbe:
-            {{- if not .Values.mongodb.auth.enabled }}
             exec:
-              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-            {{- else }}
-            tcpSocket:
-              port: mongo
-            {{- end }}
+              command:
+                {{- if .Values.mongodb.auth.enabled }}
+                - sh
+                - -c
+                - 'mongosh --quiet --eval "db.adminCommand(\"ping\").ok" --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin'
+                {{- else }}
+                - mongosh
+                - --quiet
+                - --eval
+                - "db.adminCommand('ping').ok"
+                {{- end }}
             periodSeconds: {{ .Values.mongodb.probes.readiness.periodSeconds }}
             failureThreshold: {{ .Values.mongodb.probes.readiness.failureThreshold }}
             timeoutSeconds: {{ .Values.mongodb.probes.readiness.timeoutSeconds }}

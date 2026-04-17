@@ -59,7 +59,7 @@ build_quarkus_apps() {
   done
 
   if [ -n "${tasks# }" ]; then
-    (cd "$ROOT_DIR" && ./gradlew $tasks -x test --no-daemon)
+    (cd "$ROOT_DIR" && ./gradlew $tasks -x test --parallel)
   fi
 }
 
@@ -79,14 +79,24 @@ fi
 
 build_quarkus_apps "$@"
 
+pids=""
 for component in "$@"; do
   case "$component" in
-    runtime) build_component runtime runtime ;;
-    core) build_component core core ;;
-    rest) build_component rest interfaces/rest ;;
+    runtime) build_component runtime runtime & pids="$pids $!" ;;
+    core)    build_component core core & pids="$pids $!" ;;
+    rest)    build_component rest interfaces/rest & pids="$pids $!" ;;
     *)
       echo "Unknown component: $component" >&2
       exit 1
       ;;
   esac
 done
+
+failed=""
+for pid in $pids; do
+  wait "$pid" || failed="$failed $pid"
+done
+if [ -n "${failed# }" ]; then
+  echo "One or more image builds failed" >&2
+  exit 1
+fi
