@@ -6,7 +6,6 @@ import static com.mongodb.client.model.Filters.or;
 import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.session.SessionActor;
 import com.agentengine.runtime.session.events.CompletedFact;
-import com.agentengine.runtime.session.events.StartedFact;
 import com.agentengine.runtime.session.events.TurnCommittedFact;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -24,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.jspecify.annotations.NonNull;
@@ -58,7 +56,8 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
         if (session == null) {
             return List.of();
         }
-        final String persistenceId = PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
+        final String persistenceId =
+                PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
         return getJournalEvents(persistenceId).stream()
                 .map(EventEnvelope::event)
                 .filter(fact -> fact instanceof TurnCommittedFact)
@@ -85,8 +84,9 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
 
         final List<SessionEvent> allEvents = new ArrayList<>();
 
-        final List<AgentSession> childSessions =
-                sessions.find(or(eq(AgentSession.FIELD_ROOT_SESSION_ID, sessionId), eq(AgentSession.FIELD_ID, sessionId))).into(new ArrayList<>());
+        final List<AgentSession> childSessions = sessions.find(
+                        or(eq(AgentSession.FIELD_ROOT_SESSION_ID, sessionId), eq(AgentSession.FIELD_ID, sessionId)))
+                .into(new ArrayList<>());
 
         for (final AgentSession childSession : childSessions) {
             allEvents.addAll(getSessionEvents(childSession.getId()));
@@ -94,19 +94,21 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
 
         final String rootSessionId = session.getRootSessionId();
         /*
-          First sort by timestamp for rough chronological order
-          Then, sort such that root session events come before non-root (for equal timestamps)
-          Then, sort by sequence for events belonging to same sessions
-         */
-        allEvents.sort(Comparator.comparingLong(SessionEvent::getTimestamp).thenComparing(SessionEvent::getSessionId, (one, two) -> {
-            if (Objects.equals(rootSessionId, one) && !Objects.equals(rootSessionId, two)) {
-                return -1;
-            } else if (Objects.equals(rootSessionId, two) && !Objects.equals(rootSessionId, one)) {
-                return 1;
-            } else {
-                return one.compareTo(two);
-            }
-        }).thenComparingLong(SessionEvent::getSequence));
+         First sort by timestamp for rough chronological order
+         Then, sort such that root session events come before non-root (for equal timestamps)
+         Then, sort by sequence for events belonging to same sessions
+        */
+        allEvents.sort(Comparator.comparingLong(SessionEvent::getTimestamp)
+                .thenComparing(SessionEvent::getSessionId, (one, two) -> {
+                    if (Objects.equals(rootSessionId, one) && !Objects.equals(rootSessionId, two)) {
+                        return -1;
+                    } else if (Objects.equals(rootSessionId, two) && !Objects.equals(rootSessionId, one)) {
+                        return 1;
+                    } else {
+                        return one.compareTo(two);
+                    }
+                })
+                .thenComparingLong(SessionEvent::getSequence));
 
         return allEvents;
     }
@@ -159,11 +161,10 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
                         sessionId,
                         turnCommitedFact.getEvents().size(),
                         seq);
-                sessionEvents.addAll(
-                        SessionEventUtils.toSessionEvents(rootSessionId, parentSessionId, sessionId, turnCommitedFact.getEvents(), seq));
+                sessionEvents.addAll(SessionEventUtils.toSessionEvents(
+                        rootSessionId, parentSessionId, sessionId, turnCommitedFact.getEvents(), seq));
                 seq += turnCommitedFact.getEvents().size();
-            } else if (fact instanceof CompletedFact completed
-                    && StringUtils.isNotEmpty(completed.getError())) {
+            } else if (fact instanceof CompletedFact completed && StringUtils.isNotEmpty(completed.getError())) {
                 LOG.info(
                         "[USER_MESSAGE_TRACE][{}] CompletedFact with error at seq={}: {}",
                         sessionId,

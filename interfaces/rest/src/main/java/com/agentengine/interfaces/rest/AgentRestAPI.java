@@ -1,9 +1,11 @@
 package com.agentengine.interfaces.rest;
 
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.SessionService;
-import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
+import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
@@ -27,8 +29,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
-
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -41,9 +41,7 @@ public class AgentRestAPI {
 
     @Inject
     public AgentRestAPI(
-            final AgentService agentService,
-            final SessionService sessionService,
-            final RuntimeService runtimeService) {
+            final AgentService agentService, final SessionService sessionService, final RuntimeService runtimeService) {
         this.agentService = agentService;
         this.sessionService = sessionService;
         this.runtimeService = runtimeService;
@@ -136,7 +134,10 @@ public class AgentRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "Session ID for subscribing to the event stream",
-            content = @Content(mediaType = APPLICATION_JSON, schema = @Schema(implementation = InvokeAgentResponse.class)))
+            content =
+                    @Content(
+                            mediaType = APPLICATION_JSON,
+                            schema = @Schema(implementation = InvokeAgentResponse.class)))
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
     @APIResponse(responseCode = "404", description = "Agent not found")
     public InvokeAgentResponse invoke(
@@ -144,7 +145,7 @@ public class AgentRestAPI {
         if (agentService.getAgent(agentId) == null) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
-        final String sessionId = runtimeService.startSession(agentId, request.getSessionId(), request.getMessage());
+        final String sessionId = runtimeService.startSession(agentId, request.getSessionId(), request.getUserMessage());
         return new InvokeAgentResponse(sessionId);
     }
 

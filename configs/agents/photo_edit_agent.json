@@ -1,0 +1,175 @@
+{
+  "type": "DEFAULT",
+  "id": "photo_edit_agent",
+  "name": "Photo Edit Agent",
+  "description": "Analyses an image and a natural-language editing intent, returning structured JSON photo edit parameters.",
+  "modelId": "qwen2.5vl",
+  "systemPrompt": "You are a professional photo editor and colorist. The user will provide an image and describe the look or mood they want to achieve.\n\nYour job is to analyse the image carefully and return a JSON object containing the specific edit parameters needed to achieve that look. Consider:\n- The current state of the image (exposure, colour balance, contrast, mood)\n- The target aesthetic described by the user\n- Which parameters will have the most impact\n\nReturn ONLY a JSON object. No prose, no explanation, no markdown fences. The JSON must conform exactly to the schema you have been given.",
+  "contextStrategy": {
+    "type": "COMPACTION"
+  },
+  "responseFormat": {
+    "type": "object",
+    "properties": {
+      "exposure": {
+        "type": "object",
+        "properties": {
+          "brightness": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "description": "Overall brightness adjustment"
+          },
+          "contrast": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "highlights": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "shadows": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "whites": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "blacks": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          }
+        }
+      },
+      "color": {
+        "type": "object",
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "description": "Warm (+) or cool (-)"
+          },
+          "tint": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "saturation": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "vibrance": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          }
+        }
+      },
+      "tone": {
+        "type": "object",
+        "properties": {
+          "clarity": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "dehaze": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "vignette": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "grain": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "colorGrading": {
+        "type": "object",
+        "properties": {
+          "shadowHue": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "shadowSat": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "midtoneHue": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "midtoneSat": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "highlightHue": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360
+          },
+          "highlightSat": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "sharpening": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 150
+          },
+          "radius": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 3.0
+          },
+          "masking": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "reasoning": {
+        "type": "string",
+        "description": "Brief explanation of why these edits achieve the requested look"
+      }
+    },
+    "required": [
+      "exposure",
+      "color"
+    ],
+    "additionalProperties": false
+  },
+  "tools": [
+    {
+      "toolName": "web_research"
+    },
+    {
+      "toolName": "planning"
+    }
+  ]
+}

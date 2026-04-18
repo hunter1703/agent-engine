@@ -33,6 +33,8 @@ config:
     # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
     quarkus.otel.sdk.disabled: "true"
     quarkus.log.console.json: "true"
+    # gRPC server configuration - increase message size limit to 100MB
+    quarkus.grpc.server.max-inbound-message-size: "104857600"
 
 resources:
   requests:

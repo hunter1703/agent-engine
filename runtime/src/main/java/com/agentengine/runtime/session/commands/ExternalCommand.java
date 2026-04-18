@@ -1,8 +1,9 @@
 package com.agentengine.runtime.session.commands;
 
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.ConfirmResult;
-import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.runtime.session.CurrentTurnEvents;
+import com.agentengine.runtime.session.StartSessionResult;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.beans.UniqueRecord;
 import org.apache.pekko.actor.typed.ActorRef;
@@ -13,7 +14,7 @@ import org.apache.pekko.actor.typed.ActorRef;
  */
 public interface ExternalCommand extends SessionCommand {
 
-    record StartCommand(UniqueRecord<String> message, ActorRef<StartSessionResult> replyTo)
+    record StartCommand(UniqueRecord<UserMessage> message, ActorRef<StartSessionResult> replyTo)
             implements ExternalCommand {}
 
     record ConfirmCommand(Confirmation confirmation, ActorRef<ConfirmResult> replyTo) implements ExternalCommand {}

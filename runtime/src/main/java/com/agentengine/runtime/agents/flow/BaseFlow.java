@@ -3,6 +3,7 @@ package com.agentengine.runtime.agents.flow;
 import com.agentengine.runtime.agents.processors.request.CorrectionProcessor;
 import com.agentengine.runtime.agents.processors.request.PlanningRequestProcessor;
 import com.agentengine.runtime.agents.processors.response.PlanLoopResponseProcessor;
+import com.agentengine.runtime.agents.processors.response.ResponseFormatValidationProcessor;
 import com.agentengine.runtime.agents.processors.response.ToolCallSanitizationResponseProcessor;
 import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
@@ -63,6 +64,7 @@ public final class BaseFlow extends SingleFlow {
     private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =
             ImmutableList.<ResponseProcessor>builder()
                     .add(ToolCallSanitizationResponseProcessor.INSTANCE)
+                    .add(ResponseFormatValidationProcessor.INSTANCE)
                     .add(PlanLoopResponseProcessor.INSTANCE)
                     .addAll(SingleFlow.RESPONSE_PROCESSORS)
                     .build();

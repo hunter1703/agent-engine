@@ -4,7 +4,6 @@ import static com.agentengine.util.common.Utils.*;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 import com.agentengine.runtime.annotations.ToolSchema;
-import com.agentengine.runtime.tools.SchemaUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;

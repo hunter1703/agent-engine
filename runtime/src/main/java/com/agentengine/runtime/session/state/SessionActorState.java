@@ -1,5 +1,6 @@
 package com.agentengine.runtime.session.state;
 
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
@@ -11,7 +12,7 @@ import java.util.*;
 /** Durable actor state reconstructed from journal facts. */
 public record SessionActorState(
         SessionState sessionState,
-        Queue<UniqueRecord<String>> queue,
+        Queue<UniqueRecord<UserMessage>> queue,
         Map<String, ChildSession> childRegistry,
         Set<StartingChild> startingChildren,
         long nextSequence,
@@ -73,7 +74,7 @@ public record SessionActorState(
                 runState);
     }
 
-    public SessionActorState withCurrentMessage(final UniqueRecord<String> updatedCurrentMessage) {
+    public SessionActorState withCurrentMessage(final UniqueRecord<UserMessage> updatedCurrentMessage) {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -90,7 +91,7 @@ public record SessionActorState(
         return withRunResult(result).withSessionState(SessionState.IDLE).withCurrentMessage(null);
     }
 
-    public SessionActorState enqueue(final UniqueRecord<String> message) {
+    public SessionActorState enqueue(final UniqueRecord<UserMessage> message) {
         queue.add(message);
         return this;
     }

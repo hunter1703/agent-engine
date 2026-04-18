@@ -1,5 +1,6 @@
 package com.agentengine.runtime.session;
 
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.runtime.session.commands.SelfCommand.PublishEventCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
@@ -46,11 +47,14 @@ public final class SessionRunner {
         this.runner = runner;
     }
 
-    public synchronized void start(final String message) {
-        LOG.info("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called with message: '{}'", sessionId, message);
+    public synchronized void start(final UserMessage userMessage) {
+        LOG.info("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
         cancel();
         disposable = runner.runAsync(
-                        AgentSession.DEFAULT_USER_ID, sessionId, ContentUtils.buildUserContent(message), runConfig())
+                        AgentSession.DEFAULT_USER_ID,
+                        sessionId,
+                        ContentUtils.buildUserContent(userMessage),
+                        runConfig())
                 .subscribeOn(SCHEDULER)
                 .doOnNext(event -> {
                     LOG.info(

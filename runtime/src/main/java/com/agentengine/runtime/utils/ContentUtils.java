@@ -1,11 +1,14 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.api.model.MessagePart;
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -131,11 +134,19 @@ public final class ContentUtils {
                 .build();
     }
 
-    public static Content buildUserContent(final String message) {
-        return Content.builder()
-                .role("user")
-                .parts(List.of(Part.fromText(message)))
-                .build();
+    public static Content buildUserContent(final UserMessage userMessage) {
+        final List<Part> parts =
+                userMessage.parts().stream().map(ContentUtils::toAdkPart).toList();
+        return Content.builder().role("user").parts(parts).build();
+    }
+
+    private static Part toAdkPart(final MessagePart part) {
+        return switch (part) {
+            case MessagePart.TextPart textPart -> Part.fromText(textPart.text());
+            case MessagePart.ImagePart imagePart ->
+                Part.fromBytes(Base64.getDecoder().decode(imagePart.base64()), imagePart.mimeType());
+            default -> throw new IllegalStateException("Unexpected value: " + part);
+        };
     }
 
     public static Content buildConfirmationsContent(final Collection<Confirmation> confirmations) {

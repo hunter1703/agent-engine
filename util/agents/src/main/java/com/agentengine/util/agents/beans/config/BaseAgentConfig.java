@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -105,6 +106,8 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
     @UiField(label = "Tool Execution Mode", step = "runtime", order = 20)
     @UiSelect(enumType = ToolExecutionMode.class)
     private String toolExecutionMode = ToolExecutionMode.PARALLEL.name();
+
+    private Map<String, Object> responseFormat;
 
     protected BaseAgentConfig(final AgentType agentType) {
         this.type = agentType.type();
@@ -237,6 +240,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     public void setToolExecutionMode(final String toolExecutionMode) {
         this.toolExecutionMode = toolExecutionMode == null ? ToolExecutionMode.PARALLEL.name() : toolExecutionMode;
+    }
+
+    public Map<String, Object> getResponseFormat() {
+        return responseFormat;
+    }
+
+    public void setResponseFormat(final Map<String, Object> responseFormat) {
+        this.responseFormat = responseFormat;
     }
 
     public enum AgentType {

@@ -1,5 +1,6 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.state.SessionActorState;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -123,9 +124,8 @@ public final class EventUtils {
                 .build();
     }
 
-    public static Event buildUserEvent(final String userMessage, final String invocationId) {
-        final Content userContent = ContentUtils.buildUserContent(userMessage);
-        return buildEvent(invocationId, userContent);
+    public static Event buildUserEvent(final UserMessage userMessage, final String invocationId) {
+        return buildEvent(invocationId, ContentUtils.buildUserContent(userMessage));
     }
 
     public static Event buildConfirmationsEvent(final SessionActorState state, final String invocationId) {

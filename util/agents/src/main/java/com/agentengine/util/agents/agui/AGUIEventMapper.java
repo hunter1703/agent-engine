@@ -64,7 +64,10 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
                 state.hasStartedStep());
 
         if (event.isError()) {
-            LOG.info("Mapping error event for session={}, errorMessage={}", event.getSessionId(), event.getErrorMessage());
+            LOG.info(
+                    "Mapping error event for session={}, errorMessage={}",
+                    event.getSessionId(),
+                    event.getErrorMessage());
             final RunErrorEvent errorEvent = new RunErrorEvent();
             errorEvent.setError(event.getErrorMessage());
             decorator.decorate(errorEvent);

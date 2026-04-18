@@ -1,5 +1,6 @@
 package com.agentengine.runtime.api.services;
 
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.MicroService;
@@ -12,7 +13,7 @@ public interface RuntimeService {
      * Initialises the session actor and enqueues the message. Returns immediately with the
      * resolved session ID; the agent runs in the background.
      */
-    String startSession(String agentId, String sessionId, String message);
+    String startSession(String agentId, String sessionId, UserMessage userMessage);
 
     /**
      * Records a confirmation on the session actor. Returns immediately; resumed events are

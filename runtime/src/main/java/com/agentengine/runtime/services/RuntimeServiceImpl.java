@@ -1,13 +1,13 @@
 package com.agentengine.runtime.services;
 
 import com.agentengine.core.api.services.SessionService;
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.session.ConfirmResult;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.SessionEventChannel;
 import com.agentengine.runtime.session.StartSessionResult;
-import com.agentengine.runtime.session.CurrentTurnEvents;
 import com.agentengine.runtime.session.commands.ExternalCommand.ConfirmCommand;
 import com.agentengine.runtime.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
 import com.agentengine.runtime.session.commands.ExternalCommand.StartCommand;
@@ -18,10 +18,11 @@ import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
@@ -29,7 +30,6 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import com.agentengine.util.common.StructuredConcurrencyUtils;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -64,7 +64,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public String startSession(final String agentId, final String sessionId, final String message) {
+    public String startSession(final String agentId, final String sessionId, final UserMessage message) {
         final String resolvedSessionId =
                 StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
         LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
@@ -125,11 +125,14 @@ public class RuntimeServiceImpl implements RuntimeService {
         // replay() records every event from connect() time; when liveFlow is eventually subscribed
         // (after history and turn events are exhausted), it replays the buffered events first and
         // then continues live. The dedup set eliminates any overlap with history/turn events.
-        final ConnectableFlowable<SessionEvent> liveSource =
-                Flowable.fromPublisher(eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
-                        .map(SequencedEvent::payload)
-                        .cast(SessionEvent.class)
-                        .replay();
+        final ConnectableFlowable<SessionEvent> liveSource = Flowable.fromPublisher(eventChannel
+                        .subscribe(rootSessionId)
+                        .toCompletableFuture()
+                        .join()
+                        .publisher())
+                .map(SequencedEvent::payload)
+                .cast(SessionEvent.class)
+                .replay();
         final Disposable liveConnection = liveSource.connect();
 
         //  re-check status after connect(). The initial status check and connect() are
@@ -145,8 +148,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
         // Fetch committed history and current turn events in parallel on virtual threads.
         final List<List<SessionEvent>> fetched = StructuredConcurrencyUtils.runConcurrently(List.of(
-                () -> sessionHistoryService.getAllSessionEvents(rootSessionId),
-                () -> getCurrentTurnEvents(sessionId)));
+                () -> sessionHistoryService.getAllSessionEvents(rootSessionId), () -> getCurrentTurnEvents(sessionId)));
         final List<SessionEvent> history = fetched.get(0);
         final List<SessionEvent> turnEvents = fetched.get(1);
 
@@ -158,9 +160,7 @@ public class RuntimeServiceImpl implements RuntimeService {
                 // if liveSource completes without a terminal event (broadcaster stopped,
                 // actor crash, or passivation), check status and synthesize the terminal so the SSE
                 // client is never left hanging on a stream that will never close.
-                liveSource.filter(event -> seen.add(event.getId()))
-                        .takeWhile(event -> !event.isTerminal())
-        );
+                liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal()));
     }
 
     private static boolean isTerminalStatus(final SessionStatus status) {
@@ -173,9 +173,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
-        return ref.ask(
-                        GetCurrentTurnEventsCommand::new,
-                        SessionActorFactory.ASK_TIMEOUT)
+        return ref.ask(GetCurrentTurnEventsCommand::new, SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join()
                 .events();

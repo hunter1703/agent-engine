@@ -1,8 +1,11 @@
-package com.agentengine.runtime.tools;
+package com.agentengine.runtime.utils;
 
 import com.agentengine.util.common.JsonUtils;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
 import io.vertx.json.schema.common.dsl.ArraySchemaBuilder;
 import io.vertx.json.schema.common.dsl.Keyword;
 import io.vertx.json.schema.common.dsl.ObjectSchemaBuilder;
@@ -12,8 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class SchemaUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaUtils.class);
 
     private SchemaUtils() {}
 
@@ -126,5 +133,15 @@ public final class SchemaUtils {
 
     private static SchemaBuilder<?, ?> nullSchemaBuilder() {
         return Schemas.schema().withKeyword("type", "null");
+    }
+
+    public static JsonSchema buildSchema(final Map<String, Object> schemaMap) {
+        try {
+            final JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
+            return factory.getSchema(JsonUtils.toJsonNode(schemaMap));
+        } catch (Exception ex) {
+            LOG.warn("Failed to build JSON schema for validation — skipping enforcement", ex);
+            return null;
+        }
     }
 }

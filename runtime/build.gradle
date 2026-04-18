@@ -44,6 +44,7 @@ dependencies {
     implementation libs.rxjava
     implementation libs.stateless4j
     implementation libs.vertx.json.schema
+    implementation libs.networknt.json.schema.validator
     implementation libs.java.diff.utils
 
     testImplementation libs.junit.jupiter

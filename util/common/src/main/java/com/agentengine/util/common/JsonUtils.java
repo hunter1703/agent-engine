@@ -2,11 +2,9 @@ package com.agentengine.util.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
@@ -213,6 +211,26 @@ public final class JsonUtils {
             }
         }
         return payload;
+    }
+
+    public static JsonNode toJsonNode(final Map<String, Object> map) {
+        if (CollectionUtils.isEmpty(map)) {
+            return null;
+        }
+
+        return mapper(false).valueToTree(map);
+    }
+
+    public static JsonNode toJsonNode(final String json) {
+        if (StringUtils.isBlank(json)) {
+            return null;
+        }
+
+        try {
+            return mapper(false).readTree(json);
+        } catch (JsonProcessingException ex) {
+            return null;
+        }
     }
 
     private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {

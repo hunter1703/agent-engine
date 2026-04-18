@@ -4,6 +4,7 @@ import static com.agentengine.runtime.session.SessionActorFactory.ASK_TIMEOUT;
 import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
 
 import com.agentengine.core.api.services.SessionService;
+import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.factories.RunnerFactory;
 import com.agentengine.runtime.session.commands.ChildCommand.*;
 import com.agentengine.runtime.session.commands.ExternalCommand.*;
@@ -186,7 +187,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 for (final StartingChild child : state.startingChildren()) {
                     self.tell(new StartChildCommand(child.agentId(), child.message(), null));
                 }
-                runner.start("continue");
+                runner.start(UserMessage.ofText("continue"));
                 updateSessionStatus(state, SessionStatus.RUNNING);
             }
             case PAUSED -> {
@@ -283,8 +284,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
 
     private Effect<SessionFact, SessionActorState> start(final SessionActorState state, final StartCommand command) {
         final SessionTopology topology = state.topology();
-        final UniqueRecord<String> message = command.message();
-        final UniqueRecord<String> currentMessage = state.runState().message();
+        final UniqueRecord<UserMessage> message = command.message();
+        final UniqueRecord<UserMessage> currentMessage = state.runState().message();
         boolean isDuplicate =
                 Objects.equals(currentMessage, message) || state.queue().contains(message);
         return switch (state.sessionState()) {
@@ -461,10 +462,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .whenComplete((result, error) -> {
                     if (error != null) {
                         if (attempt >= MAX_CHILD_POLL_ATTEMPTS) {
-                            LOG.error(
-                                    "Giving up polling child session {} after {} attempts",
-                                    childSessionId,
-                                    attempt);
+                            LOG.error("Giving up polling child session {} after {} attempts", childSessionId, attempt);
                             replyToRef.tell(RunResult.failure(
                                     "Child session " + childSessionId + " unreachable after " + attempt + " attempts"));
                         } else {
@@ -534,7 +532,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 initReplyTo -> new InitializeCommand(childTopology, initReplyTo),
                         ASK_TIMEOUT)
                 .thenCompose(_ -> {
-                    final UniqueRecord<String> uniqueMessage = new UniqueRecord<>(message);
+                    final UniqueRecord<UserMessage> uniqueMessage = new UniqueRecord<>(UserMessage.ofText(message));
                     // TODO: add retry to send same unique message if some transient error
                     return childRef.ask(
                             (Function<ActorRef<StartSessionResult>, SessionCommand>)
@@ -583,8 +581,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         return Effect()
                 .none()
                 .thenRun(_ -> childRef.ask(
-                                (Function<ActorRef<StartSessionResult>, SessionCommand>)
-                                        replyTo -> new StartCommand(command.message(), replyTo),
+                                (Function<ActorRef<StartSessionResult>, SessionCommand>) replyTo -> new StartCommand(
+                                        new UniqueRecord<>(UserMessage.ofText(
+                                                command.message().getRecord())),
+                                        replyTo),
                                 ASK_TIMEOUT)
                         .whenComplete((result, error) -> {
                             if (error != null) {
@@ -679,7 +679,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     final String invocationId = events.getFirst().invocationId();
                     if (state.runState().message() != null) {
                         // Initial user message
-                        final UniqueRecord<String> userMessage =
+                        final UniqueRecord<UserMessage> userMessage =
                                 state.runState().message();
                         final Event userEvent = EventUtils.buildUserEvent(userMessage.getRecord(), invocationId);
                         events.addFirst(userEvent);
@@ -776,7 +776,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 });
     }
 
-    private Effect<SessionFact, SessionActorState> getCurrentTurnEvents(final SessionActorState state, final GetCurrentTurnEventsCommand command) {
+    private Effect<SessionFact, SessionActorState> getCurrentTurnEvents(
+            final SessionActorState state, final GetCurrentTurnEventsCommand command) {
         return Effect().none().thenReply(command.replyTo(), newState -> {
             final SessionTopology topology = newState.topology();
             final List<SessionEvent> events = SessionEventUtils.toSessionEvents(
@@ -795,7 +796,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             return Effect().none();
         }
 
-        final UniqueRecord<String> nextMessage = state.queue().peek();
+        final UniqueRecord<UserMessage> nextMessage = state.queue().peek();
         LOG.info(
                 "[USER_MESSAGE_TRACE][{}] Starting next queued message: '{}'",
                 state.topology().sessionId(),
@@ -919,7 +920,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final boolean isFailed = runResult != null && runResult.isFailure();
         updateSessionStatus(state, isFailed ? SessionStatus.FAILED : SessionStatus.COMPLETED);
         if (isFailed) {
-            eventChannel.publish(rootSessionId, SessionEvent.error(rootSessionId, sessionId, runResult.failureMessage(), Long.MAX_VALUE - 1));
+            eventChannel.publish(
+                    rootSessionId,
+                    SessionEvent.error(rootSessionId, sessionId, runResult.failureMessage(), Long.MAX_VALUE - 1));
         }
         if (topology.isRoot()) {
             generateSessionTitle(rootSessionId);
@@ -946,8 +949,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 final String title = sessionTitleGenerator.generateTitle(rootSessionId);
                 if (StringUtils.isNotBlank(title)) {
                     sessionService.updateSession(
-                            rootSessionId,
-                            Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
+                            rootSessionId, Update.of(Operation.set(AgentSession.FIELD_NAME, title)));
                 }
             } catch (final Exception e) {
                 LOG.warn("Failed to generate session title for session {}", rootSessionId, e);

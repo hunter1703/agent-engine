@@ -61,8 +61,10 @@ public class SessionRestAPI {
         if (session == null) {
             throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
         }
-        final AGUIEventMapper mapper = new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId(), AGUIEventMapper.Mode.REPLAY);
-        return Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId)).concatMap(mapper::map);
+        final AGUIEventMapper mapper =
+                new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId(), AGUIEventMapper.Mode.REPLAY);
+        return Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId))
+                .concatMap(mapper::map);
     }
 
     @POST
@@ -74,8 +76,10 @@ public class SessionRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "Confirmation acknowledgement",
-            content = @Content(
-                    mediaType = APPLICATION_JSON, schema = @Schema(implementation = ConfirmSessionResponse.class)))
+            content =
+                    @Content(
+                            mediaType = APPLICATION_JSON,
+                            schema = @Schema(implementation = ConfirmSessionResponse.class)))
     @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
     @APIResponse(responseCode = "404", description = "Session not found")
     public ConfirmSessionResponse confirm(
@@ -84,7 +88,8 @@ public class SessionRestAPI {
             @Valid @NotNull final ConfirmSessionRequest confirmRequest) {
         runtimeService.confirmSession(
                 sessionId,
-                new Confirmation(confirmationId, confirmRequest.getConfirmed(), Map.of("answer", confirmRequest.getMessage())));
+                new Confirmation(
+                        confirmationId, confirmRequest.getConfirmed(), Map.of("answer", confirmRequest.getMessage())));
         return new ConfirmSessionResponse(true);
     }
 
