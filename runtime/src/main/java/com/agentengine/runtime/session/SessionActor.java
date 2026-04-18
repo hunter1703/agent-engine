@@ -898,7 +898,6 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             return Effect().none();
         }
         final String error = command.error();
-        //TODO: should we add one event to signify events failed?
         final List<SessionFact> facts = new ArrayList<>();
         final boolean isFailed = StringUtils.isNotEmpty(error);
         if (isFailed) {
@@ -917,7 +916,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final String sessionId = topology.sessionId();
         final String rootSessionId = topology.rootSessionId();
         final RunResult runResult = state.lastResult();
-        updateSessionStatus(state, runResult != null && runResult.isFailure() ? SessionStatus.FAILED : SessionStatus.COMPLETED);
+        final boolean isFailed = runResult != null && runResult.isFailure();
+        updateSessionStatus(state, isFailed ? SessionStatus.FAILED : SessionStatus.COMPLETED);
+        if (isFailed) {
+            eventChannel.publish(rootSessionId, SessionEvent.error(rootSessionId, sessionId, runResult.failureMessage(), Long.MAX_VALUE - 1));
+        }
         if (topology.isRoot()) {
             generateSessionTitle(rootSessionId);
             eventChannel.publish(rootSessionId, SessionEvent.terminal(sessionId));

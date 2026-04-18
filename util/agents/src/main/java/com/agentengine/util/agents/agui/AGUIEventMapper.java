@@ -38,10 +38,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     private final AGUITextMapper textMapper;
     private final AGUIToolCallMapper toolCallMapper;
 
-    public AGUIEventMapper(final String sessionId, final String agentId) {
-        this(sessionId, agentId, Mode.LIVE);
-    }
-
     public AGUIEventMapper(final String sessionId, final String agentId, final Mode mode) {
         this.mode = mode;
         this.state = new AGUIMapperState(sessionId, agentId);
@@ -66,6 +62,14 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
                 "Current mapper state BEFORE processing - currentRunId={}, hasStartedStep={}",
                 state.currentRunId(),
                 state.hasStartedStep());
+
+        if (event.isError()) {
+            LOG.info("Mapping error event for session={}, errorMessage={}", event.getSessionId(), event.getErrorMessage());
+            final RunErrorEvent errorEvent = new RunErrorEvent();
+            errorEvent.setError(event.getErrorMessage());
+            decorator.decorate(errorEvent);
+            return textMapper.finalizeOpenContent().concatWith(Flowable.just(errorEvent));
+        }
 
         if (SessionEvent.AUTHOR_USER.equalsIgnoreCase(event.getAuthor())) {
             LOG.info("Skipping user event");

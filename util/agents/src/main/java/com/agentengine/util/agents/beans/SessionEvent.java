@@ -30,6 +30,7 @@ public final class SessionEvent extends BaseEntity {
     private long sequence;
     private Map<String, Object> metadata;
     private boolean terminal;
+    private String errorMessage;
 
     public SessionEvent() {}
 
@@ -188,6 +189,18 @@ public final class SessionEvent extends BaseEntity {
         this.terminal = terminal;
     }
 
+    public boolean isError() {
+        return errorMessage != null;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(final String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     public Boolean getTurnComplete() {
         return turnComplete;
     }
@@ -250,6 +263,9 @@ public final class SessionEvent extends BaseEntity {
                 + "timestamp="
                 + timestamp
                 + ", "
+                + "errorMessage="
+                + errorMessage
+                + ", "
                 + "sequence="
                 + sequence
                 + ", "
@@ -274,5 +290,36 @@ public final class SessionEvent extends BaseEntity {
                 Long.MAX_VALUE,
                 null,
                 true);
+    }
+
+    /**
+     * Creates an error event for a failed session run.
+     *
+     * <p>Emitted before the terminal event so the AGUI mapper can translate it to a
+     * {@code RunErrorEvent}. The {@code sequence} places the error at the correct position
+     * relative to the turn events that preceded the failure.
+     *
+     * <p>For live broadcast (where ordering is real-time), pass {@code Long.MAX_VALUE - 1}.
+     * For history replay, pass the next available sequence counter so the error sorts
+     * immediately after the last event from the failed turn.
+     */
+    public static SessionEvent error(String rootSessionId, String sessionId, String errorMessage, long sequence) {
+        final SessionEvent event = new SessionEvent(
+                UUID.randomUUID().toString(),
+                rootSessionId,
+                null,
+                sessionId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                System.currentTimeMillis(),
+                sequence,
+                null,
+                false);
+        event.errorMessage = errorMessage;
+        return event;
     }
 }
