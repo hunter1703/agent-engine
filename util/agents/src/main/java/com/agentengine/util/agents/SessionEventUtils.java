@@ -66,7 +66,7 @@ public final class SessionEventUtils {
                 event.timestamp(),
                 sequence,
                 extractMetadata(event),
-                false); // terminal flag is set explicitly by SessionActor when session is truly complete
+                SessionEvent.Type.NORMAL);
     }
 
     public static List<SessionEvent> toSessionEvents(

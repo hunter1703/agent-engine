@@ -10,16 +10,24 @@ import io.reactivex.rxjava3.core.Flowable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Optional;
+
 public final class AGUITextMapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(AGUITextMapper.class);
 
     private final AGUIMapperState state;
     private final AGUIEventDecorator decorator;
+    private AGUIEventMapper.Mode mode;
 
-    public AGUITextMapper(final AGUIMapperState state, final AGUIEventDecorator decorator) {
+    public AGUITextMapper(final AGUIMapperState state, final AGUIEventDecorator decorator, final AGUIEventMapper.Mode mode) {
         this.state = state;
         this.decorator = decorator;
+        this.mode = mode;
+    }
+
+    public void switchToLiveMode() {
+        mode = AGUIEventMapper.Mode.LIVE;
     }
 
     public Flowable<BaseEvent> mapThought(final String thoughtText, final boolean partial) {
@@ -65,10 +73,20 @@ public final class AGUITextMapper {
         final String text = event.getContent() != null
                 ? event.getContent()
                         .parts()
-                        .flatMap(parts -> parts.stream()
-                                .map(part -> part.text().orElse(""))
-                                .filter(StringUtils::isNotBlank)
-                                .findFirst())
+                        .flatMap(parts -> {
+                            final String textContent = parts.stream()
+                                    .map(part -> part.text().orElse(""))
+                                    .filter(StringUtils::isNotBlank)
+                                    .findFirst()
+                                    .orElse(null);
+                            if (textContent != null) {
+                                return Optional.of(textContent);
+                            }
+                            // Image-only message: emit a placeholder so the replay shows
+                            // something meaningful instead of a null delta.
+                            final boolean hasImages = parts.stream().anyMatch(part -> part.inlineData().isPresent());
+                            return hasImages ? java.util.Optional.of("[Image]") : Optional.empty();
+                        })
                         .orElse(null)
                 : null;
         final String messageId = state.nextReplayTextMessageId(event.getId());
@@ -183,6 +201,12 @@ public final class AGUITextMapper {
         }
 
         state.appendText(text);
+        // In REPLAY mode buffer all chunks; the full accumulated text is emitted as a single
+        // chunk when the message ends, so the client renders history instantly rather than
+        // re-animating every original token.
+        if (mode == AGUIEventMapper.Mode.REPLAY) {
+            return Flowable.empty();
+        }
         final TextMessageChunkEvent chunk = new TextMessageChunkEvent();
         chunk.setMessageId(state.currentTextMessageId());
         chunk.setDelta(text);
@@ -213,23 +237,23 @@ public final class AGUITextMapper {
 
         final String messageId = state.currentTextMessageId();
         final String finalAnswer = state.completeTextMessage();
+        state.resetTextMessage();
+
         Flowable<BaseEvent> flowable = Flowable.empty();
-        // only output chunks, not fully formed text, its the client's responsibility
-        //        if (StringUtils.isNotBlank(finalAnswer)) {
-        //            final TextMessageContentEvent content = new TextMessageContentEvent();
-        //            content.setMessageId(messageId);
-        //            content.setDelta(finalAnswer);
-        //            decorator.decorate(content);
-        //            LOG.debug("Generated output event - eventType=TextMessageContentEvent, msgId={}",
-        // content.getMessageId());
-        //            flowable = flowable.concatWith(Flowable.just(content));
-        //        }
+        if (mode == AGUIEventMapper.Mode.REPLAY && StringUtils.isNotBlank(finalAnswer)) {
+            final TextMessageChunkEvent content = new TextMessageChunkEvent();
+            content.setMessageId(messageId);
+            content.setDelta(finalAnswer);
+            content.setRole("assistant");
+            decorator.decorate(content);
+            LOG.debug("Generated output event - eventType=TextMessageChunkEvent (replay), msgId={}", messageId);
+            flowable = flowable.concatWith(Flowable.just(content));
+        }
 
         final TextMessageEndEvent end = new TextMessageEndEvent();
         end.setMessageId(messageId);
         decorator.decorate(end);
         LOG.debug("Generated output event - eventType=TextMessageEndEvent, msgId={}", end.getMessageId());
-        state.resetTextMessage();
         return flowable.concatWith(Flowable.just(end));
     }
 }

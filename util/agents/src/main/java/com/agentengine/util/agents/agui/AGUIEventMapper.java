@@ -42,7 +42,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         this.mode = mode;
         this.state = new AGUIMapperState(sessionId, agentId);
         this.decorator = new AGUIEventDecorator(state);
-        this.textMapper = new AGUITextMapper(state, decorator);
+        this.textMapper = new AGUITextMapper(state, decorator, mode);
         this.toolCallMapper = new AGUIToolCallMapper(state, decorator);
     }
 
@@ -62,6 +62,11 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
                 "Current mapper state BEFORE processing - currentRunId={}, hasStartedStep={}",
                 state.currentRunId(),
                 state.hasStartedStep());
+
+        if (event.isLiveMarker()) {
+            textMapper.switchToLiveMode();
+            return Flowable.empty();
+        }
 
         if (event.isError()) {
             LOG.info(

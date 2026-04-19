@@ -13,7 +13,7 @@ public interface RuntimeService {
      * Initialises the session actor and enqueues the message. Returns immediately with the
      * resolved session ID; the agent runs in the background.
      */
-    String startSession(String agentId, String sessionId, UserMessage userMessage);
+    Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
 
     /**
      * Records a confirmation on the session actor. Returns immediately; resumed events are
@@ -26,5 +26,5 @@ public interface RuntimeService {
      * then live events, and completes when the terminal event is received. Safe to call from
      * multiple concurrent subscribers for the same session.
      */
-    Publisher<SessionEvent> subscribeToSession(String sessionId);
+    Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
 }

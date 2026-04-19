@@ -21,6 +21,9 @@ import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.google.genai.types.Blob;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -30,9 +33,8 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.pekko.Done;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -64,7 +66,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public String startSession(final String agentId, final String sessionId, final UserMessage message) {
+    public Publisher<SessionEvent> startSession(final String agentId, final String sessionId, final UserMessage message) {
         final String resolvedSessionId =
                 StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
         LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
@@ -74,7 +76,9 @@ public class RuntimeServiceImpl implements RuntimeService {
                         replyTo -> new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
-                .join(); // block until the session is persisted — safe to return the ID after this
+                .join(); // block until the session is persisted — safe to subscribe after this
+        // subscribe after init so the session exists in the DB, but before StartCommand so no events are lost
+        final Publisher<SessionEvent> liveEvents = subscribeToSession(resolvedSessionId, true);
 
         ref.<StartSessionResult>ask(
                         replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
@@ -87,7 +91,7 @@ public class RuntimeServiceImpl implements RuntimeService {
                     }
                 });
 
-        return resolvedSessionId;
+        return liveEvents;
     }
 
     @Override
@@ -105,16 +109,17 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public Publisher<SessionEvent> subscribeToSession(final String sessionId) {
+    public Publisher<SessionEvent> subscribeToSession(final String sessionId, final boolean liveOnly) {
         final AgentSession session = sessionService.getSession(sessionId);
         if (session == null) {
             throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
         }
         final String rootSessionId = session.getRootSessionId();
 
-        // Completed or failed sessions have no live events pending — emit history and close.
+        // Completed or failed sessions: liveOnly subscribers get nothing (they missed all events);
+        // replay subscribers get the full history.
         if (isTerminalStatus(session.getStatus())) {
-            return terminalStream(rootSessionId);
+            return liveOnly ? Flowable.empty() : terminalStream(rootSessionId);
         }
 
         // Connect eagerly so the SubscriberActor is registered with the broadcaster BEFORE we
@@ -143,7 +148,16 @@ public class RuntimeServiceImpl implements RuntimeService {
         final AgentSession reChecked = sessionService.getSession(sessionId);
         if (reChecked != null && isTerminalStatus(reChecked.getStatus())) {
             liveConnection.dispose();
-            return terminalStream(reChecked.getRootSessionId());
+            return liveOnly ? Flowable.empty() : terminalStream(reChecked.getRootSessionId());
+        }
+
+        // Dedup by stable ADK event ID — same event has the same ID across all three layers.
+        final Set<String> seen = ConcurrentHashMap.newKeySet();
+        final Flowable<SessionEvent> filteredLiveSource =
+                liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal());
+
+        if (liveOnly) {
+            return filteredLiveSource;
         }
 
         // Fetch committed history and current turn events in parallel on virtual threads.
@@ -152,15 +166,37 @@ public class RuntimeServiceImpl implements RuntimeService {
         final List<SessionEvent> history = fetched.get(0);
         final List<SessionEvent> turnEvents = fetched.get(1);
 
-        // Dedup by stable ADK event ID — same event has the same ID across all three layers.
-        final Set<String> seen = ConcurrentHashMap.newKeySet();
         return Flowable.concat(
-                Flowable.fromIterable(history).filter(event -> seen.add(event.getId())),
-                Flowable.fromIterable(turnEvents).filter(event -> seen.add(event.getId())),
-                // if liveSource completes without a terminal event (broadcaster stopped,
-                // actor crash, or passivation), check status and synthesize the terminal so the SSE
-                // client is never left hanging on a stream that will never close.
-                liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal()));
+                Flowable.fromIterable(history)
+                        .filter(event -> seen.add(event.getId()))
+                        .map(RuntimeServiceImpl::stripBlobData),
+                Flowable.fromIterable(turnEvents)
+                        .filter(event -> seen.add(event.getId()))
+                        .map(RuntimeServiceImpl::stripBlobData),
+                Flowable.just(SessionEvent.liveMarker(rootSessionId)),
+                filteredLiveSource);
+    }
+
+    private static SessionEvent stripBlobData(final SessionEvent event) {
+        final Content content = event.getContent();
+        if (content == null) {
+            return event;
+        }
+
+        final List<Part> parts = content.parts().orElse(List.of());
+
+        final List<Part> sanitizedParts = new ArrayList<>();
+        for (final Part part : parts) {
+            final Optional<Blob> blobOptional = part.inlineData();
+            if (blobOptional.isPresent()) {
+                final Blob blob = blobOptional.get();
+                sanitizedParts.add(part.toBuilder().inlineData(blob.toBuilder().clearData()).build());
+            } else {
+                sanitizedParts.add(part);
+            }
+        }
+        event.setContent(content.toBuilder().parts(sanitizedParts).build());
+        return event;
     }
 
     private static boolean isTerminalStatus(final SessionStatus status) {

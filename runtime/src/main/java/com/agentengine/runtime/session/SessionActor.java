@@ -797,11 +797,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
 
         final UniqueRecord<UserMessage> nextMessage = state.queue().peek();
-        LOG.info(
-                "[USER_MESSAGE_TRACE][{}] Starting next queued message: '{}'",
-                state.topology().sessionId(),
-                nextMessage.getRecord());
         return Effect().persist(new StartedFact(nextMessage)).thenRun(newState -> {
+            LOG.info(
+                    "[USER_MESSAGE_TRACE][{}] Starting message: '{}'",
+                    newState.topology().sessionId(),
+                    nextMessage.getRecord());
             updateSessionStatus(newState, SessionStatus.RUNNING);
             runner.start(nextMessage.getRecord());
         });
@@ -814,15 +814,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onEvent(
                         InitializedFact.class,
                         (_, fact) -> SessionActorState.initial().withTopology(fact.getTopology()))
-                .onEvent(StartedFact.class, (state, fact) -> {
-                    LOG.info(
-                            "[USER_MESSAGE_TRACE][{}] Applying StartedFact event handler. Message: '{}'",
-                            state.topology().sessionId(),
-                            fact.getMessage().getRecord());
-                    return state.dequeue()
-                            .withSessionState(SessionState.TRIGGERED_RUN)
-                            .withCurrentMessage(fact.getMessage());
-                })
+                .onEvent(StartedFact.class, (state, fact) -> state.dequeue()
+                        .withSessionState(SessionState.TRIGGERED_RUN)
+                        .withCurrentMessage(fact.getMessage()))
                 .onEvent(ConfirmedFact.class, (state, fact) -> {
                     final Confirmation confirmation = fact.getConfirmation();
                     LOG.info(

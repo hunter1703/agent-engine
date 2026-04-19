@@ -17,6 +17,26 @@ import java.util.UUID;
 public final class SessionEvent extends BaseEntity {
     public static final String AUTHOR_USER = "user";
     public static final String FIELD_SESSION_ID = "sessionId";
+
+    public enum Type {
+        UNKNOWN,
+        NORMAL,
+        ERROR,
+        TERMINAL,
+        LIVE_MARKER;
+
+        public static Type valueOfOrDefault(final String value) {
+            if (value == null) {
+                return UNKNOWN;
+            }
+            try {
+                return valueOf(value.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return UNKNOWN;
+            }
+        }
+    }
+
     private String rootSessionId;
     private String parentSessionId;
     private String sessionId;
@@ -29,7 +49,7 @@ public final class SessionEvent extends BaseEntity {
     private long timestamp;
     private long sequence;
     private Map<String, Object> metadata;
-    private boolean terminal;
+    private Type type = Type.NORMAL;
     private String errorMessage;
 
     public SessionEvent() {}
@@ -48,7 +68,7 @@ public final class SessionEvent extends BaseEntity {
             long timestamp,
             long sequence,
             Map<String, Object> metadata,
-            final boolean terminal) {
+            final Type type) {
         setId(id);
         this.rootSessionId = rootSessionId;
         this.parentSessionId = parentSessionId;
@@ -62,7 +82,7 @@ public final class SessionEvent extends BaseEntity {
         this.timestamp = timestamp;
         this.sequence = sequence;
         this.metadata = metadata;
-        this.terminal = terminal;
+        this.type = type;
     }
 
     public String getRootSessionId() {
@@ -113,6 +133,38 @@ public final class SessionEvent extends BaseEntity {
         return metadata;
     }
 
+    public Type getType() {
+        return type != null ? type : Type.NORMAL;
+    }
+
+    public boolean isTerminal() {
+        return getType() == Type.TERMINAL;
+    }
+
+    public boolean isLiveMarker() {
+        return getType() == Type.LIVE_MARKER;
+    }
+
+    public boolean isError() {
+        return getType() == Type.ERROR;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(final String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public Boolean getTurnComplete() {
+        return turnComplete;
+    }
+
+    public Boolean getPartial() {
+        return partial;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -131,6 +183,45 @@ public final class SessionEvent extends BaseEntity {
                 && this.timestamp == that.timestamp
                 && this.sequence == that.sequence
                 && Objects.equals(this.metadata, that.metadata);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                getId(),
+                rootSessionId,
+                parentSessionId,
+                sessionId,
+                runId,
+                author,
+                content,
+                partial,
+                turnComplete,
+                finishReason,
+                timestamp,
+                sequence,
+                metadata);
+    }
+
+    @Override
+    public String toString() {
+        return "SessionEvent["
+                + "id=" + getId()
+                + ", rootSessionId=" + rootSessionId
+                + ", parentSessionId=" + parentSessionId
+                + ", sessionId=" + sessionId
+                + ", runId=" + runId
+                + ", author=" + author
+                + ", content=" + content
+                + ", partial=" + partial
+                + ", turnComplete=" + turnComplete
+                + ", finishReason=" + finishReason
+                + ", timestamp=" + timestamp
+                + ", type=" + type
+                + ", errorMessage=" + errorMessage
+                + ", sequence=" + sequence
+                + ", metadata=" + metadata
+                + ']';
     }
 
     public void setRootSessionId(final String rootSessionId) {
@@ -181,100 +272,14 @@ public final class SessionEvent extends BaseEntity {
         this.metadata = metadata;
     }
 
-    public boolean isTerminal() {
-        return terminal;
+    public static SessionEvent liveMarker(final String sessionId) {
+        final SessionEvent event = new SessionEvent();
+        event.setSessionId(sessionId);
+        event.type = Type.LIVE_MARKER;
+        return event;
     }
 
-    public void setTerminal(final boolean terminal) {
-        this.terminal = terminal;
-    }
-
-    public boolean isError() {
-        return errorMessage != null;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(final String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public Boolean getTurnComplete() {
-        return turnComplete;
-    }
-
-    public Boolean getPartial() {
-        return partial;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(
-                getId(),
-                rootSessionId,
-                parentSessionId,
-                sessionId,
-                runId,
-                author,
-                content,
-                partial,
-                turnComplete,
-                finishReason,
-                timestamp,
-                sequence,
-                metadata);
-    }
-
-    @Override
-    public String toString() {
-        return "SessionEvent["
-                + "id="
-                + getId()
-                + ", "
-                + "rootSessionId="
-                + rootSessionId
-                + ", "
-                + "parentSessionId="
-                + parentSessionId
-                + ", "
-                + "sessionId="
-                + sessionId
-                + ", "
-                + "runId="
-                + runId
-                + ", "
-                + "author="
-                + author
-                + ", "
-                + "content="
-                + content
-                + ", "
-                + "partial="
-                + partial
-                + ", "
-                + "turnComplete="
-                + turnComplete
-                + ", "
-                + "finishReason="
-                + finishReason
-                + ", "
-                + "timestamp="
-                + timestamp
-                + ", "
-                + "errorMessage="
-                + errorMessage
-                + ", "
-                + "sequence="
-                + sequence
-                + ", "
-                + "metadata="
-                + metadata
-                + ']';
-    }
-
-    public static SessionEvent terminal(String sessionId) {
+    public static SessionEvent terminal(final String sessionId) {
         return new SessionEvent(
                 UUID.randomUUID().toString(),
                 null,
@@ -289,7 +294,7 @@ public final class SessionEvent extends BaseEntity {
                 System.currentTimeMillis(),
                 Long.MAX_VALUE,
                 null,
-                true);
+                Type.TERMINAL);
     }
 
     /**
@@ -303,7 +308,8 @@ public final class SessionEvent extends BaseEntity {
      * For history replay, pass the next available sequence counter so the error sorts
      * immediately after the last event from the failed turn.
      */
-    public static SessionEvent error(String rootSessionId, String sessionId, String errorMessage, long sequence) {
+    public static SessionEvent error(
+            final String rootSessionId, final String sessionId, final String errorMessage, final long sequence) {
         final SessionEvent event = new SessionEvent(
                 UUID.randomUUID().toString(),
                 rootSessionId,
@@ -318,7 +324,7 @@ public final class SessionEvent extends BaseEntity {
                 System.currentTimeMillis(),
                 sequence,
                 null,
-                false);
+                Type.ERROR);
         event.errorMessage = errorMessage;
         return event;
     }

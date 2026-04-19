@@ -1,33 +1,35 @@
 package com.agentengine.interfaces.rest;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
+import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.core.api.services.AgentService;
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.runtime.api.services.RuntimeService;
+import com.agentengine.util.agents.agui.AGUIEventMapper;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agui.core.event.BaseEvent;
+import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestStreamElementType;
+import org.reactivestreams.Publisher;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -133,21 +135,25 @@ public class AgentRestAPI {
     @Operation(summary = "Invoke an agent and return the session ID")
     @APIResponse(
             responseCode = "200",
-            description = "Session ID for subscribing to the event stream",
+            description = "SSE stream of AG-UI events: live events",
             content =
                     @Content(
-                            mediaType = APPLICATION_JSON,
-                            schema = @Schema(implementation = InvokeAgentResponse.class)))
+                            mediaType = SERVER_SENT_EVENTS,
+                            schema = @Schema(implementation = BaseEvent.class)))
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
     @APIResponse(responseCode = "404", description = "Agent not found")
-    public InvokeAgentResponse invoke(
+    @Produces(SERVER_SENT_EVENTS)
+    @RestStreamElementType(APPLICATION_JSON)
+    public Publisher<BaseEvent> invoke(
             @NotBlank @PathParam("agentId") final String agentId, @Valid final InvokeAgentRequest request) {
         if (agentService.getAgent(agentId) == null) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
-        final String sessionId = runtimeService.startSession(agentId, request.getSessionId(), request.getUserMessage());
-        return new InvokeAgentResponse(sessionId);
+        final AtomicReference<AGUIEventMapper> mapper = new AtomicReference<>();
+        return Flowable.fromPublisher(runtimeService.startSession(agentId, request.getSessionId(), request.getUserMessage())).doOnNext(event -> {
+            if (mapper.get() == null) {
+                mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
+            }
+        }).concatMap(event -> mapper.get().map(event));
     }
-
-    public record InvokeAgentResponse(String sessionId) {}
 }
