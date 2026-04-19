@@ -77,8 +77,14 @@ public class RuntimeServiceImpl implements RuntimeService {
                         SessionActorFactory.ASK_TIMEOUT)
                 .toCompletableFuture()
                 .join(); // block until the session is persisted — safe to subscribe after this
-        // subscribe after init so the session exists in the DB, but before StartCommand so no events are lost
-        final Publisher<SessionEvent> liveEvents = subscribeToSession(resolvedSessionId, true);
+        final AgentSession session = sessionService.getSession(resolvedSessionId);
+        final String rootSessionId = session != null && StringUtils.isNotBlank(session.getRootSessionId())
+                ? session.getRootSessionId()
+                : resolvedSessionId;
+        // Reusing an existing session is a new turn, not a replay subscription. The previous turn
+        // may have left the persisted session status as COMPLETED, so subscribe directly to the
+        // live root-session channel before starting the run.
+        final Publisher<SessionEvent> liveEvents = subscribeToLiveEvents(rootSessionId);
 
         ref.<StartSessionResult>ask(
                         replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
@@ -205,6 +211,16 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
         return Flowable.fromIterable(sessionHistoryService.getAllSessionEvents(rootSessionId));
+    }
+
+    private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
+        return Flowable.fromPublisher(eventChannel.subscribe(rootSessionId)
+                        .toCompletableFuture()
+                        .join()
+                        .publisher())
+                .map(SequencedEvent::payload)
+                .cast(SessionEvent.class)
+                .takeWhile(event -> !event.isTerminal());
     }
 
     private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {

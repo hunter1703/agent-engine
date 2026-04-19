@@ -681,7 +681,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         // Initial user message
                         final UniqueRecord<UserMessage> userMessage =
                                 state.runState().message();
-                        final Event userEvent = EventUtils.buildUserEvent(userMessage.getRecord(), invocationId);
+                        final Event userEvent = EventUtils.buildUserEvent(userMessage.getRecord(), invocationId, events.getFirst().timestamp());
                         events.addFirst(userEvent);
                         LOG.info(
                                 "[USER_MESSAGE_TRACE][{}] First turn - prepended user message event: '{}' with invocationId: {}",
@@ -690,7 +690,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 invocationId);
                     } else if (!state.getAllReceivedConfirmations().isEmpty()) {
                         // Resume with confirmations
-                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(state, invocationId);
+                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(state, invocationId, events.getFirst().timestamp());
                         events.addFirst(confirmationEvent);
                         LOG.info(
                                 "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",

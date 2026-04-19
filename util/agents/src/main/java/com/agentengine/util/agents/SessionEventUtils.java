@@ -4,10 +4,13 @@ import com.agentengine.util.agents.beans.CorrectionMetadata;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.events.Event;
+import com.google.adk.sessions.State;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public final class SessionEventUtils {
 
@@ -89,7 +92,12 @@ public final class SessionEventUtils {
     private static Map<String, Object> extractMetadata(final Event event) {
         final Map<String, Object> metadata = new HashMap<>();
         if (event.actions() != null && event.actions().stateDelta() != null) {
-            metadata.putAll(event.actions().stateDelta());
+            for (final Entry<String, Object> entry : event.actions().stateDelta().entrySet()) {
+                // Strip the ADK State.TEMP_PREFIX ("temp:") so metadata keys are stored cleanly.
+                String key = entry.getKey();
+                key = key.startsWith(State.TEMP_PREFIX) ? key.substring(State.TEMP_PREFIX.length()) : key;
+                metadata.put(key, entry.getValue());
+            }
         }
         return metadata;
     }

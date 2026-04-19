@@ -124,23 +124,23 @@ public final class EventUtils {
                 .build();
     }
 
-    public static Event buildUserEvent(final UserMessage userMessage, final String invocationId) {
-        return buildEvent(invocationId, ContentUtils.buildUserContent(userMessage));
+    public static Event buildUserEvent(final UserMessage userMessage, final String invocationId, final long timestamp) {
+        return _buildUserEvent(invocationId, ContentUtils.buildUserContent(userMessage), timestamp);
     }
 
-    public static Event buildConfirmationsEvent(final SessionActorState state, final String invocationId) {
+    public static Event buildConfirmationsEvent(final SessionActorState state, final String invocationId, final long timestamp) {
         final Content confirmationsContent =
                 ContentUtils.buildConfirmationsContent(state.getAllReceivedConfirmations());
-        return buildEvent(invocationId, confirmationsContent);
+        return _buildUserEvent(invocationId, confirmationsContent, timestamp);
     }
 
-    private static Event buildEvent(final String invocationId, final Content content) {
+    private static Event _buildUserEvent(final String invocationId, final Content content, final long timestamp) {
         return Event.builder()
-                .id(UUID.randomUUID().toString())
+                .id(Event.generateEventId())
                 .invocationId(invocationId)
                 .author(SessionEvent.AUTHOR_USER)
                 .content(content)
-                .timestamp(System.currentTimeMillis())
+                .timestamp(timestamp)
                 .build();
     }
 }
