@@ -1,0 +1,56 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - link "Skip to main content" [ref=e2] [cursor=pointer]:
+      - /url: "#main-content"
+    - link "Skip to navigation" [ref=e3] [cursor=pointer]:
+      - /url: "#navigation"
+    - link "Skip to sidebar" [ref=e4] [cursor=pointer]:
+      - /url: "#sidebar"
+  - generic [ref=e5]:
+    - main [ref=e6]:
+      - generic [ref=e8]:
+        - complementary [ref=e9]:
+          - button "Collapse sidebar" [ref=e10] [cursor=pointer]:
+            - img [ref=e11]
+          - generic [ref=e14]:
+            - heading "Agent Console" [level=1] [ref=e15]
+            - tablist "Sidebar view" [ref=e16]:
+              - tab "My Agents" [ref=e17] [cursor=pointer]:
+                - img [ref=e19]
+                - generic [ref=e24]: My Agents
+              - tab "Recent Chats" [selected] [ref=e25] [cursor=pointer]:
+                - img [ref=e28]
+                - generic [ref=e30]: Recent Chats
+            - button "New Chat" [ref=e31] [cursor=pointer]:
+              - generic [ref=e32]:
+                - img [ref=e33]
+                - text: New Chat
+        - generic [ref=e71]:
+          - generic [ref=e74]:
+            - heading "Chat" [level=1] [ref=e76]
+            - button "← Dashboard" [ref=e78] [cursor=pointer]:
+              - generic [ref=e79]: ← Dashboard
+          - generic [ref=e81]:
+            - generic [ref=e86]:
+              - heading "Start a conversation" [level=2] [ref=e87]
+              - paragraph [ref=e88]: Choose a prompt below or type your own message to begin
+              - generic [ref=e89]:
+                - button "Help me brainstorm ideas" [ref=e90] [cursor=pointer]:
+                  - img [ref=e92]
+                  - generic [ref=e95]: Help me brainstorm ideas
+                - button "Write some code" [ref=e96] [cursor=pointer]:
+                  - img [ref=e98]
+                  - generic [ref=e101]: Write some code
+                - button "Explain a concept" [ref=e102] [cursor=pointer]:
+                  - img [ref=e104]
+                  - generic [ref=e107]: Explain a concept
+            - generic [ref=e111]:
+              - button "Attach image" [ref=e112]:
+                - img [ref=e113]
+              - textbox "Type your message..." [ref=e115]
+              - button "Send message" [disabled] [ref=e116]:
+                - img [ref=e117]
+    - button "Go to Dashboard" [ref=e123]:
+      - img [ref=e124]
+  - button "Open Next.js Dev Tools" [ref=e132] [cursor=pointer]:
+    - img [ref=e133]

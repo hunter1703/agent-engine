@@ -6,10 +6,10 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation project(':util:common')
+    implementation project(':util:mongodb')
 
-    implementation libs.aws.s3
+    api libs.aws.s3
     implementation libs.quarkus.arc
-    implementation libs.quarkus.config.smallrye
     implementation libs.jakarta.annotation.api
     implementation libs.slf4j.api
 

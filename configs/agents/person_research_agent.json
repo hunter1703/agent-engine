@@ -1,0 +1,25 @@
+{
+  "type": "ORCHESTRATOR",
+  "id": "story_agent",
+  "name": "Story Agent",
+  "modelId": "devstral",
+  "description": "Story Agent",
+  "systemPrompt": "You are a private investigator that will investigate the ",
+  "orchestrationMode": "MANAGER",
+  "subAgentIds": [
+    "story_phase_1_theme",
+    "story_phase_2_characters",
+    "story_phase_3_outline"
+  ],
+  "contextStrategy": {
+    "type": "COMPACTION"
+  },
+  "tools": [
+    {
+      "toolName": "web_research"
+    },
+    {
+      "toolName": "planning"
+    }
+  ]
+}
