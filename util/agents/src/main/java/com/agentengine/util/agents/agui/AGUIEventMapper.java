@@ -79,11 +79,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
             return textMapper.finalizeOpenContent().concatWith(Flowable.just(errorEvent));
         }
 
-        if (SessionEvent.AUTHOR_USER.equalsIgnoreCase(event.getAuthor())) {
-            LOG.info("Skipping user event");
-            return mode == Mode.REPLAY ? textMapper.mapUserMessage(event) : Flowable.empty();
-        }
-
         state.recordSourceEvent(event);
         Flowable<BaseEvent> eventFlow = Flowable.empty();
 

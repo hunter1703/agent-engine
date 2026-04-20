@@ -7,6 +7,7 @@ import com.agentengine.runtime.agents.processors.response.ResponseFormatValidati
 import com.agentengine.runtime.agents.processors.response.ToolCallSanitizationResponseProcessor;
 import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -89,6 +90,8 @@ public final class BaseFlow extends SingleFlow {
         }
 
         final AtomicBoolean endInvocation = new AtomicBoolean();
+        // Reset per-turn flags so a final answer from a previous continuation turn
+        // does not bleed into the current turn's outcome resolution.
         final AtomicBoolean foundFinalAnswer = new AtomicBoolean();
         // original tool call id that requested the confirmation
         final ConcurrentHashSet<String> confirmationRequested = new ConcurrentHashSet<>();
@@ -121,7 +124,9 @@ public final class BaseFlow extends SingleFlow {
                     if (event.actions().endInvocation().orElse(false)) {
                         endInvocation.set(true);
                     }
-                    if (event.finalResponse()) {
+                    // Only model/agent events count as a final answer — user events (e.g. corrective
+                    // messages injected by CorrectionProcessor) must not set this flag
+                    if (!Constants.AUTHOR_USER.equals(event.author()) && event.finalResponse()) {
                         foundFinalAnswer.set(true);
                     }
                     // Strip turnComplete and finishReason — the synthetic boundary event is the

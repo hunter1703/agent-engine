@@ -4,6 +4,7 @@ import static com.agentengine.runtime.utils.ContentUtils.estimateTokens;
 
 import com.agentengine.core.api.services.SessionService;
 import com.agentengine.runtime.factories.model.ModelProvider;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
@@ -117,7 +118,7 @@ public final class CompactionContextManager implements ContextManager {
         }
         final List<Content> result = new ArrayList<>(contents.size() + 1);
         result.add(Content.builder()
-                .role("user")
+                .role(Constants.AUTHOR_USER)
                 .parts(List.of(Part.fromText("[Conversation Summary]\n" + summary)))
                 .build());
         result.addAll(contents);
@@ -168,7 +169,7 @@ public final class CompactionContextManager implements ContextManager {
         final String prompt = TemplateUtils.renderTextTemplate(promptTemplate, Map.of("context", input));
         final LlmRequest request = LlmRequest.builder()
                 .contents(List.of(Content.builder()
-                        .role("user")
+                        .role(Constants.AUTHOR_USER)
                         .parts(List.of(Part.fromText(prompt)))
                         .build()))
                 .build();

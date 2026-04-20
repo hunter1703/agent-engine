@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.agui;
 
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.StringUtils;
 import com.agui.core.event.BaseEvent;
@@ -70,6 +71,9 @@ public final class AGUITextMapper {
     }
 
     public Flowable<BaseEvent> mapUserMessage(final SessionEvent event) {
+        // Record the source event so the generated message ID is based on this event's ID,
+        // not the stale ID from the previous (assistant) event — which would cause collisions.
+        state.recordSourceEvent(event);
         final String text = event.getContent() != null
                 ? event.getContent()
                         .parts()
@@ -93,13 +97,13 @@ public final class AGUITextMapper {
 
         final TextMessageStartEvent start = new TextMessageStartEvent();
         start.setMessageId(messageId);
-        start.setRole("user");
+        start.setRole(Constants.AUTHOR_USER);
         decorator.decorate(start);
 
         final TextMessageChunkEvent content = new TextMessageChunkEvent();
         content.setMessageId(messageId);
         content.setDelta(text);
-        content.setRole("user");
+        content.setRole(Constants.AUTHOR_USER);
         decorator.decorate(content);
 
         final TextMessageEndEvent end = new TextMessageEndEvent();

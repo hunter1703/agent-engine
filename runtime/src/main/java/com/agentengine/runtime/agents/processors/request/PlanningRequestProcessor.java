@@ -4,6 +4,7 @@ import com.agentengine.runtime.tools.planning.PlanningUtils;
 import com.agentengine.runtime.tools.planning.beans.Plan;
 import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.RequestProcessor;
@@ -59,7 +60,7 @@ public final class PlanningRequestProcessor implements RequestProcessor {
         // 1. High-level plan summary
         final String summary = PlanningUtils.buildPlanSummary(plan);
         appended.add(Content.builder()
-                .role("user")
+                .role(Constants.AUTHOR_USER)
                 .parts(List.of(Part.fromText(summary)))
                 .build());
 
@@ -72,7 +73,7 @@ public final class PlanningRequestProcessor implements RequestProcessor {
                 + taskPrompt
                 + "\n\nFollow the structural thought protocol and your current plan strictly.";
         appended.add(Content.builder()
-                .role("user")
+                .role(Constants.AUTHOR_USER)
                 .parts(List.of(Part.fromText(anchorText)))
                 .build());
 

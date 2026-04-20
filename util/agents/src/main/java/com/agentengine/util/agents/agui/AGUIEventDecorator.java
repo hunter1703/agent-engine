@@ -37,7 +37,7 @@ public final class AGUIEventDecorator {
                 CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.getRawEvent());
         event.setRawEvent(null);
         rawEvent.putAll(JsonUtils.toMap(event));
-        rawEvent.put("agentId", state.currentAuthor());
+        rawEvent.put("author", state.currentAuthor());
         rawEvent.put("threadId", state.sessionId());
         if (state.currentRunId() != null) {
             rawEvent.put("runId", state.currentRunId());

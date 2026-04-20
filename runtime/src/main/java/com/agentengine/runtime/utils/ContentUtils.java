@@ -2,6 +2,7 @@ package com.agentengine.runtime.utils;
 
 import com.agentengine.runtime.api.model.MessagePart;
 import com.agentengine.runtime.api.model.UserMessage;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -33,7 +34,7 @@ public final class ContentUtils {
                 continue;
             }
             final Optional<String> role = content.role();
-            if (role.isPresent() && !"user".equalsIgnoreCase(role.get())) {
+            if (role.isPresent() && !Constants.AUTHOR_USER.equalsIgnoreCase(role.get())) {
                 continue;
             }
             final String text = content.text();
@@ -52,7 +53,7 @@ public final class ContentUtils {
                 continue;
             }
             final Optional<String> role = content.role();
-            if (role.isEmpty() || "user".equalsIgnoreCase(role.get())) {
+            if (role.isEmpty() || Constants.AUTHOR_USER.equalsIgnoreCase(role.get())) {
                 return i;
             }
         }
@@ -137,7 +138,7 @@ public final class ContentUtils {
     public static Content buildUserContent(final UserMessage userMessage) {
         final List<Part> parts =
                 userMessage.parts().stream().map(ContentUtils::toAdkPart).toList();
-        return Content.builder().role("user").parts(parts).build();
+        return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
     }
 
     private static Part toAdkPart(final MessagePart part) {
@@ -157,6 +158,6 @@ public final class ContentUtils {
                 .flatMap(content -> content.parts().stream())
                 .flatMap(List::stream)
                 .toList();
-        return Content.builder().role("user").parts(parts).build();
+        return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
     }
 }

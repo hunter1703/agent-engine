@@ -1,5 +1,6 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
@@ -36,14 +37,14 @@ public final class CorrectionUtils {
 
     public static Event buildCorrectiveEvent(final InvocationContext context, final String code, final String message) {
         final Content correctiveContent = Content.builder()
-                .role("user")
+                .role(Constants.AUTHOR_USER)
                 .parts(List.of(Part.fromText(message)))
                 .build();
 
         return Event.builder()
                 .id(Event.generateEventId())
                 .invocationId(context.invocationId())
-                .author("user")
+                .author(Constants.AUTHOR_USER)
                 .branch(context.branch())
                 .actions(buildCorrectionActions("violation", code, message))
                 .content(correctiveContent)

@@ -2,6 +2,7 @@ package com.agentengine.runtime.utils;
 
 import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.state.SessionActorState;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
@@ -93,7 +94,7 @@ public final class EventUtils {
         final List<String> intents = new ArrayList<>();
         for (int i = events.size() - 1; i >= 0 && intents.size() < max; i--) {
             final Content content = events.get(i).content().orElse(null);
-            if (content == null || !"user".equals(content.role().orElse(""))) {
+            if (content == null || !Constants.AUTHOR_USER.equals(content.role().orElse(""))) {
                 continue;
             }
             final String text = content.text();
@@ -114,9 +115,9 @@ public final class EventUtils {
                 .build();
         return Event.builder()
                 .id(confirmationId)
-                .author("user")
+                .author(Constants.AUTHOR_USER)
                 .content(Content.builder()
-                        .role("user")
+                        .role(Constants.AUTHOR_USER)
                         .parts(List.of(Part.builder()
                                 .functionResponse(functionResponse)
                                 .build()))
@@ -138,7 +139,7 @@ public final class EventUtils {
         return Event.builder()
                 .id(Event.generateEventId())
                 .invocationId(invocationId)
-                .author(SessionEvent.AUTHOR_USER)
+                .author(Constants.AUTHOR_USER)
                 .content(content)
                 .timestamp(timestamp)
                 .build();

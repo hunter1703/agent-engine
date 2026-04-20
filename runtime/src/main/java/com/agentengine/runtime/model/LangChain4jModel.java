@@ -1,5 +1,6 @@
 package com.agentengine.runtime.model;
 
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -234,7 +235,7 @@ public final class LangChain4jModel extends BaseLlm {
 
     private static List<ChatMessage> toChatMessage(final Content content) {
         return switch (content.role().orElseThrow().toLowerCase()) {
-            case "user" -> toUserOrToolResultMessages(content);
+            case Constants.AUTHOR_USER -> toUserOrToolResultMessages(content);
             case "model", "assistant" -> List.of(toAiMessage(content));
             default -> throw new IllegalStateException("Unexpected role: " + content.role());
         };

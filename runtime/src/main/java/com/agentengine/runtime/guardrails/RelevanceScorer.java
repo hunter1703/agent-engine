@@ -3,6 +3,7 @@ package com.agentengine.runtime.guardrails;
 import static com.agentengine.util.common.JsonUtils.parseJsonPayload;
 
 import com.agentengine.runtime.factories.model.ModelProvider;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
@@ -64,7 +65,7 @@ public final class RelevanceScorer {
     private int askScore(final String prompt) {
         final LlmRequest request = LlmRequest.builder()
                 .contents(List.of(Content.builder()
-                        .role("user")
+                        .role(Constants.AUTHOR_USER)
                         .parts(Part.fromText(prompt))
                         .build()))
                 .build();

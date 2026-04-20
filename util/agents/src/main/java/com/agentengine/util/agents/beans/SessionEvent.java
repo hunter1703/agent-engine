@@ -15,7 +15,6 @@ import java.util.UUID;
  * no ordering guarantee.
  */
 public final class SessionEvent extends BaseEntity {
-    public static final String AUTHOR_USER = "user";
     public static final String FIELD_SESSION_ID = "sessionId";
 
     public enum Type {

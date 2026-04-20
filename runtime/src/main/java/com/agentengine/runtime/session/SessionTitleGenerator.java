@@ -3,6 +3,7 @@ package com.agentengine.runtime.session;
 import com.agentengine.runtime.api.services.SessionHistoryService;
 import com.agentengine.runtime.factories.model.ModelProvider;
 import com.agentengine.runtime.utils.ContentUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
@@ -71,7 +72,7 @@ public class SessionTitleGenerator {
         final StringBuilder sb = new StringBuilder();
 
         for (final SessionEvent event : eventsToGenerateTitleOn.reversed()) {
-            final String author = Objects.equals(SessionEvent.AUTHOR_USER, event.getAuthor()) ? "USER" : "ASSISTANT";
+            final String author = Objects.equals(Constants.AUTHOR_USER, event.getAuthor()) ? "USER" : "ASSISTANT";
             final Content content = event.getContent();
             if (content == null) {
                 continue;
