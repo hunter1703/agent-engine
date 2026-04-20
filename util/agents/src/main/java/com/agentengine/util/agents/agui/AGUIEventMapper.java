@@ -12,7 +12,9 @@ import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
 import com.agui.core.event.StepFinishedEvent;
 import com.agui.core.event.StepStartedEvent;
+import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
+import com.google.genai.types.FileData;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
@@ -50,13 +52,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     public Flowable<BaseEvent> map(final SessionEvent event) {
         LOG.info("=== AGUIEventMapper.map() START ===");
         LOG.info(
-                "Input SessionEvent - id={}, runId={}, author={}, turnComplete={}, finishReason={}, hasContent={}, terminal={}",
+                "Input SessionEvent - id={}, runId={}, author={}, turnComplete={}, finishReason={}, content={}, terminal={}",
                 event.getId(),
                 event.getRunId(),
                 event.getAuthor(),
                 event.getTurnComplete(),
                 event.getFinishReason(),
-                event.getContent() != null,
+                JsonUtils.toJson(event.getContent()),
                 event.isTerminal());
         LOG.info(
                 "Current mapper state BEFORE processing - currentRunId={}, hasStartedStep={}",
@@ -160,6 +162,20 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         final String text = part.text().orElse(null);
         if (text != null) {
             flowable = flowable.concatWith(textMapper.mapText(text, partial));
+        }
+
+        final Blob inlineData = part.inlineData().orElse(null);
+        if (inlineData != null) {
+            flowable = flowable.concatWith(textMapper.mapAttachment(
+                    inlineData.displayName().orElse(null), inlineData.mimeType().orElse(null)));
+        }
+
+        final FileData fileData = part.fileData().orElse(null);
+        if (fileData != null) {
+            final String uri = fileData.fileUri().orElse(null);
+            final String name = uri != null ? uri.substring(uri.lastIndexOf('/') + 1) : null;
+            flowable = flowable.concatWith(
+                    textMapper.mapAttachment(name, fileData.mimeType().orElse(null)));
         }
 
         final FunctionCall call = part.functionCall().orElse(null);

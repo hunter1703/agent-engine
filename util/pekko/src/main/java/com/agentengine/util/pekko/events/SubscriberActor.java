@@ -112,7 +112,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
                     requestSubscribe();
                     return this;
                 })
-                .onMessage(SubscriberCommand.UnsubscribeCommand.class, this::unsubscribe)
+                .onMessage(SubscriberCommand.StopCommand.class, _ -> Behaviors.stopped())
                 .onMessage(SubscriberCommand.DeliverCommand.class, this::deliver)
                 .onMessage(BroadcasterTerminatedCommand.class, this::onBroadcasterTerminated)
                 .onSignal(PostStop.class, ignored -> onPostStop())
@@ -194,13 +194,6 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
         }
 
         return this;
-    }
-
-    private Behavior<SubscriberCommand> unsubscribe(final SubscriberCommand.UnsubscribeCommand command) {
-        if (command.replyTo() != null) {
-            command.replyTo().tell(new SubscriberCommandResult.Successful());
-        }
-        return Behaviors.stopped();
     }
 
     private Behavior<SubscriberCommand> deliver(final SubscriberCommand.DeliverCommand command) {

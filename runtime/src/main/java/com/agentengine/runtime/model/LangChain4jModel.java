@@ -54,13 +54,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * ADK {@link BaseLlm} implementation backed by LangChain4j's {@link ChatModel} and {@link
@@ -280,29 +274,25 @@ public final class LangChain4jModel extends BaseLlm {
         final String mimeType = blob.mimeType().orElseThrow(() -> new IllegalArgumentException("Mime type required"));
         final byte[] bytes = blob.data().orElseThrow(() -> new IllegalArgumentException("Data required"));
         final String base64 = Base64.getEncoder().encodeToString(bytes);
-        if (mimeType.startsWith("audio/")) {
+        final String name = blob.displayName().orElse("");
+        if (mimeType.startsWith("audio/") || name.endsWith(".mp3")) {
             return AudioContent.from(
                     Audio.builder().base64Data(base64).mimeType(mimeType).build());
         }
-        if (mimeType.startsWith("video/")) {
+        if (mimeType.startsWith("video/") || name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".avi")) {
             return VideoContent.from(
                     Video.builder().base64Data(base64).mimeType(mimeType).build());
         }
-        if (mimeType.startsWith("image/")) {
+        if (mimeType.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")) {
             return ImageContent.from(
                     Image.builder().base64Data(base64).mimeType(mimeType).build());
         }
-        if (mimeType.startsWith("application/pdf")) {
+
+        if (mimeType.startsWith("application/pdf") || name.endsWith(".pdf")) {
             return PdfFileContent.from(
                     PdfFile.builder().base64Data(base64).mimeType(mimeType).build());
         }
-        if (mimeType.startsWith("text/")
-                || mimeType.equals("application/json")
-                || mimeType.endsWith("+json")
-                || mimeType.endsWith("+xml")) {
-            return TextContent.from(new String(bytes, StandardCharsets.UTF_8));
-        }
-        throw new IllegalArgumentException("Unsupported mime type: " + mimeType);
+        return TextContent.from(new String(bytes, StandardCharsets.UTF_8));
     }
 
     private static AiMessage toAiMessage(final Content content) {

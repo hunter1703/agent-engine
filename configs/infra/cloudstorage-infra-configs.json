@@ -1,8 +1,8 @@
 [
   {
-    "id": "LOCALSTACK:default",
-    "type": "localstack",
-    "_t": "com.agentengine.util.cloudstorage.localstack.LocalStackInfraConfig",
+    "id": "CLOUDSTORAGE:default",
+    "type": "cloudstorage",
+    "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
     "endpointUrl": "http://localhost:4566",
     "region": "us-east-1",
     "accessKeyId": "test",

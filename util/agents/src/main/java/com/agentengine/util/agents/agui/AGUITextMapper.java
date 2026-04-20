@@ -8,10 +8,9 @@ import com.agui.core.event.TextMessageChunkEvent;
 import com.agui.core.event.TextMessageEndEvent;
 import com.agui.core.event.TextMessageStartEvent;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Optional;
 
 public final class AGUITextMapper {
 
@@ -21,7 +20,8 @@ public final class AGUITextMapper {
     private final AGUIEventDecorator decorator;
     private AGUIEventMapper.Mode mode;
 
-    public AGUITextMapper(final AGUIMapperState state, final AGUIEventDecorator decorator, final AGUIEventMapper.Mode mode) {
+    public AGUITextMapper(
+            final AGUIMapperState state, final AGUIEventDecorator decorator, final AGUIEventMapper.Mode mode) {
         this.state = state;
         this.decorator = decorator;
         this.mode = mode;
@@ -63,6 +63,36 @@ public final class AGUITextMapper {
         return finalizeTextMessageIfNeeded().concatWith(closeReasoningIfNeeded());
     }
 
+    public Flowable<BaseEvent> mapAttachment(final String fileName, final String mimeType) {
+        final Flowable<BaseEvent> flowable = startTextMessageIfNeeded();
+        final String parentMessageId = state.currentTextMessageId();
+        final String resolvedFileName = fileName != null ? fileName : generateFileName(mimeType);
+        final AttachmentEvent event = new AttachmentEvent(parentMessageId, resolvedFileName, mimeType);
+        decorator.decorate(event);
+        LOG.debug(
+                "Generated output event - eventType=AttachmentEvent, parentMessageId={}, mimeType={}",
+                parentMessageId,
+                mimeType);
+        return flowable.concatWith(Flowable.just(event));
+    }
+
+    private static String generateFileName(final String mimeType) {
+        if (mimeType == null) {
+            return "attachment";
+        }
+        final String ext =
+                switch (mimeType) {
+                    case "image/png" -> "png";
+                    case "image/jpeg" -> "jpg";
+                    case "image/gif" -> "gif";
+                    case "image/webp" -> "webp";
+                    case "image/svg+xml" -> "svg";
+                    case "application/pdf" -> "pdf";
+                    default -> mimeType.contains("/") ? mimeType.substring(mimeType.indexOf('/') + 1) : "bin";
+                };
+        return "attachment." + ext;
+    }
+
     public Flowable<BaseEvent> closeReasoningIfNeeded() {
         if (!state.hasOpenReasoning()) {
             return Flowable.empty();
@@ -88,7 +118,8 @@ public final class AGUITextMapper {
                             }
                             // Image-only message: emit a placeholder so the replay shows
                             // something meaningful instead of a null delta.
-                            final boolean hasImages = parts.stream().anyMatch(part -> part.inlineData().isPresent());
+                            final boolean hasImages = parts.stream()
+                                    .anyMatch(part -> part.inlineData().isPresent());
                             return hasImages ? java.util.Optional.of("[Image]") : Optional.empty();
                         })
                         .orElse(null)
@@ -175,7 +206,7 @@ public final class AGUITextMapper {
         return Flowable.just(event);
     }
 
-    private Flowable<TextMessageStartEvent> startTextMessageIfNeeded() {
+    private Flowable<BaseEvent> startTextMessageIfNeeded() {
         if (state.hasOpenTextMessage()) {
             LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
             return Flowable.empty();

@@ -4,7 +4,6 @@ import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.state.SessionActorState;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
-import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -19,7 +18,6 @@ import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -129,7 +127,8 @@ public final class EventUtils {
         return _buildUserEvent(invocationId, ContentUtils.buildUserContent(userMessage), timestamp);
     }
 
-    public static Event buildConfirmationsEvent(final SessionActorState state, final String invocationId, final long timestamp) {
+    public static Event buildConfirmationsEvent(
+            final SessionActorState state, final String invocationId, final long timestamp) {
         final Content confirmationsContent =
                 ContentUtils.buildConfirmationsContent(state.getAllReceivedConfirmations());
         return _buildUserEvent(invocationId, confirmationsContent, timestamp);

@@ -71,7 +71,10 @@ public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Even
                                             actorSystemProvider.system().scheduler())
                                     .toCompletableFuture()
                                     .join();
-                            emitter.setCancellable(() -> actor.tell(new SubscriberCommand.UnsubscribeCommand(null)));
+                            // The actor owns all cleanup: it unsubscribes from the broadcaster
+                            // and completes the emitter in onPostStop(). The cancellable only
+                            // needs to stop the actor; everything else follows from that.
+                            emitter.setCancellable(() -> actor.tell(new SubscriberCommand.StopCommand()));
                         },
                         BackpressureStrategy.MISSING)
                 .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)

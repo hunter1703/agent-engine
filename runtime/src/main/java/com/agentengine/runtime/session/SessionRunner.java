@@ -10,6 +10,7 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
+import com.google.genai.types.Content;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -63,7 +64,7 @@ public final class SessionRunner {
                             event.author(),
                             event.turnComplete().orElse(false),
                             event.finalResponse(),
-                            event.content().map(c -> c.text()).orElse("<no-content>"));
+                            event.content().map(Content::text).orElse("<no-content>"));
                     LOG.debug(
                             "[{}] runAsync onNext: author={} turnComplete={} finalResponse={}",
                             sessionId,

@@ -12,6 +12,7 @@ dependencies {
     implementation project(':util:mongodb')
     implementation project(':util:agents')
     implementation project(':util:ms')
+    implementation project(':util:cloudstorage')
 
     implementation platform(libs.pekko.bom)
     implementation libs.pekko.actor.typed

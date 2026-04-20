@@ -103,6 +103,9 @@ public final class AGUIEventDecorator {
         if (event instanceof ToolCallResultEvent toolEvent) {
             return toolEvent.getToolCallId();
         }
+        if (event instanceof AttachmentEvent attachmentEvent) {
+            return attachmentEvent.getParentMessageId();
+        }
         return "unknown";
     }
 }

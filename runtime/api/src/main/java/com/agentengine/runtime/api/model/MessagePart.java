@@ -1,16 +1,23 @@
 package com.agentengine.runtime.api.model;
 
+import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.common.beans.FileDetails;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = MessagePart.TextPart.class, name = "text"),
-    @JsonSubTypes.Type(value = MessagePart.ImagePart.class, name = "image")
+    @JsonSubTypes.Type(value = MessagePart.FilePart.class, name = "file")
 })
 public interface MessagePart {
 
     record TextPart(String text) implements MessagePart {}
 
-    record ImagePart(String base64, String mimeType) implements MessagePart {}
+    record FilePart(FileDetails fileDetails) implements MessagePart {
+        public FilePart resolved(CloudStorageService cloudStorageService) {
+            final FileDetails resolved = fileDetails.resolved(cloudStorageService);
+            return new FilePart(resolved);
+        }
+    }
 }

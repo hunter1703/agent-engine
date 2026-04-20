@@ -7,6 +7,7 @@ group = 'com.agentengine.runtime'
 dependencies {
     implementation project(':util:ms:client')
     implementation project(':util:agents')
+    implementation project(':util:common')
 
     api libs.reactive.streams
     api libs.jackson.databind

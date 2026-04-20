@@ -37,7 +37,7 @@ stop_workloads() {
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting deployments...${RESET}\n"
-  kubectl delete deployment agent-engine-core agent-engine-rest -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete deployment agent-engine-core agent-engine-rest localstack -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting statefulsets (preserving PVCs)...${RESET}\n"
   kubectl delete statefulset agent-engine-runtime mongodb postgres -n "$NAMESPACE" 2>/dev/null || true

@@ -25,6 +25,7 @@ DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-}
 TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
 COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
 EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
+LOCALSTACK_SERVICE_NAME=${LOCALSTACK_SERVICE_NAME:-localstack}
 
 usage() {
   cat <<'EOF'
@@ -184,6 +185,7 @@ SQL_JDBC_PASSWORD_B64=$(printf '%s' "$SQL_JDBC_PASSWORD" | encode_base64)
 TITLE_MODEL_ID_B64=$(printf '%s' "$TITLE_MODEL_ID" | encode_base64)
 COMPACTION_MODEL_ID_B64=$(printf '%s' "$COMPACTION_MODEL_ID" | encode_base64)
 EVALUATOR_MODEL_ID_B64=$(printf '%s' "$EVALUATOR_MODEL_ID" | encode_base64)
+LOCALSTACK_SERVICE_NAME_B64=$(printf '%s' "$LOCALSTACK_SERVICE_NAME" | encode_base64)
 
 IMPORT_SCRIPT="$TMP_DIR/import.js"
 cat <<EOF > "$IMPORT_SCRIPT"
@@ -207,6 +209,7 @@ const sqlJdbcPassword = decode("${SQL_JDBC_PASSWORD_B64}");
 const titleModelId = decode("${TITLE_MODEL_ID_B64}");
 const compactionModelId = decode("${COMPACTION_MODEL_ID_B64}");
 const evaluatorModelId = decode("${EVALUATOR_MODEL_ID_B64}");
+const localstackServiceName = decode("${LOCALSTACK_SERVICE_NAME_B64}");
 
 function applyDeploymentOverrides(config) {
   const next = { ...config };
@@ -229,6 +232,11 @@ function applyDeploymentOverrides(config) {
     next.jdbcUrl = sqlJdbcUrl || next.jdbcUrl;
     next.jdbcUser = sqlJdbcUser || next.jdbcUser;
     next.jdbcPassword = sqlJdbcPassword || next.jdbcPassword;
+    return next;
+  }
+
+  if (next.type === "cloudstorage") {
+    next.endpointUrl = \`http://\${localstackServiceName}.\${namespace}.svc.cluster.local:4566\`;
     return next;
   }
 

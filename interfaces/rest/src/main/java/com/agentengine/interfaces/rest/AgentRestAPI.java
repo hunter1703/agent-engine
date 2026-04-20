@@ -8,7 +8,6 @@ import com.agentengine.core.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
-import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
@@ -21,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -28,8 +28,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestStreamElementType;
 import org.reactivestreams.Publisher;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -136,10 +134,7 @@ public class AgentRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "SSE stream of AG-UI events: live events",
-            content =
-                    @Content(
-                            mediaType = SERVER_SENT_EVENTS,
-                            schema = @Schema(implementation = BaseEvent.class)))
+            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
     @APIResponse(responseCode = "404", description = "Agent not found")
     @Produces(SERVER_SENT_EVENTS)
@@ -150,10 +145,13 @@ public class AgentRestAPI {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
         final AtomicReference<AGUIEventMapper> mapper = new AtomicReference<>();
-        return Flowable.fromPublisher(runtimeService.startSession(agentId, request.getSessionId(), request.getUserMessage())).doOnNext(event -> {
-            if (mapper.get() == null) {
-                mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
-            }
-        }).concatMap(event -> mapper.get().map(event));
+        return Flowable.fromPublisher(
+                        runtimeService.startSession(agentId, request.getSessionId(), request.getMessage()))
+                .doOnNext(event -> {
+                    if (mapper.get() == null) {
+                        mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
+                    }
+                })
+                .concatMap(event -> mapper.get().map(event));
     }
 }

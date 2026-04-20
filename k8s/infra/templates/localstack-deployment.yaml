@@ -1,0 +1,61 @@
+{{- if .Values.localstack.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localstack
+  namespace: {{ include "agent-engine-infra.namespace" . }}
+  labels:
+    app.kubernetes.io/name: localstack
+    {{- include "agent-engine-infra.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: localstack
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: localstack
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: localstack
+          image: "{{ .Values.localstack.image.repository }}:{{ .Values.localstack.image.tag }}"
+          imagePullPolicy: {{ .Values.localstack.image.pullPolicy }}
+          env:
+            - name: SERVICES
+              value: {{ .Values.localstack.services | quote }}
+            - name: DEFAULT_REGION
+              value: {{ .Values.localstack.region | quote }}
+          ports:
+            - name: gateway
+              containerPort: 4566
+          startupProbe:
+            httpGet:
+              path: /_localstack/health
+              port: gateway
+            periodSeconds: 5
+            failureThreshold: 24
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /_localstack/health
+              port: gateway
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /_localstack/health
+              port: gateway
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.localstack.resources | nindent 12 }}
+{{- end }}

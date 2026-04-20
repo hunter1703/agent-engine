@@ -1,31 +1,29 @@
 package com.agentengine.util.cloudstorage.localstack;
 
+import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
 import com.agentengine.util.cloudstorage.CloudStorageService;
-import com.agentengine.util.cloudstorage.StoredObject;
+import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Path;
 import java.time.Duration;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -34,7 +32,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  * {@link CloudStorageService} backed by LocalStack (S3-compatible).
  *
  * <p>Configuration is loaded from the infra MongoDB store via {@link InfraConfigService}
- * using {@link LocalStackInfraConfig#CATEGORY} / {@link LocalStackInfraConfig#CONFIG_ID}.
+ * using {@link CloudStorageInfraConfig#CATEGORY} / {@link CloudStorageInfraConfig#CONFIG_ID}.
  *
  * <p>Start LocalStack locally:
  * <pre>
@@ -46,10 +44,12 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(LocalStackCloudStorageService.class);
 
+    private static final String DEFAULT_MEDIA_TYPE = "application/octet-stream";
+
     private final InfraConfigService infraConfigService;
     private S3Client s3;
     private S3Presigner presigner;
-    private String defaultBucket;
+    private volatile String defaultBucket;
 
     @Inject
     public LocalStackCloudStorageService(final InfraConfigService infraConfigService) {
@@ -58,13 +58,12 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @PostConstruct
     void init() {
-        final LocalStackInfraConfig config = infraConfigService.findById(
-                LocalStackInfraConfig.CATEGORY, LocalStackInfraConfig.CONFIG_ID);
+        final CloudStorageInfraConfig config =
+                infraConfigService.findById(CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.CONFIG_ID);
 
         if (config == null) {
-            throw new IllegalStateException(
-                    "LocalStack infra config not found: " + LocalStackInfraConfig.CATEGORY
-                    + ":" + LocalStackInfraConfig.CONFIG_ID);
+            throw new IllegalStateException("LocalStack infra config not found: " + CloudStorageInfraConfig.CATEGORY
+                    + ":" + CloudStorageInfraConfig.CONFIG_ID);
         }
 
         this.defaultBucket = config.getDefaultBucket();
@@ -88,87 +87,77 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .credentialsProvider(credentials)
                 .build();
 
-        ensureBucket(defaultBucket);
+        ensureBucket();
         log.info("CloudStorageService initialised -> {} (bucket: {})", config.getEndpointUrl(), defaultBucket);
     }
 
     @Override
-    public StoredObject upload(
-            final String bucket, final String key, final Path sourcePath, final String mediaType) {
-        s3.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).contentType(mediaType).build(),
-                sourcePath);
-        return stat(bucket, key);
-    }
-
-    @Override
-    public StoredObject upload(
-            final String bucket,
-            final String key,
-            final InputStream inputStream,
-            final long contentLength,
-            final String mediaType) {
+    public FileDetails upload(
+            final String name, final InputStream inputStream, final long contentLength, String mediaType) {
+        final String key = UUID.randomUUID().toString().replace("-", "");
         final RequestBody body = contentLength >= 0
                 ? RequestBody.fromInputStream(inputStream, contentLength)
                 : RequestBody.fromContentProvider(() -> inputStream, mediaType);
+        mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
         s3.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).contentType(mediaType).build(),
+                PutObjectRequest.builder()
+                        .bucket(defaultBucket)
+                        .key(key)
+                        .contentType(mediaType)
+                        .build(),
                 body);
-        return stat(bucket, key);
+        return new FileDetails(
+                name, defaultBucket + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength, null);
     }
 
     @Override
-    public void download(final String bucket, final String key, final Path destination) {
-        s3.getObject(
-                GetObjectRequest.builder().bucket(bucket).key(key).build(),
-                ResponseTransformer.toFile(destination));
+    public InputStream download(final FileDetails fileDetails) {
+        final String path = fileDetails.path();
+        return s3.getObject(GetObjectRequest.builder()
+                .bucket(getBucket(path))
+                .key(getKey(path))
+                .build());
     }
 
     @Override
-    public InputStream openStream(final String bucket, final String key) {
-        return s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+    public void delete(final FileDetails fileDetails) {
+        final String path = fileDetails.path();
+        s3.deleteObject(DeleteObjectRequest.builder()
+                .bucket(getBucket(path))
+                .key(getKey(path))
+                .build());
     }
 
     @Override
-    public void delete(final String bucket, final String key) {
-        s3.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
-    }
+    public String presignedGetUrl(final FileDetails fileDetails, final Duration validity) {
+        final String path = fileDetails.path();
 
-    @Override
-    public StoredObject stat(final String bucket, final String key) {
-        try {
-            final HeadObjectResponse head = s3.headObject(
-                    HeadObjectRequest.builder().bucket(bucket).key(key).build());
-            return new StoredObject(
-                    bucket,
-                    key,
-                    head.contentLength() != null ? head.contentLength() : -1,
-                    head.contentType(),
-                    head.eTag(),
-                    head.lastModified());
-        } catch (NoSuchKeyException e) {
-            return null;
-        }
-    }
-
-    @Override
-    public String presignedGetUrl(final String bucket, final String key, final Duration validity) {
         return presigner
                 .presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(validity)
-                        .getObjectRequest(r -> r.bucket(bucket).key(key))
+                        .getObjectRequest(
+                                request -> request.bucket(getBucket(path)).key(getKey(path)))
                         .build())
                 .url()
                 .toString();
     }
 
-    @Override
-    public void ensureBucket(final String bucket) {
+    private void ensureBucket() {
         try {
-            s3.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+            s3.headBucket(HeadBucketRequest.builder().bucket(defaultBucket).build());
         } catch (NoSuchBucketException e) {
-            log.info("Creating bucket: {}", bucket);
-            s3.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
+            log.info("Creating bucket: {}", defaultBucket);
+            s3.createBucket(CreateBucketRequest.builder().bucket(defaultBucket).build());
         }
+    }
+
+    private static String getBucket(final String fullPath) {
+        int index = fullPath.indexOf('/');
+        return index != -1 ? fullPath.substring(0, index) : fullPath;
+    }
+
+    private static String getKey(final String path) {
+        int index = path.indexOf('/');
+        return index != -1 ? path.substring(index + 1) : path;
     }
 }

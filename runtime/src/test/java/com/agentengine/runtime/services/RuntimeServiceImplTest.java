@@ -60,9 +60,9 @@ class RuntimeServiceImplTest {
         event.setSessionId(sessionId);
         event.setRootSessionId(sessionId);
 
-        final var subscriber =
-                Flowable.fromPublisher(runtimeService.startSession(agentId, sessionId, UserMessage.ofText("hello")))
-                        .test();
+        final var subscriber = Flowable.fromPublisher(
+                        runtimeService.startSession(agentId, sessionId, UserMessage.ofText("hello")))
+                .test();
 
         liveEvents.onNext(new SequencedEvent<>(1L, event));
 

@@ -1,6 +1,7 @@
 package com.agentengine.runtime.services;
 
 import com.agentengine.core.api.services.SessionService;
+import com.agentengine.runtime.api.model.MessagePart;
 import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.runtime.api.services.SessionHistoryService;
@@ -18,22 +19,23 @@ import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
+import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
-import com.google.genai.types.Blob;
-import com.google.genai.types.Content;
-import com.google.genai.types.Part;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.google.genai.types.Blob;
+import com.google.genai.types.Content;
+import com.google.genai.types.Part;
 import io.quarkus.arc.Unremovable;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.flowables.ConnectableFlowable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.pekko.Done;
@@ -52,24 +54,30 @@ public class RuntimeServiceImpl implements RuntimeService {
     private final SessionEventChannel eventChannel;
     private final SessionService sessionService;
     private final SessionHistoryService sessionHistoryService;
+    private final CloudStorageService cloudStorageService;
 
     @Inject
     public RuntimeServiceImpl(
             final SessionActorFactory sessionActorFactory,
             final SessionEventChannel eventChannel,
             final SessionService sessionService,
-            final SessionHistoryService sessionHistoryService) {
+            final SessionHistoryService sessionHistoryService,
+            final CloudStorageService cloudStorageService) {
         this.sessionActorFactory = sessionActorFactory;
         this.eventChannel = eventChannel;
         this.sessionService = sessionService;
         this.sessionHistoryService = sessionHistoryService;
+        this.cloudStorageService = cloudStorageService;
     }
 
     @Override
-    public Publisher<SessionEvent> startSession(final String agentId, final String sessionId, final UserMessage message) {
+    public Publisher<SessionEvent> startSession(
+            final String agentId, final String sessionId, final UserMessage message) {
         final String resolvedSessionId =
                 StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
         LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
+
+        final UserMessage resolvedMessage = resolveFileParts(message);
 
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(resolvedSessionId);
         ref.<Done>ask(
@@ -87,7 +95,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         final Publisher<SessionEvent> liveEvents = subscribeToLiveEvents(rootSessionId);
 
         ref.<StartSessionResult>ask(
-                        replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
+                        replyTo -> new StartCommand(new UniqueRecord<>(resolvedMessage), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
@@ -183,6 +191,22 @@ public class RuntimeServiceImpl implements RuntimeService {
                 filteredLiveSource);
     }
 
+    private UserMessage resolveFileParts(final UserMessage message) {
+        if (message == null || message.parts() == null) {
+            return message;
+        }
+        final List<MessagePart> resolved = message.parts().stream()
+                .map(part -> {
+                    if (!(part instanceof MessagePart.FilePart filePart)) {
+                        return part;
+                    }
+                    LOG.debug("Resolving file : {}", JsonUtils.toJson(filePart.fileDetails()));
+                    return filePart.resolved(cloudStorageService);
+                })
+                .toList();
+        return new UserMessage(resolved);
+    }
+
     private static SessionEvent stripBlobData(final SessionEvent event) {
         final Content content = event.getContent();
         if (content == null) {
@@ -196,7 +220,9 @@ public class RuntimeServiceImpl implements RuntimeService {
             final Optional<Blob> blobOptional = part.inlineData();
             if (blobOptional.isPresent()) {
                 final Blob blob = blobOptional.get();
-                sanitizedParts.add(part.toBuilder().inlineData(blob.toBuilder().clearData()).build());
+                sanitizedParts.add(part.toBuilder()
+                        .inlineData(blob.toBuilder().clearData())
+                        .build());
             } else {
                 sanitizedParts.add(part);
             }
@@ -214,7 +240,8 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
-        return Flowable.fromPublisher(eventChannel.subscribe(rootSessionId)
+        return Flowable.fromPublisher(eventChannel
+                        .subscribe(rootSessionId)
                         .toCompletableFuture()
                         .join()
                         .publisher())

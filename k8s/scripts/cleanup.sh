@@ -79,6 +79,14 @@ done
 wait
 echo "Removed selected releases from namespace $NAMESPACE"
 
+# Explicitly remove localstack resources that may persist outside of Helm tracking
+# shellcheck disable=SC2086
+if chart_selected "infra" $REQUESTED_CHARTS; then
+  require_command kubectl
+  kubectl delete all -l app.kubernetes.io/name=localstack --namespace "$NAMESPACE" --ignore-not-found >/dev/null
+  echo "Removed localstack resources from namespace $NAMESPACE"
+fi
+
 if [ "$DELETE_VOLUMES" = "true" ]; then
   require_command kubectl
   echo "Deleting PVCs (data volumes)..."

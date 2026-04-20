@@ -117,3 +117,21 @@ postgres:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+localstack:
+  enabled: true
+  image:
+    repository: localstack/localstack
+    tag: "3"
+    pullPolicy: IfNotPresent
+  serviceName: localstack
+  port: 4566
+  services: s3
+  region: us-east-1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

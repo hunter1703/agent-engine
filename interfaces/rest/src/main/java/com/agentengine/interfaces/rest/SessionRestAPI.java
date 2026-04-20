@@ -19,7 +19,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
-
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -52,13 +51,16 @@ public class SessionRestAPI {
             description = "SSE stream of AG-UI events: committed history, uncommitted turn events, then live events",
             content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
     @APIResponse(responseCode = "404", description = "Session not found")
-    public Publisher<BaseEvent> stream(@NotBlank @PathParam("sessionId") final String sessionId, @QueryParam("liveOnly") boolean liveOnly) {
+    public Publisher<BaseEvent> stream(
+            @NotBlank @PathParam("sessionId") final String sessionId, @QueryParam("liveOnly") boolean liveOnly) {
         final AgentSession session = sessionService.getSession(sessionId);
         if (session == null) {
             throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
         }
-        final AGUIEventMapper mapper =
-                new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId(), liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
+        final AGUIEventMapper mapper = new AGUIEventMapper(
+                session.getRootSessionId(),
+                session.getRootAgentId(),
+                liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
         return Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly))
                 .concatMap(mapper::map);
     }

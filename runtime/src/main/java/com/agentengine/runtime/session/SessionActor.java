@@ -681,7 +681,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         // Initial user message
                         final UniqueRecord<UserMessage> userMessage =
                                 state.runState().message();
-                        final Event userEvent = EventUtils.buildUserEvent(userMessage.getRecord(), invocationId, events.getFirst().timestamp());
+                        final Event userEvent = EventUtils.buildUserEvent(
+                                userMessage.getRecord(),
+                                invocationId,
+                                events.getFirst().timestamp());
                         events.addFirst(userEvent);
                         LOG.info(
                                 "[USER_MESSAGE_TRACE][{}] First turn - prepended user message event: '{}' with invocationId: {}",
@@ -690,7 +693,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 invocationId);
                     } else if (!state.getAllReceivedConfirmations().isEmpty()) {
                         // Resume with confirmations
-                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(state, invocationId, events.getFirst().timestamp());
+                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(
+                                state, invocationId, events.getFirst().timestamp());
                         events.addFirst(confirmationEvent);
                         LOG.info(
                                 "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",
@@ -814,9 +818,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onEvent(
                         InitializedFact.class,
                         (_, fact) -> SessionActorState.initial().withTopology(fact.getTopology()))
-                .onEvent(StartedFact.class, (state, fact) -> state.dequeue()
-                        .withSessionState(SessionState.TRIGGERED_RUN)
-                        .withCurrentMessage(fact.getMessage()))
+                .onEvent(
+                        StartedFact.class,
+                        (state, fact) -> state.dequeue()
+                                .withSessionState(SessionState.TRIGGERED_RUN)
+                                .withCurrentMessage(fact.getMessage()))
                 .onEvent(ConfirmedFact.class, (state, fact) -> {
                     final Confirmation confirmation = fact.getConfirmation();
                     LOG.info(
