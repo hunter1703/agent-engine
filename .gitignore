@@ -27,3 +27,6 @@ gradle/gradle-daemon-jvm.properties
 .worktrees/
 k8s/*/Chart.lock
 k8s/*/charts/
+
+# Python virtual environment
+.venv/

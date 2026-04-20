@@ -1,0 +1,20 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+dependencies {
+    implementation platform(libs.quarkus.bom)
+
+    implementation project(':util:common')
+
+    implementation libs.aws.s3
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.config.smallrye
+    implementation libs.jakarta.annotation.api
+    implementation libs.slf4j.api
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+}

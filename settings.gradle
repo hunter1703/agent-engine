@@ -20,6 +20,8 @@ include 'util:common'
 
 include 'util:mongodb'
 
+include 'util:cloudstorage'
+
 include 'util:ms'
 
 include 'util:ms:client'
