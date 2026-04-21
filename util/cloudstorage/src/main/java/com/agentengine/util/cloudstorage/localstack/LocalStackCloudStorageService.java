@@ -1,9 +1,9 @@
 package com.agentengine.util.cloudstorage.localstack;
 
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.service.CloudStorageService;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;

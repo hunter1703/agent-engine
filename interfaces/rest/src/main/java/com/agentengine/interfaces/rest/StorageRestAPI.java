@@ -2,8 +2,8 @@ package com.agentengine.interfaces.rest;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.service.CloudStorageService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;

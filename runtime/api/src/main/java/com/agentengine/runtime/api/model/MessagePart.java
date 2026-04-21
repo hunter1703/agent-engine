@@ -1,7 +1,7 @@
 package com.agentengine.runtime.api.model;
 
-import com.agentengine.util.cloudstorage.CloudStorageService;
 import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.service.CloudStorageService;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 

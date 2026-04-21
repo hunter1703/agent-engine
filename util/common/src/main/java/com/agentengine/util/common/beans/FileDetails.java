@@ -1,6 +1,7 @@
 package com.agentengine.util.common.beans;
 
-import com.agentengine.util.cloudstorage.CloudStorageService;
+import com.agentengine.util.common.service.CloudStorageService;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Base64;
