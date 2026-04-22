@@ -15,11 +15,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 
-/**
- * Tool for fetching web pages and converting their HTML content to Markdown format.
- * Useful for retrieving documentation, articles, or any web content for agent processing.
- */
-// TODO: add client pooling
+
 @DiscoverableTool
 public final class GetWebpageTool extends Tool {
     private static final String TOOL_NAME = "get_webpage";
@@ -35,16 +31,15 @@ public final class GetWebpageTool extends Tool {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
     private static final String USER_AGENT =
             "Mozilla/5.0 (compatible; AgentEngine/1.0; +https://github.com/agentengine)";
+    private static final HttpClient CLIENT;
 
-    private final HttpClient httpClient;
+    static {
+        CLIENT = HttpClient.newBuilder().connectTimeout(DEFAULT_TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
+    }
 
     @ToolConstructor
     public GetWebpageTool() {
         super(DESCRIPTOR);
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(DEFAULT_TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
     }
 
     /**
@@ -76,7 +71,7 @@ public final class GetWebpageTool extends Tool {
                     .GET()
                     .build();
 
-            final HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            final HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
             final int statusCode = response.statusCode();
 

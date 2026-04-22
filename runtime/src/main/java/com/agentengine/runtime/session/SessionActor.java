@@ -533,7 +533,6 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         ASK_TIMEOUT)
                 .thenCompose(_ -> {
                     final UniqueRecord<UserMessage> uniqueMessage = new UniqueRecord<>(UserMessage.ofText(message));
-                    // TODO: add retry to send same unique message if some transient error
                     return childRef.ask(
                             (Function<ActorRef<StartSessionResult>, SessionCommand>)
                                     startReplyTo -> new StartCommand(uniqueMessage, startReplyTo),

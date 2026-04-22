@@ -22,7 +22,7 @@ public final class CreatePlanTool extends Tool {
             TOOL_NAME,
             "Initialises a new structured plan with a title, goal, and initial list of tasks. Use at the start of "
                     + "any multi-step task where tracking completion state across distinct phases has value — if the "
-                    + "work can be done in a single step without meaningful state to track, a plan is not needed. "
+                    + "work can be done in a single step without meaningful state to track, a plan is not needed. If there are multiple steps to task completion ALWAYS call this tool and create plan. "
                     + "A plan is a persistent work-tracking structure that records what needs to be done and tracks "
                     + "completion. Only one active (non-finished) plan may exist at a time — calling this while a "
                     + "non-terminal plan is active will fail. Tasks are provided as a flat list; parent_id "

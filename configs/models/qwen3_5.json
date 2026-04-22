@@ -1,0 +1,14 @@
+{
+  "id": "qwen3.5",
+  "model": "qwen3.5:latest ",
+  "name": "Qwen 3.5",
+  "type": "OPEN_AI_COMPATIBLE",
+  "baseUrl": "http://host.docker.internal:11434/v1",
+  "temperature": 0.2,
+  "topK": 40,
+  "topP": 0.85,
+  "repeatPenalty": 1.05,
+  "toolCallingEnabled": true,
+  "instructions": "You are a vision-language model capable of understanding both text and images. Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call.",
+  "thoughtsEnabled": true
+}

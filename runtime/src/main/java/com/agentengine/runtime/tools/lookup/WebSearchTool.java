@@ -23,8 +23,8 @@ public final class WebSearchTool extends Tool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             TOOL_NAME,
             "Queries a live web search service and returns a synthesised summary of results for the given query. "
-                    + "Use for retrieving current information, facts, documentation, news, or any topic not available "
-                    + "in the model's training data. Clear, specific queries produce better results than vague ones. "
+                    + "Use for retrieving current information, facts, documentation, news, research or any topic not available "
+                    + "in your training data. Clear, specific queries produce better results than vague ones. "
                     + "Returns: { result } on success, where result is the search provider's synthesised response "
                     + "including titles, summaries, and source references; or { error } on failure.",
             Map.of(),
@@ -48,9 +48,6 @@ public final class WebSearchTool extends Tool {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("Query cannot be empty");
         }
-
-        // TODO: For production, switch back to DuckDuckGo first with Brave fallback
-        // return executeDuckDuckGoLookup(query);
         return executeBraveSearch(query);
     }
 
