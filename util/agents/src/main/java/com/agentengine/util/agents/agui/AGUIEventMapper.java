@@ -120,14 +120,11 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
         LOG.info(
-                "mapEventInternal called - sessionId={}, author={}, hasContent={}, turnComplete={}, partial={}, terminal={}",
-                event.getSessionId(),
-                event.getAuthor(),
-                event.getContent() != null,
-                event.getTurnComplete(),
-                event.isPartial(),
-                event.isTerminal());
-
+                "mapEventInternal called - event : {}", JsonUtils.toJson(event));
+        final boolean internal = SessionEventUtils.isInternal(event);
+        if (internal) {
+            return Flowable.empty();
+        }
         Flowable<BaseEvent> flowable = startStepIfNeeded();
         if (SessionEventUtils.isCorrectionEvent(event)) {
             return flowable.concatWith(mapCorrectionEvent(event)).concatWith(finishStepIfNeeded(event));
@@ -140,21 +137,20 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         }
 
         final boolean partial = Boolean.TRUE.equals(event.isPartial());
-        final boolean internal = SessionEventUtils.isInternal(event);
         LOG.info(
                 "Processing content - partial={}, internal={}, partsCount={}",
                 partial,
-                internal,
+                false,
                 content.get().parts().map(List::size).orElse(0));
 
         for (final Part part : content.get().parts().orElse(List.of())) {
-            flowable = flowable.concatWith(mapPart(part, partial, internal));
+            flowable = flowable.concatWith(mapPart(part, partial));
         }
         return flowable.concatWith(finishStepIfNeeded(event));
     }
 
-    private Flowable<BaseEvent> mapPart(final Part part, final boolean partial, final boolean internal) {
-        if (part.thought().orElse(false) || internal) {
+    private Flowable<BaseEvent> mapPart(final Part part, final boolean partial) {
+        if (part.thought().orElse(false)) {
             return textMapper.mapThought(part.text().orElse(""), partial);
         }
 

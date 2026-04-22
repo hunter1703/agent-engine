@@ -1,6 +1,6 @@
 {
   "id": "qwen3.5",
-  "model": "qwen3.5:latest ",
+  "model": "qwen3.5:latest",
   "name": "Qwen 3.5",
   "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:11434/v1",

@@ -41,10 +41,6 @@ public final class AGUIToolCallMapper {
         final String callName = call.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(callName)) {
             return mapConfirmationCall(call);
-        } else if (Constants.HITL_TOOL_NAME.equals(callName)) {
-            // HITL requires confirmation id which comes from adk_request_confirmation tool call so suppress the HITL
-            // event, as confirmation is requested via adk_request_confirmation tool call
-            return Flowable.empty();
         }
         final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
         final String toolName = call.name().orElse("unknown");
@@ -74,8 +70,6 @@ public final class AGUIToolCallMapper {
         final String responseName = response.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(responseName)) {
             return mapConfirmedResponse(response);
-        } else if (Constants.HITL_TOOL_NAME.equals(responseName)) {
-            return Flowable.empty();
         }
         final String callId = response.id().orElse(UUID.randomUUID().toString());
         final String contentResult = JsonUtils.toJson(response.response().orElse(Map.of()));

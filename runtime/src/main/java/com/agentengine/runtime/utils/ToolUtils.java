@@ -366,13 +366,9 @@ public final class ToolUtils {
         if (event.functionCalls().stream().anyMatch(ToolUtils::isHumanInTheLoopToolCall)) {
             return true;
         }
-        if (event.functionResponses().stream()
+        return event.functionResponses().stream()
                 .anyMatch(response ->
-                        Constants.HITL_TOOL_NAME.equals(response.name().orElse(null)))) {
-            return true;
-        }
-        return Functions.getAskUserConfirmationFunctionCalls(event).stream()
-                .anyMatch(call -> Constants.HITL_TOOL_NAME.equals(originalToolName(call)));
+                        Constants.HITL_TOOL_NAME.equals(response.name().orElse(null)));
     }
 
     public static Set<String> findRespondedConfirmationIds(final List<Event> events) {

@@ -34,7 +34,7 @@ import java.util.Map;
  * <p>Policies are compiled once per runtime and selected per agent at callback time.
  */
 public final class GuardrailPlugin extends BasePlugin {
-    private static final String NAME = "engine_guardrails";
+    private static final String NAME = "guardrails";
 
     private final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policyByAgentId;
 
@@ -83,13 +83,7 @@ public final class GuardrailPlugin extends BasePlugin {
         return handleOutputDecision(invocationContext, llmResponse, content, decision);
     }
 
-    @Override
-    public Maybe<Event> onEventCallback(final InvocationContext invocationContext, final Event event) {
-        if (ToolUtils.isHumanInTheLoopToolEvent(event)) {
-            EventUtils.markAsInternal(event);
-        }
-        return Maybe.empty();
-    }
+
 
     private static Maybe<LlmResponse> handleInputDecision(
             final InvocationContext invocationContext, final GuardrailDecision decision) {
