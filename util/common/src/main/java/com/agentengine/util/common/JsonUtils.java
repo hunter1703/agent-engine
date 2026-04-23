@@ -213,12 +213,12 @@ public final class JsonUtils {
         return payload;
     }
 
-    public static JsonNode toJsonNode(final Map<String, Object> map) {
-        if (CollectionUtils.isEmpty(map)) {
+    public static JsonNode toJsonNode(final Object object) {
+        if (object == null) {
             return null;
         }
 
-        return mapper(false).valueToTree(map);
+        return mapper(false).valueToTree(object);
     }
 
     public static JsonNode toJsonNode(final String json) {

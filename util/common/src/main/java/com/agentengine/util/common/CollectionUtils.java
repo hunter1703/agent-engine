@@ -44,11 +44,17 @@ public final class CollectionUtils {
         return newList;
     }
 
-    public static <T> List<T> append(final T element, final List<T> one, final List<T> two) {
+    @SafeVarargs
+    public static <T> List<T> append(final T element, final List<T>... lists) {
         final List<T> newList = new ArrayList<>();
         newList.add(element);
-        newList.addAll(CollectionUtils.nullSafeList(one));
-        newList.addAll(CollectionUtils.nullSafeList(two));
+
+        if (lists == null) {
+            return newList;
+        }
+        for (final List<T> list : lists) {
+            newList.addAll(CollectionUtils.nullSafeList(list));
+        }
         return newList;
     }
 

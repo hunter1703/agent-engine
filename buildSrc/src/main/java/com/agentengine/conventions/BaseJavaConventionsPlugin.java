@@ -232,7 +232,10 @@ public abstract class BaseJavaConventionsPlugin {
   }
 
   private static void configureJavaExecTasks(final Project project) {
-    project.getTasks().withType(JavaExec.class).configureEach(task -> task.jvmArgs("--enable-preview"));
+    project.getTasks().withType(JavaExec.class).configureEach(task -> {
+      task.jvmArgs("--enable-preview");
+      task.dependsOn("jandex");
+    });
   }
 
   private static void configureJandexOrdering(final Project project) {

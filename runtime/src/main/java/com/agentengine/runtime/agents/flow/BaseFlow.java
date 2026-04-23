@@ -64,7 +64,6 @@ public final class BaseFlow extends SingleFlow {
 
     private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =
             ImmutableList.<ResponseProcessor>builder()
-                    .add(ToolCallSanitizationResponseProcessor.INSTANCE)
                     .add(ResponseFormatValidationProcessor.INSTANCE)
                     .add(PlanLoopResponseProcessor.INSTANCE)
                     .addAll(SingleFlow.RESPONSE_PROCESSORS)
@@ -72,8 +71,8 @@ public final class BaseFlow extends SingleFlow {
 
     private final int maxSteps;
 
-    public BaseFlow(final Integer maxSteps) {
-        super(REQUEST_PROCESSORS, RESPONSE_PROCESSORS, Optional.of(1));
+    public BaseFlow(final Integer maxSteps, final Collection<String> availableTools) {
+        super(REQUEST_PROCESSORS, CollectionUtils.append(new ToolCallSanitizationResponseProcessor(availableTools), RESPONSE_PROCESSORS), Optional.of(1));
         this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
     }
 

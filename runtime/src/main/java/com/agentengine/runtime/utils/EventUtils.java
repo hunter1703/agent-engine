@@ -6,6 +6,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.MarkdownUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
 import com.google.adk.agents.InvocationContext;
@@ -149,9 +150,21 @@ public final class EventUtils {
     }
 
     public static Event buildCorrectiveEvent(final InvocationContext context, final Violation violation) {
+        final String prompt = """
+                Violations were detected in your previous response. Please resolve or correct them.
+
+                > Some of your replies may have been stripped from the history because they caused \
+                violations that must not be persisted. Use the violation details and corrective steps \
+                below as a guide.
+
+                ## Violations
+
+                """
+                + MarkdownUtils.fromObject(violation);
+
         final Content correctiveContent = Content.builder()
                 .role(Constants.AUTHOR_USER)
-                .parts(List.of(Part.fromText("Following violations were detected. Please resolve or correct them. Some of your replies might be stripped from the history as your responses might have cause violations that required not persisting in history. Use violation information and optional corrective steps provided for each as guide to resolve and/or correct them. \n\n\n ## VIOLATIONS : \n" + JsonUtils.toJson(violation))))
+                .parts(List.of(Part.fromText(prompt)))
                 .build();
 
         final ConcurrentHashMap<String, Object> stateDelta = new ConcurrentHashMap<>();

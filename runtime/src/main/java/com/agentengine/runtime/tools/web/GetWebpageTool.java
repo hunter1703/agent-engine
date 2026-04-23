@@ -5,7 +5,7 @@ import com.agentengine.runtime.annotations.ToolConstructor;
 import com.agentengine.runtime.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
-import com.agentengine.util.common.HTMLUtils;
+import com.agentengine.util.common.MarkdownUtils;
 import com.agentengine.util.common.StringUtils;
 import java.io.IOException;
 import java.net.URI;
@@ -77,7 +77,7 @@ public final class GetWebpageTool extends Tool {
 
             if (statusCode >= 200 && statusCode < 300) {
                 final String html = response.body();
-                final String markdown = HTMLUtils.htmlToMarkdown(html);
+                final String markdown = MarkdownUtils.fromHtml(html);
 
                 return Map.of(
                         "markdown", markdown,
