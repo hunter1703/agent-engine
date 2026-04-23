@@ -43,7 +43,7 @@ public final class HumanInTheLoopTool extends Tool {
             @ToolSchema(
                             name = PROMPT,
                             description =
-                                    "Concise question requesting ONLY information that is genuinely absent and blocks execution. Do NOT restate the user's request, ask for confirmation of stated intent, or use this field for answers, explanations, or error messages.")
+                                    "ONLY a targeted and concise question requesting ONLY the information that is genuinely absent and blocks execution. Do NOT restate the user's request, ask for confirmation of stated intent, or use this field for answers, explanations, or error messages or greetings (like \"Hello\", \"Thank you\", etc.).")
                     final String prompt,
             @ToolSchema(
                             name = KIND,

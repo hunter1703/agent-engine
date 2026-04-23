@@ -20,6 +20,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import java.util.Map;
+
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -71,16 +73,8 @@ public class SessionRestAPI {
     @Produces(APPLICATION_JSON)
     @RunOnVirtualThread
     @Operation(summary = "Confirm a paused session")
-    @APIResponse(
-            responseCode = "200",
-            description = "Confirmation acknowledgement",
-            content =
-                    @Content(
-                            mediaType = APPLICATION_JSON,
-                            schema = @Schema(implementation = ConfirmSessionResponse.class)))
     @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    public ConfirmSessionResponse confirm(
+    public Response confirm(
             @NotBlank @PathParam("sessionId") final String sessionId,
             @NotBlank @PathParam("confirmationId") final String confirmationId,
             @Valid @NotNull final ConfirmSessionRequest confirmRequest) {
@@ -88,8 +82,6 @@ public class SessionRestAPI {
                 sessionId,
                 new Confirmation(
                         confirmationId, confirmRequest.getConfirmed(), Map.of("answer", confirmRequest.getMessage())));
-        return new ConfirmSessionResponse(true);
+        return Response.accepted().build();
     }
-
-    public record ConfirmSessionResponse(boolean confirmed) {}
 }

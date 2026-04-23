@@ -39,9 +39,9 @@ public final class AGUIMapperState {
         currentSourceEventId = event.getId();
         currentAuthor = event.getAuthor();
         final Content content = event.getContent();
-        content.parts().orElse(List.of()).forEach(part -> {
-            part.functionCall().ifPresent(functionCall -> requestConfirmationCalls.put(functionCall.id().orElseThrow(), functionCall));
-        });
+        if (content != null) {
+            content.parts().orElse(List.of()).forEach(part -> part.functionCall().ifPresent(functionCall -> requestConfirmationCalls.put(functionCall.id().orElseThrow(), functionCall)));
+        }
     }
 
     public boolean hasNewRun(final String candidateRunId) {
