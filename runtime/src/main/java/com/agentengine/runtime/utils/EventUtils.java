@@ -7,6 +7,8 @@ import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Violation;
+import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
 import com.google.adk.events.ToolConfirmation;
@@ -23,6 +25,8 @@ import java.util.concurrent.ConcurrentMap;
 
 /** Utilities for working with runtime {@link Event} objects. */
 public final class EventUtils {
+
+    public static final String VIOLATION_KEY = State.TEMP_PREFIX + SessionEventUtils.VIOLATION;
 
     private EventUtils() {}
 
@@ -141,6 +145,25 @@ public final class EventUtils {
                 .author(Constants.AUTHOR_USER)
                 .content(content)
                 .timestamp(timestamp)
+                .build();
+    }
+
+    public static Event buildCorrectiveEvent(final InvocationContext context, final Violation violation) {
+        final Content correctiveContent = Content.builder()
+                .role(Constants.AUTHOR_USER)
+                .parts(List.of(Part.fromText("Following violations were detected. Please resolve or correct them. Some of your replies might be stripped from the history as your responses might have cause violations that required not persisting in history. Use violation information and optional corrective steps provided for each as guide to resolve and/or correct them. \n\n\n ## VIOLATIONS : \n" + JsonUtils.toJson(violation))))
+                .build();
+
+        final ConcurrentHashMap<String, Object> stateDelta = new ConcurrentHashMap<>();
+        stateDelta.put(VIOLATION_KEY, violation);
+        final EventActions actions = EventActions.builder().stateDelta(stateDelta).build();
+        return Event.builder()
+                .id(Event.generateEventId())
+                .invocationId(context.invocationId())
+                .author(correctiveContent.role().orElseThrow())
+                .branch(context.branch())
+                .actions(actions)
+                .content(correctiveContent)
                 .build();
     }
 }

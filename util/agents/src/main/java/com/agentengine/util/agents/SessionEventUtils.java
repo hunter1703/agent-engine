@@ -1,8 +1,8 @@
 package com.agentengine.util.agents;
 
-import com.agentengine.util.agents.beans.CorrectionMetadata;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.Violation;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import java.util.ArrayList;
@@ -13,10 +13,7 @@ import java.util.Map.Entry;
 
 public final class SessionEventUtils {
 
-    public static final String CORRECTION = "correction";
-    public static final String CORRECTION_TYPE = "correction_type";
-    public static final String CORRECTION_CODE = "correction_code";
-    public static final String CORRECTION_MESSAGE = "correction_message";
+    public static final String VIOLATION = "violation";
     public static final String INTERNAL = "internal";
     public static final String SESSION_ID = "sessionId";
 
@@ -24,18 +21,7 @@ public final class SessionEventUtils {
 
     public static boolean isCorrectionEvent(final SessionEvent event) {
         final Map<String, Object> metadata = CollectionUtils.nullSafeMap(event == null ? null : event.getMetadata());
-        return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(metadata, CORRECTION));
-    }
-
-    public static CorrectionMetadata extractCorrectionMetadata(final SessionEvent event) {
-        if (!isCorrectionEvent(event)) {
-            return null;
-        }
-        final Map<String, Object> metadata = CollectionUtils.nullSafeMap(event.getMetadata());
-        final String type = CollectionUtils.getStringValueFromMap(metadata, CORRECTION);
-        final String code = CollectionUtils.getStringValueFromMap(metadata, CORRECTION_TYPE);
-        final String message = CollectionUtils.getStringValueFromMap(metadata, CORRECTION_MESSAGE);
-        return new CorrectionMetadata(type, code, message);
+        return Boolean.TRUE.equals(CollectionUtils.getBooleanValueFromMap(metadata, VIOLATION));
     }
 
     public static boolean isInternal(final SessionEvent event) {

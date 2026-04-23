@@ -1,10 +1,9 @@
 package com.agentengine.runtime.agents.processors.request;
 
-import com.agentengine.runtime.utils.CorrectionUtils;
+import com.agentengine.runtime.utils.EventUtils;
 import com.agentengine.runtime.utils.RunState;
 import com.agentengine.runtime.utils.RunUtils;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
@@ -65,12 +64,7 @@ public final class CorrectionProcessor implements RequestProcessor {
 
         for (final Violation violation : violations) {
             LOG.debug("Violation: code={} message={}", violation.code(), violation.message());
-            final String correctionMessage = violation.message();
-            if (StringUtils.isBlank(correctionMessage)) {
-                continue;
-            }
-            final Event correctiveEvent =
-                    CorrectionUtils.buildCorrectiveEvent(context, violation.code(), correctionMessage);
+            final Event correctiveEvent = EventUtils.buildCorrectiveEvent(context, violation);
             correctiveEvent.content().ifPresent(contents::add);
             correctiveEvents.add(correctiveEvent);
         }

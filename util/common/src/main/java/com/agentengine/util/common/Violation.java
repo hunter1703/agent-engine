@@ -45,23 +45,6 @@ public record Violation(String code, Map<String, Object> details, List<Violation
                         .sum();
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Violation{code='").append(code).append("'");
-        if (message != null) {
-            sb.append(", message='").append(message).append("'");
-        }
-        if (!details.isEmpty()) {
-            sb.append(", details=").append(details);
-        }
-        if (!subViolations.isEmpty()) {
-            sb.append(", subViolations=").append(subViolations.size());
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
     public static Builder builder(String code) {
         return new Builder(code);
     }
