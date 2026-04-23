@@ -41,6 +41,8 @@ public final class AGUIToolCallMapper {
         final String callName = call.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(callName)) {
             return mapConfirmationCall(call);
+        } else if (Constants.HITL_TOOL_NAME.equals(callName)) {
+            return Flowable.empty();
         }
         final String callId = call.id().orElseGet(() -> UUID.randomUUID().toString());
         final String toolName = call.name().orElse("unknown");
@@ -70,6 +72,8 @@ public final class AGUIToolCallMapper {
         final String responseName = response.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(responseName)) {
             return mapConfirmedResponse(response);
+        } else if (Constants.HITL_TOOL_NAME.equals(responseName)) {
+            return Flowable.empty();
         }
         final String callId = response.id().orElse(UUID.randomUUID().toString());
         final String contentResult = JsonUtils.toJson(response.response().orElse(Map.of()));
@@ -128,6 +132,16 @@ public final class AGUIToolCallMapper {
         final String confirmationId = response.id().orElse(null);
         final ToolConfirmation toolConfirmation = JsonUtils.fromMap(
                 CollectionUtils.nullSafeMap(response.response().orElse(Map.of())), ToolConfirmation.class);
+        final FunctionCall confirmationRequestedCall = state.getConfirmationRequestedCall(confirmationId);
+        final Map<String, Object> args = CollectionUtils.nullSafeMap(confirmationRequestedCall.args().orElse(Map.of()));
+
+        final FunctionCall originalFunctionCall =
+                Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+        // paused by a tool whose confirmation is not supposed to be given by user, so suppress that event
+        if (Objects.equals(
+                Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
+            return Flowable.empty();
+        }
         final boolean confirmed = toolConfirmation != null && toolConfirmation.confirmed();
         @SuppressWarnings("unchecked")
         final String answer = CollectionUtils.getStringValueFromMapSafe(

@@ -252,6 +252,12 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     private Effect<SessionFact, SessionActorState> initialize(
             final SessionActorState state, final InitializeCommand command) {
         final SessionTopology topology = command.topology();
+        // Only persist InitializedFact on the first initialization. Re-sending
+        // InitializeCommand for an existing session (e.g. a new turn on a root session)
+        // must not reset the actor state — doing so wipes any other accumulated state.
+        if (state.topology() != null) {
+            return Effect().none().thenReply(command.replyTo(), _ -> Done.done());
+        }
         return Effect()
                 .persist(new InitializedFact(topology))
                 .thenRun(_ -> init(topology))
@@ -674,8 +680,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             } else {
                 // Prepend user message/confirmations on first turn
                 final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
+                final String invocationId = events.getFirst().invocationId();
                 if (isFirstTurn) {
-                    final String invocationId = events.getFirst().invocationId();
                     if (state.runState().message() != null) {
                         // Initial user message
                         final UniqueRecord<UserMessage> userMessage =
@@ -690,17 +696,17 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 topology.sessionId(),
                                 userMessage.getRecord(),
                                 invocationId);
-                    } else if (!state.getAllReceivedConfirmations().isEmpty()) {
-                        // Resume with confirmations
-                        final Event confirmationEvent = EventUtils.buildConfirmationsEvent(
-                                state, invocationId, events.getFirst().timestamp());
-                        events.addFirst(confirmationEvent);
-                        LOG.info(
-                                "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",
-                                topology.sessionId(),
-                                state.getAllReceivedConfirmations().size(),
-                                invocationId);
                     }
+                } else if (!state.getAllReceivedConfirmations().isEmpty()) {
+                    // Resume with confirmations
+                    final Event confirmationEvent = EventUtils.buildConfirmationsEvent(
+                            state, invocationId, events.getFirst().timestamp());
+                    events.addFirst(confirmationEvent);
+                    LOG.info(
+                            "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",
+                            topology.sessionId(),
+                            state.getAllReceivedConfirmations().size(),
+                            invocationId);
                 }
 
                 final TurnCommittedFact turnFact = new TurnCommittedFact(events);

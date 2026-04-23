@@ -2,9 +2,10 @@ package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.StringUtils;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
+
+import java.util.*;
 
 public final class AGUIMapperState {
 
@@ -26,6 +27,7 @@ public final class AGUIMapperState {
     private int textMessageSequence;
     private int reasoningSequence;
     private int reasoningMessageSequence;
+    private final Map<String, FunctionCall> requestConfirmationCalls = new HashMap<>();
 
     public AGUIMapperState(final String sessionId, final String agentId) {
         this.sessionId = sessionId;
@@ -36,6 +38,10 @@ public final class AGUIMapperState {
         currentSourceTimestamp = event.getTimestamp();
         currentSourceEventId = event.getId();
         currentAuthor = event.getAuthor();
+        final Content content = event.getContent();
+        content.parts().orElse(List.of()).forEach(part -> {
+            part.functionCall().ifPresent(functionCall -> requestConfirmationCalls.put(functionCall.id().orElseThrow(), functionCall));
+        });
     }
 
     public boolean hasNewRun(final String candidateRunId) {
@@ -182,6 +188,10 @@ public final class AGUIMapperState {
 
     public String currentAuthor() {
         return currentAuthor != null ? currentAuthor : agentId;
+    }
+
+    public FunctionCall getConfirmationRequestedCall(final String confirmationId) {
+        return requestConfirmationCalls.get(confirmationId);
     }
 
     private static String stableReplayId(final String prefix, final String sourceEventId, final int sequence) {
