@@ -14,10 +14,5 @@ public interface MessagePart {
 
     record TextPart(String text) implements MessagePart {}
 
-    record FilePart(FileDetails fileDetails) implements MessagePart {
-        public FilePart resolved(CloudStorageService cloudStorageService) {
-            final FileDetails resolved = fileDetails.resolved(cloudStorageService);
-            return new FilePart(resolved);
-        }
-    }
+    record FilePart(FileDetails fileDetails) implements MessagePart { }
 }

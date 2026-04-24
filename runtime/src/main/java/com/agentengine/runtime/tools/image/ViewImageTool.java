@@ -8,6 +8,9 @@ import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
 import java.util.Map;
 
 /**
@@ -24,18 +27,25 @@ public final class ViewImageTool extends Tool {
             Map.of(),
             ToolRiskLevel.LOW);
 
-    public ViewImageTool() {
+    private final CloudStorageService cloudStorageService;
+
+    public ViewImageTool(final CloudStorageService cloudStorageService) {
         super(DESCRIPTOR);
+        this.cloudStorageService = cloudStorageService;
     }
 
-    public Map<String, Object> execute(CloudStorageService cloudStorageService,
-            @ToolSchema(name = "file", description = "File details of the image to view.") FileDetails file) {
+    public Map<String, Object> execute(
+            @ToolSchema(name = "inputFile", description = "File details of the image to view.") FileDetails inputFile) {
         try {
-            if (file == null) {
-                return Map.of("error", "file is required");
+            if (inputFile == null) {
+                return Map.of("error", "inputFile is required");
             }
-            final FileDetails resolved = file.resolved(cloudStorageService);
-            return Map.of("base64", resolved.base64Content(), "mimeType", resolved.mimeType());
+            try (final InputStream downloadedStream = cloudStorageService.download(inputFile)) {
+                final String base64Content = Base64.getEncoder().encodeToString(downloadedStream.readAllBytes());
+                return Map.of("base64", base64Content, "mimeType", inputFile.mimeType() != null ? inputFile.mimeType() : "image/jpeg");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } catch (Exception e) {
             return Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }

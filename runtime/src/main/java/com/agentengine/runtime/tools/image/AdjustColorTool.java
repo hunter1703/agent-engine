@@ -44,12 +44,14 @@ public final class AdjustColorTool extends Tool {
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
-    public AdjustColorTool() {
+    private final CloudStorageService cloudStorageService;
+
+    public AdjustColorTool(final CloudStorageService cloudStorageService) {
         super(DESCRIPTOR);
+        this.cloudStorageService = cloudStorageService;
     }
 
-    public Map<String, Object> execute(CloudStorageService cloudStorageService,
-            @ToolSchema(name = "inputFile", description = "File details for the input image to grade.") FileDetails inputFile,
+    public Map<String, Object> execute(@ToolSchema(name = "inputFile", description = "File details for the input image to grade.") FileDetails inputFile,
             @ToolSchema(name = "adjustments", description = "Array of hue-targeted adjustments ({hue_center, hue_width, hue_shift, sat_delta, lum_delta}) to apply to the image.") List<ColorAdjustment> adjustments) {
 
         try {

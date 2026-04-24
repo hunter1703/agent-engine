@@ -5,6 +5,7 @@ import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.models.LlmRequest;
@@ -146,15 +147,7 @@ public final class ContentUtils {
     private static Part toAdkPart(final MessagePart part) {
         return switch (part) {
             case MessagePart.TextPart textPart -> Part.fromText(textPart.text());
-            case MessagePart.FilePart filePart -> {
-                final FileDetails fileDetails = filePart.fileDetails();
-                final Blob blob = Blob.builder()
-                        .mimeType(fileDetails.mimeType())
-                        .data(Base64.getDecoder().decode(fileDetails.base64Content()))
-                        .displayName(fileDetails.name())
-                        .build();
-                yield Part.builder().inlineData(blob).build();
-            }
+            case MessagePart.FilePart filePart -> Part.fromText(JsonUtils.toJson(filePart.fileDetails()));
             default -> throw new IllegalStateException("Unexpected value: " + part);
         };
     }

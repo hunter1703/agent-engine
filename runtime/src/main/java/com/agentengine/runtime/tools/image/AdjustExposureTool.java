@@ -41,12 +41,14 @@ public final class AdjustExposureTool extends Tool {
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
-    public AdjustExposureTool() {
+    private final CloudStorageService cloudStorageService;
+
+    public AdjustExposureTool(final CloudStorageService cloudStorageService) {
         super(DESCRIPTOR);
+        this.cloudStorageService = cloudStorageService;
     }
 
     public Map<String, Object> execute(
-            CloudStorageService cloudStorageService,
             @ToolSchema(name = "inputFile", description = "File details for the input image to adjust.")
                     FileDetails inputFile,
             @ToolSchema(name = "adjustment", description = "Exposure and tone parameters: brightness, contrast, highlights, shadows, whites, blacks.")

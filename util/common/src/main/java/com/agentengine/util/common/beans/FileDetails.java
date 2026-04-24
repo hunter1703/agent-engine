@@ -17,7 +17,6 @@ import java.util.Base64;
  * @param type         storage backend type
  * @param mimeType     optional MIME type (e.g. {@code "image/jpeg"})
  * @param size         optional file size in bytes; {@code -1} if unknown
- * @param base64Content optional base64-encoded file content; populated by {@link #resolved}
  */
 public record FileDetails(
         @ToolSchema(name = "name", description = "Original filename including extension, e.g. photo.jpg. Used to determine file format.")
@@ -49,15 +48,6 @@ public record FileDetails(
             } catch (IllegalArgumentException e) {
                 return UNKNOWN;
             }
-        }
-    }
-
-    public FileDetails resolved(final CloudStorageService cloudStorageService) {
-        try (final InputStream downloadedStream = cloudStorageService.download(this)) {
-            final String base64Content = Base64.getEncoder().encodeToString(downloadedStream.readAllBytes());
-            return new FileDetails(name, path, type, mimeType, size, base64Content);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 }

@@ -77,8 +77,6 @@ public class RuntimeServiceImpl implements RuntimeService {
                 StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
         LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
 
-        final UserMessage resolvedMessage = resolveFileParts(message);
-
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(resolvedSessionId);
         ref.<Done>ask(
                         replyTo -> new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
@@ -95,7 +93,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         final Publisher<SessionEvent> liveEvents = subscribeToLiveEvents(rootSessionId);
 
         ref.<StartSessionResult>ask(
-                        replyTo -> new StartCommand(new UniqueRecord<>(resolvedMessage), replyTo),
+                        replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
                         SessionActorFactory.ASK_TIMEOUT)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
@@ -189,22 +187,6 @@ public class RuntimeServiceImpl implements RuntimeService {
                         .map(RuntimeServiceImpl::stripBlobData),
                 Flowable.just(SessionEvent.liveMarker(rootSessionId)),
                 filteredLiveSource);
-    }
-
-    private UserMessage resolveFileParts(final UserMessage message) {
-        if (message == null || message.parts() == null) {
-            return message;
-        }
-        final List<MessagePart> resolved = message.parts().stream()
-                .map(part -> {
-                    if (!(part instanceof MessagePart.FilePart filePart)) {
-                        return part;
-                    }
-                    LOG.debug("Resolving file : {}", JsonUtils.toJson(filePart.fileDetails()));
-                    return filePart.resolved(cloudStorageService);
-                })
-                .toList();
-        return new UserMessage(resolved);
     }
 
     private static SessionEvent stripBlobData(final SessionEvent event) {
