@@ -13,6 +13,9 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 public class MicroServiceInfraConfig extends InfraConfig {
     public static final String TYPE = "microservice";
     public static final String CATEGORY = "MICROSERVICE";
+    /** Max inbound message size for gRPC: 100 MB. Used by both client and server. */
+    public static final int MAX_INBOUND_MESSAGE_SIZE = 100 * 1024 * 1024;
+
     private String serverId;
     private String host;
     private int port;
