@@ -42,4 +42,15 @@ public class StorageRestAPI {
             final InputStream body) {
         return cloudStorageService.upload(name, body, contentLength, contentType);
     }
+
+    @POST
+    @Path("/download")
+    @RunOnVirtualThread
+    @Operation(summary = "Downloads an object from cloud storage")
+    @APIResponse(
+            responseCode = "200",
+            description = "Object downloaded successfully")
+    public InputStream upload(FileDetails fileDetails) {
+        return cloudStorageService.download(fileDetails);
+    }
 }
