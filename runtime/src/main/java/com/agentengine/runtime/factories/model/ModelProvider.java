@@ -38,7 +38,7 @@ public class ModelProvider {
                 .idleTimeout(15, TimeUnit.MINUTES)
                 .cleanupInterval(60, TimeUnit.SECONDS)
                 .creator(this::buildModel)
-                .onEvict((_modelId, model) -> tryClose(model))
+                .onEvict((_, model) -> tryClose(model))
                 .build();
     }
 
@@ -61,7 +61,7 @@ public class ModelProvider {
         if (config == null) {
             throw new IllegalStateException("Model config missing for model_id=" + modelId);
         }
-        final ModelFactory<?> factory = typeVsFactory.getOrDefault(config.getType(), defaultFactory);
+        final ModelFactory<?> factory = typeVsFactory.getOrDefault(config.getProvider(), defaultFactory);
         return factory.build(config);
     }
 

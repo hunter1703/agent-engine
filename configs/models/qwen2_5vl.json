@@ -2,7 +2,6 @@
   "id": "qwen2.5vl",
   "model": "qwen2.5vl",
   "name": "Qwen 2.5 VL (Vision-Language)",
-  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.2,
   "topK": 40,
@@ -10,5 +9,7 @@
   "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
   "instructions": "You are a vision-language model capable of understanding both text and images. When analyzing images, provide detailed and accurate descriptions. Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call.",
-  "thoughtsEnabled": false
+  "thoughtsEnabled": false,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
 }

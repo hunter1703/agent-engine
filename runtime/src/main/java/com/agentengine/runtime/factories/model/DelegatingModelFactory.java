@@ -2,6 +2,7 @@ package com.agentengine.runtime.factories.model;
 
 import com.agentengine.runtime.agents.processors.Parser;
 import com.agentengine.runtime.model.DelegatingLLMModel;
+import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
@@ -15,18 +16,19 @@ public abstract class DelegatingModelFactory<T extends BaseLlm> implements Model
 
     @Override
     public final DelegatingLLMModel build(final ModelConfig modelConfig) {
-        final boolean toolCallingEnabled = modelConfig.isToolCallingEnabled();
-        final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
+        final ChatModelConfig chatConfig = (ChatModelConfig) modelConfig;
+        final boolean toolCallingEnabled = chatConfig.isToolCallingEnabled();
+        final ResponseFormatType responseFormatType = resolveResponseFormatType(chatConfig);
         final String protocol =
-                buildProtocolMessage(responseFormatType, toolCallingEnabled, modelConfig.getInstructions());
+                buildProtocolMessage(responseFormatType, toolCallingEnabled, chatConfig.getInstructions());
         final Parser parser = new Parser(protocol, toolCallingEnabled);
-        final T delegate = buildDelegate(modelConfig);
+        final T delegate = buildDelegate(chatConfig);
         return new DelegatingLLMModel(delegate, parser);
     }
 
-    protected abstract T buildDelegate(final ModelConfig modelConfig);
+    protected abstract T buildDelegate(final ChatModelConfig chatConfig);
 
-    protected static ResponseFormatType resolveResponseFormatType(final ModelConfig config) {
+    protected static ResponseFormatType resolveResponseFormatType(final ChatModelConfig config) {
         return ResponseFormatType.TEXT;
     }
 

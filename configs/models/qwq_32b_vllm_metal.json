@@ -2,7 +2,6 @@
   "id": "mlx-community/QwQ-32B-8bit",
   "model": "mlx-community/QwQ-32B-8bit",
   "name": "QwQ 32B VLLM Metal",
-  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:17005/v1",
   "serverCommand": "vllm-metal",
   "serverArgs": [
@@ -18,5 +17,7 @@
   "topP": 0.9,
   "repeatPenalty": 1.05,
   "toolCallingEnabled": false,
-  "thoughtsEnabled": false
+  "thoughtsEnabled": false,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
 }

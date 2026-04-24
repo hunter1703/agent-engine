@@ -1,5 +1,6 @@
 package com.agentengine.runtime.factories.model;
 
+import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.google.adk.models.Gemini;
 import jakarta.inject.Singleton;
@@ -13,10 +14,10 @@ public class GeminiModelFactory extends DelegatingModelFactory<Gemini> {
     }
 
     @Override
-    protected Gemini buildDelegate(final ModelConfig modelConfig) {
+    protected Gemini buildDelegate(final ChatModelConfig chatConfig) {
         return Gemini.builder()
-                .modelName(modelConfig.getModel())
-                .apiKey(modelConfig.getApiKey())
+                .modelName(chatConfig.getModel())
+                .apiKey(chatConfig.getApiKey())
                 .build();
     }
 }

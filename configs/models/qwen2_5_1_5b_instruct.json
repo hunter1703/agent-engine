@@ -2,7 +2,6 @@
   "id": "qwen2.5-1.5b-instruct-q5_k_m",
   "model": "qwen2.5-1.5b-instruct-q5_k_m",
   "name": "Qwen2.5 1.5B Instruct",
-  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:17000/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
@@ -17,5 +16,7 @@
   "topK": 50,
   "topP": 0.9,
   "repeatPenalty": 1.05,
-  "thoughtsEnabled": false
+  "thoughtsEnabled": false,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
 }

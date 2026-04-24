@@ -5,46 +5,46 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.builder.annotations.UiAccess;
 import com.agentengine.util.common.builder.annotations.UiAccessLevel;
-import com.agentengine.util.common.builder.annotations.UiBoolean;
 import com.agentengine.util.common.builder.annotations.UiConditionOperator;
 import com.agentengine.util.common.builder.annotations.UiField;
-import com.agentengine.util.common.builder.annotations.UiNumber;
-import com.agentengine.util.common.builder.annotations.UiPreset;
 import com.agentengine.util.common.builder.annotations.UiRule;
 import com.agentengine.util.common.builder.annotations.UiRuleEffect;
 import com.agentengine.util.common.builder.annotations.UiSelect;
 import com.agentengine.util.common.builder.annotations.UiStep;
 import com.agentengine.util.common.builder.annotations.UiSteps;
 import com.agentengine.util.common.builder.annotations.UiText;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;
-import java.util.List;
+import java.util.Locale;
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
+@Schema(
+        oneOf = {ChatModelConfig.class, EmbeddingModelConfig.class},
+        discriminatorProperty = "type",
+        discriminatorMapping = {
+            @DiscriminatorMapping(value = "CHAT", schema = ChatModelConfig.class),
+            @DiscriminatorMapping(value = "EMBEDDING", schema = EmbeddingModelConfig.class)
+        })
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        visible = true)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = ChatModelConfig.class, name = "CHAT"),
+    @JsonSubTypes.Type(value = EmbeddingModelConfig.class, name = "EMBEDDING")
+})
+@BsonDiscriminator
 @UiSteps(
         steps = {
             @UiStep(id = "identity", label = "Identity", order = 0),
             @UiStep(id = "integration", label = "Integration", order = 1),
             @UiStep(id = "sampling", label = "Sampling Parameters", order = 2)
         })
-@UiPreset(
-        id = "balanced",
-        label = "Balanced",
-        description = "General purpose default profile.",
-        isDefault = true,
-        preset =
-                "{\"inference\":{\"temperature\":0.7,\"topP\":0.95,\"repeatPenalty\":1.0},\"capabilities\":{\"toolCallingEnabled\":false}}")
-@UiPreset(
-        id = "focused",
-        label = "Focused",
-        description = "Lower randomness for deterministic answers.",
-        preset =
-                "{\"inference\":{\"temperature\":0.2,\"topP\":0.8,\"repeatPenalty\":1.1},\"capabilities\":{\"toolCallingEnabled\":true}}")
-@UiPreset(
-        id = "creative",
-        label = "Creative",
-        description = "Higher diversity and broader token exploration.",
-        preset =
-                "{\"inference\":{\"temperature\":1.0,\"topP\":1.0,\"repeatPenalty\":1.0},\"capabilities\":{\"toolCallingEnabled\":false}}")
-public class ModelConfig extends NamedEntity implements Config {
+public abstract class ModelConfig extends NamedEntity implements Config {
 
     public enum Provider {
         UNKNOWN,
@@ -76,8 +76,30 @@ public class ModelConfig extends NamedEntity implements Config {
         }
     }
 
-    @UiField(label = "Provider Type", step = "identity", order = 20)
+    public enum ModelType {
+        UNKNOWN,
+        CHAT,
+        EMBEDDING;
+
+        public static ModelType valueOfOrDefault(final String value) {
+            if (value == null || value.isBlank()) {
+                return UNKNOWN;
+            }
+            try {
+                return ModelType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                return UNKNOWN;
+            }
+        }
+    }
+
+    @UiField(label = "Provider", step = "identity", order = 20)
     @UiSelect(enumType = Provider.class)
+    @NotBlank
+    private String provider;
+
+    @UiField(label = "Model Type", step = "identity", order = 25)
+    @UiSelect(enumType = ModelType.class)
     @NotBlank
     private String type;
 
@@ -90,7 +112,7 @@ public class ModelConfig extends NamedEntity implements Config {
     @UiText
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
-            field = "type",
+            field = "provider",
             operator = UiConditionOperator.IN,
             values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
     private String baseUrl;
@@ -100,77 +122,17 @@ public class ModelConfig extends NamedEntity implements Config {
     @Secure
     @UiRule(
             effect = UiRuleEffect.VISIBLE,
-            field = "type",
+            field = "provider",
             values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
     private String apiKey;
 
-    @UiField(label = "Server Command", step = "integration", order = 30)
-    @UiText
-    @UiRule(
-            effect = UiRuleEffect.VISIBLE,
-            field = "type",
-            values = {"OPEN_AI_COMPATIBLE"})
-    private String serverCommand;
+    protected ModelConfig(final ModelType modelType) {
+        this.type = modelType.name();
+    }
 
-    @UiField(label = "Server Arguments", step = "integration", order = 40)
-    @UiText(multiline = true, rows = 3)
-    @UiRule(
-            effect = UiRuleEffect.VISIBLE,
-            field = "type",
-            values = {"OPEN_AI_COMPATIBLE"})
-    private List<String> serverArgs;
-
-    @UiField(label = "Server Working Directory", step = "integration", order = 50)
-    @UiText
-    @UiRule(
-            effect = UiRuleEffect.VISIBLE,
-            field = "type",
-            values = {"OPEN_AI_COMPATIBLE"})
-    private String serverWorkdir;
-
-    @UiField(label = "Model Instructions", step = "integration", order = 60)
-    @UiText(multiline = true, rows = 4)
-    private String instructions;
-
-    @UiField(label = "Response Format", step = "integration", order = 70, advanced = true)
-    @UiText
-    private String responseFormat;
-
-    @UiField(label = "Enable Tool Calling", step = "integration", order = 80)
-    @UiBoolean
-    private boolean toolCallingEnabled = false;
-
-    @UiField(label = "Thoughts Enabled", step = "integration", order = 90, advanced = true)
-    @UiBoolean
-    private boolean thoughtsEnabled = true;
-
-    @UiField(label = "Temperature", step = "sampling", order = 10)
-    @UiNumber
-    private Double temperature;
-
-    @UiField(label = "Max Tokens to Generate", step = "sampling", order = 20)
-    @UiNumber
-    private Integer numPredict;
-
-    @UiField(label = "Top-K", step = "sampling", order = 30)
-    @UiNumber
-    private Integer topK;
-
-    @UiField(label = "Top-P", step = "sampling", order = 40)
-    @UiNumber
-    private Double topP;
-
-    @UiField(label = "Repeat Penalty", step = "sampling", order = 50)
-    @UiNumber
-    private Double repeatPenalty;
-
-    @UiField(label = "Max Context Length", step = "sampling", order = 60, advanced = true)
-    @UiNumber
-    private Integer maxContextLength;
-
-    @UiField(label = "Stop Tokens", step = "sampling", order = 70, advanced = true)
-    @UiText
-    private List<String> stopTokens;
+    protected ModelConfig() {
+        this(ModelType.UNKNOWN);
+    }
 
     @Override
     @UiField(label = "ID", step = "identity", order = 0)
@@ -198,21 +160,21 @@ public class ModelConfig extends NamedEntity implements Config {
         super.setName(name);
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(final String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
     @Override
     public String getType() {
         return type;
     }
 
     public void setType(final String type) {
-        this.type = normalizeType(type);
+        this.type = type;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(final String provider) {
+        this.provider = provider;
     }
 
     public String getModel() {
@@ -223,68 +185,12 @@ public class ModelConfig extends NamedEntity implements Config {
         this.model = model;
     }
 
-    public Double getTemperature() {
-        return temperature;
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
-    public void setTemperature(final Double temperature) {
-        this.temperature = temperature;
-    }
-
-    public Integer getTopK() {
-        return topK;
-    }
-
-    public void setTopK(final Integer topK) {
-        this.topK = topK;
-    }
-
-    public Double getTopP() {
-        return topP;
-    }
-
-    public void setTopP(final Double topP) {
-        this.topP = topP;
-    }
-
-    public Double getRepeatPenalty() {
-        return repeatPenalty;
-    }
-
-    public void setRepeatPenalty(final Double repeatPenalty) {
-        this.repeatPenalty = repeatPenalty;
-    }
-
-    public Integer getNumPredict() {
-        return numPredict;
-    }
-
-    public void setNumPredict(final Integer numPredict) {
-        this.numPredict = numPredict;
-    }
-
-    public Integer getMaxContextLength() {
-        return maxContextLength;
-    }
-
-    public void setMaxContextLength(final Integer maxContextLength) {
-        this.maxContextLength = maxContextLength;
-    }
-
-    public List<String> getStopTokens() {
-        return stopTokens;
-    }
-
-    public void setStopTokens(final List<String> stopTokens) {
-        this.stopTokens = stopTokens;
-    }
-
-    public String getResponseFormat() {
-        return responseFormat;
-    }
-
-    public void setResponseFormat(final String responseFormat) {
-        this.responseFormat = responseFormat;
+    public void setBaseUrl(final String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getApiKey() {
@@ -293,60 +199,5 @@ public class ModelConfig extends NamedEntity implements Config {
 
     public void setApiKey(final String apiKey) {
         this.apiKey = apiKey;
-    }
-
-    public boolean isToolCallingEnabled() {
-        return toolCallingEnabled;
-    }
-
-    public void setToolCallingEnabled(final boolean toolCallingEnabled) {
-        this.toolCallingEnabled = toolCallingEnabled;
-    }
-
-    public boolean isThoughtsEnabled() {
-        return thoughtsEnabled;
-    }
-
-    public void setThoughtsEnabled(final boolean thoughtsEnabled) {
-        this.thoughtsEnabled = thoughtsEnabled;
-    }
-
-    public String getServerCommand() {
-        return serverCommand;
-    }
-
-    public void setServerCommand(final String serverCommand) {
-        this.serverCommand = serverCommand;
-    }
-
-    public List<String> getServerArgs() {
-        return serverArgs;
-    }
-
-    public void setServerArgs(final List<String> serverArgs) {
-        this.serverArgs = serverArgs;
-    }
-
-    public String getServerWorkdir() {
-        return serverWorkdir;
-    }
-
-    public void setServerWorkdir(final String serverWorkdir) {
-        this.serverWorkdir = serverWorkdir;
-    }
-
-    public String getInstructions() {
-        return instructions;
-    }
-
-    public void setInstructions(final String instructions) {
-        this.instructions = instructions;
-    }
-
-    private static String normalizeType(final String type) {
-        if (type == null) {
-            return null;
-        }
-        return type.trim();
     }
 }

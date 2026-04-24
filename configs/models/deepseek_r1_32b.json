@@ -2,7 +2,6 @@
   "id": "deepseek-r1-32b",
   "model": "deepseek-r1-32b",
   "name": "DeepSeek R1 32B",
-  "type": "OPEN_AI_COMPATIBLE",
   "baseUrl": "http://host.docker.internal:17003/v1",
   "serverCommand": "/opt/homebrew/bin/llama-server",
   "serverArgs": [
@@ -17,5 +16,7 @@
   "topK": 40,
   "topP": 0.9,
   "repeatPenalty": 1.05,
-  "thoughtsEnabled": false
+  "thoughtsEnabled": false,
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
 }

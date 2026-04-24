@@ -1,6 +1,7 @@
 package com.agentengine.runtime.factories.model;
 
 import com.agentengine.runtime.model.LangChain4jModel;
+import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -43,36 +44,36 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
     }
 
     @Override
-    protected BaseLlm buildDelegate(final ModelConfig modelConfig) {
-        final ResponseFormatType responseFormatType = resolveResponseFormatType(modelConfig);
+    protected BaseLlm buildDelegate(final ChatModelConfig chatConfig) {
+        final ResponseFormatType responseFormatType = resolveResponseFormatType(chatConfig);
         final ResponseFormat responseFormat = getResponseFormat(responseFormatType);
-        final ChatModels models = buildChatModels(modelConfig, responseFormat);
-        return new LangChain4jModel(models.chatModel(), models.streamingChatModel(), modelConfig.getModel());
+        final ChatModels models = buildChatModels(chatConfig, responseFormat);
+        return new LangChain4jModel(models.chatModel(), models.streamingChatModel(), chatConfig.getModel());
     }
 
     private record ChatModels(
             ChatModel chatModel, StreamingChatModel streamingChatModel, ResponseFormat responseFormat) {}
 
-    private static ChatModels buildChatModels(final ModelConfig modelConfig, final ResponseFormat responseFormat) {
-        final ModelConfig.Provider provider = ModelConfig.Provider.fromType(modelConfig.getType());
+    private static ChatModels buildChatModels(final ChatModelConfig chatConfig, final ResponseFormat responseFormat) {
+        final ModelConfig.Provider provider = ModelConfig.Provider.fromType(chatConfig.getProvider());
         return switch (provider) {
             case ModelConfig.Provider.OLLAMA ->
                 new ChatModels(
-                        buildOllama(modelConfig, responseFormat),
-                        buildOllamaStreaming(modelConfig, responseFormat),
+                        buildOllama(chatConfig, responseFormat),
+                        buildOllamaStreaming(chatConfig, responseFormat),
                         responseFormat);
             case ModelConfig.Provider.OPEN_AI_COMPATIBLE -> {
-                //                ModelUtils.ensureRunning(modelConfig);
+                //                ModelUtils.ensureRunning(chatConfig);
                 yield new ChatModels(
-                        buildOpenAI(modelConfig, responseFormat),
-                        buildOpenAIStreaming(modelConfig, responseFormat),
+                        buildOpenAI(chatConfig, responseFormat),
+                        buildOpenAIStreaming(chatConfig, responseFormat),
                         responseFormat);
             }
             default -> throw new IllegalArgumentException("Unsupported model provider: " + provider);
         };
     }
 
-    private static ChatModel buildOllama(final ModelConfig config, final ResponseFormat responseFormat) {
+    private static ChatModel buildOllama(final ChatModelConfig config, final ResponseFormat responseFormat) {
         return OllamaChatModel.builder()
                 .modelName(config.getModel())
                 .baseUrl(config.getBaseUrl())
@@ -88,7 +89,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
                 .build();
     }
 
-    private static ChatModel buildOpenAI(final ModelConfig config, final ResponseFormat responseFormat) {
+    private static ChatModel buildOpenAI(final ChatModelConfig config, final ResponseFormat responseFormat) {
         final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
         return OpenAiChatModel.builder()
                 .modelName(config.getModel())
@@ -104,7 +105,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
     }
 
     private static StreamingChatModel buildOllamaStreaming(
-            final ModelConfig config, final ResponseFormat responseFormat) {
+            final ChatModelConfig config, final ResponseFormat responseFormat) {
         return OllamaStreamingChatModel.builder()
                 .modelName(config.getModel())
                 .baseUrl(config.getBaseUrl())
@@ -121,7 +122,7 @@ public abstract class LangchainModelFactory extends DelegatingModelFactory<BaseL
     }
 
     private static StreamingChatModel buildOpenAIStreaming(
-            final ModelConfig config, final ResponseFormat responseFormat) {
+            final ChatModelConfig config, final ResponseFormat responseFormat) {
         final String format = responseFormat.type() == ResponseFormatType.JSON ? "json" : null;
         return OpenAiStreamingChatModel.builder()
                 .modelName(config.getModel())
