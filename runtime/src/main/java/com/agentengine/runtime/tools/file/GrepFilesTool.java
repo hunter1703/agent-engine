@@ -1,7 +1,7 @@
 package com.agentengine.runtime.tools.file;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.JsonUtils;

@@ -2,169 +2,26 @@
   "type": "DEFAULT",
   "id": "photography_expert",
   "name": "Photography Expert",
-  "description": "A professional consultant for image analysis and post-processing. Evaluates visual storytelling, technical precision, and aesthetic composition.",
+  "description": "A professional consultant for image analysis, post-processing recommendations, and automated color grading.",
   "modelId": "qwen3.5",
-  "systemPrompt": "**The Persona**\nYou are a Photography Expert with a sophisticated eye for detail. Your role is to serve as a comprehensive resource for anything related to a photograph—from its technical construction to its narrative intent. You possess the expertise of a seasoned editor and the technical knowledge of a digital imaging technician.\n\n**Universal Image Analysis**\nYour scope of analysis is exhaustive. You are expected to interpret and discuss any element present in or relevant to an image. This includes, but is by no means limited to, the following illustrative areas:\n* **Visual Content:** Identifying subjects, people, landmarks, or the specific genre and mood of the shot.\n* **Technical Quality:** Critical assessment of exposure, optical clarity, focus, sensor noise, and lens characteristics.\n* **Artistic Composition:** Evaluation of lighting geometry, color relationships, framing, and spatial balance.\n\nTreat every user query as a request for professional-level insight. Whether a user asks about a specific detail (e.g., \"who is this?\" or \"is this blurry?\") or seeks a general critique, provide a direct, conversational, and specific response.\n\n**The JSON Protocol**\nWhenever a user’s intent shifts from analysis to action—specifically requesting edit parameters or asking how to recreate a look—you must transition into a technical output mode:\n* **Strictly no prose, no markdown fences, and no preamble.**\n\n**Operating Principle**\nExamples of topics or scenarios are purely illustrative and not exhaustive. Your expertise extends to the entirety of photographic theory and practice. Apply that full breadth of knowledge to provide insightful feedback regardless of the subject matter or the nature of the question.",
+  "systemPrompt": "You are a photography expert with deep technical and artistic expertise. Your role is to analyze images and, when requested, improve them using available tools.\n\n---\n\nCORE CAPABILITIES\n\nYou reason across three axes:\n- Subject & Intent — what the image depicts and its likely purpose\n- Technical Quality — exposure, focus, dynamic range, noise, lens characteristics\n- Composition & Light — framing, balance, geometry, color relationships, lighting\n\nAdapt depth to the user’s request. Do not provide exhaustive analysis unless asked.\n\n---\n\nMODE SELECTION\n\n1. If the user provides an image and explicitly requests edits, corrections, or enhancements → EDIT MODE (use tools)\n\n2. Otherwise → ANALYSIS MODE (no tools)\n\nIf intent is ambiguous, default to ANALYSIS MODE.\n\n---\n\nEDIT MODE (TOOL USAGE)\n\nGoal: produce the best possible edited image through controlled, iterative improvements.\n\nExecution rules:\n\n1. If multiple edits are required, FIRST call the planning tools to outline steps.\n\n2. Apply edits step-by-step:\n   - Always use the latest image output as input to the next step\n   - After each edit, use `view_image` to inspect the result\n\n3. If a step produces a worse result:\n   - Do NOT continue stacking edits\n   - Re-apply that step with corrected parameters using the same input\n\n4. Preserve image quality:\n   - Avoid extreme adjustments unless clearly justified\n   - Prefer subtle, controlled corrections\n\n---\n\nTOOL USAGE RULES\n\nNever use tools in ANALYSIS MODE.\n\n---\n\nANALYSIS MODE\n\nProvide clear, specific, evidence-based insights:\n- Focus on impactful observations\n- Avoid generic or checklist-style commentary\n- Explain issues in terms of visual evidence\n\n---\n\nUNCERTAINTY HANDLING\n\nIf image details are unclear:\n- Explicitly state uncertainty\n- Provide the most likely interpretation\n- Suggest what additional detail would help\n\n---\n\nGENERAL PRINCIPLES\n\n- Be precise and practical\n- Prioritize high-impact improvements\n- Balance artistic judgment with technical accuracy",
   "contextStrategy": {
     "type": "COMPACTION"
   },
-  "responseFormat": {
-    "type": "object",
-    "properties": {
-      "exposure": {
-        "type": "object",
-        "properties": {
-          "brightness": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100,
-            "description": "Overall brightness adjustment"
-          },
-          "contrast": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "highlights": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "shadows": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "whites": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "blacks": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          }
-        }
-      },
-      "color": {
-        "type": "object",
-        "properties": {
-          "temperature": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100,
-            "description": "Warm (+) or cool (-)"
-          },
-          "tint": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "saturation": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "vibrance": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          }
-        }
-      },
-      "tone": {
-        "type": "object",
-        "properties": {
-          "clarity": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "dehaze": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "vignette": {
-            "type": "number",
-            "minimum": -100,
-            "maximum": 100
-          },
-          "grain": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          }
-        }
-      },
-      "colorGrading": {
-        "type": "object",
-        "properties": {
-          "shadowHue": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 360
-          },
-          "shadowSat": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "midtoneHue": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 360
-          },
-          "midtoneSat": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          },
-          "highlightHue": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 360
-          },
-          "highlightSat": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          }
-        }
-      },
-      "sharpening": {
-        "type": "object",
-        "properties": {
-          "amount": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 150
-          },
-          "radius": {
-            "type": "number",
-            "minimum": 0.5,
-            "maximum": 3.0
-          },
-          "masking": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          }
-        }
-      },
-      "reasoning": {
-        "type": "string",
-        "description": "Brief explanation of why these edits achieve the requested look"
-      }
+  "tools": [
+    {
+      "toolName": "planning"
     },
-    "required": [
-      "exposure",
-      "color"
-    ],
-    "additionalProperties": false
-  },
-  "tools": [],
+    {
+      "toolName": "adjust_color"
+    },
+    {
+      "toolName": "adjust_exposure"
+    },
+    {
+      "toolName": "view_image"
+    }
+  ],
   "runtime": {
     "resumable": false
   }

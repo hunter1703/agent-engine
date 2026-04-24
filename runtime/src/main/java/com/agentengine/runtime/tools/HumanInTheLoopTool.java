@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools;
 
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;

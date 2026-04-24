@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools.planning;
 
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.runtime.tools.planning.beans.Plan;
 import com.agentengine.runtime.utils.RunUtils;

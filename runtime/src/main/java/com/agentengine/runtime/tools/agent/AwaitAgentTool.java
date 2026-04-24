@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.runtime.session.events.RunResult;
 import com.agentengine.util.agents.Constants;

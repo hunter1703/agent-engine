@@ -1,7 +1,7 @@
 package com.agentengine.runtime.tools;
 
 import com.agentengine.runtime.annotations.ToolConstructor;
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.utils.SchemaUtils;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;

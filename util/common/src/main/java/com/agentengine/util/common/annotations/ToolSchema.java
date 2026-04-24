@@ -1,4 +1,4 @@
-package com.agentengine.runtime.annotations;
+package com.agentengine.util.common.annotations;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

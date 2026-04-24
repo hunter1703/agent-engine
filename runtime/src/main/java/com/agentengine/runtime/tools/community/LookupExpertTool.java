@@ -1,7 +1,7 @@
 package com.agentengine.runtime.tools.community;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.api.services.CommunityRegistry;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;

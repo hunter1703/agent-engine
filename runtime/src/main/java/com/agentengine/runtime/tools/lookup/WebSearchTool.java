@@ -2,7 +2,7 @@ package com.agentengine.runtime.tools.lookup;
 
 import com.agentengine.connectors.core.ConnectorService;
 import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;

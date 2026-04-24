@@ -1,6 +1,6 @@
 package com.agentengine.runtime.tools.agent;
 
-import com.agentengine.runtime.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.session.SessionActorFactory;
 import com.agentengine.runtime.session.StartChildResult;
 import com.agentengine.runtime.session.StartSessionResult;
