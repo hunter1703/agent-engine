@@ -17,7 +17,8 @@ public enum Operator {
     NIN,
     CONTAINS,
     EXISTS,
-    NOT_EXISTS;
+    NOT_EXISTS,
+    SEMANTIC_SEARCH;
 
     private final boolean compound;
 

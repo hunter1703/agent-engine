@@ -1,0 +1,12 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.knowledge'
+
+dependencies {
+    implementation project(':util:common')
+    implementation project(':util:ms:client')
+
+    implementation libs.jakarta.inject.api
+}

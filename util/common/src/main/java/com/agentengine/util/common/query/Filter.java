@@ -2,11 +2,13 @@ package com.agentengine.util.common.query;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Filter {
     private String field;
     private Operator op;
     private List<Object> values;
+    private Map<String, Object> additional;
 
     public String getField() {
         return field;
@@ -45,6 +47,19 @@ public class Filter {
 
     public Filter withOp(final Operator op) {
         this.op = op;
+        return this;
+    }
+
+    public Map<String, Object> getAdditional() {
+        return additional;
+    }
+
+    public void setAdditional(final Map<String, Object> additional) {
+        this.additional = additional;
+    }
+
+    public Filter withAdditional(final Map<String, Object> additional) {
+        this.additional = additional;
         return this;
     }
 }

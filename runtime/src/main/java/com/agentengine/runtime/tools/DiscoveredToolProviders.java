@@ -9,9 +9,11 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Schema;
+import io.quarkus.arc.Arc;
+import io.quarkus.arc.ArcContainer;
+import io.quarkus.arc.InstanceHandle;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -34,8 +36,7 @@ public final class DiscoveredToolProviders {
     private final LazyLoader<List<ToolProvider>> providers;
 
     @Inject
-    public DiscoveredToolProviders(final @Any Instance<Tool> tools, final ActorSystemProvider actorSystemProvider) {
-
+    public DiscoveredToolProviders(final @Any Instance<Tool> tools) {
         this.providers = new LazyLoader<>(() -> {
             final Map<String, ToolProvider> resolvedProviders = new LinkedHashMap<>();
             for (final Tool tool : tools) {
@@ -43,7 +44,7 @@ public final class DiscoveredToolProviders {
                     final ToolDefinition definition = buildDefinition(tool.getClass());
                     resolvedProviders.putIfAbsent(
                             definition.descriptor().name(),
-                            new DiscoveredToolProvider(definition, actorSystemProvider));
+                            new DiscoveredToolProvider(definition));
                 } finally {
                     tools.destroy(tool);
                 }
@@ -90,7 +91,7 @@ public final class DiscoveredToolProviders {
         final Parameter[] parameters = constructor.getParameters();
         final List<ConstructorParam> params = new ArrayList<>(parameters.length);
         for (final Parameter parameter : parameters) {
-            final boolean injected = ActorSystemProvider.class.equals(parameter.getType());
+            final boolean injected = isCdiBean(parameter.getType());
             final String key = injected ? parameter.getType().getSimpleName() : resolveKey(parameter);
             final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
             final String description = schema == null ? null : schema.description();
@@ -120,6 +121,18 @@ public final class DiscoveredToolProviders {
             throw new IllegalStateException("Tool parameter name is required for auto discovery");
         }
         return name;
+    }
+
+    private static boolean isCdiBean(final Class<?> type) {
+        final ArcContainer container = Arc.container();
+        if (container == null) {
+            return false;
+        }
+        try (final InstanceHandle<?> instance = container.instance(type)) {
+            return instance.isAvailable();
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     public List<ToolProvider> providers() {
@@ -211,8 +224,7 @@ public final class DiscoveredToolProviders {
             List<String> enumValues,
             boolean injected) {}
 
-    private record DiscoveredToolProvider(ToolDefinition definition, ActorSystemProvider actorSystemProvider)
-            implements ToolProvider {
+    private record DiscoveredToolProvider(ToolDefinition definition) implements ToolProvider {
         @Override
         public ToolDescriptor descriptor() {
             return definition.descriptor();
@@ -238,8 +250,10 @@ public final class DiscoveredToolProviders {
             for (int index = 0; index < params.size(); index++) {
                 final ConstructorParam param = params.get(index);
                 if (param.injected()) {
-                    args[index] = actorSystemProvider;
-                    continue;
+                    try (final InstanceHandle<?> instance = Arc.container().instance(param.rawType())) {
+                        args[index] = instance.get();
+                        continue;
+                    }
                 }
                 final Object rawValue = CollectionUtils.getValueFromMap(toolConfig, param.key());
                 args[index] = convertValue(rawValue, param.type(), param.rawType());

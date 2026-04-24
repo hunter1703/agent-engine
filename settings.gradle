@@ -29,3 +29,7 @@ include 'util:ms:client'
 include 'util:agents'
 
 include 'util:pekko'
+
+include 'knowledge'
+
+include 'knowledge:api'
