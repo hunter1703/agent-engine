@@ -2,19 +2,26 @@ package com.agentengine.runtime.tools.image;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.tools.Tool;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.service.CloudStorageService;
+import com.google.adk.models.LlmRequest;
+import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Blob;
+import com.google.genai.types.Content;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
+import io.reactivex.rxjava3.core.Completable;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Agent tool that downloads an image and returns it as base64 for visual inspection.
@@ -52,42 +59,87 @@ public final class ViewImageTool extends Tool {
     }
 
     /**
-     * Replaces the raw {@code {base64, mimeType}} function-response map with a native
-     * {@code inlineData} part so the LLM receives the image through its vision API rather
-     * than as a base64 string embedded in JSON.
+     * Intercepts the outgoing {@link LlmRequest} before each model call.
      *
-     * <p>The original {@code FunctionResponse} part is kept (with the binary payload stripped)
-     * so the LLM still sees the tool-call/response pairing it expects. The image bytes follow
-     * as a sibling {@code inlineData} part.
+     * <p>Scans {@code contents} for any {@code FunctionResponse} from this tool that still carries
+     * raw base64 image data. For each one found it:
+     * <ol>
+     *   <li>Replaces the response map with a sentinel (base64 stripped) so the conversation history
+     *       stays clean on subsequent passes.
+     *   <li>Appends a new {@code user}-role {@link Content} containing only the {@code inlineData}
+     *       part, placed immediately after the content that held the function response.
+     * </ol>
      *
-     * <p>If the response map does not contain the expected {@code base64} key (e.g. it is an
-     * error response), the part is returned unchanged.
+     * <p>Keeping the image in a separate {@code Content} avoids the LangChain4j limitation where
+     * {@code ToolExecutionResultMessage} and {@code UserMessage} (which carries {@code ImageContent})
+     * are mutually exclusive — the image would otherwise be silently dropped.
+     *
+     * <p>The method is idempotent: once the sentinel is in place the base64 key is absent and the
+     * content is skipped on every subsequent invocation.
      */
     @Override
-    public List<Part> beforeModelCall(final Part functionResponsePart) {
-        final FunctionResponse functionResponse = functionResponsePart.functionResponse().orElse(null);
-        if (functionResponse == null) {
-            return List.of(functionResponsePart);
-        }
+    public Completable processLlmRequest(
+            final LlmRequest.Builder llmRequestBuilder, final ToolContext toolContext) {
+        final Completable registration = super.processLlmRequest(llmRequestBuilder, toolContext);
 
-        final Map<String, Object> response = functionResponse.response().orElse(Map.of());
-        final Object base64Value = response.get("base64");
-        final Object mimeTypeValue = response.get("mimeType");
+        return registration.doOnComplete(() -> {
+            final List<Content> original = llmRequestBuilder.build().contents();
+            final List<Content> rewritten = new ArrayList<>();
+            boolean anyChanged = false;
 
-        if (!(base64Value instanceof String base64) || !(mimeTypeValue instanceof String mimeType)) {
-            return List.of(functionResponsePart);
-        }
+            for (final Content content : original) {
+                final List<Part> parts = content.parts().orElse(List.of());
+                boolean contentChanged = false;
+                final List<Part> newParts = new ArrayList<>();
+                Content imageContent = null;
 
-        // Strip the binary payload from the function response so the LLM context stays lean.
-        final Part strippedResponsePart = Part.builder()
-                .functionResponse(functionResponse.toBuilder()
-                        .response(Map.of("status", "ok"))
-                        .build())
-                .build();
+                for (final Part part : parts) {
+                    final FunctionResponse functionResponse = part.functionResponse().orElse(null);
+                    if (functionResponse == null || !Objects.equals(functionResponse.name().orElse(null), name())) {
+                        newParts.add(part);
+                        continue;
+                    }
 
-        final byte[] bytes = Base64.getDecoder().decode(base64);
-        final Part imagePart = Part.fromBytes(bytes, mimeType);
+                    final Map<String, Object> response = functionResponse.response().orElse(Map.of());
+                    final String base64Value = CollectionUtils.getStringValueFromMap(response, "base64");
+                    if (base64Value == null) {
+                        // Already rewritten on a previous pass — leave unchanged.
+                        newParts.add(part);
+                        continue;
+                    }
 
-        return List.of(strippedResponsePart, imagePart);
+                    final String mimeType = Objects.requireNonNull(CollectionUtils.getStringValueFromMap(response, "mimeType"));
+
+                    // Strip base64 from the FunctionResponse so history stays clean.
+                    final FunctionResponse sentinel = functionResponse.toBuilder()
+                            .response(Map.of("status", "Image contents are attached below", "mimeType", mimeType))
+                            .build();
+                    newParts.add(part.toBuilder().functionResponse(sentinel).build());
+
+                    // Prepare a separate user-role Content carrying only the inlineData.
+                    final Part imagePart = Part.fromBytes(Base64.getDecoder().decode(base64Value), mimeType);
+                    imageContent = Content.builder()
+                            .role("user")
+                            .parts(List.of(imagePart))
+                            .build();
+                    contentChanged = true;
+                }
+
+                if (contentChanged) {
+                    rewritten.add(content.toBuilder().parts(newParts).build());
+                    anyChanged = true;
+                } else {
+                    rewritten.add(content);
+                }
+
+                if (imageContent != null) {
+                    rewritten.add(imageContent);
+                }
+            }
+
+            if (anyChanged) {
+                llmRequestBuilder.contents(rewritten);
+            }
+        });
     }
 }

@@ -101,7 +101,8 @@ public final class CollectionUtils {
         if (CollectionUtils.isEmpty(map)) {
             return null;
         }
-        return String.valueOf(map.get(key));
+        final Object value = map.get(key);
+        return value == null ? null : (value instanceof String str ? str : value.toString());
     }
 
     @SuppressWarnings("unchecked")
@@ -110,14 +111,6 @@ public final class CollectionUtils {
             return null;
         }
         return (V) map.get(key);
-    }
-
-    public static String getStringValueFromMapSafe(final Map<String, Object> map, final String key) {
-        if (CollectionUtils.isEmpty(map)) {
-            return null;
-        }
-        final Object value = map.get(key);
-        return value == null ? null : value.toString();
     }
 
     public static <T> T getValueFromMap(final Map<String, Object> map, final String key, final Class<T> type) {

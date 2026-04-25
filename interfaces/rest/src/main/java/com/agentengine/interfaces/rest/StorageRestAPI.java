@@ -50,7 +50,7 @@ public class StorageRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "Object downloaded successfully")
-    public InputStream upload(FileDetails fileDetails) {
+    public InputStream download(FileDetails fileDetails) {
         return cloudStorageService.download(fileDetails);
     }
 }

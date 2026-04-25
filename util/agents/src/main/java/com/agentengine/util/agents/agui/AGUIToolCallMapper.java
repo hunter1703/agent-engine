@@ -144,7 +144,7 @@ public final class AGUIToolCallMapper {
         }
         final boolean confirmed = toolConfirmation != null && toolConfirmation.confirmed();
         @SuppressWarnings("unchecked")
-        final String answer = CollectionUtils.getStringValueFromMapSafe(
+        final String answer = CollectionUtils.getStringValueFromMap(
                 (Map<String, Object>) (toolConfirmation != null ? toolConfirmation.payload() : null), "answer");
 
         final ConfirmedEvent event = new ConfirmedEvent(confirmationId, confirmed, answer);
