@@ -107,36 +107,39 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                         .build(),
                 body);
         return new FileDetails(
-                name, defaultBucket + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength, null);
+                name, defaultBucket + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength);
     }
 
     @Override
     public InputStream download(final FileDetails fileDetails) {
-        final String path = fileDetails.path();
+        return downloadFromSource(fileDetails.source());
+    }
+
+    @Override
+    public InputStream downloadFromSource(final String source) {
         return s3.getObject(GetObjectRequest.builder()
-                .bucket(getBucket(path))
-                .key(getKey(path))
+                .bucket(getBucket(source))
+                .key(getKey(source))
                 .build());
     }
 
     @Override
     public void delete(final FileDetails fileDetails) {
-        final String path = fileDetails.path();
+        final String source = fileDetails.source();
         s3.deleteObject(DeleteObjectRequest.builder()
-                .bucket(getBucket(path))
-                .key(getKey(path))
+                .bucket(getBucket(source))
+                .key(getKey(source))
                 .build());
     }
 
     @Override
     public String presignedGetUrl(final FileDetails fileDetails, final Duration validity) {
-        final String path = fileDetails.path();
-
+        final String source = fileDetails.source();
         return presigner
                 .presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(validity)
                         .getObjectRequest(
-                                request -> request.bucket(getBucket(path)).key(getKey(path)))
+                                request -> request.bucket(getBucket(source)).key(getKey(source)))
                         .build())
                 .url()
                 .toString();

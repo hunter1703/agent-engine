@@ -9,6 +9,8 @@ public interface CloudStorageService {
 
     InputStream download(FileDetails fileDetails);
 
+    InputStream downloadFromSource(String source);
+
     void delete(FileDetails fileDetails);
 
     String presignedGetUrl(FileDetails fileDetails, Duration validity);

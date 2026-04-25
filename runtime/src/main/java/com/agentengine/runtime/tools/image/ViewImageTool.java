@@ -1,11 +1,10 @@
 package com.agentengine.runtime.tools.image;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
-import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 
 import java.io.IOException;
@@ -35,14 +34,12 @@ public final class ViewImageTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "inputFile", description = "File details of the image to view.") FileDetails inputFile) {
+            @ToolSchema(name = "source", description = "Source of the image to view") String source) {
         try {
-            if (inputFile == null) {
-                return Map.of("error", "inputFile is required");
-            }
-            try (final InputStream downloadedStream = cloudStorageService.download(inputFile)) {
-                final String base64Content = Base64.getEncoder().encodeToString(downloadedStream.readAllBytes());
-                return Map.of("base64", base64Content, "mimeType", inputFile.mimeType() != null ? inputFile.mimeType() : "image/jpeg");
+            try (final InputStream downloadedStream = cloudStorageService.downloadFromSource(source)) {
+                final byte[] bytes = downloadedStream.readAllBytes();
+                final String mimeType = "image/" + ImageUtils.detectFormatFromHeader(bytes);
+                return Map.of("base64", Base64.getEncoder().encodeToString(bytes), "mimeType", mimeType);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

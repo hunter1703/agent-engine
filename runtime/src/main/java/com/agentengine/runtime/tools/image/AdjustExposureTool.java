@@ -1,11 +1,10 @@
 package com.agentengine.runtime.tools.image;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
-import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.StructuredConcurrencyUtils;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import org.slf4j.Logger;
@@ -49,41 +48,38 @@ public final class AdjustExposureTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "inputFile", description = "File details for the input image to adjust.")
-                    FileDetails inputFile,
+            @ToolSchema(name = "source", description = "Source of the input image")
+                    String source,
             @ToolSchema(name = "adjustment", description = "Exposure and tone parameters: brightness, contrast, highlights, shadows, whites, blacks.")
                     ExposureAdjustment adjustment) {
 
         try {
-            if (inputFile == null) {
-                return Map.of("error", "inputFile is required");
-            }
             if (adjustment == null) {
                 return Map.of("error", "adjustment is required");
             }
-
-            final String format = ImageUtils.getFileFormat(inputFile.name());
-            final File inputTempFile = Files.createTempFile("input", "." + format).toFile();
-            try {
-                try (final InputStream is = cloudStorageService.download(inputFile);
-                     final OutputStream os = new FileOutputStream(inputTempFile)) {
-                    is.transferTo(os);
-                }
-
-                final File outputTempFile = applyAdjustment(inputTempFile, adjustment);
+            try (final InputStream is = cloudStorageService.downloadFromSource(source)) {
+                final byte[] header = is.readNBytes(12);
+                final String format = ImageUtils.detectFormatFromHeader(header);
+                final File inputTempFile = Files.createTempFile("input", "." + format).toFile();
                 try {
-                    try (final InputStream outputStream = new FileInputStream(outputTempFile)) {
-                        final FileDetails outputFileDetails = cloudStorageService.upload(
-                                UUID.randomUUID().toString(), outputStream, outputTempFile.length(), "image/" + format);
-                        return Map.of("outputFile", outputFileDetails);
+                    try (final OutputStream os = new FileOutputStream(inputTempFile)) {
+                        os.write(header);
+                        is.transferTo(os);
+                    }
+                    final File outputTempFile = applyAdjustment(inputTempFile, adjustment);
+                    try {
+                        try (final InputStream outputStream = new FileInputStream(outputTempFile)) {
+                            final FileDetails outputFileDetails = cloudStorageService.upload(
+                                    UUID.randomUUID().toString(), outputStream, outputTempFile.length(), "image/" + format);
+                            return Map.of("outputFile", outputFileDetails);
+                        }
+                    } finally {
+                        outputTempFile.delete();
                     }
                 } finally {
-                    outputTempFile.delete();
+                    inputTempFile.delete();
                 }
-            } finally {
-                inputTempFile.delete();
             }
-
         } catch (Exception e) {
             LOG.error("adjust_exposure failed", e);
             return Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());

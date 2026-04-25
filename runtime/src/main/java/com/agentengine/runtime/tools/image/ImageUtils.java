@@ -164,6 +164,27 @@ public final class ImageUtils {
         };
     }
 
+    /**
+     * Detect image format from the first bytes of a stream.
+     * Recognises JPEG ({@code FF D8 FF}) and PNG ({@code 89 PNG}).
+     */
+    public static String detectFormatFromHeader(final byte[] header) throws IOException {
+        if (header.length >= 3
+                && (header[0] & 0xFF) == 0xFF
+                && (header[1] & 0xFF) == 0xD8
+                && (header[2] & 0xFF) == 0xFF) {
+            return "jpeg";
+        }
+        if (header.length >= 4
+                && (header[0] & 0xFF) == 0x89
+                && header[1] == 'P'
+                && header[2] == 'N'
+                && header[3] == 'G') {
+            return "png";
+        }
+        throw new IOException("Cannot determine image format from file header");
+    }
+
     // -------------------------------------------------------------------------
     // Color grading — HSL-based hue-targeted adjustments
     // -------------------------------------------------------------------------
