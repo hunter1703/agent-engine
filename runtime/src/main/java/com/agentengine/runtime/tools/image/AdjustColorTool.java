@@ -41,7 +41,7 @@ public final class AdjustColorTool extends Tool {
                     + "hue rotation, saturation change, and lightness change with a smooth cosine falloff so "
                     + "transitions are natural. Always pass all adjustments for the image in a single call. "
                     + "Supports JPEG and PNG up to 100MP. "
-                    + "Returns the output file details on success.",
+                    + "Returns { outputSource } on success, where outputSource is the storage key of the output image.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -76,7 +76,7 @@ public final class AdjustColorTool extends Tool {
                         try (final InputStream outputStream = new FileInputStream(outputTempFile)) {
                             final FileDetails outputFileDetails = cloudStorageService.upload(
                                     UUID.randomUUID().toString(), outputStream, outputTempFile.length(), "image/" + format);
-                            return Map.of("outputFile", outputFileDetails);
+                            return Map.of("outputSource", outputFileDetails.source());
                         }
                     } finally {
                         outputTempFile.delete();

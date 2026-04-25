@@ -36,7 +36,7 @@ public final class AdjustExposureTool extends Tool {
                     + "All parameters are on a [-100, 100] scale where 0 means no change. "
                     + "Use brightness for overall lightness, contrast for punch, highlights/shadows for tonal recovery, "
                     + "and whites/blacks to set the clipping points. "
-                    + "Supports JPEG and PNG up to 100MP. Returns the output file details on success.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success, where outputSource is the storage key of the output image.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -71,7 +71,7 @@ public final class AdjustExposureTool extends Tool {
                         try (final InputStream outputStream = new FileInputStream(outputTempFile)) {
                             final FileDetails outputFileDetails = cloudStorageService.upload(
                                     UUID.randomUUID().toString(), outputStream, outputTempFile.length(), "image/" + format);
-                            return Map.of("outputFile", outputFileDetails);
+                            return Map.of("outputSource", outputFileDetails.source());
                         }
                     } finally {
                         outputTempFile.delete();
