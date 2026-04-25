@@ -1,4 +1,4 @@
-replicas: 3
+replicas: 1
 pdb:
   enabled: true
   minAvailable: 2

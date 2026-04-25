@@ -8,9 +8,11 @@ import com.agentengine.runtime.factories.agent.AgentProvider;
 import com.agentengine.runtime.factories.context.ContextManagerProvider;
 import com.agentengine.runtime.guardrails.GuardrailPolicyFactory;
 import com.agentengine.runtime.plugins.AddEventMetadataPlugin;
+import com.agentengine.runtime.plugins.BinaryToolResultPlugin;
 import com.agentengine.runtime.plugins.ContextManagementPlugin;
 import com.agentengine.runtime.plugins.GuardrailPlugin;
 import com.agentengine.runtime.plugins.PluginGroup;
+import com.agentengine.runtime.tools.Tool;
 import com.agentengine.runtime.services.SessionHistoryServiceImpl;
 import com.agentengine.runtime.session.SessionRunner;
 import com.agentengine.runtime.session.commands.SessionCommand;
@@ -28,6 +30,7 @@ import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
+import com.google.adk.tools.BaseTool;
 import jakarta.inject.Singleton;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +108,7 @@ public class RunnerFactory {
         final Set<String> visited = new HashSet<>();
         final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
         final Map<String, ContextManager> contextManagers = new LinkedHashMap<>();
+        final List<Tool> tools = new ArrayList<>();
 
         while (!queue.isEmpty()) {
             final Agent agent = queue.poll();
@@ -117,6 +121,15 @@ public class RunnerFactory {
             if (policy.enabled()) {
                 policies.put(agent.name(), policy);
             }
+            // Collect Tool instances for BinaryToolResultPlugin.
+            if (agent instanceof com.google.adk.agents.LlmAgent llmAgent) {
+                llmAgent.tools()
+                        .blockingGet()
+                        .stream()
+                        .filter(t -> t instanceof Tool)
+                        .map(t -> (Tool) t)
+                        .forEach(tools::add);
+            }
             for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
                 if (subAgent instanceof Agent nestedAgent) {
                     queue.add(nestedAgent);
@@ -125,7 +138,10 @@ public class RunnerFactory {
         }
 
         final List<BasePlugin> plugins = List.of(
-                new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers), new LoggingPlugin());
+                new GuardrailPlugin(policies),
+                new ContextManagementPlugin(contextManagers),
+                new BinaryToolResultPlugin(tools),
+                new LoggingPlugin());
         return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
     }
 }

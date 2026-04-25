@@ -2,10 +2,8 @@ package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.EventMapper;
-import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.*;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.agui.core.event.RunFinishedEvent;
@@ -155,22 +153,14 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
 
         Flowable<BaseEvent> flowable = Flowable.empty();
         final String text = part.text().orElse(null);
-        if (text != null) {
-            flowable = flowable.concatWith(textMapper.mapText(text, partial));
-        }
-
-        final Blob inlineData = part.inlineData().orElse(null);
-        if (inlineData != null) {
-            flowable = flowable.concatWith(textMapper.mapAttachment(
-                    inlineData.displayName().orElse(null), inlineData.mimeType().orElse(null)));
-        }
 
         final FileData fileData = part.fileData().orElse(null);
         if (fileData != null) {
-            final String uri = fileData.fileUri().orElse(null);
-            final String name = uri != null ? uri.substring(uri.lastIndexOf('/') + 1) : null;
-            flowable = flowable.concatWith(
-                    textMapper.mapAttachment(name, fileData.mimeType().orElse(null)));
+            String uri = fileData.fileUri().orElse(null);
+            final FileDetails fileDetails = Objects.requireNonNull(StringUtils.isNotBlank(uri) ? FileDetails.fromUrl(uri) : JsonUtils.fromJson(part.text().orElse(null), FileDetails.class));
+            flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
+        } else if (text != null) {
+            flowable = flowable.concatWith(textMapper.mapText(text, partial));
         }
 
         final FunctionCall call = part.functionCall().orElse(null);

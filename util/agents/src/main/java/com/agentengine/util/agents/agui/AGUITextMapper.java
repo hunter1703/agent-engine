@@ -2,7 +2,9 @@ package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.FileDetails;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.TextMessageChunkEvent;
 import com.agui.core.event.TextMessageEndEvent;
@@ -63,16 +65,15 @@ public final class AGUITextMapper {
         return finalizeTextMessageIfNeeded().concatWith(closeReasoningIfNeeded());
     }
 
-    public Flowable<BaseEvent> mapAttachment(final String fileName, final String mimeType) {
+    public Flowable<BaseEvent> mapAttachment(final FileDetails fileDetails) {
         final Flowable<BaseEvent> flowable = startTextMessageIfNeeded();
         final String parentMessageId = state.currentTextMessageId();
-        final String resolvedFileName = fileName != null ? fileName : generateFileName(mimeType);
-        final AttachmentEvent event = new AttachmentEvent(parentMessageId, resolvedFileName, mimeType);
+        final AttachmentEvent event = new AttachmentEvent(parentMessageId, fileDetails);
         decorator.decorate(event);
         LOG.debug(
-                "Generated output event - eventType=AttachmentEvent, parentMessageId={}, mimeType={}",
+                "Generated output event - eventType=AttachmentEvent, parentMessageId={}, fileDetails={}",
                 parentMessageId,
-                mimeType);
+                JsonUtils.toJson(fileDetails));
         return flowable.concatWith(Flowable.just(event));
     }
 

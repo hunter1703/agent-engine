@@ -1,5 +1,7 @@
 package com.agentengine.util.agents.agui;
 
+import com.agentengine.util.common.beans.FileDetails;
+
 /**
  * Custom AG-UI event emitted when a message part contains an attachment (e.g. an image produced by
  * the agent). Emitted after any text chunks and before the {@code TextMessageEndEvent} of the
@@ -8,25 +10,22 @@ package com.agentengine.util.agents.agui;
  * <p>Fields:
  * <ul>
  *   <li>{@code parentMessageId} – ID of the {@code TextMessageStartEvent} this attachment belongs to
- *   <li>{@code fileName}        – generated file name derived from the MIME type
- *   <li>{@code mimeType}        – MIME type (e.g. {@code "image/png"})
+ *   <li>{@code fileDetails}     – fileDetails
  * </ul>
  */
 public final class AttachmentEvent extends BaseCustomEvent {
 
     private String parentMessageId;
-    private String fileName;
-    private String mimeType;
+    private FileDetails fileDetails;
 
     public AttachmentEvent() {
         super("attachment");
     }
 
-    public AttachmentEvent(final String parentMessageId, final String fileName, final String mimeType) {
+    public AttachmentEvent(final String parentMessageId, final FileDetails fileDetails) {
         super("attachment");
         this.parentMessageId = parentMessageId;
-        this.fileName = fileName;
-        this.mimeType = mimeType;
+        this.fileDetails = fileDetails;
     }
 
     public String getParentMessageId() {
@@ -37,19 +36,11 @@ public final class AttachmentEvent extends BaseCustomEvent {
         this.parentMessageId = parentMessageId;
     }
 
-    public String getFileName() {
-        return fileName;
+    public FileDetails getFileDetails() {
+        return fileDetails;
     }
 
-    public void setFileName(final String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(final String mimeType) {
-        this.mimeType = mimeType;
+    public void setFileDetails(final FileDetails fileDetails) {
+        this.fileDetails = fileDetails;
     }
 }

@@ -38,11 +38,11 @@ config:
 
 resources:
   requests:
-    cpu: "1"
-    memory: "2Gi"
+    cpu: "500m"
+    memory: "1Gi"
   limits:
-    cpu: "2"
-    memory: "4Gi"
+    cpu: "500m"
+    memory: "1Gi"
 
 service:
   type: ClusterIP

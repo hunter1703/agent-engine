@@ -18,6 +18,7 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.genai.types.FunctionDeclaration;
+import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import java.io.InputStream;
@@ -64,6 +65,25 @@ public abstract class Tool extends BaseTool {
 
     public ToolDescriptor descriptor() {
         return toolDescriptor;
+    }
+
+    /**
+     * Called by {@link com.agentengine.runtime.plugins.BinaryToolResultPlugin} before each LLM
+     * request and before each event is yielded to the caller.
+     *
+     * <p>Given the raw {@link Part} that wraps this tool's {@code FunctionResponse}, return the
+     * list of parts that should replace it in the assembled {@link com.google.genai.types.Content}.
+     * The default implementation is a no-op: it returns the original part unchanged.
+     *
+     * <p>Override this method when the tool's response contains binary data (e.g. base64-encoded
+     * images) that should be presented to the LLM as native {@code inlineData} parts rather than
+     * raw JSON text inside the function-response map.
+     *
+     * @param functionResponsePart the original part containing the {@code FunctionResponse}
+     * @return replacement parts; must not be empty
+     */
+    public List<Part> beforeModelCall(final Part functionResponsePart) {
+        return List.of(functionResponsePart);
     }
 
     protected Method getExecuteMethod() {

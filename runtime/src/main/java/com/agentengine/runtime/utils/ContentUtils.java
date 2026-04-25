@@ -11,6 +11,7 @@ import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
+import com.google.genai.types.FileData;
 import com.google.genai.types.Part;
 import java.util.Base64;
 import java.util.Collection;
@@ -147,7 +148,11 @@ public final class ContentUtils {
     private static Part toAdkPart(final MessagePart part) {
         return switch (part) {
             case MessagePart.TextPart textPart -> Part.fromText(textPart.text());
-            case MessagePart.FilePart filePart -> Part.fromText(JsonUtils.toJson(filePart.fileDetails()));
+            case MessagePart.FilePart filePart -> {
+                final FileDetails fileDetails = filePart.fileDetails();
+                final FileData fileData = FileData.builder().mimeType(fileDetails.mimeType()).displayName(fileDetails.name()).build();
+                yield Part.builder().text(JsonUtils.toJson(fileDetails)).fileData(fileData).build();
+            }
             default -> throw new IllegalStateException("Unexpected value: " + part);
         };
     }

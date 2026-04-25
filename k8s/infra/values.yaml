@@ -42,10 +42,10 @@ mongodb:
     readOnlyRootFilesystem: false
   resources:
     requests:
-      cpu: 250m
+      cpu: 500m
       memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: 500m
       memory: 1Gi
   probes:
     startup:
@@ -96,10 +96,10 @@ postgres:
     readOnlyRootFilesystem: false
   resources:
     requests:
-      cpu: 250m
+      cpu: 500m
       memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: 500m
       memory: 1Gi
   probes:
     startup:
@@ -131,7 +131,7 @@ localstack:
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 512Mi
     limits:
-      cpu: "1"
+      cpu: 100m
       memory: 512Mi
