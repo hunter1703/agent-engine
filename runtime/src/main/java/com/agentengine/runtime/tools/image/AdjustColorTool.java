@@ -4,6 +4,7 @@ import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
@@ -52,12 +53,15 @@ public final class AdjustColorTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "source", description = "Source the input image")
+            @ToolSchema(name = "source", description = "Storage source of the input image, taken from the source field of the file details.")
                     String source,
             @ToolSchema(name = "adjustments", description = "Array of hue-targeted adjustments ({hue_center, hue_width, hue_shift, sat_delta, lum_delta}) to apply to the image.")
                     List<ColorAdjustment> adjustments) {
 
         try {
+            if (CollectionUtils.isEmpty(adjustments)) {
+                return Map.of("error", "adjustments is required");
+            }
             try (final InputStream is = cloudStorageService.downloadFromSource(source)) {
                 final byte[] header = is.readNBytes(12);
                 final String format = ImageUtils.detectFormatFromHeader(header);

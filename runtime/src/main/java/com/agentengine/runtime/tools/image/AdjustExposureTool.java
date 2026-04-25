@@ -48,7 +48,7 @@ public final class AdjustExposureTool extends Tool {
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "source", description = "Source of the input image")
+            @ToolSchema(name = "source", description = "Storage source of the input image, taken from the source field of the file details.")
                     String source,
             @ToolSchema(name = "adjustment", description = "Exposure and tone parameters: brightness, contrast, highlights, shadows, whites, blacks.")
                     ExposureAdjustment adjustment) {

@@ -17,7 +17,7 @@ public record FileDetails(
         @ToolSchema(name = "name", description = "Original filename including extension, e.g. photo.jpg. Used to determine file format.")
         String name,
 
-        @ToolSchema(name = "path", description = "Storage source to the file. For CLOUDSTORAGE, format is <bucket>/<key>.")
+        @ToolSchema(name = "source", description = "Storage location of the file. For CLOUDSTORAGE, format is <bucket>/<key>.")
         String source,
 
         @ToolSchema(name = "type", description = "Storage backend type.", enums = {"CLOUDSTORAGE", "UNKNOWN"})

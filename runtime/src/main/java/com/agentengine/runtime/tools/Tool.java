@@ -141,6 +141,18 @@ public abstract class Tool extends BaseTool {
                     arguments[binding.index()] = null;
                     continue;
                 }
+                // Some models flatten a single complex-type parameter's fields directly to
+                // the top-level args map instead of nesting them under the parameter name.
+                // When the parameter is a complex object and args is non-empty, attempt to
+                // convert args itself as the parameter value before failing.
+                if (!binding.isList() && !binding.isMap() && !Utils.isSimpleType(binding.rawType()) && !args.isEmpty()) {
+                    try {
+                        arguments[binding.index()] = convertMapValue(args, binding.javaType());
+                        continue;
+                    } catch (Exception ignored) {
+                        // fall through to the standard error
+                    }
+                }
                 throw new IllegalArgumentException(String.format(
                         "The parameter '%s' was not found in the arguments provided by the model.", binding.name()));
             }
