@@ -3,7 +3,6 @@ package com.agentengine.runtime.tools;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.runtime.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
-import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -106,7 +105,6 @@ public abstract class Tool extends BaseTool {
         Object result = executeMethod.invoke(this, arguments);
         return switch (result) {
             case null -> Maybe.empty();
-            case ToolOutput output -> Maybe.just(output.toMap());
             case Maybe<?> maybe -> maybe.map(data -> Utils.convertValue(data, new TypeReference<>() {}));
             case Single<?> single ->
                 single.map(data -> Utils.convertValue(data, new TypeReference<Map<String, Object>>() {}))

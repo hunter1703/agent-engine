@@ -5,26 +5,28 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.io.InputStream;
+
+import java.io.*;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -117,10 +119,27 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public InputStream downloadFromSource(final String source) {
-        return s3.getObject(GetObjectRequest.builder()
-                .bucket(getBucket(source))
-                .key(getKey(source))
-                .build());
+        final File localFile = getLocalFile(source);
+        if (!localFile.exists()) {
+            try {
+                localFile.getParentFile().mkdirs();
+                try (final ResponseInputStream<GetObjectResponse> s3Stream = s3.getObject(
+                        GetObjectRequest.builder().bucket(getBucket(source)).key(getKey(source)).build())) {
+                    Files.copy(s3Stream, localFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        try {
+            return new FileInputStream(localFile);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static File getLocalFile(final String source) {
+        return Paths.get("/deployments/cloudstoragefiles/" + source).toFile();
     }
 
     @Override

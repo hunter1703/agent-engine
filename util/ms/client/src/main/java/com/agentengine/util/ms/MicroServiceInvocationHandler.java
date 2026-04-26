@@ -71,7 +71,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             final long start = System.currentTimeMillis();
             final String json = JsonUtils.toJson(args);
             final long end = System.currentTimeMillis();
-            LOG.info("[{}] Serialization took {}ms, payload size: {}", requestId, (end - start), json.length());
+            LOG.info("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
             builder.setPayload(ByteString.copyFromUtf8(json));
         }
         return builder.build();

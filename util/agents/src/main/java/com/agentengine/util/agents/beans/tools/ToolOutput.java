@@ -2,36 +2,36 @@ package com.agentengine.util.agents.beans.tools;
 
 import java.util.Map;
 
-public abstract class ToolOutput {
+public abstract class ToolOutput<T> {
 
-    public abstract Map<String, Object> toMap();
+    public abstract T toResult();
 
-    public static ToolOutput direct(final Map<String, Object> content) {
-        return new Direct(content);
+    public static <S> ToolOutput<S> direct(final S content) {
+        return new Direct<>(content);
     }
 
-    public static ToolOutput knowledge(final String knowledgeId) {
+    public static ToolOutput<Map<String, Object>> knowledge(final String knowledgeId) {
         return knowledge(knowledgeId, "Please refer to the knowledge in order to search.");
     }
 
-    public static ToolOutput knowledge(final String knowledgeId, final String hint) {
+    public static ToolOutput<Map<String, Object>> knowledge(final String knowledgeId, final String hint) {
         return new Knowledge(knowledgeId, hint);
     }
 
-    public static final class Direct extends ToolOutput {
-        private final Map<String, Object> content;
+    public static final class Direct<S> extends ToolOutput<S> {
+        private final S content;
 
-        private Direct(final Map<String, Object> content) {
+        private Direct(final S content) {
             this.content = content;
         }
 
         @Override
-        public Map<String, Object> toMap() {
+        public S toResult() {
             return content;
         }
     }
 
-    public static final class Knowledge extends ToolOutput {
+    public static final class Knowledge extends ToolOutput<Map<String, Object>> {
         private final String knowledgeId;
         private final String hint;
 
@@ -49,7 +49,7 @@ public abstract class ToolOutput {
         }
 
         @Override
-        public Map<String, Object> toMap() {
+        public Map<String, Object> toResult() {
             return Map.of("knowledgeId", knowledgeId, "hint", hint);
         }
     }

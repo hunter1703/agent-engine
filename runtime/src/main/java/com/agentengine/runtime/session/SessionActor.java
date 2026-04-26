@@ -198,7 +198,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 }
                 updateSessionStatus(state, SessionStatus.PAUSED);
             }
-            case IDLE -> afterComplete(state);
+            case IDLE -> afterComplete(state, true);
         }
     }
 
@@ -914,10 +914,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             }
         }
         facts.add(new CompletedFact(isFailed ? null : extractFinalAnswer(state), isFailed ? error : null));
-        return Effect().persist(facts).thenRun(this::afterComplete);
+        return Effect().persist(facts).thenRun(newState -> afterComplete(newState, false));
     }
 
-    private void afterComplete(final SessionActorState state) {
+    private void afterComplete(final SessionActorState state, final boolean isRecovery) {
         final SessionTopology topology = state.topology();
         final String sessionId = topology.sessionId();
         final String rootSessionId = topology.rootSessionId();
@@ -930,7 +930,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     SessionEvent.error(rootSessionId, sessionId, runResult.failureMessage(), Long.MAX_VALUE - 1));
         }
         if (topology.isRoot()) {
-            generateSessionTitle(rootSessionId);
+            generateSessionTitle(rootSessionId, isRecovery);
             eventChannel.publish(rootSessionId, SessionEvent.terminal(sessionId));
             if (!state.queue().isEmpty()) {
                 self.tell(new StartNextQueuedMessageCommand());
@@ -948,9 +948,15 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
      * message-processing loop. Title generation involves an LLM call followed by a MongoDB write,
      * both of which are unsuitable for the actor thread.
      */
-    private void generateSessionTitle(final String rootSessionId) {
+    private void generateSessionTitle(final String rootSessionId, final boolean isRecovery) {
         Thread.startVirtualThread(() -> {
             try {
+                if (isRecovery) {
+                    final AgentSession session = sessionService.getSession(rootSessionId);
+                    if (session != null && StringUtils.isNotBlank(session.getName())) {
+                        return;
+                    }
+                }
                 final String title = sessionTitleGenerator.generateTitle(rootSessionId);
                 if (StringUtils.isNotBlank(title)) {
                     sessionService.updateSession(

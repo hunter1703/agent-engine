@@ -32,6 +32,7 @@ public record FileDetails(
     public enum StorageType {
         CLOUDSTORAGE,
         URL,
+        LOCAL,
         UNKNOWN;
 
         public static StorageType valueOfOrDefault(final String value) {
