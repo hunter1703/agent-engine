@@ -1,10 +1,13 @@
 package com.agentengine.runtime.tools.planning.beans;
 
 import com.agentengine.util.common.annotations.ToolSchema;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.UUID;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Task {
     @ToolSchema(
+            name = "task_id",
             description =
                     "Auto-generated unique identifier for this task. Set by the system; do not provide when creating tasks.",
             optional = true)
@@ -13,7 +16,7 @@ public class Task {
     @ToolSchema(
             name = "parent_id",
             description =
-                    "ID (taskId) of an existing task that this task is a child of. Establishes both hierarchy and "
+                    "ID (task_id) of an existing task that this task is a child of. Establishes both hierarchy and "
                             + "execution ordering: the parent must be IN_PROGRESS before a child can be started, and "
                             + "the parent cannot be completed until all children are in a terminal state. Tasks are "
                             + "executed depth-first (parent before children; children before siblings). "

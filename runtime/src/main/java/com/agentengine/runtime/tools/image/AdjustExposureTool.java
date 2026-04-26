@@ -24,7 +24,7 @@ public final class AdjustExposureTool extends ImageEditingTool {
                     + "All parameters are on a [-100, 100] scale where 0 means no change. "
                     + "IMPORTANT: call this tool at most once per editing session — a second call compounds the effect. "
                     + "Consolidate all tonal decisions into a single call. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

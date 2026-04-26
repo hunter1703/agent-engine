@@ -19,7 +19,7 @@ public final class AdjustTemperatureTool extends ImageEditingTool {
             "Adjusts the white balance of an image: temperature shifts the warm/cool axis, tint shifts the green/magenta axis. "
                     + "Use temperature to make an image feel warmer (golden hour, candlelight) or cooler (moonlight, shade). "
                     + "Use tint to correct fluorescent or mixed-light colour casts. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

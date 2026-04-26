@@ -29,7 +29,7 @@ public final class AdjustClarityTool extends ImageEditingTool {
             "Adjusts clarity: negative values create a soft, dreamy, ethereal glow (ideal for misty or romantic looks); "
                     + "positive values increase local contrast for a crisp, sharp, punchy result. "
                     + "This is the primary tool for atmosphere — use negative clarity to create mist, softness, or a luminous quality. "
-                    + "Supports JPEG and PNG. Returns { outputSource } on success.",
+                    + "Supports JPEG and PNG. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -40,7 +40,7 @@ public final class AdjustClarityTool extends ImageEditingTool {
     public Map<String, Object> execute(
             @ToolSchema(name = "source", description = "Storage source of the input image.")
                     String source,
-            @ToolSchema(name = "clarity", description = "Clarity amount. Negative = soft/dreamy/glow (range [-100, 0]). Positive = crisp/sharp/punchy (range [0, 100]). 0 = no change.")
+            @ToolSchema(name = "clarity", description = "Clarity amount. Negative = soft/dreamy/glow (range [-100, 0]): -15 subtle softness, -30 noticeable glow, -50 heavy atmosphere, -80 extreme mist. Positive = crisp/sharp/punchy (range [0, 100]): 20 mild crispness, 40 punchy, 60 very sharp. 0 = no change.")
                     double clarity) {
 
         if (clarity == 0.0) {

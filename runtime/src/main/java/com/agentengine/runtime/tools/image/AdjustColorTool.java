@@ -26,7 +26,7 @@ public final class AdjustColorTool extends ImageEditingTool {
                     + "hue rotation, saturation change, and lightness change with a smooth cosine falloff so "
                     + "transitions are natural. Always pass all adjustments for the image in a single call. "
                     + "Supports JPEG and PNG up to 100MP. "
-                    + "Returns { outputSource } on success.",
+                    + "Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

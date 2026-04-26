@@ -29,7 +29,7 @@ public final class CreatePlanTool extends Tool {
                     + "establishes both hierarchy and execution ordering (parent must be started before children; "
                     + "children must be terminal before parent can complete). "
                     + "Returns: { status, createdPlan } on success, where createdPlan contains the full plan "
-                    + "including the assigned taskId for every task — these IDs are required for all subsequent "
+                    + "including the assigned task_id for every task — these IDs are required for all subsequent "
                     + "task operations; or { error } on failure.",
             Map.of());
 
@@ -53,7 +53,7 @@ public final class CreatePlanTool extends Tool {
                             description =
                                     "Initial list of task objects. Each task requires 'name' (short label) and 'goal' "
                                             + "(expected result). Optionally include 'description' for detail. To establish "
-                                            + "parent-child relationships within this list, explicitly set 'taskId' on the parent "
+                                            + "parent-child relationships within this list, explicitly set 'task_id' on the parent "
                                             + "task and reference that same value in the child's 'parent_id' — IDs are otherwise "
                                             + "assigned automatically and not predictable. May be empty.")
                     List<Task> tasks) {

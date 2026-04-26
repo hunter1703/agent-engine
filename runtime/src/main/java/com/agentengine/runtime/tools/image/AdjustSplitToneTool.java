@@ -19,7 +19,7 @@ public final class AdjustSplitToneTool extends ImageEditingTool {
             "Applies split toning: a colour tint to shadows and a separate tint to highlights, with a smooth luminance-based crossover. "
                     + "This is the primary tool for cinematic colour grading — use it to add cool cyan/blue shadows and warm amber highlights, "
                     + "or any other two-tone grade. The balance parameter shifts the crossover point. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

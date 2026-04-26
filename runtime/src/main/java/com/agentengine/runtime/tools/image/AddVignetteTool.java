@@ -20,7 +20,7 @@ public final class AddVignetteTool extends ImageEditingTool {
                     + "Negative strength darkens edges (classic vignette, draws focus inward). "
                     + "Positive strength lightens edges (bright-edge effect). "
                     + "Use size to control how much of the centre is protected, and feather for transition softness. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

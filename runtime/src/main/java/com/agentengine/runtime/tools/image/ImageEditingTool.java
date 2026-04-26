@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -29,16 +30,17 @@ public abstract class ImageEditingTool extends BinaryDataTool {
 
     private static final Logger LOG = LoggerFactory.getLogger(ImageEditingTool.class);
 
-    private final CloudStorageService cloudStorageService;
-
     protected ImageEditingTool(final ToolDescriptor descriptor, final CloudStorageService cloudStorageService) {
         super(descriptor, false, cloudStorageService);
-        this.cloudStorageService = cloudStorageService;
     }
 
     /**
      * Download the image at {@code source}, apply {@code adjustment}, upload the result, and return
-     * {@code { outputSource }} on success or {@code { error }} on failure.
+     * {@code { outputSource, files }} on success or {@code { error }} on failure.
+     * <p>
+     * Including {@code files} triggers {@link BinaryDataTool#processLlmRequest} to inject the output
+     * image as binary content before the next model call, so the model sees the result automatically
+     * without a separate {@code open_file} call.
      *
      * @param source     cloud storage source of the input image
      * @param adjustment function that receives the input temp file and returns the processed output temp file;
@@ -60,7 +62,7 @@ public abstract class ImageEditingTool extends BinaryDataTool {
                         try (final InputStream outputStream = new FileInputStream(outputTempFile)) {
                             final FileDetails result = cloudStorageService.upload(
                                     UUID.randomUUID().toString(), outputStream, outputTempFile.length(), "image/" + format);
-                            return Map.of("outputSource", result.source());
+                            return Map.of("outputSource", result.source(), "files", List.of(result));
                         }
                     } finally {
                         outputTempFile.delete();

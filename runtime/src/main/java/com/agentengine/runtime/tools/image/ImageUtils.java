@@ -14,9 +14,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.awt.image.ConvolveOp;
 import java.awt.image.DataBufferInt;
-import java.awt.image.Kernel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -89,6 +87,7 @@ public final class ImageUtils {
             final List<Rectangle> tiles = buildTiles(width, height);
 
             final BufferedImage outputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            final int[] destPixels = ((DataBufferInt) outputImage.getRaster().getDataBuffer()).getData();
             final List<Callable<Void>> callables = new ArrayList<>();
             for (final Rectangle tile : tiles) {
                 callables.add(() -> {
@@ -100,10 +99,9 @@ public final class ImageUtils {
                         final int[] pixels = ((DataBufferInt) normalized.getRaster().getDataBuffer()).getData();
                         tileOp.apply(pixels, tile.x, tile.y, tile.width, tile.height, width, height);
 
-                        synchronized (outputImage) {
-                            final Graphics2D g2d = outputImage.createGraphics();
-                            g2d.drawImage(normalized, tile.x, tile.y, null);
-                            g2d.dispose();
+                        // Tiles are disjoint — each writes to a unique index range; no lock needed.
+                        for (int row = 0; row < tile.height; row++) {
+                            System.arraycopy(pixels, row * tile.width, destPixels, (tile.y + row) * width + tile.x, tile.width);
                         }
                         return null;
                     } finally {
@@ -376,7 +374,7 @@ public final class ImageUtils {
      *   (1.000, 1.000)  — fixed white anchor
      * </pre>
      * Each zone y-value is {@code x + offset/100 * 0.5}, clamped to [0,1].
-     * A Catmull-Rom spline is evaluated through these points and sampled into the LUT.
+     * A non-uniform Catmull-Rom spline is evaluated through these points and sampled into the LUT.
      * When all zone offsets are zero the curve is the identity (straight diagonal).
      */
     private static int[] buildToneCurveLut(final ExposureAdjustment adj) {
@@ -401,9 +399,15 @@ public final class ImageUtils {
     }
 
     /**
-     * Evaluate a Catmull-Rom spline at position {@code x} given sorted knot arrays.
-     * Uses phantom end-points (reflection of the first and last segments) so the curve
-     * passes through all supplied points including the endpoints.
+     * Evaluate a non-uniform Catmull-Rom spline at position {@code x} given sorted knot arrays.
+     * <p>
+     * Uses chord-length parameterized tangents (average of adjacent segment slopes) so that the
+     * curve is exactly the identity when control points lie on {@code y = x}, regardless of knot
+     * x-spacing. This is essential for the tone curve: with all zone offsets at zero the LUT must
+     * be the identity transformation.
+     * <p>
+     * Boundary tangents use the one-sided finite difference (slope of the first/last segment),
+     * equivalent to a "clamped" end condition aligned with the adjacent segment.
      */
     private static double catmullRom(final double[] kx, final double[] ky, final double x) {
         final int n = kx.length;
@@ -421,21 +425,34 @@ public final class ImageUtils {
         final double dx = kx[seg + 1] - kx[seg];
         final double t = (dx == 0.0) ? 0.0 : (x - kx[seg]) / dx;
 
-        // Catmull-Rom requires four points: P0, P1, P2, P3
-        // Use phantom points at the boundaries by reflecting the adjacent segment
-        final double p0 = (seg > 0)     ? ky[seg - 1] : 2 * ky[0]     - ky[1];
-        final double p1 = ky[seg];
-        final double p2 = ky[seg + 1];
-        final double p3 = (seg < n - 2) ? ky[seg + 2] : 2 * ky[n - 1] - ky[n - 2];
+        // Non-uniform tangents: average of adjacent segment slopes (dy/dx), scaled by segment width
+        // for the Hermite cubic form. For y=x control points this always gives slope 1.0.
+        final double m1 = nonUniformTangent(kx, ky, seg,     n) * dx;
+        final double m2 = nonUniformTangent(kx, ky, seg + 1, n) * dx;
 
-        // Standard Catmull-Rom formula
+        // Cubic Hermite basis
         final double t2 = t * t;
         final double t3 = t2 * t;
-        final double y = 0.5 * ((2 * p1)
-                + (-p0 + p2) * t
-                + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
-                + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+        final double y = (2 * t3 - 3 * t2 + 1) * ky[seg]
+                       + (t3 - 2 * t2 + t)      * m1
+                       + (-2 * t3 + 3 * t2)     * ky[seg + 1]
+                       + (t3 - t2)               * m2;
         return Math.clamp(y, 0.0, 1.0);
+    }
+
+    /**
+     * Chord-length Catmull-Rom slope at knot {@code i}: average of adjacent segment slopes.
+     * At boundaries, falls back to the one-sided slope of the single adjacent segment.
+     */
+    private static double nonUniformTangent(final double[] kx, final double[] ky, final int i, final int n) {
+        if (i == 0) {
+            return (ky[1] - ky[0]) / (kx[1] - kx[0]);
+        }
+        if (i == n - 1) {
+            return (ky[n - 1] - ky[n - 2]) / (kx[n - 1] - kx[n - 2]);
+        }
+        return 0.5 * ((ky[i + 1] - ky[i]) / (kx[i + 1] - kx[i])
+                    + (ky[i] - ky[i - 1]) / (kx[i] - kx[i - 1]));
     }
 
     // -------------------------------------------------------------------------
@@ -580,12 +597,12 @@ public final class ImageUtils {
 
         final double cx = imageW / 2.0;
         final double cy = imageH / 2.0;
-        // Normalise distances by the half-diagonal so corners are always at distance 1.0
-        final double halfDiag = Math.sqrt(cx * cx + cy * cy);
 
-        // Inner radius: fraction of half-diagonal where vignette starts (size=50 → 0.5)
+        // Inner radius: fraction of the image half-dimensions where vignette starts.
+        // Normalising each axis independently by cx/cy produces a true ellipse that follows
+        // the image aspect ratio — all four edge midpoints sit at the same normalised distance.
         final double innerRadius = (adj.size() <= 0 ? 50.0 : adj.size()) / 100.0;
-        // Feather zone width: fraction of half-diagonal over which the transition occurs
+        // Feather zone width: fraction of the half-dimensions over which the transition occurs.
         final double featherWidth = Math.max(0.01, (adj.feather() <= 0 ? 50.0 : adj.feather()) / 100.0) * 0.5;
         final double outerRadius = innerRadius + featherWidth;
 
@@ -594,8 +611,8 @@ public final class ImageUtils {
 
         for (int py = 0; py < tileH; py++) {
             for (int px = 0; px < tileW; px++) {
-                final double dx = (tileX + px - cx) / halfDiag;
-                final double dy = (tileY + py - cy) / halfDiag;
+                final double dx = (tileX + px - cx) / cx;
+                final double dy = (tileY + py - cy) / cy;
                 final double dist = Math.sqrt(dx * dx + dy * dy);
 
                 final double factor;
@@ -717,32 +734,70 @@ public final class ImageUtils {
     }
 
     /**
-     * Apply a separable Gaussian blur to a TYPE_INT_RGB image.
-     * Uses {@link ConvolveOp} with {@code EDGE_NO_OP} to avoid border artifacts.
+     * Apply a separable Gaussian blur to a TYPE_INT_RGB image with clamp-to-edge boundary handling.
+     * <p>
+     * Each pass accesses out-of-bounds pixels by clamping the coordinate to the nearest valid index.
+     * This avoids the zero-fill artifact that ConvolveOp with EDGE_NO_OP produces (freshly allocated
+     * destination buffers are all-zero, so border pixels in the blurred output would be black rather
+     * than a true weighted average, causing border brightening in the clarity blend step).
      */
     private static BufferedImage gaussianBlur(final BufferedImage src, final double sigma) {
         final int radius = (int) Math.ceil(sigma * 3.0);
         final int size = 2 * radius + 1;
-        final float[] kernel = new float[size];
-        float sum = 0f;
+        final double[] kernel = new double[size];
+        double sum = 0.0;
         for (int i = 0; i < size; i++) {
             final double x = i - radius;
-            kernel[i] = (float) Math.exp(-(x * x) / (2.0 * sigma * sigma));
+            kernel[i] = Math.exp(-(x * x) / (2.0 * sigma * sigma));
             sum += kernel[i];
         }
         for (int i = 0; i < size; i++) {
             kernel[i] /= sum;
         }
 
-        final Kernel hKernel = new Kernel(size, 1, kernel);
-        final Kernel vKernel = new Kernel(1, size, kernel);
-        final ConvolveOp hBlur = new ConvolveOp(hKernel, ConvolveOp.EDGE_NO_OP, null);
-        final ConvolveOp vBlur = new ConvolveOp(vKernel, ConvolveOp.EDGE_NO_OP, null);
+        final int w = src.getWidth();
+        final int h = src.getHeight();
+        final int[] srcPixels = ((DataBufferInt) src.getRaster().getDataBuffer()).getData();
 
-        final BufferedImage tmp = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
-        final BufferedImage dst = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
-        hBlur.filter(src, tmp);
-        vBlur.filter(tmp, dst);
+        // Horizontal pass: src → tmp
+        final BufferedImage tmp = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        final int[] tmpPixels = ((DataBufferInt) tmp.getRaster().getDataBuffer()).getData();
+        for (int row = 0; row < h; row++) {
+            for (int col = 0; col < w; col++) {
+                double r = 0, g = 0, b = 0;
+                for (int k = 0; k < size; k++) {
+                    final int srcCol = Math.clamp(col + k - radius, 0, w - 1);
+                    final int p = srcPixels[row * w + srcCol];
+                    r += ((p >> 16) & 0xFF) * kernel[k];
+                    g += ((p >> 8)  & 0xFF) * kernel[k];
+                    b += (p & 0xFF)          * kernel[k];
+                }
+                tmpPixels[row * w + col] = 0xFF000000
+                        | (clamp((int) Math.round(r)) << 16)
+                        | (clamp((int) Math.round(g)) << 8)
+                        |  clamp((int) Math.round(b));
+            }
+        }
+
+        // Vertical pass: tmp → dst
+        final BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        final int[] dstPixels = ((DataBufferInt) dst.getRaster().getDataBuffer()).getData();
+        for (int col = 0; col < w; col++) {
+            for (int row = 0; row < h; row++) {
+                double r = 0, g = 0, b = 0;
+                for (int k = 0; k < size; k++) {
+                    final int srcRow = Math.clamp(row + k - radius, 0, h - 1);
+                    final int p = tmpPixels[srcRow * w + col];
+                    r += ((p >> 16) & 0xFF) * kernel[k];
+                    g += ((p >> 8)  & 0xFF) * kernel[k];
+                    b += (p & 0xFF)          * kernel[k];
+                }
+                dstPixels[row * w + col] = 0xFF000000
+                        | (clamp((int) Math.round(r)) << 16)
+                        | (clamp((int) Math.round(g)) << 8)
+                        |  clamp((int) Math.round(b));
+            }
+        }
         return dst;
     }
 

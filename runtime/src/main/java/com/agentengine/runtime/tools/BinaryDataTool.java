@@ -1,5 +1,6 @@
 package com.agentengine.runtime.tools;
 
+import com.agentengine.runtime.tools.image.ImageUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -19,7 +20,7 @@ import java.util.*;
 
 public class BinaryDataTool extends Tool {
 
-    private final CloudStorageService cloudStorageService;
+    protected final CloudStorageService cloudStorageService;
 
     protected BinaryDataTool(final ToolDescriptor toolDescriptor, final boolean isLongRunning, final CloudStorageService cloudStorageService) {
         super(toolDescriptor, isLongRunning);
@@ -83,8 +84,12 @@ public class BinaryDataTool extends Tool {
                         }
                     }
 
+                    final Map<String, Object> sentinelData = CollectionUtils.nullSafeMutableMap(response);
+                    sentinelData.remove("files");
+                    sentinelData.put("message", "File contents are attached in below message");
+                    sentinelData.put("fileDetails", JsonUtils.toJson(files));
                     final FunctionResponse sentinel = functionResponse.toBuilder()
-                            .response(Map.of("message", "File contents are attached in below message", "fileDetails", JsonUtils.toJson(files)))
+                            .response(sentinelData)
                             .build();
                     newParts.add(part.toBuilder().functionResponse(sentinel).build());
                 }
@@ -125,21 +130,10 @@ public class BinaryDataTool extends Tool {
         if (fileDetails.mimeType() != null && !fileDetails.mimeType().isBlank()) {
             return fileDetails.mimeType();
         }
-        // Magic-byte detection for common image formats
-        if (bytes.length >= 3
-                && (bytes[0] & 0xFF) == 0xFF
-                && (bytes[1] & 0xFF) == 0xD8
-                && (bytes[2] & 0xFF) == 0xFF) {
-            return "image/jpeg";
+        try {
+            return "image/" + ImageUtils.detectFormatFromHeader(bytes);
+        } catch (Exception ignored) {
         }
-        if (bytes.length >= 4
-                && (bytes[0] & 0xFF) == 0x89
-                && bytes[1] == 'P'
-                && bytes[2] == 'N'
-                && bytes[3] == 'G') {
-            return "image/png";
-        }
-        // Extension fallback
         final String name = fileDetails.name() != null ? fileDetails.name().toLowerCase() : "";
         if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
         if (name.endsWith(".png")) return "image/png";
