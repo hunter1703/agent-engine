@@ -30,7 +30,7 @@ public record SplitToneAdjustment(
         @JsonProperty("highlight_saturation")
         double highlightSaturation,
 
-        @ToolSchema(name = "balance", description = "Shifts the luminance crossover point between shadows and highlights. Positive values push the crossover darker (more of the image treated as highlights); negative values push it brighter (more treated as shadows). Range [-100, 100]; 0 = crossover at mid-grey.", optional = true)
+        @ToolSchema(name = "balance", description = "Shifts the luminance crossover point between shadows and highlights. Positive = more of the image is treated as highlights (tint spreads into midtones); negative = more is treated as shadows. Range [-100, 100]; 0 = crossover at mid-grey.", optional = true)
         @JsonProperty("balance")
         double balance) {
 }

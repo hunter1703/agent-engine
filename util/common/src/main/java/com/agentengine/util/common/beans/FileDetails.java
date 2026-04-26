@@ -14,13 +14,13 @@ import com.agentengine.util.common.annotations.ToolSchema;
  * @param size         optional file size in bytes; {@code -1} if unknown
  */
 public record FileDetails(
-        @ToolSchema(name = "name", description = "Original filename including extension, e.g. photo.jpg. Used to determine file format.")
+        @ToolSchema(name = "name", description = "Display name for the file, e.g. photo.jpg. Optional — leave blank if unknown.", optional = true)
         String name,
 
-        @ToolSchema(name = "source", description = "Storage location of the file. For CLOUDSTORAGE, format is <bucket>/<key>.")
+        @ToolSchema(name = "source", description = "The complete storage location of the file. For CLOUDSTORAGE this is the full bucket/key e.g. 'agent-assets/2ec11fea6b814ddc91fc57829890e788'. Do not split, shorten, or modify this value.")
         String source,
 
-        @ToolSchema(name = "type", description = "Storage backend type.", enums = {"CLOUDSTORAGE", "UNKNOWN", "URL"})
+        @ToolSchema(name = "type", description = "Where the file is stored — NOT the file format. This is not a MIME type.", enums = {"CLOUDSTORAGE", "URL", "LOCAL", "UNKNOWN"})
         StorageType type,
 
         @ToolSchema(name = "mimeType", description = "MIME type of the file, e.g. image/jpeg or image/png.", optional = true)

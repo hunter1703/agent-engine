@@ -21,7 +21,7 @@ public record ColorAdjustment(
         @JsonProperty("hue_width")
         double hueWidth,
 
-        @ToolSchema(name = "hue_shift", description = "Degrees to rotate the hue of affected pixels. Follows the color wheel order: red(0)→yellow(60)→green(120)→cyan(180)→blue(240)→magenta(300)→red(360). Example: +30 on reds shifts them toward orange; -30 shifts them toward magenta. No range restriction; wraps at 360°.")
+        @ToolSchema(name = "hue_shift", description = "Degrees to rotate the hue of affected pixels along the colour wheel: red(0)→yellow(60)→green(120)→cyan(180)→blue(240)→magenta(300)→red(360). Example: +30 on reds shifts them toward orange; -30 shifts them toward magenta. Practical range: [-90, 90]; larger values produce unnatural results.", optional = true)
         @JsonProperty("hue_shift")
         double hueShift,
 

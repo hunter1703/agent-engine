@@ -4,43 +4,41 @@ import com.agentengine.util.common.annotations.ToolSchema;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Exposure and tone adjustments for an image, modelled after Lightroom's Basic panel.
- * All values are on a [-100, 100] scale where 0 means no change.
+ * Exposure and tone adjustments modelled after a four-zone tone curve.
+ * Each zone parameter shifts the output brightness of pixels in that luminance range;
+ * the curve is interpolated smoothly between zones so adjustments blend naturally.
+ * All zone values are on a [-100, 100] scale where 0 means no change.
  *
- * @param brightness overall brightness offset applied to all channels
- * @param contrast    cubic S-curve contrast: lifts highlights and crushes shadows around a midtone pivot
- * @param highlights  recovery or boost of bright areas (luminance > 0.5)
- * @param shadows     lift or crush of dark areas (luminance < 0.5)
- * @param whites      hard clip point for the brightest tones (luminance > 0.75)
- * @param blacks      hard clip point for the darkest tones (luminance < 0.25)
- * @param saturation  global saturation shift applied across all hues
+ * <p>Tone curve zones (luminance ranges):
+ * <ul>
+ *   <li>{@code blacks}     — deepest shadows, luminance 0–25%</li>
+ *   <li>{@code shadows}    — dark midtones, luminance 25–50%</li>
+ *   <li>{@code highlights} — light midtones, luminance 50–75%</li>
+ *   <li>{@code whites}     — brightest tones, luminance 75–100%</li>
+ * </ul>
  */
 public record ExposureAdjustment(
-        @ToolSchema(name = "brightness", description = "Overall brightness offset applied equally to all channels. Range [-100, 100]; 0 = no change.", optional = true)
+        @ToolSchema(name = "brightness", description = "Global exposure shift applied to all tones before the curve. +30 brightens the whole image; -30 darkens it. Use for overall exposure correction. Range [-100, 100]; 0 = no change.", optional = true)
         @JsonProperty("brightness")
         double brightness,
 
-        @ToolSchema(name = "contrast", description = "Cubic S-curve contrast: positive values lift highlights and crush shadows around a midtone pivot, negative values flatten the image (matte/film look). Range [-100, 100]; 0 = no change.", optional = true)
-        @JsonProperty("contrast")
-        double contrast,
-
-        @ToolSchema(name = "highlights", description = "Recover blown highlights (negative) or boost bright areas (positive). Affects pixels with luminance above 0.5 with cosine falloff. Range [-100, 100]; 0 = no change.", optional = true)
-        @JsonProperty("highlights")
-        double highlights,
-
-        @ToolSchema(name = "shadows", description = "Lift crushed shadows (positive) or deepen dark areas (negative). Affects pixels with luminance below 0.5 with cosine falloff. Range [-100, 100]; 0 = no change.", optional = true)
-        @JsonProperty("shadows")
-        double shadows,
-
-        @ToolSchema(name = "whites", description = "Shift the white point: positive clips more highlights to white, negative pulls the brightest tones down. Affects pixels with luminance above 0.75. Range [-100, 100]; 0 = no change.", optional = true)
-        @JsonProperty("whites")
-        double whites,
-
-        @ToolSchema(name = "blacks", description = "Shift the black point: negative clips more shadows to black, positive lifts the darkest tones. Affects pixels with luminance below 0.25. Range [-100, 100]; 0 = no change.", optional = true)
+        @ToolSchema(name = "blacks", description = "Tone curve offset for the deepest shadows (luminance 0–25%). +30 lifts blacks toward grey (open, airy look); -30 crushes them toward pure black (deep, rich shadows). Cinematic matte grades typically use +20 to +40 here. Range [-100, 100]; 0 = no change.", optional = true)
         @JsonProperty("blacks")
         double blacks,
 
-        @ToolSchema(name = "saturation", description = "Global saturation shift applied across all hues. Positive values intensify colours; negative values desaturate toward greyscale. For targeting specific hue ranges, prefer adjust_color instead. Range [-100, 100]; 0 = no change.", optional = true)
+        @ToolSchema(name = "shadows", description = "Tone curve offset for dark midtones (luminance 25–50%). +30 opens up shadow detail and makes dark areas feel lighter; -30 deepens them. Use +20 to +50 to recover detail in underexposed shadows. Range [-100, 100]; 0 = no change.", optional = true)
+        @JsonProperty("shadows")
+        double shadows,
+
+        @ToolSchema(name = "highlights", description = "Tone curve offset for light midtones (luminance 50–75%). +30 brightens the upper midtones; -30 pulls them down for a more subdued, moody look. Use -20 to -40 to tame overly bright midtones. Range [-100, 100]; 0 = no change.", optional = true)
+        @JsonProperty("highlights")
+        double highlights,
+
+        @ToolSchema(name = "whites", description = "Tone curve offset for the brightest tones (luminance 75–100%). +30 lifts whites (brighter, airier); -30 pulls highlights down (matte, controlled). Use -20 to -40 to recover blown highlights. Range [-100, 100]; 0 = no change.", optional = true)
+        @JsonProperty("whites")
+        double whites,
+
+        @ToolSchema(name = "saturation", description = "Global colour intensity shift applied after the tone curve. +30 makes all colours more vivid; -30 desaturates toward greyscale. For targeting specific hue ranges only, use the colour adjustment tool instead. Range [-100, 100]; 0 = no change.", optional = true)
         @JsonProperty("saturation")
         double saturation) {
 }

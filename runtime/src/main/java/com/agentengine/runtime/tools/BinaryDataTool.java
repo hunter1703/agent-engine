@@ -3,6 +3,7 @@ package com.agentengine.runtime.tools;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.models.LlmRequest;
@@ -73,9 +74,12 @@ public class BinaryDataTool extends Tool {
                     }
 
                     for (final Map<String, Object> file : CollectionUtils.nullSafeList(files)) {
-                        final FileDetails fileDetails = JsonUtils.fromMap(file, FileDetails.class);
+                        final FileDetails raw = JsonUtils.fromMap(file, FileDetails.class);
+                        final FileDetails fileDetails = enrichFileDetails(raw);
                         try (final InputStream inputStream = cloudStorageService.download(fileDetails)) {
-                            binaryContentParts.add(Part.fromBytes(inputStream.readAllBytes(), fileDetails.mimeType()));
+                            final byte[] bytes = inputStream.readAllBytes();
+                            final String mimeType = resolveMimeType(fileDetails, bytes);
+                            binaryContentParts.add(Part.fromBytes(bytes, mimeType));
                         }
                     }
 
@@ -97,4 +101,50 @@ public class BinaryDataTool extends Tool {
     }
 
     public record FileResponse(List<FileDetails> files){}
+
+    /**
+     * Fill in any missing fields on a {@link FileDetails} deserialized from a model response.
+     * Models sometimes omit {@code name} or send an incorrect {@code type} — this normalises both.
+     */
+    private static FileDetails enrichFileDetails(final FileDetails raw) {
+        final String source = raw.source() != null ? raw.source() : "";
+        String name = raw.name();
+        name = StringUtils.isNotBlank(raw.name()) ? name : source.substring(source.lastIndexOf('/') + 1);
+        final FileDetails.StorageType type =
+                (raw.type() == null || raw.type() == FileDetails.StorageType.UNKNOWN)
+                        ? FileDetails.StorageType.CLOUDSTORAGE
+                        : raw.type();
+        return new FileDetails(name, source, type, raw.mimeType(), raw.size());
+    }
+
+    /**
+     * Resolve the MIME type for a downloaded file.
+     * Priority: explicit mimeType on FileDetails → magic-byte detection → extension fallback.
+     */
+    private static String resolveMimeType(final FileDetails fileDetails, final byte[] bytes) {
+        if (fileDetails.mimeType() != null && !fileDetails.mimeType().isBlank()) {
+            return fileDetails.mimeType();
+        }
+        // Magic-byte detection for common image formats
+        if (bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xFF
+                && (bytes[1] & 0xFF) == 0xD8
+                && (bytes[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        if (bytes.length >= 4
+                && (bytes[0] & 0xFF) == 0x89
+                && bytes[1] == 'P'
+                && bytes[2] == 'N'
+                && bytes[3] == 'G') {
+            return "image/png";
+        }
+        // Extension fallback
+        final String name = fileDetails.name() != null ? fileDetails.name().toLowerCase() : "";
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+        if (name.endsWith(".png")) return "image/png";
+        if (name.endsWith(".gif")) return "image/gif";
+        if (name.endsWith(".webp")) return "image/webp";
+        return "application/octet-stream";
+    }
 }

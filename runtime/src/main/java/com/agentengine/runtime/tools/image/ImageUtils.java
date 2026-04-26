@@ -2,14 +2,21 @@ package com.agentengine.runtime.tools.image;
 
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
 import java.awt.image.DataBufferInt;
+import java.awt.image.Kernel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,13 +29,37 @@ import java.util.function.Consumer;
 /**
  * Shared image processing utilities for all image tools.
  * Covers I/O infrastructure (tiling, format detection, dimension reading) and
- * pixel-level math for color grading and exposure adjustment.
+ * pixel-level math for color grading, exposure, temperature, split toning, vignette, and clarity.
  */
 public final class ImageUtils {
 
     private static final int TILE_SIZE = 256;
+    private static final float JPEG_OUTPUT_QUALITY = 0.95f;
 
     private ImageUtils() {
+    }
+
+    // -------------------------------------------------------------------------
+    // Tile operation functional interface
+    // -------------------------------------------------------------------------
+
+    /**
+     * Pixel operation that receives both the pixel array and the tile's position within the full image.
+     * Use this instead of {@link Consumer} when the operation needs to know absolute pixel coordinates
+     * (e.g. vignette, gradient masks).
+     */
+    @FunctionalInterface
+    public interface TileOperation {
+        /**
+         * @param pixels    TYPE_INT_RGB packed ints for this tile, modified in place
+         * @param tileX     left edge of this tile in image coordinates
+         * @param tileY     top edge of this tile in image coordinates
+         * @param tileW     width of this tile in pixels
+         * @param tileH     height of this tile in pixels
+         * @param imageW    full image width
+         * @param imageH    full image height
+         */
+        void apply(int[] pixels, int tileX, int tileY, int tileW, int tileH, int imageW, int imageH);
     }
 
     // -------------------------------------------------------------------------
@@ -37,56 +68,88 @@ public final class ImageUtils {
 
     /**
      * Process an image file tile-by-tile, applying {@code pixelOp} to each tile's pixel array in place.
-     * <p>
-     * The tiling, I/O, normalization, output assembly, and file writing are handled here.
-     * Callers supply only the pixel-level operation — everything else is identical across tools.
-     *
-     * @param inputFile the source image (JPEG or PNG)
-     * @param pixelOp   operation applied to each tile's {@code int[]} of TYPE_INT_RGB packed pixels, in place
-     * @return a temp file containing the processed image in the same format as the input
+     * Use this overload when the operation does not need tile coordinates.
      */
-    public static File processTiled(final File inputFile, final Consumer<int[]> pixelOp) throws IOException {
-        final String format = getFileFormat(inputFile.getName());
+    public static File processTiledOnPixel(final File inputFile, final Consumer<int[]> pixelOp) {
+        return processTiled(inputFile, (pixels, tx, ty, tw, th, iw, ih) -> pixelOp.accept(pixels));
+    }
 
-        final int[] dimensions = readDimensions(inputFile, format);
-        final int width = dimensions[0];
-        final int height = dimensions[1];
+    /**
+     * Process an image file tile-by-tile, applying {@code tileOp} to each tile with full coordinate context.
+     * Use this overload when the operation needs to know each pixel's absolute position (e.g. vignette).
+     */
+    public static File processTiled(final File inputFile, final TileOperation tileOp) {
+        try {
+            final String format = getFileFormat(inputFile.getName());
 
-        final List<Rectangle> tiles = buildTiles(width, height);
+            final int[] dimensions = readDimensions(inputFile, format);
+            final int width = dimensions[0];
+            final int height = dimensions[1];
 
-        final BufferedImage outputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        final List<Callable<Void>> callables = new ArrayList<>();
-        for (final Rectangle tile : tiles) {
-            callables.add(() -> {
-                // each virtual thread gets its own ImageReader — ImageReader is not thread-safe
-                final ImageReader reader = getImageReader(format);
-                try (final ImageInputStream stream = ImageIO.createImageInputStream(inputFile)) {
-                    reader.setInput(stream, false, true);
-                    final BufferedImage normalized = readAndNormalizeTile(reader, tile);
+            final List<Rectangle> tiles = buildTiles(width, height);
 
-                    // Direct DataBufferInt access gives a raw int[] into the image's backing store with no
-                    // per-pixel method call overhead. getRGB/setRGB route through ColorModel conversion on
-                    // every call — safe for arbitrary image types but ~10x slower at 100MP scale. This cast
-                    // is guaranteed safe because readAndNormalizeTile always produces TYPE_INT_RGB.
-                    final int[] pixels = ((DataBufferInt) normalized.getRaster().getDataBuffer()).getData();
-                    pixelOp.accept(pixels);
+            final BufferedImage outputImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            final List<Callable<Void>> callables = new ArrayList<>();
+            for (final Rectangle tile : tiles) {
+                callables.add(() -> {
+                    final ImageReader reader = getImageReader(format);
+                    try (final ImageInputStream stream = ImageIO.createImageInputStream(inputFile)) {
+                        reader.setInput(stream, false, true);
+                        final BufferedImage normalized = readAndNormalizeTile(reader, tile);
 
-                    synchronized (outputImage) {
-                        final Graphics2D g2d = outputImage.createGraphics();
-                        g2d.drawImage(normalized, tile.x, tile.y, null);
-                        g2d.dispose();
+                        final int[] pixels = ((DataBufferInt) normalized.getRaster().getDataBuffer()).getData();
+                        tileOp.apply(pixels, tile.x, tile.y, tile.width, tile.height, width, height);
+
+                        synchronized (outputImage) {
+                            final Graphics2D g2d = outputImage.createGraphics();
+                            g2d.drawImage(normalized, tile.x, tile.y, null);
+                            g2d.dispose();
+                        }
+                        return null;
+                    } finally {
+                        reader.dispose();
                     }
-                    return null;
-                } finally {
-                    reader.dispose();
-                }
-            });
-        }
-        StructuredConcurrencyUtils.runConcurrently(callables);
+                });
+            }
+            StructuredConcurrencyUtils.runConcurrently(callables);
 
-        final File outputFile = Files.createTempFile("processed", "." + format).toFile();
-        ImageIO.write(outputImage, format, outputFile);
-        return outputFile;
+            final File outputFile = Files.createTempFile("processed", "." + format).toFile();
+            try {
+                writeImage(outputImage, format, outputFile);
+            } catch (IOException e) {
+                outputFile.delete();
+                throw e;
+            }
+            return outputFile;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Write a {@link BufferedImage} to a file at high quality.
+     * JPEG is written at {@value JPEG_OUTPUT_QUALITY} quality to prevent generational loss on repeated edits.
+     * PNG is lossless and written directly.
+     */
+    static void writeImage(final BufferedImage image, final String format, final File outputFile) throws IOException {
+        if ("jpeg".equals(format)) {
+            final Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
+            if (!writers.hasNext()) {
+                throw new IOException("No JPEG ImageWriter available");
+            }
+            final ImageWriter writer = writers.next();
+            try (final ImageOutputStream ios = ImageIO.createImageOutputStream(outputFile)) {
+                writer.setOutput(ios);
+                final ImageWriteParam param = writer.getDefaultWriteParam();
+                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                param.setCompressionQuality(JPEG_OUTPUT_QUALITY);
+                writer.write(null, new IIOImage(image, null, null), param);
+            } finally {
+                writer.dispose();
+            }
+        } else {
+            ImageIO.write(image, format, outputFile);
+        }
     }
 
     private static BufferedImage readAndNormalizeTile(final ImageReader reader, final Rectangle tile) throws IOException {
@@ -97,24 +160,17 @@ public final class ImageUtils {
         if (rawTile.getType() == BufferedImage.TYPE_INT_RGB) {
             return rawTile;
         }
-        // ImageIO decoders return varying BufferedImage types depending on format and color profile —
-        // a JPEG may come back as TYPE_3BYTE_BGR, a PNG with transparency as TYPE_4BYTE_ABGR, etc.
-        // DataBufferInt only backs TYPE_INT_* images; casting on any other type throws ClassCastException.
-        // Redrawing into a fresh TYPE_INT_RGB buffer normalizes the representation unconditionally.
         final BufferedImage normalized = new BufferedImage(tile.width, tile.height, BufferedImage.TYPE_INT_RGB);
         final Graphics2D g2d = normalized.createGraphics();
         g2d.drawImage(rawTile, 0, 0, null);
         g2d.dispose();
         return normalized;
     }
+
     // -------------------------------------------------------------------------
-    // I/O and tiling
+    // I/O and tiling helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Partition an image into non-overlapping rectangular tiles of {@value TILE_SIZE}×{@value TILE_SIZE} pixels,
-     * clipping edge tiles to the image bounds.
-     */
     private static List<Rectangle> buildTiles(final int width, final int height) {
         final List<Rectangle> tiles = new ArrayList<>();
         for (int y = 0; y < height; y += TILE_SIZE) {
@@ -191,12 +247,7 @@ public final class ImageUtils {
 
     /**
      * Build a cosine falloff lookup table for the given hue width.
-     * <p>
-     * The LUT has 181 entries (indices 0–180). Entry {@code i} holds:
-     * <ul>
-     *   <li>{@code cos((i / hueWidth) * (π / 2))} when {@code i <= hueWidth}</li>
-     *   <li>{@code 0.0} when {@code i > hueWidth}</li>
-     * </ul>
+     * Entry {@code i} holds {@code cos((i / hueWidth) * (π/2))} for i ≤ hueWidth, else 0.
      *
      * @param hueWidth half-width of the targeted hue range; must be in (0.0, 180.0]
      * @return 181-element double array
@@ -216,9 +267,6 @@ public final class ImageUtils {
 
     /**
      * Apply all hue-targeted color adjustments to a pixel array in place.
-     * <p>
-     * For each pixel: unpack RGB → convert to HSL → apply each adjustment in list order
-     * → convert back to RGB → repack.
      *
      * @param pixels      TYPE_INT_RGB packed ints, modified in place
      * @param adjustments list of targeted adjustments
@@ -263,26 +311,25 @@ public final class ImageUtils {
     }
 
     // -------------------------------------------------------------------------
-    // Exposure — luminance and tone adjustments
+    // Exposure — four-zone tone curve
     // -------------------------------------------------------------------------
 
     /**
      * Apply exposure and tone adjustments to a pixel array in place.
      * <p>
-     * Operations are applied in this order: blacks → whites → brightness → contrast → shadows/highlights.
-     * Clipping points are established first so subsequent shifts operate within the new tonal range.
+     * The four zone parameters ({@code blacks}, {@code shadows}, {@code highlights}, {@code whites})
+     * define vertical offsets at the midpoint of each luminance quarter. A Catmull-Rom spline is
+     * interpolated through all six control points — the two fixed anchors at (0,0) and (1,1) plus
+     * the four zone points — and sampled into a 256-entry LUT applied per channel.
+     * <p>
+     * Operation order: brightness offset → tone curve LUT → saturation.
      *
      * @param pixels TYPE_INT_RGB packed ints, modified in place
      * @param adj    exposure parameters; all values on a [-100, 100] scale, 0 = no change
      */
     public static void applyExposureAdjustments(final int[] pixels, final ExposureAdjustment adj) {
-        // Pre-compute constants outside the pixel loop.
-        final int brightnessOffset = (int) Math.round(adj.brightness() * 2.55);  // [-100,100] → [-255,255]
-        final double contrastFactor = (100.0 + adj.contrast()) / 100.0;          // >1 = more contrast
-        final int whitesShift = (int) Math.round(adj.whites() * 1.275);          // 100 → ~128
-        final int blacksShift = (int) Math.round(adj.blacks() * 1.275);
-        final double highlightsFactor = adj.highlights() * 1.28;                 // max ±128 additive
-        final double shadowsFactor = adj.shadows() * 1.28;
+        final int brightnessOffset = (int) Math.round(adj.brightness() * 2.55);
+        final int[] toneLut = buildToneCurveLut(adj);
 
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
@@ -290,57 +337,417 @@ public final class ImageUtils {
             int g = (pixel >> 8) & 0xFF;
             int b = pixel & 0xFF;
 
-            if (blacksShift != 0) {
-                r = clamp(r + blacksShift);
-                g = clamp(g + blacksShift);
-                b = clamp(b + blacksShift);
-            }
-
-            if (whitesShift != 0) {
-                r = clamp(r + whitesShift);
-                g = clamp(g + whitesShift);
-                b = clamp(b + whitesShift);
-            }
-
+            // 1. Brightness — global offset before the curve
             if (brightnessOffset != 0) {
                 r = clamp(r + brightnessOffset);
                 g = clamp(g + brightnessOffset);
                 b = clamp(b + brightnessOffset);
             }
 
-            if (adj.contrast() != 0.0) {
-                r = clamp((int) Math.round((r - 128) * contrastFactor + 128));
-                g = clamp((int) Math.round((g - 128) * contrastFactor + 128));
-                b = clamp((int) Math.round((b - 128) * contrastFactor + 128));
-            }
+            // 2. Four-zone tone curve — single LUT lookup per channel
+            r = toneLut[r];
+            g = toneLut[g];
+            b = toneLut[b];
 
-            if (adj.highlights() != 0.0 || adj.shadows() != 0.0) {
-                // BT.601 perceived luminance
-                final double lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
-
-                if (adj.highlights() != 0.0 && lum > 0.5) {
-                    final double w = (lum - 0.5) * 2.0;  // 0 at lum=0.5, 1 at lum=1.0
-                    final int delta = (int) Math.round(highlightsFactor * w);
-                    r = clamp(r + delta);
-                    g = clamp(g + delta);
-                    b = clamp(b + delta);
-                }
-
-                if (adj.shadows() != 0.0 && lum < 0.5) {
-                    final double w = (0.5 - lum) * 2.0;  // 0 at lum=0.5, 1 at lum=0.0
-                    final int delta = (int) Math.round(shadowsFactor * w);
-                    r = clamp(r + delta);
-                    g = clamp(g + delta);
-                    b = clamp(b + delta);
-                }
+            // 3. Global saturation
+            if (adj.saturation() != 0.0) {
+                final double[] hsl = rgbToHsl(r, g, b);
+                hsl[1] = Math.clamp(hsl[1] + adj.saturation() * 0.01, 0.0, 1.0);
+                final int[] rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+                r = rgb[0];
+                g = rgb[1];
+                b = rgb[2];
             }
 
             pixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
         }
     }
 
+    /**
+     * Build a 256-entry tone curve LUT from the four zone offsets in {@code adj}.
+     * <p>
+     * Six control points are placed on the curve:
+     * <pre>
+     *   (0.000, 0.000)  — fixed black anchor
+     *   (0.125, blacks_y)   — midpoint of the blacks zone  (0–25%)
+     *   (0.375, shadows_y)  — midpoint of the shadows zone (25–50%)
+     *   (0.625, highlights_y) — midpoint of the highlights zone (50–75%)
+     *   (0.875, whites_y)   — midpoint of the whites zone  (75–100%)
+     *   (1.000, 1.000)  — fixed white anchor
+     * </pre>
+     * Each zone y-value is {@code x + offset/100 * 0.5}, clamped to [0,1].
+     * A Catmull-Rom spline is evaluated through these points and sampled into the LUT.
+     * When all zone offsets are zero the curve is the identity (straight diagonal).
+     */
+    private static int[] buildToneCurveLut(final ExposureAdjustment adj) {
+        // Scale: offset of ±100 shifts the zone midpoint by ±0.5 in [0,1] space
+        final double scale = 0.5 / 100.0;
+        final double[] px = {0.000, 0.125, 0.375, 0.625, 0.875, 1.000};
+        final double[] py = {
+            0.000,
+            Math.clamp(0.125 + adj.blacks()      * scale, 0.0, 1.0),
+            Math.clamp(0.375 + adj.shadows()     * scale, 0.0, 1.0),
+            Math.clamp(0.625 + adj.highlights()  * scale, 0.0, 1.0),
+            Math.clamp(0.875 + adj.whites()      * scale, 0.0, 1.0),
+            1.000
+        };
+
+        final int[] lut = new int[256];
+        for (int i = 0; i < 256; i++) {
+            final double x = i / 255.0;
+            lut[i] = clamp((int) Math.round(catmullRom(px, py, x) * 255.0));
+        }
+        return lut;
+    }
+
+    /**
+     * Evaluate a Catmull-Rom spline at position {@code x} given sorted knot arrays.
+     * Uses phantom end-points (reflection of the first and last segments) so the curve
+     * passes through all supplied points including the endpoints.
+     */
+    private static double catmullRom(final double[] kx, final double[] ky, final double x) {
+        final int n = kx.length;
+
+        // Find the segment containing x
+        int seg = n - 2;
+        for (int i = 0; i < n - 1; i++) {
+            if (x <= kx[i + 1]) {
+                seg = i;
+                break;
+            }
+        }
+
+        // Local parameter t ∈ [0,1] within the segment
+        final double dx = kx[seg + 1] - kx[seg];
+        final double t = (dx == 0.0) ? 0.0 : (x - kx[seg]) / dx;
+
+        // Catmull-Rom requires four points: P0, P1, P2, P3
+        // Use phantom points at the boundaries by reflecting the adjacent segment
+        final double p0 = (seg > 0)     ? ky[seg - 1] : 2 * ky[0]     - ky[1];
+        final double p1 = ky[seg];
+        final double p2 = ky[seg + 1];
+        final double p3 = (seg < n - 2) ? ky[seg + 2] : 2 * ky[n - 1] - ky[n - 2];
+
+        // Standard Catmull-Rom formula
+        final double t2 = t * t;
+        final double t3 = t2 * t;
+        final double y = 0.5 * ((2 * p1)
+                + (-p0 + p2) * t
+                + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
+                + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+        return Math.clamp(y, 0.0, 1.0);
+    }
+
     // -------------------------------------------------------------------------
-    // HSL ↔ RGB conversion (package-private for use by future tools)
+    // Temperature and tint
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply white balance (temperature + tint) adjustments to a pixel array in place.
+     * <p>
+     * Temperature shifts the warm/cool axis by scaling R and B channels inversely.
+     * Tint shifts the green/magenta axis by scaling G relative to R and B.
+     * Coefficients are calibrated so ±100 approximates a full tungsten↔daylight shift.
+     *
+     * @param pixels TYPE_INT_RGB packed ints, modified in place
+     * @param adj    temperature and tint parameters
+     */
+    public static void applyTemperatureAdjustment(final int[] pixels, final TemperatureAdjustment adj) {
+        if (adj.temperature() == 0.0 && adj.tint() == 0.0) {
+            return;
+        }
+
+        // Temperature: +100 → R*1.20, G*1.05, B*0.70 (tungsten warmth)
+        //              -100 → R*0.80, G*0.95, B*1.30 (cool shade)
+        final double tempT = adj.temperature() / 100.0;
+        final double rTempScale = 1.0 + tempT * 0.20;
+        final double gTempScale = 1.0 + tempT * 0.05;
+        final double bTempScale = 1.0 - tempT * 0.30;
+
+        // Tint: +100 → R*1.10, G*0.80, B*1.10 (magenta)
+        //       -100 → R*0.90, G*1.20, B*0.90 (green)
+        final double tintT = adj.tint() / 100.0;
+        final double rTintScale = 1.0 + tintT * 0.10;
+        final double gTintScale = 1.0 - tintT * 0.20;
+        final double bTintScale = 1.0 + tintT * 0.10;
+
+        final double rScale = rTempScale * rTintScale;
+        final double gScale = gTempScale * gTintScale;
+        final double bScale = bTempScale * bTintScale;
+
+        for (int i = 0; i < pixels.length; i++) {
+            final int pixel = pixels[i];
+            final int r = clamp((int) Math.round(((pixel >> 16) & 0xFF) * rScale));
+            final int g = clamp((int) Math.round(((pixel >> 8) & 0xFF) * gScale));
+            final int b = clamp((int) Math.round((pixel & 0xFF) * bScale));
+            pixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Split toning
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply split toning to a pixel array in place.
+     * <p>
+     * Blends a shadow colour tint into dark pixels and a highlight colour tint into bright pixels,
+     * with a smooth luminance-based crossover. Works in HSL space to preserve luminance.
+     *
+     * @param pixels TYPE_INT_RGB packed ints, modified in place
+     * @param adj    split tone parameters
+     */
+    public static void applySplitTone(final int[] pixels, final SplitToneAdjustment adj) {
+        if (adj.shadowSaturation() == 0.0 && adj.highlightSaturation() == 0.0) {
+            return;
+        }
+
+        // Crossover midpoint shifts with balance: +100 → 0.75 (more highlights), -100 → 0.25 (more shadows)
+        final double midpoint = 0.5 + adj.balance() * 0.0025;
+        final double shadowStrength = adj.shadowSaturation() / 100.0;
+        final double highlightStrength = adj.highlightSaturation() / 100.0;
+
+        for (int i = 0; i < pixels.length; i++) {
+            final int pixel = pixels[i];
+            final int r = (pixel >> 16) & 0xFF;
+            final int g = (pixel >> 8) & 0xFF;
+            final int b = pixel & 0xFF;
+
+            final double[] hsl = rgbToHsl(r, g, b);
+            final double lum = hsl[2];
+
+            double blendH = hsl[0];
+            double blendS = hsl[1];
+
+            if (lum <= midpoint && shadowStrength > 0.0) {
+                // Shadow region: weight rises from 0 at midpoint to 1 at black
+                final double t = (midpoint - lum) / midpoint;
+                final double w = shadowStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
+                // Blend hue toward shadow hue, introduce saturation on neutral pixels
+                blendH = blendHue(blendH, adj.shadowHue(), w);
+                blendS = Math.clamp(blendS + w * (1.0 - blendS) * 0.5, 0.0, 1.0);
+            }
+
+            if (lum > midpoint && highlightStrength > 0.0) {
+                // Highlight region: weight rises from 0 at midpoint to 1 at white
+                final double t = (lum - midpoint) / (1.0 - midpoint);
+                final double w = highlightStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
+                blendH = blendHue(blendH, adj.highlightHue(), w);
+                blendS = Math.clamp(blendS + w * (1.0 - blendS) * 0.5, 0.0, 1.0);
+            }
+
+            final int[] rgb = hslToRgb(blendH, blendS, lum);
+            pixels[i] = 0xFF000000 | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
+        }
+    }
+
+    /** Blend hue {@code from} toward hue {@code to} by weight {@code w}, respecting the circular hue axis. */
+    private static double blendHue(final double from, final double to, final double w) {
+        double delta = to - from;
+        if (delta > 180.0) delta -= 360.0;
+        if (delta < -180.0) delta += 360.0;
+        return ((from + delta * w) % 360.0 + 360.0) % 360.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Vignette
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply a vignette effect to a tile in place.
+     * <p>
+     * Each pixel's distance from the image centre determines how much darkening or lightening is applied,
+     * using a cosine falloff between the inner (clear) zone and the outer (fully vignetted) edge.
+     *
+     * @param pixels  TYPE_INT_RGB packed ints for this tile, modified in place
+     * @param tileX   left edge of this tile in image coordinates
+     * @param tileY   top edge of this tile in image coordinates
+     * @param tileW   width of this tile
+     * @param tileH   height of this tile
+     * @param imageW  full image width
+     * @param imageH  full image height
+     * @param adj     vignette parameters
+     */
+    public static void applyVignette(
+            final int[] pixels,
+            final int tileX, final int tileY, final int tileW, final int tileH,
+            final int imageW, final int imageH,
+            final VignetteAdjustment adj) {
+
+        if (adj.strength() == 0.0) {
+            return;
+        }
+
+        final double cx = imageW / 2.0;
+        final double cy = imageH / 2.0;
+        // Normalise distances by the half-diagonal so corners are always at distance 1.0
+        final double halfDiag = Math.sqrt(cx * cx + cy * cy);
+
+        // Inner radius: fraction of half-diagonal where vignette starts (size=50 → 0.5)
+        final double innerRadius = (adj.size() <= 0 ? 50.0 : adj.size()) / 100.0;
+        // Feather zone width: fraction of half-diagonal over which the transition occurs
+        final double featherWidth = Math.max(0.01, (adj.feather() <= 0 ? 50.0 : adj.feather()) / 100.0) * 0.5;
+        final double outerRadius = innerRadius + featherWidth;
+
+        // Brightness multiplier at full vignette: strength=-100 → 0.0 (black), strength=+100 → 2.0 (white)
+        final double fullFactor = 1.0 + adj.strength() / 100.0;
+
+        for (int py = 0; py < tileH; py++) {
+            for (int px = 0; px < tileW; px++) {
+                final double dx = (tileX + px - cx) / halfDiag;
+                final double dy = (tileY + py - cy) / halfDiag;
+                final double dist = Math.sqrt(dx * dx + dy * dy);
+
+                final double factor;
+                if (dist <= innerRadius) {
+                    factor = 1.0;  // inside clear zone — no adjustment
+                } else if (dist >= outerRadius) {
+                    factor = fullFactor;  // outside feather zone — full vignette
+                } else {
+                    // Smooth cosine transition through the feather zone
+                    final double t = (dist - innerRadius) / featherWidth;
+                    final double blend = (1.0 - Math.cos(t * Math.PI)) / 2.0;
+                    factor = 1.0 + blend * (fullFactor - 1.0);
+                }
+
+                if (factor == 1.0) {
+                    continue;
+                }
+
+                final int idx = py * tileW + px;
+                final int pixel = pixels[idx];
+                final int r = clamp((int) Math.round(((pixel >> 16) & 0xFF) * factor));
+                final int g = clamp((int) Math.round(((pixel >> 8) & 0xFF) * factor));
+                final int b = clamp((int) Math.round((pixel & 0xFF) * factor));
+                pixels[idx] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Clarity — downscale-blur-upscale glow/crispness effect
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply a clarity adjustment to a full {@link BufferedImage} in place.
+     * <p>
+     * Negative clarity creates a dreamy glow by blending a blurred version of the image back onto
+     * the original (screen blend on highlights). Positive clarity increases local contrast by
+     * subtracting the blurred version (unsharp mask style).
+     * <p>
+     * The blur is performed at ¼ resolution (½ each dimension) to keep memory and CPU cost
+     * manageable at any image size, then upscaled back before blending. This is resolution-independent
+     * and produces identical visual results to full-resolution blur for the low-frequency content
+     * that clarity operates on.
+     *
+     * @param image   TYPE_INT_RGB image, modified in place
+     * @param clarity clarity amount in [-100, 100]; negative = glow/dreamy, positive = crisp/sharp
+     */
+    public static void applyClarity(final BufferedImage image, final double clarity) {
+        if (clarity == 0.0) {
+            return;
+        }
+
+        final int w = image.getWidth();
+        final int h = image.getHeight();
+
+        // Downscale to ¼ pixels for the blur pass
+        final int smallW = Math.max(1, w / 2);
+        final int smallH = Math.max(1, h / 2);
+
+        final BufferedImage small = new BufferedImage(smallW, smallH, BufferedImage.TYPE_INT_RGB);
+        final Graphics2D g2d = small.createGraphics();
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2d.drawImage(image, 0, 0, smallW, smallH, null);
+        g2d.dispose();
+
+        // Gaussian blur on the small image — sigma proportional to image size, capped to avoid huge kernels
+        final double sigma = Math.min(smallW, smallH) * 0.04;
+        final BufferedImage blurredSmall = gaussianBlur(small, sigma);
+
+        // Upscale blurred image back to full resolution
+        final BufferedImage blurred = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        final Graphics2D g2dUp = blurred.createGraphics();
+        g2dUp.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2dUp.drawImage(blurredSmall, 0, 0, w, h, null);
+        g2dUp.dispose();
+
+        // Blend original with blurred
+        final int[] srcPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+        final int[] blurPixels = ((DataBufferInt) blurred.getRaster().getDataBuffer()).getData();
+        final double amount = Math.abs(clarity) / 100.0;
+
+        if (clarity < 0) {
+            // Negative clarity: glow — screen-blend the blurred highlights onto the original
+            for (int i = 0; i < srcPixels.length; i++) {
+                final int sp = srcPixels[i];
+                final int bp = blurPixels[i];
+                final int sr = (sp >> 16) & 0xFF;
+                final int sg = (sp >> 8) & 0xFF;
+                final int sb = sp & 0xFF;
+                final int br = (bp >> 16) & 0xFF;
+                final int bg = (bp >> 8) & 0xFF;
+                final int bb = bp & 0xFF;
+                // Screen blend: 1 - (1-a)(1-b), then lerp by amount
+                final int screenR = 255 - ((255 - sr) * (255 - br) / 255);
+                final int screenG = 255 - ((255 - sg) * (255 - bg) / 255);
+                final int screenB = 255 - ((255 - sb) * (255 - bb) / 255);
+                final int r = clamp((int) Math.round(sr + amount * (screenR - sr)));
+                final int g = clamp((int) Math.round(sg + amount * (screenG - sg)));
+                final int b = clamp((int) Math.round(sb + amount * (screenB - sb)));
+                srcPixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+        } else {
+            // Positive clarity: unsharp mask — add the difference between original and blurred
+            for (int i = 0; i < srcPixels.length; i++) {
+                final int sp = srcPixels[i];
+                final int bp = blurPixels[i];
+                final int sr = (sp >> 16) & 0xFF;
+                final int sg = (sp >> 8) & 0xFF;
+                final int sb = sp & 0xFF;
+                final int br = (bp >> 16) & 0xFF;
+                final int bg = (bp >> 8) & 0xFF;
+                final int bb = bp & 0xFF;
+                final int r = clamp((int) Math.round(sr + amount * (sr - br)));
+                final int g = clamp((int) Math.round(sg + amount * (sg - bg)));
+                final int b = clamp((int) Math.round(sb + amount * (sb - bb)));
+                srcPixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            }
+        }
+    }
+
+    /**
+     * Apply a separable Gaussian blur to a TYPE_INT_RGB image.
+     * Uses {@link ConvolveOp} with {@code EDGE_NO_OP} to avoid border artifacts.
+     */
+    private static BufferedImage gaussianBlur(final BufferedImage src, final double sigma) {
+        final int radius = (int) Math.ceil(sigma * 3.0);
+        final int size = 2 * radius + 1;
+        final float[] kernel = new float[size];
+        float sum = 0f;
+        for (int i = 0; i < size; i++) {
+            final double x = i - radius;
+            kernel[i] = (float) Math.exp(-(x * x) / (2.0 * sigma * sigma));
+            sum += kernel[i];
+        }
+        for (int i = 0; i < size; i++) {
+            kernel[i] /= sum;
+        }
+
+        final Kernel hKernel = new Kernel(size, 1, kernel);
+        final Kernel vKernel = new Kernel(1, size, kernel);
+        final ConvolveOp hBlur = new ConvolveOp(hKernel, ConvolveOp.EDGE_NO_OP, null);
+        final ConvolveOp vBlur = new ConvolveOp(vKernel, ConvolveOp.EDGE_NO_OP, null);
+
+        final BufferedImage tmp = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
+        final BufferedImage dst = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_RGB);
+        hBlur.filter(src, tmp);
+        vBlur.filter(tmp, dst);
+        return dst;
+    }
+
+    // -------------------------------------------------------------------------
+    // HSL ↔ RGB conversion
     // -------------------------------------------------------------------------
 
     /**

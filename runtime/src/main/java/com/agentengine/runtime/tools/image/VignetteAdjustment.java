@@ -15,11 +15,11 @@ public record VignetteAdjustment(
         @JsonProperty("strength")
         double strength,
 
-        @ToolSchema(name = "size", description = "Radius of the protected centre zone, as a percentage of the image half-diagonal. Higher values push the vignette further toward the edges, leaving more of the image unaffected. Range [0, 100]; default 50.", optional = true)
+        @ToolSchema(name = "size", description = "Radius of the protected centre zone as a percentage of the image half-diagonal. 50 = moderate centre protection (vignette starts halfway to the corners); 80 = large clear centre (vignette only at the very edges); 20 = tight centre (vignette starts close to the middle). Range [0, 100].", optional = true)
         @JsonProperty("size")
         double size,
 
-        @ToolSchema(name = "feather", description = "Softness of the transition from the clear centre to the vignetted edge. Higher values create a longer, smoother gradient; lower values create a harder edge. Range [0, 100]; default 50.", optional = true)
+        @ToolSchema(name = "feather", description = "Softness of the transition from the clear centre to the vignetted edge. 70–90 = long, smooth gradient (natural, photographic); 20–40 = harder edge (more graphic). Range [0, 100].", optional = true)
         @JsonProperty("feather")
         double feather) {
 }

@@ -2,9 +2,9 @@ package com.agentengine.runtime.tools.image;
 
 import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.runtime.tools.BinaryDataTool;
-import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Agent tool that downloads an image and returns it as base64 for visual inspection.
+ * Agent tool that opens a file and returns its content for inspection.
  */
 @DiscoverableTool
 public final class OpenFileTool extends BinaryDataTool {
@@ -29,7 +29,7 @@ public final class OpenFileTool extends BinaryDataTool {
     }
 
     public FileResponse execute(
-            @ToolSchema(name = "fileDetails", description = "A nested file details map pointing towards a file source to open.") FileDetails fileDetails) {
+            @ToolSchema(name = "fileDetails", description = "A nested file details map containing complete file details.") FileDetails fileDetails) {
         return new FileResponse(List.of(fileDetails));
     }
 }
