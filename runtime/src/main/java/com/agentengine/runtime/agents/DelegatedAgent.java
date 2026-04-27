@@ -3,7 +3,9 @@ package com.agentengine.runtime.agents;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
+import com.google.adk.agents.LlmAgent;
 import com.google.adk.events.Event;
+import com.google.adk.tools.BaseTool;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 
@@ -40,5 +42,13 @@ public class DelegatedAgent extends Agent {
     @Override
     protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
         return delegated.runLive(invocationContext);
+    }
+
+    @Override
+    public List<BaseTool> getTools() {
+        if (delegated instanceof LlmAgent llmAgent) {
+            return llmAgent.tools().blockingGet();
+        }
+        return List.of();
     }
 }
