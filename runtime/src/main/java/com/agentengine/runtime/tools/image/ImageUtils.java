@@ -142,21 +142,26 @@ public final class ImageUtils {
         final int height = image.getHeight();
         final int[] destPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        for (int y = 0; y < height; y += TILE_SIZE) {
-            for (int x = 0; x < width; x += TILE_SIZE) {
-                final int tw = Math.min(TILE_SIZE, width - x);
-                final int th = Math.min(TILE_SIZE, height - y);
-                // Extract tile pixels
-                final int[] tilePixels = new int[tw * th];
-                for (int row = 0; row < th; row++) {
-                    System.arraycopy(destPixels, (y + row) * width + x, tilePixels, row * tw, tw);
+        final List<Rectangle> tiles = buildTiles(width, height);
+        final List<Callable<Void>> callables = new ArrayList<>();
+        for (final Rectangle tile : tiles) {
+            callables.add(() -> {
+                // Tiles are disjoint — each reads/writes a unique index range; no lock needed.
+                final int[] tilePixels = new int[tile.width * tile.height];
+                for (int row = 0; row < tile.height; row++) {
+                    System.arraycopy(destPixels, (tile.y + row) * width + tile.x, tilePixels, row * tile.width, tile.width);
                 }
-                tileOp.apply(tilePixels, x, y, tw, th);
-                // Write back
-                for (int row = 0; row < th; row++) {
-                    System.arraycopy(tilePixels, row * tw, destPixels, (y + row) * width + x, tw);
+                tileOp.apply(tilePixels, tile.x, tile.y, tile.width, tile.height);
+                for (int row = 0; row < tile.height; row++) {
+                    System.arraycopy(tilePixels, row * tile.width, destPixels, (tile.y + row) * width + tile.x, tile.width);
                 }
-            }
+                return null;
+            });
+        }
+        try {
+            StructuredConcurrencyUtils.runConcurrently(callables);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -14,14 +14,10 @@ import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.InputStream;
 import java.util.*;
 
 public class BinaryDataTool extends Tool {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BinaryDataTool.class);
 
     protected final CloudStorageService cloudStorageService;
 
@@ -105,8 +101,6 @@ public class BinaryDataTool extends Tool {
                 }
             }
             llmRequestBuilder.contents(rewritten);
-
-            LOGGER.info("Processed LLM Request : {}", JsonUtils.toJson(llmRequestBuilder.build()));
         });
     }
 

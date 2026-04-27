@@ -2,13 +2,13 @@
   "id": "llama3.1-8b",
   "model": "llama3.1:8b",
   "name": "Llama 3.1 8B (Ollama)",
-  "baseUrl": "http://host.docker.internal:11434/v1",
+  "baseUrl": "http://host.docker.internal:11434",
   "temperature": 0.35,
   "topK": 50,
   "topP": 0.92,
   "repeatPenalty": 1.05,
   "toolCallingEnabled": true,
   "thoughtsEnabled": false,
-  "provider": "OPEN_AI_COMPATIBLE",
+  "provider": "OLLAMA",
   "type": "CHAT"
 }
