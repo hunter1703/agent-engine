@@ -19,12 +19,14 @@ public final class AdjustColorTool extends ImageEditingTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_color",
-            "Selectively recolors specific hue ranges in an image without affecting the rest. "
-                    + "Use this to change or enhance specific colors: make a sky more blue, warm up skin tones, "
-                    + "shift green foliage toward teal, desaturate a distracting background color, etc. "
-                    + "Each adjustment targets a hue range defined by hue_center and hue_width, then applies "
-                    + "hue rotation, saturation change, and lightness change with a smooth cosine falloff so "
-                    + "transitions are natural. Always pass all adjustments for the image in a single call. "
+            "Selectively adjusts the hue, saturation, and luminance of specific color ranges in an image. "
+                    + "Equivalent to Lightroom's HSL/Color Mix panel. "
+                    + "Apply this THIRD — after white balance and exposure are set. "
+                    + "Use cases: make a sky more blue and saturated, shift green foliage toward teal, "
+                    + "warm up skin tones, desaturate a distracting background color, "
+                    + "shift orange autumn leaves toward red, make a yellow dress more golden. "
+                    + "Each adjustment targets a hue range (hue_center ± hue_width) with cosine falloff. "
+                    + "Pass ALL color adjustments for the image in a single call. "
                     + "Supports JPEG and PNG up to 100MP. "
                     + "Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
@@ -37,8 +39,10 @@ public final class AdjustColorTool extends ImageEditingTool {
     public Map<String, Object> execute(
             @ToolSchema(name = "source", description = "Storage source of the input image.")
                     String source,
-            @ToolSchema(name = "adjustments", description = "Array of hue-targeted adjustments ({hue_center, hue_width, hue_shift, sat_delta, lum_delta}) to apply to the image.")
-                    List<ColorAdjustment> adjustments) {
+            @ToolSchema(name = "adjustments", description = "Array of hue-targeted adjustments. Each entry: hue_center (degrees, 0=red/30=orange/60=yellow/120=green/180=cyan/240=blue/300=magenta), hue_width (degrees, 30–60 typical), hue_shift (degrees, optional), sat_delta (-100 to +100 integer, optional), lum_delta (-100 to +100 integer, optional).")
+                    List<ColorAdjustment> adjustments,
+            @ToolSchema(name = "rationale", description = "Describe the color goals (e.g. 'making the sky more vivid blue', 'shifting foliage from yellow-green to teal', 'warming skin tones', 'desaturating the red background').")
+                    String rationale) {
 
         if (CollectionUtils.isEmpty(adjustments)) {
             return Map.of("error", "adjustments is required");

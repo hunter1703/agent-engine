@@ -17,9 +17,10 @@ public final class AddVignetteTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "add_vignette",
             "Adds a vignette effect: darkens or lightens image edges with an elliptical cosine falloff. "
-                    + "Negative strength darkens edges (classic vignette, draws focus inward). "
-                    + "Positive strength lightens edges (bright-edge effect). "
-                    + "Use size to control how much of the centre is protected, and feather for transition softness. "
+                    + "Negative amount darkens edges (classic vignette, draws focus inward). "
+                    + "Positive amount lightens edges (bright-edge effect). "
+                    + "Optional saturation control desaturates the edges for a classic darkroom look. "
+                    + "Matches Lightroom XMP fields crs:VignetteAmount and crs:VignetteMidpoint. "
                     + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
@@ -31,8 +32,10 @@ public final class AddVignetteTool extends ImageEditingTool {
     public Map<String, Object> execute(
             @ToolSchema(name = "source", description = "Storage source of the input image.")
                     String source,
-            @ToolSchema(name = "adjustment", description = "Vignette parameters: strength, size, feather.")
-                    VignetteAdjustment adjustment) {
+            @ToolSchema(name = "adjustment", description = "Vignette parameters: amount (integer -100 to +100), midpoint (integer 0–100), feather (integer 0–100), saturation (integer -100 to +100, optional, negative=desaturate edges).")
+                    VignetteAdjustment adjustment,
+            @ToolSchema(name = "rationale", description = "Brief explanation of why this adjustment is being applied and what visual effect it is intended to achieve.")
+                    String rationale) {
 
         if (adjustment == null) {
             return Map.of("error", "adjustment is required");

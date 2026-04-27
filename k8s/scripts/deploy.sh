@@ -228,8 +228,9 @@ deploy_service() {
 # Declare app services: "chart:comma-separated-wait-flags:ready-flag"
 # To add a new service, append one line here. No other changes required.
 APP_SERVICES="
-core:builds-done,infra-seeded:core-ready
-rest:builds-done,infra-seeded:rest-ready
+global-properties:infra-seeded:global-properties-ready
+core:builds-done,global-properties-ready:core-ready
+rest:builds-done,global-properties-ready:rest-ready
 runtime:core-ready:runtime-ready
 "
 

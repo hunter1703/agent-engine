@@ -1,5 +1,25 @@
 # TODO
 
+## Image Tools: Shadows/Highlights Local Adaptation
+
+Lightroom's PV2012 Shadows and Highlights sliders use edge-aware local tone mapping (confirmed by
+Adobe's Eric Chan: they use edge-detection algorithms that took months to optimize to near-real-time).
+Our implementation uses the darktable shadhi.c algorithm (GPL): Gaussian base layer extraction +
+inverted overlay blend weighted by luminance zone masks. This matches the visual behaviour of
+darktable's shadows-and-highlights module. A guided filter (He et al. 2013) would reduce halos
+further but is not yet implemented.
+
+## Image Tools: 100MP Tiling Scalability for JPEG Decoding
+
+`ImageUtils.processTiled` uses `ImageReader.setSourceRegion` to read tiles. For JPEG, this does
+not perform partial decoding — the full image is decoded and the region is copied out. At 100MP
+with 256×256 tiles (~1,560 tiles) and virtual thread concurrency, this means up to 1,560
+simultaneous full-image decodes of the same file. Results are correct but CPU and memory usage
+are extreme. Fix: decode once into a shared `BufferedImage`, distribute tiles from the in-memory
+buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases are confirmed.
+
+
+
 ## SessionActor: Pause Propagation to Parent — At-Least-Once Delivery (DEFERRED)
 
 ### Status: DEFERRED

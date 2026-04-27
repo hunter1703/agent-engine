@@ -26,9 +26,14 @@ public final class AdjustClarityTool extends ImageEditingTool {
 
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_clarity",
-            "Adjusts clarity: negative values create a soft, dreamy, ethereal glow (ideal for misty or romantic looks); "
-                    + "positive values increase local contrast for a crisp, sharp, punchy result. "
-                    + "This is the primary tool for atmosphere — use negative clarity to create mist, softness, or a luminous quality. "
+            "Adjusts midtone local contrast (clarity/texture). "
+                    + "Apply this FIFTH — after tonal and color work, before vignette. "
+                    + "Positive clarity: increases local contrast for a crisp, sharp, punchy, detailed look. "
+                    + "Use for landscapes, architecture, product shots, dramatic portraits. "
+                    + "Negative clarity: creates a soft, dreamy, glowing, ethereal look by reducing local contrast. "
+                    + "Use for romantic portraits, misty scenes, soft beauty shots, atmospheric landscapes. "
+                    + "Typical values: +15 to +30 for mild crispness; +40 to +60 for punchy/dramatic; "
+                    + "-15 to -25 for subtle softness; -30 to -50 for dreamy glow; -60 to -80 for heavy mist/atmosphere. "
                     + "Supports JPEG and PNG. Returns { outputSource } on success — use outputSource as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
@@ -41,7 +46,9 @@ public final class AdjustClarityTool extends ImageEditingTool {
             @ToolSchema(name = "source", description = "Storage source of the input image.")
                     String source,
             @ToolSchema(name = "clarity", description = "Clarity amount. Negative = soft/dreamy/glow (range [-100, 0]): -15 subtle softness, -30 noticeable glow, -50 heavy atmosphere, -80 extreme mist. Positive = crisp/sharp/punchy (range [0, 100]): 20 mild crispness, 40 punchy, 60 very sharp. 0 = no change.")
-                    double clarity) {
+                    double clarity,
+            @ToolSchema(name = "rationale", description = "Brief explanation of why this adjustment is being applied and what visual effect it is intended to achieve.")
+                    String rationale) {
 
         if (clarity == 0.0) {
             return Map.of("outputSource", source);

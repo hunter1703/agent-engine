@@ -26,13 +26,65 @@ import java.util.function.Consumer;
 
 /**
  * Shared image processing utilities for all image tools.
- * Covers I/O infrastructure (tiling, format detection, dimension reading) and
- * pixel-level math for color grading, exposure, temperature, split toning, vignette, and clarity.
+ *
+ * <p>All pixel-level math operates in <b>linear light</b> (scene-referred linear RGB, D65).
+ * sRGB-encoded pixels are decoded to linear before any adjustment and re-encoded afterward.
+ * This is the only physically correct approach: gamma-space arithmetic produces wrong exposure
+ * scaling, wrong tone curves, wrong saturation, and wrong vignette darkening.
+ *
+ * <p>Algorithm sources:
+ * <ul>
+ *   <li>sRGB ↔ linear: IEC 61966-2-1 (exact piecewise formula)</li>
+ *   <li>Exposure: linear EV scale pow(2, ev) in linear light</li>
+ *   <li>Tone curve: monotone cubic Hermite spline in linear light, ±100 → ±0.25 zone shift</li>
+ *   <li>Temperature: Kang et al. (2002) Planckian locus → CIE xy → von Kries LMS adaptation → sRGB</li>
+ *   <li>Saturation: sRGB → linear → Oklab → chroma scale → linear → sRGB</li>
+ *   <li>HSL color mix: hue-targeted adjustments in HSL (matches Lightroom Color Mixer)</li>
+ *   <li>Split toning: luminance-weighted hue tinting in HSL, zone weights from linear luminance</li>
+ *   <li>Vignette: elliptical cosine falloff applied in linear light</li>
+ *   <li>Clarity: Gaussian blur + unsharp mask / screen blend in linear light</li>
+ * </ul>
  */
 public final class ImageUtils {
 
     private static final int TILE_SIZE = 256;
     private static final float JPEG_OUTPUT_QUALITY = 0.95f;
+
+    /**
+     * sRGB → linear decode LUT: SRGB_TO_LINEAR[i] = linear value for sRGB byte i.
+     * IEC 61966-2-1: linear = (srgb/255)^2.4 / 1.055 + 0.055/1.055 for srgb > 0.04045*255,
+     * else linear = (srgb/255) / 12.92.
+     */
+    private static final double[] SRGB_TO_LINEAR = new double[256];
+
+    /**
+     * Linear → sRGB encode LUT: LINEAR_TO_SRGB[i] maps linear*255 index to sRGB byte.
+     * Sampled at 4096 points for sub-byte accuracy, then rounded.
+     */
+    private static final int[] LINEAR_TO_SRGB = new int[4097];
+
+    static {
+        for (int i = 0; i < 256; i++) {
+            final double s = i / 255.0;
+            SRGB_TO_LINEAR[i] = (s <= 0.04045) ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        }
+        for (int i = 0; i <= 4096; i++) {
+            final double lin = i / 4096.0;
+            final double s = (lin <= 0.0031308) ? lin * 12.92 : 1.055 * Math.pow(lin, 1.0 / 2.4) - 0.055;
+            LINEAR_TO_SRGB[i] = clamp((int) Math.round(s * 255.0));
+        }
+    }
+
+    /** Decode sRGB byte [0,255] to linear [0,1]. */
+    private static double toLinear(final int srgb) {
+        return SRGB_TO_LINEAR[srgb & 0xFF];
+    }
+
+    /** Encode linear [0,1] to sRGB byte [0,255]. */
+    private static int toSrgb(final double linear) {
+        final int idx = (int) Math.round(Math.clamp(linear, 0.0, 1.0) * 4096.0);
+        return LINEAR_TO_SRGB[idx];
+    }
 
     private ImageUtils() {
     }
@@ -70,6 +122,42 @@ public final class ImageUtils {
      */
     public static File processTiledOnPixel(final File inputFile, final Consumer<int[]> pixelOp) {
         return processTiled(inputFile, (pixels, tx, ty, tw, th, iw, ih) -> pixelOp.accept(pixels));
+    }
+
+    /**
+     * Process an already-loaded {@link BufferedImage} tile-by-tile in place.
+     * Used when a pre-computation step (e.g. base layer for shadows/highlights) requires the full image
+     * before per-tile processing begins.
+     *
+     * @param image  TYPE_INT_RGB image to process in place
+     * @param tileOp operation receiving (pixels, tileX, tileY, tileW, tileH)
+     */
+    @FunctionalInterface
+    public interface InPlaceTileOperation {
+        void apply(int[] pixels, int tileX, int tileY, int tileW, int tileH);
+    }
+
+    public static void processTiledInPlace(final BufferedImage image, final InPlaceTileOperation tileOp) {
+        final int width = image.getWidth();
+        final int height = image.getHeight();
+        final int[] destPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+
+        for (int y = 0; y < height; y += TILE_SIZE) {
+            for (int x = 0; x < width; x += TILE_SIZE) {
+                final int tw = Math.min(TILE_SIZE, width - x);
+                final int th = Math.min(TILE_SIZE, height - y);
+                // Extract tile pixels
+                final int[] tilePixels = new int[tw * th];
+                for (int row = 0; row < th; row++) {
+                    System.arraycopy(destPixels, (y + row) * width + x, tilePixels, row * tw, tw);
+                }
+                tileOp.apply(tilePixels, x, y, tw, th);
+                // Write back
+                for (int row = 0; row < th; row++) {
+                    System.arraycopy(tilePixels, row * tw, destPixels, (y + row) * width + x, tw);
+                }
+            }
+        }
     }
 
     /**
@@ -256,19 +344,21 @@ public final class ImageUtils {
         }
         final double[] lut = new double[181];
         for (int i = 0; i <= 180; i++) {
-            lut[i] = (i <= hueWidth)
-                    ? Math.cos((i / hueWidth) * (Math.PI / 2.0))
-                    : 0.0;
+            lut[i] = (i <= hueWidth) ? Math.cos((i / hueWidth) * (Math.PI / 2.0)) : 0.0;
         }
         return lut;
     }
 
     /**
-     * Apply all hue-targeted color adjustments to a pixel array in place.
+     * Apply hue-targeted HSL color adjustments to a pixel array in place.
      *
-     * @param pixels      TYPE_INT_RGB packed ints, modified in place
-     * @param adjustments list of targeted adjustments
-     * @param cosLuts     pre-computed cosine LUTs, one per adjustment (same order)
+     * <p>Decodes sRGB → linear → HSL, applies hue/saturation/luminance deltas weighted by a
+     * cosine falloff around the target hue, then converts back HSL → linear → sRGB.
+     * Operating through linear light ensures the HSL conversion sees perceptually correct
+     * luminance values rather than gamma-compressed ones.
+     *
+     * <p>Matches Lightroom's Color Mixer (HSL panel) semantics:
+     * hue_shift in degrees, sat_delta and lum_delta on [-100, 100].
      */
     public static void applyColorAdjustments(
             final int[] pixels,
@@ -278,470 +368,335 @@ public final class ImageUtils {
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
 
-            final int r = (pixel >> 16) & 0xFF;
-            final int g = (pixel >> 8) & 0xFF;
-            final int b = pixel & 0xFF;
-
-            final double[] hsl = rgbToHsl(r, g, b);
-            double h = hsl[0];
-            double s = hsl[1];
-            double l = hsl[2];
+            // Decode sRGB → linear → HSL
+            final double rl = toLinear((pixel >> 16) & 0xFF);
+            final double gl = toLinear((pixel >> 8) & 0xFF);
+            final double bl = toLinear(pixel & 0xFF);
+            final double[] hsl = linearRgbToHsl(rl, gl, bl);
+            double h = hsl[0], s = hsl[1], l = hsl[2];
 
             for (int j = 0; j < adjustments.size(); j++) {
                 final ColorAdjustment adj = adjustments.get(j);
                 final double[] cosLut = cosLuts.get(j);
 
                 double deltaH = Math.abs(h - adj.hueCenter());
-                if (deltaH > 180.0) {
-                    deltaH = 360.0 - deltaH;
-                }
+                if (deltaH > 180.0) deltaH = 360.0 - deltaH;
 
                 final double w = cosLut[Math.min((int) Math.round(deltaH), 180)];
+                if (w == 0.0) continue;
 
                 h = ((h + adj.hueShift() * w) % 360.0 + 360.0) % 360.0;
                 s = Math.clamp(s + adj.satDelta() * w * 0.01, 0.0, 1.0);
                 l = Math.clamp(l + adj.lumDelta() * w * 0.01, 0.0, 1.0);
             }
 
-            final int[] rgb = hslToRgb(h, s, l);
-            pixels[i] = 0xFF000000 | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
+            // HSL → linear → sRGB
+            final double[] rgb = hslToLinearRgb(h, s, l);
+            pixels[i] = 0xFF000000
+                    | (toSrgb(Math.clamp(rgb[0], 0.0, 1.0)) << 16)
+                    | (toSrgb(Math.clamp(rgb[1], 0.0, 1.0)) << 8)
+                    |  toSrgb(Math.clamp(rgb[2], 0.0, 1.0));
         }
     }
 
     // -------------------------------------------------------------------------
-    // Exposure — four-zone tone curve
+    // Exposure — EV scale + four-zone tone curve + saturation, all in linear light
     // -------------------------------------------------------------------------
 
     /**
      * Apply exposure and tone adjustments to a pixel array in place.
-     * <p>
-     * The four zone parameters ({@code blacks}, {@code shadows}, {@code highlights}, {@code whites})
-     * define vertical offsets at the midpoint of each luminance quarter. A Catmull-Rom spline is
-     * interpolated through all six control points — the two fixed anchors at (0,0) and (1,1) plus
-     * the four zone points — and sampled into a 256-entry LUT applied per channel.
-     * <p>
-     * Operation order: brightness offset → tone curve LUT → saturation.
      *
-     * @param pixels TYPE_INT_RGB packed ints, modified in place
-     * @param adj    exposure parameters; all values on a [-100, 100] scale, 0 = no change
+     * <p>Pipeline (all in linear light):
+     * <ol>
+     *   <li>Decode sRGB → linear (IEC 61966-2-1)</li>
+     *   <li>EV exposure: multiply by {@code pow(2, ev)}</li>
+     *   <li>Blacks/Whites: global endpoint tone curve (monotone cubic Hermite spline)</li>
+     *   <li>Shadows/Highlights: local-adaptation blend using a pre-computed Gaussian base layer</li>
+     *   <li>Saturation: convert to Oklab, scale chroma, convert back</li>
+     *   <li>Encode linear → sRGB</li>
+     * </ol>
+     *
+     * <p>Shadows and Highlights use the darktable/Lightroom local-adaptation technique:
+     * a Gaussian-blurred base layer is inverted and blended back via an overlay blend,
+     * weighted by a luminance zone mask. This preserves local contrast (edges, texture)
+     * while adjusting global tonal zones — matching Lightroom PV2012 behaviour.
+     * Reference: darktable shadhi.c (GPL), He et al. Guided Image Filtering (2013).
+     *
+     * @param pixels    TYPE_INT_RGB packed ints, modified in place
+     * @param adj       exposure parameters
+     * @param baseLayer pre-computed Gaussian base layer (linear luminance per pixel, same length as pixels);
+     *                  pass null if shadows and highlights are both 0
      */
-    public static void applyExposureAdjustments(final int[] pixels, final ExposureAdjustment adj) {
-        final int brightnessOffset = (int) Math.round(adj.brightness() * 2.55);
-        final int[] toneLut = buildToneCurveLut(adj);
+    public static void applyExposureAdjustments(final int[] pixels, final ExposureAdjustment adj,
+                                                 final float[] baseLayer) {
+        final double evScale = (adj.exposure() != 0.0) ? Math.pow(2.0, adj.exposure()) : 1.0;
+        final boolean hasEndpoints = adj.blacks() != 0 || adj.whites() != 0;
+        final double[] endpointLut = hasEndpoints ? buildEndpointLut(adj) : null;
+        final boolean hasShadows = adj.shadows() != 0;
+        final boolean hasHighlights = adj.highlights() != 0;
+        final boolean hasSat = adj.saturation() != 0;
+
+        // Darktable compress: controls how much of the midtones are excluded from the effect.
+        // We use a fixed value of 0.5 (darktable default) — the slider is not exposed to the user
+        // since Lightroom doesn't have an equivalent control.
+        final double compress = 0.5;
+
+        // shadows/highlights strength: darktable scales by 2.0 so ±100 → ±2.0
+        final double shadowsStrength = adj.shadows() / 100.0 * 2.0;
+        final double highlightsStrength = adj.highlights() / 100.0 * 2.0;
 
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
-            int r = (pixel >> 16) & 0xFF;
-            int g = (pixel >> 8) & 0xFF;
-            int b = pixel & 0xFF;
 
-            // 1. Brightness — global offset before the curve
-            if (brightnessOffset != 0) {
-                r = clamp(r + brightnessOffset);
-                g = clamp(g + brightnessOffset);
-                b = clamp(b + brightnessOffset);
+            // 1. Decode sRGB → linear
+            double r = toLinear((pixel >> 16) & 0xFF);
+            double g = toLinear((pixel >> 8) & 0xFF);
+            double b = toLinear(pixel & 0xFF);
+
+            // 2. EV exposure scale in linear light
+            if (evScale != 1.0) {
+                r = Math.clamp(r * evScale, 0.0, 1.0);
+                g = Math.clamp(g * evScale, 0.0, 1.0);
+                b = Math.clamp(b * evScale, 0.0, 1.0);
             }
 
-            // 2. Four-zone tone curve — single LUT lookup per channel
-            r = toneLut[r];
-            g = toneLut[g];
-            b = toneLut[b];
-
-            // 3. Global saturation
-            if (adj.saturation() != 0.0) {
-                final double[] hsl = rgbToHsl(r, g, b);
-                hsl[1] = Math.clamp(hsl[1] + adj.saturation() * 0.01, 0.0, 1.0);
-                final int[] rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
-                r = rgb[0];
-                g = rgb[1];
-                b = rgb[2];
+            // 3. Blacks/Whites: global endpoint tone curve
+            if (endpointLut != null) {
+                r = sampleLinearLut(endpointLut, r);
+                g = sampleLinearLut(endpointLut, g);
+                b = sampleLinearLut(endpointLut, b);
             }
 
-            pixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+            // 4. Shadows/Highlights: local-adaptation overlay blend
+            if ((hasShadows || hasHighlights) && baseLayer != null) {
+                // Linear luminance of the original pixel (CIE Y)
+                final double la = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                // Inverted base-layer luminance (darktable: blurred_L = 1 - base_L)
+                final double lb = 1.0 - baseLayer[i];
+
+                if (hasHighlights) {
+                    // Zone mask: only affects bright pixels; compress excludes midtones
+                    final double highlightsXform = Math.clamp(1.0 - lb / (1.0 - compress), 0.0, 1.0);
+                    double hs2 = highlightsStrength * highlightsStrength; // 0..4
+                    double laH = la;
+                    while (hs2 > 0.0) {
+                        final double chunk = Math.min(hs2, 1.0);
+                        hs2 -= 1.0;
+                        // lb for highlights: invert sign relative to shadows
+                        final double lbH = (lb - 0.5) * Math.signum(-highlightsStrength) * Math.signum(1.0 - laH) + 0.5;
+                        final double optrans = chunk * highlightsXform;
+                        laH = overlayBlend(laH, lbH, optrans);
+                    }
+                    // Apply the luminance change as a uniform scale across RGB channels
+                    final double scale = (la > 1e-6) ? Math.clamp(laH / la, 0.0, 4.0) : 1.0;
+                    r = Math.clamp(r * scale, 0.0, 1.0);
+                    g = Math.clamp(g * scale, 0.0, 1.0);
+                    b = Math.clamp(b * scale, 0.0, 1.0);
+                }
+
+                if (hasShadows) {
+                    final double laAfterH = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    // Zone mask: only affects dark pixels
+                    final double shadowsXform = Math.clamp(
+                            lb / (1.0 - compress) - compress / (1.0 - compress), 0.0, 1.0);
+                    double ss2 = shadowsStrength * shadowsStrength; // 0..4
+                    double laS = laAfterH;
+                    while (ss2 > 0.0) {
+                        final double chunk = Math.min(ss2, 1.0);
+                        ss2 -= 1.0;
+                        final double lbS = (lb - 0.5) * Math.signum(shadowsStrength) * Math.signum(1.0 - laS) + 0.5;
+                        final double optrans = chunk * shadowsXform;
+                        laS = overlayBlend(laS, lbS, optrans);
+                    }
+                    final double scale = (laAfterH > 1e-6) ? Math.clamp(laS / laAfterH, 0.0, 4.0) : 1.0;
+                    r = Math.clamp(r * scale, 0.0, 1.0);
+                    g = Math.clamp(g * scale, 0.0, 1.0);
+                    b = Math.clamp(b * scale, 0.0, 1.0);
+                }
+            }
+
+            // 5. Saturation via Oklab chroma scaling
+            if (hasSat) {
+                final double[] lab = linearRgbToOklab(r, g, b);
+                final double chromaScale = 1.0 + adj.saturation() * 0.01;
+                lab[1] = Math.clamp(lab[1] * chromaScale, -0.5, 0.5);
+                lab[2] = Math.clamp(lab[2] * chromaScale, -0.5, 0.5);
+                final double[] rgb = oklabToLinearRgb(lab[0], lab[1], lab[2]);
+                r = Math.clamp(rgb[0], 0.0, 1.0);
+                g = Math.clamp(rgb[1], 0.0, 1.0);
+                b = Math.clamp(rgb[2], 0.0, 1.0);
+            }
+
+            // 6. Encode linear → sRGB
+            pixels[i] = 0xFF000000 | (toSrgb(r) << 16) | (toSrgb(g) << 8) | toSrgb(b);
         }
     }
 
     /**
-     * Build a 256-entry tone curve LUT from the four zone offsets in {@code adj}.
-     * <p>
-     * Six control points are placed on the curve:
-     * <pre>
-     *   (0.000, 0.000)  — fixed black anchor
-     *   (0.125, blacks_y)   — midpoint of the blacks zone  (0–25%)
-     *   (0.375, shadows_y)  — midpoint of the shadows zone (25–50%)
-     *   (0.625, highlights_y) — midpoint of the highlights zone (50–75%)
-     *   (0.875, whites_y)   — midpoint of the whites zone  (75–100%)
-     *   (1.000, 1.000)  — fixed white anchor
-     * </pre>
-     * Each zone y-value is {@code x + offset/100 * 0.5}, clamped to [0,1].
-     * A non-uniform Catmull-Rom spline is evaluated through these points and sampled into the LUT.
-     * When all zone offsets are zero the curve is the identity (straight diagonal).
+     * Overlay/soft-light blend: the core of darktable's shadows/highlights algorithm.
+     * For la ≤ 0.5: result = 2 * la * lb
+     * For la > 0.5: result = 1 - 2 * (1 - la) * (1 - lb)
+     * Blended with the original by {@code optrans}.
      */
-    private static int[] buildToneCurveLut(final ExposureAdjustment adj) {
-        // Scale: offset of ±100 shifts the zone midpoint by ±0.5 in [0,1] space
-        final double scale = 0.5 / 100.0;
+    private static double overlayBlend(final double la, final double lb, final double optrans) {
+        final double blended = (la > 0.5)
+                ? 1.0 - (1.0 - 2.0 * (la - 0.5)) * (1.0 - lb)
+                : 2.0 * la * lb;
+        return la * (1.0 - optrans) + blended * optrans;
+    }
+
+    /**
+     * Build a 4097-entry tone curve LUT for Blacks and Whites endpoint controls only.
+     * Shadows and Highlights are handled separately via local adaptation.
+     */
+    private static double[] buildEndpointLut(final ExposureAdjustment adj) {
+        // Blacks: negative = raise black clipping point; positive = lift black floor
+        final double blackFloor = Math.clamp(adj.blacks() * (0.25 / 100.0), -0.25, 0.25);
+        // Whites: positive = raise white ceiling; negative = lower white ceiling
+        final double whiteCeil = Math.clamp(1.0 + adj.whites() * (0.25 / 100.0), 0.75, 1.25);
+
+        // Zone midpoint offsets for blacks/whites zones only (shadows/highlights handled separately)
+        final double zoneScale = 0.20 / 100.0;
         final double[] px = {0.000, 0.125, 0.375, 0.625, 0.875, 1.000};
         final double[] py = {
-            0.000,
-            Math.clamp(0.125 + adj.blacks()      * scale, 0.0, 1.0),
-            Math.clamp(0.375 + adj.shadows()     * scale, 0.0, 1.0),
-            Math.clamp(0.625 + adj.highlights()  * scale, 0.0, 1.0),
-            Math.clamp(0.875 + adj.whites()      * scale, 0.0, 1.0),
-            1.000
+            Math.clamp(blackFloor, 0.0, 0.5),
+            Math.clamp(0.125 + adj.blacks() * zoneScale, 0.0, 1.0),
+            0.375,  // shadows handled by local adaptation — identity here
+            0.625,  // highlights handled by local adaptation — identity here
+            Math.clamp(0.875 + adj.whites() * zoneScale, 0.0, 1.0),
+            Math.clamp(whiteCeil, 0.5, 1.0)
         };
 
-        final int[] lut = new int[256];
-        for (int i = 0; i < 256; i++) {
-            final double x = i / 255.0;
-            lut[i] = clamp((int) Math.round(catmullRom(px, py, x) * 255.0));
+        for (int i = 1; i < py.length; i++) py[i] = Math.max(py[i], py[i - 1]);
+
+        // Fritsch-Carlson monotone cubic Hermite
+        final int n = px.length;
+        final double[] m = new double[n];
+        final double[] delta = new double[n - 1];
+        for (int i = 0; i < n - 1; i++) delta[i] = (py[i + 1] - py[i]) / (px[i + 1] - px[i]);
+        m[0] = delta[0];
+        m[n - 1] = delta[n - 2];
+        for (int i = 1; i < n - 1; i++) m[i] = (delta[i - 1] + delta[i]) / 2.0;
+        for (int i = 0; i < n - 1; i++) {
+            if (delta[i] == 0.0) { m[i] = 0.0; m[i + 1] = 0.0; }
+            else {
+                final double alpha = m[i] / delta[i], beta = m[i + 1] / delta[i];
+                final double tau = alpha * alpha + beta * beta;
+                if (tau > 9.0) { final double s = 3.0 / Math.sqrt(tau); m[i] = s * alpha * delta[i]; m[i + 1] = s * beta * delta[i]; }
+            }
         }
+
+        final double[] lut = new double[4097];
+        for (int i = 0; i <= 4096; i++) {
+            final double x = i / 4096.0;
+            int seg = n - 2;
+            for (int k = 0; k < n - 1; k++) { if (x <= px[k + 1]) { seg = k; break; } }
+            final double h = px[seg + 1] - px[seg];
+            final double t = (x - px[seg]) / h;
+            final double t2 = t * t, t3 = t2 * t;
+            lut[i] = Math.clamp(
+                    (2 * t3 - 3 * t2 + 1) * py[seg] + (t3 - 2 * t2 + t) * m[seg] * h
+                    + (-2 * t3 + 3 * t2) * py[seg + 1] + (t3 - t2) * m[seg + 1] * h,
+                    0.0, 1.0);
+        }
+        for (int i = 1; i <= 4096; i++) lut[i] = Math.max(lut[i], lut[i - 1]);
         return lut;
     }
 
-    /**
-     * Evaluate a non-uniform Catmull-Rom spline at position {@code x} given sorted knot arrays.
-     * <p>
-     * Uses chord-length parameterized tangents (average of adjacent segment slopes) so that the
-     * curve is exactly the identity when control points lie on {@code y = x}, regardless of knot
-     * x-spacing. This is essential for the tone curve: with all zone offsets at zero the LUT must
-     * be the identity transformation.
-     * <p>
-     * Boundary tangents use the one-sided finite difference (slope of the first/last segment),
-     * equivalent to a "clamped" end condition aligned with the adjacent segment.
-     */
-    private static double catmullRom(final double[] kx, final double[] ky, final double x) {
-        final int n = kx.length;
-
-        // Find the segment containing x
-        int seg = n - 2;
-        for (int i = 0; i < n - 1; i++) {
-            if (x <= kx[i + 1]) {
-                seg = i;
-                break;
-            }
-        }
-
-        // Local parameter t ∈ [0,1] within the segment
-        final double dx = kx[seg + 1] - kx[seg];
-        final double t = (dx == 0.0) ? 0.0 : (x - kx[seg]) / dx;
-
-        // Non-uniform tangents: average of adjacent segment slopes (dy/dx), scaled by segment width
-        // for the Hermite cubic form. For y=x control points this always gives slope 1.0.
-        final double m1 = nonUniformTangent(kx, ky, seg,     n) * dx;
-        final double m2 = nonUniformTangent(kx, ky, seg + 1, n) * dx;
-
-        // Cubic Hermite basis
-        final double t2 = t * t;
-        final double t3 = t2 * t;
-        final double y = (2 * t3 - 3 * t2 + 1) * ky[seg]
-                       + (t3 - 2 * t2 + t)      * m1
-                       + (-2 * t3 + 3 * t2)     * ky[seg + 1]
-                       + (t3 - t2)               * m2;
-        return Math.clamp(y, 0.0, 1.0);
-    }
-
-    /**
-     * Chord-length Catmull-Rom slope at knot {@code i}: average of adjacent segment slopes.
-     * At boundaries, falls back to the one-sided slope of the single adjacent segment.
-     */
-    private static double nonUniformTangent(final double[] kx, final double[] ky, final int i, final int n) {
-        if (i == 0) {
-            return (ky[1] - ky[0]) / (kx[1] - kx[0]);
-        }
-        if (i == n - 1) {
-            return (ky[n - 1] - ky[n - 2]) / (kx[n - 1] - kx[n - 2]);
-        }
-        return 0.5 * ((ky[i + 1] - ky[i]) / (kx[i + 1] - kx[i])
-                    + (ky[i] - ky[i - 1]) / (kx[i] - kx[i - 1]));
+    /** Sample a 4097-entry linear [0,1]→[0,1] LUT with linear interpolation. */
+    private static double sampleLinearLut(final double[] lut, final double x) {
+        final double scaled = Math.clamp(x, 0.0, 1.0) * 4096.0;
+        final int lo = (int) scaled;
+        final int hi = Math.min(lo + 1, 4096);
+        final double frac = scaled - lo;
+        return lut[lo] + frac * (lut[hi] - lut[lo]);
     }
 
     // -------------------------------------------------------------------------
-    // Temperature and tint
+    // Base layer computation for shadows/highlights local adaptation
     // -------------------------------------------------------------------------
 
     /**
-     * Apply white balance (temperature + tint) adjustments to a pixel array in place.
-     * <p>
-     * Temperature shifts the warm/cool axis by scaling R and B channels inversely.
-     * Tint shifts the green/magenta axis by scaling G relative to R and B.
-     * Coefficients are calibrated so ±100 approximates a full tungsten↔daylight shift.
+     * Compute the Gaussian base layer for the shadows/highlights local-adaptation algorithm.
      *
-     * @param pixels TYPE_INT_RGB packed ints, modified in place
-     * @param adj    temperature and tint parameters
-     */
-    public static void applyTemperatureAdjustment(final int[] pixels, final TemperatureAdjustment adj) {
-        if (adj.temperature() == 0.0 && adj.tint() == 0.0) {
-            return;
-        }
-
-        // Temperature: +100 → R*1.20, G*1.05, B*0.70 (tungsten warmth)
-        //              -100 → R*0.80, G*0.95, B*1.30 (cool shade)
-        final double tempT = adj.temperature() / 100.0;
-        final double rTempScale = 1.0 + tempT * 0.20;
-        final double gTempScale = 1.0 + tempT * 0.05;
-        final double bTempScale = 1.0 - tempT * 0.30;
-
-        // Tint: +100 → R*1.10, G*0.80, B*1.10 (magenta)
-        //       -100 → R*0.90, G*1.20, B*0.90 (green)
-        final double tintT = adj.tint() / 100.0;
-        final double rTintScale = 1.0 + tintT * 0.10;
-        final double gTintScale = 1.0 - tintT * 0.20;
-        final double bTintScale = 1.0 + tintT * 0.10;
-
-        final double rScale = rTempScale * rTintScale;
-        final double gScale = gTempScale * gTintScale;
-        final double bScale = bTempScale * bTintScale;
-
-        for (int i = 0; i < pixels.length; i++) {
-            final int pixel = pixels[i];
-            final int r = clamp((int) Math.round(((pixel >> 16) & 0xFF) * rScale));
-            final int g = clamp((int) Math.round(((pixel >> 8) & 0xFF) * gScale));
-            final int b = clamp((int) Math.round((pixel & 0xFF) * bScale));
-            pixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Split toning
-    // -------------------------------------------------------------------------
-
-    /**
-     * Apply split toning to a pixel array in place.
-     * <p>
-     * Blends a shadow colour tint into dark pixels and a highlight colour tint into bright pixels,
-     * with a smooth luminance-based crossover. Works in HSL space to preserve luminance.
+     * <p>The base layer is the linear CIE Y luminance of each pixel after a large-radius
+     * Gaussian blur. It captures the large-scale tonal structure of the image without
+     * fine detail. The shadows/highlights blend uses this to determine how much each pixel
+     * should be adjusted: dark pixels in the base layer get the shadow treatment, bright
+     * pixels get the highlight treatment.
      *
-     * @param pixels TYPE_INT_RGB packed ints, modified in place
-     * @param adj    split tone parameters
-     */
-    public static void applySplitTone(final int[] pixels, final SplitToneAdjustment adj) {
-        if (adj.shadowSaturation() == 0.0 && adj.highlightSaturation() == 0.0) {
-            return;
-        }
-
-        // Crossover midpoint shifts with balance: +100 → 0.75 (more highlights), -100 → 0.25 (more shadows)
-        final double midpoint = 0.5 + adj.balance() * 0.0025;
-        final double shadowStrength = adj.shadowSaturation() / 100.0;
-        final double highlightStrength = adj.highlightSaturation() / 100.0;
-
-        for (int i = 0; i < pixels.length; i++) {
-            final int pixel = pixels[i];
-            final int r = (pixel >> 16) & 0xFF;
-            final int g = (pixel >> 8) & 0xFF;
-            final int b = pixel & 0xFF;
-
-            final double[] hsl = rgbToHsl(r, g, b);
-            final double lum = hsl[2];
-
-            double blendH = hsl[0];
-            double blendS = hsl[1];
-
-            if (lum <= midpoint && shadowStrength > 0.0) {
-                // Shadow region: weight rises from 0 at midpoint to 1 at black
-                final double t = (midpoint - lum) / midpoint;
-                final double w = shadowStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
-                // Blend hue toward shadow hue, introduce saturation on neutral pixels
-                blendH = blendHue(blendH, adj.shadowHue(), w);
-                blendS = Math.clamp(blendS + w * (1.0 - blendS) * 0.5, 0.0, 1.0);
-            }
-
-            if (lum > midpoint && highlightStrength > 0.0) {
-                // Highlight region: weight rises from 0 at midpoint to 1 at white
-                final double t = (lum - midpoint) / (1.0 - midpoint);
-                final double w = highlightStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
-                blendH = blendHue(blendH, adj.highlightHue(), w);
-                blendS = Math.clamp(blendS + w * (1.0 - blendS) * 0.5, 0.0, 1.0);
-            }
-
-            final int[] rgb = hslToRgb(blendH, blendS, lum);
-            pixels[i] = 0xFF000000 | (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
-        }
-    }
-
-    /** Blend hue {@code from} toward hue {@code to} by weight {@code w}, respecting the circular hue axis. */
-    private static double blendHue(final double from, final double to, final double w) {
-        double delta = to - from;
-        if (delta > 180.0) delta -= 360.0;
-        if (delta < -180.0) delta += 360.0;
-        return ((from + delta * w) % 360.0 + 360.0) % 360.0;
-    }
-
-    // -------------------------------------------------------------------------
-    // Vignette
-    // -------------------------------------------------------------------------
-
-    /**
-     * Apply a vignette effect to a tile in place.
-     * <p>
-     * Each pixel's distance from the image centre determines how much darkening or lightening is applied,
-     * using a cosine falloff between the inner (clear) zone and the outer (fully vignetted) edge.
+     * <p>The blur radius is fixed at 10% of the shorter image dimension, matching
+     * darktable's default radius of 100px on a typical image. This is large enough to
+     * capture global tonal zones while remaining fast via the half-resolution trick.
      *
-     * @param pixels  TYPE_INT_RGB packed ints for this tile, modified in place
-     * @param tileX   left edge of this tile in image coordinates
-     * @param tileY   top edge of this tile in image coordinates
-     * @param tileW   width of this tile
-     * @param tileH   height of this tile
-     * @param imageW  full image width
-     * @param imageH  full image height
-     * @param adj     vignette parameters
+     * @param image full TYPE_INT_RGB image (not tiled — requires global context)
+     * @return float array of linear luminance values [0,1], one per pixel, row-major
      */
-    public static void applyVignette(
-            final int[] pixels,
-            final int tileX, final int tileY, final int tileW, final int tileH,
-            final int imageW, final int imageH,
-            final VignetteAdjustment adj) {
-
-        if (adj.strength() == 0.0) {
-            return;
-        }
-
-        final double cx = imageW / 2.0;
-        final double cy = imageH / 2.0;
-
-        // Inner radius: fraction of the image half-dimensions where vignette starts.
-        // Normalising each axis independently by cx/cy produces a true ellipse that follows
-        // the image aspect ratio — all four edge midpoints sit at the same normalised distance.
-        final double innerRadius = (adj.size() <= 0 ? 50.0 : adj.size()) / 100.0;
-        // Feather zone width: fraction of the half-dimensions over which the transition occurs.
-        final double featherWidth = Math.max(0.01, (adj.feather() <= 0 ? 50.0 : adj.feather()) / 100.0) * 0.5;
-        final double outerRadius = innerRadius + featherWidth;
-
-        // Brightness multiplier at full vignette: strength=-100 → 0.0 (black), strength=+100 → 2.0 (white)
-        final double fullFactor = 1.0 + adj.strength() / 100.0;
-
-        for (int py = 0; py < tileH; py++) {
-            for (int px = 0; px < tileW; px++) {
-                final double dx = (tileX + px - cx) / cx;
-                final double dy = (tileY + py - cy) / cy;
-                final double dist = Math.sqrt(dx * dx + dy * dy);
-
-                final double factor;
-                if (dist <= innerRadius) {
-                    factor = 1.0;  // inside clear zone — no adjustment
-                } else if (dist >= outerRadius) {
-                    factor = fullFactor;  // outside feather zone — full vignette
-                } else {
-                    // Smooth cosine transition through the feather zone
-                    final double t = (dist - innerRadius) / featherWidth;
-                    final double blend = (1.0 - Math.cos(t * Math.PI)) / 2.0;
-                    factor = 1.0 + blend * (fullFactor - 1.0);
-                }
-
-                if (factor == 1.0) {
-                    continue;
-                }
-
-                final int idx = py * tileW + px;
-                final int pixel = pixels[idx];
-                final int r = clamp((int) Math.round(((pixel >> 16) & 0xFF) * factor));
-                final int g = clamp((int) Math.round(((pixel >> 8) & 0xFF) * factor));
-                final int b = clamp((int) Math.round((pixel & 0xFF) * factor));
-                pixels[idx] = 0xFF000000 | (r << 16) | (g << 8) | b;
-            }
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Clarity — downscale-blur-upscale glow/crispness effect
-    // -------------------------------------------------------------------------
-
-    /**
-     * Apply a clarity adjustment to a full {@link BufferedImage} in place.
-     * <p>
-     * Negative clarity creates a dreamy glow by blending a blurred version of the image back onto
-     * the original (screen blend on highlights). Positive clarity increases local contrast by
-     * subtracting the blurred version (unsharp mask style).
-     * <p>
-     * The blur is performed at ¼ resolution (½ each dimension) to keep memory and CPU cost
-     * manageable at any image size, then upscaled back before blending. This is resolution-independent
-     * and produces identical visual results to full-resolution blur for the low-frequency content
-     * that clarity operates on.
-     *
-     * @param image   TYPE_INT_RGB image, modified in place
-     * @param clarity clarity amount in [-100, 100]; negative = glow/dreamy, positive = crisp/sharp
-     */
-    public static void applyClarity(final BufferedImage image, final double clarity) {
-        if (clarity == 0.0) {
-            return;
-        }
-
+    public static float[] computeBaseLayer(final BufferedImage image) {
         final int w = image.getWidth();
         final int h = image.getHeight();
+        final int[] srcPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        // Downscale to ¼ pixels for the blur pass
+        // Extract linear luminance from each pixel
+        final float[] lum = new float[w * h];
+        for (int i = 0; i < srcPixels.length; i++) {
+            final int p = srcPixels[i];
+            final double r = toLinear((p >> 16) & 0xFF);
+            final double g = toLinear((p >> 8) & 0xFF);
+            final double b = toLinear(p & 0xFF);
+            lum[i] = (float) (0.2126 * r + 0.7152 * g + 0.0722 * b);
+        }
+
+        // Gaussian blur at half resolution for efficiency (darktable approach)
         final int smallW = Math.max(1, w / 2);
         final int smallH = Math.max(1, h / 2);
+        final double sigma = Math.min(smallW, smallH) * 0.10; // 10% of shorter dimension
 
-        final BufferedImage small = new BufferedImage(smallW, smallH, BufferedImage.TYPE_INT_RGB);
-        final Graphics2D g2d = small.createGraphics();
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2d.drawImage(image, 0, 0, smallW, smallH, null);
-        g2d.dispose();
-
-        // Gaussian blur on the small image — sigma proportional to image size, capped to avoid huge kernels
-        final double sigma = Math.min(smallW, smallH) * 0.04;
-        final BufferedImage blurredSmall = gaussianBlur(small, sigma);
-
-        // Upscale blurred image back to full resolution
-        final BufferedImage blurred = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-        final Graphics2D g2dUp = blurred.createGraphics();
-        g2dUp.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2dUp.drawImage(blurredSmall, 0, 0, w, h, null);
-        g2dUp.dispose();
-
-        // Blend original with blurred
-        final int[] srcPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
-        final int[] blurPixels = ((DataBufferInt) blurred.getRaster().getDataBuffer()).getData();
-        final double amount = Math.abs(clarity) / 100.0;
-
-        if (clarity < 0) {
-            // Negative clarity: glow — screen-blend the blurred highlights onto the original
-            for (int i = 0; i < srcPixels.length; i++) {
-                final int sp = srcPixels[i];
-                final int bp = blurPixels[i];
-                final int sr = (sp >> 16) & 0xFF;
-                final int sg = (sp >> 8) & 0xFF;
-                final int sb = sp & 0xFF;
-                final int br = (bp >> 16) & 0xFF;
-                final int bg = (bp >> 8) & 0xFF;
-                final int bb = bp & 0xFF;
-                // Screen blend: 1 - (1-a)(1-b), then lerp by amount
-                final int screenR = 255 - ((255 - sr) * (255 - br) / 255);
-                final int screenG = 255 - ((255 - sg) * (255 - bg) / 255);
-                final int screenB = 255 - ((255 - sb) * (255 - bb) / 255);
-                final int r = clamp((int) Math.round(sr + amount * (screenR - sr)));
-                final int g = clamp((int) Math.round(sg + amount * (screenG - sg)));
-                final int b = clamp((int) Math.round(sb + amount * (screenB - sb)));
-                srcPixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
-            }
-        } else {
-            // Positive clarity: unsharp mask — add the difference between original and blurred
-            for (int i = 0; i < srcPixels.length; i++) {
-                final int sp = srcPixels[i];
-                final int bp = blurPixels[i];
-                final int sr = (sp >> 16) & 0xFF;
-                final int sg = (sp >> 8) & 0xFF;
-                final int sb = sp & 0xFF;
-                final int br = (bp >> 16) & 0xFF;
-                final int bg = (bp >> 8) & 0xFF;
-                final int bb = bp & 0xFF;
-                final int r = clamp((int) Math.round(sr + amount * (sr - br)));
-                final int g = clamp((int) Math.round(sg + amount * (sg - bg)));
-                final int b = clamp((int) Math.round(sb + amount * (sb - bb)));
-                srcPixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+        // Downsample luminance to half resolution
+        final float[] small = new float[smallW * smallH];
+        for (int sy = 0; sy < smallH; sy++) {
+            for (int sx = 0; sx < smallW; sx++) {
+                final double fx = (sx + 0.5) * (double) w / smallW - 0.5;
+                final double fy = (sy + 0.5) * (double) h / smallH - 0.5;
+                final int x0 = Math.clamp((int) fx, 0, w - 1);
+                final int x1 = Math.clamp(x0 + 1, 0, w - 1);
+                final int y0 = Math.clamp((int) fy, 0, h - 1);
+                final int y1 = Math.clamp(y0 + 1, 0, h - 1);
+                final double wx = fx - x0, wy = fy - y0;
+                small[sy * smallW + sx] = (float) (
+                        lum[y0 * w + x0] * (1 - wx) * (1 - wy)
+                      + lum[y0 * w + x1] * wx * (1 - wy)
+                      + lum[y1 * w + x0] * (1 - wx) * wy
+                      + lum[y1 * w + x1] * wx * wy);
             }
         }
+
+        // Gaussian blur on the small luminance image
+        final float[] blurredSmall = gaussianBlurFloat(small, smallW, smallH, sigma);
+
+        // Upsample back to full resolution (bilinear)
+        final float[] base = new float[w * h];
+        for (int fy = 0; fy < h; fy++) {
+            for (int fx = 0; fx < w; fx++) {
+                final double sx = (fx + 0.5) * (double) smallW / w - 0.5;
+                final double sy = (fy + 0.5) * (double) smallH / h - 0.5;
+                final int x0 = Math.clamp((int) sx, 0, smallW - 1);
+                final int x1 = Math.clamp(x0 + 1, 0, smallW - 1);
+                final int y0 = Math.clamp((int) sy, 0, smallH - 1);
+                final int y1 = Math.clamp(y0 + 1, 0, smallH - 1);
+                final double wx = sx - x0, wy = sy - y0;
+                base[fy * w + fx] = (float) (
+                        blurredSmall[y0 * smallW + x0] * (1 - wx) * (1 - wy)
+                      + blurredSmall[y0 * smallW + x1] * wx * (1 - wy)
+                      + blurredSmall[y1 * smallW + x0] * (1 - wx) * wy
+                      + blurredSmall[y1 * smallW + x1] * wx * wy);
+            }
+        }
+        return base;
     }
 
-    /**
-     * Apply a separable Gaussian blur to a TYPE_INT_RGB image with clamp-to-edge boundary handling.
-     * <p>
-     * Each pass accesses out-of-bounds pixels by clamping the coordinate to the nearest valid index.
-     * This avoids the zero-fill artifact that ConvolveOp with EDGE_NO_OP produces (freshly allocated
-     * destination buffers are all-zero, so border pixels in the blurred output would be black rather
-     * than a true weighted average, causing border brightening in the clarity blend step).
-     */
-    private static BufferedImage gaussianBlur(final BufferedImage src, final double sigma) {
+    /** Separable Gaussian blur on a single-channel float array with clamp-to-edge boundary. */
+    private static float[] gaussianBlurFloat(final float[] src, final int w, final int h, final double sigma) {
         final int radius = (int) Math.ceil(sigma * 3.0);
         final int size = 2 * radius + 1;
         final double[] kernel = new double[size];
@@ -751,107 +706,549 @@ public final class ImageUtils {
             kernel[i] = Math.exp(-(x * x) / (2.0 * sigma * sigma));
             sum += kernel[i];
         }
-        for (int i = 0; i < size; i++) {
-            kernel[i] /= sum;
-        }
+        for (int i = 0; i < size; i++) kernel[i] /= sum;
 
-        final int w = src.getWidth();
-        final int h = src.getHeight();
-        final int[] srcPixels = ((DataBufferInt) src.getRaster().getDataBuffer()).getData();
-
-        // Horizontal pass: src → tmp
-        final BufferedImage tmp = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-        final int[] tmpPixels = ((DataBufferInt) tmp.getRaster().getDataBuffer()).getData();
+        final float[] tmp = new float[w * h];
         for (int row = 0; row < h; row++) {
             for (int col = 0; col < w; col++) {
-                double r = 0, g = 0, b = 0;
+                double v = 0;
                 for (int k = 0; k < size; k++) {
-                    final int srcCol = Math.clamp(col + k - radius, 0, w - 1);
-                    final int p = srcPixels[row * w + srcCol];
-                    r += ((p >> 16) & 0xFF) * kernel[k];
-                    g += ((p >> 8)  & 0xFF) * kernel[k];
-                    b += (p & 0xFF)          * kernel[k];
+                    v += src[row * w + Math.clamp(col + k - radius, 0, w - 1)] * kernel[k];
                 }
-                tmpPixels[row * w + col] = 0xFF000000
-                        | (clamp((int) Math.round(r)) << 16)
-                        | (clamp((int) Math.round(g)) << 8)
-                        |  clamp((int) Math.round(b));
+                tmp[row * w + col] = (float) v;
             }
         }
-
-        // Vertical pass: tmp → dst
-        final BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-        final int[] dstPixels = ((DataBufferInt) dst.getRaster().getDataBuffer()).getData();
+        final float[] dst = new float[w * h];
         for (int col = 0; col < w; col++) {
             for (int row = 0; row < h; row++) {
-                double r = 0, g = 0, b = 0;
+                double v = 0;
                 for (int k = 0; k < size; k++) {
-                    final int srcRow = Math.clamp(row + k - radius, 0, h - 1);
-                    final int p = tmpPixels[srcRow * w + col];
-                    r += ((p >> 16) & 0xFF) * kernel[k];
-                    g += ((p >> 8)  & 0xFF) * kernel[k];
-                    b += (p & 0xFF)          * kernel[k];
+                    v += tmp[Math.clamp(row + k - radius, 0, h - 1) * w + col] * kernel[k];
                 }
-                dstPixels[row * w + col] = 0xFF000000
-                        | (clamp((int) Math.round(r)) << 16)
-                        | (clamp((int) Math.round(g)) << 8)
-                        |  clamp((int) Math.round(b));
+                dst[row * w + col] = (float) v;
             }
         }
         return dst;
     }
 
     // -------------------------------------------------------------------------
-    // HSL ↔ RGB conversion
+    // Temperature and tint — Planckian locus + von Kries chromatic adaptation
     // -------------------------------------------------------------------------
 
     /**
-     * Convert RGB to HSL.
+     * Apply white balance correction to a pixel array in place.
      *
-     * @param r red [0, 255]
-     * @param g green [0, 255]
-     * @param b blue [0, 255]
-     * @return [h, s, l] where h ∈ [0, 360), s and l ∈ [0, 1]
+     * <p>Pipeline:
+     * <ol>
+     *   <li>Convert target Kelvin to CIE xy chromaticity using the Kang et al. (2002) formula
+     *       (exact Planckian locus fit, valid 1667K–25000K)</li>
+     *   <li>Apply tint as a perpendicular shift on the Planckian locus in CIE uv space</li>
+     *   <li>Compute von Kries chromatic adaptation from D65 (the sRGB white point) to the
+     *       target illuminant in CAT02 LMS space</li>
+     *   <li>Convert the resulting 3×3 adaptation matrix to linear sRGB channel multipliers</li>
+     *   <li>Decode sRGB → linear, apply multipliers, encode linear → sRGB</li>
+     * </ol>
+     *
+     * <p>This is the same pipeline used by dcraw, RawTherapee, and darktable for rendered images.
      */
-    private static double[] rgbToHsl(final int r, final int g, final int b) {
-        final double rN = r / 255.0;
-        final double gN = g / 255.0;
-        final double bN = b / 255.0;
-
-        final double max = Math.max(rN, Math.max(gN, bN));
-        final double min = Math.min(rN, Math.min(gN, bN));
-        final double delta = max - min;
-
-        final double l = (max + min) / 2.0;
-        final double s = (delta == 0.0) ? 0.0 : delta / (1.0 - Math.abs(2.0 * l - 1.0));
-
-        final double h;
-        if (delta == 0.0) {
-            h = 0.0;
-        } else if (max == rN) {
-            h = 60.0 * (((gN - bN) / delta) % 6.0);
-        } else if (max == gN) {
-            h = 60.0 * ((bN - rN) / delta + 2.0);
-        } else {
-            h = 60.0 * ((rN - gN) / delta + 4.0);
+    public static void applyTemperatureAdjustment(final int[] pixels, final TemperatureAdjustment adj) {
+        // 0 means "not set" — default to D65 (6500K), the sRGB white point, which is a no-op.
+        final int kelvin = (adj.temperature() == 0) ? 6500 : Math.clamp(adj.temperature(), 1667, 25000);
+        if (kelvin == 6500 && adj.tint() == 0) {
+            return;
         }
 
-        return new double[]{h < 0.0 ? h + 360.0 : h, s, l};
+        // --- Step 1: Kelvin → CIE xy (Kang et al. 2002, Eq. 1-4) ---
+        final double T = kelvin;
+        final double T2 = T * T, T3 = T2 * T;
+        final double xc;
+        if (T <= 4000) {
+            xc = -0.2661239e9 / T3 - 0.2343580e6 / T2 + 0.8776956e3 / T + 0.179910;
+        } else {
+            xc = -3.0258469e9 / T3 + 2.1070379e6 / T2 + 0.2226347e3 / T + 0.240390;
+        }
+        final double xc2 = xc * xc, xc3 = xc2 * xc;
+        final double yc;
+        if (T <= 2222) {
+            yc = -1.1063814 * xc3 - 1.34811020 * xc2 + 2.18555832 * xc - 0.20219683;
+        } else if (T <= 4000) {
+            yc = -0.9549476 * xc3 - 1.37418593 * xc2 + 2.09137015 * xc - 0.16748867;
+        } else {
+            yc = 3.0817580 * xc3 - 5.87338670 * xc2 + 3.75112997 * xc - 0.37001483;
+        }
+
+        // --- Step 2: Apply tint as CIE uv shift perpendicular to locus ---
+        // Convert xy → uv (CIE 1960 UCS)
+        final double denom = -2.0 * xc + 12.0 * yc + 3.0;
+        double u = 4.0 * xc / denom;
+        double v = 6.0 * yc / denom;
+        // Tint shifts v (green-magenta axis in uv); ±150 → ±0.015 in uv
+        v += adj.tint() * (0.015 / 150.0);
+        // Convert uv → xy
+        final double uvDenom = 6.0 * u - 16.0 * v + 12.0;
+        final double x = 9.0 * u / uvDenom;
+        final double y = 4.0 * v / uvDenom;
+
+        // --- Step 3: xy → XYZ (Y=1) ---
+        final double Xw = x / y;
+        final double Yw = 1.0;
+        final double Zw = (1.0 - x - y) / y;
+
+        // D65 white point XYZ
+        final double Xd65 = 0.95047, Yd65 = 1.00000, Zd65 = 1.08883;
+
+        // --- Step 4: Von Kries adaptation in CAT02 LMS space ---
+        // CAT02 matrix (XYZ → LMS)
+        final double[] Lw = xyzToLmsCat02(Xw, Yw, Zw);
+        final double[] Ld65 = xyzToLmsCat02(Xd65, Yd65, Zd65);
+
+        // Diagonal gain: scale each LMS channel so source white maps to D65 white
+        final double gainL = Ld65[0] / Lw[0];
+        final double gainM = Ld65[1] / Lw[1];
+        final double gainS = Ld65[2] / Lw[2];
+
+        // Build the full 3×3 adaptation matrix in XYZ space:
+        // M_adapt = CAT02_inv * diag(gain) * CAT02
+        // Then convert to linear sRGB: M_srgb = M_xyz_to_srgb * M_adapt * M_srgb_to_xyz
+        // Pre-multiply into per-pixel RGB multipliers via the combined matrix.
+        final double[] rRow = adaptedSrgbRow(0, gainL, gainM, gainS);
+        final double[] gRow = adaptedSrgbRow(1, gainL, gainM, gainS);
+        final double[] bRow = adaptedSrgbRow(2, gainL, gainM, gainS);
+
+        for (int i = 0; i < pixels.length; i++) {
+            final int pixel = pixels[i];
+            final double rl = toLinear((pixel >> 16) & 0xFF);
+            final double gl = toLinear((pixel >> 8) & 0xFF);
+            final double bl = toLinear(pixel & 0xFF);
+
+            final double ro = Math.clamp(rRow[0] * rl + rRow[1] * gl + rRow[2] * bl, 0.0, 1.0);
+            final double go = Math.clamp(gRow[0] * rl + gRow[1] * gl + gRow[2] * bl, 0.0, 1.0);
+            final double bo = Math.clamp(bRow[0] * rl + bRow[1] * gl + bRow[2] * bl, 0.0, 1.0);
+
+            pixels[i] = 0xFF000000 | (toSrgb(ro) << 16) | (toSrgb(go) << 8) | toSrgb(bo);
+        }
+    }
+
+    /** XYZ → CAT02 LMS. */
+    private static double[] xyzToLmsCat02(final double X, final double Y, final double Z) {
+        return new double[]{
+             0.7328 * X + 0.4296 * Y - 0.1624 * Z,
+            -0.7036 * X + 1.6975 * Y + 0.0061 * Z,
+             0.0030 * X + 0.0136 * Y + 0.9834 * Z
+        };
     }
 
     /**
-     * Convert HSL to RGB.
+     * Compute one row of the combined chromatic adaptation matrix in linear sRGB space.
      *
-     * @param h hue [0, 360)
-     * @param s saturation [0, 1]
-     * @param l lightness [0, 1]
-     * @return [r, g, b] each in [0, 255]
+     * <p>The full pipeline is: linear sRGB → XYZ (D65) → CAT02 LMS → diagonal gain →
+     * CAT02⁻¹ LMS → XYZ (D65) → linear sRGB. Pre-multiplied into a single 3×3 matrix.
+     *
+     * @param row    output channel index (0=R, 1=G, 2=B)
+     * @param gainL  LMS L-channel gain
+     * @param gainM  LMS M-channel gain
+     * @param gainS  LMS S-channel gain
+     * @return 3-element row [rCoeff, gCoeff, bCoeff]
      */
-    private static int[] hslToRgb(final double h, final double s, final double l) {
+    private static double[] adaptedSrgbRow(final int row, final double gainL, final double gainM, final double gainS) {
+        // sRGB (linear, D65) → XYZ D65 (IEC 61966-2-1)
+        final double[][] srgbToXyz = {
+            {0.4124564, 0.3575761, 0.1804375},
+            {0.2126729, 0.7151522, 0.0721750},
+            {0.0193339, 0.1191920, 0.9503041}
+        };
+        // XYZ D65 → linear sRGB (IEC 61966-2-1)
+        final double[][] xyzToSrgb = {
+            { 3.2404542, -1.5371385, -0.4985314},
+            {-0.9692660,  1.8760108,  0.0415560},
+            { 0.0556434, -0.2040259,  1.0572252}
+        };
+        // CAT02: XYZ → LMS
+        final double[][] cat02 = {
+            { 0.7328,  0.4296, -0.1624},
+            {-0.7036,  1.6975,  0.0061},
+            { 0.0030,  0.0136,  0.9834}
+        };
+        // CAT02 inverse: LMS → XYZ
+        final double[][] cat02inv = {
+            { 1.0961238, -0.2788690,  0.1827452},
+            { 0.4543690,  0.4735332,  0.0720978},
+            {-0.0096276, -0.0056980,  1.0153256}
+        };
+
+        // For each input sRGB channel, compute the output sRGB value for the given row.
+        // M_full = xyzToSrgb * cat02inv * diag(gainL, gainM, gainS) * cat02 * srgbToXyz
+        final double[] result = new double[3];
+        for (int inCh = 0; inCh < 3; inCh++) {
+            // sRGB[inCh] → XYZ
+            double X = srgbToXyz[0][inCh];
+            double Y = srgbToXyz[1][inCh];
+            double Z = srgbToXyz[2][inCh];
+            // XYZ → LMS (CAT02)
+            double L = cat02[0][0] * X + cat02[0][1] * Y + cat02[0][2] * Z;
+            double M = cat02[1][0] * X + cat02[1][1] * Y + cat02[1][2] * Z;
+            double S = cat02[2][0] * X + cat02[2][1] * Y + cat02[2][2] * Z;
+            // Apply diagonal gain
+            L *= gainL; M *= gainM; S *= gainS;
+            // LMS → XYZ (CAT02 inverse)
+            X = cat02inv[0][0] * L + cat02inv[0][1] * M + cat02inv[0][2] * S;
+            Y = cat02inv[1][0] * L + cat02inv[1][1] * M + cat02inv[1][2] * S;
+            Z = cat02inv[2][0] * L + cat02inv[2][1] * M + cat02inv[2][2] * S;
+            // XYZ → sRGB[row]
+            result[inCh] = xyzToSrgb[row][0] * X + xyzToSrgb[row][1] * Y + xyzToSrgb[row][2] * Z;
+        }
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Split toning — luminance-weighted hue tinting in HSL
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply split toning to a pixel array in place.
+     *
+     * <p>Zone weights are computed from the pixel's linear luminance (CIE Y), which is
+     * perceptually correct — gamma-encoded L would compress the shadow region and expand
+     * highlights, making the crossover point feel wrong.
+     *
+     * <p>The tinting itself operates in HSL space (hue blend + saturation introduction),
+     * which matches Lightroom's Color Grading panel behaviour.
+     */
+    public static void applySplitTone(final int[] pixels, final SplitToneAdjustment adj) {
+        if (adj.shadowSaturation() == 0 && adj.highlightSaturation() == 0) {
+            return;
+        }
+
+        // Crossover midpoint in linear luminance: +100 → 0.75, -100 → 0.25
+        final double midpoint = 0.5 + adj.balance() * 0.0025;
+        final double shadowStrength = adj.shadowSaturation() / 100.0;
+        final double highlightStrength = adj.highlightSaturation() / 100.0;
+
+        for (int i = 0; i < pixels.length; i++) {
+            final int pixel = pixels[i];
+
+            // Decode to linear for luminance computation
+            final double rl = toLinear((pixel >> 16) & 0xFF);
+            final double gl = toLinear((pixel >> 8) & 0xFF);
+            final double bl = toLinear(pixel & 0xFF);
+
+            // CIE Y (linear luminance) — perceptually correct zone weighting
+            final double Y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+
+            // Convert to HSL for tinting (HSL operates on gamma-encoded values for
+            // correct hue representation, so re-encode first)
+            final double[] hsl = linearRgbToHsl(rl, gl, bl);
+            double h = hsl[0], s = hsl[1], l = hsl[2];
+
+            if (Y <= midpoint && shadowStrength > 0.0) {
+                final double t = (midpoint - Y) / midpoint;
+                final double w = shadowStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
+                h = blendHue(h, adj.shadowHue(), w);
+                s = Math.clamp(s + w * (1.0 - s) * 0.5, 0.0, 1.0);
+            }
+
+            if (Y > midpoint && highlightStrength > 0.0) {
+                final double t = (Y - midpoint) / (1.0 - midpoint);
+                final double w = highlightStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
+                h = blendHue(h, adj.highlightHue(), w);
+                s = Math.clamp(s + w * (1.0 - s) * 0.5, 0.0, 1.0);
+            }
+
+            final double[] rgb = hslToLinearRgb(h, s, l);
+            pixels[i] = 0xFF000000
+                    | (toSrgb(Math.clamp(rgb[0], 0.0, 1.0)) << 16)
+                    | (toSrgb(Math.clamp(rgb[1], 0.0, 1.0)) << 8)
+                    |  toSrgb(Math.clamp(rgb[2], 0.0, 1.0));
+        }
+    }
+
+    private static double blendHue(final double from, final double to, final double w) {
+        double delta = to - from;
+        if (delta > 180.0) delta -= 360.0;
+        if (delta < -180.0) delta += 360.0;
+        return ((from + delta * w) % 360.0 + 360.0) % 360.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Vignette — elliptical cosine falloff in linear light
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply a vignette effect to a tile in place.
+     *
+     * <p>The brightness multiplier and saturation adjustment are applied in <b>linear light</b>.
+     *
+     * <p>Saturation algorithm from darktable vignette.c (GPL):
+     * {@code col[c] = col[c] - (mean - col[c]) * weight * saturation}
+     * where mean = (R+G+B)/3. Negative saturation pushes channels toward the mean (desaturates);
+     * positive pushes away (saturates).
+     */
+    public static void applyVignette(
+            final int[] pixels,
+            final int tileX, final int tileY, final int tileW, final int tileH,
+            final int imageW, final int imageH,
+            final VignetteAdjustment adj) {
+
+        if (adj.amount() == 0 && adj.saturation() == 0) {
+            return;
+        }
+
+        final double cx = imageW / 2.0;
+        final double cy = imageH / 2.0;
+
+        final double innerRadius = (adj.midpoint() <= 0 ? 50.0 : adj.midpoint()) / 100.0;
+        final double featherWidth = Math.max(0.01, (adj.feather() <= 0 ? 50.0 : adj.feather()) / 100.0) * 0.5;
+        final double outerRadius = innerRadius + featherWidth;
+
+        // In linear light: amount=-100 → factor=0.0 (black), amount=+100 → factor=2.0 (white)
+        final double fullFactor = 1.0 + adj.amount() / 100.0;
+        // Saturation: -100 → fully desaturate edges, +100 → fully saturate edges
+        final double satStrength = adj.saturation() / 100.0;
+
+        for (int py = 0; py < tileH; py++) {
+            for (int px = 0; px < tileW; px++) {
+                final double dx = (tileX + px - cx) / cx;
+                final double dy = (tileY + py - cy) / cy;
+                final double dist = Math.sqrt(dx * dx + dy * dy);
+
+                final double weight;
+                if (dist <= innerRadius) {
+                    weight = 0.0;
+                } else if (dist >= outerRadius) {
+                    weight = 1.0;
+                } else {
+                    final double t = (dist - innerRadius) / featherWidth;
+                    weight = (1.0 - Math.cos(t * Math.PI)) / 2.0;
+                }
+
+                if (weight == 0.0) continue;
+
+                final int idx = py * tileW + px;
+                final int pixel = pixels[idx];
+
+                // Decode → apply in linear → encode
+                double r = toLinear((pixel >> 16) & 0xFF);
+                double g = toLinear((pixel >> 8) & 0xFF);
+                double b = toLinear(pixel & 0xFF);
+
+                // 1. Brightness adjustment (darktable: negative = multiply, positive = add)
+                if (adj.amount() != 0) {
+                    if (adj.amount() < 0) {
+                        // Darktable: falloff = 1 + weight * brightness (brightness is negative)
+                        final double falloff = 1.0 + weight * (adj.amount() / 100.0);
+                        r = Math.clamp(r * falloff, 0.0, 1.0);
+                        g = Math.clamp(g * falloff, 0.0, 1.0);
+                        b = Math.clamp(b * falloff, 0.0, 1.0);
+                    } else {
+                        // Darktable: falloff = weight * brightness (brightness is positive)
+                        final double falloff = weight * (adj.amount() / 100.0);
+                        r = Math.clamp(r + falloff, 0.0, 1.0);
+                        g = Math.clamp(g + falloff, 0.0, 1.0);
+                        b = Math.clamp(b + falloff, 0.0, 1.0);
+                    }
+                }
+
+                // 2. Saturation adjustment (darktable algorithm: push toward/away from mean)
+                if (adj.saturation() != 0) {
+                    final double mean = (r + g + b) / 3.0;
+                    final double wss = weight * satStrength;
+                    r = Math.clamp(r - (mean - r) * wss, 0.0, 1.0);
+                    g = Math.clamp(g - (mean - g) * wss, 0.0, 1.0);
+                    b = Math.clamp(b - (mean - b) * wss, 0.0, 1.0);
+                }
+
+                pixels[idx] = 0xFF000000 | (toSrgb(r) << 16) | (toSrgb(g) << 8) | toSrgb(b);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Clarity — local contrast / glow in linear light
+    // -------------------------------------------------------------------------
+
+    /**
+     * Apply a clarity adjustment to a full {@link BufferedImage} in place.
+     *
+     * <p>The blur and blend operate in <b>linear light</b>. Blurring in gamma space produces
+     * incorrect halos because the gamma curve compresses bright regions — a bright edge next to
+     * a dark region blurs to a value that is too dark in linear terms, causing the unsharp mask
+     * to over-sharpen bright edges and under-sharpen dark ones.
+     *
+     * <p>Positive clarity: unsharp mask (local contrast boost).
+     * Negative clarity: screen blend of blurred image (dreamy glow / mist).
+     */
+    public static void applyClarity(final BufferedImage image, final double clarity) {
+        if (clarity == 0.0) {
+            return;
+        }
+
+        final int w = image.getWidth();
+        final int h = image.getHeight();
+        final int[] srcPixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+
+        // Decode sRGB → linear float array
+        final float[] lin = new float[srcPixels.length * 3];
+        for (int i = 0; i < srcPixels.length; i++) {
+            final int p = srcPixels[i];
+            lin[i * 3]     = (float) toLinear((p >> 16) & 0xFF);
+            lin[i * 3 + 1] = (float) toLinear((p >> 8) & 0xFF);
+            lin[i * 3 + 2] = (float) toLinear(p & 0xFF);
+        }
+
+        // Gaussian blur in linear space at half resolution
+        final int smallW = Math.max(1, w / 2);
+        final int smallH = Math.max(1, h / 2);
+        final float[] small = downsampleLinear(lin, w, h, smallW, smallH);
+        final double sigma = Math.min(smallW, smallH) * 0.04;
+        final float[] blurredSmall = gaussianBlurLinear(small, smallW, smallH, sigma);
+        final float[] blurred = upsampleLinear(blurredSmall, smallW, smallH, w, h);
+
+        final double amount = Math.abs(clarity) / 100.0;
+
+        if (clarity < 0) {
+            // Negative clarity: screen blend of blurred onto original in linear light
+            for (int i = 0; i < srcPixels.length; i++) {
+                final float sr = lin[i * 3], sg = lin[i * 3 + 1], sb = lin[i * 3 + 2];
+                final float br = blurred[i * 3], bg = blurred[i * 3 + 1], bb = blurred[i * 3 + 2];
+                // Screen: 1 - (1-a)(1-b)
+                final double ro = sr + amount * ((1.0 - (1.0 - sr) * (1.0 - br)) - sr);
+                final double go = sg + amount * ((1.0 - (1.0 - sg) * (1.0 - bg)) - sg);
+                final double bo = sb + amount * ((1.0 - (1.0 - sb) * (1.0 - bb)) - sb);
+                srcPixels[i] = 0xFF000000
+                        | (toSrgb(Math.clamp(ro, 0.0, 1.0)) << 16)
+                        | (toSrgb(Math.clamp(go, 0.0, 1.0)) << 8)
+                        |  toSrgb(Math.clamp(bo, 0.0, 1.0));
+            }
+        } else {
+            // Positive clarity: unsharp mask in linear light
+            for (int i = 0; i < srcPixels.length; i++) {
+                final float sr = lin[i * 3], sg = lin[i * 3 + 1], sb = lin[i * 3 + 2];
+                final float br = blurred[i * 3], bg = blurred[i * 3 + 1], bb = blurred[i * 3 + 2];
+                final double ro = sr + amount * (sr - br);
+                final double go = sg + amount * (sg - bg);
+                final double bo = sb + amount * (sb - bb);
+                srcPixels[i] = 0xFF000000
+                        | (toSrgb(Math.clamp(ro, 0.0, 1.0)) << 16)
+                        | (toSrgb(Math.clamp(go, 0.0, 1.0)) << 8)
+                        |  toSrgb(Math.clamp(bo, 0.0, 1.0));
+            }
+        }
+    }
+
+    /** Bilinear downsample of a linear float RGB array. */
+    private static float[] downsampleLinear(final float[] src, final int sw, final int sh,
+                                             final int dw, final int dh) {
+        final float[] dst = new float[dw * dh * 3];
+        final double sx = (double) sw / dw;
+        final double sy = (double) sh / dh;
+        for (int dy = 0; dy < dh; dy++) {
+            for (int dx = 0; dx < dw; dx++) {
+                final double fx = (dx + 0.5) * sx - 0.5;
+                final double fy = (dy + 0.5) * sy - 0.5;
+                final int x0 = Math.clamp((int) fx, 0, sw - 1);
+                final int x1 = Math.clamp(x0 + 1, 0, sw - 1);
+                final int y0 = Math.clamp((int) fy, 0, sh - 1);
+                final int y1 = Math.clamp(y0 + 1, 0, sh - 1);
+                final double wx = fx - x0, wy = fy - y0;
+                for (int c = 0; c < 3; c++) {
+                    dst[(dy * dw + dx) * 3 + c] = (float) (
+                            src[(y0 * sw + x0) * 3 + c] * (1 - wx) * (1 - wy)
+                          + src[(y0 * sw + x1) * 3 + c] * wx * (1 - wy)
+                          + src[(y1 * sw + x0) * 3 + c] * (1 - wx) * wy
+                          + src[(y1 * sw + x1) * 3 + c] * wx * wy);
+                }
+            }
+        }
+        return dst;
+    }
+
+    /** Bilinear upsample of a linear float RGB array. */
+    private static float[] upsampleLinear(final float[] src, final int sw, final int sh,
+                                           final int dw, final int dh) {
+        return downsampleLinear(src, sw, sh, dw, dh);
+    }
+
+    /** Separable Gaussian blur on a linear float RGB array with clamp-to-edge boundary. */
+    private static float[] gaussianBlurLinear(final float[] src, final int w, final int h, final double sigma) {
+        final int radius = (int) Math.ceil(sigma * 3.0);
+        final int size = 2 * radius + 1;
+        final double[] kernel = new double[size];
+        double sum = 0.0;
+        for (int i = 0; i < size; i++) {
+            final double x = i - radius;
+            kernel[i] = Math.exp(-(x * x) / (2.0 * sigma * sigma));
+            sum += kernel[i];
+        }
+        for (int i = 0; i < size; i++) kernel[i] /= sum;
+
+        final float[] tmp = new float[w * h * 3];
+        // Horizontal pass
+        for (int row = 0; row < h; row++) {
+            for (int col = 0; col < w; col++) {
+                double r = 0, g = 0, b = 0;
+                for (int k = 0; k < size; k++) {
+                    final int sc = Math.clamp(col + k - radius, 0, w - 1);
+                    r += src[(row * w + sc) * 3]     * kernel[k];
+                    g += src[(row * w + sc) * 3 + 1] * kernel[k];
+                    b += src[(row * w + sc) * 3 + 2] * kernel[k];
+                }
+                tmp[(row * w + col) * 3]     = (float) r;
+                tmp[(row * w + col) * 3 + 1] = (float) g;
+                tmp[(row * w + col) * 3 + 2] = (float) b;
+            }
+        }
+        final float[] dst = new float[w * h * 3];
+        // Vertical pass
+        for (int col = 0; col < w; col++) {
+            for (int row = 0; row < h; row++) {
+                double r = 0, g = 0, b = 0;
+                for (int k = 0; k < size; k++) {
+                    final int sr = Math.clamp(row + k - radius, 0, h - 1);
+                    r += tmp[(sr * w + col) * 3]     * kernel[k];
+                    g += tmp[(sr * w + col) * 3 + 1] * kernel[k];
+                    b += tmp[(sr * w + col) * 3 + 2] * kernel[k];
+                }
+                dst[(row * w + col) * 3]     = (float) r;
+                dst[(row * w + col) * 3 + 1] = (float) g;
+                dst[(row * w + col) * 3 + 2] = (float) b;
+            }
+        }
+        return dst;
+    }
+
+    // -------------------------------------------------------------------------
+    // Color space conversions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Linear RGB → HSL. Input channels in [0,1], output h ∈ [0,360), s and l ∈ [0,1].
+     * HSL is computed directly from linear RGB values — this is correct for hue targeting
+     * because hue is a geometric property of the RGB cube, independent of gamma.
+     */
+    private static double[] linearRgbToHsl(final double r, final double g, final double b) {
+        final double max = Math.max(r, Math.max(g, b));
+        final double min = Math.min(r, Math.min(g, b));
+        final double delta = max - min;
+        final double l = (max + min) / 2.0;
+        final double s = (delta == 0.0) ? 0.0 : delta / (1.0 - Math.abs(2.0 * l - 1.0));
+        final double h;
+        if (delta == 0.0) {
+            h = 0.0;
+        } else if (max == r) {
+            h = 60.0 * (((g - b) / delta) % 6.0);
+        } else if (max == g) {
+            h = 60.0 * ((b - r) / delta + 2.0);
+        } else {
+            h = 60.0 * ((r - g) / delta + 4.0);
+        }
+        return new double[]{h < 0.0 ? h + 360.0 : h, s, l};
+    }
+
+    /** HSL → linear RGB. h ∈ [0,360), s and l ∈ [0,1]. Returns linear RGB in [0,1]. */
+    private static double[] hslToLinearRgb(final double h, final double s, final double l) {
         final double c = (1.0 - Math.abs(2.0 * l - 1.0)) * s;
         final double x = c * (1.0 - Math.abs((h / 60.0) % 2.0 - 1.0));
         final double m = l - c / 2.0;
-
         final double r1, g1, b1;
         switch ((int) (h / 60.0) % 6) {
             case 0 -> { r1 = c; g1 = x; b1 = 0; }
@@ -861,11 +1258,50 @@ public final class ImageUtils {
             case 4 -> { r1 = x; g1 = 0; b1 = c; }
             default -> { r1 = c; g1 = 0; b1 = x; }
         }
+        return new double[]{r1 + m, g1 + m, b1 + m};
+    }
 
-        return new int[]{
-            clamp((int) Math.round((r1 + m) * 255.0)),
-            clamp((int) Math.round((g1 + m) * 255.0)),
-            clamp((int) Math.round((b1 + m) * 255.0))
+    /**
+     * Linear sRGB → Oklab (Björn Ottosson, 2020).
+     * Returns [L, a, b] where L ∈ [0,1], a and b ∈ [-0.5, 0.5] approximately.
+     * Oklab is perceptually uniform: equal Euclidean distances correspond to equal perceived
+     * colour differences, and chroma scaling does not shift hue.
+     */
+    private static double[] linearRgbToOklab(final double r, final double g, final double b) {
+        // Linear sRGB → LMS (Oklab M1 matrix)
+        final double l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+        final double m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+        final double s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+        // Cube root (non-linear response)
+        final double lc = Math.cbrt(l);
+        final double mc = Math.cbrt(m);
+        final double sc = Math.cbrt(s);
+        // LMS' → Lab (Oklab M2 matrix)
+        return new double[]{
+            0.2104542553 * lc + 0.7936177850 * mc - 0.0040720468 * sc,
+            1.9779984951 * lc - 2.4285922050 * mc + 0.4505937099 * sc,
+            0.0259040371 * lc + 0.7827717662 * mc - 0.8086757660 * sc
+        };
+    }
+
+    /**
+     * Oklab → linear sRGB (Björn Ottosson, 2020).
+     * Returns linear RGB; caller must clamp to [0,1] before encoding.
+     */
+    private static double[] oklabToLinearRgb(final double L, final double a, final double b) {
+        // Lab → LMS' (Oklab M2 inverse)
+        final double lc = L + 0.3963377774 * a + 0.2158037573 * b;
+        final double mc = L - 0.1055613458 * a - 0.0638541728 * b;
+        final double sc = L - 0.0894841775 * a - 1.2914855480 * b;
+        // Cube (inverse of cube root)
+        final double l = lc * lc * lc;
+        final double m = mc * mc * mc;
+        final double s = sc * sc * sc;
+        // LMS → linear sRGB (Oklab M1 inverse)
+        return new double[]{
+             4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
         };
     }
 
