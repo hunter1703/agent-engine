@@ -11,6 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BOLD='\033[1m'
 RESET='\033[0m'
+RED='\033[0;31m'
 
 # Helper functions for colored output
 print_phase() {
@@ -32,7 +33,8 @@ print_note() { printf "    ${YELLOW}ℹ${RESET} %s\n" "$1"; }
 # Signal handler for graceful shutdown
 stop_workloads() {
   printf "\n${BOLD}${YELLOW}⚠ Shutdown signal received. Deleting workloads (preserving volumes)...${RESET}\n"
-  
+  rm -rf "$STATE_DIR" 2>/dev/null || true
+
   printf "${CYAN}  → Stopping port-forward...${RESET}\n"
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   
@@ -68,6 +70,7 @@ IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "dev")}
 EXTRA_VALUES_FILES=""
 SET_ARGUMENTS=""
 LOCAL_PORT=${LOCAL_PORT:-8080}
+STATE_DIR=/tmp/agent-engine-deploy-state
 
 usage() {
   cat <<'EOF'
@@ -75,14 +78,13 @@ Usage:
   ./k8s/scripts/deploy.sh
   ./k8s/scripts/deploy.sh -e prod
 
-Phases:
-  1. Build Docker images for runtime, core, and rest.
-  2. Deploy infrastructure workloads (MongoDB, Postgres).
-  3. Seed infrastructure configuration into MongoDB (Pekko, SQL, microservices, default model).
-     Also initializes the PostgreSQL Pekko journal schema (CREATE TABLE IF NOT EXISTS).
-  4. Deploy application workloads (runtime, core, rest).
-  5. Seed application catalog (models, agents) through the REST API.
-  6. [local environment only] Port-forward the REST service to localhost.
+Stages (run concurrently where dependencies allow):
+  build + infra deploy  Run in parallel from the start.
+  seed infra            Starts once infra is deployed.
+  core + rest deploy    Start once build and infra seeding are done.
+  runtime deploy        Starts once core is ready (actor recovery needs core).
+  seed catalog          Starts once core and rest are both ready.
+  port-forward          Starts once catalog is seeded (local only).
 
 Flags:
   --no-atomic       Disable atomic rollback on Helm failure.
@@ -162,6 +164,21 @@ helm_flags() {
     for s in $SET_ARGUMENTS; do set -- "$@" --set "$s"; done
   fi
   printf '%s\n' "$*"
+}
+
+# Polls for each named flag file. Exits immediately if the 'failed' sentinel is present.
+wait_for() {
+  for flag; do
+    while [ ! -f "$STATE_DIR/$flag" ]; do
+      [ -f "$STATE_DIR/failed" ] && exit 1
+      sleep 1
+    done
+  done
+}
+
+fail() {
+  touch "$STATE_DIR/failed"
+  exit 1
 }
 
 parse_args "$@"
