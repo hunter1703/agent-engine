@@ -251,47 +251,46 @@ job_seed_catalog() {
 
 parse_args "$@"
 
-# ── Phase 1: Build ────────────────────────────────────────────────────────────
-if [ "$DRY_RUN" != "true" ]; then
-  print_phase "Phase 1: Building Docker images"
-  require_command docker
-  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest
-else
-  print_phase "Phase 1: Skipping image build (dry-run)"
+rm -rf "$STATE_DIR"
+mkdir -p "$STATE_DIR"
+trap 'rm -rf "$STATE_DIR"' EXIT
+
+pids=""
+
+job_build &
+pids="$pids $!"
+
+job_infra &
+pids="$pids $!"
+
+job_seed_infra &
+pids="$pids $!"
+
+for entry in $APP_SERVICES; do
+  [ -n "$entry" ] || continue
+  chart=$(printf '%s' "$entry" | cut -d: -f1)
+  deps=$(printf '%s' "$entry"  | cut -d: -f2)
+  flag=$(printf '%s' "$entry"  | cut -d: -f3)
+  deploy_service "$chart" "$deps" "$flag" &
+  pids="$pids $!"
+done
+
+job_seed_catalog &
+pids="$pids $!"
+
+failed_pids=""
+for pid in $pids; do
+  wait "$pid" || failed_pids="$failed_pids $pid"
+done
+
+if [ -n "${failed_pids# }" ]; then
+  printf "\n${BOLD}${RED}✗ Deployment failed. Check output above for details.${RESET}\n" >&2
+  exit 1
 fi
 
-# ── Phase 2: Deploy infrastructure ───────────────────────────────────────────
-if [ "$SKIP_INFRA" = "true" ]; then
-  print_phase "Phase 2: Skipping infrastructure deploy (--skip-infra)"
-else
-  print_phase "Phase 2: Deploying infrastructure workloads"
-  # shellcheck disable=SC2046
-  sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags)
-fi
+print_phase "Deployment complete — application is ready"
 
-# ── Phase 3: Seed infrastructure configuration ───────────────────────────────
-if [ "$SKIP_INFRA" = "true" ]; then
-  print_phase "Phase 3: Skipping infrastructure seeding (--skip-infra)"
-elif [ "$DRY_RUN" != "true" ]; then
-  print_phase "Phase 3: Seeding infrastructure configuration"
-  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
-fi
-
-# ── Phase 4: Deploy application workloads ────────────────────────────────────
-print_phase "Phase 4: Deploying application workloads"
-print_step "Linting and deploying service charts"
-# shellcheck disable=SC2046
-sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags)
-
-# ── Phase 5: Seed application catalog ────────────────────────────────────────
-print_phase "Phase 5: Seeding application catalog"
-if [ "$DRY_RUN" != "true" ]; then
-  sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"
-fi
-
-# ── Phase 6: Port-forward ────────────────────────────────────────────────────
 if [ "$ENVIRONMENT" = "local" ] && [ "$DRY_RUN" != "true" ]; then
-  print_phase "Phase 6: Port-forward"
   print_step "Clearing existing port-forwards on port ${LOCAL_PORT}"
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   sleep 1

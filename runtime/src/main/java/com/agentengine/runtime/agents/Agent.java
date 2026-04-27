@@ -1,12 +1,9 @@
 package com.agentengine.runtime.agents;
 
-import com.agentengine.runtime.tools.Tool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.Callbacks;
-import com.google.adk.tools.BaseTool;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -37,10 +34,6 @@ public abstract class Agent extends BaseAgent {
 
     public BaseAgentConfig getAgentConfig() {
         return agentConfig;
-    }
-
-    public List<BaseTool> getTools() {
-        return List.of();
     }
 
     public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {
