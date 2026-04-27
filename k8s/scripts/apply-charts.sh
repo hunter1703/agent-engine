@@ -91,6 +91,11 @@ build_selected_images() {
     return 0
   fi
 
+  if [ "${IMAGES_PREBUILT:-}" = "true" ]; then
+    ROLLOUT_REVISION=$(date +%s)
+    return 0
+  fi
+
   selected_components=""
   for component in runtime core rest; do
     # shellcheck disable=SC2086
