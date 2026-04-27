@@ -100,7 +100,11 @@ wait_for() {
 
 ## Modular Service Declarations
 
-App services are declared as data, not hardcoded job functions. A single generic `deploy_service` function handles any service. Each service is one entry in `APP_SERVICES`:
+Both service deployment and catalog seeding dependencies are declared as data. No job functions change when services are added.
+
+### APP_SERVICES
+
+A single generic `deploy_service` function handles any service. Each service is one entry:
 
 ```sh
 # Format: "chart:comma-separated-wait-flags:ready-flag"
@@ -116,8 +120,9 @@ The generic function:
 ```sh
 deploy_service() {
   chart=$1 deps=$2 ready_flag=$3
-  wait_for $(echo "$deps" | tr ',' ' ')
-  sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags) "$chart" \
+  # shellcheck disable=SC2046
+  wait_for $(printf '%s' "$deps" | tr ',' ' ')
+  IMAGES_PREBUILT=true sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags) "$chart" \
     || { touch "$STATE_DIR/failed"; exit 1; }
   touch "$STATE_DIR/$ready_flag"
 }
@@ -127,17 +132,40 @@ The main orchestrator launches each service in a loop:
 
 ```sh
 for entry in $APP_SERVICES; do
-  chart=$(echo "$entry" | cut -d: -f1)
-  deps=$(echo "$entry"  | cut -d: -f2)
-  flag=$(echo "$entry"  | cut -d: -f3)
+  [ -n "$entry" ] || continue
+  chart=$(printf '%s' "$entry" | cut -d: -f1)
+  deps=$(printf '%s' "$entry"  | cut -d: -f2)
+  flag=$(printf '%s' "$entry"  | cut -d: -f3)
   deploy_service "$chart" "$deps" "$flag" &
   pids="$pids $!"
 done
 ```
 
-**Adding a new service** requires only one new line in `APP_SERVICES`. No new functions, no new wiring. The `job_seed_catalog` and `job_port_forward` steps remain fixed — they are post-deploy actions, not services.
+### CATALOG_DEPS
 
-`job_seed_catalog` still explicitly waits for `core-ready` and `rest-ready`. If a future service must also be ready before seeding, its `ready_flag` is added to that wait list — a one-word change.
+Catalog seeding dependencies are also declared as data, not hardcoded inside `job_seed_catalog`:
+
+```sh
+# Ready-flags that must be set before catalog seeding begins.
+# Add a service's ready-flag here if seed-catalog calls through it.
+CATALOG_DEPS="core-ready,rest-ready"
+```
+
+`job_seed_catalog` waits generically:
+
+```sh
+job_seed_catalog() {
+  # shellcheck disable=SC2046
+  wait_for $(printf '%s' "$CATALOG_DEPS" | tr ',' ' ')
+  ...
+}
+```
+
+**Adding a new service** requires:
+- One new line in `APP_SERVICES`
+- If the service must be ready before seeding: one new flag appended to `CATALOG_DEPS`
+
+No new functions, no new wiring.
 
 ## Error Handling
 
