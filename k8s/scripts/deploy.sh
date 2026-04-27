@@ -214,6 +214,41 @@ job_seed_infra() {
   touch "$STATE_DIR/infra-seeded"
 }
 
+# Deploys a single chart after waiting for its declared dependencies.
+# Usage: deploy_service <chart> <comma-separated-wait-flags> <ready-flag>
+deploy_service() {
+  chart=$1 deps=$2 ready_flag=$3
+  # shellcheck disable=SC2046
+  wait_for $(printf '%s' "$deps" | tr ',' ' ')
+  print_phase "Deploying $chart"
+  IMAGES_PREBUILT=true sh "$SCRIPT_DIR/deploy-services.sh" $(helm_flags) "$chart" || fail
+  touch "$STATE_DIR/$ready_flag"
+}
+
+# Declare app services: "chart:comma-separated-wait-flags:ready-flag"
+# To add a new service, append one line here. No other changes required.
+APP_SERVICES="
+core:builds-done,infra-seeded:core-ready
+rest:builds-done,infra-seeded:rest-ready
+runtime:core-ready:runtime-ready
+"
+
+# Ready-flags that must all be set before catalog seeding begins.
+# Append a service's ready-flag here if seed-catalog calls through it.
+CATALOG_DEPS="core-ready,rest-ready"
+
+job_seed_catalog() {
+  if [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/catalog-seeded"
+    return 0
+  fi
+  # shellcheck disable=SC2046
+  wait_for $(printf '%s' "$CATALOG_DEPS" | tr ',' ' ')
+  print_phase "Seeding application catalog"
+  sh "$SCRIPT_DIR/seed-catalog-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE" || fail
+  touch "$STATE_DIR/catalog-seeded"
+}
+
 parse_args "$@"
 
 # ── Phase 1: Build ────────────────────────────────────────────────────────────
