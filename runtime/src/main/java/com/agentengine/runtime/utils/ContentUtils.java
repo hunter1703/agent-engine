@@ -11,7 +11,6 @@ import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
-import com.google.genai.types.FileData;
 import com.google.genai.types.Part;
 import java.util.Base64;
 import java.util.Collection;
@@ -140,21 +139,28 @@ public final class ContentUtils {
     }
 
     public static Content buildUserContent(final UserMessage userMessage) {
-        final List<Part> parts =
-                userMessage.parts().stream().map(ContentUtils::toAdkPart).toList();
-        return Content.builder().role(Constants.AUTHOR_USER).parts(parts).build();
-    }
-
-    private static Part toAdkPart(final MessagePart part) {
-        return switch (part) {
-            case MessagePart.TextPart textPart -> Part.fromText(textPart.text());
-            case MessagePart.FilePart filePart -> {
-                final FileDetails fileDetails = filePart.fileDetails();
-                final FileData fileData = FileData.builder().mimeType(fileDetails.mimeType()).displayName(fileDetails.name()).build();
-                yield Part.builder().text(JsonUtils.toJson(fileDetails)).fileData(fileData).build();
+        final StringBuilder text = new StringBuilder();
+        for (final MessagePart part : userMessage.parts()) {
+            switch (part) {
+                case MessagePart.TextPart textPart -> {
+                    if (!text.isEmpty()) {
+                        text.append("\n");
+                    }
+                    text.append(textPart.text());
+                }
+                case MessagePart.FilePart filePart -> {
+                    if (!text.isEmpty()) {
+                        text.append("\n\n");
+                    }
+                    text.append("Here are the file details: ").append(JsonUtils.toJson(filePart.fileDetails()));
+                }
+                default -> throw new IllegalStateException("Unexpected value: " + part);
             }
-            default -> throw new IllegalStateException("Unexpected value: " + part);
-        };
+        }
+        return Content.builder()
+                .role(Constants.AUTHOR_USER)
+                .parts(List.of(Part.fromText(text.toString())))
+                .build();
     }
 
     public static Content buildConfirmationsContent(final Collection<Confirmation> confirmations) {

@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.agui;
 
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.*;
@@ -10,9 +11,7 @@ import com.agui.core.event.RunFinishedEvent;
 import com.agui.core.event.RunStartedEvent;
 import com.agui.core.event.StepFinishedEvent;
 import com.agui.core.event.StepStartedEvent;
-import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
-import com.google.genai.types.FileData;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
@@ -143,6 +142,19 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         for (final Part part : content.get().parts().orElse(List.of())) {
             flowable = flowable.concatWith(mapPart(part, partial));
         }
+
+        // Emit attachment events for user messages that carried file metadata.
+        // Attachments are stored in event metadata (keyed by SessionEventUtils.ATTACHMENTS)
+        // rather than as fileData Parts, so they survive the single-text LLM message constraint.
+        if (Constants.AUTHOR_USER.equals(event.getAuthor())) {
+            final List<FileDetails> attachments = CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
+            if (CollectionUtils.isNotEmpty(attachments)) {
+                for (final FileDetails fileDetails : attachments) {
+                    flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
+                }
+            }
+        }
+
         return flowable.concatWith(finishStepIfNeeded(event));
     }
 
@@ -154,12 +166,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         Flowable<BaseEvent> flowable = Flowable.empty();
         final String text = part.text().orElse(null);
 
-        final FileData fileData = part.fileData().orElse(null);
-        if (fileData != null) {
-            String uri = fileData.fileUri().orElse(null);
-            final FileDetails fileDetails = Objects.requireNonNull(StringUtils.isNotBlank(uri) ? FileDetails.fromUrl(uri) : JsonUtils.fromJson(part.text().orElse(null), FileDetails.class));
-            flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
-        } else if (text != null) {
+        if (text != null) {
             flowable = flowable.concatWith(textMapper.mapText(text, partial));
         }
 

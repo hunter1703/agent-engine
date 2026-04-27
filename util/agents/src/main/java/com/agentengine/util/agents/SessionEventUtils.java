@@ -16,6 +16,7 @@ public final class SessionEventUtils {
     public static final String VIOLATION = "violation";
     public static final String INTERNAL = "internal";
     public static final String SESSION_ID = "sessionId";
+    public static final String ATTACHMENTS = "attachments";
 
     private SessionEventUtils() {}
 

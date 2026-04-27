@@ -789,10 +789,10 @@ public final class ImageUtils {
         double v = 6.0 * yc / denom;
         // Tint shifts v (green-magenta axis in uv); ±150 → ±0.015 in uv
         v += adj.tint() * (0.015 / 150.0);
-        // Convert uv → xy
-        final double uvDenom = 6.0 * u - 16.0 * v + 12.0;
-        final double x = 9.0 * u / uvDenom;
-        final double y = 4.0 * v / uvDenom;
+        // Convert uv → xy (CIE 1960 UCS inverse)
+        final double uvDenom = 2.0 * u - 8.0 * v + 4.0;
+        final double x = 3.0 * u / uvDenom;
+        final double y = 2.0 * v / uvDenom;
 
         // --- Step 3: xy → XYZ (Y=1) ---
         final double Xw = x / y;

@@ -1,5 +1,6 @@
 package com.agentengine.runtime.utils;
 
+import com.agentengine.runtime.api.model.MessagePart;
 import com.agentengine.runtime.api.model.UserMessage;
 import com.agentengine.runtime.session.state.SessionActorState;
 import com.agentengine.util.agents.Constants;
@@ -9,6 +10,7 @@ import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.MarkdownUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
+import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.events.EventActions;
@@ -129,7 +131,15 @@ public final class EventUtils {
     }
 
     public static Event buildUserEvent(final UserMessage userMessage, final String invocationId, final long timestamp) {
-        return _buildUserEvent(invocationId, ContentUtils.buildUserContent(userMessage), timestamp);
+        final Event event = _buildUserEvent(invocationId, ContentUtils.buildUserContent(userMessage), timestamp);
+        final List<FileDetails> attachments = userMessage.parts().stream()
+                .filter(part -> part instanceof MessagePart.FilePart)
+                .map(part -> ((MessagePart.FilePart) part).fileDetails())
+                .toList();
+        if (!attachments.isEmpty()) {
+            addMetadata(event, SessionEventUtils.ATTACHMENTS, attachments);
+        }
+        return event;
     }
 
     public static Event buildConfirmationsEvent(
