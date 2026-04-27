@@ -181,6 +181,39 @@ fail() {
   exit 1
 }
 
+job_build() {
+  if [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/builds-done"
+    return 0
+  fi
+  print_phase "Building Docker images"
+  require_command docker
+  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest || fail
+  touch "$STATE_DIR/builds-done"
+}
+
+job_infra() {
+  if [ "$SKIP_INFRA" = "true" ]; then
+    touch "$STATE_DIR/infra-deployed"
+    return 0
+  fi
+  print_phase "Deploying infrastructure workloads"
+  # shellcheck disable=SC2046
+  sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags) || fail
+  touch "$STATE_DIR/infra-deployed"
+}
+
+job_seed_infra() {
+  if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/infra-seeded"
+    return 0
+  fi
+  wait_for infra-deployed
+  print_phase "Seeding infrastructure configuration"
+  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE" || fail
+  touch "$STATE_DIR/infra-seeded"
+}
+
 parse_args "$@"
 
 # ── Phase 1: Build ────────────────────────────────────────────────────────────
