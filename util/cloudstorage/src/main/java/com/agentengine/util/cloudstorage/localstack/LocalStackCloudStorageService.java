@@ -5,19 +5,14 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
-import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import java.io.*;
+import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.util.UUID;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -72,7 +67,6 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
         final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));
-
         final URI endpoint = URI.create(config.getEndpointUrl());
         final Region region = Region.of(config.getRegion());
 
@@ -95,12 +89,11 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public FileDetails upload(
-            final String name, final InputStream inputStream, final long contentLength, String mediaType) {
-        final String key = UUID.randomUUID().toString().replace("-", "");
+            final String key, final String name, final InputStream inputStream, final long contentLength, String mediaType) {
+        mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
         final RequestBody body = contentLength >= 0
                 ? RequestBody.fromInputStream(inputStream, contentLength)
                 : RequestBody.fromContentProvider(() -> inputStream, mediaType);
-        mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
         s3.putObject(
                 PutObjectRequest.builder()
                         .bucket(defaultBucket)
@@ -113,55 +106,38 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     }
 
     @Override
-    public InputStream download(final FileDetails fileDetails) {
-        return downloadFromSource(fileDetails.source());
+    public Content download(final String key) {
+        final ResponseInputStream<GetObjectResponse> response = s3.getObject(GetObjectRequest.builder().bucket(defaultBucket).key(key).build());
+        return new Content(response, response.response().contentType());
     }
 
     @Override
-    public InputStream downloadFromSource(final String source) {
-        final File localFile = getLocalFile(source);
-        if (!localFile.exists()) {
-            try {
-                localFile.getParentFile().mkdirs();
-                try (final ResponseInputStream<GetObjectResponse> s3Stream = s3.getObject(
-                        GetObjectRequest.builder().bucket(getBucket(source)).key(getKey(source)).build())) {
-                    Files.copy(s3Stream, localFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        try {
-            return new FileInputStream(localFile);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static File getLocalFile(final String source) {
-        return Paths.get("/deployments/cloudstoragefiles/" + source).toFile();
-    }
-
-    @Override
-    public void delete(final FileDetails fileDetails) {
-        final String source = fileDetails.source();
-        s3.deleteObject(DeleteObjectRequest.builder()
-                .bucket(getBucket(source))
-                .key(getKey(source))
-                .build());
+    public void delete(final String key) {
+        s3.deleteObject(DeleteObjectRequest.builder().bucket(defaultBucket).key(key).build());
     }
 
     @Override
     public String presignedGetUrl(final FileDetails fileDetails, final Duration validity) {
         final String source = fileDetails.source();
+        final int sep = source.indexOf('/');
+        final String key = sep >= 0 ? source.substring(sep + 1) : source;
         return presigner
                 .presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(validity)
-                        .getObjectRequest(
-                                request -> request.bucket(getBucket(source)).key(getKey(source)))
+                        .getObjectRequest(request -> request.bucket(defaultBucket).key(key))
                         .build())
                 .url()
                 .toString();
+    }
+
+    @Override
+    public List<String> list(final String keyPrefix) {
+        return s3.listObjectsV2Paginator(
+                        ListObjectsV2Request.builder().bucket(defaultBucket).prefix(keyPrefix).build())
+                .stream()
+                .flatMap(page -> page.contents().stream())
+                .map(S3Object::key)
+                .toList();
     }
 
     private void ensureBucket() {
@@ -171,15 +147,5 @@ public class LocalStackCloudStorageService implements CloudStorageService {
             log.info("Creating bucket: {}", defaultBucket);
             s3.createBucket(CreateBucketRequest.builder().bucket(defaultBucket).build());
         }
-    }
-
-    private static String getBucket(final String fullPath) {
-        int index = fullPath.indexOf('/');
-        return index != -1 ? fullPath.substring(0, index) : fullPath;
-    }
-
-    private static String getKey(final String path) {
-        int index = path.indexOf('/');
-        return index != -1 ? path.substring(index + 1) : path;
     }
 }

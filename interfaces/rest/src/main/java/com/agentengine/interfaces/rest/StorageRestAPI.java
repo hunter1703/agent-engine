@@ -8,6 +8,7 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Response;
 import java.io.InputStream;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -47,10 +48,12 @@ public class StorageRestAPI {
     @Path("/download")
     @RunOnVirtualThread
     @Operation(summary = "Downloads an object from cloud storage")
-    @APIResponse(
-            responseCode = "200",
-            description = "Object downloaded successfully")
-    public InputStream download(FileDetails fileDetails) {
-        return cloudStorageService.download(fileDetails);
+    @APIResponse(responseCode = "200", description = "Object downloaded successfully")
+    public Response download(final FileDetails fileDetails) {
+        final String source = fileDetails.source();
+        final int sep = source.indexOf('/');
+        final String key = sep >= 0 ? source.substring(sep + 1) : source;
+        final CloudStorageService.Content content = cloudStorageService.download(key);
+        return Response.ok(content.stream()).type(content.mimeType()).build();
     }
 }

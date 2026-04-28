@@ -26,7 +26,6 @@ import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agentengine.util.common.service.CloudStorageService;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -54,20 +53,17 @@ public class RuntimeServiceImpl implements RuntimeService {
     private final SessionEventChannel eventChannel;
     private final SessionService sessionService;
     private final SessionHistoryService sessionHistoryService;
-    private final CloudStorageService cloudStorageService;
 
     @Inject
     public RuntimeServiceImpl(
             final SessionActorFactory sessionActorFactory,
             final SessionEventChannel eventChannel,
             final SessionService sessionService,
-            final SessionHistoryService sessionHistoryService,
-            final CloudStorageService cloudStorageService) {
+            final SessionHistoryService sessionHistoryService) {
         this.sessionActorFactory = sessionActorFactory;
         this.eventChannel = eventChannel;
         this.sessionService = sessionService;
         this.sessionHistoryService = sessionHistoryService;
-        this.cloudStorageService = cloudStorageService;
     }
 
     @Override

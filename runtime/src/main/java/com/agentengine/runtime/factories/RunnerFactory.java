@@ -21,7 +21,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.apps.ResumabilityConfig;
-import com.google.adk.artifacts.InMemoryArtifactService;
+import com.agentengine.runtime.artifacts.CloudStorageArtifactService;
 import com.google.adk.memory.InMemoryMemoryService;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.plugins.LoggingPlugin;
@@ -42,6 +42,7 @@ public class RunnerFactory {
     private final GuardrailPolicyFactory guardrailPolicyFactory;
     private final SessionService sessionService;
     private final SessionHistoryServiceImpl historyService;
+    private final CloudStorageArtifactService artifactService;
 
     public RunnerFactory(
             AgentService agentService,
@@ -49,13 +50,15 @@ public class RunnerFactory {
             ContextManagerProvider contextManagerProvider,
             GuardrailPolicyFactory guardrailPolicyFactory,
             SessionService sessionService,
-            final SessionHistoryServiceImpl historyService) {
+            final SessionHistoryServiceImpl historyService,
+            final CloudStorageArtifactService artifactService) {
         this.agentService = agentService;
         this.agentProvider = agentProvider;
         this.contextManagerProvider = contextManagerProvider;
         this.guardrailPolicyFactory = guardrailPolicyFactory;
         this.sessionService = sessionService;
         this.historyService = historyService;
+        this.artifactService = artifactService;
     }
 
     public SessionRunner buildRunner(
@@ -71,7 +74,7 @@ public class RunnerFactory {
         final InMemorySessionService inMemorySessionService = buildInMemorySessionService(agentId, sessionId);
         final Runner runner = Runner.builder()
                 .app(app)
-                .artifactService(new InMemoryArtifactService())
+                .artifactService(artifactService)
                 .sessionService(inMemorySessionService)
                 .memoryService(new InMemoryMemoryService())
                 .build();

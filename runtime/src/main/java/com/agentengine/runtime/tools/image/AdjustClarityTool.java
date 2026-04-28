@@ -4,7 +4,7 @@ import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.annotations.ToolSchema;
-import com.agentengine.util.common.service.CloudStorageService;
+import com.google.adk.tools.ToolContext;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -35,32 +35,33 @@ public final class AdjustClarityTool extends ImageEditingTool {
                     + "Use for romantic portraits, misty scenes, soft beauty shots, atmospheric landscapes. "
                     + "Typical values: +15 to +30 for mild crispness; +40 to +60 for punchy/dramatic; "
                     + "-15 to -25 for subtle softness; -30 to -50 for dreamy glow; -60 to -80 for heavy mist/atmosphere. "
-                    + "Supports JPEG and PNG. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
+                    + "Supports JPEG and PNG. Returns { artifactName } on success — the result is always a PNG file (lossless); pass it as artifactName for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
-    public AdjustClarityTool(final CloudStorageService cloudStorageService) {
-        super(DESCRIPTOR, cloudStorageService);
+    public AdjustClarityTool() {
+        super(DESCRIPTOR);
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "source", description = "Storage source of the input image.")
-                    String source,
+            @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+                    String artifactName,
             @ToolSchema(name = "clarity", description = "Clarity amount. Negative = soft/dreamy/glow (range [-100, 0]): -15 subtle softness, -30 noticeable glow, -50 heavy atmosphere, -80 extreme mist. Positive = crisp/sharp/punchy (range [0, 100]): 20 mild crispness, 40 punchy, 60 very sharp. 0 = no change.")
                     double clarity,
             @ToolSchema(name = "rationale", description = "Brief explanation of why this adjustment is being applied and what visual effect it is intended to achieve.")
-                    String rationale) {
+                    String rationale,
+            ToolContext toolContext) {
 
         if (clarity == 0.0) {
-            return Map.of("outputSource", source);
+            return Map.of("artifactName", artifactName);
         }
-        return processImage(source, inputFile -> {
+        return processImage(artifactName, inputFile -> {
             try {
                 return applyClarity(inputFile, clarity);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
-        });
+        }, toolContext);
     }
 
     private static File applyClarity(final File inputFile, final double clarity) throws IOException {

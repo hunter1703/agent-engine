@@ -4,7 +4,7 @@ import com.agentengine.runtime.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.annotations.ToolSchema;
-import com.agentengine.util.common.service.CloudStorageService;
+import com.google.adk.tools.ToolContext;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -32,32 +32,33 @@ public final class AdjustExposureTool extends ImageEditingTool {
                     + "highlights: negative recovers blown highlights and adds drama; positive brightens for airy look. "
                     + "whites: positive sets a clean white point (more contrast); negative pulls whites down (matte look). "
                     + "saturation: global colour intensity — use adjust_color for targeted hue-specific changes. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { artifactName } on success — the result is always a PNG file (lossless); pass it as artifactName for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
-    public AdjustExposureTool(final CloudStorageService cloudStorageService) {
-        super(DESCRIPTOR, cloudStorageService);
+    public AdjustExposureTool() {
+        super(DESCRIPTOR);
     }
 
     public Map<String, Object> execute(
-            @ToolSchema(name = "source", description = "Storage source of the input image.")
-                    String source,
+            @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+                    String artifactName,
             @ToolSchema(name = "adjustment", description = "Tone parameters. exposure: EV stops (-5.0 to +5.0, 0=no change). blacks/shadows/highlights/whites: zone offsets (-100 to +100 integers, 0=no change). saturation: global colour intensity (-100 to +100 integer, 0=no change).")
                     ExposureAdjustment adjustment,
             @ToolSchema(name = "rationale", description = "Describe the tonal goal (e.g. 'image is 1.5 stops underexposed', 'lifting blacks for a cinematic matte look', 'recovering blown sky highlights', 'creating a moody low-key portrait').")
-                    String rationale) {
+                    String rationale,
+            ToolContext toolContext) {
 
         if (adjustment == null) {
             return Map.of("error", "adjustment is required");
         }
-        return processImage(source, inputFile -> {
+        return processImage(artifactName, inputFile -> {
             try {
                 return applyExposure(inputFile, adjustment);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
+        }, toolContext);
     }
 
     private static File applyExposure(final File inputFile, final ExposureAdjustment adj) throws IOException {
