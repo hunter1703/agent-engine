@@ -294,7 +294,7 @@ public final class LangChain4jModel extends BaseLlm {
             return PdfFileContent.from(
                     PdfFile.builder().base64Data(base64).mimeType(mimeType).build());
         }
-        return TextContent.from(new String(bytes, StandardCharsets.UTF_8));
+        return TextContent.from(base64);
     }
 
     private static AiMessage toAiMessage(final Content content) {

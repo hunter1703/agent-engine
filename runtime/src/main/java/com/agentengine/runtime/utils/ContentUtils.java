@@ -12,10 +12,8 @@ import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+
+import java.util.*;
 
 /** Utilities for generic content/message extraction and indexing. */
 public final class ContentUtils {
@@ -140,6 +138,7 @@ public final class ContentUtils {
 
     public static Content buildUserContent(final UserMessage userMessage) {
         final StringBuilder text = new StringBuilder();
+        final List<String> artifactNames = new ArrayList<>();
         for (final MessagePart part : userMessage.parts()) {
             switch (part) {
                 case MessagePart.TextPart textPart -> {
@@ -148,15 +147,18 @@ public final class ContentUtils {
                     }
                     text.append(textPart.text());
                 }
-                case MessagePart.FilePart filePart -> {
-                    if (!text.isEmpty()) {
-                        text.append("\n\n");
-                    }
-                    text.append("Here are the file details: ").append(JsonUtils.toJson(filePart.fileDetails()));
-                }
+                case MessagePart.FilePart filePart -> artifactNames.add(filePart.fileDetails().name());
                 default -> throw new IllegalStateException("Unexpected value: " + part);
             }
         }
+
+        if (CollectionUtils.isNotEmpty(artifactNames)) {
+            if (!text.isEmpty()) {
+                text.append("\n\n");
+            }
+            text.append("Here are the artifact names: ").append(JsonUtils.toJson(artifactNames));
+        }
+
         return Content.builder()
                 .role(Constants.AUTHOR_USER)
                 .parts(List.of(Part.fromText(text.toString())))

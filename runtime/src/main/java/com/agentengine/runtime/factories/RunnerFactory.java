@@ -18,6 +18,7 @@ import com.agentengine.runtime.utils.SessionUtils;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.apps.ResumabilityConfig;
@@ -43,6 +44,7 @@ public class RunnerFactory {
     private final SessionService sessionService;
     private final SessionHistoryServiceImpl historyService;
     private final CloudStorageArtifactService artifactService;
+    private final CloudStorageService cloudStorageService;
 
     public RunnerFactory(
             AgentService agentService,
@@ -51,7 +53,7 @@ public class RunnerFactory {
             GuardrailPolicyFactory guardrailPolicyFactory,
             SessionService sessionService,
             final SessionHistoryServiceImpl historyService,
-            final CloudStorageArtifactService artifactService) {
+            final CloudStorageArtifactService artifactService, final CloudStorageService cloudStorageService) {
         this.agentService = agentService;
         this.agentProvider = agentProvider;
         this.contextManagerProvider = contextManagerProvider;
@@ -59,6 +61,7 @@ public class RunnerFactory {
         this.sessionService = sessionService;
         this.historyService = historyService;
         this.artifactService = artifactService;
+        this.cloudStorageService = cloudStorageService;
     }
 
     public SessionRunner buildRunner(
@@ -78,7 +81,7 @@ public class RunnerFactory {
                 .sessionService(inMemorySessionService)
                 .memoryService(new InMemoryMemoryService())
                 .build();
-        return new SessionRunner(sessionId, actor, runner);
+        return new SessionRunner(sessionId, actor, runner, cloudStorageService);
     }
 
     private InMemorySessionService buildInMemorySessionService(final String agentId, final String sessionId) {

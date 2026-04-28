@@ -127,7 +127,7 @@ public class CloudStorageArtifactService implements BaseArtifactService {
                 .map(segments -> segments[3]).collect(Collectors.toSet());
     }
 
-    private static String objectKey(String appName, String userId, String sessionId, String filename, int version) {
+    public static String objectKey(String appName, String userId, String sessionId, String filename, int version) {
         return keyPrefix(appName, userId, sessionId, filename) + version;
     }
 

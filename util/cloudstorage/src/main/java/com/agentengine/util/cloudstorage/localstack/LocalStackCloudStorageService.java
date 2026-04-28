@@ -140,6 +140,16 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .toList();
     }
 
+    @Override
+    public void copy(final String sourceKey, final String destinationKey) {
+        s3.copyObject(CopyObjectRequest.builder()
+                .sourceBucket(defaultBucket)
+                .sourceKey(sourceKey)
+                .destinationBucket(defaultBucket)
+                .destinationKey(destinationKey)
+                .build());
+    }
+
     private void ensureBucket() {
         try {
             s3.headBucket(HeadBucketRequest.builder().bucket(defaultBucket).build());

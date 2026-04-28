@@ -1,6 +1,8 @@
 package com.agentengine.runtime.session;
 
+import com.agentengine.runtime.api.model.MessagePart;
 import com.agentengine.runtime.api.model.UserMessage;
+import com.agentengine.runtime.artifacts.CloudStorageArtifactService;
 import com.agentengine.runtime.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.runtime.session.commands.SelfCommand.PublishEventCommand;
 import com.agentengine.runtime.session.commands.SessionCommand;
@@ -8,6 +10,8 @@ import com.agentengine.runtime.utils.ContentUtils;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.beans.FileDetails;
+import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;
@@ -41,16 +45,25 @@ public final class SessionRunner {
     private final ActorRef<SessionCommand> sessionActor;
     private final Runner runner;
     private Disposable disposable;
+    private final CloudStorageService cloudStorageService;
 
-    public SessionRunner(final String sessionId, final ActorRef<SessionCommand> sessionActor, final Runner runner) {
+    public SessionRunner(final String sessionId, final ActorRef<SessionCommand> sessionActor, final Runner runner, final CloudStorageService cloudStorageService) {
         this.sessionId = sessionId;
         this.sessionActor = sessionActor;
         this.runner = runner;
+        this.cloudStorageService = cloudStorageService;
     }
 
     public synchronized void start(final UserMessage userMessage) {
         LOG.info("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
         cancel();
+        userMessage.parts().stream().filter(part -> part instanceof MessagePart.FilePart).forEach(part -> {
+            final MessagePart.FilePart filePart = (MessagePart.FilePart) part;
+            final FileDetails fileDetails = filePart.fileDetails();
+            final String source = fileDetails.source();
+            final int index = source.indexOf("/");
+            cloudStorageService.copy(source.substring(index + 1), CloudStorageArtifactService.objectKey(runner.appName(), AgentSession.DEFAULT_USER_ID, sessionId, fileDetails.name(), 0));
+        });
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID,
                         sessionId,

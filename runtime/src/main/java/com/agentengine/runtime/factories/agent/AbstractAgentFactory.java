@@ -11,6 +11,7 @@ import com.agentengine.util.common.JsonUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
+import com.google.adk.tools.LoadArtifactsTool;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
                 .maxSteps(config.getRuntime().getMaxSteps())
                 .model(model);
         final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
+        tools.add(LoadArtifactsTool.INSTANCE);
         if (config.getRuntime() == null || config.getRuntime().isResumable()) {
             tools.add(toolFactory.getHITLTool());
         }

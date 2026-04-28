@@ -37,5 +37,7 @@ public interface CloudStorageService {
      */
     List<String> list(String keyPrefix);
 
+    void copy(String sourceKey, String destinationKey);
+
     record Content(InputStream stream, String mimeType) {}
 }
