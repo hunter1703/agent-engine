@@ -23,6 +23,7 @@ public final class AdjustExposureTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_exposure",
             "Sets the overall brightness and tonal balance of an image. "
+                    + "All parameter values match Lightroom's Basic panel exactly — the same number you enter here produces the same result as in Lightroom. "
                     + "Apply this SECOND — after white balance, before color grading. "
                     + "exposure (EV stops): controls overall midtone brightness — use it first to set the overall exposure. "
                     + "+1.0 = one stop brighter (doubles brightness), -1.0 = one stop darker. "
@@ -31,7 +32,7 @@ public final class AdjustExposureTool extends ImageEditingTool {
                     + "highlights: negative recovers blown highlights and adds drama; positive brightens for airy look. "
                     + "whites: positive sets a clean white point (more contrast); negative pulls whites down (matte look). "
                     + "saturation: global colour intensity — use adjust_color for targeted hue-specific changes. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -92,10 +93,9 @@ public final class AdjustExposureTool extends ImageEditingTool {
             ImageUtils.applyExposureAdjustments(pixels, adj, tileBase);
         });
 
-        final String format = ImageUtils.getFileFormat(inputFile.getName());
-        final File outputFile = Files.createTempFile("processed", "." + format).toFile();
+        final File outputFile = Files.createTempFile("processed", ".png").toFile();
         try {
-            ImageUtils.writeImage(image, format, outputFile);
+            ImageUtils.writeImage(image, "png", outputFile);
         } catch (Exception e) {
             outputFile.delete();
             throw e;

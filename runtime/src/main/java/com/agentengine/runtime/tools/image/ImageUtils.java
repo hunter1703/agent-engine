@@ -204,9 +204,11 @@ public final class ImageUtils {
             }
             StructuredConcurrencyUtils.runConcurrently(callables);
 
-            final File outputFile = Files.createTempFile("processed", "." + format).toFile();
+            // Always write intermediates as PNG (lossless) to prevent generational JPEG quality loss
+            // across multiple edit passes. The final output format is handled by the tool layer.
+            final File outputFile = Files.createTempFile("processed", ".png").toFile();
             try {
-                writeImage(outputImage, format, outputFile);
+                writeImage(outputImage, "png", outputFile);
             } catch (IOException e) {
                 outputFile.delete();
                 throw e;
@@ -373,16 +375,24 @@ public final class ImageUtils {
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
 
-            // Decode sRGB → linear → HSL
-            final double rl = toLinear((pixel >> 16) & 0xFF);
-            final double gl = toLinear((pixel >> 8) & 0xFF);
-            final double bl = toLinear(pixel & 0xFF);
-            final double[] hsl = linearRgbToHsl(rl, gl, bl);
+            // Decode sRGB → HSL directly in the gamma-encoded domain.
+            // HSL is a perceptual model designed for gamma-encoded values.
+            // Operating on linear light causes saturation amplification in dark pixels
+            // (tiny linear differences → large HSL saturation) producing hue corruption.
+            final double r = ((pixel >> 16) & 0xFF) / 255.0;
+            final double g = ((pixel >> 8)  & 0xFF) / 255.0;
+            final double b = (pixel         & 0xFF) / 255.0;
+            final double[] hsl = linearRgbToHsl(r, g, b);
             double h = hsl[0], s = hsl[1], l = hsl[2];
 
             for (int j = 0; j < adjustments.size(); j++) {
                 final ColorAdjustment adj = adjustments.get(j);
                 final double[] cosLut = cosLuts.get(j);
+
+                // Near-neutral pixels have no meaningful hue — skip them entirely.
+                // Lightroom's HSL panel does the same: adjustments only apply where
+                // the colour is saturated enough for hue to be well-defined.
+                if (s < 0.01) continue;
 
                 double deltaH = Math.abs(h - adj.hueCenter());
                 if (deltaH > 180.0) deltaH = 360.0 - deltaH;
@@ -390,17 +400,27 @@ public final class ImageUtils {
                 final double w = cosLut[Math.min((int) Math.round(deltaH), 180)];
                 if (w == 0.0) continue;
 
-                h = ((h + adj.hueShift() * w) % 360.0 + 360.0) % 360.0;
-                s = Math.clamp(s + adj.satDelta() * w * 0.01, 0.0, 1.0);
-                l = Math.clamp(l + adj.lumDelta() * w * 0.01, 0.0, 1.0);
+                // Scale the weight by saturation so weakly-coloured pixels get
+                // proportionally less adjustment — matches Lightroom's behaviour.
+                final double ws = w * Math.min(s / 0.15, 1.0);
+
+                h = ((h + adj.hueShift() * ws) % 360.0 + 360.0) % 360.0;
+                // Lightroom HSL panel formula: positive lifts toward 1 (never clips),
+                // negative scales toward 0. Linear add would clip vivid colours.
+                final double sw = adj.satDelta() * ws * 0.01;
+                s = Math.clamp(sw >= 0 ? s + (1.0 - s) * sw : s * (1.0 + sw), 0.0, 1.0);
+                // Luminance uses the raw hue weight (not saturation-scaled) — Lightroom's
+                // luminance slider affects all pixels in the hue range regardless of saturation.
+                final double lw = adj.lumDelta() * w * 0.01;
+                l = Math.clamp(lw >= 0 ? l + (1.0 - l) * lw : l * (1.0 + lw), 0.0, 1.0);
             }
 
-            // HSL → linear → sRGB
+            // HSL → sRGB (gamma domain, matching the input encoding)
             final double[] rgb = hslToLinearRgb(h, s, l);
             pixels[i] = 0xFF000000
-                    | (toSrgb(Math.clamp(rgb[0], 0.0, 1.0)) << 16)
-                    | (toSrgb(Math.clamp(rgb[1], 0.0, 1.0)) << 8)
-                    |  toSrgb(Math.clamp(rgb[2], 0.0, 1.0));
+                    | (Math.clamp((int) Math.round(rgb[0] * 255.0), 0, 255) << 16)
+                    | (Math.clamp((int) Math.round(rgb[1] * 255.0), 0, 255) << 8)
+                    |  Math.clamp((int) Math.round(rgb[2] * 255.0), 0, 255);
         }
     }
 
@@ -446,9 +466,10 @@ public final class ImageUtils {
         // since Lightroom doesn't have an equivalent control.
         final double compress = 0.5;
 
-        // shadows/highlights strength: darktable scales by 2.0 so ±100 → ±2.0
-        final double shadowsStrength = adj.shadows() / 100.0 * 2.0;
-        final double highlightsStrength = adj.highlights() / 100.0 * 2.0;
+        // Lightroom Shadows/Highlights ±100 maps to ±1.0 strength in the overlay blend.
+        // darktable uses ±2.0 (double pass), which is too aggressive for Lightroom parity.
+        final double shadowsStrength = adj.shadows() / 100.0;
+        final double highlightsStrength = adj.highlights() / 100.0;
 
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
@@ -932,7 +953,7 @@ public final class ImageUtils {
         for (int i = 0; i < pixels.length; i++) {
             final int pixel = pixels[i];
 
-            // Decode to linear for luminance computation
+            // Decode to linear for luminance computation only
             final double rl = toLinear((pixel >> 16) & 0xFF);
             final double gl = toLinear((pixel >> 8) & 0xFF);
             final double bl = toLinear(pixel & 0xFF);
@@ -940,30 +961,34 @@ public final class ImageUtils {
             // CIE Y (linear luminance) — perceptually correct zone weighting
             final double Y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
 
-            // Convert to HSL for tinting (HSL operates on gamma-encoded values for
-            // correct hue representation, so re-encode first)
-            final double[] hsl = linearRgbToHsl(rl, gl, bl);
+            // HSL tinting operates in sRGB gamma domain — decode to [0,1] sRGB
+            final double rs = ((pixel >> 16) & 0xFF) / 255.0;
+            final double gs = ((pixel >> 8)  & 0xFF) / 255.0;
+            final double bs = (pixel         & 0xFF) / 255.0;
+            final double[] hsl = linearRgbToHsl(rs, gs, bs);
             double h = hsl[0], s = hsl[1], l = hsl[2];
 
             if (Y <= midpoint && shadowStrength > 0.0) {
                 final double t = (midpoint - Y) / midpoint;
                 final double w = shadowStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
                 h = blendHue(h, adj.shadowHue(), w);
-                s = Math.clamp(s + w * (1.0 - s) * 0.5, 0.0, 1.0);
+                // Lightroom Color Grading: saturation=100 fully tints the zone.
+                // Lift toward 1 with full weight (no 0.5 cap).
+                s = Math.clamp(s + w * (1.0 - s), 0.0, 1.0);
             }
 
             if (Y > midpoint && highlightStrength > 0.0) {
                 final double t = (Y - midpoint) / (1.0 - midpoint);
                 final double w = highlightStrength * (1.0 - Math.cos(t * Math.PI / 2.0));
                 h = blendHue(h, adj.highlightHue(), w);
-                s = Math.clamp(s + w * (1.0 - s) * 0.5, 0.0, 1.0);
+                s = Math.clamp(s + w * (1.0 - s), 0.0, 1.0);
             }
 
             final double[] rgb = hslToLinearRgb(h, s, l);
             pixels[i] = 0xFF000000
-                    | (toSrgb(Math.clamp(rgb[0], 0.0, 1.0)) << 16)
-                    | (toSrgb(Math.clamp(rgb[1], 0.0, 1.0)) << 8)
-                    |  toSrgb(Math.clamp(rgb[2], 0.0, 1.0));
+                    | (Math.clamp((int) Math.round(rgb[0] * 255.0), 0, 255) << 16)
+                    | (Math.clamp((int) Math.round(rgb[1] * 255.0), 0, 255) << 8)
+                    |  Math.clamp((int) Math.round(rgb[2] * 255.0), 0, 255);
         }
     }
 
@@ -1036,20 +1061,22 @@ public final class ImageUtils {
                 double g = toLinear((pixel >> 8) & 0xFF);
                 double b = toLinear(pixel & 0xFF);
 
-                // 1. Brightness adjustment (darktable: negative = multiply, positive = add)
+                // 1. Brightness adjustment
                 if (adj.amount() != 0) {
                     if (adj.amount() < 0) {
-                        // Darktable: falloff = 1 + weight * brightness (brightness is negative)
+                        // Negative: multiply toward black (Lightroom darkening vignette)
                         final double falloff = 1.0 + weight * (adj.amount() / 100.0);
                         r = Math.clamp(r * falloff, 0.0, 1.0);
                         g = Math.clamp(g * falloff, 0.0, 1.0);
                         b = Math.clamp(b * falloff, 0.0, 1.0);
                     } else {
-                        // Darktable: falloff = weight * brightness (brightness is positive)
-                        final double falloff = weight * (adj.amount() / 100.0);
-                        r = Math.clamp(r + falloff, 0.0, 1.0);
-                        g = Math.clamp(g + falloff, 0.0, 1.0);
-                        b = Math.clamp(b + falloff, 0.0, 1.0);
+                        // Positive: screen blend toward white (Lightroom brightening vignette).
+                        // Screen: out = 1 - (1-a)(1-b), blended by weight.
+                        // At amount=+100, weight=1: full screen blend with white (b=1) → out=1.
+                        final double blend = weight * (adj.amount() / 100.0);
+                        r = Math.clamp(1.0 - (1.0 - r) * (1.0 - blend), 0.0, 1.0);
+                        g = Math.clamp(1.0 - (1.0 - g) * (1.0 - blend), 0.0, 1.0);
+                        b = Math.clamp(1.0 - (1.0 - b) * (1.0 - blend), 0.0, 1.0);
                     }
                 }
 
@@ -1111,27 +1138,35 @@ public final class ImageUtils {
         final double amount = Math.abs(clarity) / 100.0;
 
         if (clarity < 0) {
-            // Negative clarity: screen blend of blurred onto original in linear light
+            // Negative clarity: blend toward the blurred version (Lightroom soft/glow effect).
+            // Simple lerp: out = original + amount * (blurred - original)
+            // At -100 the image becomes the blurred version; at -50 it's halfway.
             for (int i = 0; i < srcPixels.length; i++) {
                 final float sr = lin[i * 3], sg = lin[i * 3 + 1], sb = lin[i * 3 + 2];
                 final float br = blurred[i * 3], bg = blurred[i * 3 + 1], bb = blurred[i * 3 + 2];
-                // Screen: 1 - (1-a)(1-b)
-                final double ro = sr + amount * ((1.0 - (1.0 - sr) * (1.0 - br)) - sr);
-                final double go = sg + amount * ((1.0 - (1.0 - sg) * (1.0 - bg)) - sg);
-                final double bo = sb + amount * ((1.0 - (1.0 - sb) * (1.0 - bb)) - sb);
+                final double ro = sr + amount * (br - sr);
+                final double go = sg + amount * (bg - sg);
+                final double bo = sb + amount * (bb - sb);
                 srcPixels[i] = 0xFF000000
                         | (toSrgb(Math.clamp(ro, 0.0, 1.0)) << 16)
                         | (toSrgb(Math.clamp(go, 0.0, 1.0)) << 8)
                         |  toSrgb(Math.clamp(bo, 0.0, 1.0));
             }
         } else {
-            // Positive clarity: unsharp mask in linear light
+            // Positive clarity: midtone-weighted unsharp mask in linear light.
+            // Lightroom clarity boosts local contrast most strongly in midtones and
+            // tapers off toward pure shadows and pure highlights.
+            // Weight function: 4 * L * (1 - L) peaks at 1.0 for L=0.5, is 0 at L=0 and L=1.
             for (int i = 0; i < srcPixels.length; i++) {
                 final float sr = lin[i * 3], sg = lin[i * 3 + 1], sb = lin[i * 3 + 2];
                 final float br = blurred[i * 3], bg = blurred[i * 3 + 1], bb = blurred[i * 3 + 2];
-                final double ro = sr + amount * (sr - br);
-                final double go = sg + amount * (sg - bg);
-                final double bo = sb + amount * (sb - bb);
+                // Linear luminance for midtone mask
+                final double lum = 0.2126 * sr + 0.7152 * sg + 0.0722 * sb;
+                final double midtoneMask = 4.0 * lum * (1.0 - lum);
+                final double wt = amount * midtoneMask;
+                final double ro = sr + wt * (sr - br);
+                final double go = sg + wt * (sg - bg);
+                final double bo = sb + wt * (sb - bb);
                 srcPixels[i] = 0xFF000000
                         | (toSrgb(Math.clamp(ro, 0.0, 1.0)) << 16)
                         | (toSrgb(Math.clamp(go, 0.0, 1.0)) << 8)
@@ -1226,9 +1261,9 @@ public final class ImageUtils {
     // -------------------------------------------------------------------------
 
     /**
-     * Linear RGB → HSL. Input channels in [0,1], output h ∈ [0,360), s and l ∈ [0,1].
-     * HSL is computed directly from linear RGB values — this is correct for hue targeting
-     * because hue is a geometric property of the RGB cube, independent of gamma.
+     * RGB → HSL. Input channels in [0,1], output h ∈ [0,360), s and l ∈ [0,1].
+     * Used for gamma-encoded sRGB values in color adjustments (HSL is a perceptual
+     * model and must operate in the gamma domain, not linear light).
      */
     private static double[] linearRgbToHsl(final double r, final double g, final double b) {
         final double max = Math.max(r, Math.max(g, b));

@@ -27,6 +27,7 @@ public final class AdjustClarityTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_clarity",
             "Adjusts midtone local contrast (clarity/texture). "
+                    + "Matches Lightroom's Clarity slider exactly — the same value here produces the same result as in Lightroom. "
                     + "Apply this FIFTH — after tonal and color work, before vignette. "
                     + "Positive clarity: increases local contrast for a crisp, sharp, punchy, detailed look. "
                     + "Use for landscapes, architecture, product shots, dramatic portraits. "
@@ -34,7 +35,7 @@ public final class AdjustClarityTool extends ImageEditingTool {
                     + "Use for romantic portraits, misty scenes, soft beauty shots, atmospheric landscapes. "
                     + "Typical values: +15 to +30 for mild crispness; +40 to +60 for punchy/dramatic; "
                     + "-15 to -25 for subtle softness; -30 to -50 for dreamy glow; -60 to -80 for heavy mist/atmosphere. "
-                    + "Supports JPEG and PNG. Returns { outputSource } on success — use outputSource as the source for the next edit.",
+                    + "Supports JPEG and PNG. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 
@@ -80,10 +81,9 @@ public final class AdjustClarityTool extends ImageEditingTool {
 
         ImageUtils.applyClarity(image, clarity);
 
-        final String format = ImageUtils.getFileFormat(inputFile.getName());
-        final File outputFile = Files.createTempFile("processed", "." + format).toFile();
+        final File outputFile = Files.createTempFile("processed", ".png").toFile();
         try {
-            ImageUtils.writeImage(image, format, outputFile);
+            ImageUtils.writeImage(image, "png", outputFile);
         } catch (Exception e) {
             outputFile.delete();
             throw e;

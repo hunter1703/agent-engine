@@ -17,11 +17,12 @@ public final class AddVignetteTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "add_vignette",
             "Adds a vignette effect: darkens or lightens image edges with an elliptical cosine falloff. "
+                    + "Matches Lightroom's Effects panel vignette exactly — all parameter values use Lightroom's scale. "
                     + "Negative amount darkens edges (classic vignette, draws focus inward). "
                     + "Positive amount lightens edges (bright-edge effect). "
                     + "Optional saturation control desaturates the edges for a classic darkroom look. "
                     + "Matches Lightroom XMP fields crs:VignetteAmount and crs:VignetteMidpoint. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

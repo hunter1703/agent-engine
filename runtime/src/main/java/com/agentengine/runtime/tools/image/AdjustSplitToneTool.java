@@ -17,6 +17,7 @@ public final class AdjustSplitToneTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_split_tone",
             "Applies a cinematic colour grade by tinting shadows and highlights with different hues. "
+                    + "Equivalent to Lightroom's Color Grading panel — all parameter values use Lightroom's scale exactly. "
                     + "Apply this FOURTH — after white balance, exposure, and color corrections are done. "
                     + "This is the primary tool for creative colour grading and mood. "
                     + "Classic grades: teal-and-orange (shadow_hue=210, highlight_hue=35) for blockbuster cinema; "
@@ -24,7 +25,7 @@ public final class AdjustSplitToneTool extends ImageEditingTool {
                     + "violet-and-amber (shadow_hue=280, highlight_hue=40) for moody/noir; "
                     + "sepia (shadow_hue=30, highlight_hue=40) for vintage/warm. "
                     + "Start with low saturation (15–30) and increase to taste. "
-                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — use outputSource as the source for the next edit.",
+                    + "Supports JPEG and PNG up to 100MP. Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

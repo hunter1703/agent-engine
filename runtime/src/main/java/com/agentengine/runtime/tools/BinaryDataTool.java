@@ -95,6 +95,8 @@ public class BinaryDataTool extends Tool {
 
                 if (CollectionUtils.isNotEmpty(binaryContentParts)) {
                     rewritten.add(content.toBuilder().parts(newParts).build());
+
+                    binaryContentParts.add(Part.fromText("Here are the attached files"));
                     rewritten.add(Content.builder().role("user").parts(binaryContentParts).build());
                 } else {
                     rewritten.add(content);

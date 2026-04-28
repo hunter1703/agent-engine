@@ -20,7 +20,7 @@ public final class AdjustColorTool extends ImageEditingTool {
     public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
             "adjust_color",
             "Selectively adjusts the hue, saturation, and luminance of specific color ranges in an image. "
-                    + "Equivalent to Lightroom's HSL/Color Mix panel. "
+                    + "Equivalent to Lightroom's HSL/Color Mix panel — all parameter values use Lightroom's scale exactly. "
                     + "Apply this THIRD — after white balance and exposure are set. "
                     + "Use cases: make a sky more blue and saturated, shift green foliage toward teal, "
                     + "warm up skin tones, desaturate a distracting background color, "
@@ -28,7 +28,7 @@ public final class AdjustColorTool extends ImageEditingTool {
                     + "Each adjustment targets a hue range (hue_center ± hue_width) with cosine falloff. "
                     + "Pass ALL color adjustments for the image in a single call. "
                     + "Supports JPEG and PNG up to 100MP. "
-                    + "Returns { outputSource } on success — use outputSource as the source for the next edit.",
+                    + "Returns { outputSource } on success — outputSource is always a PNG file (lossless); use it as the source for the next edit.",
             Map.of(),
             ToolRiskLevel.MEDIUM);
 

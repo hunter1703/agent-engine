@@ -24,23 +24,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.AudioContent;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.PdfFileContent;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.*;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -51,10 +41,19 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.ollama.*;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
+import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
+import static dev.langchain4j.data.message.ContentType.IMAGE;
 
 /**
  * ADK {@link BaseLlm} implementation backed by LangChain4j's {@link ChatModel} and {@link
@@ -91,6 +90,7 @@ import java.util.*;
  * parts for observability and future model compatibility.
  */
 public final class LangChain4jModel extends BaseLlm {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LangChain4jModel.class);
 
     private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
@@ -176,7 +176,9 @@ public final class LangChain4jModel extends BaseLlm {
         final List<ToolSpecification> toolSpecifications = toToolSpecifications(llmRequest);
         builder.toolSpecifications(toolSpecifications);
         llmRequest.config().ifPresent(config -> applyConfig(builder, config, toolSpecifications));
-        return builder.messages(toMessages(llmRequest)).build();
+        final ChatRequest chatRequest = builder.messages(toMessages(llmRequest)).build();
+        LOGGER.info("Converted llmRequest : {}", JsonUtils.toJson(llmRequest));
+        return chatRequest;
     }
 
     private static void applyConfig(
