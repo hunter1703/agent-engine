@@ -1,13 +1,18 @@
 package com.agentengine.knowledge.api.beans;
 
+import com.agentengine.util.agents.beans.config.KnowledgeSettings;
+import com.agentengine.util.common.beans.FileDetails;
+import java.util.List;
+
 public class IndexRequest {
+
     private String agentId;
-    private String sourceType;
-    private String source;
+    private List<String> grants;
+    private FileDetails fileDetails;
     private String title;
     private String description;
-    private String embeddingModelId;
-    private ChunkingStrategy chunkingStrategy;
+    private KnowledgeSettings settings;
+    private boolean waitForCompletion;
 
     public String getAgentId() {
         return agentId;
@@ -17,20 +22,20 @@ public class IndexRequest {
         this.agentId = agentId;
     }
 
-    public String getSourceType() {
-        return sourceType;
+    public List<String> getGrants() {
+        return grants;
     }
 
-    public void setSourceType(final String sourceType) {
-        this.sourceType = sourceType;
+    public void setGrants(final List<String> grants) {
+        this.grants = grants;
     }
 
-    public String getSource() {
-        return source;
+    public FileDetails getFileDetails() {
+        return fileDetails;
     }
 
-    public void setSource(final String source) {
-        this.source = source;
+    public void setFileDetails(final FileDetails fileDetails) {
+        this.fileDetails = fileDetails;
     }
 
     public String getTitle() {
@@ -49,19 +54,19 @@ public class IndexRequest {
         this.description = description;
     }
 
-    public String getEmbeddingModelId() {
-        return embeddingModelId;
+    public KnowledgeSettings getSettings() {
+        return settings;
     }
 
-    public void setEmbeddingModelId(final String embeddingModelId) {
-        this.embeddingModelId = embeddingModelId;
+    public void setSettings(final KnowledgeSettings settings) {
+        this.settings = settings;
     }
 
-    public ChunkingStrategy getChunkingStrategy() {
-        return chunkingStrategy;
+    public boolean isWaitForCompletion() {
+        return waitForCompletion;
     }
 
-    public void setChunkingStrategy(final ChunkingStrategy chunkingStrategy) {
-        this.chunkingStrategy = chunkingStrategy;
+    public void setWaitForCompletion(final boolean waitForCompletion) {
+        this.waitForCompletion = waitForCompletion;
     }
 }

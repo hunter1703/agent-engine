@@ -1,22 +1,24 @@
-package com.agentengine.knowledge.api;
+package com.agentengine.knowledge.api.beans;
 
+import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.beans.FileDetails;
+import java.util.List;
 
 public class Knowledge extends BaseEntity {
-    public static final String FIELD_AGENT_ID = "agentId";
-    public static final String FIELD_SOURCE_TYPE = "sourceType";
     public static final String FIELD_INDEXING_STATUS = "indexingStatus";
+    public static final String FIELD_TOTAL_CHUNKS = "totalChunks";
+    public static final String FIELD_INDEXED_AT = "indexedAt";
+    public static final String FIELD_ERROR = "error";
 
     private String agentId;
-    private SourceType sourceType;
-    private String source;
+    private List<String> grants;
+    private FileDetails fileDetails;
     private String title;
     private String description;
-    private String embeddingModelId;
-    private ChunkingStrategy chunkingStrategy = new ChunkingStrategy();
-    private IndexingStatus indexingStatus = IndexingStatus.PENDING;
+    private KnowledgeSettings settings = new KnowledgeSettings();
+    private String indexingStatus = IndexingStatus.PENDING.name();
     private int totalChunks;
-    private int totalTokens;
     private long indexedAt;
     private String error;
 
@@ -28,20 +30,12 @@ public class Knowledge extends BaseEntity {
         this.agentId = agentId;
     }
 
-    public SourceType getSourceType() {
-        return sourceType;
+    public List<String> getGrants() {
+        return grants;
     }
 
-    public void setSourceType(final SourceType sourceType) {
-        this.sourceType = sourceType;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(final String source) {
-        this.source = source;
+    public void setGrants(final List<String> grants) {
+        this.grants = grants;
     }
 
     public String getTitle() {
@@ -56,32 +50,32 @@ public class Knowledge extends BaseEntity {
         return description;
     }
 
+    public KnowledgeSettings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(final KnowledgeSettings settings) {
+        this.settings = settings;
+    }
+
+    public FileDetails getFileDetails() {
+        return fileDetails;
+    }
+
+    public void setFileDetails(final FileDetails fileDetails) {
+        this.fileDetails = fileDetails;
+    }
+
     public void setDescription(final String description) {
         this.description = description;
     }
 
-    public String getEmbeddingModelId() {
-        return embeddingModelId;
-    }
-
-    public void setEmbeddingModelId(final String embeddingModelId) {
-        this.embeddingModelId = embeddingModelId;
-    }
-
-    public ChunkingStrategy getChunkingStrategy() {
-        return chunkingStrategy;
-    }
-
-    public void setChunkingStrategy(final ChunkingStrategy chunkingStrategy) {
-        this.chunkingStrategy = chunkingStrategy == null ? new ChunkingStrategy() : chunkingStrategy;
-    }
-
-    public IndexingStatus getIndexingStatus() {
+    public String getIndexingStatus() {
         return indexingStatus;
     }
 
-    public void setIndexingStatus(final IndexingStatus indexingStatus) {
-        this.indexingStatus = indexingStatus == null ? IndexingStatus.PENDING : indexingStatus;
+    public void setIndexingStatus(final String indexingStatus) {
+        this.indexingStatus = indexingStatus == null ? IndexingStatus.PENDING.name() : indexingStatus;
     }
 
     public int getTotalChunks() {
@@ -90,14 +84,6 @@ public class Knowledge extends BaseEntity {
 
     public void setTotalChunks(final int totalChunks) {
         this.totalChunks = totalChunks;
-    }
-
-    public int getTotalTokens() {
-        return totalTokens;
-    }
-
-    public void setTotalTokens(final int totalTokens) {
-        this.totalTokens = totalTokens;
     }
 
     public long getIndexedAt() {

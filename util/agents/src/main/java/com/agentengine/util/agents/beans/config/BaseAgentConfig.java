@@ -109,6 +109,8 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     private Map<String, Object> responseFormat;
 
+    private KnowledgeSettings knowledgeSettings;
+
     protected BaseAgentConfig(final AgentType agentType) {
         this.type = agentType.type();
     }
@@ -248,6 +250,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     public void setResponseFormat(final Map<String, Object> responseFormat) {
         this.responseFormat = responseFormat;
+    }
+
+    public KnowledgeSettings getKnowledgeSettings() {
+        return knowledgeSettings;
+    }
+
+    public void setKnowledgeSettings(final KnowledgeSettings knowledgeSettings) {
+        this.knowledgeSettings = knowledgeSettings;
     }
 
     public enum AgentType {

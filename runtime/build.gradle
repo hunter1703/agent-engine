@@ -5,7 +5,8 @@ plugins {
 dependencies {
     // Internal modules
     implementation project(':runtime:api')
-    implementation project(':core:api')
+    implementation project(':runtime:builder')
+    implementation project(':catalog:api')
     implementation project(':connectors:core')
     implementation project(':util:common')
     implementation project(':util:pekko')

@@ -1,5 +1,23 @@
 # TODO
 
+## Knowledge: Qdrant Collection Pre-provisioning
+
+The Qdrant `knowledge` collection must be created at deployment time with the correct vector
+dimension matching the configured embedding model (e.g. 768 for `nomic-embed-text`). The
+application no longer calls `ensureCollection` at runtime — it assumes the collection exists.
+
+Add a Helm chart init-container or a `k8s/infra/qdrant/init-collection.sh` script that calls
+the Qdrant REST API to create the collection before the knowledge service starts:
+
+```bash
+curl -X PUT http://qdrant:6333/collections/knowledge \
+  -H 'Content-Type: application/json' \
+  -d '{"vectors": {"size": 768, "distance": "Cosine"}}'
+```
+
+The dimension should be parameterised via a Helm value so it can be changed without modifying
+the script.
+
 ## Image Tools: Shadows/Highlights Local Adaptation
 
 Lightroom's PV2012 Shadows and Highlights sliders use edge-aware local tone mapping (confirmed by

@@ -26,15 +26,23 @@ public class Filter {
         this.op = op;
     }
 
-    public List<Object> getValues() {
-        return values;
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getValues() {
+        return (List<T>) values;
     }
 
-    public void setValues(final List<Object> values) {
-        this.values = values;
+    @SuppressWarnings("unchecked")
+    public <T> void setValues(final List<T> values) {
+        this.values = (List<Object>) values;
     }
 
-    public Filter addValue(final Object value) {
+    @SuppressWarnings("unchecked")
+    public <T> Filter withValues(final List<T> values) {
+        setValues(values);
+        return this;
+    }
+
+    public <T> Filter addValue(final T value) {
         values = values == null ? new ArrayList<>() : values;
         values.add(value);
         return this;

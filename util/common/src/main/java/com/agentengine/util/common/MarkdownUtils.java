@@ -3,9 +3,7 @@ package com.agentengine.util.common;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.util.data.MutableDataSet;
-
 import java.util.*;
-
 import org.commonmark.node.*;
 import org.commonmark.renderer.markdown.MarkdownRenderer;
 
@@ -23,7 +21,8 @@ import org.commonmark.renderer.markdown.MarkdownRenderer;
 public final class MarkdownUtils {
 
     private static final int MAX_HEADING_LEVEL = 6;
-    private static final MarkdownRenderer MARKDOWN_RENDERER = MarkdownRenderer.builder().build();
+    private static final MarkdownRenderer MARKDOWN_RENDERER =
+            MarkdownRenderer.builder().build();
 
     private static final FlexmarkHtmlConverter HTML_CONVERTER;
 
@@ -195,9 +194,8 @@ public final class MarkdownUtils {
      * e.g. {@code "subViolations"} → {@code "Sub Violations"}, {@code "error_code"} → {@code "Error Code"}.
      */
     private static String formatLabel(final String name) {
-        final String spaced = name.replaceAll("([a-z])([A-Z])", "$1 $2")
-                .replace('_', ' ')
-                .replace('-', ' ');
+        final String spaced =
+                name.replaceAll("([a-z])([A-Z])", "$1 $2").replace('_', ' ').replace('-', ' ');
         final String[] words = spaced.split(" ");
         final StringBuilder sb = new StringBuilder();
         for (final String word : words) {

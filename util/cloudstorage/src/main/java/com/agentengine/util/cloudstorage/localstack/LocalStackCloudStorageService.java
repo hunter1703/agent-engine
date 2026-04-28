@@ -8,7 +8,6 @@ import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-
 import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
@@ -89,7 +88,11 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public FileDetails upload(
-            final String key, final String name, final InputStream inputStream, final long contentLength, String mediaType) {
+            final String key,
+            final String name,
+            final InputStream inputStream,
+            final long contentLength,
+            String mediaType) {
         mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
         final RequestBody body = contentLength >= 0
                 ? RequestBody.fromInputStream(inputStream, contentLength)
@@ -107,13 +110,22 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public Content download(final String key) {
-        final ResponseInputStream<GetObjectResponse> response = s3.getObject(GetObjectRequest.builder().bucket(defaultBucket).key(key).build());
+        final ResponseInputStream<GetObjectResponse> response = s3.getObject(
+                GetObjectRequest.builder().bucket(defaultBucket).key(key).build());
         return new Content(response, response.response().contentType());
     }
 
     @Override
+    public Content download(final FileDetails fileDetails) {
+        final String source = fileDetails.source();
+        final int index = source.indexOf("/");
+        return download(source.substring(index + 1));
+    }
+
+    @Override
     public void delete(final String key) {
-        s3.deleteObject(DeleteObjectRequest.builder().bucket(defaultBucket).key(key).build());
+        s3.deleteObject(
+                DeleteObjectRequest.builder().bucket(defaultBucket).key(key).build());
     }
 
     @Override
@@ -124,7 +136,8 @@ public class LocalStackCloudStorageService implements CloudStorageService {
         return presigner
                 .presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(validity)
-                        .getObjectRequest(request -> request.bucket(defaultBucket).key(key))
+                        .getObjectRequest(
+                                request -> request.bucket(defaultBucket).key(key))
                         .build())
                 .url()
                 .toString();
@@ -132,8 +145,11 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public List<String> list(final String keyPrefix) {
-        return s3.listObjectsV2Paginator(
-                        ListObjectsV2Request.builder().bucket(defaultBucket).prefix(keyPrefix).build())
+        return s3
+                .listObjectsV2Paginator(ListObjectsV2Request.builder()
+                        .bucket(defaultBucket)
+                        .prefix(keyPrefix)
+                        .build())
                 .stream()
                 .flatMap(page -> page.contents().stream())
                 .map(S3Object::key)

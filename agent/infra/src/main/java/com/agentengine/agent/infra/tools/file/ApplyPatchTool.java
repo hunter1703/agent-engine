@@ -1,0 +1,191 @@
+package com.agentengine.agent.infra.tools.file;
+
+import com.agentengine.agent.infra.annotations.DiscoverableTool;
+import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.annotations.ToolSchema;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.UnifiedDiffUtils;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.patch.PatchFailedException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Tool for applying unified diff patches to files using java-diff-utils library. Validates patch
+ * syntax, optionally verifies file hasn't changed via hash, and performs atomic file updates with
+ * rollback on failure.
+ */
+@DiscoverableTool
+public final class ApplyPatchTool extends BaseFileTool {
+    private static final Logger LOG = LoggerFactory.getLogger(ApplyPatchTool.class);
+    private static final String TOOL_NAME = "apply_patch";
+    private static final int MAX_PATCH_SIZE = 100000; // 100KB max patch
+
+    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
+            TOOL_NAME,
+            "Applies a unified diff patch to a file, modifying it in-place. Use to make targeted, precise edits "
+                    + "to an existing file when you know exactly which lines to change. The patch must be in "
+                    + "standard unified diff format (as produced by `diff -u` or `git diff`), including @@ hunk "
+                    + "headers. Validates patch syntax before applying. Optionally accepts a content hash to guard "
+                    + "against applying a stale patch — if the hash does not match the current file contents, the "
+                    + "operation is rejected. File writes are atomic: either the patch is fully applied or the file "
+                    + "is left unchanged. Maximum patch size: 100,000 characters. "
+                    + "Returns: { success, file_path, additions, deletions, hunks, message } on success, "
+                    + "or { error, validation_failed?, rolled_back? } on failure.",
+            Map.of(),
+            ToolRiskLevel.MEDIUM);
+
+    public ApplyPatchTool() {
+        super(DESCRIPTOR);
+    }
+
+    public ToolOutput<Map<String, Object>> execute(
+            @ToolSchema(
+                            name = "file_path",
+                            description =
+                                    "Absolute or relative path to the file to patch. The file must already exist.")
+                    String filePath,
+            @ToolSchema(
+                            name = "patch",
+                            description =
+                                    "Unified diff content to apply, including @@ hunk headers. Must be valid unified diff "
+                                            + "format. Maximum 100,000 characters.")
+                    String patch,
+            @ToolSchema(
+                            name = "expected_hash",
+                            description =
+                                    "Optional content hash representing the expected file state before patching. When provided, "
+                                            + "the patch is rejected if the file has been modified since this hash was recorded, "
+                                            + "preventing accidental modification of an already-changed file.",
+                            optional = true)
+                    String expectedHash) {
+
+        if (filePath == null || filePath.isBlank()) {
+            return ToolOutput.direct(Map.of("error", "file_path is required"));
+        }
+
+        if (patch == null || patch.isBlank()) {
+            return ToolOutput.direct(Map.of("error", "patch is required"));
+        }
+
+        if (patch.length() > MAX_PATCH_SIZE) {
+            return ToolOutput.direct(
+                    Map.of("error", "Patch too large: " + patch.length() + " chars (max: " + MAX_PATCH_SIZE + ")"));
+        }
+
+        try {
+            Path file = resolvePath(filePath);
+
+            if (!Files.exists(file)) {
+                return ToolOutput.direct(Map.of("error", "File not found: " + filePath));
+            }
+
+            BaseFileTool.FileDetails details = readFile(file, 0, 0);
+            String currentHash = details.getHash();
+            if (expectedHash != null && !expectedHash.equalsIgnoreCase(currentHash)) {
+                return ToolOutput.direct(Map.of(
+                        "error",
+                        "File content has changed since patch was created (hash mismatch)",
+                        "validation_failed",
+                        true,
+                        "expected_hash",
+                        expectedHash,
+                        "actual_hash",
+                        currentHash));
+            }
+
+            List<String> patchLines = Arrays.asList(patch.split("\n"));
+            Patch<String> parsedPatch;
+            try {
+                parsedPatch = UnifiedDiffUtils.parseUnifiedDiff(patchLines);
+            } catch (Exception exception) {
+                return ToolOutput.direct(
+                        Map.of("error", "Invalid unified diff format: " + exception.getMessage(), "success", false));
+            }
+
+            final String originalContent = Files.readString(file);
+            List<String> originalLines = Arrays.asList(originalContent.split("\n"));
+            List<String> patchedLines;
+            try {
+                patchedLines = DiffUtils.patch(originalLines, parsedPatch);
+            } catch (PatchFailedException exception) {
+                return ToolOutput.direct(Map.of(
+                        "error",
+                        "Failed to apply patch: " + exception.getMessage(),
+                        "success",
+                        false,
+                        "reason",
+                        "Patch context mismatch - file may have changed"));
+            }
+
+            // Join lines back, preserving original line ending style
+            String patchedContent = String.join("\n", patchedLines);
+            // Remove trailing newline if original didn't have one
+            if (!originalContent.endsWith("\n") && patchedContent.endsWith("\n")) {
+                patchedContent = patchedContent.substring(0, patchedContent.length() - 1);
+            }
+
+            // Create backup for rollback
+            Path backupFile = file.resolveSibling(file.getFileName().toString() + ".patch-backup");
+            Files.copy(file, backupFile, StandardCopyOption.REPLACE_EXISTING);
+
+            try {
+                // Write patched content
+                Files.writeString(file, patchedContent);
+
+                // Clean up backup on success
+                try {
+                    Files.deleteIfExists(backupFile);
+                } catch (IOException exception) {
+                    LOG.warn("Failed to delete backup file: {}", backupFile, exception);
+                }
+
+                // Calculate stats
+                int additions = (int) patchedLines.stream()
+                        .filter(line -> line.startsWith("+") && !line.startsWith("+++"))
+                        .count();
+                int deletions = originalContent.split("\n").length - patchedLines.size() + additions;
+
+                LOG.info(
+                        "Successfully applied patch to {}: {} additions, {} deletions", filePath, additions, deletions);
+
+                final Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("file_path", filePath);
+                response.put("additions", additions);
+                response.put("deletions", deletions);
+                response.put("hunks", parsedPatch.getDeltas().size());
+                response.put("message", "Patch applied successfully");
+                return ToolOutput.direct(response);
+
+            } catch (IOException exception) {
+                // Rollback on failure
+                LOG.error("Failed to write patched content, rolling back", exception);
+                Files.copy(backupFile, file, StandardCopyOption.REPLACE_EXISTING);
+                Files.deleteIfExists(backupFile);
+
+                return ToolOutput.direct(Map.of(
+                        "error",
+                        "Failed to write patched file: " + exception.getMessage(),
+                        "rolled_back",
+                        true,
+                        "success",
+                        false));
+            }
+
+        } catch (IOException exception) {
+            LOG.error("Failed to apply patch to {}", filePath, exception);
+            return ToolOutput.direct(Map.of("error", "Failed to apply patch: " + exception.getMessage()));
+        }
+    }
+}

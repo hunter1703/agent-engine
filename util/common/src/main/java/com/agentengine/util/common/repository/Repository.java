@@ -1,6 +1,7 @@
 package com.agentengine.util.common.repository;
 
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
 
 /**
@@ -38,4 +39,6 @@ public interface Repository<T extends BaseEntity> extends ReadRepository<T> {
      * @return true if the entity was deleted, false if it didn't exist
      */
     boolean deleteById(String id);
+
+    long deleteByQuery(Query query);
 }

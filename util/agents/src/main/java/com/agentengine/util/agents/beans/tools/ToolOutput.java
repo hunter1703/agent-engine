@@ -6,6 +6,16 @@ public abstract class ToolOutput<T> {
 
     public abstract T toResult();
 
+    /** Returns {@code true} when this output carries no result (confirmation pending). */
+    public boolean isEmpty() {
+        return false;
+    }
+
+    /** Returns a sentinel {@code ToolOutput} that signals the tool is awaiting confirmation. */
+    public static <S> ToolOutput<S> empty() {
+        return direct(null);
+    }
+
     public static <S> ToolOutput<S> direct(final S content) {
         return new Direct<>(content);
     }
@@ -28,6 +38,11 @@ public abstract class ToolOutput<T> {
         @Override
         public S toResult() {
             return content;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return content == null;
         }
     }
 

@@ -1,10 +1,10 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.core.api.services.AgentService;
-import com.agentengine.core.api.services.ModelService;
-import com.agentengine.core.api.services.SessionService;
-import com.agentengine.runtime.api.services.RuntimeService;
-import com.agentengine.runtime.api.services.ToolCatalog;
+import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.agent.api.services.ToolCatalog;
+import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.catalog.api.services.ModelService;
+import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.ms.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;

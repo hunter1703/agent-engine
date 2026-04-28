@@ -115,8 +115,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
-        LOG.info(
-                "mapEventInternal called - event : {}", JsonUtils.toJson(event));
+        LOG.info("mapEventInternal called - event : {}", JsonUtils.toJson(event));
         final boolean internal = SessionEventUtils.isInternal(event);
         if (internal) {
             return Flowable.empty();
@@ -147,7 +146,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         // Attachments are stored in event metadata (keyed by SessionEventUtils.ATTACHMENTS)
         // rather than as fileData Parts, so they survive the single-text LLM message constraint.
         if (Constants.AUTHOR_USER.equals(event.getAuthor())) {
-            final List<FileDetails> attachments = CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
+            final List<FileDetails> attachments =
+                    CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
             if (CollectionUtils.isNotEmpty(attachments)) {
                 for (final FileDetails fileDetails : attachments) {
                     flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
@@ -269,7 +269,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> mapCorrectionEvent(final SessionEvent event) {
-        final CorrectionEvent correctionEvent = new CorrectionEvent(Objects.requireNonNull(CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION)));
+        final CorrectionEvent correctionEvent = new CorrectionEvent(Objects.requireNonNull(
+                CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION)));
         decorator.decorate(correctionEvent);
         LOG.debug("Generated correction event - correctionMetadataPresent=true");
         return Flowable.just(correctionEvent);

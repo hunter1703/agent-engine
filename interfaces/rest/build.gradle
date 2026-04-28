@@ -2,9 +2,11 @@ plugins {
     id 'com.agentengine.java-application-conventions'
 }
 
+group = 'com.agentengine.interfaces'
+
 dependencies {
-    implementation project(':core:api')
-    implementation project(':runtime:api')
+    implementation project(':catalog:api')
+    implementation project(':agent:api')
     implementation project(':util:agents')
     implementation project(':util:common')
     implementation project(':util:mongodb')

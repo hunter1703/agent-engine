@@ -14,6 +14,18 @@ public class Query {
 
     public Query() {}
 
+    public Query(final Query other) {
+        if (other == null) {
+            return;
+        }
+        this.filter = other.filter;
+        this.page = other.page;
+        this.sort = other.sort;
+        this.includeFields = other.includeFields;
+        this.excludeFields = other.excludeFields;
+        this.includeCount = other.includeCount;
+    }
+
     public Filter getFilter() {
         return filter;
     }

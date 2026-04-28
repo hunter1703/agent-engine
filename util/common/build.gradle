@@ -3,25 +3,32 @@ plugins {
 }
 
 dependencies {
-    implementation libs.jakarta.inject.api
-    implementation libs.jakarta.enterprise.cdi.api
-    implementation libs.jackson.databind
+    // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
+    compileOnly libs.jakarta.inject.api
+    compileOnly libs.jakarta.enterprise.cdi.api
+    compileOnly libs.jakarta.validation.api
+
+    // Exposed in public API (TypeReference/JsonNode in JsonUtils, SchemaBuilder in SchemaUtils)
+    api libs.jackson.databind
+    api libs.vertx.json.schema
+
+    // Exposed in public API (Flowable in EventMapper)
+    api libs.rxjava
+
+    // Jackson modules: internal wiring only, not in public signatures
     implementation libs.jackson.dataformat.yaml
     implementation libs.jackson.datatype.jdk8
     implementation libs.jackson.datatype.jsr310
     implementation libs.jackson.datatype.guava
-    implementation libs.vertx.json.schema
 
+    // Internal utilities only
     implementation libs.guava
-
     implementation libs.jinjava
     implementation libs.json.path
     implementation libs.commons.text
     implementation libs.flexmark.all
     implementation libs.commonmark
     implementation libs.slf4j.api
-    implementation libs.jakarta.validation.api
-    implementation libs.rxjava
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

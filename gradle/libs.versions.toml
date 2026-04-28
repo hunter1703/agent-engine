@@ -7,6 +7,7 @@ protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 quarkus = "3.34.0"
 langchain4j = "1.10.0"
 langchain4j-plugin = "1.10.0"
+qdrant-client = "1.13.0"
 google-adk = "0.5.1-SNAPSHOT"
 google-genai = "1.44.0"
 pekko = "1.2.1"
@@ -33,7 +34,7 @@ aws-sdk = "2.31.0"
 # gRPC & Protobuf
 protobuf = "3.25.8"
 protobuf-plugin = "0.9.5"
-grpc = "1.70.0"
+grpc = "1.79.0"
 
 # Utilities
 guava = "33.5.0-jre"
@@ -99,7 +100,9 @@ google-genai = { group = "com.google.genai", name = "google-genai", version.ref 
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }
 langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai", version.ref = "langchain4j-plugin" }
 langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref = "langchain4j-plugin" }
+langchain4j-qdrant = { group = "dev.langchain4j", name = "langchain4j-community-qdrant", version.ref = "langchain4j-plugin" }
 langchain4j-http-client-jdk = { group = "dev.langchain4j", name = "langchain4j-http-client-jdk" }
+qdrant-client = { group = "io.qdrant", name = "client", version.ref = "qdrant-client" }
 quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client" }
 quarkus-logging-json = { group = "io.quarkus", name = "quarkus-logging-json" }
 quarkus-rest-jackson = { group = "io.quarkus", name = "quarkus-rest-jackson" }

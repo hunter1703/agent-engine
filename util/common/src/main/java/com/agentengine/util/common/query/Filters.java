@@ -9,6 +9,10 @@ public class Filters {
         return new Filter().withField(field).addValue(value).withOp(Operator.EQ);
     }
 
+    public static Filter semanticSearch(String field, Object value) {
+        return new Filter().withField(field).addValue(value).withOp(Operator.SEMANTIC_SEARCH);
+    }
+
     public static Filter ne(String field, Object value) {
         return new Filter().withField(field).addValue(value).withOp(Operator.NE);
     }

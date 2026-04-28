@@ -3,10 +3,10 @@ package com.agentengine.interfaces.rest;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.core.api.services.AgentService;
-import com.agentengine.core.api.services.SessionService;
+import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
-import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;

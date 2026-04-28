@@ -3,7 +3,7 @@ package com.agentengine.interfaces.rest.handlers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.agentengine.core.agui.AGUIEventMapper;
+import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agui.core.event.BaseEvent;
 import com.agui.core.event.RunErrorEvent;
 import com.google.adk.events.Event;

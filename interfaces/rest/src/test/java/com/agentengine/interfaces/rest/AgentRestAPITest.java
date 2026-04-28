@@ -10,8 +10,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.core.api.services.AgentService;
-import com.agentengine.core.api.services.SessionService;
+import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.DefaultAgentConfig;
 import com.agentengine.util.agents.beans.config.OrchestratorAgentConfig;

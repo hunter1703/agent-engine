@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.agentengine.core.api.services.ModelService;
+import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;

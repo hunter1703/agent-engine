@@ -19,6 +19,8 @@ public interface CloudStorageService {
     /** Downloads the object at {@code key}, returning its byte stream and content type. */
     Content download(String key);
 
+    Content download(FileDetails fileDetails);
+
     /** Deletes the object at {@code key}. */
     void delete(String key);
 

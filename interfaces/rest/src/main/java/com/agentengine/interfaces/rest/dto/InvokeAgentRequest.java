@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.dto;
 
-import com.agentengine.runtime.api.model.UserMessage;
+import com.agentengine.agent.api.model.UserMessage;
 import jakarta.validation.Valid;
 
 public class InvokeAgentRequest {

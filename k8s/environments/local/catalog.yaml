@@ -1,0 +1,12 @@
+replicas: 1
+pdb:
+  enabled: true
+  minAvailable: 1
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: agent-engine-catalog
+        app.kubernetes.io/instance: agent-engine-catalog

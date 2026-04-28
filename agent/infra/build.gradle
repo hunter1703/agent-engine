@@ -1,0 +1,42 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.agent'
+
+dependencies {
+    implementation project(':agent:api')
+    implementation project(':catalog:api')
+    implementation project(':knowledge:api')
+    implementation project(':connectors:core')
+    implementation project(':util:common')
+    implementation project(':util:agents')
+    implementation project(':util:ms')
+    implementation project(':util:mongodb')
+
+    implementation platform(libs.langchain4j.bom)
+    implementation libs.google.adk
+    implementation libs.google.adk.langchain4j
+    implementation libs.google.genai
+    implementation libs.langchain4j.core
+    implementation libs.langchain4j.open.ai
+    implementation libs.langchain4j.ollama
+    implementation libs.langchain4j.http.client.jdk
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+
+    implementation libs.slf4j.api
+    implementation libs.guava
+    implementation libs.rxjava
+    implementation libs.vertx.json.schema
+    implementation libs.networknt.json.schema.validator
+    implementation libs.java.diff.utils
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+}

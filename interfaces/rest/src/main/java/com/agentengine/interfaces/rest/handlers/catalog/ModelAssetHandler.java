@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.core.api.services.ModelService;
+import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.beans.AssetClass;

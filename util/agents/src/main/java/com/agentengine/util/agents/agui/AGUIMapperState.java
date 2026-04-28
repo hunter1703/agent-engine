@@ -4,7 +4,6 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
-
 import java.util.*;
 
 public final class AGUIMapperState {
@@ -40,7 +39,11 @@ public final class AGUIMapperState {
         currentAuthor = event.getAuthor();
         final Content content = event.getContent();
         if (content != null) {
-            content.parts().orElse(List.of()).forEach(part -> part.functionCall().ifPresent(functionCall -> requestConfirmationCalls.put(functionCall.id().orElseThrow(), functionCall)));
+            content.parts()
+                    .orElse(List.of())
+                    .forEach(part -> part.functionCall()
+                            .ifPresent(functionCall -> requestConfirmationCalls.put(
+                                    functionCall.id().orElseThrow(), functionCall)));
         }
     }
 

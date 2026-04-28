@@ -133,7 +133,8 @@ public final class AGUIToolCallMapper {
         final ToolConfirmation toolConfirmation = JsonUtils.fromMap(
                 CollectionUtils.nullSafeMap(response.response().orElse(Map.of())), ToolConfirmation.class);
         final FunctionCall confirmationRequestedCall = state.getConfirmationRequestedCall(confirmationId);
-        final Map<String, Object> args = CollectionUtils.nullSafeMap(confirmationRequestedCall.args().orElse(Map.of()));
+        final Map<String, Object> args =
+                CollectionUtils.nullSafeMap(confirmationRequestedCall.args().orElse(Map.of()));
 
         final FunctionCall originalFunctionCall =
                 Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));

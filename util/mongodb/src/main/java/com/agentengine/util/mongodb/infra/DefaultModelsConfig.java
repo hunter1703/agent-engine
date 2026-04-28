@@ -12,6 +12,7 @@ public class DefaultModelsConfig extends InfraConfig {
     private String compactionModelId;
     private String evaluatorModelId;
     private String embeddingModelId;
+    private String chatModelId;
 
     public DefaultModelsConfig() {
         super(TYPE);
@@ -47,5 +48,13 @@ public class DefaultModelsConfig extends InfraConfig {
 
     public void setEmbeddingModelId(final String embeddingModelId) {
         this.embeddingModelId = embeddingModelId;
+    }
+
+    public String getChatModelId() {
+        return chatModelId;
+    }
+
+    public void setChatModelId(final String chatModelId) {
+        this.chatModelId = chatModelId;
     }
 }

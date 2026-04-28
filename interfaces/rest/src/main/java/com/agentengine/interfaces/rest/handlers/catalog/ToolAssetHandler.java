@@ -1,7 +1,7 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
+import com.agentengine.agent.api.services.ToolCatalog;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
-import com.agentengine.runtime.api.services.ToolCatalog;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;

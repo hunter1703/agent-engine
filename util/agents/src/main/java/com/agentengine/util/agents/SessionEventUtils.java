@@ -2,7 +2,6 @@ package com.agentengine.util.agents;
 
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.Violation;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import java.util.ArrayList;

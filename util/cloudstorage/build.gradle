@@ -8,9 +8,14 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')
 
+    // Exposed in public API (S3Client, S3Presigner, S3 request/response types in CloudStorageService)
     api libs.aws.s3
+
     implementation libs.quarkus.arc
-    implementation libs.jakarta.annotation.api
+
+    // Annotation-only (@PostConstruct on package-private init()), runtime provided by Quarkus
+    compileOnly libs.jakarta.annotation.api
+
     implementation libs.slf4j.api
 
     testImplementation libs.junit.jupiter

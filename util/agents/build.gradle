@@ -7,11 +7,16 @@ dependencies {
 
     api libs.ag.ui.core
 
-    implementation libs.microprofile.openapi.api
-    implementation libs.mongodb.bson
+    // Exposed in public API (Content, FinishReason in SessionEvent getters)
+    api libs.google.genai
+
+    // Annotation-only APIs: compile-time markers, runtime provided by Quarkus
+    compileOnly libs.microprofile.openapi.api
+    compileOnly libs.jakarta.validation.api
+    compileOnly libs.jakarta.enterprise.cdi.api
+    // @BsonDiscriminator is annotation-only; no bson types in public method signatures
+    compileOnly libs.mongodb.bson
+
     implementation libs.google.adk.langchain4j
-    implementation libs.google.genai
-    implementation libs.jakarta.validation.api
-    implementation libs.jakarta.enterprise.cdi.api
     implementation libs.slf4j.api
 }

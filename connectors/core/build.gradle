@@ -2,6 +2,8 @@ plugins {
     id 'com.agentengine.java-library-conventions'
 }
 
+group = 'com.agentengine.connectors'
+
 dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')

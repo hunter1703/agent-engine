@@ -1,7 +1,7 @@
 package com.agentengine.util.pekko;
 
 import com.agentengine.util.common.EnvUtils;
-import com.agentengine.util.mongodb.config.ApplicationConfig;
+import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;

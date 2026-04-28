@@ -39,13 +39,13 @@ stop_workloads() {
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting deployments...${RESET}\n"
-  kubectl delete deployment agent-engine-core agent-engine-rest localstack -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete deployment agent-engine-catalog agent-engine-rest localstack -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting statefulsets (preserving PVCs)...${RESET}\n"
-  kubectl delete statefulset agent-engine-runtime mongodb postgres -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete statefulset agent-engine-agent mongodb postgres -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting services (except headless for PVC retention)...${RESET}\n"
-  kubectl delete service agent-engine-core agent-engine-rest agent-engine-runtime -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete service agent-engine-catalog agent-engine-rest agent-engine-agent -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting configmaps and secrets...${RESET}\n"
   kubectl delete configmap -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
@@ -82,7 +82,7 @@ Stages (run concurrently where dependencies allow):
   build + infra deploy  Run in parallel from the start.
   seed infra            Starts once infra is deployed.
   core + rest deploy    Start once build and infra seeding are done.
-  runtime deploy        Starts once core is ready (actor recovery needs core).
+  agent deploy         Starts once catalog is ready (actor recovery needs catalog).
   seed catalog          Starts once core and rest are both ready.
   port-forward          Starts once catalog is seeded (local only).
 
@@ -188,7 +188,7 @@ job_build() {
   fi
   print_phase "Building Docker images"
   require_command docker
-  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" runtime core rest || fail
+  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" agent catalog rest || fail
   touch "$STATE_DIR/builds-done"
 }
 
@@ -229,14 +229,14 @@ deploy_service() {
 # To add a new service, append one line here. No other changes required.
 APP_SERVICES="
 global-properties:infra-seeded:global-properties-ready
-core:builds-done,global-properties-ready:core-ready
+catalog:builds-done,global-properties-ready:catalog-ready
 rest:builds-done,global-properties-ready:rest-ready
-runtime:core-ready:runtime-ready
+agent:catalog-ready:agent-ready
 "
 
 # Ready-flags that must all be set before catalog seeding begins.
 # Append a service's ready-flag here if seed-catalog calls through it.
-CATALOG_DEPS="core-ready,rest-ready"
+CATALOG_DEPS="catalog-ready,rest-ready"
 
 job_seed_catalog() {
   if [ "$DRY_RUN" = "true" ]; then

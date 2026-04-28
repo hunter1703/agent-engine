@@ -4,6 +4,7 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
@@ -121,6 +122,11 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> extends Abst
             LOG.error("Error deleting entity by ID: {}", id, exception);
             throw new RuntimeException("Error deleting entity by ID: " + id, exception);
         }
+    }
+
+    @Override
+    public long deleteByQuery(final Query query) {
+        return getCollection().deleteMany(MongoUtils.toBson(query.getFilter())).getDeletedCount();
     }
 
     private T updateEntity(final String id, final T entity, final boolean upsert) {

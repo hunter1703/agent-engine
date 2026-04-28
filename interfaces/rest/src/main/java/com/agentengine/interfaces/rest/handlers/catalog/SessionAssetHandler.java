@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.handlers.catalog;
 
-import com.agentengine.core.api.services.SessionService;
+import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;

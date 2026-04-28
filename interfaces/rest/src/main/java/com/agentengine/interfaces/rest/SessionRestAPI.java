@@ -3,9 +3,9 @@ package com.agentengine.interfaces.rest;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
-import com.agentengine.core.api.services.SessionService;
+import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.ConfirmSessionRequest;
-import com.agentengine.runtime.api.services.RuntimeService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -19,9 +19,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
-import java.util.Map;
-
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;

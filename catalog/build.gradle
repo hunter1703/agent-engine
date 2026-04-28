@@ -1,0 +1,23 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.catalog'
+
+dependencies {
+    implementation project(':catalog:api')
+    implementation project(':agent:api')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation project(':util:agents')
+    implementation project(':util:ms')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.ag.ui.core
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+    implementation libs.slf4j.api
+    implementation libs.rxjava
+}

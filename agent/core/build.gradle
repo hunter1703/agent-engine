@@ -1,0 +1,48 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.agent'
+
+dependencies {
+    implementation project(':agent:api')
+    implementation project(':agent:infra')
+    implementation project(':knowledge:api')
+    implementation project(':catalog:api')
+    implementation project(':util:common')
+    implementation project(':util:pekko')
+    implementation project(':util:mongodb')
+    implementation project(':util:agents')
+    implementation project(':util:ms')
+    implementation project(':connectors:core')
+    implementation project(':util:cloudstorage')
+
+    implementation libs.google.adk
+
+    implementation platform(libs.pekko.bom)
+    implementation libs.pekko.actor.typed
+    implementation libs.pekko.cluster.typed
+    implementation libs.pekko.cluster.sharding.typed
+    implementation libs.pekko.persistence.typed
+    implementation libs.pekko.persistence.jdbc
+    implementation libs.pekko.streams.typed
+    implementation libs.pekko.serialization.jackson
+
+    implementation libs.postgresql
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+
+    implementation libs.slf4j.api
+    implementation libs.guava
+    implementation libs.rxjava
+    implementation libs.stateless4j
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+}

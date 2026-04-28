@@ -19,14 +19,14 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/apply-charts.sh
-  ./k8s/scripts/apply-charts.sh runtime core rest
+  ./k8s/scripts/apply-charts.sh agent catalog rest
   ./k8s/scripts/apply-charts.sh -n agent-engine-prod -f /path/to/override.yaml --set rest.ingress.enabled=true
 
 Behavior:
-  - Deploys runtime, core, and rest when no charts are provided.
-  - Builds runtime, core, and rest images automatically before applying those charts.
+  - Deploys agent, catalog, and rest when no charts are provided.
+  - Builds agent, catalog, and rest images automatically before applying those charts.
   - Applies environment overlays from k8s/environments/<environment>/<chart>.yaml.
-  - Enforces dependency order: infra -> runtime -> core -> rest.
+  - Enforces dependency order: infra -> agent -> catalog -> rest.
 EOF
   print_common_usage
 }
@@ -97,7 +97,7 @@ build_selected_images() {
   fi
 
   selected_components=""
-  for component in runtime core rest; do
+  for component in agent catalog rest; do
     # shellcheck disable=SC2086
     if chart_selected "$component" $REQUESTED_CHARTS; then
       selected_components="$selected_components $component"
@@ -135,7 +135,7 @@ build_helm_args() {
   fi
 
   case "$chart" in
-    runtime|core|rest)
+    agent|catalog|rest)
       set -- "$@" --set image.tag="$IMAGE_TAG"
       if [ -n "${ROLLOUT_REVISION:-}" ]; then
         set -- "$@" --set-string podAnnotations.rolloutRevision="$ROLLOUT_REVISION"
@@ -153,7 +153,7 @@ lint_chart() {
   release_name=$(chart_release_name "$chart")
   set -- lint "$(chart_path "$chart")" --namespace "$NAMESPACE" --set namespace="$NAMESPACE"
   case "$chart" in
-    runtime|core|rest)
+    agent|catalog|rest)
       set -- "$@" --set image.tag="$IMAGE_TAG"
       if [ -n "${ROLLOUT_REVISION:-}" ]; then
         set -- "$@" --set-string podAnnotations.rolloutRevision="$ROLLOUT_REVISION"
@@ -224,14 +224,14 @@ fi
 if [ "$DRY_RUN" != "true" ]; then
   rollout_pids=""
   # shellcheck disable=SC2086
-  if chart_selected runtime $REQUESTED_CHARTS; then
-    kubectl rollout status statefulset/agent-engine-runtime \
+  if chart_selected agent $REQUESTED_CHARTS; then
+    kubectl rollout status statefulset/agent-engine-agent \
       --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
     rollout_pids="$rollout_pids $!"
   fi
   # shellcheck disable=SC2086
-  if chart_selected core $REQUESTED_CHARTS; then
-    kubectl rollout status deployment/agent-engine-core \
+  if chart_selected catalog $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/agent-engine-catalog \
       --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
     rollout_pids="$rollout_pids $!"
   fi
