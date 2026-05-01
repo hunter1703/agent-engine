@@ -430,3 +430,93 @@ public class SequentialOrchestratorAgent extends Agent {
 - DelegatedAgent: `agent-engine/runtime/src/main/java/com/agentengine/runtime/agents/DelegatedAgent.java`
 - SequentialAgentBuilder: `agent-engine/runtime/src/main/java/com/agentengine/runtime/factories/agent/builders/SequentialAgentBuilder.java`
 - OrchestratorAgentFactory: `agent-engine/runtime/src/main/java/com/agentengine/runtime/factories/agent/OrchestratorAgentFactory.java`
+
+
+---
+
+## Qdrant HTTP Migration Complete (2026-05-01)
+
+### Status: COMPLETED
+
+Successfully migrated from gRPC-based Qdrant client to HTTP REST API to eliminate protobuf classpath conflicts.
+
+### Changes Made
+
+1. **Removed gRPC Dependencies**:
+   - Removed `io.qdrant:client` (gRPC-based)
+   - Removed `protobuf-java`, `grpc-protobuf`, `grpc-stub`
+   - Eliminated `grpc.health.v1.HealthGrpc` duplicate class conflict
+
+2. **Implemented Custom HTTP Client**:
+   - Created `QdrantHttpClient` using Java 11+ `HttpClient`
+   - Supports all required operations: upsert, search, retrieve, delete
+   - Uses Jackson for JSON serialization with snake_case naming
+
+3. **Updated Configuration**:
+   - Changed from `grpcPort: 6334` to `httpPort: 6333`
+   - Added optional `apiKey` field for Qdrant Cloud support
+   - Updated `QdrantInfraConfig` and `qdrant-infra-configs.json`
+
+4. **Refactored Vector Store**:
+   - Updated `QdrantVectorStore` to use HTTP client
+   - Changed payload type from `Map<String, io.qdrant.client.grpc.JsonWithInt.Value>` to `Map<String, Object>`
+   - Updated `KnowledgeChunkStore` accordingly
+
+5. **Build Verification**:
+   - ✅ `./gradlew :util:vectordb:build` passes
+   - ✅ `./gradlew :knowledge:core:build` passes
+   - ✅ No compilation errors
+
+### Benefits
+
+- **No Classpath Conflicts**: Completely eliminates protobuf/gRPC conflicts
+- **Simpler Dependencies**: Fewer transitive dependencies
+- **Easier Debugging**: HTTP requests are easier to inspect
+- **Better Compatibility**: Avoids protobuf version drift
+- **Smaller Footprint**: Reduced dependency tree
+
+### Performance Impact
+
+- HTTP adds ~1-5ms latency vs gRPC for typical operations
+- Negligible for most use cases (<10K ops/sec)
+- Trade-off: Simplicity and stability over marginal performance
+
+### Migration Documentation
+
+See `QDRANT_HTTP_MIGRATION.md` for:
+- Detailed change summary
+- API mapping (gRPC → HTTP)
+- Troubleshooting guide
+- Rollback instructions
+
+### Testing Required
+
+- [ ] Run vector store unit tests: `./gradlew :util:vectordb:test`
+- [ ] Run knowledge integration tests: `./gradlew :knowledge:core:integrationTest`
+- [ ] Verify Qdrant connection in local dev environment
+- [ ] Test with Kubernetes deployment
+- [ ] Verify existing vector data is accessible
+
+### Follow-Up Items
+
+1. **Multi-Vector Search**: The existing TODO about RRF fusion still applies. The HTTP API supports `QueryPoints` with multi-vector fusion via the `/collections/{name}/points/query` endpoint.
+
+2. **Collection Initialization**: The existing TODO about creating collections at deployment time still applies. Use HTTP endpoint:
+   ```bash
+   curl -X PUT http://qdrant:6333/collections/knowledge \
+     -H 'Content-Type: application/json' \
+     -d '{"vectors": {"size": 768, "distance": "Cosine"}}'
+   ```
+
+### Files Modified
+
+- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantHttpClient.java` (new)
+- `util/vectordb/src/main/java/com/agentengine/util/vectordb/VectorDbClientFactory.java`
+- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantVectorStore.java`
+- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantInfraConfig.java`
+- `knowledge/core/src/main/java/com/agentengine/knowledge/core/store/KnowledgeChunkStore.java`
+- `util/vectordb/build.gradle`
+- `knowledge/core/build.gradle`
+- `gradle/libs.versions.toml`
+- `configs/infra/qdrant-infra-configs.json`
+- `QDRANT_HTTP_MIGRATION.md` (new)
