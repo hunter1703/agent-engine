@@ -99,6 +99,7 @@ public final class SessionRunner {
                             request.setFileDetails(fileDetails);
                             request.setTitle(fileDetails.name());
                             request.setGrants(List.of("S/" + sessionId));
+                            request.setWaitForCompletion(true);
                             final Knowledge knowledge = knowledgeService.create(request);
                             indexedFiles.put(fileDetails.name(), knowledge.getId());
                             LOG.info(
@@ -193,8 +194,12 @@ public final class SessionRunner {
     }
 
     private static Content appendKnowledgeHint(final Content base, final Map<String, String> indexedFiles) {
-        final StringBuilder hint = new StringBuilder("\n\nThe following uploaded files have been indexed as knowledge. "
-                + "Use the search_knowledge tool to search through their contents.\n");
+        final StringBuilder hint = new StringBuilder("""
+                
+                
+                The following uploaded files have been indexed as knowledge. \
+                Use the search_knowledge tool to search through their contents.
+                """);
         indexedFiles.forEach((name, knowledgeId) -> hint.append("- ")
                 .append(name)
                 .append(" → knowledgeId: ")
@@ -206,7 +211,7 @@ public final class SessionRunner {
         if (newParts.isEmpty()) {
             newParts.add(Part.fromText(hint.toString()));
         } else {
-            final Part first = newParts.get(0);
+            final Part first = newParts.getFirst();
             newParts.set(0, Part.fromText(first.text().orElse("") + hint));
         }
         return base.toBuilder().parts(newParts).build();

@@ -44,6 +44,7 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.ollama.*;
 import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -252,7 +253,36 @@ public final class LangChain4jModel extends BaseLlm {
         }
 
         return List.of(UserMessage.from(
-                parts.stream().map(LangChain4jModel::toUserContent).toList()));
+                mergeTextContents(parts.stream().map(LangChain4jModel::toUserContent).toList())));
+    }
+
+    // Ollama's adapter calls UserMessage.singleText(), which throws for multi-element lists.
+    // Merge consecutive text runs so adapters that don't support multi-part text still work.
+    private static List<dev.langchain4j.data.message.Content> mergeTextContents(
+            final List<dev.langchain4j.data.message.Content> contents) {
+        if (contents.size() <= 1) {
+            return contents;
+        }
+        final List<dev.langchain4j.data.message.Content> result = new ArrayList<>();
+        final StringBuilder textBuffer = new StringBuilder();
+        for (final dev.langchain4j.data.message.Content content : contents) {
+            if (content instanceof TextContent text) {
+                if (!textBuffer.isEmpty()) {
+                    textBuffer.append('\n');
+                }
+                textBuffer.append(text.text());
+            } else {
+                if (!textBuffer.isEmpty()) {
+                    result.add(TextContent.from(textBuffer.toString()));
+                    textBuffer.setLength(0);
+                }
+                result.add(content);
+            }
+        }
+        if (!textBuffer.isEmpty()) {
+            result.add(TextContent.from(textBuffer.toString()));
+        }
+        return result;
     }
 
     private static dev.langchain4j.data.message.Content toUserContent(final Part part) {
@@ -286,6 +316,9 @@ public final class LangChain4jModel extends BaseLlm {
         if (mimeType.startsWith("application/pdf") || name.endsWith(".pdf")) {
             return PdfFileContent.from(
                     PdfFile.builder().base64Data(base64).mimeType(mimeType).build());
+        }
+        if (mimeType.startsWith("text/")) {
+            return TextContent.from(new String(bytes, StandardCharsets.UTF_8));
         }
         return TextContent.from(base64);
     }
