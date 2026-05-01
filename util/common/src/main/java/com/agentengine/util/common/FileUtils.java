@@ -1,7 +1,6 @@
 package com.agentengine.util.common;
 
 import com.agentengine.util.common.beans.FileDetails;
-
 import java.util.Set;
 
 public final class FileUtils {

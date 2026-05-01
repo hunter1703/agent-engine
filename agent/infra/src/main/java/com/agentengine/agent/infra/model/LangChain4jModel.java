@@ -252,8 +252,8 @@ public final class LangChain4jModel extends BaseLlm {
             return toolResults;
         }
 
-        return List.of(UserMessage.from(
-                mergeTextContents(parts.stream().map(LangChain4jModel::toUserContent).toList())));
+        return List.of(UserMessage.from(mergeTextContents(
+                parts.stream().map(LangChain4jModel::toUserContent).toList())));
     }
 
     // Ollama's adapter calls UserMessage.singleText(), which throws for multi-element lists.

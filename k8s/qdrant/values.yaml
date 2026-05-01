@@ -19,3 +19,8 @@ resources:
 
 imagePullSecrets: []
 commonLabels: {}
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""  # Use default storage class

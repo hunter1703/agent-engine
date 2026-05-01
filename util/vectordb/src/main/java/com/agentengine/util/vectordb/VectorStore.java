@@ -1,12 +1,14 @@
 package com.agentengine.util.vectordb;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.repository.Repository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -56,9 +58,16 @@ public abstract class VectorStore<T extends BaseEntity> implements Repository<T>
         if (!op.isCompound()) {
             return filter;
         }
-        final List<Filter> subFilters = CollectionUtils.nullSafeList(filter.getValues());
+        final List<Object> subFilters = CollectionUtils.nullSafeList(filter.getValues());
         final List<Filter> updatedSubFilters = new ArrayList<>();
-        for (final Filter subFilter : subFilters) {
+        for (final Object subFilterObj : subFilters) {
+            Filter subFilter;
+            if (subFilterObj instanceof Filter) {
+                subFilter = (Filter) subFilterObj;
+            } else {
+                //noinspection unchecked
+                subFilter = JsonUtils.fromMap((Map<String, Object>) subFilterObj, Filter.class);
+            }
             updatedSubFilters.add(rewriteSemanticFilter(subFilter, embeddingModelId));
         }
         return new Filter().withOp(op).withValues(updatedSubFilters);

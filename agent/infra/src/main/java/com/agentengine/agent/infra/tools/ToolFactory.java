@@ -23,7 +23,11 @@ public final class ToolFactory {
     private final InfraConfigService infraConfigService;
 
     @Inject
-    public ToolFactory(final ToolService toolService, final KnowledgeService knowledgeService, final AgentService agentService, final InfraConfigService infraConfigService) {
+    public ToolFactory(
+            final ToolService toolService,
+            final KnowledgeService knowledgeService,
+            final AgentService agentService,
+            final InfraConfigService infraConfigService) {
         this.toolService = toolService;
         this.knowledgeService = knowledgeService;
         this.agentService = agentService;

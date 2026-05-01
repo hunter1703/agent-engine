@@ -1,5 +1,7 @@
 package com.agentengine.util.vectordb;
 
+import com.agentengine.util.common.CollectionUtils;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -43,7 +45,7 @@ public final class QdrantHttpClient {
 
     public UpsertResponse upsert(final String collection, final UpsertRequest request) {
         final String url = String.format("%s/collections/%s/points", baseUrl, collection);
-        return post(url, request, UpsertResponse.class);
+        return put(url, request, UpsertResponse.class);
     }
 
     public SearchResponse search(final String collection, final SearchRequest request) {
@@ -58,20 +60,52 @@ public final class QdrantHttpClient {
 
     public DeleteResponse delete(final String collection, final DeleteRequest request) {
         final String url = String.format("%s/collections/%s/points/delete", baseUrl, collection);
-        return post(url, request, DeleteResponse.class);
+
+        LOG.info(
+                "Qdrant delete request: collection={} points={} filter={}",
+                collection,
+                request.points(),
+                request.filter());
+
+        // Build the request body based on what's provided
+        Object requestBody;
+        final List<String> points = request.points();
+        if (CollectionUtils.isNotEmpty(points)) {
+            requestBody = Map.of("points", points);
+            LOG.info("Qdrant delete by points: {}", points);
+        } else {
+            final Filter filter = request.filter();
+            if (filter != null) {
+                requestBody = Map.of("filter", filter);
+                LOG.info("Qdrant delete by filter: must={} should={}", filter.must(), filter.should());
+            } else {
+                LOG.error("DeleteRequest has neither points nor filter");
+                throw new IllegalArgumentException("DeleteRequest must have either points or filter");
+            }
+        }
+
+        return post(url, requestBody, DeleteResponse.class);
     }
 
     // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
+    private <T> T put(final String url, final Object body, final Class<T> responseType) {
+        return request("PUT", url, body, responseType);
+    }
+
     private <T> T post(final String url, final Object body, final Class<T> responseType) {
+        return request("POST", url, body, responseType);
+    }
+
+    private <T> T request(final String method, final String url, final Object body, final Class<T> responseType) {
         try {
             final String json = objectMapper.writeValueAsString(body);
-            LOG.debug("POST {} body={}", url, json);
+            LOG.info("Qdrant HTTP {} to {} with body: {}", method, url, json);
 
             final HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .method(method, HttpRequest.BodyPublishers.ofString(json))
                     .timeout(Duration.ofSeconds(30));
 
             if (apiKey != null && !apiKey.isBlank()) {
@@ -83,9 +117,15 @@ public final class QdrantHttpClient {
             final int status = response.statusCode();
             final String responseBody = response.body();
 
-            LOG.debug("POST {} status={} body={}", url, status, responseBody);
+            LOG.info("Qdrant HTTP {} to {} returned status={} body={}", method, url, status, responseBody);
 
             if (status < 200 || status >= 300) {
+                LOG.error(
+                        "Qdrant HTTP error: status={} url={} requestBody={} responseBody={}",
+                        status,
+                        url,
+                        json,
+                        responseBody);
                 throw new QdrantHttpException(String.format("Qdrant HTTP error: %d %s", status, responseBody));
             }
 
@@ -94,6 +134,7 @@ public final class QdrantHttpClient {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
+            LOG.error("Qdrant HTTP request failed: url={} error={}", url, e.getMessage(), e);
             throw new QdrantHttpException("Qdrant HTTP request failed: " + e.getMessage(), e);
         }
     }
@@ -102,7 +143,8 @@ public final class QdrantHttpClient {
 
     public record UpsertRequest(List<Point> points) {}
 
-    public record Point(String id, Map<String, List<Float>> vector, Map<String, Object> payload) {}
+    // Point can have either a flat vector array OR named vectors map, but not both
+    public record Point(String id, Object vector, Map<String, Object> payload) {}
 
     public record SearchRequest(
             List<Float> vector,
@@ -118,22 +160,32 @@ public final class QdrantHttpClient {
 
     public record Filter(List<Condition> must, List<Condition> should) {}
 
-    public record Condition(Match match, Filter filter) {}
+    public record Condition(String key, MatchCondition match) {}
 
-    public record Match(String key, MatchValue value) {}
+    public record MatchCondition(String value) {}
 
-    public record MatchValue(String keyword) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpsertResponse(String status, UpsertResult result) {}
 
-    public record UpsertResponse(String status, String result) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record UpsertResult(Long operationId, String status) {}
 
-    public record DeleteResponse(String status) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DeleteResponse(String status, DeleteResult result) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DeleteResult(Long operationId, String status) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record SearchResponse(List<ScoredPoint> result) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScoredPoint(String id, Float score, Map<String, Object> payload) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record RetrieveResponse(List<RetrievedPoint> result) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record RetrievedPoint(String id, Map<String, Object> payload) {}
 
     public static final class QdrantHttpException extends RuntimeException {

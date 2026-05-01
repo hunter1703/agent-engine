@@ -39,7 +39,9 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     @Override
     public long deleteByQuery(final Query query) {
+        LOG.info("QdrantVectorStore.deleteByQuery: collection={} filter={}", collection, query.getFilter());
         final QdrantHttpClient.Filter filter = toQdrantFilter(query.getFilter());
+        LOG.info("QdrantVectorStore.deleteByQuery: translated filter={}", filter);
         final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(null, filter);
         client.delete(collection, request);
         return 0L;
@@ -74,8 +76,8 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     @Override
     public T save(final T entity) {
         final Map<String, Object> payload = toPayload(entity);
-        final Map<String, List<Float>> namedVecs = buildNamedVectors(entity);
-        final QdrantHttpClient.Point point = new QdrantHttpClient.Point(entity.getId(), namedVecs, payload);
+        final Object vectorData = buildVectorData(entity);
+        final QdrantHttpClient.Point point = new QdrantHttpClient.Point(entity.getId(), vectorData, payload);
         final QdrantHttpClient.UpsertRequest request = new QdrantHttpClient.UpsertRequest(List.of(point));
         client.upsert(collection, request);
         return entity;
@@ -148,6 +150,23 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /**
+     * Builds vector data for Qdrant upsert.
+     * If entity has a single vector, returns a flat List<Float>.
+     * If entity has multiple named vectors, returns a Map<String, List<Float>>.
+     */
+    private static Object buildVectorData(final VectorEntity entity) {
+        final Map<String, float[]> vectors = entity.getVectors();
+        if (vectors.size() == 1) {
+            // Single unnamed vector: return flat array
+            final float[] vec = vectors.values().iterator().next();
+            return toFloatList(vec);
+        } else {
+            // Multiple named vectors: return map
+            return buildNamedVectors(entity);
+        }
+    }
+
     private static Map<String, List<Float>> buildNamedVectors(final VectorEntity entity) {
         final Map<String, float[]> vectors = entity.getVectors();
         final Map<String, List<Float>> result = new HashMap<>();
@@ -160,14 +179,26 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
      * Supports EQ (keyword match) and AND compound filters.
      */
     private static QdrantHttpClient.Filter toQdrantFilter(final Filter filter) {
+        LOG.debug(
+                "toQdrantFilter: input filter op={} field={} values={}",
+                filter.getOp(),
+                filter.getField(),
+                filter.getValues());
+
         final List<QdrantHttpClient.Condition> must = new ArrayList<>();
 
         if (filter.getOp() == Operator.AND && filter.getValues() != null) {
+            LOG.debug(
+                    "toQdrantFilter: processing AND with {} children",
+                    filter.getValues().size());
             for (final Object child : filter.getValues()) {
                 if (child instanceof final Filter childFilter) {
                     final QdrantHttpClient.Filter subFilter = toQdrantFilter(childFilter);
-                    if (subFilter != null) {
-                        must.add(new QdrantHttpClient.Condition(null, subFilter));
+                    if (subFilter != null && subFilter.must() != null) {
+                        LOG.debug(
+                                "toQdrantFilter: adding {} conditions from child",
+                                subFilter.must().size());
+                        must.addAll(subFilter.must());
                     }
                 }
             }
@@ -176,12 +207,14 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
                 && filter.getValues() != null
                 && !filter.getValues().isEmpty()) {
             final String value = String.valueOf(filter.getValues().getFirst());
-            final QdrantHttpClient.Match match =
-                    new QdrantHttpClient.Match(filter.getField(), new QdrantHttpClient.MatchValue(value));
-            must.add(new QdrantHttpClient.Condition(match, null));
+            LOG.debug("toQdrantFilter: creating EQ condition field={} value={}", filter.getField(), value);
+            final QdrantHttpClient.MatchCondition matchCondition = new QdrantHttpClient.MatchCondition(value);
+            must.add(new QdrantHttpClient.Condition(filter.getField(), matchCondition));
         }
 
-        return must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
+        final QdrantHttpClient.Filter result = must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
+        LOG.info("toQdrantFilter: result filter with {} conditions", must.size());
+        return result;
     }
 
     private static QdrantHttpClient.Filter buildQdrantFilter(final Filter filter) {
@@ -197,9 +230,9 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         final List<Object> values = filter.getValues();
         if (op == Operator.EQ) {
             final String value = String.valueOf(values.getFirst());
-            final QdrantHttpClient.Match match =
-                    new QdrantHttpClient.Match(filter.getField(), new QdrantHttpClient.MatchValue(value));
-            return new QdrantHttpClient.Filter(List.of(new QdrantHttpClient.Condition(match, null)), null);
+            final QdrantHttpClient.MatchCondition matchCondition = new QdrantHttpClient.MatchCondition(value);
+            return new QdrantHttpClient.Filter(
+                    List.of(new QdrantHttpClient.Condition(filter.getField(), matchCondition)), null);
         }
 
         if (op.isCompound() && CollectionUtils.isNotEmpty(values)) {
@@ -209,11 +242,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
                 final Filter childFilter = (Filter) child;
                 final QdrantHttpClient.Filter sub = buildQdrantFilter(childFilter);
                 if (sub != null) {
-                    final QdrantHttpClient.Condition condition = new QdrantHttpClient.Condition(null, sub);
                     if (op == Operator.AND) {
-                        must.add(condition);
+                        if (sub.must() != null) must.addAll(sub.must());
                     } else {
-                        should.add(condition);
+                        if (sub.must() != null) should.addAll(sub.must());
                     }
                 }
             }

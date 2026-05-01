@@ -170,6 +170,4 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .destinationKey(destinationKey)
                 .build());
     }
-
-
 }

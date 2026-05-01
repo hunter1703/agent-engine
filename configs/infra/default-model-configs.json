@@ -6,6 +6,7 @@
     "titleModelId": "gemma4:e4b",
     "compactionModelId": "llama3.1-8b",
     "evaluatorModelId": "llama3.1-8b",
-    "embeddingModelId": "nomic-embed-text"
+    "embeddingModelId": "nomic-embed-text",
+    "chatModelId": "gemma4:e4b"
   }
 ]

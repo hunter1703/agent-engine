@@ -37,6 +37,10 @@ public class KnowledgeServiceImpl implements KnowledgeService {
                 .sorted(Comparator.comparingInt(KnowledgeIndexer::priority))
                 .toList();
         this.vectorStore = vectorStore;
+        LOG.info(
+                "KnowledgeServiceImpl initialized with {} indexers: {}",
+                this.indexers.size(),
+                this.indexers.stream().map(i -> i.getClass().getSimpleName()).toList());
     }
 
     @Override
@@ -102,10 +106,19 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             deleteChunks(id);
             markStatus(id, IndexingStatus.IN_PROGRESS, null);
 
+            LOG.info("Looking for indexer for knowledge {} among {} available indexers", id, indexers.size());
             final KnowledgeIndexer indexer = indexers.stream()
-                    .filter(knowledgeIndexer -> knowledgeIndexer.canIndex(knowledge))
+                    .filter(knowledgeIndexer -> {
+                        final boolean canIndex = knowledgeIndexer.canIndex(knowledge);
+                        LOG.debug(
+                                "Indexer {} canIndex={}",
+                                knowledgeIndexer.getClass().getSimpleName(),
+                                canIndex);
+                        return canIndex;
+                    })
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException("No suitable indexer found"));
+            LOG.info("Selected indexer: {}", indexer.getClass().getSimpleName());
             final int chunks = indexer.index(knowledge);
 
             knowledgeRepo.update(

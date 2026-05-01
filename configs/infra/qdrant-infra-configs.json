@@ -3,7 +3,7 @@
     "id": "QDRANT:default",
     "type": "qdrant",
     "_t": "com.agentengine.util.vectordb.QdrantInfraConfig",
-    "host": "localhost",
+    "host": "qdrant.agent-engine.svc.cluster.local",
     "httpPort": 6333
   }
 ]

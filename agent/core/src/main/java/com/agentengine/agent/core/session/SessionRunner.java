@@ -109,13 +109,18 @@ public final class SessionRunner {
                         cloudStorageService.copy(
                                 source.substring(slashIndex + 1),
                                 CloudStorageArtifactService.objectKey(
-                                        runner.appName(), AgentSession.DEFAULT_USER_ID, sessionId, fileDetails.name(), 0));
+                                        runner.appName(),
+                                        AgentSession.DEFAULT_USER_ID,
+                                        sessionId,
+                                        fileDetails.name(),
+                                        0));
                     }
                 });
 
-        final List<MessagePart> updatedParts = userMessage.parts().stream().filter(part -> !(part instanceof MessagePart.FilePart(
-                FileDetails fileDetails
-        )) || !FileUtils.isTextFile(fileDetails)).toList();
+        final List<MessagePart> updatedParts = userMessage.parts().stream()
+                .filter(part -> !(part instanceof MessagePart.FilePart(FileDetails fileDetails))
+                        || !FileUtils.isTextFile(fileDetails))
+                .toList();
         final Content userContent = ContentUtils.buildUserContent(new UserMessage(updatedParts));
         final Content contentToRun =
                 indexedFiles.isEmpty() ? userContent : appendKnowledgeHint(userContent, indexedFiles);
@@ -194,8 +199,8 @@ public final class SessionRunner {
 
     private static Content appendKnowledgeHint(final Content base, final Map<String, String> indexedFiles) {
         final StringBuilder hint = new StringBuilder("""
-                
-                
+
+
                 The following uploaded files have been indexed as knowledge. \
                 Use the search_knowledge tool to search through their contents.
                 """);
@@ -215,5 +220,4 @@ public final class SessionRunner {
         }
         return base.toBuilder().parts(newParts).build();
     }
-
 }

@@ -244,6 +244,21 @@ job_init_postgres() {
   fi
 }
 
+job_init_qdrant() {
+  if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/qdrant-collections-ready"
+    return 0
+  fi
+  wait_for qdrant-ready
+  print_phase "Initializing Qdrant collections"
+  if sh "$SCRIPT_DIR/init-qdrant-collections.sh" -n "$NAMESPACE"; then
+    touch "$STATE_DIR/qdrant-collections-ready"
+  else
+    touch "$STATE_DIR/qdrant-collections-failed"
+    exit 1
+  fi
+}
+
 # Deploys a single chart after waiting for its declared dependencies.
 # Usage: deploy_service <chart> <comma-separated-wait-flags> <ready-flag>
 deploy_service() {
@@ -261,7 +276,7 @@ APP_SERVICES="
 global-properties::global-properties-ready
 catalog:global-properties-ready,builds-done:catalog-ready
 rest:global-properties-ready,builds-done:rest-ready
-knowledge:global-properties-ready,builds-done:knowledge-ready
+knowledge:global-properties-ready,builds-done,qdrant-collections-ready:knowledge-ready
 agent:global-properties-ready,catalog-ready,localstack-buckets-ready,builds-done:agent-ready
 "
 
@@ -321,6 +336,9 @@ job_seed_infra &
 pids="$pids $!"
 
 job_init_postgres &
+pids="$pids $!"
+
+job_init_qdrant &
 pids="$pids $!"
 
 for entry in $APP_SERVICES; do
