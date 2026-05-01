@@ -15,9 +15,9 @@ dependencies {
     implementation project(':util:mongodb')
 
     implementation platform(libs.langchain4j.bom)
-    implementation libs.google.adk
+    api libs.google.adk
     implementation libs.google.adk.langchain4j
-    implementation libs.google.genai
+    api libs.google.genai
     implementation libs.langchain4j.core
     implementation libs.langchain4j.open.ai
     implementation libs.langchain4j.ollama

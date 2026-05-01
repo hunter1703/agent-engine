@@ -15,26 +15,12 @@ dependencies {
     implementation project(':agent:infra')
     implementation project(':util:cloudstorage')
 
-    // LangChain4j — BOM + core (EmbeddingModel, DocumentSplitters, Document)
     implementation platform(libs.langchain4j.bom)
-    implementation libs.langchain4j.core
-    // OllamaEmbeddingModel
-    implementation libs.langchain4j.ollama
-    implementation libs.google.adk
-    implementation libs.google.genai
-    implementation libs.langchain4j.open.ai
-
-    // Qdrant Java client (gRPC-based) — needs guava, protobuf, and grpc transitively
-    implementation libs.qdrant.client
-    implementation libs.guava
-    implementation libs.protobuf.java
-    implementation libs.grpc.protobuf
-    implementation libs.grpc.stub
-
-    // MongoDB
     implementation platform(libs.quarkus.bom)
+
+    implementation libs.langchain4j.core
+    implementation libs.qdrant.client
     implementation libs.quarkus.mongodb.client
 
-    // CDI / Jakarta
     implementation libs.jakarta.inject.api
 }

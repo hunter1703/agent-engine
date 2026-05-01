@@ -244,7 +244,7 @@ function applyDeploymentOverrides(config) {
   }
 
   if (next.type === "qdrant") {
-    next.host = \`${qdrantServiceName}.${namespace}.svc.cluster.local\`;
+    next.host = \`\${qdrantServiceName}.\${namespace}.svc.cluster.local\`;
     return next;
   }
 

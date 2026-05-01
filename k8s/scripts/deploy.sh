@@ -221,8 +221,12 @@ job_seed_infra() {
   fi
   wait_for mongodb-ready
   print_phase "Seeding infrastructure configuration"
-  sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE" || fail
-  touch "$STATE_DIR/infra-seeded"
+  if sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE"; then
+    touch "$STATE_DIR/infra-seeded"
+  else
+    touch "$STATE_DIR/infra-seed-failed"
+    exit 1
+  fi
 }
 
 job_init_postgres() {
@@ -232,8 +236,12 @@ job_init_postgres() {
   fi
   wait_for postgres-ready
   print_phase "Initializing PostgreSQL schema"
-  sh "$SCRIPT_DIR/init-postgres-schema.sh" -n "$NAMESPACE" || fail
-  touch "$STATE_DIR/postgres-schema-ready"
+  if sh "$SCRIPT_DIR/init-postgres-schema.sh" -n "$NAMESPACE"; then
+    touch "$STATE_DIR/postgres-schema-ready"
+  else
+    touch "$STATE_DIR/postgres-schema-failed"
+    exit 1
+  fi
 }
 
 # Deploys a single chart after waiting for its declared dependencies.
