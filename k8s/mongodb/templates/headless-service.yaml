@@ -1,0 +1,19 @@
+# Headless service required by the MongoDB StatefulSet for pod DNS identity.
+# Application pods connect to MongoDB via the regular ClusterIP service (mongodb).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-headless
+  namespace: {{ include "agent-engine-mongodb.namespace" . }}
+  labels:
+    app.kubernetes.io/name: mongodb
+    {{- include "agent-engine-mongodb.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: mongodb
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: mongo
+      port: {{ .Values.port }}
+      targetPort: mongo
