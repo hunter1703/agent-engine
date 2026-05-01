@@ -20,7 +20,13 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -82,7 +88,6 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .credentialsProvider(credentials)
                 .build();
 
-        ensureBucket();
         log.info("CloudStorageService initialised -> {} (bucket: {})", config.getEndpointUrl(), defaultBucket);
     }
 
@@ -166,12 +171,5 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .build());
     }
 
-    private void ensureBucket() {
-        try {
-            s3.headBucket(HeadBucketRequest.builder().bucket(defaultBucket).build());
-        } catch (NoSuchBucketException e) {
-            log.info("Creating bucket: {}", defaultBucket);
-            s3.createBucket(CreateBucketRequest.builder().bucket(defaultBucket).build());
-        }
-    }
+
 }

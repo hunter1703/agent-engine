@@ -37,6 +37,6 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
                         sessionService,
                         sessionTitleGenerator)),
                 Duration.ofHours(1),
-                "runtime");
+                "agent");
     }
 }

@@ -262,12 +262,28 @@ global-properties::global-properties-ready
 catalog:global-properties-ready,builds-done:catalog-ready
 rest:global-properties-ready,builds-done:rest-ready
 knowledge:global-properties-ready,builds-done:knowledge-ready
-agent:global-properties-ready,catalog-ready,builds-done:agent-ready
+agent:global-properties-ready,catalog-ready,localstack-buckets-ready,builds-done:agent-ready
 "
 
 # Ready-flags that must all be set before catalog seeding begins.
 # Append a service's ready-flag here if seed-catalog calls through it.
 CATALOG_DEPS="mongodb-ready,catalog-ready,rest-ready"
+
+job_ensure_localstack_buckets() {
+  if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/localstack-buckets-ready"
+    return 0
+  fi
+  wait_for localstack-ready
+  print_phase "Ensuring LocalStack S3 buckets"
+  LOCALSTACK_POD=$(kubectl get pods --namespace "$NAMESPACE" -l app.kubernetes.io/name=localstack -o jsonpath='{.items[0].metadata.name}')
+  for bucket in ${LOCALSTACK_BUCKETS:-agent-assets}; do
+    kubectl exec --namespace "$NAMESPACE" "$LOCALSTACK_POD" -- \
+      sh -c "awslocal s3api head-bucket --bucket '$bucket' 2>/dev/null || awslocal s3 mb 's3://$bucket'" \
+      && print_info "Bucket ready: $bucket"
+  done
+  touch "$STATE_DIR/localstack-buckets-ready"
+}
 
 job_seed_catalog() {
   if [ "$DRY_RUN" = "true" ]; then
@@ -315,6 +331,9 @@ for entry in $APP_SERVICES; do
   deploy_service "$chart" "$deps" "$flag" &
   pids="$pids $!"
 done
+
+job_ensure_localstack_buckets &
+pids="$pids $!"
 
 job_seed_catalog &
 pids="$pids $!"
