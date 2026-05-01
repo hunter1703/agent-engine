@@ -71,7 +71,7 @@ public final class GetWebpageTool extends Tool {
         final Knowledge knowledge = knowledgeService.create(request);
         return ToolOutput.knowledge(
                 knowledge.getId(),
-                "Webpage indexed. Use" + SearchKnowledgeTool.DESCRIPTOR.name() + " with knowledgeId='" + knowledge.getId()
+                "Webpage : " + url + " indexed. Use" + SearchKnowledgeTool.DESCRIPTOR.name() + " with knowledgeId='" + knowledge.getId()
                         + "' to search for information.");
     }
 }

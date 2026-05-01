@@ -83,7 +83,7 @@ public final class ReadFileTool extends BaseFileTool {
         }
 
         final FileDetails fileDetails = readFile(path, offset, limit);
-        List<String> selectedLines = fileDetails.getContent();
+        List<String> selectedLines = fileDetails.content();
         StringBuilder content = new StringBuilder();
         boolean truncated = false;
 
@@ -97,17 +97,17 @@ public final class ReadFileTool extends BaseFileTool {
         }
 
         String result = content.toString();
-        boolean hasMore = offset + limit <= fileDetails.getNumLines();
+        boolean hasMore = offset + limit <= fileDetails.numLines();
 
         final Map<String, Object> response = new HashMap<>();
         response.put("content", result);
         response.put("file_path", filePath);
         response.put("offset", offset);
         response.put("limit", limit);
-        response.put("total_lines", fileDetails.getNumLines());
-        response.put("lines_read", fileDetails.getContent().size());
+        response.put("total_lines", fileDetails.numLines());
+        response.put("lines_read", fileDetails.content().size());
         response.put("has_more", hasMore);
-        response.put("content_hash", fileDetails.getHash());
+        response.put("content_hash", fileDetails.hash());
 
         if (truncated) {
             response.put("truncated", true);

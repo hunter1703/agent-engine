@@ -28,6 +28,7 @@ public final class RunState extends BaseAgentState {
     private int offTopicRetries;
     private int turnsUsed;
     private final List<Violation> violations = new ArrayList<>();
+    private final List<Notification> notifications = new ArrayList<>();
 
     public RunState() {}
 
@@ -127,6 +128,21 @@ public final class RunState extends BaseAgentState {
 
     public void clearViolations() {
         violations.clear();
+    }
+
+    public List<Notification> notifications() {
+        return List.copyOf(notifications);
+    }
+
+    public void addNotification(final Notification notification) {
+        if (notification == null) {
+            return;
+        }
+        notifications.add(notification);
+    }
+
+    public void removeNotification(final String id) {
+        notifications.removeIf(notification -> Objects.equals(id, notification.id()));
     }
 
     public int incrementOffTopicRetries() {

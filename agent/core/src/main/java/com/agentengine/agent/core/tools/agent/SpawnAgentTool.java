@@ -4,6 +4,9 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
+import com.agentengine.agent.infra.utils.Notification;
+import com.agentengine.agent.infra.utils.RunState;
+import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -64,10 +67,16 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                         .type("STRING")
                         .description("Initial message to send to the spawned agent. Required.")
                         .build());
+        properties.put(
+                "goal",
+                Schema.builder()
+                        .type("STRING")
+                        .description("The outcome this child agent is expected to deliver. Required.")
+                        .build());
         final Schema params = Schema.builder()
                 .type("OBJECT")
                 .properties(properties)
-                .required(List.of("agent_id", "message"))
+                .required(List.of("agent_id", "message", "goal"))
                 .build();
         return Optional.of(FunctionDeclaration.builder()
                 .name(TOOL_NAME)
@@ -90,7 +99,9 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                             description =
                                     "The first message to deliver to the newly created agent session, framing the task "
                                             + "or question the child should work on.")
-                    final String message) {
+                    final String message,
+            @ToolSchema(name = "goal", description = "The outcome this child agent is expected to deliver.")
+                    final String goal) {
         final StartChildResult startChildResult = actorRef(toolContext)
                 .<StartChildResult>ask(
                         replyTo -> new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
@@ -101,8 +112,17 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         final String childSessionId = startChildResult.sessionId();
         final StartSessionResult result = startChildResult.result();
         return switch (result) {
-            case StartSessionResult.Accepted ignored -> Map.of("child_session_id", childSessionId);
-            case StartSessionResult.Rejected(String reason) -> Map.of("error", "Failed to spawn agent: " + reason);
+            case StartSessionResult.Accepted ignored -> {
+                final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
+                runState.addNotification(new Notification(
+                        Notification.KEY_SPAWNED_AGENTS,
+                        childSessionId,
+                        "agent='" + childAgentId + "' goal='" + goal + "' — running asynchronously, not yet awaited. "
+                                + "Use " + AwaitAgentTool.DESCRIPTOR.name()
+                                + " with child_session_id='" + childSessionId + "' when you need its result."));
+                yield Map.of("child_session_id", childSessionId);
+            }
+            case StartSessionResult.Rejected(String r) -> Map.of("error", "Failed to spawn agent: " + r);
             case StartSessionResult.Queued(int position) ->
                 Map.of("error", "Failed to spawn agent: unexpected queued response", "queue_position", position);
             default -> Map.of("error", "Failed to spawn agent: unknown response");

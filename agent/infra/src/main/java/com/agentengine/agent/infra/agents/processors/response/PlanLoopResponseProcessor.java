@@ -1,7 +1,10 @@
 package com.agentengine.agent.infra.agents.processors.response;
 
 import com.agentengine.agent.infra.tools.beans.Plan;
+import com.agentengine.agent.infra.tools.beans.Task;
+import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.agent.infra.tools.planning.PlanningValidator;
+import com.agentengine.agent.infra.utils.Notification;
 import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
@@ -40,6 +43,8 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
 
     private PlanLoopResponseProcessor() {}
 
+    private static final String NOTIFICATION_KEY = "active_plan";
+
     @Override
     public Single<ResponseProcessingResult> processResponse(
             final InvocationContext context, final LlmResponse response) {
@@ -48,11 +53,17 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
         }
 
         final RunState runState = RunUtils.getOrInitState(context);
+
         if (!runState.hasActivePlan()) {
+            // Plan completed or absent — clear any stale plan notification
+            runState.removeNotification(NOTIFICATION_KEY);
             return ResponseUtils.single(response);
         }
 
         final Plan plan = runState.plan();
+
+        // Sync the plan notification to reflect current state
+        runState.addNotification(new Notification(NOTIFICATION_KEY, NOTIFICATION_KEY, buildPlanBrief(plan)));
 
         if (!ResponseUtils.isFinalAnswer(response)) {
             return ResponseUtils.single(response);
@@ -66,5 +77,31 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
                 .message(planViolation)
                 .build());
         return ResponseUtils.single(response);
+    }
+
+    private static String buildPlanBrief(final Plan plan) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append(PlanningUtils.buildPlanSummary(plan));
+
+        final Task openTask = PlanningUtils.getOpenTask(plan);
+        if (openTask != null) {
+            sb.append("\n\nActive task — stay focused on this:\n");
+            sb.append(PlanningUtils.buildTaskFocusPrompt(plan));
+            sb.append("\n→ Do not start a new task until this one is complete or explicitly abandoned.");
+        } else {
+            final Task nextTask = PlanningUtils.findNextTodoTask(plan);
+            if (nextTask != null) {
+                sb.append("\n\nNo active task — pick up the next one:\n");
+                sb.append("Task [")
+                        .append(PlanningUtils.getTaskIdValue(nextTask))
+                        .append("] — ")
+                        .append(nextTask.getName());
+                if (StringUtils.isNotBlank(nextTask.getGoal())) {
+                    sb.append("\nGoal: ").append(nextTask.getGoal());
+                }
+                sb.append("\n→ Mark it in_progress before starting work.");
+            }
+        }
+        return sb.toString().trim();
     }
 }

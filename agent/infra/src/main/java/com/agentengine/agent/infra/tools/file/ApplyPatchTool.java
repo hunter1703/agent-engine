@@ -91,7 +91,7 @@ public final class ApplyPatchTool extends BaseFileTool {
             }
 
             BaseFileTool.FileDetails details = readFile(file, 0, 0);
-            String currentHash = details.getHash();
+            String currentHash = details.hash();
             if (expectedHash != null && !expectedHash.equalsIgnoreCase(currentHash)) {
                 return ToolOutput.direct(Map.of(
                         "error",

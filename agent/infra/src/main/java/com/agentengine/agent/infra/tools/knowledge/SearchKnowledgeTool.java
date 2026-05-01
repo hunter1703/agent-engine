@@ -48,7 +48,9 @@ public final class SearchKnowledgeTool extends Tool {
 
     @ToolConstructor
     public SearchKnowledgeTool(
-            KnowledgeService knowledgeService, final AgentService agentService, final InfraConfigService infraConfigService) {
+            KnowledgeService knowledgeService,
+            final AgentService agentService,
+            final InfraConfigService infraConfigService) {
         super(DESCRIPTOR);
         this.knowledgeService = knowledgeService;
         this.agentService = agentService;
@@ -87,7 +89,9 @@ public final class SearchKnowledgeTool extends Tool {
                         toolContext.invocationContext().agent().name());
 
         final Filter semanticFilter = Filters.semanticSearch("text", query)
-                .withAdditional(Map.of(EMBEDDING_MODEL_ID_KEY, resolveModelId(toolContext.invocationContext().agent().name())));
+                .withAdditional(Map.of(
+                        EMBEDDING_MODEL_ID_KEY,
+                        resolveModelId(toolContext.invocationContext().agent().name())));
         final Filter combined = Filters.and(semanticFilter, scopeFilter);
 
         final Query searchQuery = new Query().withFilter(combined).withPage(new Page(resolvedOffset, resolvedLimit));

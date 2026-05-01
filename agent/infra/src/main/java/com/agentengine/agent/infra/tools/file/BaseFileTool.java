@@ -1,4 +1,4 @@
-package com.agentengine.agent.core.tool.file;
+package com.agentengine.agent.infra.tools.file;
 
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -80,27 +80,5 @@ public abstract class BaseFileTool extends Tool {
         return value.substring(0, maxLength) + "... [truncated]";
     }
 
-    protected static class FileDetails {
-        private final long numLines;
-        private final String hash;
-        private final List<String> content;
-
-        protected FileDetails(long numLines, String hash, List<String> content) {
-            this.numLines = numLines;
-            this.hash = hash;
-            this.content = content;
-        }
-
-        public long getNumLines() {
-            return numLines;
-        }
-
-        public String getHash() {
-            return hash;
-        }
-
-        public List<String> getContent() {
-            return content;
-        }
-    }
+    protected record FileDetails(long numLines, String hash, List<String> content) {}
 }

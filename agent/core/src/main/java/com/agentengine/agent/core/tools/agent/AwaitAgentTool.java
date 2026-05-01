@@ -2,6 +2,7 @@ package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.events.RunResult;
+import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.annotations.ToolSchema;
@@ -66,6 +67,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
                     "Waiting for child agent run to complete.", Map.of("child_session_id", childSessionId));
             return null;
         }
+        RunUtils.getOrInitState(toolContext.invocationContext()).removeNotification(childSessionId);
         return buildCompletedResponseMap(childSessionId, result);
     }
 
