@@ -1,6 +1,20 @@
 # TODO
 
-## Knowledge: Qdrant Collection Pre-provisioning
+## Vector Store: Multi-Vector Search with RRF Fusion
+
+`QdrantVectorStore.findBySemanticQueryInternal` currently handles only a single `SEMANTIC_SEARCH`
+filter. Qdrant's Query API (v1.10+, available in client 1.13.0) supports multi-vector fusion via
+`QueryPoints` with `PrefetchQuery` entries and `Fusion.RRF` — all in a single round trip.
+
+When multiple `SEMANTIC_SEARCH` clauses are present in a query (e.g. `textVector` + `imageVector`),
+each should become a `PrefetchQuery` with its own vector and `using` field, and the top-level
+`Query` should set `fusion = RRF`. Single-vector queries can also migrate to `queryAsync` from
+`searchAsync` for API consistency.
+
+Replace `SearchPoints` + `searchAsync` with `QueryPoints` + `queryAsync` throughout
+`findBySemanticQueryInternal`.
+
+
 
 The Qdrant `knowledge` collection must be created at deployment time with the correct vector
 dimension matching the configured embedding model (e.g. 768 for `nomic-embed-text`). The

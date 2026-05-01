@@ -39,13 +39,13 @@ stop_workloads() {
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting deployments...${RESET}\n"
-  kubectl delete deployment agent-engine-catalog agent-engine-rest localstack -n "$NAMESPACE" 2>/dev/null || true
-  
+  kubectl delete deployment agent-engine-catalog agent-engine-rest agent-engine-knowledge localstack qdrant -n "$NAMESPACE" 2>/dev/null || true
+
   printf "${CYAN}  → Deleting statefulsets (preserving PVCs)...${RESET}\n"
   kubectl delete statefulset agent-engine-agent mongodb postgres -n "$NAMESPACE" 2>/dev/null || true
-  
+
   printf "${CYAN}  → Deleting services (except headless for PVC retention)...${RESET}\n"
-  kubectl delete service agent-engine-catalog agent-engine-rest agent-engine-agent -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete service agent-engine-catalog agent-engine-rest agent-engine-agent agent-engine-knowledge qdrant -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting configmaps and secrets...${RESET}\n"
   kubectl delete configmap -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
@@ -81,8 +81,8 @@ Usage:
 Stages (run concurrently where dependencies allow):
   build + infra deploy  Run in parallel from the start.
   seed infra            Starts once infra is deployed.
-  core + rest deploy    Start once build and infra seeding are done.
-  agent deploy         Starts once catalog is ready (actor recovery needs catalog).
+  core + rest + knowledge deploy    Start once build and infra seeding are done.
+  agent deploy          Starts once catalog is ready (actor recovery needs catalog).
   seed catalog          Starts once core and rest are both ready.
   port-forward          Starts once catalog is seeded (local only).
 
@@ -188,7 +188,7 @@ job_build() {
   fi
   print_phase "Building Docker images"
   require_command docker
-  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" agent catalog rest || fail
+  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" agent catalog rest knowledge || fail
   touch "$STATE_DIR/builds-done"
 }
 
@@ -231,6 +231,7 @@ APP_SERVICES="
 global-properties:infra-seeded:global-properties-ready
 catalog:builds-done,global-properties-ready:catalog-ready
 rest:builds-done,global-properties-ready:rest-ready
+knowledge:builds-done,infra-seeded:knowledge-ready
 agent:catalog-ready:agent-ready
 "
 

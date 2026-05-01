@@ -7,8 +7,8 @@ K8S_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 DEFAULT_NAMESPACE=agent-engine
 DEFAULT_ENVIRONMENT=local
 DEFAULT_TIMEOUT=10m
-DEFAULT_CHARTS="global-properties agent catalog rest"
-ALL_CHARTS="infra global-properties agent catalog rest"
+DEFAULT_CHARTS="global-properties agent catalog rest knowledge"
+ALL_CHARTS="infra global-properties agent catalog rest knowledge"
 
 chart_release_name() {
   case "$1" in
@@ -17,6 +17,7 @@ chart_release_name() {
     agent) echo "agent-engine-agent" ;;
     catalog) echo "agent-engine-catalog" ;;
     rest) echo "agent-engine-rest" ;;
+    knowledge) echo "agent-engine-knowledge" ;;
     *)
       echo "Unknown chart: $1" >&2
       exit 1
@@ -114,7 +115,7 @@ Options:
   -n, --namespace <name>    Kubernetes namespace (default: agent-engine)
   -f, --values <file>       Additional Helm values file (repeatable)
   --set <key=value>         Additional Helm set override (repeatable)
-  --image-tag <tag>         Override the app image tag for agent/catalog/rest
+  --image-tag <tag>         Override the app image tag for agent/catalog/rest/knowledge
   -h, --help                Show help
 EOF
 }

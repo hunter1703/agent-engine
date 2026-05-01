@@ -47,14 +47,6 @@ function applyDeploymentOverrides(config) {
     return next;
   }
 
-  if (next.type === "microservice" && next.serverId === "runtime") {
-    const namespace = process.env.NAMESPACE || "agent-engine";
-    const serviceName = process.env.RUNTIME_SERVICE_NAME || "agent-engine-runtime";
-    next.host = `${serviceName}.${namespace}.svc.cluster.local`;
-    next.port = Number(process.env.RUNTIME_GRPC_PORT || next.port);
-    return next;
-  }
-
   return next;
 }
 

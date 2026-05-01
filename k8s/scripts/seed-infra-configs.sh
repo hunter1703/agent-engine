@@ -26,6 +26,7 @@ TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
 COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
 EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
 LOCALSTACK_SERVICE_NAME=${LOCALSTACK_SERVICE_NAME:-localstack}
+QDRANT_SERVICE_NAME=${QDRANT_SERVICE_NAME:-qdrant}
 
 usage() {
   cat <<'EOF'
@@ -237,6 +238,11 @@ function applyDeploymentOverrides(config) {
 
   if (next.type === "cloudstorage") {
     next.endpointUrl = \`http://\${localstackServiceName}.\${namespace}.svc.cluster.local:4566\`;
+    return next;
+  }
+
+  if (next.type === "qdrant") {
+    next.host = \`${qdrantServiceName}.${namespace}.svc.cluster.local\`;
     return next;
   }
 

@@ -1,11 +1,10 @@
-component: agent
-replicas: 3
+component: knowledge
+replicas: 1
 revisionHistoryLimit: 3
-terminationGracePeriodSeconds: 150
-podManagementPolicy: Parallel
+terminationGracePeriodSeconds: 90
 
 image:
-  repository: agent-engine/agent
+  repository: agent-engine/knowledge
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -30,35 +29,33 @@ java:
 
 config:
   applicationProperties:
-    pekko.cluster.roles: agent
-    quarkus.otel.service.name: agent-engine-agent
+    quarkus.otel.service.name: agent-engine-knowledge
     # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
     quarkus.otel.sdk.disabled: "true"
     quarkus.log.console.json: "true"
-    agent-engine.session-actor.passivation.idle-timeout: PT1H
     # gRPC server configuration - increase message size limit to 100MB
     quarkus.grpc.server.max-inbound-message-size: "104857600"
 
 resources:
   requests:
-    cpu: "1"
-    memory: "2Gi"
+    cpu: "500m"
+    memory: "1Gi"
   limits:
-    cpu: "1"
-    memory: "2Gi"
+    cpu: "500m"
+    memory: "1Gi"
 
 service:
   type: ClusterIP
   httpPort: 8080
   grpcPort: 9000
-  pekkoPort: 2552
-  headlessName: agent-engine-agent-internal
-  publishNotReadyAddresses: true
+
+pdb:
+  enabled: true
+  minAvailable: 1
 
 tmpVolume:
   enabled: true
-  sizeLimit: 512Mi
-
+  sizeLimit: 256Mi
 
 probes:
   readiness:
@@ -75,16 +72,11 @@ probes:
     enabled: true
     path: /q/health/live
     periodSeconds: 10
-    failureThreshold: 45
+    failureThreshold: 30
     timeoutSeconds: 3
 
-topologySpreadConstraints:
-  - maxSkew: 1
-    topologyKey: kubernetes.io/hostname
-    whenUnsatisfiable: ScheduleAnyway
-    labelSelector:
-      matchLabels:
-        app.kubernetes.io/component: agent
-
-updateStrategy:
+strategy:
   type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0

@@ -11,7 +11,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/build-images.sh
-  ./k8s/scripts/build-images.sh agent catalog
+  ./k8s/scripts/build-images.sh agent catalog rest knowledge
 
 Behavior:
   - Builds the Docker images expected by the Kubernetes charts.
@@ -48,9 +48,10 @@ build_quarkus_apps() {
   tasks=""
   for component in "$@"; do
     case "$component" in
-      agent) tasks="$tasks :agent:core:quarkusBuild" ;;
+      agent) tasks="$tasks :agent:quarkusBuild" ;;
       catalog) tasks="$tasks :catalog:quarkusBuild" ;;
       rest) tasks="$tasks :interfaces:rest:quarkusBuild" ;;
+      knowledge) tasks="$tasks :knowledge:quarkusBuild" ;;
       *)
         echo "Unknown component: $component" >&2
         exit 1
@@ -74,7 +75,7 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 if [ "$#" -eq 0 ]; then
-  set -- agent catalog rest
+  set -- agent catalog rest knowledge
 fi
 
 build_quarkus_apps "$@"
@@ -82,9 +83,10 @@ build_quarkus_apps "$@"
 pids=""
 for component in "$@"; do
   case "$component" in
-    agent) build_component agent agent/core & pids="$pids $!" ;;
+    agent) build_component agent agent & pids="$pids $!" ;;
     catalog)    build_component catalog catalog & pids="$pids $!" ;;
     rest)    build_component rest interfaces/rest & pids="$pids $!" ;;
+    knowledge)    build_component knowledge knowledge & pids="$pids $!" ;;
     *)
       echo "Unknown component: $component" >&2
       exit 1

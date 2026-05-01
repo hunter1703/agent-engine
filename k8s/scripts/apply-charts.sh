@@ -19,14 +19,13 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/apply-charts.sh
-  ./k8s/scripts/apply-charts.sh agent catalog rest
+  ./k8s/scripts/apply-charts.sh agent catalog rest knowledge
   ./k8s/scripts/apply-charts.sh -n agent-engine-prod -f /path/to/override.yaml --set rest.ingress.enabled=true
 
 Behavior:
-  - Deploys agent, catalog, and rest when no charts are provided.
-  - Builds agent, catalog, and rest images automatically before applying those charts.
+  - Deploys agent, catalog, rest and, knowledge when no charts are provided.
+  - Builds agent, catalog, rest and, knowledge images automatically before applying those charts.
   - Applies environment overlays from k8s/environments/<environment>/<chart>.yaml.
-  - Enforces dependency order: infra -> agent -> catalog -> rest.
 EOF
   print_common_usage
 }
@@ -97,7 +96,7 @@ build_selected_images() {
   fi
 
   selected_components=""
-  for component in agent catalog rest; do
+  for component in agent catalog rest knowledge; do
     # shellcheck disable=SC2086
     if chart_selected "$component" $REQUESTED_CHARTS; then
       selected_components="$selected_components $component"
@@ -135,7 +134,7 @@ build_helm_args() {
   fi
 
   case "$chart" in
-    agent|catalog|rest)
+    agent|catalog|rest|knowledge)
       set -- "$@" --set image.tag="$IMAGE_TAG"
       if [ -n "${ROLLOUT_REVISION:-}" ]; then
         set -- "$@" --set-string podAnnotations.rolloutRevision="$ROLLOUT_REVISION"
@@ -153,7 +152,7 @@ lint_chart() {
   release_name=$(chart_release_name "$chart")
   set -- lint "$(chart_path "$chart")" --namespace "$NAMESPACE" --set namespace="$NAMESPACE"
   case "$chart" in
-    agent|catalog|rest)
+    agent|catalog|rest|knowledge)
       set -- "$@" --set image.tag="$IMAGE_TAG"
       if [ -n "${ROLLOUT_REVISION:-}" ]; then
         set -- "$@" --set-string podAnnotations.rolloutRevision="$ROLLOUT_REVISION"
@@ -238,6 +237,12 @@ if [ "$DRY_RUN" != "true" ]; then
   # shellcheck disable=SC2086
   if chart_selected rest $REQUESTED_CHARTS; then
     kubectl rollout status deployment/agent-engine-rest \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected knowledge $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/agent-engine-knowledge \
       --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
     rollout_pids="$rollout_pids $!"
   fi

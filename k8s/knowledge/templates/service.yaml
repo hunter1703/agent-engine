@@ -1,0 +1,23 @@
+{{- $ctx := dict "root" . "component" .Values.component -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agent-engine.base.fullname" $ctx }}
+  namespace: {{ include "agent-engine.base.namespace" $ctx }}
+  labels:
+    {{- include "agent-engine.base.labels" $ctx | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "agent-engine.base.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: http
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
