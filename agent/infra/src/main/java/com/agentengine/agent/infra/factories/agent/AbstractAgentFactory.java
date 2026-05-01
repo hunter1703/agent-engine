@@ -38,6 +38,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
                 .model(model);
         final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
         tools.add(LoadArtifactsTool.INSTANCE);
+        tools.add(toolFactory.getSearchKnowledgeTool());
         if (config.getRuntime() == null || config.getRuntime().isResumable()) {
             tools.add(toolFactory.getHITLTool());
         }

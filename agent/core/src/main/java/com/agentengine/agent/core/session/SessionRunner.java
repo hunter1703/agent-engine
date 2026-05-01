@@ -13,6 +13,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.agents.RunConfig;
@@ -27,7 +28,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.pekko.actor.typed.ActorRef;
@@ -39,11 +39,6 @@ public final class SessionRunner {
     private static final Logger LOG = LoggerFactory.getLogger(SessionRunner.class);
     private static final ExecutorService RUN_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
     private static final Scheduler SCHEDULER = Schedulers.from(RUN_EXECUTOR);
-
-    private static final Set<String> TEXT_MIME_TYPES =
-            Set.of("application/json", "application/xml", "application/yaml", "application/x-yaml");
-    private static final Set<String> TEXT_EXTENSIONS =
-            Set.of(".txt", ".md", ".json", ".yaml", ".yml", ".csv", ".xml", ".log", ".properties");
 
     static {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -87,12 +82,8 @@ public final class SessionRunner {
                     final FileDetails fileDetails = filePart.fileDetails();
                     final String source = fileDetails.source();
                     final int slashIndex = source.indexOf("/");
-                    cloudStorageService.copy(
-                            source.substring(slashIndex + 1),
-                            CloudStorageArtifactService.objectKey(
-                                    runner.appName(), AgentSession.DEFAULT_USER_ID, sessionId, fileDetails.name(), 0));
 
-                    if (isTextFile(fileDetails)) {
+                    if (FileUtils.isTextFile(fileDetails)) {
                         try {
                             final IndexRequest request = new IndexRequest();
                             request.setAgentId(runner.appName());
@@ -114,10 +105,18 @@ public final class SessionRunner {
                                     fileDetails.name(),
                                     e.getMessage());
                         }
+                    } else {
+                        cloudStorageService.copy(
+                                source.substring(slashIndex + 1),
+                                CloudStorageArtifactService.objectKey(
+                                        runner.appName(), AgentSession.DEFAULT_USER_ID, sessionId, fileDetails.name(), 0));
                     }
                 });
 
-        final Content userContent = ContentUtils.buildUserContent(userMessage);
+        final List<MessagePart> updatedParts = userMessage.parts().stream().filter(part -> !(part instanceof MessagePart.FilePart(
+                FileDetails fileDetails
+        )) || !FileUtils.isTextFile(fileDetails)).toList();
+        final Content userContent = ContentUtils.buildUserContent(new UserMessage(updatedParts));
         final Content contentToRun =
                 indexedFiles.isEmpty() ? userContent : appendKnowledgeHint(userContent, indexedFiles);
 
@@ -217,21 +216,4 @@ public final class SessionRunner {
         return base.toBuilder().parts(newParts).build();
     }
 
-    private static boolean isTextFile(final FileDetails fileDetails) {
-        final String mimeType = fileDetails.mimeType();
-        if (mimeType != null) {
-            final String lower = mimeType.toLowerCase();
-            if (lower.startsWith("text/") || TEXT_MIME_TYPES.contains(lower)) {
-                return true;
-            }
-        }
-        final String name = fileDetails.name();
-        if (name != null) {
-            final int dot = name.lastIndexOf('.');
-            if (dot >= 0) {
-                return TEXT_EXTENSIONS.contains(name.substring(dot).toLowerCase());
-            }
-        }
-        return false;
-    }
 }

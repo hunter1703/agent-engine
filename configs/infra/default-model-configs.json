@@ -5,6 +5,7 @@
     "_t": "com.agentengine.util.mongodb.infra.DefaultModelsConfig",
     "titleModelId": "gemma4:e4b",
     "compactionModelId": "llama3.1-8b",
-    "evaluatorModelId": "llama3.1-8b"
+    "evaluatorModelId": "llama3.1-8b",
+    "embeddingModelId": "nomic-embed-text"
   }
 ]

@@ -25,6 +25,7 @@ DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-}
 TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
 COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
 EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
+EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID:-}
 LOCALSTACK_SERVICE_NAME=${LOCALSTACK_SERVICE_NAME:-localstack}
 QDRANT_SERVICE_NAME=${QDRANT_SERVICE_NAME:-qdrant}
 KNOWLEDGE_SERVICE_NAME=${KNOWLEDGE_SERVICE_NAME:-agent-engine-knowledge}
@@ -189,6 +190,7 @@ SQL_JDBC_PASSWORD_B64=$(printf '%s' "$SQL_JDBC_PASSWORD" | encode_base64)
 TITLE_MODEL_ID_B64=$(printf '%s' "$TITLE_MODEL_ID" | encode_base64)
 COMPACTION_MODEL_ID_B64=$(printf '%s' "$COMPACTION_MODEL_ID" | encode_base64)
 EVALUATOR_MODEL_ID_B64=$(printf '%s' "$EVALUATOR_MODEL_ID" | encode_base64)
+EMBEDDING_MODEL_ID_B64=$(printf '%s' "$EMBEDDING_MODEL_ID" | encode_base64)
 LOCALSTACK_SERVICE_NAME_B64=$(printf '%s' "$LOCALSTACK_SERVICE_NAME" | encode_base64)
 QDRANT_SERVICE_NAME_B64=$(printf '%s' "$QDRANT_SERVICE_NAME" | encode_base64)
 KNOWLEDGE_SERVICE_NAME_B64=$(printf '%s' "$KNOWLEDGE_SERVICE_NAME" | encode_base64)
@@ -216,6 +218,7 @@ const sqlJdbcPassword = decode("${SQL_JDBC_PASSWORD_B64}");
 const titleModelId = decode("${TITLE_MODEL_ID_B64}");
 const compactionModelId = decode("${COMPACTION_MODEL_ID_B64}");
 const evaluatorModelId = decode("${EVALUATOR_MODEL_ID_B64}");
+const embeddingModelId = decode("${EMBEDDING_MODEL_ID_B64}");
 const localstackServiceName = decode("${LOCALSTACK_SERVICE_NAME_B64}");
 const qdrantServiceName = decode("${QDRANT_SERVICE_NAME_B64}");
 const knowledgeServiceName = decode("${KNOWLEDGE_SERVICE_NAME_B64}");
@@ -228,6 +231,7 @@ function applyDeploymentOverrides(config) {
     if (titleModelId) next.titleModelId = titleModelId;
     if (compactionModelId) next.compactionModelId = compactionModelId;
     if (evaluatorModelId) next.evaluatorModelId = evaluatorModelId;
+    if (embeddingModelId) next.embeddingModelId = embeddingModelId;
     return next;
   }
 
