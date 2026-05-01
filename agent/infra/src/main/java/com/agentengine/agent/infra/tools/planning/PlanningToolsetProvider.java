@@ -1,4 +1,4 @@
-package com.agentengine.agent.infra.tools.planning;
+package com.agentengine.agent.core.tool.planning;
 
 import com.agentengine.agent.infra.tools.AbstractToolsetProvider;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
