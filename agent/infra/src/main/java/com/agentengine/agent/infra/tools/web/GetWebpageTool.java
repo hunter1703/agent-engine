@@ -13,7 +13,6 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.tools.ToolContext;
-
 import java.util.List;
 import java.util.Map;
 
@@ -71,7 +70,7 @@ public final class GetWebpageTool extends Tool {
         final Knowledge knowledge = knowledgeService.create(request);
         return ToolOutput.knowledge(
                 knowledge.getId(),
-                "Webpage : " + url + " indexed. Use" + SearchKnowledgeTool.DESCRIPTOR.name() + " with knowledgeId='" + knowledge.getId()
-                        + "' to search for information.");
+                "Webpage : " + url + " indexed. Use" + SearchKnowledgeTool.DESCRIPTOR.name() + " with knowledgeId='"
+                        + knowledge.getId() + "' to search for information.");
     }
 }

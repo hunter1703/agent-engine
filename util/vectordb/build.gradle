@@ -8,16 +8,10 @@ dependencies {
     implementation project(':util:mongodb')
 
     implementation libs.slf4j.api
+    implementation libs.jackson.databind
 
     // Annotation-only API: compile-time marker, runtime provided by Quarkus
     compileOnly libs.jakarta.inject.api
-
-    // Qdrant Java client (gRPC-based)
-    implementation libs.qdrant.client
-    implementation libs.guava
-    implementation libs.protobuf.java
-    implementation libs.grpc.protobuf
-    implementation libs.grpc.stub
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

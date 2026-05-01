@@ -102,7 +102,6 @@ langchain4j-open-ai = { group = "dev.langchain4j", name = "langchain4j-open-ai",
 langchain4j-ollama = { group = "dev.langchain4j", name = "langchain4j-ollama", version.ref = "langchain4j-plugin" }
 langchain4j-qdrant = { group = "dev.langchain4j", name = "langchain4j-community-qdrant", version.ref = "langchain4j-plugin" }
 langchain4j-http-client-jdk = { group = "dev.langchain4j", name = "langchain4j-http-client-jdk" }
-qdrant-client = { group = "io.qdrant", name = "client", version.ref = "qdrant-client" }
 quarkus-mongodb-client = { group = "io.quarkus", name = "quarkus-mongodb-client" }
 quarkus-logging-json = { group = "io.quarkus", name = "quarkus-logging-json" }
 quarkus-rest-jackson = { group = "io.quarkus", name = "quarkus-rest-jackson" }

@@ -1,13 +1,10 @@
 package com.agentengine.knowledge.core.store;
 
-import static io.qdrant.client.ValueFactory.value;
-
 import com.agentengine.agent.infra.factories.model.EmbeddingModelFactory;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.vectordb.QdrantVectorStore;
 import com.agentengine.util.vectordb.VectorDbClientFactory;
-import io.qdrant.client.grpc.JsonWithInt.Value;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashMap;
@@ -43,19 +40,19 @@ public class KnowledgeChunkStore extends QdrantVectorStore<KnowledgeChunk> {
     }
 
     @Override
-    protected Map<String, Value> toPayload(final KnowledgeChunk chunk) {
-        final Map<String, Value> payload = new HashMap<>();
-        payload.put(KEY_KNOWLEDGE_ID, value(chunk.getKnowledgeId()));
-        payload.put(KEY_AGENT_ID, value(chunk.getAgentId()));
-        payload.put(KEY_CHUNK_INDEX, value(chunk.getChunkIndex()));
-        payload.put(KEY_TEXT, value(chunk.getText()));
-        payload.put(KEY_CHUNK_START, value(chunk.getChunkStart()));
-        payload.put(KEY_CHUNK_END, value(chunk.getChunkEnd()));
+    protected Map<String, Object> toPayload(final KnowledgeChunk chunk) {
+        final Map<String, Object> payload = new HashMap<>();
+        payload.put(KEY_KNOWLEDGE_ID, chunk.getKnowledgeId());
+        payload.put(KEY_AGENT_ID, chunk.getAgentId());
+        payload.put(KEY_CHUNK_INDEX, chunk.getChunkIndex());
+        payload.put(KEY_TEXT, chunk.getText());
+        payload.put(KEY_CHUNK_START, chunk.getChunkStart());
+        payload.put(KEY_CHUNK_END, chunk.getChunkEnd());
         return payload;
     }
 
     @Override
-    protected KnowledgeChunk fromPayload(final Map<String, Value> payload) {
+    protected KnowledgeChunk fromPayload(final Map<String, Object> payload) {
         final KnowledgeChunk chunk = new KnowledgeChunk();
         chunk.setKnowledgeId(strValue(payload, KEY_KNOWLEDGE_ID));
         chunk.setAgentId(strValue(payload, KEY_AGENT_ID));

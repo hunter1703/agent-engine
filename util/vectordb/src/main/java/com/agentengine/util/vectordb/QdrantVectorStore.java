@@ -1,34 +1,12 @@
 package com.agentengine.util.vectordb;
 
-import static io.qdrant.client.ConditionFactory.matchKeyword;
-import static io.qdrant.client.VectorsFactory.namedVectors;
-import static io.qdrant.client.grpc.Points.*;
-
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.*;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
-import io.qdrant.client.ConditionFactory;
-import io.qdrant.client.QdrantClient;
-import io.qdrant.client.WithPayloadSelectorFactory;
-import io.qdrant.client.grpc.JsonWithInt.Value;
-import io.qdrant.client.grpc.Points;
-import io.qdrant.client.grpc.Points.PointId;
-import io.qdrant.client.grpc.Points.PointStruct;
-import io.qdrant.client.grpc.Points.RetrievedPoint;
-import io.qdrant.client.grpc.Points.ScoredPoint;
-import io.qdrant.client.grpc.Points.SearchPoints;
-import io.qdrant.client.grpc.Points.WithPayloadSelector;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
+import java.util.*;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +18,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     private static final int DEFAULT_MAX_RESULTS = 10;
 
     private final String collection;
-    private final QdrantClient client;
+    private final QdrantHttpClient client;
 
     protected QdrantVectorStore(
             final String collection,
@@ -52,95 +30,62 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     }
 
     /** Serializes {@code entity} into a Qdrant payload map. */
-    protected abstract Map<String, Value> toPayload(T entity);
+    protected abstract Map<String, Object> toPayload(T entity);
 
     /** Deserializes a Qdrant payload map into a domain entity. */
-    protected abstract T fromPayload(Map<String, Value> payload);
+    protected abstract T fromPayload(Map<String, Object> payload);
 
     // ── VectorStore-specific ──────────────────────────────────────────────────
 
     @Override
     public long deleteByQuery(final Query query) {
-        try {
-            client.deleteAsync(collection, toQdrantFilter(query.getFilter())).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during delete by filter", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Qdrant delete by filter failed", e.getCause());
-        }
+        final QdrantHttpClient.Filter filter = toQdrantFilter(query.getFilter());
+        final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(null, filter);
+        client.delete(collection, request);
         return 0L;
     }
 
     @Override
     protected PaginatedResult<T> findBySemanticQueryInternal(final Query query) {
-        try {
-            Page page = query.getPage();
-            page = page == null ? new Page(0, DEFAULT_MAX_RESULTS) : page;
-            final int maxResults = page.getLimit();
-            final float[] queryVector = extractQueryVector(query.getFilter());
-            final String vectorField = extractVectorField(query.getFilter());
-            final double minScore = extractMinScore(query.getFilter());
-            final Points.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
+        Page page = query.getPage();
+        page = page == null ? new Page(0, DEFAULT_MAX_RESULTS) : page;
+        final int maxResults = page.getLimit();
+        final float[] queryVector = extractQueryVector(query.getFilter());
+        final String vectorField = extractVectorField(query.getFilter());
+        final double minScore = extractMinScore(query.getFilter());
+        final QdrantHttpClient.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
-            final SearchPoints.Builder request = SearchPoints.newBuilder()
-                    .setCollectionName(collection)
-                    .addAllVector(toFloatList(queryVector))
-                    .setLimit(maxResults)
-                    .setScoreThreshold((float) minScore)
-                    .setWithPayload(withPayload());
+        final QdrantHttpClient.SearchRequest request = new QdrantHttpClient.SearchRequest(
+                toFloatList(queryVector),
+                StringUtils.isNotBlank(vectorField) ? vectorField : null,
+                maxResults,
+                (float) minScore,
+                qdrantFilter,
+                true);
 
-            if (StringUtils.isNotBlank(vectorField)) {
-                request.setVectorName(vectorField);
-            }
-            if (qdrantFilter != null) {
-                request.setFilter(qdrantFilter);
-            }
-
-            final List<ScoredPoint> hits = client.searchAsync(request.build()).get();
-            return PaginatedResult.create(
-                    hits.stream().map(p -> fromPayload(p.getPayloadMap())).toList(), page, null);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during search", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Qdrant search failed", e.getCause());
-        }
+        final QdrantHttpClient.SearchResponse response = client.search(collection, request);
+        final List<T> results =
+                response.result().stream().map(p -> fromPayload(p.payload())).toList();
+        return PaginatedResult.create(results, page, null);
     }
 
     // ── Repository<T> ─────────────────────────────────────────────────────────
 
     @Override
     public T save(final T entity) {
-        try {
-            final Map<String, Value> payload = toPayload(entity);
-            final Map<String, Vector> namedVecs = buildNamedVectors(entity);
-            final PointStruct point = PointStruct.newBuilder()
-                    .setId(toPointId(entity.getId()))
-                    .setVectors(namedVectors(namedVecs))
-                    .putAllPayload(payload)
-                    .build();
-            client.upsertAsync(collection, List.of(point)).get();
-            return entity;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during upsert", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Qdrant upsert failed for entity " + entity.getId(), e.getCause());
-        }
+        final Map<String, Object> payload = toPayload(entity);
+        final Map<String, List<Float>> namedVecs = buildNamedVectors(entity);
+        final QdrantHttpClient.Point point = new QdrantHttpClient.Point(entity.getId(), namedVecs, payload);
+        final QdrantHttpClient.UpsertRequest request = new QdrantHttpClient.UpsertRequest(List.of(point));
+        client.upsert(collection, request);
+        return entity;
     }
 
     @Override
     public boolean deleteById(final String id) {
-        try {
-            client.deleteAsync(collection, List.of(toPointId(id))).get();
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during delete", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Qdrant delete failed for id " + id, e.getCause());
-        }
+        final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(List.of(id), null);
+        client.delete(collection, request);
+        return true;
     }
 
     // ── Unsupported ReadRepository operations ─────────────────────────────────
@@ -184,35 +129,16 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     private Map<String, T> retrievePoints(
             final Collection<String> ids, final List<String> includeFields, final List<String> excludeFields) {
-        final List<PointId> pointIds =
-                ids.stream().map(QdrantVectorStore::toPointId).toList();
-        final WithPayloadSelector payloadSelector = buildPayloadSelector(includeFields, excludeFields);
-        try {
-            final List<RetrievedPoint> points = client.retrieveAsync(collection, pointIds, payloadSelector, null, null)
-                    .get();
-            final Map<String, T> result = new LinkedHashMap<>();
-            for (final RetrievedPoint point : points) {
-                final T entity = fromPayload(point.getPayloadMap());
-                result.put(entity.getId(), entity);
-            }
-            return result;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during retrieve", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException("Qdrant retrieve failed for ids " + ids, e.getCause());
+        // Note: HTTP API doesn't support field projection like gRPC, so we ignore includeFields/excludeFields
+        final QdrantHttpClient.RetrieveRequest request =
+                new QdrantHttpClient.RetrieveRequest(new ArrayList<>(ids), true);
+        final QdrantHttpClient.RetrieveResponse response = client.retrieve(collection, request);
+        final Map<String, T> result = new LinkedHashMap<>();
+        for (final QdrantHttpClient.RetrievedPoint point : response.result()) {
+            final T entity = fromPayload(point.payload());
+            result.put(entity.getId(), entity);
         }
-    }
-
-    private static WithPayloadSelector buildPayloadSelector(
-            final List<String> includeFields, final List<String> excludeFields) {
-        if (includeFields != null && !includeFields.isEmpty()) {
-            return WithPayloadSelectorFactory.include(includeFields);
-        }
-        if (excludeFields != null && !excludeFields.isEmpty()) {
-            return WithPayloadSelectorFactory.exclude(excludeFields);
-        }
-        return withPayload();
+        return result;
     }
 
     @Override
@@ -222,16 +148,10 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static PointId toPointId(final String id) {
-        return PointId.newBuilder()
-                .setUuid(UUID.nameUUIDFromBytes(id.getBytes()).toString())
-                .build();
-    }
-
-    private static Map<String, Vector> buildNamedVectors(final VectorEntity entity) {
+    private static Map<String, List<Float>> buildNamedVectors(final VectorEntity entity) {
         final Map<String, float[]> vectors = entity.getVectors();
-        final Map<String, Vector> result = new HashMap<>();
-        vectors.forEach((field, vec) -> result.put(field, toVector(vec)));
+        final Map<String, List<Float>> result = new HashMap<>();
+        vectors.forEach((field, vec) -> result.put(field, toFloatList(vec)));
         return result;
     }
 
@@ -239,27 +159,32 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
      * Translates a {@link Filter} to a Qdrant filter for delete operations.
      * Supports EQ (keyword match) and AND compound filters.
      */
-    private static io.qdrant.client.grpc.Points.Filter toQdrantFilter(final Filter filter) {
-        final io.qdrant.client.grpc.Points.Filter.Builder builder = io.qdrant.client.grpc.Points.Filter.newBuilder();
+    private static QdrantHttpClient.Filter toQdrantFilter(final Filter filter) {
+        final List<QdrantHttpClient.Condition> must = new ArrayList<>();
 
         if (filter.getOp() == Operator.AND && filter.getValues() != null) {
             for (final Object child : filter.getValues()) {
                 if (child instanceof final Filter childFilter) {
-                    builder.addMust(io.qdrant.client.ConditionFactory.filter(toQdrantFilter(childFilter)));
+                    final QdrantHttpClient.Filter subFilter = toQdrantFilter(childFilter);
+                    if (subFilter != null) {
+                        must.add(new QdrantHttpClient.Condition(null, subFilter));
+                    }
                 }
             }
         } else if (filter.getOp() == Operator.EQ
                 && filter.getField() != null
                 && filter.getValues() != null
                 && !filter.getValues().isEmpty()) {
-            builder.addMust(matchKeyword(
-                    filter.getField(), String.valueOf(filter.getValues().getFirst())));
+            final String value = String.valueOf(filter.getValues().getFirst());
+            final QdrantHttpClient.Match match =
+                    new QdrantHttpClient.Match(filter.getField(), new QdrantHttpClient.MatchValue(value));
+            must.add(new QdrantHttpClient.Condition(match, null));
         }
 
-        return builder.build();
+        return must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
     }
 
-    private static Points.Filter buildQdrantFilter(final Filter filter) {
+    private static QdrantHttpClient.Filter buildQdrantFilter(final Filter filter) {
         if (filter == null) {
             return null;
         }
@@ -271,25 +196,30 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
         final List<Object> values = filter.getValues();
         if (op == Operator.EQ) {
-            return Points.Filter.newBuilder()
-                    .addMust(matchKeyword(filter.getField(), String.valueOf(values.getFirst())))
-                    .build();
+            final String value = String.valueOf(values.getFirst());
+            final QdrantHttpClient.Match match =
+                    new QdrantHttpClient.Match(filter.getField(), new QdrantHttpClient.MatchValue(value));
+            return new QdrantHttpClient.Filter(List.of(new QdrantHttpClient.Condition(match, null)), null);
         }
 
         if (op.isCompound() && CollectionUtils.isNotEmpty(values)) {
-            final Points.Filter.Builder builder = Points.Filter.newBuilder();
+            final List<QdrantHttpClient.Condition> must = new ArrayList<>();
+            final List<QdrantHttpClient.Condition> should = new ArrayList<>();
             for (final Object child : values) {
                 final Filter childFilter = (Filter) child;
-                final Points.Filter sub = buildQdrantFilter(childFilter);
+                final QdrantHttpClient.Filter sub = buildQdrantFilter(childFilter);
                 if (sub != null) {
+                    final QdrantHttpClient.Condition condition = new QdrantHttpClient.Condition(null, sub);
                     if (op == Operator.AND) {
-                        builder.addMust(ConditionFactory.filter(sub));
+                        must.add(condition);
                     } else {
-                        builder.addShould(ConditionFactory.filter(sub));
+                        should.add(condition);
                     }
                 }
             }
-            return builder.getMustCount() > 0 || builder.getShouldCount() > 0 ? builder.build() : null;
+            if (!must.isEmpty() || !should.isEmpty()) {
+                return new QdrantHttpClient.Filter(must.isEmpty() ? null : must, should.isEmpty() ? null : should);
+            }
         }
 
         return null;
@@ -331,10 +261,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         return val instanceof Number n ? n.doubleValue() : 0.0;
     }
 
-    private static Vector toVector(final float[] arr) {
-        return Vector.newBuilder().addAllData(toFloatList(arr)).build();
-    }
-
     private static List<Float> toFloatList(final float[] arr) {
         final List<Float> list = new ArrayList<>(arr.length);
         for (final float f : arr) {
@@ -343,17 +269,16 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         return list;
     }
 
-    private static WithPayloadSelector withPayload() {
-        return WithPayloadSelector.newBuilder().setEnable(true).build();
+    protected static String strValue(final Map<String, Object> payload, final String key) {
+        final Object value = payload.get(key);
+        return value != null ? value.toString() : "";
     }
 
-    protected static String strValue(final Map<String, Value> payload, final String key) {
-        final Value value = payload.get(key);
-        return value != null ? value.getStringValue() : "";
-    }
-
-    protected static int intVal(final Map<String, Value> payload, final String key) {
-        final Value value = payload.get(key);
-        return value != null ? (int) value.getIntegerValue() : 0;
+    protected static int intVal(final Map<String, Object> payload, final String key) {
+        final Object value = payload.get(key);
+        if (value instanceof Number n) {
+            return n.intValue();
+        }
+        return 0;
     }
 }

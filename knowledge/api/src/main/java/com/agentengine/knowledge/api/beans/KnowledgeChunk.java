@@ -75,5 +75,4 @@ public class KnowledgeChunk extends VectorEntity {
     public void setChunkEnd(final int chunkEnd) {
         this.chunkEnd = chunkEnd;
     }
-
 }

@@ -4,6 +4,6 @@
     "type": "qdrant",
     "_t": "com.agentengine.util.vectordb.QdrantInfraConfig",
     "host": "localhost",
-    "grpcPort": 6334
+    "httpPort": 6333
   }
 ]

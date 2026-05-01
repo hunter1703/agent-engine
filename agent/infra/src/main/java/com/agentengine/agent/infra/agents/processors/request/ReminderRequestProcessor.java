@@ -34,8 +34,7 @@ public final class ReminderRequestProcessor implements RequestProcessor {
     private ReminderRequestProcessor() {}
 
     @Override
-    public Single<RequestProcessingResult> processRequest(
-            final InvocationContext context, final LlmRequest request) {
+    public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
         final RunState runState = RunUtils.getOrInitState(context);
         final List<Reminder> reminders = runState.reminders();
 
@@ -55,8 +54,7 @@ public final class ReminderRequestProcessor implements RequestProcessor {
 
     private static String buildBrief(final List<Reminder> reminders) {
         final StringBuilder sb = new StringBuilder();
-        sb.append(
-                """
+        sb.append("""
                 ╔══════════════════════════════════════════════════════════════╗
                   REMINDERS — orient yourself before acting
                   Read this, reason through it, then decide your next step.
@@ -64,7 +62,8 @@ public final class ReminderRequestProcessor implements RequestProcessor {
                 """);
 
         boolean hasContent = false;
-        final Map<String, List<Reminder>> reminderGroups = CollectionUtils.transformToMultiValuedMap(reminders, Reminder::group, Function.identity());
+        final Map<String, List<Reminder>> reminderGroups =
+                CollectionUtils.transformToMultiValuedMap(reminders, Reminder::group, Function.identity());
         for (final Entry<String, List<Reminder>> entry : reminderGroups.entrySet()) {
             final String title = entry.getKey().replace('_', ' ').toUpperCase();
             sb.append("\n▸ ").append(title).append(":\n");

@@ -18,7 +18,8 @@ public class QdrantInfraConfig extends InfraConfig {
     public static final String CONFIG_ID = "default";
 
     private String host = "localhost";
-    private int grpcPort = 6334;
+    private int httpPort = 6333;
+    private String apiKey = null;
 
     public QdrantInfraConfig() {
         super(TYPE);
@@ -32,11 +33,19 @@ public class QdrantInfraConfig extends InfraConfig {
         this.host = host;
     }
 
-    public int getGrpcPort() {
-        return grpcPort;
+    public int getHttpPort() {
+        return httpPort;
     }
 
-    public void setGrpcPort(final int grpcPort) {
-        this.grpcPort = grpcPort;
+    public void setHttpPort(final int httpPort) {
+        this.httpPort = httpPort;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(final String apiKey) {
+        this.apiKey = apiKey;
     }
 }

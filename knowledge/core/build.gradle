@@ -19,7 +19,6 @@ dependencies {
     implementation platform(libs.quarkus.bom)
 
     implementation libs.langchain4j.core
-    implementation libs.qdrant.client
     implementation libs.quarkus.mongodb.client
 
     implementation libs.jakarta.inject.api
