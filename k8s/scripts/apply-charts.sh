@@ -128,9 +128,7 @@ build_helm_args() {
       --set namespace="$NAMESPACE" \
       --timeout "$TIMEOUT"
 
-    if [ "$ATOMIC" = "true" ] && [ "$chart" = "infra" ]; then
-      set -- "$@" --atomic
-    fi
+
   fi
 
   case "$chart" in
@@ -186,21 +184,9 @@ if [ "$DRY_RUN" != "true" ]; then
   kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 fi
 
-# Deploy infra serially and atomically — seeding must not start until infra is Ready.
-for chart in $ALL_CHARTS; do
-  case "$chart" in infra) ;; *) continue ;; esac
-  # shellcheck disable=SC2086
-  if chart_selected "$chart" $REQUESTED_CHARTS; then
-    ensure_chart_dependencies "$chart"
-    if [ "$LINT" = "true" ]; then lint_chart "$chart"; fi
-    deploy_chart "$chart"
-  fi
-done
-
-# Deploy all non-infra charts in parallel — Kubernetes handles dependency retries.
+# Deploy all charts in parallel — Kubernetes handles dependency retries.
 pids=""
 for chart in $ALL_CHARTS; do
-  case "$chart" in infra) continue ;; esac
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     ensure_chart_dependencies "$chart"
@@ -243,6 +229,30 @@ if [ "$DRY_RUN" != "true" ]; then
   # shellcheck disable=SC2086
   if chart_selected knowledge $REQUESTED_CHARTS; then
     kubectl rollout status deployment/agent-engine-knowledge \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected mongodb $REQUESTED_CHARTS; then
+    kubectl rollout status statefulset/mongodb \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected postgres $REQUESTED_CHARTS; then
+    kubectl rollout status statefulset/postgres \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected localstack $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/localstack \
+      --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
+    rollout_pids="$rollout_pids $!"
+  fi
+  # shellcheck disable=SC2086
+  if chart_selected qdrant $REQUESTED_CHARTS; then
+    kubectl rollout status deployment/qdrant \
       --namespace "$NAMESPACE" --timeout "$TIMEOUT" &
     rollout_pids="$rollout_pids $!"
   fi

@@ -8,16 +8,19 @@ DEFAULT_NAMESPACE=agent-engine
 DEFAULT_ENVIRONMENT=local
 DEFAULT_TIMEOUT=10m
 DEFAULT_CHARTS="global-properties agent catalog rest knowledge"
-ALL_CHARTS="infra global-properties agent catalog rest knowledge"
+ALL_CHARTS="global-properties agent catalog rest knowledge mongodb postgres localstack qdrant"
 
 chart_release_name() {
   case "$1" in
-    infra) echo "agent-engine-infra" ;;
     global-properties) echo "agent-engine-global-properties" ;;
-    agent) echo "agent-engine-agent" ;;
-    catalog) echo "agent-engine-catalog" ;;
-    rest) echo "agent-engine-rest" ;;
-    knowledge) echo "agent-engine-knowledge" ;;
+    agent)      echo "agent-engine-agent"      ;;
+    catalog)    echo "agent-engine-catalog"    ;;
+    rest)       echo "agent-engine-rest"       ;;
+    knowledge)  echo "agent-engine-knowledge"  ;;
+    mongodb)    echo "agent-engine-mongodb"    ;;
+    postgres)   echo "agent-engine-postgres"   ;;
+    localstack) echo "agent-engine-localstack" ;;
+    qdrant)     echo "agent-engine-qdrant"     ;;
     *)
       echo "Unknown chart: $1" >&2
       exit 1

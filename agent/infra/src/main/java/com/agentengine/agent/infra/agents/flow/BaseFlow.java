@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.agents.flow;
 
 import com.agentengine.agent.infra.agents.processors.request.CorrectionProcessor;
-import com.agentengine.agent.infra.agents.processors.request.NotificationRequestProcessor;
+import com.agentengine.agent.infra.agents.processors.request.ReminderRequestProcessor;
 import com.agentengine.agent.infra.agents.processors.response.PlanLoopResponseProcessor;
 import com.agentengine.agent.infra.agents.processors.response.ResponseFormatValidationProcessor;
 import com.agentengine.agent.infra.agents.processors.response.ToolCallSanitizationResponseProcessor;
@@ -59,7 +59,7 @@ public final class BaseFlow extends SingleFlow {
             .addAll(SingleFlow.REQUEST_PROCESSORS)
             .add(new AgentTransfer())
             .add(CorrectionProcessor.INSTANCE)
-            .add(NotificationRequestProcessor.INSTANCE)
+            .add(ReminderRequestProcessor.INSTANCE)
             .build();
 
     private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =

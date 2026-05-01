@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.planning.PlanningUtils;
 import com.agentengine.agent.infra.tools.planning.PlanningValidator;
-import com.agentengine.agent.infra.utils.Notification;
+import com.agentengine.agent.infra.utils.Reminder;
 import com.agentengine.agent.infra.utils.ResponseUtils;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
@@ -43,8 +43,6 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
 
     private PlanLoopResponseProcessor() {}
 
-    private static final String NOTIFICATION_KEY = "active_plan";
-
     @Override
     public Single<ResponseProcessingResult> processResponse(
             final InvocationContext context, final LlmResponse response) {
@@ -55,15 +53,15 @@ public final class PlanLoopResponseProcessor implements ResponseProcessor {
         final RunState runState = RunUtils.getOrInitState(context);
 
         if (!runState.hasActivePlan()) {
-            // Plan completed or absent — clear any stale plan notification
-            runState.removeNotification(NOTIFICATION_KEY);
+            // Plan completed or absent — clear any stale plan reminder
+            runState.removeReminder("plan");
             return ResponseUtils.single(response);
         }
 
         final Plan plan = runState.plan();
 
-        // Sync the plan notification to reflect current state
-        runState.addNotification(new Notification(NOTIFICATION_KEY, NOTIFICATION_KEY, buildPlanBrief(plan)));
+        // Sync the plan reminder to reflect current state
+        runState.addReminder(new Reminder(Reminder.GROUP_ACTIVE_PLAN, "plan", buildPlanBrief(plan)));
 
         if (!ResponseUtils.isFinalAnswer(response)) {
             return ResponseUtils.single(response);

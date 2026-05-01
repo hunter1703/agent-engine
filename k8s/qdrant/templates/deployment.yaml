@@ -1,12 +1,11 @@
-{{- if .Values.qdrant.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: qdrant
-  namespace: {{ include "agent-engine-infra.namespace" . }}
+  namespace: {{ include "agent-engine-qdrant.namespace" . }}
   labels:
     app.kubernetes.io/name: qdrant
-    {{- include "agent-engine-infra.labels" . | nindent 4 }}
+    {{- include "agent-engine-qdrant.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -25,13 +24,13 @@ spec:
       {{- end }}
       containers:
         - name: qdrant
-          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}"
-          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.qdrant.httpPort }}
+              containerPort: {{ .Values.httpPort }}
             - name: grpc
-              containerPort: {{ .Values.qdrant.grpcPort }}
+              containerPort: {{ .Values.grpcPort }}
           startupProbe:
             httpGet:
               path: /healthz
@@ -54,5 +53,4 @@ spec:
             failureThreshold: 3
             timeoutSeconds: 3
           resources:
-            {{- toYaml .Values.qdrant.resources | nindent 12 }}
-{{- end }}
+            {{- toYaml .Values.resources | nindent 12 }}

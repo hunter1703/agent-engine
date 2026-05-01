@@ -69,7 +69,7 @@ parse_args() {
 parse_args "$@"
 require_command helm
 
-for chart in rest catalog agent knowledge global-properties infra; do
+for chart in rest catalog agent knowledge global-properties mongodb postgres localstack qdrant; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     release_name=$(chart_release_name "$chart")
@@ -81,7 +81,7 @@ echo "Removed selected releases from namespace $NAMESPACE"
 
 # Explicitly remove localstack resources that may persist outside of Helm tracking
 # shellcheck disable=SC2086
-if chart_selected "infra" $REQUESTED_CHARTS; then
+if chart_selected "localstack" $REQUESTED_CHARTS; then
   require_command kubectl
   kubectl delete all -l app.kubernetes.io/name=localstack --namespace "$NAMESPACE" --ignore-not-found >/dev/null
   echo "Removed localstack resources from namespace $NAMESPACE"

@@ -1,9 +1,6 @@
 package com.agentengine.agent.infra.tools;
 
-import com.agentengine.agent.infra.utils.Notification;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.agent.infra.utils.ToolUtils;
+import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -113,8 +110,8 @@ public abstract class Tool extends BaseTool {
         }
         if (result instanceof ToolOutput.Knowledge knowledge) {
             final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-            runState.addNotification(new Notification(
-                    Notification.KEY_INDEXED_KNOWLEDGE,
+            runState.addReminder(new Reminder(
+                    Reminder.GROUP_INDEXED_KNOWLEDGE,
                     knowledge.getKnowledgeId(),
                     "knowledgeId='" + knowledge.getKnowledgeId() + "' (tool: " + name() + ") — "
                             + knowledge.getHint()));

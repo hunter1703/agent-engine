@@ -1,0 +1,11 @@
+# Local Docker Desktop development overlay.
+requireExistingSecret: false
+
+auth:
+  username: agentengine
+  password: agentengine
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClassName: "hostpath"

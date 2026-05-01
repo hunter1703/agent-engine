@@ -67,7 +67,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
                     "Waiting for child agent run to complete.", Map.of("child_session_id", childSessionId));
             return null;
         }
-        RunUtils.getOrInitState(toolContext.invocationContext()).removeNotification(childSessionId);
+        RunUtils.getOrInitState(toolContext.invocationContext()).removeReminder(childSessionId);
         return buildCompletedResponseMap(childSessionId, result);
     }
 

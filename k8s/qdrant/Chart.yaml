@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agent-engine-qdrant
+description: Qdrant vector database for Agent Engine
+type: application
+version: 0.1.0
+appVersion: "v1.13.6"

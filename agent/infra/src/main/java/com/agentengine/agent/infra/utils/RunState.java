@@ -28,7 +28,7 @@ public final class RunState extends BaseAgentState {
     private int offTopicRetries;
     private int turnsUsed;
     private final List<Violation> violations = new ArrayList<>();
-    private final List<Notification> notifications = new ArrayList<>();
+    private final List<Reminder> reminders = new ArrayList<>();
 
     public RunState() {}
 
@@ -130,19 +130,19 @@ public final class RunState extends BaseAgentState {
         violations.clear();
     }
 
-    public List<Notification> notifications() {
-        return List.copyOf(notifications);
+    public List<Reminder> reminders() {
+        return List.copyOf(reminders);
     }
 
-    public void addNotification(final Notification notification) {
-        if (notification == null) {
+    public void addReminder(final Reminder reminder) {
+        if (reminder == null) {
             return;
         }
-        notifications.add(notification);
+        reminders.add(reminder);
     }
 
-    public void removeNotification(final String id) {
-        notifications.removeIf(notification -> Objects.equals(id, notification.id()));
+    public void removeReminder(final String id) {
+        reminders.removeIf(reminder -> Objects.equals(id, reminder.id()));
     }
 
     public int incrementOffTopicRetries() {

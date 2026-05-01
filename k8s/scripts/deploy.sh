@@ -79,12 +79,14 @@ Usage:
   ./k8s/scripts/deploy.sh -e prod
 
 Stages (run concurrently where dependencies allow):
-  build + infra deploy  Run in parallel from the start.
-  seed infra            Starts once infra is deployed.
-  core + rest + knowledge deploy    Start once build and infra seeding are done.
-  agent deploy          Starts once catalog is ready (actor recovery needs catalog).
-  seed catalog          Starts once core and rest are both ready.
-  port-forward          Starts once catalog is seeded (local only).
+  build + infra services   All start at T=0 in parallel.
+  init postgres schema     Starts once postgres is ready.
+  seed infra configs       Starts once mongodb is ready.
+  global-properties        Starts at T=0 (static ConfigMap, no deps).
+  catalog + rest           Start once build and global-properties are done.
+  knowledge                Starts once build and global-properties are done.
+  agent                    Starts once catalog is ready.
+  seed application configs Starts once mongodb, catalog, and rest are ready.
 
 Flags:
   --no-atomic       Disable atomic rollback on Helm failure.
@@ -192,15 +194,24 @@ job_build() {
   touch "$STATE_DIR/builds-done"
 }
 
-job_infra() {
-  if [ "$SKIP_INFRA" = "true" ]; then
-    touch "$STATE_DIR/infra-deployed"
+# Declare infra services: "chart:comma-separated-wait-flags:ready-flag"
+# To add a new infra service, append one line here. No other changes required.
+INFRA_SERVICES="
+mongodb::mongodb-ready
+postgres::postgres-ready
+localstack::localstack-ready
+qdrant::qdrant-ready
+"
+
+# Deploys a single infra chart, skipping when --skip-infra is set.
+# Accepts optional deps so infra services can depend on each other.
+job_infra_svc() {
+  chart=$1 deps=$2 ready_flag=$3
+  if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/$ready_flag"
     return 0
   fi
-  print_phase "Deploying infrastructure workloads"
-  # shellcheck disable=SC2046
-  sh "$SCRIPT_DIR/deploy-infra.sh" $(helm_flags) || fail
-  touch "$STATE_DIR/infra-deployed"
+  deploy_service "$chart" "$deps" "$ready_flag"
 }
 
 job_seed_infra() {
@@ -208,10 +219,21 @@ job_seed_infra() {
     touch "$STATE_DIR/infra-seeded"
     return 0
   fi
-  wait_for infra-deployed
+  wait_for mongodb-ready
   print_phase "Seeding infrastructure configuration"
   sh "$SCRIPT_DIR/seed-infra-configs.sh" -e "$ENVIRONMENT" -n "$NAMESPACE" || fail
   touch "$STATE_DIR/infra-seeded"
+}
+
+job_init_postgres() {
+  if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
+    touch "$STATE_DIR/postgres-schema-ready"
+    return 0
+  fi
+  wait_for postgres-ready
+  print_phase "Initializing PostgreSQL schema"
+  sh "$SCRIPT_DIR/init-postgres-schema.sh" -n "$NAMESPACE" || fail
+  touch "$STATE_DIR/postgres-schema-ready"
 }
 
 # Deploys a single chart after waiting for its declared dependencies.
@@ -228,16 +250,16 @@ deploy_service() {
 # Declare app services: "chart:comma-separated-wait-flags:ready-flag"
 # To add a new service, append one line here. No other changes required.
 APP_SERVICES="
-global-properties:infra-seeded:global-properties-ready
-catalog:builds-done,global-properties-ready:catalog-ready
-rest:builds-done,global-properties-ready:rest-ready
-knowledge:builds-done,infra-seeded:knowledge-ready
-agent:catalog-ready:agent-ready
+global-properties::global-properties-ready
+catalog:global-properties-ready,builds-done:catalog-ready
+rest:global-properties-ready,builds-done:rest-ready
+knowledge:global-properties-ready,builds-done:knowledge-ready
+agent:global-properties-ready,catalog-ready,builds-done:agent-ready
 "
 
 # Ready-flags that must all be set before catalog seeding begins.
 # Append a service's ready-flag here if seed-catalog calls through it.
-CATALOG_DEPS="catalog-ready,rest-ready"
+CATALOG_DEPS="mongodb-ready,catalog-ready,rest-ready"
 
 job_seed_catalog() {
   if [ "$DRY_RUN" = "true" ]; then
@@ -262,10 +284,19 @@ pids=""
 job_build &
 pids="$pids $!"
 
-job_infra &
-pids="$pids $!"
+for entry in $INFRA_SERVICES; do
+  [ -n "$entry" ] || continue
+  chart=$(printf '%s' "$entry" | cut -d: -f1)
+  deps=$(printf '%s' "$entry"  | cut -d: -f2)
+  flag=$(printf '%s' "$entry"  | cut -d: -f3)
+  job_infra_svc "$chart" "$deps" "$flag" &
+  pids="$pids $!"
+done
 
 job_seed_infra &
+pids="$pids $!"
+
+job_init_postgres &
 pids="$pids $!"
 
 for entry in $APP_SERVICES; do

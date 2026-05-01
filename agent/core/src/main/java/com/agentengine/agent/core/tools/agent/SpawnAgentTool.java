@@ -4,7 +4,7 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
-import com.agentengine.agent.infra.utils.Notification;
+import com.agentengine.agent.infra.utils.Reminder;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -114,8 +114,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         return switch (result) {
             case StartSessionResult.Accepted ignored -> {
                 final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-                runState.addNotification(new Notification(
-                        Notification.KEY_SPAWNED_AGENTS,
+                runState.addReminder(new Reminder(
+                        Reminder.GROUP_SPAWNED_AGENTS,
                         childSessionId,
                         "agent='" + childAgentId + "' goal='" + goal + "' — running asynchronously, not yet awaited. "
                                 + "Use " + AwaitAgentTool.DESCRIPTOR.name()

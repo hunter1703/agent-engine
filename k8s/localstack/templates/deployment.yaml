@@ -1,12 +1,11 @@
-{{- if .Values.localstack.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: localstack
-  namespace: {{ include "agent-engine-infra.namespace" . }}
+  namespace: {{ include "agent-engine-localstack.namespace" . }}
   labels:
     app.kubernetes.io/name: localstack
-    {{- include "agent-engine-infra.labels" . | nindent 4 }}
+    {{- include "agent-engine-localstack.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -25,13 +24,13 @@ spec:
       {{- end }}
       containers:
         - name: localstack
-          image: "{{ .Values.localstack.image.repository }}:{{ .Values.localstack.image.tag }}"
-          imagePullPolicy: {{ .Values.localstack.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: SERVICES
-              value: {{ .Values.localstack.services | quote }}
+              value: {{ .Values.services | quote }}
             - name: DEFAULT_REGION
-              value: {{ .Values.localstack.region | quote }}
+              value: {{ .Values.region | quote }}
           ports:
             - name: gateway
               containerPort: 4566
@@ -57,5 +56,4 @@ spec:
             failureThreshold: 3
             timeoutSeconds: 3
           resources:
-            {{- toYaml .Values.localstack.resources | nindent 12 }}
-{{- end }}
+            {{- toYaml .Values.resources | nindent 12 }}
