@@ -4,7 +4,7 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.MicroService;
 import java.util.List;
 
-@MicroService("runtime")
+@MicroService("agent")
 public interface SessionHistoryService {
 
     List<SessionEvent> getSessionEvents(String sessionId);

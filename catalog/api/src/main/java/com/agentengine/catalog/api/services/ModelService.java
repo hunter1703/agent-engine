@@ -7,7 +7,7 @@ import com.agentengine.util.ms.MicroService;
 import java.util.Collection;
 import java.util.Map;
 
-@MicroService("agent")
+@MicroService("catalog")
 public interface ModelService {
     PaginatedResult<ModelConfig> findModels(Query query);
 

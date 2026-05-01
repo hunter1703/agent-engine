@@ -14,12 +14,12 @@ POSTGRES_PASSWORD_KEY=${POSTGRES_PASSWORD_KEY:-password}
 POSTGRES_SERVICE_NAME=${POSTGRES_SERVICE_NAME:-postgres}
 POSTGRES_PORT=${POSTGRES_PORT:-5432}
 POSTGRES_DATABASE=${POSTGRES_DATABASE:-agent_engine_events}
-RUNTIME_SEED_NODE_COUNT=${RUNTIME_SEED_NODE_COUNT:-3}
-CORE_SERVICE_NAME=${CORE_SERVICE_NAME:-agent-engine-catalog}
-RUNTIME_SERVICE_NAME=${RUNTIME_SERVICE_NAME:-agent-engine-agent}
-RUNTIME_HEADLESS_SERVICE=${RUNTIME_HEADLESS_SERVICE:-agent-engine-agent-internal}
-RUNTIME_STATEFULSET_NAME=${RUNTIME_STATEFULSET_NAME:-agent-engine-agent}
-RUNTIME_CLUSTER_NAME=${RUNTIME_CLUSTER_NAME:-agent-engine-agent}
+AGENT_SEED_NODE_COUNT=${AGENT_SEED_NODE_COUNT:-3}
+CATALOG_SERVICE_NAME=${CATALOG_SERVICE_NAME:-agent-engine-catalog}
+AGENT_SERVICE_NAME=${AGENT_SERVICE_NAME:-agent-engine-agent}
+AGENT_HEADLESS_SERVICE=${AGENT_HEADLESS_SERVICE:-agent-engine-agent-internal}
+AGENT_STATEFULSET_NAME=${AGENT_STATEFULSET_NAME:-agent-engine-agent}
+AGENT_CLUSTER_NAME=${AGENT_CLUSTER_NAME:-agent-engine-agent}
 PEKKO_SNAPSHOT_THRESHOLD=${PEKKO_SNAPSHOT_THRESHOLD:-100}
 DEFAULT_MODEL_ID=${DEFAULT_MODEL_ID:-}
 TITLE_MODEL_ID=${TITLE_MODEL_ID:-}
@@ -27,6 +27,7 @@ COMPACTION_MODEL_ID=${COMPACTION_MODEL_ID:-}
 EVALUATOR_MODEL_ID=${EVALUATOR_MODEL_ID:-}
 LOCALSTACK_SERVICE_NAME=${LOCALSTACK_SERVICE_NAME:-localstack}
 QDRANT_SERVICE_NAME=${QDRANT_SERVICE_NAME:-qdrant}
+KNOWLEDGE_SERVICE_NAME=${KNOWLEDGE_SERVICE_NAME:-agent-engine-knowledge}
 
 usage() {
   cat <<'EOF'
@@ -106,27 +107,28 @@ json_secret_value() {
   kubectl get secret "$secret_name" --namespace "$NAMESPACE" -o "jsonpath={.data['$secret_key']}" | decode_base64
 }
 
-CORE_GRPC_PORT=$(service_port "$CORE_SERVICE_NAME" grpc 9000)
-RUNTIME_GRPC_PORT=$(service_port "$RUNTIME_SERVICE_NAME" grpc 9000)
-RUNTIME_PEKKO_PORT=$(service_port "$RUNTIME_HEADLESS_SERVICE" pekko 2552)
-RUNTIME_REPLICAS=$(statefulset_replicas "$RUNTIME_STATEFULSET_NAME" 3)
-seed_node_count=$RUNTIME_SEED_NODE_COUNT
-if [ "$seed_node_count" -gt "$RUNTIME_REPLICAS" ]; then
-  seed_node_count=$RUNTIME_REPLICAS
+CATALOG_GRPC_PORT=$(service_port "$CATALOG_SERVICE_NAME" grpc 9000)
+AGENT_GRPC_PORT=$(service_port "$AGENT_SERVICE_NAME" grpc 9000)
+KNOWLEDGE_GRPC_PORT=$(service_port "$KNOWLEDGE_SERVICE_NAME" grpc 9000)
+AGENT_PEKKO_PORT=$(service_port "$AGENT_HEADLESS_SERVICE" pekko 2552)
+AGENT_REPLICAS=$(statefulset_replicas "$AGENT_STATEFULSET_NAME" 3)
+seed_node_count=$AGENT_SEED_NODE_COUNT
+if [ "$seed_node_count" -gt "$AGENT_REPLICAS" ]; then
+  seed_node_count=$AGENT_REPLICAS
 fi
 
-RUNTIME_SEED_NODES_JSON="["
+AGENT_SEED_NODES_JSON="["
 index=0
 while [ "$index" -lt "$seed_node_count" ]; do
-  entry="\"pekko://${RUNTIME_CLUSTER_NAME}@${RUNTIME_STATEFULSET_NAME}-${index}.${RUNTIME_HEADLESS_SERVICE}.${NAMESPACE}.svc.cluster.local:${RUNTIME_PEKKO_PORT}\""
+  entry="\"pekko://${AGENT_CLUSTER_NAME}@${AGENT_STATEFULSET_NAME}-${index}.${AGENT_HEADLESS_SERVICE}.${NAMESPACE}.svc.cluster.local:${AGENT_PEKKO_PORT}\""
   if [ "$index" -gt 0 ]; then
-    RUNTIME_SEED_NODES_JSON="${RUNTIME_SEED_NODES_JSON},${entry}"
+    AGENT_SEED_NODES_JSON="${AGENT_SEED_NODES_JSON},${entry}"
   else
-    RUNTIME_SEED_NODES_JSON="${RUNTIME_SEED_NODES_JSON}${entry}"
+    AGENT_SEED_NODES_JSON="${AGENT_SEED_NODES_JSON}${entry}"
   fi
   index=$((index + 1))
 done
-RUNTIME_SEED_NODES_JSON="${RUNTIME_SEED_NODES_JSON}]"
+AGENT_SEED_NODES_JSON="${AGENT_SEED_NODES_JSON}]"
 
 SQL_JDBC_URL=${SQL_JDBC_URL:-jdbc:postgresql://${POSTGRES_SERVICE_NAME}:${POSTGRES_PORT}/${POSTGRES_DATABASE}}
 SQL_JDBC_USER=$(json_secret_value "$POSTGRES_SECRET_NAME" "$POSTGRES_USERNAME_KEY")
@@ -173,12 +175,13 @@ fs.writeFileSync(process.argv[3], JSON.stringify(merged));
 
 CONFIGS_B64=$(cat "$CONFIGS_JSON" | encode_base64)
 NAMESPACE_B64=$(printf '%s' "$NAMESPACE" | encode_base64)
-CORE_SERVICE_NAME_B64=$(printf '%s' "$CORE_SERVICE_NAME" | encode_base64)
-CORE_GRPC_PORT_B64=$(printf '%s' "$CORE_GRPC_PORT" | encode_base64)
-RUNTIME_SERVICE_NAME_B64=$(printf '%s' "$RUNTIME_SERVICE_NAME" | encode_base64)
-RUNTIME_GRPC_PORT_B64=$(printf '%s' "$RUNTIME_GRPC_PORT" | encode_base64)
-RUNTIME_SEED_NODES_JSON_B64=$(printf '%s' "$RUNTIME_SEED_NODES_JSON" | encode_base64)
-RUNTIME_CLUSTER_NAME_B64=$(printf '%s' "$RUNTIME_CLUSTER_NAME" | encode_base64)
+CATALOG_SERVICE_NAME_B64=$(printf '%s' "$CATALOG_SERVICE_NAME" | encode_base64)
+CATALOG_GRPC_PORT_B64=$(printf '%s' "$CATALOG_GRPC_PORT" | encode_base64)
+AGENT_SERVICE_NAME_B64=$(printf '%s' "$AGENT_SERVICE_NAME" | encode_base64)
+AGENT_GRPC_PORT_B64=$(printf '%s' "$AGENT_GRPC_PORT" | encode_base64)
+AGENT_SEED_NODES_JSON_B64=$(printf '%s' "$AGENT_SEED_NODES_JSON" | encode_base64)
+AGENT_CLUSTER_NAME_B64=$(printf '%s' "$AGENT_CLUSTER_NAME" | encode_base64)
+
 PEKKO_SNAPSHOT_THRESHOLD_B64=$(printf '%s' "$PEKKO_SNAPSHOT_THRESHOLD" | encode_base64)
 SQL_JDBC_URL_B64=$(printf '%s' "$SQL_JDBC_URL" | encode_base64)
 SQL_JDBC_USER_B64=$(printf '%s' "$SQL_JDBC_USER" | encode_base64)
@@ -188,6 +191,8 @@ COMPACTION_MODEL_ID_B64=$(printf '%s' "$COMPACTION_MODEL_ID" | encode_base64)
 EVALUATOR_MODEL_ID_B64=$(printf '%s' "$EVALUATOR_MODEL_ID" | encode_base64)
 LOCALSTACK_SERVICE_NAME_B64=$(printf '%s' "$LOCALSTACK_SERVICE_NAME" | encode_base64)
 QDRANT_SERVICE_NAME_B64=$(printf '%s' "$QDRANT_SERVICE_NAME" | encode_base64)
+KNOWLEDGE_SERVICE_NAME_B64=$(printf '%s' "$KNOWLEDGE_SERVICE_NAME" | encode_base64)
+KNOWLEDGE_GRPC_PORT_B64=$(printf '%s' "$KNOWLEDGE_GRPC_PORT" | encode_base64)
 
 IMPORT_SCRIPT="$TMP_DIR/import.js"
 cat <<EOF > "$IMPORT_SCRIPT"
@@ -198,12 +203,12 @@ function decode(value) {
 const rawConfigs = JSON.parse(decode("${CONFIGS_B64}"));
 const configs = Array.isArray(rawConfigs) ? rawConfigs : Object.values(rawConfigs);
 const namespace = decode("${NAMESPACE_B64}");
-const coreServiceName = decode("${CORE_SERVICE_NAME_B64}");
-const coreGrpcPort = Number(decode("${CORE_GRPC_PORT_B64}"));
-const runtimeServiceName = decode("${RUNTIME_SERVICE_NAME_B64}");
-const runtimeGrpcPort = Number(decode("${RUNTIME_GRPC_PORT_B64}"));
-const runtimeSeedNodes = JSON.parse(decode("${RUNTIME_SEED_NODES_JSON_B64}"));
-const runtimeClusterName = decode("${RUNTIME_CLUSTER_NAME_B64}");
+const catalogServiceName = decode("${CATALOG_SERVICE_NAME_B64}");
+const catalogGrpcPort = Number(decode("${CATALOG_GRPC_PORT_B64}"));
+const agentServiceName = decode("${AGENT_SERVICE_NAME_B64}");
+const agentGrpcPort = Number(decode("${AGENT_GRPC_PORT_B64}"));
+const agentSeedNodes = JSON.parse(decode("${AGENT_SEED_NODES_JSON_B64}"));
+const agentClusterName = decode("${AGENT_CLUSTER_NAME_B64}");
 const pekkoSnapshotThreshold = Number(decode("${PEKKO_SNAPSHOT_THRESHOLD_B64}"));
 const sqlJdbcUrl = decode("${SQL_JDBC_URL_B64}");
 const sqlJdbcUser = decode("${SQL_JDBC_USER_B64}");
@@ -213,6 +218,8 @@ const compactionModelId = decode("${COMPACTION_MODEL_ID_B64}");
 const evaluatorModelId = decode("${EVALUATOR_MODEL_ID_B64}");
 const localstackServiceName = decode("${LOCALSTACK_SERVICE_NAME_B64}");
 const qdrantServiceName = decode("${QDRANT_SERVICE_NAME_B64}");
+const knowledgeServiceName = decode("${KNOWLEDGE_SERVICE_NAME_B64}");
+const knowledgeGrpcPort = Number(decode("${KNOWLEDGE_GRPC_PORT_B64}"));
 
 function applyDeploymentOverrides(config) {
   const next = { ...config };
@@ -225,8 +232,8 @@ function applyDeploymentOverrides(config) {
   }
 
   if (next.type === "PEKKO") {
-    next.seedNodes = runtimeSeedNodes;
-    next.clusterName = runtimeClusterName || next.clusterName;
+    next.seedNodes = agentSeedNodes;
+    next.clusterName = agentClusterName || next.clusterName;
     next.snapshotThreshold = pekkoSnapshotThreshold;
     return next;
   }
@@ -248,15 +255,21 @@ function applyDeploymentOverrides(config) {
     return next;
   }
 
-  if (next.type === "microservice" && next.serverId === "agent") {
-    next.host = \`\${coreServiceName}.\${namespace}.svc.cluster.local\`;
-    next.port = coreGrpcPort;
+  if (next.type === "microservice" && next.serverId === "catalog") {
+    next.host = \`\${catalogServiceName}.\${namespace}.svc.cluster.local\`;
+    next.port = catalogGrpcPort;
     return next;
   }
 
-  if (next.type === "microservice" && next.serverId === "runtime") {
-    next.host = \`\${runtimeServiceName}.\${namespace}.svc.cluster.local\`;
-    next.port = runtimeGrpcPort;
+  if (next.type === "microservice" && next.serverId === "agent") {
+    next.host = \`\${agentServiceName}.\${namespace}.svc.cluster.local\`;
+    next.port = agentGrpcPort;
+    return next;
+  }
+
+  if (next.type === "microservice" && next.serverId === "knowledge") {
+    next.host = \`\${knowledgeServiceName}.\${namespace}.svc.cluster.local\`;
+    next.port = knowledgeGrpcPort;
     return next;
   }
 

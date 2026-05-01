@@ -8,7 +8,7 @@ import com.agentengine.util.ms.MicroService;
 import java.util.Collection;
 import java.util.Map;
 
-@MicroService("agent")
+@MicroService("catalog")
 public interface SessionService {
     AgentSession getSession(String id);
 

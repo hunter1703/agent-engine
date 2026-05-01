@@ -1,18 +1,26 @@
 [
   {
+    "id": "MICROSERVICE:catalog",
+    "type": "microservice",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
+    "serverId": "catalog",
+    "host": "agent-engine-catalog.agent-engine.svc.cluster.local",
+    "port": 9000
+  },
+  {
     "id": "MICROSERVICE:agent",
     "type": "microservice",
     "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "agent",
-    "host": "agent-engine-core.agent-engine.svc.cluster.local",
+    "host": "agent-engine-agent.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
-    "id": "MICROSERVICE:runtime",
+    "id": "MICROSERVICE:knowledge",
     "type": "microservice",
     "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
-    "serverId": "runtime",
-    "host": "agent-engine-runtime.agent-engine.svc.cluster.local",
+    "serverId": "knowledge",
+    "host": "agent-engine-knowledge.agent-engine.svc.cluster.local",
     "port": 9000
   }
 ]

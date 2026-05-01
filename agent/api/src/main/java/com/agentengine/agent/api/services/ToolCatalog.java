@@ -4,7 +4,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.ms.MicroService;
 import java.util.List;
 
-@MicroService("runtime")
+@MicroService("agent")
 public interface ToolCatalog {
     List<ToolDescriptor> getTools();
 

@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.MicroService;
 import org.reactivestreams.Publisher;
 
-@MicroService("runtime")
+@MicroService("agent")
 public interface RuntimeService {
 
     /**
