@@ -197,29 +197,50 @@ secret to generate the SQL JDBC URL/user/password values that are written into M
 
 ## `deploy.sh` Changes
 
+### `INFRA_SERVICES` table
+
+Infra services are declared as data, mirroring `APP_SERVICES`. The same format applies:
+`chart:comma-separated-deps:ready-flag`. Adding a new infra service is one new line here.
+
+```sh
+# Format: "chart:comma-separated-wait-flags:ready-flag"
+# To add a new infra service, append one line here. No other changes required.
+INFRA_SERVICES="
+mongodb::mongodb-ready
+postgres::postgres-ready
+localstack::localstack-ready
+qdrant::qdrant-ready
+"
+```
+
 ### Infra service helper
 
-Infra services are not app services — they use public images, have no build step, and must
-respect `--skip-infra`. A thin wrapper handles both concerns:
+`job_infra_svc` wraps `deploy_service` with `--skip-infra` awareness. It accepts `deps` as a
+parameter so infra services can declare dependencies on each other if needed.
 
 ```sh
 job_infra_svc() {
-  chart=$1 ready_flag=$2
+  chart=$1 deps=$2 ready_flag=$3
   if [ "$SKIP_INFRA" = "true" ] || [ "$DRY_RUN" = "true" ]; then
     touch "$STATE_DIR/$ready_flag"
     return 0
   fi
-  deploy_service "$chart" "" "$ready_flag"
+  deploy_service "$chart" "$deps" "$ready_flag"
 }
 ```
 
-Launched at T=0:
+The main orchestrator launches all infra services in a loop — identical in structure to the
+`APP_SERVICES` loop:
 
 ```sh
-job_infra_svc mongodb   mongodb-ready   &
-job_infra_svc postgres  postgres-ready  &
-job_infra_svc localstack localstack-ready &
-job_infra_svc qdrant    qdrant-ready    &
+for entry in $INFRA_SERVICES; do
+  [ -n "$entry" ] || continue
+  chart=$(printf '%s' "$entry" | cut -d: -f1)
+  deps=$(printf '%s' "$entry"  | cut -d: -f2)
+  flag=$(printf '%s' "$entry"  | cut -d: -f3)
+  job_infra_svc "$chart" "$deps" "$flag" &
+  pids="$pids $!"
+done
 ```
 
 ### Postgres schema job
