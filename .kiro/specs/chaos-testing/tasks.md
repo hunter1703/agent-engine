@@ -2,460 +2,527 @@
 
 ## Overview
 
-This plan implements chaos engineering capabilities for the agent-engine platform, enabling controlled fault injection to validate resilience across the distributed Java 25/Quarkus runtime. The implementation follows the existing module architecture with a new `chaos/` module containing API contracts and core implementations.
+This plan implements chaos engineering capabilities for agent-engine, answering: **Is the system
+fault-tolerant, fault-recoverable, and does it protect user experience under failure?**
+
+The implementation uses Chaos Mesh for infrastructure-level faults, Toxiproxy and WireMock for
+dependency-level faults (databases, LLM providers, connectors), and custom Java code for
+Pekko actor-level faults and application-level consistency validation.
+
+**Key ordering principle**: Metrics collection and success criteria evaluation (Tasks 4–5) are
+implemented before any fault injectors. This means every injector can be validated end-to-end
+immediately after it is built, rather than accumulating untestable code.
 
 ## Tasks
 
-- [ ] 1. Set up chaos module structure and core data models
+- [ ] 1. Set up chaos module structure, register in settings.gradle, and define core enums
+  - Add `include 'chaos:api'`, `include 'chaos:core'`, `include 'chaos'` to `settings.gradle`
   - Create `chaos/api/` and `chaos/core/` module directories with Gradle build files
-  - Define `FaultType` enum with all fault types (POD_KILL, NETWORK_PARTITION, NETWORK_LATENCY, NETWORK_PACKET_LOSS, CPU_STRESS, MEMORY_STRESS, DISK_STRESS, DATABASE_FAILURE, MESSAGE_DELAY, MESSAGE_DROP)
-  - Define `BlastRadiusScope` enum (SINGLE_POD, SERVICE, NAMESPACE, CLUSTER)
-  - Define `ExperimentStatus` enum (SCHEDULED, RUNNING, PASSED, FAILED, ABORTED)
-  - Define `CriterionType` enum for success criteria types
-  - All enums must include UNKNOWN and valueOfOrDefault parser per project conventions
-  - _Requirements: 1.3, 1.4, 14.1_
+  - Define `FaultType` enum with all fault types: POD_KILL, NETWORK_PARTITION, NETWORK_LATENCY,
+    NETWORK_PACKET_LOSS, CLUSTER_PARTITION, CPU_STRESS, MEMORY_STRESS, DISK_STRESS,
+    DATABASE_FAILURE, EVENT_JOURNAL_FAILURE, SNAPSHOT_STORE_FAILURE, LLM_PROVIDER_UNAVAILABLE,
+    LLM_PROVIDER_LATENCY, CONNECTOR_FAILURE, MESSAGE_DELAY, MESSAGE_DROP
+  - Define `BlastRadiusScope` enum: SINGLE_POD, SERVICE, NAMESPACE, CLUSTER
+  - Define `ExperimentStatus` enum: SCHEDULED, RUNNING, PASSED, FAILED, ABORTED
+  - Define `CriterionType` enum: MAX_ERROR_RATE, MAX_LATENCY_P99, MIN_SUCCESS_RATE,
+    MAX_RECOVERY_TIME, ZERO_DATA_LOSS
+  - All enums must include `UNKNOWN` and `valueOfOrDefault` per project conventions
+  - _Requirements: 1.3, 1.4_
 
 - [ ] 2. Implement experiment definition and configuration models
-  - [ ] 2.1 Create ExperimentDefinition record in chaos/api
-    - Include name, description, target, faultType, parameters, duration, blastRadius, successCriteria, observationWindow, recoveryWindow, schedule, labels
-    - _Requirements: 1.1, 1.2, 1.5_
-  
-  - [ ] 2.2 Create TargetSelector record
-    - Include namespace, service, podLabels, actorPath fields
-    - _Requirements: 1.2, 3.2_
-  
-  - [ ] 2.3 Create FaultParameters record
-    - Include fields for network faults (latency, packetLossPercentage, blockedServices)
-    - Include fields for resource faults (cpuPercentage, memoryLimit, diskIORate)
-    - Include fields for message faults (messageDelay, messageDropPercentage)
-    - _Requirements: 4.2, 4.3, 5.1, 5.2, 7.1, 7.2_
-  
-  - [ ] 2.4 Create BlastRadius record
-    - Include scope, maxPods, maxPercentage fields
-    - _Requirements: 1.4, 14.2, 14.3_
-  
-  - [ ] 2.5 Create SuccessCriterion record
-    - Include type, threshold, description fields
+  - [ ] 2.1 Implement `FaultParameters` sealed interface hierarchy in `chaos/api`
+    - Sealed interface with subtypes: `PodKillParameters`, `NetworkLatencyParameters`,
+      `NetworkPartitionParameters`, `PacketLossParameters`, `CpuStressParameters`,
+      `MemoryStressParameters`, `DiskStressParameters`, `DatabaseFailureParameters`,
+      `LlmProviderLatencyParameters`, `MessageDelayParameters`, `MessageDropParameters`
+    - Each subtype is a record with only the fields relevant to that fault type
+    - Register a Jackson polymorphic deserializer using `"parametersType"` discriminator field
+    - _Requirements: 1.3_
+
+  - [ ] 2.2 Create `TargetSelector` record
+    - Fields: namespace, service, podLabels, entityId (`Optional<String>` for Pekko actor faults)
+    - _Requirements: 1.2, 7.1_
+
+  - [ ] 2.3 Create `BlastRadius` record
+    - Fields: scope (`BlastRadiusScope`), maxPods, maxPercentage
+    - _Requirements: 14.2, 14.3_
+
+  - [ ] 2.4 Create `SuccessCriterion` record
+    - Fields: type (`CriterionType`), threshold, description
     - _Requirements: 9.2_
+
+  - [ ] 2.5 Create `ExperimentDefinition` record
+    - Fields: name, description, target, faultType, parameters (`FaultParameters`), duration,
+      blastRadius, successCriteria, observationWindow, recoveryWindow,
+      schedule (`Optional<String>`), labels, dryRun, approved
+    - _Requirements: 1.1, 1.2, 1.5, 18.4_
 
 - [ ] 3. Implement metrics and results models
-  - [ ] 3.1 Create SteadyStateMetrics record
-    - Include successRate, p50/p95/p99 latency, errorRate, activeSessions, eventSourcingLag, mongoLatency, podRestarts, timestamp
+  - [ ] 3.1 Create `SteadyStateMetrics` record
+    - Fields: successRate, p50/p95/p99 latency (`Duration`), errorRate, activeSessions,
+      eventJournalLag (`Duration`), mongoLatency (`Duration`), podRestarts, timestamp
     - _Requirements: 2.2, 8.3_
-  
-  - [ ] 3.2 Create ExperimentResult record
-    - Include experimentId, experimentName, startTime, endTime, status, baseline, duringFaultMetrics, postRecovery, evaluation, faultEvents, recoveryTime, abortReason
-    - _Requirements: 8.6, 9.6, 19.2_
-  
-  - [ ] 3.3 Create EvaluationResult record
-    - Include passed, failures list, baseline, duringFault, postRecovery metrics
+
+  - [ ] 3.2 Create `FaultEvent` record
+    - Fields: faultId, faultType, targetSelector, startTime, endTime, outcome
+    - _Requirements: 3.5, 8.1_
+
+  - [ ] 3.3 Create `EvaluationResult` record
+    - Fields: passed, failures (`List<CriterionFailure>`), baseline, duringFault, postRecovery
     - _Requirements: 9.1, 9.4, 9.5_
 
-- [ ] 4. Implement ChaosService interface and core engine
-  - [ ] 4.1 Create ChaosService interface in chaos/api
-    - Define executeExperiment, scheduleExperiment, emergencyStop, getExperimentHistory methods
-    - All methods return CompletionStage for async execution
-    - _Requirements: 1.1, 13.1, 15.1_
-  
-  - [ ] 4.2 Create ChaosEngine implementation in chaos/core/engine
-    - Implement experiment lifecycle orchestration
-    - Parse and validate experiment definitions from JSON
-    - Coordinate baseline collection, fault injection, monitoring, recovery, evaluation
-    - _Requirements: 1.1, 1.2, 1.6, 8.1, 8.4_
-  
-  - [ ] 4.3 Implement experiment validation logic
-    - Validate required fields (name, target, faultType, duration, successCriteria)
-    - Reject invalid target selectors or unsupported fault types
-    - Validate blast radius constraints before execution
-    - _Requirements: 1.2, 1.6, 14.4, 14.6_
+  - [ ] 3.4 Create `ExperimentResult` record
+    - Fields: experimentId, experimentName, startTime, endTime, status, baseline,
+      duringFaultMetrics, postRecovery, evaluation, faultEvents, recoveryTime,
+      abortReason (`Optional<String>`)
+    - _Requirements: 8.6, 9.6, 19.2_
 
-- [ ] 5. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 6. Implement FaultInjector interface and Kubernetes fault injection
-  - [ ] 6.1 Create FaultInjector interface in chaos/core/injection
-    - Define injectFault, removeFault, supports methods
-    - Return CompletionStage for async fault operations
-    - _Requirements: 3.1, 4.1, 5.1_
-  
-  - [ ] 6.2 Create KubernetesFaultInjector implementation
-    - Integrate Fabric8 Kubernetes Java client
-    - Implement POD_KILL fault (delete pods matching selector)
-    - Respect blast radius limits when selecting pods
-    - Record pod termination events with timestamps
-    - _Requirements: 3.1, 3.2, 3.5_
-  
-  - [ ] 6.3 Implement network fault injection
-    - Implement NETWORK_PARTITION using Kubernetes network policies
-    - Implement NETWORK_LATENCY using sidecar proxy with tc
-    - Implement NETWORK_PACKET_LOSS using sidecar proxy with packet drop rules
-    - Apply and remove network policies cleanly
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6_
-  
-  - [ ] 6.4 Implement resource stress fault injection
-    - Implement CPU_STRESS using stress-ng sidecar
-    - Implement MEMORY_STRESS using stress-ng sidecar
-    - Implement DISK_STRESS using stress-ng sidecar with I/O operations
-    - Deploy and remove sidecar containers with resource limits
-    - _Requirements: 5.1, 5.2, 5.3, 5.4_
-  
-  - [ ]* 6.5 Write integration tests for Kubernetes fault injection
-    - Test pod kill and recovery using Testcontainers with Kind cluster
-    - Test network policy application and removal
-    - Test resource stress sidecar deployment
-    - _Requirements: 3.1, 4.1, 5.1_
-
-- [ ] 7. Implement Pekko actor fault injection
-  - [ ] 7.1 Create PekkoFaultInjector implementation
-    - Implement custom mailbox extending UnboundedMailbox
-    - Intercept enqueue() to apply message delays or drops
-    - Support MESSAGE_DELAY fault with configurable duration
-    - Support MESSAGE_DROP fault with configurable percentage
-    - Register custom mailbox via Pekko configuration
-    - _Requirements: 7.1, 7.2, 7.3, 7.4_
-  
-  - [ ] 7.2 Implement message fault configuration
-    - Create ChaosConfig for mailbox behavior
-    - Implement shouldDropMessage and shouldDelayMessage logic
-    - Schedule delayed message delivery using Pekko scheduler
-    - _Requirements: 7.1, 7.2_
-  
-  - [ ]* 7.3 Write integration tests for Pekko fault injection
-    - Test message delay preserves event ordering
-    - Test message drop triggers supervision strategies
-    - Test event sourcing consistency with message faults
-    - _Requirements: 7.4, 7.5, 7.6_
-
-- [ ] 8. Implement database fault injection
-  - [ ] 8.1 Create DatabaseFaultInjector implementation
-    - Implement DATABASE_FAILURE using Kubernetes network policies to block MongoDB
-    - Support partial database failures for specific collections
-    - Monitor connection pool metrics during fault
-    - _Requirements: 6.1, 6.2_
-  
-  - [ ] 8.2 Implement fault removal and recovery validation
-    - Remove network policies to restore connectivity
-    - Verify reconnection within 30 seconds
-    - _Requirements: 6.5_
-  
-  - [ ]* 8.3 Write integration tests for database fault injection
-    - Test MongoDB connectivity blocking using Testcontainers
-    - Test graceful failure without crashes
-    - Test automatic reconnection after fault removal
-    - _Requirements: 6.3, 6.4, 6.5_
-
-- [ ] 9. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 10. Implement metrics collection and steady state analysis
-  - [ ] 10.1 Create MetricsCollector in chaos/core/metrics
-    - Integrate with Prometheus Java client
-    - Collect request success rate, latency percentiles (p50, p95, p99), error rate
-    - Collect active sessions from runtime service
-    - Collect event sourcing lag from Pekko persistence metrics
-    - Collect MongoDB operation latency
-    - Collect pod restart count from Kubernetes API
+- [ ] 4. Implement metrics collection and steady state analysis
+  - [ ] 4.1 Create `MetricsCollector` in `chaos/core/metrics`
+    - Query Prometheus Java client for: request success rate, latency percentiles (p50/p95/p99),
+      error rate, pod restart count
+    - Query runtime service health endpoint for: active session count
+    - Query Prometheus for pekko-persistence metrics for: event journal lag
+    - Query Prometheus for MongoDB exporter metrics for: MongoDB operation latency
     - _Requirements: 2.2, 8.3_
-  
-  - [ ] 10.2 Implement baseline collection
-    - Collect steady state metrics before experiment starts
-    - Use configurable observation window (default 60 seconds)
-    - Store baseline measurements with experiment metadata
-    - Abort experiment if baseline collection fails
+
+  - [ ] 4.2 Implement baseline collection
+    - Collect metrics over a configurable observation window (default 60s) before fault injection
+    - Abort the experiment and log failure reason if baseline collection fails
     - _Requirements: 2.1, 2.3, 2.4, 2.5_
-  
-  - [ ] 10.3 Implement runtime metrics collection
-    - Collect metrics at configurable intervals during experiment (default 10 seconds)
-    - Collect post-recovery metrics after recovery window
+
+  - [ ] 4.3 Implement runtime metrics polling
+    - Poll metrics at configurable intervals during the experiment (default 10s)
+    - Collect post-recovery snapshot after the recovery window
     - _Requirements: 8.2, 8.6_
-  
-  - [ ] 10.4 Create SteadyStateAnalyzer for deviation detection
-    - Compare post-recovery metrics to baseline
-    - Calculate recovery time from fault removal to steady state
+
+  - [ ] 4.4 Create `SteadyStateAnalyzer`
+    - Calculate Recovery_Time: duration from fault removal to when metrics return within
+      configured deviation thresholds of baseline
+    - Compare post-recovery metrics to baseline for deviation percentage
     - _Requirements: 9.3, 19.3_
 
-- [ ] 11. Implement success criteria evaluation
-  - [ ] 11.1 Create SuccessCriteriaEvaluator in chaos/core/evaluation
-    - Implement MAX_ERROR_RATE criterion evaluation
-    - Implement MAX_LATENCY_P99 criterion evaluation
-    - Implement MIN_SUCCESS_RATE criterion evaluation
-    - Implement MAX_RECOVERY_TIME criterion evaluation
-    - Implement ZERO_DATA_LOSS criterion evaluation
-    - _Requirements: 9.2_
-  
-  - [ ] 11.2 Implement evaluation logic
-    - Compare collected metrics against configured thresholds
-    - Mark experiment as PASSED if all criteria pass
-    - Mark experiment as FAILED if any criterion fails
-    - Record which criteria failed with details
-    - _Requirements: 9.1, 9.4, 9.5_
-  
-  - [ ] 11.3 Generate experiment reports
-    - Include baseline, during-fault, and post-recovery metrics
-    - Include success criteria results
-    - Include metric timeseries and pod events
-    - _Requirements: 9.6, 19.2_
+  - [ ]* 4.5 Write unit tests for MetricsCollector and SteadyStateAnalyzer
+    - Test recovery time calculation with synthetic metric timeseries
+    - Test deviation percentage calculation
+    - _Requirements: 2.2, 19.3_
 
-- [ ] 12. Implement session recovery and event sourcing validation
-  - [ ] 12.1 Create session recovery validator
-    - Track session events written to MongoDB during faults
-    - Verify event sequence numbers are monotonically increasing
-    - Verify no gaps in event sequences
-    - Compare pre-failure and post-recovery session state
-    - _Requirements: 10.4, 11.2, 11.3_
-  
-  - [ ] 12.2 Implement event replay validation
-    - Verify all events can be replayed to reconstruct session state
-    - Validate idempotence property (replay produces identical state)
-    - Mark experiment as FAILED if inconsistencies detected
-    - _Requirements: 11.3, 11.5, 11.6_
-  
-  - [ ] 12.3 Implement round-trip consistency check
-    - Validate no committed events are lost during recovery
-    - Verify session resumes from last committed event
-    - _Requirements: 10.5, 10.3_
+- [ ] 5. Implement success criteria evaluation and experiment reporting
+  - [ ] 5.1 Create `SuccessCriteriaEvaluator` in `chaos/core/evaluation`
+    - Implement `MAX_ERROR_RATE`: post-recovery errorRate ≤ threshold
+    - Implement `MAX_LATENCY_P99`: post-recovery p99Latency ≤ Duration.ofMillis(threshold)
+    - Implement `MIN_SUCCESS_RATE`: post-recovery successRate ≥ threshold
+    - Implement `MAX_RECOVERY_TIME`: recoveryTime ≤ Duration.ofSeconds(threshold)
+    - Implement `ZERO_DATA_LOSS`: delegate to `EventJournalValidator` sequence-gap check
+    - Mark experiment PASSED only when all criteria pass; record per-criterion failures
+    - _Requirements: 9.1, 9.2, 9.4, 9.5_
 
-- [ ] 13. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+  - [ ] 5.2 Create `ExperimentReportGenerator` in `chaos/core/reporting`
+    - Produce an `ExperimentReport` containing all `SteadyStateMetrics` snapshots, fault events,
+      success criteria results, and recovery time
+    - Support export as: JSON (default), Markdown, HTML
+    - _Requirements: 9.6, 19.1, 19.2, 19.4_
 
-- [ ] 14. Implement experiment scheduling and automation
-  - [ ] 14.1 Create ExperimentScheduler in chaos/core/engine
-    - Parse cron schedule expressions
-    - Support interval-based scheduling (every N minutes/hours)
-    - Support one-time execution
-    - Execute experiments at scheduled times
-    - _Requirements: 1.5, 13.1, 13.2_
-  
-  - [ ] 14.2 Implement scheduling safety mechanisms
-    - Prevent overlapping experiment executions on same target
-    - Maintain experiment execution history
-    - Support pausing and resuming scheduled experiments
-    - _Requirements: 13.3, 13.5, 13.6_
-  
-  - [ ] 14.3 Implement failure notifications
-    - Send notifications to Slack webhook on experiment failure
-    - Send email notifications to configured recipients
-    - Support webhook notifications for custom integrations
-    - _Requirements: 13.4_
+  - [ ]* 5.3 Write unit tests for SuccessCriteriaEvaluator
+    - Test each criterion type with passing and failing metric values
+    - Test that a single criterion failure marks the experiment FAILED
+    - _Requirements: 9.4, 9.5_
 
-- [ ] 15. Implement blast radius control and safety mechanisms
-  - [ ] 15.1 Create BlastRadiusEnforcer
-    - Calculate affected pods before fault injection
-    - Enforce maximum percentage of pods per scope
-    - Validate SINGLE_POD affects exactly one pod
-    - Validate SERVICE affects only specified service pods
-    - _Requirements: 14.2, 14.3, 14.4_
-  
-  - [ ] 15.2 Implement production safety checks
-    - Enforce stricter blast radius limits for production namespaces
-    - Require explicit approval flags for production experiments
-    - Validate allowed namespaces per environment
-    - Abort experiment if blast radius would be exceeded
-    - _Requirements: 14.5, 14.6_
-  
-  - [ ] 15.3 Implement emergency stop mechanism
-    - Create API endpoint POST /chaos/experiments/{id}/stop
-    - Support emergency stop via Kubernetes annotation
-    - Immediately remove all active faults on emergency stop
-    - Mark experiment as ABORTED when stopped early
-    - Restore target components within 30 seconds
-    - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5_
-  
-  - [ ] 15.4 Implement emergency stop failure handling
-    - Escalate to manual intervention if fault removal fails
-    - Send high-priority alerts (log critical events)
-    - Provide remediation steps in logs
-    - _Requirements: 15.6_
+- [ ] 6. Checkpoint — ensure all tests pass
+  - Verify unit tests for enums, models, metrics, and success criteria pass
+  - Ask the user if questions arise
 
-- [ ] 16. Implement observability integration
-  - [ ] 16.1 Implement Kubernetes event emission
-    - Emit events for experiment start, fault injection, fault removal, completion
-    - Include experiment metadata in events
-    - Annotate target pods with experiment labels
+- [ ] 7. Implement ChaosService interface and ChaosEngine orchestration
+  - [ ] 7.1 Create `ChaosService` interface in `chaos/api`
+    - Methods: `executeExperiment`, `scheduleExperiment`, `emergencyStop`,
+      `getExperimentHistory` — all returning `CompletionStage`
+    - _Requirements: 1.1, 13.1, 15.1_
+
+  - [ ] 7.2 Implement experiment validation
+    - Validate all required fields, reject unsupported fault types
+    - Enforce production safety checks (approvalFlag required when env is production)
+    - Support dry-run mode: validate + resolve targets + preview baseline without injecting
+    - _Requirements: 1.2, 1.6, 18.4, 18.5_
+
+  - [ ] 7.3 Implement `BlastRadiusEnforcer`
+    - Pre-flight: resolve pod selectors via Kubernetes API, count matching pods
+    - Enforce maxPercentage and maxPods limits; abort with a structured error if exceeded
+    - Validate SINGLE_POD affects exactly one pod; SERVICE affects only specified service pods
+    - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.6_
+
+  - [ ] 7.4 Create `ChaosEngine` implementation in `chaos/core/engine`
+    - Orchestrate full experiment lifecycle:
+      1. validate + blast-radius check
+      2. collect baseline (Task 4.2)
+      3. inject fault via `FaultInjector`
+      4. poll metrics until duration expires (Task 4.3)
+      5. remove fault
+      6. wait recovery window
+      7. collect post-recovery snapshot
+      8. evaluate success criteria (Task 5.1)
+      9. generate report (Task 5.2)
+    - Manage `RUNNING` / `ABORTED` / `PASSED` / `FAILED` transitions
+    - _Requirements: 1.1, 8.1, 8.4, 8.5, 8.6_
+
+  - [ ]* 7.5 Write unit tests for ChaosEngine with mocked injectors
+    - Test lifecycle transitions (start → inject → remove → evaluate)
+    - Test abort on blast radius violation
+    - Test abort on baseline collection failure
+    - _Requirements: 1.6, 2.5, 14.6_
+
+- [ ] 8. Implement ChaosMeshFaultInjector
+  - [ ] 8.1 Create `ChaosMeshFaultInjector` implementing `FaultInjector`
+    - Add Fabric8 Kubernetes client as dependency of `chaos:core`
+    - Use `GenericKubernetesResource` API to create and delete Chaos Mesh CRs
+    - Support SINGLE_POD and SERVICE blast radius when constructing CRD selectors
+    - _Requirements: 3.1, 4.1, 5.1_
+
+  - [ ] 8.2 Implement POD_KILL fault (`PodChaos` CR with action `pod-kill`)
+    - Respect `BlastRadius.maxPods` by setting Chaos Mesh `mode: fixed` with count
+    - Record pod termination events with timestamps
+    - _Requirements: 3.1, 3.2, 3.5_
+
+  - [ ] 8.3 Implement NETWORK_PARTITION, NETWORK_LATENCY, NETWORK_PACKET_LOSS faults
+    - All map to `NetworkChaos` CR; differ only in `action` and spec fields
+    - NETWORK_PARTITION: action `partition`, direction `both`, target service
+    - NETWORK_LATENCY: action `delay`, latency from `NetworkLatencyParameters`
+    - NETWORK_PACKET_LOSS: action `loss`, percent from `PacketLossParameters`
+    - _Requirements: 4.1, 4.2, 4.3_
+
+  - [ ] 8.4 Implement CLUSTER_PARTITION fault
+    - `NetworkChaos` CR targeting Pekko Artery TCP port (2552) between pod groups
+    - Validate recovery by confirming cluster membership is restored after fault removal
+    - _Requirements: 22.1_
+
+  - [ ] 8.5 Implement CPU_STRESS, MEMORY_STRESS faults (`StressChaos` CR)
+    - CPU_STRESS: `stressors.cpu.workers` and `load` from `CpuStressParameters`
+    - MEMORY_STRESS: `stressors.memory.size` from `MemoryStressParameters`
+    - _Requirements: 5.1, 5.2_
+
+  - [ ] 8.6 Implement DISK_STRESS fault (`IOChaos` CR with action `mixed`)
+    - Configure from `DiskStressParameters.diskIORate`
+    - _Requirements: 5.3_
+
+  - [ ] 8.7 Implement fault removal
+    - Delete the Chaos Mesh CR by name; handle 404 gracefully (already removed)
+    - _Requirements: 8.4, 15.1, 15.4_
+
+  - [ ]* 8.8 Write integration tests for ChaosMeshFaultInjector using Fabric8 mock server
+    - Verify correct CR structure for each fault type (POD_KILL, NETWORK_LATENCY, STRESS)
+    - Verify fault removal deletes the CR by name
+    - Verify blast radius is enforced in the CR spec
+    - _Requirements: 3.1, 4.1, 5.1_
+
+- [ ] 9. Implement PekkoFaultInjector (BehaviorInterceptor)
+  - [ ] 9.1 Create `ChaosMailboxConfig` record
+    - Fields: dropPercentage (`double`), delayDuration (`Optional<Duration>`),
+      delayPercentage (`double`), active (`boolean`)
+    - Implement `shouldDrop(SessionCommand)` and `shouldDelay(SessionCommand)` with
+      thread-safe random sampling
+    - _Requirements: 7.1, 7.2_
+
+  - [ ] 9.2 Create `MessageFaultInterceptor extends BehaviorInterceptor<SessionCommand, SessionCommand>`
+    - Override `aroundReceive`: drop (return `Behaviors.same()`), delay (re-schedule via
+      `ctx.asClassic().system().scheduler().scheduleOnce()`), or pass through
+    - Override `aroundSignal`: always pass through — never intercept lifecycle signals
+    - _Requirements: 7.1, 7.2, 7.3_
+
+  - [ ] 9.3 Create `PekkoFaultInjector` implementing `FaultInjector`
+    - Maintain a thread-safe registry (`ConcurrentHashMap<String, ChaosMailboxConfig>`) keyed
+      by entity ID (or `"*"` for all sessions)
+    - `injectFault`: insert config into registry; return entity ID as faultId
+    - `removeFault`: remove or deactivate config from registry
+    - Integrate with `SessionActorFactory`: if registry contains a config for the entity ID,
+      wrap the behavior with `Behaviors.intercept(() -> new MessageFaultInterceptor(config), inner)`
+    - _Requirements: 7.1, 7.2_
+
+  - [ ] 9.4 Write integration tests using Pekko `ActorTestKit`
+    - Use in-memory journal (`pekko.persistence.journal.plugin = "pekko.persistence.journal.inmem"`)
+    - Test MESSAGE_DELAY: send N commands, verify all are processed in order after delay
+    - Test MESSAGE_DROP: verify dropped commands trigger supervision recovery
+    - Test event sourcing consistency: sequence numbers are gap-free after delays/drops
+    - _Requirements: 7.3, 7.4, 7.5_
+
+- [ ] 10. Implement DatabaseFaultInjector and LlmProviderFaultInjector
+  - [ ] 10.1 Create `DatabaseFaultInjector` implementing `FaultInjector`
+    - Manage Toxiproxy client (`eu.rekawek.toxiproxy:toxiproxy-java`) targeting named proxies:
+      `postgresql` (covers Event_Journal and Snapshot_Store), `mongodb`
+    - DATABASE_FAILURE: add `timeout` toxic with timeout=0 (connection hang)
+    - EVENT_JOURNAL_FAILURE: add `timeout` toxic on `postgresql` proxy upstream
+    - SNAPSHOT_STORE_FAILURE: add `latency` toxic on `postgresql` proxy (high latency, not full block)
+    - Return toxic name as faultId; removal deletes the toxic by name
+    - In integration tests use `ToxiproxyContainer` from Testcontainers
+    - _Requirements: 6.1, 6.2, 23.1, 24.1_
+
+  - [ ] 10.2 Implement recovery validation for database faults
+    - After fault removal, verify reconnection within 30 seconds by polling health endpoint
+    - _Requirements: 6.5, 23.4_
+
+  - [ ] 10.3 Create `LlmProviderFaultInjector` implementing `FaultInjector`
+    - LLM_PROVIDER_UNAVAILABLE: configure WireMock stub returning HTTP 503 for the LLM endpoint
+    - LLM_PROVIDER_LATENCY: configure WireMock stub with fixed delay from `LlmProviderLatencyParameters`
+    - CONNECTOR_FAILURE: configure WireMock stub returning HTTP 500 or connection reset for the
+      target connector endpoint URL
+    - Return stub mapping ID as faultId; removal deletes the stub
+    - In staging: manage a Toxiproxy proxy entry for the LLM provider and connector base URLs
+    - _Requirements: 21.1, 21.2, 25.1_
+
+  - [ ]* 10.4 Write integration tests for database and LLM fault injection
+    - EVENT_JOURNAL_FAILURE: SessionActor rejects new commands; recovers after toxic removed
+    - SNAPSHOT_STORE_FAILURE: actor continues with in-memory state; snapshot writes fail quietly
+    - LLM_PROVIDER_UNAVAILABLE: session transitions to error state without losing committed events
+    - CONNECTOR_FAILURE: tool error returned to agent, session state intact
+    - _Requirements: 23.2, 23.3, 24.2, 24.3, 21.3, 21.4, 25.2, 25.3_
+
+- [ ] 11. Checkpoint — ensure all tests pass
+  - Verify injector unit and integration tests pass
+  - Ask the user if questions arise
+
+- [ ] 12. Implement session recovery and event journal consistency validation
+  - [ ] 12.1 Create `SessionConsistencyValidator` in `chaos/core/validation`
+    - Before fault injection: snapshot pre-fault state (active session IDs, last event
+      sequence numbers, session statuses) via runtime service admin endpoint
+    - After recovery: re-snapshot and compare; report any missing sessions or sequence regressions
+    - _Requirements: 10.4, 10.5, 10.6_
+
+  - [ ] 12.2 Create `EventJournalValidator`
+    - Query the PostgreSQL Event_Journal directly (read-only JDBC query on `event_journal` table)
+    - Verify per-persistence-ID sequence numbers are monotonically increasing with no gaps
+    - Verify snapshot sequence numbers are ≤ the latest journal sequence for each ID
+    - Mark experiment FAILED if gaps or regressions are detected
+    - _Requirements: 11.2, 11.3, 11.5, 11.6_
+
+  - [ ] 12.3 Implement round-trip idempotence check
+    - Replay event stream for a sampled session from sequence 0 using the same
+      `SessionActorState.applyEvent()` logic
+    - Compare replayed state to the live snapshot; fail if they diverge
+    - _Requirements: 11.5_
+
+  - [ ]* 12.4 Write integration tests for validators
+    - Test that a manually introduced sequence gap is detected by `EventJournalValidator`
+    - Test that consistent pre/post state passes `SessionConsistencyValidator`
+    - _Requirements: 10.5, 11.2_
+
+- [ ] 13. Implement graceful degradation validation
+  - [ ] 13.1 Create `DegradationValidator`
+    - During fault injection, compare real-time success rate to baseline
+    - Validate that success rate stays above the configured minimum threshold (default 50%)
+    - Validate that the runtime returns 503/504 rather than hanging indefinitely
+    - _Requirements: 12.1, 12.2, 12.5, 12.6_
+
+  - [ ] 13.2 Validate backpressure behaviour
+    - Under CPU_STRESS and MEMORY_STRESS, confirm the runtime does not OOM-crash and continues
+      returning responses (even degraded ones)
+    - Confirm no unrecoverable state after resource stress is removed
+    - _Requirements: 12.3, 12.4_
+
+- [ ] 14. Implement Pekko cluster split-brain validation (Requirement 22)
+  - [ ] 14.1 Create `ClusterPartitionValidator`
+    - After CLUSTER_PARTITION fault injection: poll Pekko Management HTTP API for cluster
+      membership state; verify unreachable members are detected within the
+      `acceptable-heartbeat-pause` window (15s per config)
+    - Verify the SBR `keep-majority` strategy downs minority partition nodes
+    - _Requirements: 22.2, 22.3_
+
+  - [ ] 14.2 Validate post-partition majority behaviour
+    - Confirm the majority partition continues serving requests after minority is downed
+    - Verify no `Session_Actor` instances are running in an isolated state (check via admin
+      endpoint that session IDs are only reachable from majority shard region)
+    - _Requirements: 22.4, 22.6_
+
+  - [ ] 14.3 Validate cluster rejoin after partition healed
+    - After fault removal: downed nodes are restarted by Kubernetes; verify they rejoin the
+      cluster as fresh members with empty shard state
+    - _Requirements: 22.5_
+
+- [ ] 15. Checkpoint — ensure all tests pass
+  - Verify validation tests pass; ask the user if questions arise
+
+- [ ] 16. Implement experiment scheduling and automation
+  - [ ] 16.1 Create `ExperimentScheduler` in `chaos/core/engine`
+    - Parse cron expressions using `quartz-scheduler` or `java.util.concurrent.ScheduledExecutorService`
+    - Support interval-based scheduling (every N minutes/hours) and one-time execution
+    - Prevent overlapping executions on the same target via a per-target lock
+    - _Requirements: 13.1, 13.2, 13.3_
+
+  - [ ] 16.2 Implement experiment execution history
+    - Persist `ExperimentResult` to MongoDB_Store (`chaos_experiments` collection)
+    - Support retrieval by target selector, time range, and status
+    - _Requirements: 13.5_
+
+  - [ ] 16.3 Implement failure notifications
+    - Send Slack webhook notification on FAILED or ABORTED experiment
+    - Send email via configured SMTP on experiment failure
+    - Support generic webhook for custom integrations
+    - Support pausing and resuming scheduled experiments via a flag in the persisted config
+    - _Requirements: 13.4, 13.6_
+
+- [ ] 17. Implement emergency stop mechanism
+  - [ ] 17.1 Implement `emergencyStop(String experimentId)` on `ChaosEngine`
+    - Immediately call `removeFault` on all active `FaultInjector` instances for the experiment
+    - Mark experiment as ABORTED; record stop reason and triggering user
+    - If fault removal fails: log the manual remediation command and send high-priority alert
+    - _Requirements: 15.1, 15.3, 15.4, 15.5, 15.6_
+
+  - [ ] 17.2 Add automatic stop triggers
+    - Stop automatically if experiment exceeds a configured maximum duration (safety ceiling)
+    - Stop automatically if a critical health check endpoint returns non-200 during the experiment
+    - _Requirements: 15.4_
+
+- [ ] 18. Implement observability integration
+  - [ ] 18.1 Implement Kubernetes event emission
+    - Emit `ChaosExperimentStarted`, `FaultInjected`, `FaultRemoved`, `ChaosExperimentCompleted`
+      events using Fabric8 `CoreV1Api.createNamespacedEvent`
+    - Annotate target pods with experiment labels during fault injection
     - _Requirements: 16.1, 16.2_
-  
-  - [ ] 16.2 Implement Prometheus metrics export
-    - Expose /metrics endpoint with experiment metrics
-    - Track chaos_experiments_total by status
-    - Track chaos_experiments_duration_seconds
-    - Track chaos_experiments_recovery_time_seconds
-    - Track chaos_faults_injected_total and chaos_faults_active
-    - Track chaos_success_criteria_passed/failed_total
+
+  - [ ] 18.2 Implement Prometheus metrics export
+    - Expose `/chaos/metrics` endpoint with `chaos_experiments_total`,
+      `chaos_experiments_recovery_time_seconds`, `chaos_faults_active`, and criterion counters
+    - Use Micrometer (already in Quarkus) for all counters and gauges
     - _Requirements: 16.3_
-  
-  - [ ] 16.3 Implement structured logging
-    - Log experiment lifecycle events with structured fields
-    - Include experiment_id, experiment_name, target_service, fault_type, blast_radius_scope
-    - Log at appropriate levels (INFO for lifecycle, WARN for issues, ERROR for failures)
+
+  - [ ] 18.3 Implement structured logging
+    - Log experiment lifecycle events at INFO with structured fields: experiment_id,
+      experiment_name, target_service, fault_type, blast_radius_scope
+    - Log failures at ERROR; log safety violations at WARN
     - _Requirements: 16.4_
-  
-  - [ ] 16.4 Implement trace correlation
-    - Propagate trace IDs through experiment execution
-    - Correlate experiment events with application traces
+
+  - [ ] 18.4 Implement trace correlation
+    - Propagate trace IDs from experiment execution into fault injection calls and validation runs
+    - Include trace ID in structured log fields and Kubernetes event annotations
     - _Requirements: 16.6_
 
-- [ ] 17. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [ ] 19. Implement configuration management
+  - [ ] 19.1 Create JSON configuration parser
+    - Load experiment definitions from `configs/chaos/experiments/<env>/` directory
+    - Validate all required fields on load; fail fast with descriptive error on invalid config
+    - Support environment variable overrides for blast radius limits and safety flags
+    - _Requirements: 1.1, 18.1, 18.2_
 
-- [ ] 18. Implement configuration management
-  - [ ] 18.1 Create JSON configuration parser
-    - Parse experiment definitions from JSON files
-    - Load experiments from configs/chaos/experiments/ directory
-    - Support environment-specific configuration directories
-    - _Requirements: 1.1, 18.1_
-  
-  - [ ] 18.2 Create chaos engine configuration
-    - Define global settings in configs/infra/chaos-configs.json
-    - Support configuration overrides via environment variables
-    - Include default blast radius, observation/recovery windows, metrics collection interval
-    - Include production safety checks configuration
-    - Include notification settings (Slack webhook, email recipients)
-    - Include Prometheus URL configuration
+  - [ ] 19.2 Create global chaos engine configuration
+    - Parse `configs/infra/chaos-config.json` into a strongly-typed config record
+    - Include Toxiproxy proxy map, Chaos Mesh namespace, Prometheus URL, production safety checks,
+      notification settings
     - _Requirements: 18.2, 18.3_
-  
-  - [ ] 18.3 Implement dry-run mode
-    - Validate experiments without injecting faults
-    - Show which pods would be affected
-    - Display baseline metrics preview
-    - Support --dry-run CLI flag
+
+  - [ ] 19.3 Implement dry-run mode
+    - When `dryRun = true`: resolve pod selectors, calculate affected pods, collect baseline
+      preview, log what would happen — without creating any Chaos Mesh resources
     - _Requirements: 18.5_
-  
-  - [ ] 18.4 Implement configuration versioning
-    - Track experiment configuration changes over time
-    - Version experiment definitions
+
+  - [ ] 19.4 Implement configuration versioning
+    - Store a SHA-256 hash of each experiment definition when it is loaded
+    - Include the definition hash in `ExperimentResult` for change tracking
     - _Requirements: 18.6_
 
-- [ ] 19. Implement multi-agent orchestration chaos testing
-  - [ ] 19.1 Implement orchestrator fault injection
-    - Inject faults into child agent sessions during orchestration
-    - Validate orchestrator detects child session failures
-    - Verify failure propagation to orchestrator
+- [ ] 20. Implement multi-agent orchestration chaos testing (Requirement 17)
+  - [ ] 20.1 Implement orchestrator fault injection
+    - Target a child `Session_Actor` by entity ID using `PekkoFaultInjector` while the
+      parent orchestrator session is running
+    - Verify the parent `Session_Actor` receives child failure propagation
     - _Requirements: 17.1, 17.2, 17.3_
-  
-  - [ ] 19.2 Implement orchestration pattern validation
-    - Validate SEQUENTIAL orchestrators stop after child failures
-    - Validate PARALLEL orchestrators continue with successful branches
-    - Verify orchestrator state consistency after child failures
-    - _Requirements: 17.4, 17.5, 17.6_
-  
-  - [ ]* 19.3 Write integration tests for orchestrator chaos
-    - Test sequential orchestrator failure handling
-    - Test parallel orchestrator partial failure handling
-    - Test orchestrator state consistency
-    - _Requirements: 17.4, 17.5, 17.6_
 
-- [ ] 20. Implement tool execution resilience testing
-  - [ ] 20.1 Implement tool execution fault injection
-    - Inject faults affecting tool dependencies during execution
-    - Validate tool timeouts are enforced during network latency
-    - Verify structured error responses returned to agent
+  - [ ] 20.2 Implement SEQUENTIAL orchestration failure validation
+    - Inject a fault causing the first child session to fail
+    - Validate the orchestrator stops launching further child sessions
+    - Verify orchestrator session state shows the failure was recorded
+    - _Requirements: 17.4, 17.6_
+
+  - [ ] 20.3 Implement PARALLEL orchestration partial failure validation
+    - Inject faults into a subset of parallel child sessions
+    - Validate the orchestrator continues to completion with the surviving branches
+    - Verify the final orchestrator state reflects both successes and failures
+    - _Requirements: 17.5, 17.6_
+
+  - [ ]* 20.4 Write integration tests for orchestrator chaos
+    - Use `ActorTestKit` with in-memory journal to test both SEQUENTIAL and PARALLEL scenarios
+    - _Requirements: 17.4, 17.5_
+
+- [ ] 21. Implement tool execution resilience testing (Requirement 20)
+  - [ ] 21.1 Inject connector failures mid-tool-execution
+    - Use `LlmProviderFaultInjector` (WireMock) to make a connector endpoint fail while a
+      tool call is in-flight
+    - Validate `Connector_Service` throws a typed exception; `Session_Actor` converts it to a
+      structured tool error result
     - _Requirements: 20.1, 20.2, 20.3_
-  
-  - [ ] 20.2 Implement tool execution pattern validation
-    - Validate PARALLEL tool execution handles partial failures
-    - Validate SEQUENTIAL tool execution stops after first failure
-    - Verify tool execution state not corrupted after failures
-    - _Requirements: 20.4, 20.5, 20.6_
-  
-  - [ ]* 20.3 Write integration tests for tool execution chaos
-    - Test tool timeout enforcement
-    - Test parallel tool execution partial failures
-    - Test sequential tool execution failure handling
+
+  - [ ] 21.2 Validate PARALLEL and SEQUENTIAL tool execution failure behaviour
+    - PARALLEL: one tool fails, others complete; validate partial failure does not corrupt state
+    - SEQUENTIAL: first tool fails; validate execution stops and session state is intact
     - _Requirements: 20.4, 20.5, 20.6_
 
-- [ ] 21. Implement graceful degradation validation
-  - [ ] 21.1 Create degradation validator
-    - Measure success rate during fault injection
-    - Verify runtime service continues with reduced capacity
-    - Validate appropriate HTTP status codes (503, 504)
-    - Verify no crashes or unrecoverable states
-    - _Requirements: 12.1, 12.2, 12.3_
-  
-  - [ ] 21.2 Implement backpressure validation
-    - Validate backpressure applied when resource limits reached
-    - Verify success rate remains above configurable threshold (default 50%)
-    - Measure degradation compared to baseline
-    - _Requirements: 12.4, 12.5, 12.6_
+- [ ] 22. Implement reporting and analytics (Requirement 19)
+  - [ ] 22.1 Complete `ExperimentReportGenerator`
+    - Generate full reports: baseline metrics, per-interval during-fault snapshots, post-recovery
+      metrics, success criteria results, fault events, recovery time, pod events
+    - Export to JSON, Markdown, and HTML formats
+    - Support writing to S3 or file system based on configuration
+    - _Requirements: 19.1, 19.2, 19.4, 16.5_
 
-- [ ] 22. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 23. Implement reporting and analytics
-  - [ ] 23.1 Create experiment report generator
-    - Generate reports with baseline, fault, and recovery metrics
-    - Include experiment metadata and success criteria results
-    - Include metric timeseries, pod events, error logs
-    - Calculate and include recovery time
-    - _Requirements: 19.1, 19.2, 19.3_
-  
-  - [ ] 23.2 Implement report export formats
-    - Support JSON export format
-    - Support HTML export format
-    - Support Markdown export format
-    - Support export to external systems (S3, Elasticsearch)
-    - _Requirements: 19.4, 16.5_
-  
-  - [ ] 23.3 Implement analytics dashboard data
-    - Track experiment success rates over time
-    - Identify experiments with degrading success rates
-    - Send alerts for degrading experiments
+  - [ ] 22.2 Implement analytics tracking
+    - Calculate experiment success rate trend over the last N runs (configurable)
+    - Detect degrading experiments (success rate declining across runs) and send alerts
+    - Expose experiment history summary via `GET /chaos/experiments/history`
     - _Requirements: 19.5, 19.6_
 
-- [ ] 24. Create deployment configuration and RBAC
-  - [ ] 24.1 Create Kubernetes RBAC configuration
-    - Define ClusterRole with required permissions (pods get/list/delete, networkpolicies create/delete, events create)
-    - Create ServiceAccount for chaos controller
-    - Create ClusterRoleBinding
-    - _Requirements: 14.1, 15.1_
-  
-  - [ ] 24.2 Create chaos controller deployment manifest
-    - Define Deployment with resource requests/limits
-    - Configure service account
-    - Set environment variables for configuration
+- [ ] 23. Checkpoint — ensure all tests pass
+  - Full test suite; ask the user if questions arise
+
+- [ ] 24. Wire chaos module into application and expose REST endpoints
+  - [ ] 24.1 Register `ChaosService` as a Quarkus CDI `@Singleton` in `chaos:core`
+    - Inject Fabric8 `KubernetesClient`, Toxiproxy client, WireMock server reference,
+      `MetricsCollector`, `SuccessCriteriaEvaluator`, `ExperimentReportGenerator`
+    - Configure Kubernetes client with the chaos controller `ServiceAccount` credentials
+    - _Requirements: 1.1_
+
+  - [ ] 24.2 Create REST endpoints in `interfaces:rest`
+    - `POST   /chaos/experiments`             — execute experiment
+    - `POST   /chaos/experiments/schedule`    — schedule recurring experiment
+    - `POST   /chaos/experiments/{id}/stop`   — emergency stop
+    - `GET    /chaos/experiments/history`     — experiment history with optional filters
+    - `POST   /chaos/experiments/dry-run`     — dry-run validation
+    - Document all endpoints with MicroProfile OpenAPI annotations
+    - _Requirements: 15.2, 13.1_
+
+  - [ ] 24.3 Create embedded startup configuration
+    - When running with `chaos` Quarkus profile: start Toxiproxy sidecar if not already running,
+      verify Chaos Mesh CRD availability via Kubernetes API on startup
     - _Requirements: 18.2_
-  
-  - [ ] 24.3 Create example experiment configurations
-    - Create runtime-pod-kill-recovery.json example
-    - Create network-partition-mongodb.json example
-    - Create message-delay-actor.json example
-    - Create resource-stress-cpu.json example
-    - Include comments explaining each field
+
+- [ ] 25. Create deployment configuration and example experiments
+  - [ ] 25.1 Create Kubernetes RBAC configuration
+    - `ClusterRole` with permissions for Chaos Mesh CRDs (create/delete/get/list/watch),
+      pods (get/list for blast radius), events (create/patch)
+    - `ServiceAccount` and `ClusterRoleBinding` for the chaos controller
+    - _Requirements: 14.1_
+
+  - [ ] 25.2 Create chaos controller Kubernetes manifests
+    - `Deployment` with resource limits (256Mi/100m → 512Mi/500m), chaos `ServiceAccount`,
+      environment variables for Prometheus URL, Toxiproxy host, Chaos Mesh namespace
+    - _Requirements: 18.2_
+
+  - [ ] 25.3 Create example experiment configurations in `configs/chaos/experiments/staging/`
+    - `runtime-pod-kill-recovery.json` — POD_KILL with ZERO_DATA_LOSS + MAX_RECOVERY_TIME criteria
+    - `event-journal-failure.json` — EVENT_JOURNAL_FAILURE with ZERO_DATA_LOSS criterion
+    - `network-partition-cluster.json` — CLUSTER_PARTITION testing split-brain resolver
+    - `llm-provider-unavailable.json` — LLM_PROVIDER_UNAVAILABLE with MIN_SUCCESS_RATE criterion
+    - `message-delay-actor.json` — MESSAGE_DELAY targeting a specific session entity ID
+    - `connector-failure-tool.json` — CONNECTOR_FAILURE with MIN_SUCCESS_RATE criterion
     - _Requirements: 1.1, 18.1_
 
-- [ ] 25. Integration and wiring
-  - [ ] 25.1 Wire chaos module into main application
-    - Add chaos module dependencies to runtime/core services
-    - Register ChaosService as Quarkus CDI bean
-    - Configure Kubernetes client with service account credentials
-    - Configure Prometheus client with metrics endpoint
-    - _Requirements: 1.1, 16.3_
-  
-  - [ ] 25.2 Create REST endpoints for chaos operations
-    - POST /chaos/experiments - Execute experiment
-    - POST /chaos/experiments/schedule - Schedule experiment
-    - POST /chaos/experiments/{id}/stop - Emergency stop
-    - GET /chaos/experiments/history - Get experiment history
-    - Document endpoints with MicroProfile OpenAPI annotations
-    - _Requirements: 15.1_
-  
-  - [ ]* 25.3 Write end-to-end integration tests
-    - Test complete experiment lifecycle using Testcontainers
-    - Test pod kill with session recovery validation
-    - Test network partition with graceful degradation
-    - Test emergency stop mechanism
-    - Use Kind cluster for Kubernetes integration
-    - _Requirements: 3.1, 6.1, 12.1, 15.1_
-
-- [ ] 26. Final checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [ ] 26. Final checkpoint — ensure all tests pass and documentation is complete
+  - Full test suite; verify all acceptance criteria are addressed; ask the user if questions arise
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for faster MVP
-- Each task references specific requirements for traceability
-- Checkpoints ensure incremental validation at reasonable breaks
-- Integration tests use Testcontainers with Kind for Kubernetes, MongoDB, and PostgreSQL
-- All enums must include UNKNOWN and valueOfOrDefault parser per project conventions
-- Follow project code quality philosophy: clarity over cleverness, minimal surface, maximum cohesion
-- Use Java 25 features (records, virtual threads) where appropriate
-- Leverage CompletionStage for async operations throughout
+- Tasks marked `*` are optional integration tests and can be skipped to reach a faster MVP; the
+  corresponding unit tests in the same task are mandatory
+- Each task references requirements for traceability
+- Integration tests use Testcontainers (PostgreSQL, MongoDB, Toxiproxy, WireMock); Kind cluster is
+  reserved for the `e2eTest` source set gated behind `-Pe2e`
+- All enums must include `UNKNOWN` and `valueOfOrDefault` per project conventions
+- Use Java 25 features (records, sealed interfaces, virtual threads, `CompletionStage`) throughout
+- Chaos Mesh must be installed in the target cluster; verify availability on startup
+- The `parametersType` discriminator field in experiment JSON maps to the sealed subtype name
+- `Optional<String>` rather than nullable `String` for record fields that may be absent

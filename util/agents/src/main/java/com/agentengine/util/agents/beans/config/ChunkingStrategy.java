@@ -6,7 +6,7 @@ public class ChunkingStrategy {
      * The chunking technique this stage applies.
      * Defaults to {@link ChunkingType#RECURSIVE}.
      */
-    private String type = ChunkingType.LLM.name();
+    private String type = ChunkingType.PARAGRAPH.name();
 
     private int maxSegmentSize = 512;
     private int maxOverlapSize = 50;
