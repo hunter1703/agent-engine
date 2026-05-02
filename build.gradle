@@ -8,3 +8,26 @@ subprojects {
         mavenLocal()
     }
 }
+
+// Git hooks installation task
+tasks.register('installGitHooks', Copy) {
+    description = 'Installs git hooks from gradle/git-hooks/ to .git/hooks/'
+    group = 'git'
+    
+    from file('gradle/git-hooks')
+    into file('.git/hooks')
+    fileMode = 0755
+    
+    doLast {
+        println '✅ Git hooks installed successfully'
+    }
+}
+
+// Auto-install hooks when any subproject builds
+subprojects {
+    afterEvaluate {
+        tasks.matching { it.name == 'build' }.configureEach {
+            dependsOn rootProject.tasks.named('installGitHooks')
+        }
+    }
+}
