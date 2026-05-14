@@ -17,6 +17,7 @@ bin/
 *.log
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+!libs/*.jar
 *.gguf
 llamacpp_models/
 deploy/connections.json

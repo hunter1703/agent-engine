@@ -1,5 +1,7 @@
 package com.agentengine.knowledge.core.pipeline;
 
+import static java.nio.charset.StandardCharsets.*;
+
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingPipeline;
@@ -11,12 +13,9 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.nio.charset.StandardCharsets.*;
 
 /**
  * Indexes plain-text knowledge by reading the file content, running it through the configured
@@ -88,10 +87,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
      */
     private static String generateChunkId(final String knowledgeId, final int chunkIndex) {
         final String name = knowledgeId + "-" + chunkIndex;
-        return java.util
-                .UUID
-                .nameUUIDFromBytes(name.getBytes(UTF_8))
-                .toString();
+        return java.util.UUID.nameUUIDFromBytes(name.getBytes(UTF_8)).toString();
     }
 
     @Override

@@ -13,11 +13,11 @@ import com.google.adk.agents.InvocationContext;
 import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import io.reactivex.rxjava3.core.Single;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -35,7 +35,7 @@ public final class ResponseFormatValidationProcessor implements ResponseProcesso
     private static final Logger LOG = LoggerFactory.getLogger(ResponseFormatValidationProcessor.class);
     private static final int MAX_ERRORS = 5;
 
-    private final ConcurrentHashMap<String, JsonSchema> schemaCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Schema> schemaCache = new ConcurrentHashMap<>();
 
     private ResponseFormatValidationProcessor() {}
 
@@ -80,7 +80,7 @@ public final class ResponseFormatValidationProcessor implements ResponseProcesso
 
     private String validate(final String agentId, final Map<String, Object> schemaMap, final String text) {
         final JsonNode node = JsonUtils.toJsonNode(text);
-        final JsonSchema schema = schemaCache.computeIfAbsent(agentId, _ -> SchemaUtils.buildSchema(schemaMap));
+        final Schema schema = schemaCache.computeIfAbsent(agentId, ignoredKey -> SchemaUtils.buildSchema(schemaMap));
         if (schema == null) {
             return null;
         }
@@ -88,15 +88,13 @@ public final class ResponseFormatValidationProcessor implements ResponseProcesso
         if (node == null) {
             return "Empty response, not a json";
         }
-        final Set<ValidationMessage> errors = schema.validate(node);
+        final List<Error> errors = schema.validate(node);
         if (CollectionUtils.isEmpty(errors)) {
             return null;
         }
 
-        final String errorList = errors.stream()
-                .limit(MAX_ERRORS)
-                .map(ValidationMessage::getMessage)
-                .collect(Collectors.joining("\n- ", "- ", ""));
+        final String errorList =
+                errors.stream().limit(MAX_ERRORS).map(Error::getMessage).collect(Collectors.joining("\n- ", "- ", ""));
         final String suffix = errors.size() > MAX_ERRORS ? "\n- ...and more. Re-read the schema and try again." : "";
         return "Your response was valid JSON but did not match the required schema. Fix these issues:\n"
                 + errorList + suffix

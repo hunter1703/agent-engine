@@ -7,7 +7,7 @@
 #   - runtime
 #   - interfaces/rest
 ####
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:26-jre-alpine
 
 ARG SERVICE_MODULE=interfaces/rest
 

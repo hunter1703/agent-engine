@@ -244,7 +244,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onCommand(StartChildCompletedCommand.class, this::startChildCompleted)
                 .onCommand(CompleteRunCommand.class, this::completeRun)
                 .onCommand(StartNextQueuedMessageCommand.class, this::startNextQueuedMessage)
-                .onCommand(GetCurrentTurnEventsCommand.class, this::getCurrentTurnEvents);
+                .onCommand(GetCurrentTurnEventsCommand.class, this::getCurrentTurnEvents)
+                .onCommand(RollbackCommand.class, this::rollback);
 
         return builder.build();
     }
@@ -799,6 +800,18 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     newState.nextSequence());
             return new CurrentTurnEvents(events);
         });
+    }
+
+    private Effect<SessionFact, SessionActorState> rollback(
+            final SessionActorState state, final RollbackCommand command) {
+        if (state.sessionState() == SessionState.RUNNING) {
+            return Effect()
+                    .none()
+                    .thenReply(command.replyTo(), _ -> new RollbackResult.Rejected("A run is in progress"));
+        }
+        return Effect()
+                .persist(new RollbackFact(command.runId()))
+                .thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
     }
 
     private Effect<SessionFact, SessionActorState> startNextQueuedMessage(

@@ -7,12 +7,12 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agui.core.event.BaseEvent;
-import com.agui.core.event.ToolCallArgsEvent;
-import com.agui.core.event.ToolCallEndEvent;
-import com.agui.core.event.ToolCallResultEvent;
-import com.agui.core.event.ToolCallStartEvent;
-import com.agui.core.message.Role;
+import com.agui.core.types.BaseEvent;
+import com.agui.core.types.CustomEvent;
+import com.agui.core.types.ToolCallArgsEvent;
+import com.agui.core.types.ToolCallEndEvent;
+import com.agui.core.types.ToolCallResultEvent;
+import com.agui.core.types.ToolCallStartEvent;
 import com.google.adk.events.ToolConfirmation;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
@@ -30,11 +30,9 @@ public final class AGUIToolCallMapper {
     private static final String ARG_TOOL_CONFIRMATION = "toolConfirmation";
 
     private final AGUIMapperState state;
-    private final AGUIEventDecorator decorator;
 
-    public AGUIToolCallMapper(final AGUIMapperState state, final AGUIEventDecorator decorator) {
+    public AGUIToolCallMapper(final AGUIMapperState state) {
         this.state = state;
-        this.decorator = decorator;
     }
 
     public Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
@@ -51,21 +49,12 @@ public final class AGUIToolCallMapper {
         state.rememberToolCallParentStep(callId);
         LOG.debug("Processing tool call mapping - callId='{}', toolName='{}'", callId, toolName);
 
-        Flowable<BaseEvent> flowable = Flowable.empty();
-        final ToolCallStartEvent start = new ToolCallStartEvent();
-        start.setToolCallId(callId);
-        start.setToolCallName(toolName);
-        start.setParentMessageId(state.currentStepName());
-        flowable = flowable.concatWith(Flowable.just(decorator.decorate(start)));
-
-        final ToolCallArgsEvent argsEvent = new ToolCallArgsEvent();
-        argsEvent.setToolCallId(callId);
-        argsEvent.setDelta(JsonUtils.toJson(args));
-        flowable = flowable.concatWith(Flowable.just(decorator.decorate(argsEvent)));
-
-        final ToolCallEndEvent end = new ToolCallEndEvent();
-        end.setToolCallId(callId);
-        return flowable.concatWith(Flowable.just(decorator.decorate(end)));
+        final ToolCallStartEvent start =
+                new ToolCallStartEvent(callId, toolName, state.currentStepName(), state.timestamp(), null);
+        final ToolCallArgsEvent argsEvent =
+                new ToolCallArgsEvent(callId, JsonUtils.toJson(args), state.timestamp(), null);
+        final ToolCallEndEvent end = new ToolCallEndEvent(callId, state.timestamp(), null);
+        return Flowable.just(start, argsEvent, end);
     }
 
     public Flowable<BaseEvent> mapToolResponse(final FunctionResponse response) {
@@ -80,14 +69,11 @@ public final class AGUIToolCallMapper {
 
         LOG.debug("Processing tool response mapping - callId='{}'", callId);
 
-        final ToolCallResultEvent result = new ToolCallResultEvent();
-        result.setToolCallId(callId);
-        result.setContent(contentResult);
-        result.setRole(Role.tool);
-        result.setMessageId(state.consumeToolCallParentStep(callId));
+        final ToolCallResultEvent result = new ToolCallResultEvent(
+                state.consumeToolCallParentStep(callId), callId, contentResult, "tool", state.timestamp(), null);
 
         LOG.debug("Generated output event - eventType=ToolCallResultEvent, callId={}", result.getToolCallId());
-        return Flowable.just(decorator.decorate(result));
+        return Flowable.just(result);
     }
 
     private Flowable<BaseEvent> mapConfirmationCall(final FunctionCall call) {
@@ -110,19 +96,14 @@ public final class AGUIToolCallMapper {
         final List<String> options =
                 CollectionUtils.getListFromMap((Map<String, Object>) toolConfirmation.payload(), "options");
 
-        final ConfirmationRequestedEvent event = new ConfirmationRequestedEvent(
-                confirmationId,
-                prompt,
-                originalToolCallId,
-                options,
-                Objects.equals(
-                                Constants.HITL_TOOL_NAME,
-                                originalFunctionCall.name().orElse(null))
-                        ? ConfirmationKind.TEXT
-                        : ConfirmationKind.DECISION);
-        decorator.decorate(event);
+        final ConfirmationKind kind = Objects.equals(
+                        Constants.HITL_TOOL_NAME, originalFunctionCall.name().orElse(null))
+                ? ConfirmationKind.TEXT
+                : ConfirmationKind.DECISION;
+        final CustomEvent event = AGUIUtils.buildConfirmationRequestedEvent(
+                confirmationId, prompt, originalToolCallId, options, kind, state.timestamp());
         LOG.debug(
-                "Generated output event - eventType=ConfirmationRequestedEvent, confirmationId={}, originalToolCallId={}",
+                "Generated output event - eventType=confirmation_requested, confirmationId={}, originalToolCallId={}",
                 confirmationId,
                 originalToolCallId);
         return Flowable.just(event);
@@ -148,10 +129,9 @@ public final class AGUIToolCallMapper {
         final String answer = CollectionUtils.getStringValueFromMap(
                 (Map<String, Object>) (toolConfirmation != null ? toolConfirmation.payload() : null), "answer");
 
-        final ConfirmedEvent event = new ConfirmedEvent(confirmationId, confirmed, answer);
-        decorator.decorate(event);
+        final CustomEvent event = AGUIUtils.buildConfirmedEvent(confirmationId, confirmed, answer, state.timestamp());
         LOG.debug(
-                "Generated output event - eventType=ConfirmedEvent, confirmationId={}, confirmed={}",
+                "Generated output event - eventType=confirmed, confirmationId={}, confirmed={}",
                 confirmationId,
                 confirmed);
         return Flowable.just(event);

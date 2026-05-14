@@ -2,7 +2,7 @@ package com.agentengine.util.agents.beans.session;
 
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.NamedEntity;
-import com.agui.core.event.BaseEvent;
+import com.agui.core.types.BaseEvent;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

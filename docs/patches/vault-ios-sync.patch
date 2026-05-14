@@ -1,0 +1,1183 @@
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultAPI.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultAPI.java
+new file mode 100644
+index 00000000..b05c209e
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultAPI.java
+@@ -0,0 +1,92 @@
++package com.agentengine.interfaces.local.vault.api;
++
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextItemRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextItemResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyBootstrapRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyFetchRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.ManifestListRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.ManifestListResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPullRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPullResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.WrappedKeyEnvelopeResponse;
++import com.agentengine.interfaces.local.vault.service.VaultService;
++import io.smallrye.common.annotation.RunOnVirtualThread;
++import jakarta.inject.Inject;
++import jakarta.validation.Valid;
++import jakarta.ws.rs.Consumes;
++import jakarta.ws.rs.GET;
++import jakarta.ws.rs.POST;
++import jakarta.ws.rs.Path;
++import jakarta.ws.rs.PathParam;
++import jakarta.ws.rs.Produces;
++import jakarta.ws.rs.QueryParam;
++import jakarta.ws.rs.core.MediaType;
++import org.eclipse.microprofile.openapi.annotations.Operation;
++import org.eclipse.microprofile.openapi.annotations.tags.Tag;
++
++@Path("/v1/vault")
++@Consumes(MediaType.APPLICATION_JSON)
++@Produces(MediaType.APPLICATION_JSON)
++@Tag(name = "Vault", description = "Encrypted vault APIs for iOS clients")
++@RunOnVirtualThread
++public class VaultAPI {
++
++  private final VaultService vaultService;
++
++  @Inject
++  public VaultAPI(final VaultService vaultService) {
++    this.vaultService = vaultService;
++  }
++
++  @POST
++  @Path("/key/bootstrap")
++  @Operation(summary = "Bootstrap wrapped key envelope for a device")
++  public WrappedKeyEnvelopeResponse bootstrapKey(@Valid final KeyBootstrapRequest request) {
++    return vaultService.bootstrapKey(request);
++  }
++
++  @POST
++  @Path("/key/fetch-once")
++  @Operation(summary = "Fetch wrapped key envelope exactly once")
++  public WrappedKeyEnvelopeResponse fetchKeyOnce(@Valid final KeyFetchRequest request) {
++    return vaultService.fetchWrappedKeyOnce(request);
++  }
++
++  @POST
++  @Path("/items/upsert-ciphertext")
++  @Operation(summary = "Upsert a ciphertext item")
++  public CiphertextItemResponse upsertCiphertext(@Valid final CiphertextItemRequest request) {
++    return vaultService.upsertCiphertext(request);
++  }
++
++  @POST
++  @Path("/items/list-manifest")
++  @Operation(summary = "List ciphertext manifest for a device")
++  public ManifestListResponse listManifest(@Valid final ManifestListRequest request) {
++    return vaultService.listManifest(request);
++  }
++
++  @GET
++  @Path("/items/{id}/ciphertext")
++  @Operation(summary = "Retrieve ciphertext item by id and device")
++  public CiphertextItemResponse getCiphertext(
++      @PathParam("id") final String id, @QueryParam("deviceId") final String deviceId) {
++    return vaultService.getCiphertext(id, deviceId);
++  }
++
++  @POST
++  @Path("/sync/push")
++  @Operation(summary = "Push ciphertext records with idempotency key")
++  public SyncPushResponse push(@Valid final SyncPushRequest request) {
++    return vaultService.push(request);
++  }
++
++  @POST
++  @Path("/sync/pull")
++  @Operation(summary = "Pull ciphertext records since cursor")
++  public SyncPullResponse pull(@Valid final SyncPullRequest request) {
++    return vaultService.pull(request);
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultExceptionMapper.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultExceptionMapper.java
+new file mode 100644
+index 00000000..2c170a1f
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/api/VaultExceptionMapper.java
+@@ -0,0 +1,20 @@
++package com.agentengine.interfaces.local.vault.api;
++
++import com.agentengine.interfaces.local.vault.service.VaultServiceException;
++import jakarta.ws.rs.core.MediaType;
++import jakarta.ws.rs.core.Response;
++import jakarta.ws.rs.ext.ExceptionMapper;
++import jakarta.ws.rs.ext.Provider;
++import java.util.Map;
++
++@Provider
++public class VaultExceptionMapper implements ExceptionMapper<VaultServiceException> {
++
++  @Override
++  public Response toResponse(final VaultServiceException exception) {
++    return Response.status(exception.getStatus())
++        .entity(Map.of("error", exception.getMessage()))
++        .type(MediaType.APPLICATION_JSON)
++        .build();
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/dto/VaultDtos.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/dto/VaultDtos.java
+new file mode 100644
+index 00000000..34eca1e9
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/dto/VaultDtos.java
+@@ -0,0 +1,380 @@
++package com.agentengine.interfaces.local.vault.dto;
++
++import jakarta.validation.Valid;
++import jakarta.validation.constraints.NotBlank;
++import java.util.ArrayList;
++import java.util.List;
++
++public final class VaultDtos {
++
++  private VaultDtos() {}
++
++  public static class KeyBootstrapRequest {
++    @NotBlank private String deviceId;
++    private String pinProof;
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public String getPinProof() {
++      return pinProof;
++    }
++
++    public void setPinProof(final String pinProof) {
++      this.pinProof = pinProof;
++    }
++  }
++
++  public static class KeyFetchRequest {
++    @NotBlank private String deviceId;
++    @NotBlank private String pinProof;
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public String getPinProof() {
++      return pinProof;
++    }
++
++    public void setPinProof(final String pinProof) {
++      this.pinProof = pinProof;
++    }
++  }
++
++  public static class WrappedKeyEnvelopeResponse {
++    private String keyId;
++    private String wrappedMasterKey;
++
++    public String getKeyId() {
++      return keyId;
++    }
++
++    public void setKeyId(final String keyId) {
++      this.keyId = keyId;
++    }
++
++    public String getWrappedMasterKey() {
++      return wrappedMasterKey;
++    }
++
++    public void setWrappedMasterKey(final String wrappedMasterKey) {
++      this.wrappedMasterKey = wrappedMasterKey;
++    }
++  }
++
++  public static class CiphertextItemRequest {
++    private String id;
++    @NotBlank private String deviceId;
++    @NotBlank private String type;
++    @NotBlank private String ciphertext;
++    @NotBlank private String nonce;
++    @NotBlank private String wrappedDek;
++
++    public String getId() {
++      return id;
++    }
++
++    public void setId(final String id) {
++      this.id = id;
++    }
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public String getType() {
++      return type;
++    }
++
++    public void setType(final String type) {
++      this.type = type;
++    }
++
++    public String getCiphertext() {
++      return ciphertext;
++    }
++
++    public void setCiphertext(final String ciphertext) {
++      this.ciphertext = ciphertext;
++    }
++
++    public String getNonce() {
++      return nonce;
++    }
++
++    public void setNonce(final String nonce) {
++      this.nonce = nonce;
++    }
++
++    public String getWrappedDek() {
++      return wrappedDek;
++    }
++
++    public void setWrappedDek(final String wrappedDek) {
++      this.wrappedDek = wrappedDek;
++    }
++  }
++
++  public static class CiphertextItemResponse {
++    private String id;
++    private String deviceId;
++    private String type;
++    private String ciphertext;
++    private String nonce;
++    private String wrappedDek;
++    private Long updatedTime;
++    private Long version;
++
++    public String getId() {
++      return id;
++    }
++
++    public void setId(final String id) {
++      this.id = id;
++    }
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public String getType() {
++      return type;
++    }
++
++    public void setType(final String type) {
++      this.type = type;
++    }
++
++    public String getCiphertext() {
++      return ciphertext;
++    }
++
++    public void setCiphertext(final String ciphertext) {
++      this.ciphertext = ciphertext;
++    }
++
++    public String getNonce() {
++      return nonce;
++    }
++
++    public void setNonce(final String nonce) {
++      this.nonce = nonce;
++    }
++
++    public String getWrappedDek() {
++      return wrappedDek;
++    }
++
++    public void setWrappedDek(final String wrappedDek) {
++      this.wrappedDek = wrappedDek;
++    }
++
++    public Long getUpdatedTime() {
++      return updatedTime;
++    }
++
++    public void setUpdatedTime(final Long updatedTime) {
++      this.updatedTime = updatedTime;
++    }
++
++    public Long getVersion() {
++      return version;
++    }
++
++    public void setVersion(final Long version) {
++      this.version = version;
++    }
++  }
++
++  public static class ManifestListRequest {
++    @NotBlank private String deviceId;
++    private int offset = 0;
++    private int limit = 100;
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public int getOffset() {
++      return offset;
++    }
++
++    public void setOffset(final int offset) {
++      this.offset = Math.max(0, offset);
++    }
++
++    public int getLimit() {
++      return limit;
++    }
++
++    public void setLimit(final int limit) {
++      this.limit = Math.max(1, Math.min(limit, 500));
++    }
++  }
++
++  public static class ManifestListResponse {
++    private List<CiphertextManifestItem> items = new ArrayList<>();
++
++    public List<CiphertextManifestItem> getItems() {
++      return items;
++    }
++
++    public void setItems(final List<CiphertextManifestItem> items) {
++      this.items = items;
++    }
++  }
++
++  public static class CiphertextManifestItem {
++    private String id;
++    private String type;
++    private Long updatedTime;
++    private Long version;
++
++    public String getId() {
++      return id;
++    }
++
++    public void setId(final String id) {
++      this.id = id;
++    }
++
++    public String getType() {
++      return type;
++    }
++
++    public void setType(final String type) {
++      this.type = type;
++    }
++
++    public Long getUpdatedTime() {
++      return updatedTime;
++    }
++
++    public void setUpdatedTime(final Long updatedTime) {
++      this.updatedTime = updatedTime;
++    }
++
++    public Long getVersion() {
++      return version;
++    }
++
++    public void setVersion(final Long version) {
++      this.version = version;
++    }
++  }
++
++  public static class SyncPushRequest {
++    @NotBlank private String idempotencyKey;
++    @Valid private List<CiphertextItemRequest> records = new ArrayList<>();
++
++    public String getIdempotencyKey() {
++      return idempotencyKey;
++    }
++
++    public void setIdempotencyKey(final String idempotencyKey) {
++      this.idempotencyKey = idempotencyKey;
++    }
++
++    public List<CiphertextItemRequest> getRecords() {
++      return records;
++    }
++
++    public void setRecords(final List<CiphertextItemRequest> records) {
++      this.records = records;
++    }
++  }
++
++  public static class SyncPushResponse {
++    private int acceptedCount;
++    private boolean duplicate;
++
++    public int getAcceptedCount() {
++      return acceptedCount;
++    }
++
++    public void setAcceptedCount(final int acceptedCount) {
++      this.acceptedCount = acceptedCount;
++    }
++
++    public boolean isDuplicate() {
++      return duplicate;
++    }
++
++    public void setDuplicate(final boolean duplicate) {
++      this.duplicate = duplicate;
++    }
++  }
++
++  public static class SyncPullRequest {
++    @NotBlank private String deviceId;
++    private String cursor;
++    private int limit = 100;
++
++    public String getDeviceId() {
++      return deviceId;
++    }
++
++    public void setDeviceId(final String deviceId) {
++      this.deviceId = deviceId;
++    }
++
++    public String getCursor() {
++      return cursor;
++    }
++
++    public void setCursor(final String cursor) {
++      this.cursor = cursor;
++    }
++
++    public int getLimit() {
++      return limit;
++    }
++
++    public void setLimit(final int limit) {
++      this.limit = Math.max(1, Math.min(limit, 500));
++    }
++  }
++
++  public static class SyncPullResponse {
++    private List<CiphertextItemResponse> records = new ArrayList<>();
++    private String cursor;
++
++    public List<CiphertextItemResponse> getRecords() {
++      return records;
++    }
++
++    public void setRecords(final List<CiphertextItemResponse> records) {
++      this.records = records;
++    }
++
++    public String getCursor() {
++      return cursor;
++    }
++
++    public void setCursor(final String cursor) {
++      this.cursor = cursor;
++    }
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultCiphertextEntity.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultCiphertextEntity.java
+new file mode 100644
+index 00000000..c8b69738
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultCiphertextEntity.java
+@@ -0,0 +1,61 @@
++package com.agentengine.interfaces.local.vault.entities;
++
++import com.agentengine.engine.api.beans.BaseEntity;
++
++public class VaultCiphertextEntity extends BaseEntity {
++
++  private String deviceId;
++  private String type;
++  private String ciphertext;
++  private String nonce;
++  private String wrappedDek;
++  private Long version;
++
++  public String getDeviceId() {
++    return deviceId;
++  }
++
++  public void setDeviceId(final String deviceId) {
++    this.deviceId = deviceId;
++  }
++
++  public String getType() {
++    return type;
++  }
++
++  public void setType(final String type) {
++    this.type = type;
++  }
++
++  public String getCiphertext() {
++    return ciphertext;
++  }
++
++  public void setCiphertext(final String ciphertext) {
++    this.ciphertext = ciphertext;
++  }
++
++  public String getNonce() {
++    return nonce;
++  }
++
++  public void setNonce(final String nonce) {
++    this.nonce = nonce;
++  }
++
++  public String getWrappedDek() {
++    return wrappedDek;
++  }
++
++  public void setWrappedDek(final String wrappedDek) {
++    this.wrappedDek = wrappedDek;
++  }
++
++  public Long getVersion() {
++    return version;
++  }
++
++  public void setVersion(final Long version) {
++    this.version = version;
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultKeyEnvelopeEntity.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultKeyEnvelopeEntity.java
+new file mode 100644
+index 00000000..966cbc7d
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultKeyEnvelopeEntity.java
+@@ -0,0 +1,52 @@
++package com.agentengine.interfaces.local.vault.entities;
++
++import com.agentengine.engine.api.beans.BaseEntity;
++
++public class VaultKeyEnvelopeEntity extends BaseEntity {
++
++  private String deviceId;
++  private String keyId;
++  private String wrappedMasterKey;
++  private String pinProofHash;
++  private Long consumedTime;
++
++  public String getDeviceId() {
++    return deviceId;
++  }
++
++  public void setDeviceId(final String deviceId) {
++    this.deviceId = deviceId;
++  }
++
++  public String getKeyId() {
++    return keyId;
++  }
++
++  public void setKeyId(final String keyId) {
++    this.keyId = keyId;
++  }
++
++  public String getWrappedMasterKey() {
++    return wrappedMasterKey;
++  }
++
++  public void setWrappedMasterKey(final String wrappedMasterKey) {
++    this.wrappedMasterKey = wrappedMasterKey;
++  }
++
++  public String getPinProofHash() {
++    return pinProofHash;
++  }
++
++  public void setPinProofHash(final String pinProofHash) {
++    this.pinProofHash = pinProofHash;
++  }
++
++  public Long getConsumedTime() {
++    return consumedTime;
++  }
++
++  public void setConsumedTime(final Long consumedTime) {
++    this.consumedTime = consumedTime;
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultPushReceiptEntity.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultPushReceiptEntity.java
+new file mode 100644
+index 00000000..3d1f6403
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/entities/VaultPushReceiptEntity.java
+@@ -0,0 +1,25 @@
++package com.agentengine.interfaces.local.vault.entities;
++
++import com.agentengine.engine.api.beans.BaseEntity;
++
++public class VaultPushReceiptEntity extends BaseEntity {
++
++  private String idempotencyKey;
++  private Integer acceptedCount;
++
++  public String getIdempotencyKey() {
++    return idempotencyKey;
++  }
++
++  public void setIdempotencyKey(final String idempotencyKey) {
++    this.idempotencyKey = idempotencyKey;
++  }
++
++  public Integer getAcceptedCount() {
++    return acceptedCount;
++  }
++
++  public void setAcceptedCount(final Integer acceptedCount) {
++    this.acceptedCount = acceptedCount;
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultCiphertextRepository.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultCiphertextRepository.java
+new file mode 100644
+index 00000000..c8751fbe
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultCiphertextRepository.java
+@@ -0,0 +1,52 @@
++package com.agentengine.interfaces.local.vault.repository;
++
++import static com.mongodb.client.model.Filters.and;
++import static com.mongodb.client.model.Filters.eq;
++import static com.mongodb.client.model.Filters.gt;
++
++import com.agentengine.engine.repository.AbstractMongoRepository;
++import com.agentengine.engine.repository.MongoClientFactory;
++import com.agentengine.interfaces.local.vault.entities.VaultCiphertextEntity;
++import com.mongodb.client.model.Sorts;
++import jakarta.inject.Singleton;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Optional;
++
++@Singleton
++public class VaultCiphertextRepository extends AbstractMongoRepository<VaultCiphertextEntity> {
++
++  public VaultCiphertextRepository(final MongoClientFactory mongoClientFactory) {
++    super(mongoClientFactory, "VAULT_CIPHERTEXT", VaultCiphertextEntity.class);
++  }
++
++  public List<VaultCiphertextEntity> findByDeviceId(final String deviceId, final int offset, final int limit) {
++    final List<VaultCiphertextEntity> result = new ArrayList<>();
++    for (VaultCiphertextEntity entity :
++        getCollection()
++            .find(eq("deviceId", deviceId))
++            .sort(Sorts.descending("updatedTime"))
++            .skip(offset)
++            .limit(limit)) {
++      result.add(entity);
++    }
++    return result;
++  }
++
++  public List<VaultCiphertextEntity> findUpdatedAfter(
++      final String deviceId, final long updatedAfter, final int limit) {
++    final List<VaultCiphertextEntity> result = new ArrayList<>();
++    for (VaultCiphertextEntity entity :
++        getCollection()
++            .find(and(eq("deviceId", deviceId), gt("updatedTime", updatedAfter)))
++            .sort(Sorts.ascending("updatedTime"))
++            .limit(limit)) {
++      result.add(entity);
++    }
++    return result;
++  }
++
++  public Optional<VaultCiphertextEntity> findByIdAndDeviceId(final String id, final String deviceId) {
++    return Optional.ofNullable(getCollection().find(and(eq("_id", id), eq("deviceId", deviceId))).first());
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultKeyEnvelopeRepository.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultKeyEnvelopeRepository.java
+new file mode 100644
+index 00000000..3841eded
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultKeyEnvelopeRepository.java
+@@ -0,0 +1,21 @@
++package com.agentengine.interfaces.local.vault.repository;
++
++import static com.mongodb.client.model.Filters.eq;
++
++import com.agentengine.engine.repository.AbstractMongoRepository;
++import com.agentengine.engine.repository.MongoClientFactory;
++import com.agentengine.interfaces.local.vault.entities.VaultKeyEnvelopeEntity;
++import jakarta.inject.Singleton;
++import java.util.Optional;
++
++@Singleton
++public class VaultKeyEnvelopeRepository extends AbstractMongoRepository<VaultKeyEnvelopeEntity> {
++
++  public VaultKeyEnvelopeRepository(final MongoClientFactory mongoClientFactory) {
++    super(mongoClientFactory, "VAULT_KEY_ENVELOPE", VaultKeyEnvelopeEntity.class);
++  }
++
++  public Optional<VaultKeyEnvelopeEntity> findByDeviceId(final String deviceId) {
++    return Optional.ofNullable(getCollection().find(eq("deviceId", deviceId)).first());
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultPushReceiptRepository.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultPushReceiptRepository.java
+new file mode 100644
+index 00000000..f0671349
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/repository/VaultPushReceiptRepository.java
+@@ -0,0 +1,21 @@
++package com.agentengine.interfaces.local.vault.repository;
++
++import static com.mongodb.client.model.Filters.eq;
++
++import com.agentengine.engine.repository.AbstractMongoRepository;
++import com.agentengine.engine.repository.MongoClientFactory;
++import com.agentengine.interfaces.local.vault.entities.VaultPushReceiptEntity;
++import jakarta.inject.Singleton;
++import java.util.Optional;
++
++@Singleton
++public class VaultPushReceiptRepository extends AbstractMongoRepository<VaultPushReceiptEntity> {
++
++  public VaultPushReceiptRepository(final MongoClientFactory mongoClientFactory) {
++    super(mongoClientFactory, "VAULT_PUSH_RECEIPT", VaultPushReceiptEntity.class);
++  }
++
++  public Optional<VaultPushReceiptEntity> findByIdempotencyKey(final String idempotencyKey) {
++    return Optional.ofNullable(getCollection().find(eq("idempotencyKey", idempotencyKey)).first());
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultService.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultService.java
+new file mode 100644
+index 00000000..1cd9e485
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultService.java
+@@ -0,0 +1,256 @@
++package com.agentengine.interfaces.local.vault.service;
++
++import com.agentengine.engine.api.utils.HashUtils;
++import com.agentengine.engine.api.utils.StringUtils;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextItemRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextItemResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextManifestItem;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyBootstrapRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyFetchRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.ManifestListRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.ManifestListResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPullRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPullResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.WrappedKeyEnvelopeResponse;
++import com.agentengine.interfaces.local.vault.entities.VaultCiphertextEntity;
++import com.agentengine.interfaces.local.vault.entities.VaultKeyEnvelopeEntity;
++import com.agentengine.interfaces.local.vault.entities.VaultPushReceiptEntity;
++import com.agentengine.interfaces.local.vault.repository.VaultCiphertextRepository;
++import com.agentengine.interfaces.local.vault.repository.VaultKeyEnvelopeRepository;
++import com.agentengine.interfaces.local.vault.repository.VaultPushReceiptRepository;
++import jakarta.inject.Inject;
++import jakarta.inject.Singleton;
++import java.util.Base64;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++
++@Singleton
++public class VaultService {
++
++  private final VaultCiphertextRepository ciphertextRepository;
++  private final VaultKeyEnvelopeRepository keyEnvelopeRepository;
++  private final VaultPushReceiptRepository pushReceiptRepository;
++
++  @Inject
++  public VaultService(
++      final VaultCiphertextRepository ciphertextRepository,
++      final VaultKeyEnvelopeRepository keyEnvelopeRepository,
++      final VaultPushReceiptRepository pushReceiptRepository) {
++    this.ciphertextRepository = ciphertextRepository;
++    this.keyEnvelopeRepository = keyEnvelopeRepository;
++    this.pushReceiptRepository = pushReceiptRepository;
++  }
++
++  public WrappedKeyEnvelopeResponse bootstrapKey(final KeyBootstrapRequest request) {
++    final Optional<VaultKeyEnvelopeEntity> existing =
++        keyEnvelopeRepository.findByDeviceId(request.getDeviceId());
++    if (existing.isPresent()) {
++      final VaultKeyEnvelopeEntity entity = existing.get();
++      if (StringUtils.isNotBlank(request.getPinProof())) {
++        entity.setPinProofHash(HashUtils.HMACSHA256_Base64(request.getPinProof()));
++        entity.setUpdatedTime(now());
++        keyEnvelopeRepository.save(entity);
++      }
++      return toEnvelopeResponse(entity);
++    }
++
++    final VaultKeyEnvelopeEntity entity = new VaultKeyEnvelopeEntity();
++    entity.setId(UUID.randomUUID().toString());
++    entity.setDeviceId(request.getDeviceId());
++    entity.setKeyId(UUID.randomUUID().toString());
++    entity.setWrappedMasterKey(randomWrappedKey());
++    entity.setPinProofHash(HashUtils.HMACSHA256_Base64(request.getPinProof()));
++    entity.setCreatedTime(now());
++    entity.setUpdatedTime(now());
++    keyEnvelopeRepository.insert(entity);
++
++    return toEnvelopeResponse(entity);
++  }
++
++  public WrappedKeyEnvelopeResponse fetchWrappedKeyOnce(final KeyFetchRequest request) {
++    final VaultKeyEnvelopeEntity entity =
++        keyEnvelopeRepository
++            .findByDeviceId(request.getDeviceId())
++            .orElseThrow(() -> new VaultServiceException("Key envelope not found", 404));
++
++    if (entity.getConsumedTime() != null) {
++      throw new VaultServiceException("Key already fetched once", 409);
++    }
++
++    if (StringUtils.isNotBlank(entity.getPinProofHash())) {
++      final String candidate = HashUtils.HMACSHA256_Base64(request.getPinProof());
++      if (!candidate.equals(entity.getPinProofHash())) {
++        throw new VaultServiceException("Invalid pin proof", 401);
++      }
++    }
++
++    entity.setConsumedTime(now());
++    entity.setUpdatedTime(now());
++    keyEnvelopeRepository.save(entity);
++
++    return toEnvelopeResponse(entity);
++  }
++
++  public CiphertextItemResponse upsertCiphertext(final CiphertextItemRequest request) {
++    final long now = now();
++    final String id = StringUtils.isBlank(request.getId()) ? UUID.randomUUID().toString() : request.getId();
++
++    final VaultCiphertextEntity entity =
++        ciphertextRepository
++            .findById(id)
++            .orElseGet(
++                () -> {
++                  final VaultCiphertextEntity created = new VaultCiphertextEntity();
++                  created.setId(id);
++                  created.setVersion(0L);
++                  created.setCreatedTime(now);
++                  return created;
++                });
++
++    entity.setDeviceId(request.getDeviceId());
++    entity.setType(request.getType());
++    entity.setCiphertext(request.getCiphertext());
++    entity.setNonce(request.getNonce());
++    entity.setWrappedDek(request.getWrappedDek());
++    entity.setVersion(entity.getVersion() == null ? 1L : entity.getVersion() + 1L);
++    entity.setUpdatedTime(now);
++
++    ciphertextRepository.save(entity);
++    return toCiphertextResponse(entity);
++  }
++
++  public ManifestListResponse listManifest(final ManifestListRequest request) {
++    final List<VaultCiphertextEntity> records =
++        ciphertextRepository.findByDeviceId(
++            request.getDeviceId(), request.getOffset(), request.getLimit());
++
++    final ManifestListResponse response = new ManifestListResponse();
++    response.setItems(
++        records.stream()
++            .map(
++                entity -> {
++                  final CiphertextManifestItem item = new CiphertextManifestItem();
++                  item.setId(entity.getId());
++                  item.setType(entity.getType());
++                  item.setUpdatedTime(entity.getUpdatedTime());
++                  item.setVersion(entity.getVersion());
++                  return item;
++                })
++            .toList());
++
++    return response;
++  }
++
++  public CiphertextItemResponse getCiphertext(final String id, final String deviceId) {
++    if (StringUtils.isBlank(id) || StringUtils.isBlank(deviceId)) {
++      throw new VaultServiceException("id and deviceId are required", 400);
++    }
++
++    return ciphertextRepository
++        .findByIdAndDeviceId(id, deviceId)
++        .map(this::toCiphertextResponse)
++        .orElseThrow(() -> new VaultServiceException("Ciphertext item not found", 404));
++  }
++
++  public SyncPushResponse push(final SyncPushRequest request) {
++    final Optional<VaultPushReceiptEntity> existingReceipt =
++        pushReceiptRepository.findByIdempotencyKey(request.getIdempotencyKey());
++    if (existingReceipt.isPresent()) {
++      final SyncPushResponse duplicateResponse = new SyncPushResponse();
++      duplicateResponse.setAcceptedCount(existingReceipt.get().getAcceptedCount());
++      duplicateResponse.setDuplicate(true);
++      return duplicateResponse;
++    }
++
++    int accepted = 0;
++    for (CiphertextItemRequest record : request.getRecords()) {
++      upsertCiphertext(record);
++      accepted++;
++    }
++
++    final VaultPushReceiptEntity receipt = new VaultPushReceiptEntity();
++    receipt.setId(UUID.randomUUID().toString());
++    receipt.setIdempotencyKey(request.getIdempotencyKey());
++    receipt.setAcceptedCount(accepted);
++    receipt.setCreatedTime(now());
++    receipt.setUpdatedTime(now());
++    pushReceiptRepository.insert(receipt);
++
++    final SyncPushResponse response = new SyncPushResponse();
++    response.setAcceptedCount(accepted);
++    response.setDuplicate(false);
++    return response;
++  }
++
++  public SyncPullResponse pull(final SyncPullRequest request) {
++    final long cursor = parseCursor(request.getCursor());
++    final List<VaultCiphertextEntity> records =
++        ciphertextRepository.findUpdatedAfter(request.getDeviceId(), cursor, request.getLimit());
++
++    final SyncPullResponse response = new SyncPullResponse();
++    response.setRecords(records.stream().map(this::toCiphertextResponse).toList());
++
++    final long nextCursor = records.stream().map(VaultCiphertextEntity::getUpdatedTime).max(Long::compareTo).orElse(cursor);
++    response.setCursor(String.valueOf(nextCursor));
++    return response;
++  }
++
++  private WrappedKeyEnvelopeResponse toEnvelopeResponse(final VaultKeyEnvelopeEntity entity) {
++    final WrappedKeyEnvelopeResponse response = new WrappedKeyEnvelopeResponse();
++    response.setKeyId(entity.getKeyId());
++    response.setWrappedMasterKey(entity.getWrappedMasterKey());
++    return response;
++  }
++
++  private CiphertextItemResponse toCiphertextResponse(final VaultCiphertextEntity entity) {
++    final CiphertextItemResponse response = new CiphertextItemResponse();
++    response.setId(entity.getId());
++    response.setDeviceId(entity.getDeviceId());
++    response.setType(entity.getType());
++    response.setCiphertext(entity.getCiphertext());
++    response.setNonce(entity.getNonce());
++    response.setWrappedDek(entity.getWrappedDek());
++    response.setVersion(entity.getVersion());
++    response.setUpdatedTime(entity.getUpdatedTime());
++    return response;
++  }
++
++  private String randomWrappedKey() {
++    final byte[] keyBytes = new byte[48];
++    UUID first = UUID.randomUUID();
++    UUID second = UUID.randomUUID();
++    System.arraycopy(asBytes(first), 0, keyBytes, 0, 16);
++    System.arraycopy(asBytes(second), 0, keyBytes, 16, 16);
++    System.arraycopy(asBytes(UUID.randomUUID()), 0, keyBytes, 32, 16);
++    return Base64.getEncoder().encodeToString(keyBytes);
++  }
++
++  private byte[] asBytes(final UUID uuid) {
++    final long most = uuid.getMostSignificantBits();
++    final long least = uuid.getLeastSignificantBits();
++    final byte[] result = new byte[16];
++    for (int i = 0; i < 8; i++) {
++      result[i] = (byte) (most >>> (8 * (7 - i)));
++      result[8 + i] = (byte) (least >>> (8 * (7 - i)));
++    }
++    return result;
++  }
++
++  private long parseCursor(final String cursor) {
++    if (StringUtils.isBlank(cursor)) {
++      return 0L;
++    }
++    try {
++      return Long.parseLong(cursor);
++    } catch (NumberFormatException e) {
++      throw new VaultServiceException("Invalid cursor", 400);
++    }
++  }
++
++  private long now() {
++    return System.currentTimeMillis();
++  }
++}
+diff --git a/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultServiceException.java b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultServiceException.java
+new file mode 100644
+index 00000000..657632f2
+--- /dev/null
++++ b/interfaces/local/src/main/java/com/agentengine/interfaces/local/vault/service/VaultServiceException.java
+@@ -0,0 +1,15 @@
++package com.agentengine.interfaces.local.vault.service;
++
++public class VaultServiceException extends RuntimeException {
++
++  private final int status;
++
++  public VaultServiceException(final String message, final int status) {
++    super(message);
++    this.status = status;
++  }
++
++  public int getStatus() {
++    return status;
++  }
++}
+diff --git a/interfaces/local/src/test/java/com/agentengine/interfaces/local/vault/service/VaultServiceTest.java b/interfaces/local/src/test/java/com/agentengine/interfaces/local/vault/service/VaultServiceTest.java
+new file mode 100644
+index 00000000..7ec6e80c
+--- /dev/null
++++ b/interfaces/local/src/test/java/com/agentengine/interfaces/local/vault/service/VaultServiceTest.java
+@@ -0,0 +1,116 @@
++package com.agentengine.interfaces.local.vault.service;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.CiphertextItemRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyBootstrapRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.KeyFetchRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushRequest;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.SyncPushResponse;
++import com.agentengine.interfaces.local.vault.dto.VaultDtos.WrappedKeyEnvelopeResponse;
++import com.agentengine.interfaces.local.vault.entities.VaultCiphertextEntity;
++import com.agentengine.interfaces.local.vault.entities.VaultKeyEnvelopeEntity;
++import com.agentengine.interfaces.local.vault.entities.VaultPushReceiptEntity;
++import com.agentengine.interfaces.local.vault.repository.VaultCiphertextRepository;
++import com.agentengine.interfaces.local.vault.repository.VaultKeyEnvelopeRepository;
++import com.agentengine.interfaces.local.vault.repository.VaultPushReceiptRepository;
++import java.util.List;
++import java.util.Optional;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++import org.mockito.Mockito;
++
++class VaultServiceTest {
++
++  private VaultCiphertextRepository ciphertextRepository;
++  private VaultKeyEnvelopeRepository keyEnvelopeRepository;
++  private VaultPushReceiptRepository pushReceiptRepository;
++  private VaultService vaultService;
++
++  @BeforeEach
++  void setUp() {
++    ciphertextRepository = Mockito.mock(VaultCiphertextRepository.class);
++    keyEnvelopeRepository = Mockito.mock(VaultKeyEnvelopeRepository.class);
++    pushReceiptRepository = Mockito.mock(VaultPushReceiptRepository.class);
++    vaultService =
++        new VaultService(ciphertextRepository, keyEnvelopeRepository, pushReceiptRepository);
++  }
++
++  @Test
++  void bootstrapCreatesEnvelopeWhenMissing() {
++    when(keyEnvelopeRepository.findByDeviceId("device-1")).thenReturn(Optional.empty());
++
++    final KeyBootstrapRequest request = new KeyBootstrapRequest();
++    request.setDeviceId("device-1");
++    request.setPinProof("proof");
++
++    final WrappedKeyEnvelopeResponse response = vaultService.bootstrapKey(request);
++
++    assertThat(response.getKeyId()).isNotBlank();
++    assertThat(response.getWrappedMasterKey()).isNotBlank();
++    verify(keyEnvelopeRepository).insert(any(VaultKeyEnvelopeEntity.class));
++  }
++
++  @Test
++  void fetchOnceRejectsSecondFetch() {
++    final VaultKeyEnvelopeEntity entity = new VaultKeyEnvelopeEntity();
++    entity.setDeviceId("device-1");
++    entity.setKeyId("key");
++    entity.setWrappedMasterKey("wrapped");
++    entity.setConsumedTime(System.currentTimeMillis());
++
++    when(keyEnvelopeRepository.findByDeviceId("device-1")).thenReturn(Optional.of(entity));
++
++    final KeyFetchRequest request = new KeyFetchRequest();
++    request.setDeviceId("device-1");
++    request.setPinProof("proof");
++
++    assertThatThrownBy(() -> vaultService.fetchWrappedKeyOnce(request))
++        .isInstanceOf(VaultServiceException.class)
++        .hasMessageContaining("already fetched once");
++  }
++
++  @Test
++  void pushReturnsDuplicateOnIdempotencyHit() {
++    final VaultPushReceiptEntity receipt = new VaultPushReceiptEntity();
++    receipt.setAcceptedCount(5);
++    when(pushReceiptRepository.findByIdempotencyKey("idem-1")).thenReturn(Optional.of(receipt));
++
++    final SyncPushRequest request = new SyncPushRequest();
++    request.setIdempotencyKey("idem-1");
++
++    final SyncPushResponse response = vaultService.push(request);
++
++    assertThat(response.isDuplicate()).isTrue();
++    assertThat(response.getAcceptedCount()).isEqualTo(5);
++  }
++
++  @Test
++  void pushUpsertsRecordsWhenNewIdempotencyKey() {
++    when(pushReceiptRepository.findByIdempotencyKey("idem-2")).thenReturn(Optional.empty());
++    when(ciphertextRepository.findById("rec-1")).thenReturn(Optional.empty());
++
++    final CiphertextItemRequest item = new CiphertextItemRequest();
++    item.setId("rec-1");
++    item.setDeviceId("device-1");
++    item.setType("image");
++    item.setCiphertext("cipher");
++    item.setNonce("nonce");
++    item.setWrappedDek("dek");
++
++    final SyncPushRequest request = new SyncPushRequest();
++    request.setIdempotencyKey("idem-2");
++    request.setRecords(List.of(item));
++
++    final SyncPushResponse response = vaultService.push(request);
++
++    assertThat(response.isDuplicate()).isFalse();
++    assertThat(response.getAcceptedCount()).isEqualTo(1);
++    verify(ciphertextRepository).save(any(VaultCiphertextEntity.class));
++    verify(pushReceiptRepository).insert(any(VaultPushReceiptEntity.class));
++  }
++}

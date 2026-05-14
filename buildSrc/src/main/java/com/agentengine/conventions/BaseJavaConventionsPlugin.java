@@ -29,7 +29,7 @@ public abstract class BaseJavaConventionsPlugin {
         .configure(
             JavaPluginExtension.class,
             extension ->
-                extension.getToolchain().getLanguageVersion().set(JavaLanguageVersion.of(25)));
+                extension.getToolchain().getLanguageVersion().set(JavaLanguageVersion.of(26)));
 
     project.getExtensions().configure(SpotlessExtension.class, configureSpotless(project));
     configureCompilerOptions(project);

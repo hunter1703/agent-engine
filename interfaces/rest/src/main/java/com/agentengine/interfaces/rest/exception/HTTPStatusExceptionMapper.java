@@ -58,6 +58,12 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
                     .build();
         }
 
+        if (exception instanceof IllegalStateException illegalStateException) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(new ErrorResponse("409", illegalStateException.getMessage()))
+                    .build();
+        }
+
         if (exception instanceof StatusRuntimeException grpcEx) {
             final Status.Code code = grpcEx.getStatus().getCode();
             final int status =

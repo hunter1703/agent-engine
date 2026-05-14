@@ -3,9 +3,8 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.util.common.JsonUtils;
 import com.google.genai.types.Schema;
 import com.google.genai.types.Type;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import io.vertx.json.schema.common.dsl.ArraySchemaBuilder;
 import io.vertx.json.schema.common.dsl.Keyword;
 import io.vertx.json.schema.common.dsl.ObjectSchemaBuilder;
@@ -135,10 +134,10 @@ public final class SchemaUtils {
         return Schemas.schema().withKeyword("type", "null");
     }
 
-    public static JsonSchema buildSchema(final Map<String, Object> schemaMap) {
+    public static com.networknt.schema.Schema buildSchema(final Map<String, Object> schemaMap) {
         try {
-            final JsonSchemaFactory factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7);
-            return factory.getSchema(JsonUtils.toJsonNode(schemaMap));
+            return SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7)
+                    .getSchema(JsonUtils.toJsonNode(schemaMap));
         } catch (Exception ex) {
             LOG.warn("Failed to build JSON schema for validation — skipping enforcement", ex);
             return null;

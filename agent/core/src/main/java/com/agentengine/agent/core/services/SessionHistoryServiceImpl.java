@@ -6,6 +6,7 @@ import static com.mongodb.client.model.Filters.or;
 import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.agent.core.session.SessionActor;
 import com.agentengine.agent.core.session.events.CompletedFact;
+import com.agentengine.agent.core.session.events.RollbackFact;
 import com.agentengine.agent.core.session.events.TurnCommittedFact;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -19,10 +20,7 @@ import com.google.adk.events.Event;
 import com.mongodb.client.MongoCollection;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.typed.PersistenceId;
 import org.jspecify.annotations.NonNull;
@@ -58,11 +56,26 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
         }
         final String persistenceId =
                 PersistenceId.of(SessionActor.TYPE_KEY.name(), session.getId()).id();
-        return getJournalEvents(persistenceId).stream()
+        final Deque<Event> events = new LinkedList<>();
+        for (final Object fact : getJournalEvents(persistenceId).stream()
                 .map(EventEnvelope::event)
-                .filter(fact -> fact instanceof TurnCommittedFact)
-                .flatMap(fact -> ((TurnCommittedFact) fact).getEvents().stream())
-                .toList();
+                .toList()) {
+            if (fact instanceof TurnCommittedFact committed) {
+                events.addAll(committed.getEvents());
+            } else if (fact instanceof RollbackFact rollback) {
+                final String runId = rollback.getRunId();
+                boolean foundRun = false;
+                while (true) {
+                    if (!foundRun) {
+                        foundRun = Objects.equals(events.getLast().invocationId(), runId);
+                    } else if (!Objects.equals(events.getLast().invocationId(), runId)) {
+                        break;
+                    }
+                    events.removeLast();
+                }
+            }
+        }
+        return List.copyOf(events);
     }
 
     @Override

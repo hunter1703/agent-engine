@@ -4,20 +4,20 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.*;
+import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agui.core.event.BaseEvent;
-import com.agui.core.event.RunErrorEvent;
-import com.agui.core.event.RunFinishedEvent;
-import com.agui.core.event.RunStartedEvent;
-import com.agui.core.event.StepFinishedEvent;
-import com.agui.core.event.StepStartedEvent;
+import com.agui.core.types.BaseEvent;
+import com.agui.core.types.RunErrorEvent;
+import com.agui.core.types.RunFinishedEvent;
+import com.agui.core.types.RunStartedEvent;
+import com.agui.core.types.StepFinishedEvent;
+import com.agui.core.types.StepStartedEvent;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -33,15 +33,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private final AGUIMapperState state;
-    private final AGUIEventDecorator decorator;
     private final AGUITextMapper textMapper;
     private final AGUIToolCallMapper toolCallMapper;
 
     public AGUIEventMapper(final String sessionId, final String agentId, final Mode mode) {
         this.state = new AGUIMapperState(sessionId, agentId);
-        this.decorator = new AGUIEventDecorator(state);
-        this.textMapper = new AGUITextMapper(state, decorator, mode);
-        this.toolCallMapper = new AGUIToolCallMapper(state, decorator);
+        this.textMapper = new AGUITextMapper(state, mode);
+        this.toolCallMapper = new AGUIToolCallMapper(state);
     }
 
     @Override
@@ -71,9 +69,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
                     "Mapping error event for session={}, errorMessage={}",
                     event.getSessionId(),
                     event.getErrorMessage());
-            final RunErrorEvent errorEvent = new RunErrorEvent();
-            errorEvent.setError(event.getErrorMessage());
-            decorator.decorate(errorEvent);
+            final RunErrorEvent errorEvent = new RunErrorEvent(event.getErrorMessage(), null, state.timestamp(), null);
             return textMapper.finalizeOpenContent().concatWith(Flowable.just(errorEvent));
         }
 
@@ -107,11 +103,10 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     @Override
     public Flowable<BaseEvent> onError(final Throwable throwable) {
         LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
-        final RunErrorEvent errorEvent = new RunErrorEvent();
-        errorEvent.setError(ExceptionUtils.getErrorMessage(throwable));
-        errorEvent.setRawEvent(Map.of("exception", ExceptionUtils.getStackstrace(throwable)));
+        final RunErrorEvent errorEvent =
+                new RunErrorEvent(ExceptionUtils.getErrorMessage(throwable), null, state.timestamp(), null);
         LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
-        return Flowable.just(decorator.decorate(errorEvent));
+        return Flowable.just(errorEvent);
     }
 
     private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
@@ -187,10 +182,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     private Flowable<BaseEvent> startRun(final String runId) {
         LOG.info(">>> EMITTING RUN_STARTED - runId={}", runId);
         state.startRun(runId);
-        final RunStartedEvent event = new RunStartedEvent();
-        event.setRunId(state.currentRunId());
-        event.setThreadId(state.sessionId());
-        decorator.decorate(event);
+        final RunStartedEvent event =
+                new RunStartedEvent(state.sessionId(), state.currentRunId(), state.timestamp(), null);
         LOG.debug("Generated output event - eventType=RunStartedEvent, runId={}", event.getRunId());
         return Flowable.just(event);
     }
@@ -207,19 +200,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         }
 
         LOG.info(">>> EMITTING RUN_FINISHED - about to call state.finishRun()");
-        final RunFinishedEvent finishedEvent = new RunFinishedEvent();
-        finishedEvent.setThreadId(state.sessionId());
         final String finishedRunId = state.finishRun();
-        finishedEvent.setRunId(finishedRunId);
         LOG.info(
                 ">>> RUN_FINISHED - finishedRunId={}, state.currentRunId() is now={}",
                 finishedRunId,
                 state.currentRunId());
-
-        if (state.finalAnswer() != null) {
-            finishedEvent.setResult(state.finalAnswer());
-        }
-        decorator.decorate(finishedEvent);
+        final RunFinishedEvent finishedEvent =
+                new RunFinishedEvent(state.sessionId(), finishedRunId, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.getRunId());
         return Flowable.just(finishedEvent);
     }
@@ -230,9 +217,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
             return Flowable.empty();
         }
 
-        final StepStartedEvent stepEvent = new StepStartedEvent();
-        stepEvent.setStepName(state.startNextStep());
-        decorator.decorate(stepEvent);
+        final StepStartedEvent stepEvent = new StepStartedEvent(state.startNextStep(), state.timestamp(), null);
         LOG.info("STEP STARTED - Generated StepStartedEvent, stepName={}", stepEvent.getStepName());
         return Flowable.just(stepEvent);
     }
@@ -261,18 +246,15 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     private Flowable<BaseEvent> finishStep() {
-        final StepFinishedEvent event = new StepFinishedEvent();
-        event.setStepName(state.finishStep());
-        decorator.decorate(event);
+        final StepFinishedEvent event = new StepFinishedEvent(state.finishStep(), state.timestamp(), null);
         LOG.info("STEP FINISHED - Generated StepFinishedEvent, stepName={}", event.getStepName());
         return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
     }
 
     private Flowable<BaseEvent> mapCorrectionEvent(final SessionEvent event) {
-        final CorrectionEvent correctionEvent = new CorrectionEvent(Objects.requireNonNull(
-                CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION)));
-        decorator.decorate(correctionEvent);
+        final Violation violation = Objects.requireNonNull(
+                CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION));
         LOG.debug("Generated correction event - correctionMetadataPresent=true");
-        return Flowable.just(correctionEvent);
+        return Flowable.just(AGUIUtils.buildCorrectionEvent(violation, state.timestamp()));
     }
 }

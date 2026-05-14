@@ -8,7 +8,9 @@ quarkus = "3.34.0"
 langchain4j = "1.10.0"
 langchain4j-plugin = "1.10.0"
 qdrant-client = "1.13.0"
-google-adk = "0.5.1-SNAPSHOT"
+# Vendored as flat JARs in libs/ — switch back to a catalog entry once
+# ResumabilityConfig and InvocationContext.agentStates() are reinstated upstream.
+# google-adk = "0.5.1-SNAPSHOT"
 google-genai = "1.44.0"
 pekko = "1.2.1"
 pekko-persistence-jdbc = "1.2.0"
@@ -18,7 +20,7 @@ pekko-projections = "1.1.1"
 jackson = "2.18.6"
 json-path = "2.10.0"
 jinjava = "2.8.3"
-networknt-json-schema-validator = "1.5.6"
+networknt-json-schema-validator = "2.0.0"
 
 # Testing
 junit = "5.13.2"
@@ -62,7 +64,8 @@ javax-annotation = "1.3.2"
 microprofile-openapi = "4.0.1"
 
 # Other
-ag-ui = "0.0.1"
+ag-ui = "0.2.7"
+kotlinx-serialization = "1.8.1"
 okhttp = "4.12.0"
 spotless = "8.4.0"
 jandex = "2.3.0"
@@ -92,8 +95,6 @@ pekko-projection-jdbc = { module = "org.apache.pekko:pekko-projection-jdbc_2.13"
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 # Google AI
-google-adk = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
-google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
 google-genai = { group = "com.google.genai", name = "google-genai", version.ref = "google-genai" }
 
 # Quarkus & LangChain4j Core
@@ -153,11 +154,8 @@ aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "aws-sdk
 aws-sts = { group = "software.amazon.awssdk", name = "sts", version.ref = "aws-sdk" }
 
 # AG-UI
-ag-ui-core = { group = "com.ag-ui", name = "core", version.ref = "ag-ui" }
-ag-ui-server = { group = "com.ag-ui", name = "server", version.ref = "ag-ui" }
-ag-ui-json = { group = "com.ag-ui", name = "json", version.ref = "ag-ui" }
-ag-ui-http = { group = "com.ag-ui", name = "http", version.ref = "ag-ui" }
-ag-ui-ok-http = { group = "com.ag-ui", name = "ok-http", version.ref = "okhttp" }
+ag-ui-core = { group = "com.ag-ui.community", name = "kotlin-core-jvm", version.ref = "ag-ui" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-jvm", version.ref = "kotlinx-serialization" }
 
 # Commons & Utilities
 jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }

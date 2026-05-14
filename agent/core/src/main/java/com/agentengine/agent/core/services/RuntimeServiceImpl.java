@@ -4,11 +4,13 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.agent.core.session.ConfirmResult;
+import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.ExternalCommand.ConfirmCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
+import com.agentengine.agent.core.session.commands.ExternalCommand.RollbackCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.StartCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -112,6 +114,19 @@ public class RuntimeServiceImpl implements RuntimeService {
                         LOG.info("Session {} confirm result: {}", sessionId, result);
                     }
                 });
+    }
+
+    @Override
+    public void rollbackSession(final String sessionId, final String runId) {
+        LOG.info("Rolling back run {} for session {}", runId, sessionId);
+        final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
+        final RollbackResult result = ref.<RollbackResult>ask(
+                        replyTo -> new RollbackCommand(runId, replyTo), SessionActorFactory.ASK_TIMEOUT)
+                .toCompletableFuture()
+                .join();
+        if (result instanceof RollbackResult.Rejected rejected) {
+            throw new IllegalStateException("Rollback rejected: " + rejected.reason());
+        }
     }
 
     @Override

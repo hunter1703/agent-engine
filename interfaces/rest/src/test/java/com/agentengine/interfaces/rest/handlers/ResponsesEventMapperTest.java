@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.agentengine.util.agents.agui.AGUIEventMapper;
-import com.agui.core.event.BaseEvent;
-import com.agui.core.event.RunErrorEvent;
+import com.agui.core.types.BaseEvent;
+import com.agui.core.types.RunErrorEvent;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;

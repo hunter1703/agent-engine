@@ -12,7 +12,7 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agui.core.event.BaseEvent;
+import com.agui.core.types.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
@@ -126,6 +126,22 @@ public class AgentRestAPI {
             throw new IllegalArgumentException("Session ID is required");
         }
         sessionService.deleteSession(sessionId);
+    }
+
+    @POST
+    @Path("/session/{sessionId}/rollback")
+    @Operation(summary = "Roll back a session to before the given run")
+    @APIResponse(responseCode = "204", description = "Rollback applied")
+    @APIResponse(responseCode = "400", description = "runId is required")
+    @APIResponse(responseCode = "404", description = "Session not found")
+    @APIResponse(responseCode = "409", description = "Session is currently running")
+    public void rollbackSession(
+            @NotBlank @PathParam("sessionId") final String sessionId,
+            @NotBlank @QueryParam("runId") final String runId) {
+        if (sessionService.getSession(sessionId) == null) {
+            throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
+        }
+        runtimeService.rollbackSession(sessionId, runId);
     }
 
     @POST

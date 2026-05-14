@@ -27,4 +27,6 @@ public interface RuntimeService {
      * multiple concurrent subscribers for the same session.
      */
     Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
+
+    void rollbackSession(String sessionId, String runId);
 }

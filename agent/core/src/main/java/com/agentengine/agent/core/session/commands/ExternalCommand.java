@@ -3,6 +3,7 @@ package com.agentengine.agent.core.session.commands;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.ConfirmResult;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
+import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -26,4 +27,13 @@ public interface ExternalCommand extends SessionCommand {
      * last turn commit, mapped to {@link com.agentengine.util.agents.beans.SessionEvent} with correct sequence numbers.
      */
     record GetCurrentTurnEventsCommand(ActorRef<CurrentTurnEvents> replyTo) implements ExternalCommand {}
+
+    /**
+     * Appends a {@link com.agentengine.agent.core.session.events.RollbackFact} to the journal,
+     * discarding all events from the given run onwards.
+     *
+     * <p>The rollback is non-destructive: history is preserved in the journal and the effective
+     * event view is computed on read. Only valid when the session is not currently running.
+     */
+    record RollbackCommand(String runId, ActorRef<RollbackResult> replyTo) implements ExternalCommand {}
 }

@@ -51,7 +51,7 @@ public final class PekkoJacksonModule extends SimpleModule {
                         final String name = t.getRawClass().getName();
                         // Always emit @class for our own types (even concrete classes like SessionEvent)
                         if (name.startsWith("com.agentengine.")
-                                || name.startsWith("com.agui.core.event.")
+                                || name.startsWith("com.agui.core.types.")
                                 || name.equals(AUTO_VALUE_TOOL_CONFIRMATION)
                                 || name.equals("com.google.adk.events.ToolConfirmation")) {
                             return true;

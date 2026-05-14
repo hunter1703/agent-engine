@@ -5,7 +5,7 @@ import com.agentengine.interfaces.rest.dto.responses.ChunkChoice;
 import com.agentengine.interfaces.rest.dto.responses.CompletionUsage;
 import com.agentengine.interfaces.rest.dto.responses.MessageDelta;
 import com.agentengine.interfaces.rest.handlers.ResponsesEventMapper.ResponseOutputEvent;
-import com.agui.core.event.BaseEvent;
+import com.agui.core.types.BaseEvent;
 import io.reactivex.rxjava3.core.Flowable;
 import java.time.Instant;
 import java.util.List;

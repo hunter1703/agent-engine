@@ -16,16 +16,14 @@ public final class AGUIMapperState {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
-    private String currentReasoningId;
-    private String currentReasoningMessageId;
+    private boolean reasoningOpen;
+    private boolean reasoningMessageOpen;
     private String finalAnswer;
     private long currentSourceTimestamp;
     private String currentSourceEventId;
     private String currentAuthor;
     private int stepSequence;
     private int textMessageSequence;
-    private int reasoningSequence;
-    private int reasoningMessageSequence;
     private final Map<String, FunctionCall> requestConfirmationCalls = new HashMap<>();
 
     public AGUIMapperState(final String sessionId, final String agentId) {
@@ -131,42 +129,28 @@ public final class AGUIMapperState {
     }
 
     public boolean hasOpenReasoning() {
-        return currentReasoningId != null;
+        return reasoningOpen;
     }
 
-    public String startNextReasoning() {
-        // Include runId to ensure uniqueness across runs in the same session
-        final String prefix = runId != null ? "reasoning-" + runId + "-" : "reasoning-";
-        currentReasoningId = stableReplayId(prefix, currentSourceEventId, ++reasoningSequence);
-        return currentReasoningId;
-    }
-
-    public String currentReasoningId() {
-        return currentReasoningId;
+    public void startReasoning() {
+        reasoningOpen = true;
     }
 
     public boolean hasOpenReasoningMessage() {
-        return currentReasoningMessageId != null;
+        return reasoningMessageOpen;
     }
 
-    public String startNextReasoningMessage() {
-        // Include runId to ensure uniqueness across runs in the same session
-        final String prefix = runId != null ? "reasoning-msg-" + runId + "-" : "reasoning-msg-";
-        currentReasoningMessageId = stableReplayId(prefix, currentSourceEventId, ++reasoningMessageSequence);
-        return currentReasoningMessageId;
-    }
-
-    public String currentReasoningMessageId() {
-        return currentReasoningMessageId;
+    public void startReasoningMessage() {
+        reasoningMessageOpen = true;
     }
 
     public void closeReasoningMessage() {
-        currentReasoningMessageId = null;
+        reasoningMessageOpen = false;
     }
 
     public void closeReasoning() {
-        currentReasoningId = null;
-        currentReasoningMessageId = null;
+        reasoningOpen = false;
+        reasoningMessageOpen = false;
     }
 
     public void rememberToolCallParentStep(final String callId) {
@@ -177,8 +161,9 @@ public final class AGUIMapperState {
         return toolCallParentSteps.remove(callId);
     }
 
-    public long currentSourceTimestamp() {
-        return currentSourceTimestamp;
+    /** Returns the timestamp to stamp onto the current event, falling back to wall clock. */
+    public long timestamp() {
+        return currentSourceTimestamp > 0 ? currentSourceTimestamp : System.currentTimeMillis();
     }
 
     public String sessionId() {

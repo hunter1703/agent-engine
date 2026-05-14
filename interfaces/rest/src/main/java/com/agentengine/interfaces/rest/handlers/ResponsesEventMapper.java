@@ -1,11 +1,6 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agentengine.util.agents.agui.ReasoningEndEvent;
-import com.agentengine.util.agents.agui.ReasoningMessageContentEvent;
-import com.agentengine.util.agents.agui.ReasoningMessageEndEvent;
-import com.agentengine.util.agents.agui.ReasoningMessageStartEvent;
-import com.agentengine.util.agents.agui.ReasoningStartEvent;
-import com.agui.core.event.*;
+import com.agui.core.types.*;
 import io.reactivex.rxjava3.core.Flowable;
 
 /**
@@ -72,28 +67,28 @@ public final class ResponsesEventMapper {
             return outputItemDone("message");
         }
 
-        // Reasoning events
-        if (event instanceof ReasoningMessageContentEvent reasoning) {
-            String delta = reasoning.getDelta();
-            if (delta == null || delta.isEmpty()) {
+        // Reasoning/thinking events
+        if (event instanceof ThinkingTextMessageContentEvent thinking) {
+            String delta = thinking.getDelta();
+            if (delta.isEmpty()) {
                 return Flowable.empty();
             }
             return reasoningDelta(delta);
         }
 
-        if (event instanceof ReasoningMessageStartEvent) {
+        if (event instanceof ThinkingTextMessageStartEvent) {
             return outputItemAdded("reasoning");
         }
 
-        if (event instanceof ReasoningMessageEndEvent) {
+        if (event instanceof ThinkingTextMessageEndEvent) {
             return outputItemDone("reasoning");
         }
 
-        if (event instanceof ReasoningStartEvent) {
+        if (event instanceof ThinkingStartEvent) {
             return Flowable.just(new ResponseOutputEvent("response.reasoning.started", null, null, null));
         }
 
-        if (event instanceof ReasoningEndEvent) {
+        if (event instanceof ThinkingEndEvent) {
             return Flowable.just(new ResponseOutputEvent("response.reasoning.done", null, null, null));
         }
 
@@ -120,7 +115,7 @@ public final class ResponsesEventMapper {
         }
 
         if (event instanceof RunErrorEvent error) {
-            return error(error.getError());
+            return error(error.getMessage());
         }
 
         return Flowable.empty();
