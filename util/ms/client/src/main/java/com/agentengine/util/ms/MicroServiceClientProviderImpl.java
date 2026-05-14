@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,9 +64,10 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
             }
         }
 
-        // Fall back to a transparent gRPC proxy for remote services, reusing the
-        // channel per service
-        final ManagedChannel channel = channels.computeIfAbsent(serviceClass, cls -> {
+        // Fall back to a transparent gRPC proxy for remote services. The channel is
+        // resolved lazily on the first method invocation so that bean initialization
+        // does not trigger MongoDB lookups or gRPC connections at startup.
+        final Supplier<ManagedChannel> channelSupplier = () -> channels.computeIfAbsent(serviceClass, cls -> {
             final String serverId = cls.getAnnotation(MicroService.class).value();
             final MicroServiceInfraConfig config =
                     infraConfigService.findById(MicroServiceInfraConfig.CATEGORY, serverId);
@@ -82,7 +84,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
         return (T) Proxy.newProxyInstance(
                 serviceClass.getClassLoader(),
                 new Class<?>[] {serviceClass},
-                new MicroServiceInvocationHandler(serviceClass, channel));
+                new MicroServiceInvocationHandler(serviceClass, channelSupplier));
     }
 
     @PreDestroy

@@ -18,7 +18,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     private static final int DEFAULT_MAX_RESULTS = 10;
 
     private final String collection;
-    private final QdrantHttpClient client;
+    private final VectorDbClientFactory clientFactory;
 
     protected QdrantVectorStore(
             final String collection,
@@ -26,7 +26,11 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
             final BiFunction<String, String, float[]> embeddingGenerator) {
         super(embeddingGenerator);
         this.collection = collection;
-        this.client = clientFactory.getClient();
+        this.clientFactory = clientFactory;
+    }
+
+    private QdrantHttpClient client() {
+        return clientFactory.getClient();
     }
 
     /** Serializes {@code entity} into a Qdrant payload map. */
@@ -43,7 +47,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         final QdrantHttpClient.Filter filter = toQdrantFilter(query.getFilter());
         LOG.info("QdrantVectorStore.deleteByQuery: translated filter={}", filter);
         final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(null, filter);
-        client.delete(collection, request);
+        client().delete(collection, request);
         return 0L;
     }
 
@@ -65,7 +69,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
                 qdrantFilter,
                 true);
 
-        final QdrantHttpClient.SearchResponse response = client.search(collection, request);
+        final QdrantHttpClient.SearchResponse response = client().search(collection, request);
         final List<T> results =
                 response.result().stream().map(p -> fromPayload(p.payload())).toList();
         return PaginatedResult.create(results, page, null);
@@ -79,14 +83,14 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         final Object vectorData = buildVectorData(entity);
         final QdrantHttpClient.Point point = new QdrantHttpClient.Point(entity.getId(), vectorData, payload);
         final QdrantHttpClient.UpsertRequest request = new QdrantHttpClient.UpsertRequest(List.of(point));
-        client.upsert(collection, request);
+        client().upsert(collection, request);
         return entity;
     }
 
     @Override
     public boolean deleteById(final String id) {
         final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(List.of(id), null);
-        client.delete(collection, request);
+        client().delete(collection, request);
         return true;
     }
 
@@ -134,7 +138,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         // Note: HTTP API doesn't support field projection like gRPC, so we ignore includeFields/excludeFields
         final QdrantHttpClient.RetrieveRequest request =
                 new QdrantHttpClient.RetrieveRequest(new ArrayList<>(ids), true);
-        final QdrantHttpClient.RetrieveResponse response = client.retrieve(collection, request);
+        final QdrantHttpClient.RetrieveResponse response = client().retrieve(collection, request);
         final Map<String, T> result = new LinkedHashMap<>();
         for (final QdrantHttpClient.RetrievedPoint point : response.result()) {
             final T entity = fromPayload(point.payload());

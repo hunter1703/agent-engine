@@ -5,7 +5,6 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
-import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.io.InputStream;
@@ -41,6 +40,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  *   docker run --rm -p 4566:4566 localstack/localstack
  * </pre>
  */
+@SuppressWarnings("ALL")
 @Singleton
 public class LocalStackCloudStorageService implements CloudStorageService {
 
@@ -49,46 +49,45 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     private static final String DEFAULT_MEDIA_TYPE = "application/octet-stream";
 
     private final InfraConfigService infraConfigService;
-    private S3Client s3;
-    private S3Presigner presigner;
-    private volatile String defaultBucket;
+    private final LazyConstant<CloudStorageInfraConfig> config;
+    private LazyConstant<S3Client> s3;
+    private LazyConstant<S3Presigner> presigner;
+    private LazyConstant<String> defaultBucket;
 
     @Inject
     public LocalStackCloudStorageService(final InfraConfigService infraConfigService) {
         this.infraConfigService = infraConfigService;
-    }
+        this.config = LazyConstant.of(
+                () -> infraConfigService.findById(CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.CONFIG_ID));
+        this.s3 = LazyConstant.of(() -> {
+            final CloudStorageInfraConfig cloudStorageInfraConfig = config.get();
+            final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(
+                    cloudStorageInfraConfig.getAccessKeyId(), cloudStorageInfraConfig.getSecretAccessKey()));
+            final URI endpoint = URI.create(cloudStorageInfraConfig.getEndpointUrl());
+            final Region region = Region.of(cloudStorageInfraConfig.getRegion());
 
-    @PostConstruct
-    void init() {
-        final CloudStorageInfraConfig config =
-                infraConfigService.findById(CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.CONFIG_ID);
-
-        if (config == null) {
-            throw new IllegalStateException("LocalStack infra config not found: " + CloudStorageInfraConfig.CATEGORY
-                    + ":" + CloudStorageInfraConfig.CONFIG_ID);
-        }
-
-        this.defaultBucket = config.getDefaultBucket();
-
-        final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(config.getAccessKeyId(), config.getSecretAccessKey()));
-        final URI endpoint = URI.create(config.getEndpointUrl());
-        final Region region = Region.of(config.getRegion());
-
-        this.s3 = S3Client.builder()
-                .endpointOverride(endpoint)
-                .region(region)
-                .credentialsProvider(credentials)
-                .forcePathStyle(true)
-                .build();
-
-        this.presigner = S3Presigner.builder()
-                .endpointOverride(endpoint)
-                .region(region)
-                .credentialsProvider(credentials)
-                .build();
-
-        log.info("CloudStorageService initialised -> {} (bucket: {})", config.getEndpointUrl(), defaultBucket);
+            return S3Client.builder()
+                    .endpointOverride(endpoint)
+                    .region(region)
+                    .credentialsProvider(credentials)
+                    .forcePathStyle(true)
+                    .build();
+        });
+        this.presigner = LazyConstant.of(() -> {
+            final CloudStorageInfraConfig cloudStorageInfraConfig = config.get();
+            final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(
+                    cloudStorageInfraConfig.getAccessKeyId(), cloudStorageInfraConfig.getSecretAccessKey()));
+            final URI endpoint = URI.create(cloudStorageInfraConfig.getEndpointUrl());
+            final Region region = Region.of(cloudStorageInfraConfig.getRegion());
+            return S3Presigner.builder()
+                    .endpointOverride(endpoint)
+                    .region(region)
+                    .credentialsProvider(credentials)
+                    .build();
+        });
+        this.defaultBucket = LazyConstant.of(() -> {
+            return config.get().getDefaultBucket();
+        });
     }
 
     @Override
@@ -102,21 +101,25 @@ public class LocalStackCloudStorageService implements CloudStorageService {
         final RequestBody body = contentLength >= 0
                 ? RequestBody.fromInputStream(inputStream, contentLength)
                 : RequestBody.fromContentProvider(() -> inputStream, mediaType);
-        s3.putObject(
-                PutObjectRequest.builder()
-                        .bucket(defaultBucket)
-                        .key(key)
-                        .contentType(mediaType)
-                        .build(),
-                body);
+        s3.get()
+                .putObject(
+                        PutObjectRequest.builder()
+                                .bucket(defaultBucket.get())
+                                .key(key)
+                                .contentType(mediaType)
+                                .build(),
+                        body);
         return new FileDetails(
                 name, defaultBucket + "/" + key, FileDetails.StorageType.CLOUDSTORAGE, mediaType, contentLength);
     }
 
     @Override
     public Content download(final String key) {
-        final ResponseInputStream<GetObjectResponse> response = s3.getObject(
-                GetObjectRequest.builder().bucket(defaultBucket).key(key).build());
+        final ResponseInputStream<GetObjectResponse> response = s3.get()
+                .getObject(GetObjectRequest.builder()
+                        .bucket(defaultBucket.get())
+                        .key(key)
+                        .build());
         return new Content(response, response.response().contentType());
     }
 
@@ -129,8 +132,11 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public void delete(final String key) {
-        s3.deleteObject(
-                DeleteObjectRequest.builder().bucket(defaultBucket).key(key).build());
+        s3.get()
+                .deleteObject(DeleteObjectRequest.builder()
+                        .bucket(defaultBucket.get())
+                        .key(key)
+                        .build());
     }
 
     @Override
@@ -139,10 +145,11 @@ public class LocalStackCloudStorageService implements CloudStorageService {
         final int sep = source.indexOf('/');
         final String key = sep >= 0 ? source.substring(sep + 1) : source;
         return presigner
+                .get()
                 .presignGetObject(GetObjectPresignRequest.builder()
                         .signatureDuration(validity)
                         .getObjectRequest(
-                                request -> request.bucket(defaultBucket).key(key))
+                                request -> request.bucket(defaultBucket.get()).key(key))
                         .build())
                 .url()
                 .toString();
@@ -151,8 +158,9 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     @Override
     public List<String> list(final String keyPrefix) {
         return s3
+                .get()
                 .listObjectsV2Paginator(ListObjectsV2Request.builder()
-                        .bucket(defaultBucket)
+                        .bucket(defaultBucket.get())
                         .prefix(keyPrefix)
                         .build())
                 .stream()
@@ -163,11 +171,12 @@ public class LocalStackCloudStorageService implements CloudStorageService {
 
     @Override
     public void copy(final String sourceKey, final String destinationKey) {
-        s3.copyObject(CopyObjectRequest.builder()
-                .sourceBucket(defaultBucket)
-                .sourceKey(sourceKey)
-                .destinationBucket(defaultBucket)
-                .destinationKey(destinationKey)
-                .build());
+        s3.get()
+                .copyObject(CopyObjectRequest.builder()
+                        .sourceBucket(defaultBucket.get())
+                        .sourceKey(sourceKey)
+                        .destinationBucket(defaultBucket.get())
+                        .destinationKey(destinationKey)
+                        .build());
     }
 }

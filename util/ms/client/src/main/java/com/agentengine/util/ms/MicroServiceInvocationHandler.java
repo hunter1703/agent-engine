@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -39,11 +40,15 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             Thread.ofVirtual().name("grpc-stream-", 0).factory());
 
     private final Class<?> serviceClass;
-    private final ServiceGrpc.ServiceBlockingStub stub;
+    private final Supplier<ManagedChannel> channelSupplier;
 
-    public MicroServiceInvocationHandler(Class<?> serviceClass, ManagedChannel channel) {
+    public MicroServiceInvocationHandler(Class<?> serviceClass, Supplier<ManagedChannel> channelSupplier) {
         this.serviceClass = serviceClass;
-        this.stub = ServiceGrpc.newBlockingStub(channel);
+        this.channelSupplier = channelSupplier;
+    }
+
+    private ServiceGrpc.ServiceBlockingStub stub() {
+        return ServiceGrpc.newBlockingStub(channelSupplier.get());
     }
 
     @Override
@@ -84,7 +89,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
                 requestId,
                 serviceClass.getSimpleName(),
                 method.getName());
-        final Iterator<Response> responseIterator = stub.execute(request);
+        final Iterator<Response> responseIterator = stub().execute(request);
         LOG.info("[{}] gRPC call returned for {}.{}", requestId, serviceClass.getSimpleName(), method.getName());
         if (!responseIterator.hasNext()) {
             // No payload from the server — return Optional.empty() for Optional return
@@ -109,7 +114,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
     private Flowable<?> streamingCall(Request request, Method method) {
         final Class<?> itemType = firstTypeArgument(method.getGenericReturnType());
-        return Flowable.fromIterable(() -> stub.execute(request))
+        return Flowable.fromIterable(() -> stub().execute(request))
                 // gRPC's blocking response iterator must never be consumed on a Vert.x event-loop thread.
                 .subscribeOn(Schedulers.from(STREAM_EXECUTOR))
                 .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType, true));

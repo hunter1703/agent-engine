@@ -1,7 +1,11 @@
 replicas: 1
 pdb:
-  enabled: true
-  minAvailable: 1
+  enabled: false
+probes:
+  liveness:
+    timeoutSeconds: 10
+  readiness:
+    timeoutSeconds: 10
 topologySpreadConstraints:
   - maxSkew: 1
     topologyKey: kubernetes.io/hostname
