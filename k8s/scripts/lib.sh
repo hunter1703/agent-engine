@@ -33,7 +33,7 @@ chart_path() {
 }
 
 chart_env_values_file() {
-  echo "$K8S_DIR/environments/$1/$2.yaml"
+  echo "$K8S_DIR/$2/envs/$1/values.yaml"
 }
 
 ensure_chart_dependencies() {
@@ -114,7 +114,7 @@ append_env_values_args() {
 print_common_usage() {
   cat <<'EOF'
 Options:
-  -e, --environment <name>  Environment overlay under k8s/environments (default: prod)
+  -e, --environment <name>  Environment overlay under k8s/<chart>/envs (default: local)
   -n, --namespace <name>    Kubernetes namespace (default: agent-engine)
   -f, --values <file>       Additional Helm values file (repeatable)
   --set <key=value>         Additional Helm set override (repeatable)
