@@ -26,8 +26,10 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
     }
 
     protected BaseLlmAgentBuilder createLlmAgentBuilder(final BaseAgentConfig config) {
-        final BaseLlm model = modelProvider.acquire(config.getModelId());
+        final String modelId = config.getModelId();
+        final BaseLlm model = modelProvider.acquire(modelId);
         if (!(model instanceof AbstractLLM)) {
+            modelProvider.release(modelId);
             throw new IllegalStateException("Model factory did not return an AbstractLLM instance.");
         }
 
@@ -47,7 +49,8 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
                 .systemInstructions(buildSystemPrompt(config))
                 .appendTools(tools)
                 .appendToolSets(toolFactory.buildToolsets(config.getTools()))
-                .agentConfig(config);
+                .agentConfig(config)
+                .closeHook(() -> modelProvider.release(modelId));
     }
 
     private static String buildSystemPrompt(final BaseAgentConfig config) {

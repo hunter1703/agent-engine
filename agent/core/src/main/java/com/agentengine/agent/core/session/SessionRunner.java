@@ -5,6 +5,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.commands.SelfCommand.CompleteRunCommand;
 import com.agentengine.agent.core.session.commands.SelfCommand.PublishEventCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
+import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.artifacts.CloudStorageArtifactService;
 import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.knowledge.api.beans.IndexRequest;
@@ -52,6 +53,7 @@ public final class SessionRunner {
 
     private final String sessionId;
     private final ActorRef<SessionCommand> sessionActor;
+    private final Agent agent;
     private final Runner runner;
     private Disposable disposable;
     private final CloudStorageService cloudStorageService;
@@ -60,11 +62,13 @@ public final class SessionRunner {
     public SessionRunner(
             final String sessionId,
             final ActorRef<SessionCommand> sessionActor,
+            final Agent agent,
             final Runner runner,
             final CloudStorageService cloudStorageService,
             final KnowledgeService knowledgeService) {
         this.sessionId = sessionId;
         this.sessionActor = sessionActor;
+        this.agent = agent;
         this.runner = runner;
         this.cloudStorageService = cloudStorageService;
         this.knowledgeService = knowledgeService;
@@ -188,6 +192,11 @@ public final class SessionRunner {
             disposable.dispose();
         }
         disposable = null;
+    }
+
+    public synchronized void close() {
+        cancel();
+        agent.close().blockingAwait();
     }
 
     private static RunConfig runConfig() {

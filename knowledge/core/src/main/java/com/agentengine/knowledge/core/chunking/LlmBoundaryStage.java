@@ -3,7 +3,6 @@ package com.agentengine.knowledge.core.chunking;
 import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.chunking.ChunkingStage;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -73,34 +72,28 @@ public final class LlmBoundaryStage extends ChunkingStage {
         final List<KnowledgeChunk> result = new ArrayList<>();
         int windowStart = 0;
         int globalIndex = 0;
+        while (windowStart < chunks.size()) {
+            final int windowEnd = buildWindowEnd(chunks, windowStart);
 
-        final BaseLlm model = modelProvider.acquire(chatModelId);
-        try {
-            while (windowStart < chunks.size()) {
-                final int windowEnd = buildWindowEnd(chunks, windowStart);
-
-                // If the window only has one paragraph left, merge the rest as the final chunk
-                if (windowEnd - windowStart <= 1) {
-                    result.add(mergeRange(chunks, windowStart, chunks.size(), globalIndex++));
-                    break;
-                }
-
-                final int boundaryId = askForBoundary(chunks, windowStart, windowEnd, model);
-
-                if (boundaryId <= windowStart || boundaryId >= windowEnd) {
-                    LOG.debug(
-                            "LlmBoundaryStage: no boundary in window [{}, {}), treating as single chunk",
-                            windowStart,
-                            windowEnd);
-                    result.add(mergeRange(chunks, windowStart, windowEnd, globalIndex++));
-                    windowStart = windowEnd;
-                } else {
-                    result.add(mergeRange(chunks, windowStart, boundaryId, globalIndex++));
-                    windowStart = boundaryId;
-                }
+            // If the window only has one paragraph left, merge the rest as the final chunk
+            if (windowEnd - windowStart <= 1) {
+                result.add(mergeRange(chunks, windowStart, chunks.size(), globalIndex++));
+                break;
             }
-        } finally {
-            modelProvider.release(chatModelId);
+
+            final int boundaryId = askForBoundary(chunks, windowStart, windowEnd);
+
+            if (boundaryId <= windowStart || boundaryId >= windowEnd) {
+                LOG.debug(
+                        "LlmBoundaryStage: no boundary in window [{}, {}), treating as single chunk",
+                        windowStart,
+                        windowEnd);
+                result.add(mergeRange(chunks, windowStart, windowEnd, globalIndex++));
+                windowStart = windowEnd;
+            } else {
+                result.add(mergeRange(chunks, windowStart, boundaryId, globalIndex++));
+                windowStart = boundaryId;
+            }
         }
 
         return result;
@@ -124,8 +117,7 @@ public final class LlmBoundaryStage extends ChunkingStage {
      * Builds the numbered document window and asks the LLM for the boundary paragraph ID.
      * Returns the 0-based index of the boundary paragraph, or {@code -1} on failure.
      */
-    private static int askForBoundary(
-            final List<KnowledgeChunk> chunks, final int start, final int end, final BaseLlm chatModel) {
+    private int askForBoundary(final List<KnowledgeChunk> chunks, final int start, final int end) {
         final StringBuilder doc = new StringBuilder();
         for (int i = start; i < end; i++) {
             final String text = chunks.get(i).getText();
@@ -140,8 +132,9 @@ public final class LlmBoundaryStage extends ChunkingStage {
                     .appendInstructions(List.of(SYSTEM_INSTRUCTIONS))
                     .contents(contents)
                     .build();
-            final String responseText = chatModel
-                    .generateContent(request, false)
+
+            final String responseText = modelProvider
+                    .invokeAcquiring(chatModelId, model -> model.generateContent(request, false))
                     .map(response -> response.content().map(Content::text).orElseThrow())
                     .blockingSingle();
             final Matcher matcher = ANSWER_PATTERN.matcher(responseText);

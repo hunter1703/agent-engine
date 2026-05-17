@@ -104,10 +104,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     @Override
     public SignalHandler<SessionActorState> signalHandler() {
         return newSignalHandlerBuilder()
-                .onSignal(RecoveryCompleted.class, (state, signal) -> onRecoveryCompleted(state))
+                .onSignal(RecoveryCompleted.class, (state, _) -> onRecoveryCompleted(state))
                 .onSignal(PostStop.class, (_, _) -> {
                     if (runner != null) {
-                        runner.cancel();
+                        runner.close();
                     }
                 })
                 .build();

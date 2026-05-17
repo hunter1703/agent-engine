@@ -39,6 +39,7 @@ public abstract class Agent extends BaseAgent {
     public abstract static class Builder<B extends Builder<?, ?>, A extends Agent> {
         private BaseAgentConfig agentConfig;
         private List<? extends Agent> subAgents = List.of();
+        private Runnable closeHook;
 
         public String name() {
             return agentConfig.getId();
@@ -57,6 +58,16 @@ public abstract class Agent extends BaseAgent {
 
         public List<? extends Agent> subAgents() {
             return subAgents;
+        }
+
+        public B closeHook(Runnable closeHook) {
+            this.closeHook = closeHook;
+            // noinspection unchecked
+            return (B) this;
+        }
+
+        public Runnable closeHook() {
+            return closeHook;
         }
 
         public B agentConfig(BaseAgentConfig agentConfig) {

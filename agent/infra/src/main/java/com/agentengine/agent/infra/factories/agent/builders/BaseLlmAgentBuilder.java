@@ -1,8 +1,8 @@
 package com.agentengine.agent.infra.factories.agent.builders;
 
 import com.agentengine.agent.infra.agents.Agent;
-import com.agentengine.agent.infra.agents.BaseAgent;
 import com.agentengine.agent.infra.agents.DelegatedAgent;
+import com.agentengine.agent.infra.agents.LLMAgent;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.BaseTool;
@@ -62,7 +62,7 @@ public class BaseLlmAgentBuilder extends Agent.Builder<BaseLlmAgentBuilder, Dele
                 .subAgents(subAgents())
                 .instruction(systemInstructions)
                 .tools(toolsAndToolsets);
-        final LlmAgent llmAgent = new BaseAgent(builder);
+        final LlmAgent llmAgent = new LLMAgent(builder, closeHook());
         return new DelegatedAgent(llmAgent, agentConfig());
     }
 }

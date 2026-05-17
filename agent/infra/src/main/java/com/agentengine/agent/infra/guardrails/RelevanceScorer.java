@@ -7,7 +7,6 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.genai.types.Content;
@@ -69,16 +68,12 @@ public final class RelevanceScorer {
                         .parts(Part.fromText(prompt))
                         .build()))
                 .build();
-        final BaseLlm model = modelProvider.acquire(modelId);
-        try {
-            final LlmResponse response = model.generateContent(request, false)
-                    .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .blockingFirst();
-            final String text = response.content().map(Content::text).orElse("");
-            return parseScore(text);
-        } finally {
-            modelProvider.release(modelId);
-        }
+        final LlmResponse response = modelProvider
+                .invokeAcquiring(modelId, model -> model.generateContent(request, false))
+                .timeout(MODEL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .blockingSingle();
+        final String text = response.content().map(Content::text).orElse("");
+        return parseScore(text);
     }
 
     private static int parseScore(final String raw) {

@@ -13,7 +13,6 @@ import com.agentengine.util.common.TemplateUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.common.cache.CacheBuilder;
@@ -173,16 +172,10 @@ public final class CompactionContextManager implements ContextManager {
                         .parts(List.of(Part.fromText(prompt)))
                         .build()))
                 .build();
-        final BaseLlm model = modelProvider.acquire(modelId);
-        try {
-            final LlmResponse response = model.generateContent(request, false).blockingFirst();
-            return response.content().map(Content::text).orElse(null);
-        } catch (Exception ex) {
-            LOG.warn("Summary model call failed.", ex);
-            return null;
-        } finally {
-            modelProvider.release(modelId);
-        }
+        final LlmResponse response = modelProvider
+                .invokeAcquiring(modelId, model -> model.generateContent(request, false))
+                .blockingSingle();
+        return response.content().map(Content::text).orElse(null);
     }
 
     private String loadSummary(final String sessionId) {

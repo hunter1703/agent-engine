@@ -2,15 +2,13 @@ package com.agentengine.agent.core.session;
 
 import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.agent.infra.factories.model.ModelProvider;
-import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.mongodb.infra.DefaultModelsConfig;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
-import com.google.adk.models.BaseLlm;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.common.cache.CacheBuilder;
@@ -25,6 +23,7 @@ import java.util.Objects;
 public class SessionTitleGenerator {
     private static final Content INSTRUCTIONS = Content.fromParts(
             Part.fromText("INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
+    private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
     private final SessionHistoryService sessionHistoryService;
     private final Cache<String, String> titleGeneratorModelCache;
     private final ModelProvider modelProvider;
@@ -54,19 +53,22 @@ public class SessionTitleGenerator {
         }
         final List<SessionEvent> eventsToGenerateTitleOn = new ArrayList<>();
 
-        boolean lastRunFound = false;
+        int numRunsFound = 0;
         // skips partial runs and generate title only on latest complete run
         for (final SessionEvent event : sessionEvents.reversed()) {
             if (event.getFinishReason() != null) {
-                if (!lastRunFound) {
-                    eventsToGenerateTitleOn.add(event);
-                    lastRunFound = true;
-                } else {
+                if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
                     break;
+                } else {
+                    numRunsFound++;
                 }
-            } else if (lastRunFound) {
-                eventsToGenerateTitleOn.add(event);
             }
+            final Content content = event.getContent();
+            final String text = content == null ? null : content.text();
+            if (StringUtils.isBlank(text)) {
+                continue;
+            }
+            eventsToGenerateTitleOn.add(event);
         }
 
         final StringBuilder sb = new StringBuilder();
@@ -74,31 +76,15 @@ public class SessionTitleGenerator {
         for (final SessionEvent event : eventsToGenerateTitleOn.reversed()) {
             final String author = Objects.equals(Constants.AUTHOR_USER, event.getAuthor()) ? "USER" : "ASSISTANT";
             final Content content = event.getContent();
-            if (content == null) {
-                continue;
-            }
-            final List<Part> toolCallParts = ContentUtils.getToolCallParts(content);
-            final List<Part> toolResponseParts = ContentUtils.getToolResponseParts(content);
-            sb.append(author)
-                    .append(": ")
-                    .append(content.text())
-                    .append("\n")
-                    .append("Tool Calls : ")
-                    .append(JsonUtils.toJson(
-                            toolCallParts.stream().map(Part::functionCall).toList()))
-                    .append("Tool Result : ")
-                    .append(JsonUtils.toJson(
-                            toolResponseParts.stream().map(Part::functionCall).toList()));
-
-            sb.append("\n\n\n");
+            sb.append(author).append(": ").append(content.text()).append("\n");
         }
 
-        final BaseLlm model = modelProvider.acquire(titleGeneratorModelCache.get("model"));
-
-        final LlmRequest request = LlmRequest.builder()
-                .contents(List.of(INSTRUCTIONS, Content.fromParts(Part.fromText(sb.toString()))))
-                .build();
-        final LlmResponse response = model.generateContent(request, false).blockingLast();
+        final Content content = Content.fromParts(Part.fromText(sb.toString()));
+        final LlmRequest request =
+                LlmRequest.builder().contents(List.of(INSTRUCTIONS, content)).build();
+        final LlmResponse response = modelProvider
+                .invokeAcquiring(titleGeneratorModelCache.get("model"), model -> model.generateContent(request, false))
+                .blockingSingle();
         final Content responseContent = response.content().orElse(null);
         if (responseContent == null) {
             return null;

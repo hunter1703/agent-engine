@@ -6,6 +6,8 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.RefCountedCache;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.BaseLlm;
+import com.google.adk.models.LlmResponse;
+import io.reactivex.rxjava3.core.Flowable;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -40,6 +42,16 @@ public class ModelProvider {
                 .creator(this::buildModel)
                 .onEvict((_, model) -> tryClose(model))
                 .build();
+    }
+
+    public Flowable<LlmResponse> invokeAcquiring(
+            final String modelId, Function<BaseLlm, Flowable<LlmResponse>> invocation) {
+        final BaseLlm model = acquire(modelId);
+        try {
+            return invocation.apply(model);
+        } finally {
+            release(modelId);
+        }
     }
 
     public BaseLlm acquire(final String modelId) {

@@ -86,7 +86,7 @@ public class RunnerFactory {
                 .sessionService(inMemorySessionService)
                 .memoryService(new InMemoryMemoryService())
                 .build();
-        return new SessionRunner(sessionId, actor, runner, cloudStorageService, knowledgeService);
+        return new SessionRunner(sessionId, actor, agent, runner, cloudStorageService, knowledgeService);
     }
 
     private InMemorySessionService buildInMemorySessionService(final String agentId, final String sessionId) {

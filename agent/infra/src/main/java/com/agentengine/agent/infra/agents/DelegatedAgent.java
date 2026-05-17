@@ -4,6 +4,7 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
 
@@ -30,6 +31,11 @@ public class DelegatedAgent extends Agent {
     @Override
     public List<? extends BaseAgent> subAgents() {
         return delegated != null ? delegated.subAgents() : super.subAgents();
+    }
+
+    @Override
+    public Completable close() {
+        return delegated.close();
     }
 
     @Override
