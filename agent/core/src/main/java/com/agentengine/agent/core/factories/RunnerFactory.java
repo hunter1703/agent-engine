@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.factories;
 
+import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.services.SessionHistoryServiceImpl;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -24,7 +25,6 @@ import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.apps.ResumabilityConfig;
-import com.google.adk.memory.InMemoryMemoryService;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
@@ -47,6 +47,7 @@ public class RunnerFactory {
     private final CloudStorageArtifactService artifactService;
     private final CloudStorageService cloudStorageService;
     private final KnowledgeService knowledgeService;
+    private final MemoryService memoryService;
 
     public RunnerFactory(
             AgentService agentService,
@@ -57,7 +58,8 @@ public class RunnerFactory {
             final SessionHistoryServiceImpl historyService,
             final CloudStorageArtifactService artifactService,
             final CloudStorageService cloudStorageService,
-            final KnowledgeService knowledgeService) {
+            final KnowledgeService knowledgeService,
+            final MemoryService memoryService) {
         this.agentService = agentService;
         this.agentProvider = agentProvider;
         this.contextManagerProvider = contextManagerProvider;
@@ -67,6 +69,7 @@ public class RunnerFactory {
         this.artifactService = artifactService;
         this.cloudStorageService = cloudStorageService;
         this.knowledgeService = knowledgeService;
+        this.memoryService = memoryService;
     }
 
     public SessionRunner buildRunner(
@@ -84,7 +87,7 @@ public class RunnerFactory {
                 .app(app)
                 .artifactService(artifactService)
                 .sessionService(inMemorySessionService)
-                .memoryService(new InMemoryMemoryService())
+                .memoryService(memoryService)
                 .build();
         return new SessionRunner(sessionId, actor, agent, runner, cloudStorageService, knowledgeService);
     }

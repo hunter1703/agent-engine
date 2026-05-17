@@ -7,6 +7,7 @@ group = 'com.agentengine.agent'
 dependencies {
     implementation project(':agent:api')
     implementation project(':agent:infra')
+    implementation project(':util:vectordb')
     implementation project(':knowledge:api')
     implementation project(':catalog:api')
     implementation project(':util:common')
@@ -29,6 +30,9 @@ dependencies {
     implementation libs.pekko.serialization.jackson
 
     implementation libs.postgresql
+
+    implementation platform(libs.langchain4j.bom)
+    implementation libs.langchain4j.core
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

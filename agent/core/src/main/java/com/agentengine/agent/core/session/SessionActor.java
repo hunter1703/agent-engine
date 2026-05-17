@@ -5,6 +5,7 @@ import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.factories.RunnerFactory;
+import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.ChildCommand.*;
 import com.agentengine.agent.core.session.commands.ExternalCommand.*;
 import com.agentengine.agent.core.session.commands.ParentCommand.*;
@@ -34,6 +35,7 @@ import com.agentengine.util.common.update.Update;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.Functions;
+import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import java.util.*;
@@ -73,6 +75,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     private final RunnerFactory runnerFactory;
     private final SessionService sessionService;
     private final SessionTitleGenerator sessionTitleGenerator;
+    private final MemoryService memoryService;
     private SessionRunner runner;
     private boolean runStarted = false;
 
@@ -84,7 +87,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier,
             final RunnerFactory runnerFactory,
             final SessionService sessionService,
-            final SessionTitleGenerator sessionTitleGenerator) {
+            final SessionTitleGenerator sessionTitleGenerator,
+            final MemoryService memoryService) {
         super(TYPE_KEY.name(), entityId);
         this.context = context;
         this.self = context.getSelf();
@@ -94,6 +98,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         this.runnerFactory = runnerFactory;
         this.sessionService = sessionService;
         this.sessionTitleGenerator = sessionTitleGenerator;
+        this.memoryService = memoryService;
     }
 
     @Override
@@ -946,6 +951,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
         if (topology.isRoot()) {
             generateSessionTitle(rootSessionId, isRecovery);
+            updateSessionMemory(rootSessionId);
             eventChannel.publish(rootSessionId, SessionEvent.terminal(sessionId));
             if (!state.queue().isEmpty()) {
                 self.tell(new StartNextQueuedMessageCommand());
@@ -956,6 +962,29 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     .apply(topology.parentSessionId())
                     .tell(new CompleteChildCommand(topology.sessionId(), runResult));
         }
+    }
+
+    /**
+     * Extracts and persists memories from the completed session asynchronously, so it does not
+     * block the actor's message-processing loop. Memory extraction involves an LLM call and
+     * multiple vector-store writes.
+     */
+    private void updateSessionMemory(final String rootSessionId) {
+        Thread.startVirtualThread(() -> {
+            try {
+                final AgentSession session = sessionService.getSession(rootSessionId);
+                if (session == null) {
+                    return;
+                }
+                final Session adkSession = Session.builder(rootSessionId)
+                        .appName(session.getAgentId())
+                        .userId(AgentSession.DEFAULT_USER_ID)
+                        .build();
+                memoryService.addSessionToMemory(adkSession).blockingAwait();
+            } catch (final Exception e) {
+                LOG.warn("Failed to update session memory for session {}", rootSessionId, e);
+            }
+        });
     }
 
     /**

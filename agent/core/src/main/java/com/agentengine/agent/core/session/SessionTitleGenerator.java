@@ -54,7 +54,7 @@ public class SessionTitleGenerator {
         final List<SessionEvent> eventsToGenerateTitleOn = new ArrayList<>();
 
         int numRunsFound = 0;
-        // skips partial runs and generate title only on latest complete run
+        // skips partial runs; collects text events across the latest complete runs
         for (final SessionEvent event : sessionEvents.reversed()) {
             if (event.getFinishReason() != null) {
                 if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
@@ -71,6 +71,9 @@ public class SessionTitleGenerator {
             eventsToGenerateTitleOn.add(event);
         }
 
+        if (eventsToGenerateTitleOn.isEmpty()) {
+            return null;
+        }
         final StringBuilder sb = new StringBuilder();
 
         for (final SessionEvent event : eventsToGenerateTitleOn.reversed()) {

@@ -47,11 +47,7 @@ public class ModelProvider {
     public Flowable<LlmResponse> invokeAcquiring(
             final String modelId, Function<BaseLlm, Flowable<LlmResponse>> invocation) {
         final BaseLlm model = acquire(modelId);
-        try {
-            return invocation.apply(model);
-        } finally {
-            release(modelId);
-        }
+        return invocation.apply(model).doFinally(() -> release(modelId));
     }
 
     public BaseLlm acquire(final String modelId) {

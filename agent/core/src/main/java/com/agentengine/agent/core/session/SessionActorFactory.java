@@ -1,6 +1,7 @@
 package com.agentengine.agent.core.session;
 
 import com.agentengine.agent.core.factories.RunnerFactory;
+import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -23,7 +24,8 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
             final SessionEventChannel sessionEventChannel,
             final RunnerFactory runnerFactory,
             final SessionService sessionService,
-            final SessionTitleGenerator sessionTitleGenerator) {
+            final SessionTitleGenerator sessionTitleGenerator,
+            final MemoryService memoryService) {
         super(
                 actorSystemProvider,
                 SessionActor.TYPE_KEY,
@@ -35,7 +37,8 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
                         (sessionId) -> actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, sessionId),
                         runnerFactory,
                         sessionService,
-                        sessionTitleGenerator)),
+                        sessionTitleGenerator,
+                        memoryService)),
                 Duration.ofHours(1),
                 "agent");
     }

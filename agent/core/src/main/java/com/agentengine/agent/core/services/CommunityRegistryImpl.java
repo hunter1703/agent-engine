@@ -38,6 +38,14 @@ public final class CommunityRegistryImpl implements CommunityRegistry {
         return experts.get();
     }
 
+    @Override
+    public BaseAgentConfig getExpert(final String id) {
+        return experts.get().stream()
+                .filter(c -> id.equals(c.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private List<BaseAgentConfig> loadExperts() {
         final List<BaseAgentConfig> result = new ArrayList<>();
         final Path expertsPath = Paths.get(EXPERTS_DIR);
