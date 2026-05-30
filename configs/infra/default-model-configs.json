@@ -3,7 +3,7 @@
     "id": "DEFAULT_MODELS:default",
     "type": "default_models",
     "_t": "com.agentengine.util.mongodb.infra.DefaultModelsConfig",
-    "titleModelId": "gemma4:e4b",
+    "titleModelId": "devstral",
     "compactionModelId": "llama3.1-8b",
     "evaluatorModelId": "llama3.1-8b",
     "embeddingModelId": "nomic-embed-text",

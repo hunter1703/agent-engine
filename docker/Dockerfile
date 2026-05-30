@@ -19,6 +19,7 @@ COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/lib/ /deployments/lib/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/*.jar /deployments/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/app/ /deployments/app/
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=quarkus configs/ /deployments/configs/
 
 RUN mkdir -p /deployments/plugins
 

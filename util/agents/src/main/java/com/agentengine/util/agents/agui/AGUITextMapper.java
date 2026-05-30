@@ -15,7 +15,10 @@ import com.agui.core.types.ThinkingTextMessageContentEvent;
 import com.agui.core.types.ThinkingTextMessageEndEvent;
 import com.agui.core.types.ThinkingTextMessageStartEvent;
 import io.reactivex.rxjava3.core.Flowable;
+import java.util.Map;
 import java.util.Optional;
+import kotlinx.serialization.json.JsonElement;
+import kotlinx.serialization.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +115,9 @@ public final class AGUITextMapper {
                 : null;
         final String messageId = state.nextReplayTextMessageId(event.getId());
 
-        final TextMessageStartEvent start = new TextMessageStartEvent(messageId, Role.USER, state.timestamp(), null);
+        final TextMessageStartEvent start = new TextMessageStartEvent(
+                messageId, Role.USER, state.timestamp(), new JsonObject(Map.of("author", (JsonElement)
+                        JsonUtils.strVal(state.currentAuthor()))));
         final TextMessageChunkEvent content =
                 new TextMessageChunkEvent(messageId, Role.USER, text, state.timestamp(), null);
         final TextMessageEndEvent end = new TextMessageEndEvent(messageId, state.timestamp(), null);
@@ -178,8 +183,11 @@ public final class AGUITextMapper {
             LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
             return Flowable.empty();
         }
-        final TextMessageStartEvent start =
-                new TextMessageStartEvent(state.startNextTextMessage(), Role.ASSISTANT, state.timestamp(), null);
+        final TextMessageStartEvent start = new TextMessageStartEvent(
+                state.startNextTextMessage(),
+                Role.ASSISTANT,
+                state.timestamp(),
+                new JsonObject(Map.of("author", (JsonElement) JsonUtils.strVal(state.currentAuthor()))));
         LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.getMessageId());
         return Flowable.just(start);
     }

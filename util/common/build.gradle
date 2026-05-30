@@ -15,6 +15,9 @@ dependencies {
     // Exposed in public API (Flowable in EventMapper)
     api libs.rxjava
 
+    // Exposed in public API (JsonElement in JsonUtils helpers)
+    api libs.kotlinx.serialization.json
+
     // Jackson modules: internal wiring only, not in public signatures
     implementation libs.jackson.dataformat.yaml
     implementation libs.jackson.datatype.jdk8
