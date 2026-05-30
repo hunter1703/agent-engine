@@ -5,6 +5,7 @@ import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.events.ToolConfirmation;
@@ -41,7 +42,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
         super(DESCRIPTOR, actorSystemProvider, true);
     }
 
-    public Map<String, Object> execute(
+    public ToolOutput<Map<String, Object>> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
             @ToolSchema(
@@ -54,7 +55,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
         if (toolConfirmationOptional.isPresent()) {
             final ToolConfirmation toolConfirmation = toolConfirmationOptional.get();
             if (toolConfirmation.confirmed()) {
-                return (Map<String, Object>) toolConfirmation.payload();
+                return ToolOutput.direct((Map<String, Object>) toolConfirmation.payload());
             }
         }
         final RunResult result = actorRef(toolContext)
@@ -65,10 +66,10 @@ public final class AwaitAgentTool extends AbstractAgentTool {
         if (!result.completedRun()) {
             toolContext.requestConfirmation(
                     "Waiting for child agent run to complete.", Map.of("child_session_id", childSessionId));
-            return null;
+            return ToolOutput.empty();
         }
         RunUtils.getOrInitState(toolContext.invocationContext()).removeReminder(childSessionId);
-        return buildCompletedResponseMap(childSessionId, result);
+        return ToolOutput.direct(buildCompletedResponseMap(childSessionId, result));
     }
 
     public static Map<String, Object> buildCompletedResponseMap(final String childSessionId, final RunResult result) {

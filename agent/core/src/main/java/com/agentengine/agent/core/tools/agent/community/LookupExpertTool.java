@@ -5,6 +5,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public final class LookupExpertTool extends Tool {
         this.communityRegistry = communityRegistry;
     }
 
-    public Map<String, Object> execute(
+    public ToolOutput<Map<String, Object>> execute(
             @ToolSchema(
                             name = "query",
                             description =
@@ -57,6 +58,6 @@ public final class LookupExpertTool extends Tool {
             expertList.add(expertMap);
         }
 
-        return Map.of("experts", expertList, "count", expertList.size());
+        return ToolOutput.direct(Map.of("experts", expertList, "count", expertList.size()));
     }
 }

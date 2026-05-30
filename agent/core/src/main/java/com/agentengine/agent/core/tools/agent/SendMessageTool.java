@@ -4,6 +4,7 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -41,7 +42,7 @@ public final class SendMessageTool extends AbstractAgentTool {
         super(DESCRIPTOR, actorSystemProvider);
     }
 
-    public Map<String, Object> execute(
+    public ToolOutput<Map<String, Object>> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
             @ToolSchema(
@@ -61,11 +62,13 @@ public final class SendMessageTool extends AbstractAgentTool {
                 .toCompletableFuture()
                 .join();
         return switch (result) {
-            case StartSessionResult.Accepted ignored -> Map.of("child_session_id", childSessionId);
-            case StartSessionResult.Rejected(String reason) -> Map.of("error", "Failed to send message: " + reason);
+            case StartSessionResult.Accepted ignored -> ToolOutput.direct(Map.of("child_session_id", childSessionId));
+            case StartSessionResult.Rejected(String reason) ->
+                ToolOutput.direct(Map.of("error", "Failed to send message: " + reason));
             case StartSessionResult.Queued(int position) ->
-                Map.of("error", "Failed to send message: unexpected queued response", "queue_position", position);
-            default -> Map.of("error", "Failed to send message: unknown response");
+                ToolOutput.direct(Map.of(
+                        "error", "Failed to send message: unexpected queued response", "queue_position", position));
+            default -> ToolOutput.direct(Map.of("error", "Failed to send message: unknown response"));
         };
     }
 }

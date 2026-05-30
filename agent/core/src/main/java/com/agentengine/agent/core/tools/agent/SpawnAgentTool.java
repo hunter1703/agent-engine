@@ -8,6 +8,7 @@ import com.agentengine.agent.infra.utils.Reminder;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
+import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -85,7 +86,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                 .build());
     }
 
-    public Map<String, Object> execute(
+    public ToolOutput<Map<String, Object>> execute(
             @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
                     final ToolContext toolContext,
             @ToolSchema(
@@ -120,12 +121,14 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                         "agent='" + childAgentId + "' goal='" + goal + "' — running asynchronously, not yet awaited. "
                                 + "Use " + AwaitAgentTool.DESCRIPTOR.name()
                                 + " with child_session_id='" + childSessionId + "' when you need its result."));
-                yield Map.of("child_session_id", childSessionId);
+                yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
             }
-            case StartSessionResult.Rejected(String r) -> Map.of("error", "Failed to spawn agent: " + r);
+            case StartSessionResult.Rejected(String r) ->
+                ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + r));
             case StartSessionResult.Queued(int position) ->
-                Map.of("error", "Failed to spawn agent: unexpected queued response", "queue_position", position);
-            default -> Map.of("error", "Failed to spawn agent: unknown response");
+                ToolOutput.direct(Map.of(
+                        "error", "Failed to spawn agent: unexpected queued response", "queue_position", position));
+            default -> ToolOutput.direct(Map.of("error", "Failed to spawn agent: unknown response"));
         };
     }
 }
