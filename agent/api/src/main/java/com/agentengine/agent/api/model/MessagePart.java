@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = MessagePart.TextPart.class, name = "text"),
-    @JsonSubTypes.Type(value = MessagePart.FilePart.class, name = "file")
+    @JsonSubTypes.Type(value = MessagePart.FilePart.class, name = "document")
 })
 public interface MessagePart {
 
