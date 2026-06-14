@@ -76,7 +76,7 @@ flowchart TB
 
     Agent -- "tools (HTTP)" --> Connectors["Connectors<br/>web_research, ..."]
 
-    Agent -- "sessions, memory" --> Mongo[("MongoDB")]
+    Agent -- "sessions" --> Mongo[("MongoDB")]
     Catalog -- "configs" --> Mongo
     Agent -- "memory vectors" --> Qdrant[("Qdrant")]
     Knowledge -- "knowledge chunks" --> Qdrant
