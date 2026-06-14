@@ -47,24 +47,32 @@ Once discovered, experts are invoked using existing agent tools:
 3. await_agent(child_session_id) → gets result
 ```
 
+## Built-in Experts
+
+### `memory-agent`
+- **Config**: `configs/agents/community/experts/memory-agent.json`
+- Invoked automatically by `MemoryService` after each session to extract persistent memories.
+- Not user-invocable directly; called internally via an ephemeral single-turn runner.
+- Uses `responseFormat` to enforce structured `{ decisions: [{ operation, id, text }] }` output.
+- Operations: `ADD`, `UPDATE`, `DELETE`, `NOOP`.
+
 ## Components
 
 ### CommunityRegistry
-- **Interface**: `runtime/api/.../CommunityRegistry.java`
-- **Implementation**: `runtime/.../CommunityRegistryImpl.java`
+- **Interface**: `agent/api/.../CommunityRegistry.java`
+- **Implementation**: `agent/core/.../CommunityRegistryImpl.java`
 - Loads expert configs from `configs/agents/community/experts/` at startup
 - Returns `List<BaseAgentConfig>` for all registered experts
+- Well-known expert IDs are declared as constants (e.g. `CommunityRegistry.MEMORY_AGENT`)
 
 ### LookupExpertTool
-- **Location**: `runtime/.../tools/community/LookupExpertTool.java`
+- **Location**: `agent/core/.../tools/agent/community/LookupExpertTool.java`
 - Discoverable tool (auto-registered via `@DiscoverableTool`)
 - Returns all experts with their metadata
-- Future: will support semantic search via `query` parameter
 
 ### BaseAgentConfig.capabilities
 - **Location**: `util/agents/.../config/BaseAgentConfig.java`
-- New field: `List<String> capabilities`
-- Optional metadata for expert discovery
+- `List<String> capabilities` — optional tags for expert discovery
 - Can be used for semantic matching (future)
 
 ## Usage Example
@@ -84,10 +92,9 @@ Agent: await_agent(child_session_id="session-xyz")
 
 ## Current Limitations
 
-1. **No semantic search**: `lookup_expert` returns all experts regardless of query
-2. **No capability matching**: Agents must manually filter by capabilities
-3. **No expert versioning**: Only one version of each expert can exist
-4. **No runtime registration**: Experts must be present at startup
+1. **No capability matching**: `lookup_expert` returns all experts; agents must filter manually
+2. **No expert versioning**: Only one version of each expert can exist
+3. **No runtime registration**: Experts must be present at startup
 
 ## Future Enhancements
 

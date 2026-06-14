@@ -2,13 +2,13 @@
 
 ## 5.1 Tool Runtime Contract
 
-Tool APIs live in the active runtime modules:
+Tool APIs live in the agent runtime modules (`agent:infra`, with shared annotations in `util:common`):
 
 - `Tool` (base class over ADK `BaseTool`)
 - `ToolDescriptor`
 - `ToolProvider`
 - `ToolsetProvider`
-- annotations: `@DiscoverableTool`, `@ToolConstructor`, `@ToolSchema`
+- annotations: `@DiscoverableTool`, `@ToolConstructor` (`agent:infra`), `@ToolSchema` (`util:common`)
 
 All tools are expected to expose an `execute(...)` method.
 
@@ -31,16 +31,12 @@ Visibility rules:
 - all registered tools are visible to all agents
 - toolsets are shown as visible entries
 - tools covered by toolsets are hidden from the top-level visible list to reduce duplication
-
-Catalog behavior:
-
-- built once for the runtime
+- the catalog is built once for the runtime
 
 `ToolFactory` handles runtime construction:
 
 - selecting a standalone tool yields one `BaseTool`
 - selecting a toolset yields one `BaseToolset`
-- the runtime does not expand toolsets into individual tools before passing them to ADK
 - the runtime does not expand toolsets into individual tools before passing them to ADK
 
 ## 5.3 Auto-Discovered Tools (`DiscoveredToolProviders`)
@@ -60,43 +56,59 @@ Tool config binding:
 
 Descriptor resolution:
 
-- static `DESCRIPTOR` field preferred
-- fallback to no-arg constructor + `descriptor()`
+- a static `DESCRIPTOR` field is preferred
+- fallback to a no-arg constructor + `descriptor()`
 
-## 5.4 Built-in Tools (Current Repository)
+## 5.4 Built-in Tools
 
-- `echo` (`EchoTool`)
-- `run_cmd` (`ShellCommandTool`)
-- `web_research` (`WebSearchTool` via connectors framework; supports quick DuckDuckGo lookup or detailed Brave Search)
-- planning suite tools:
-  - `create_plan`
-  - `update_plan`
-  - `add_task`
-  - `update_task_info`
-  - `start_task`
-  - `complete_task`
-  - `finish_plan`
-  - `view_plan`
-- internal `request_human_input` tool for ADK-native human input replay (auto-injected, not user-configurable)
+**Utility**
+- `echo` (`EchoTool`) — echoes input back; useful for testing
+
+**Shell**
+- `run_cmd` (`ShellCommandTool`) — execute shell commands; see §5.5 for the safety surface
+
+**Web**
+- `web_research` (`WebSearchTool` via the connectors framework; quick DuckDuckGo lookup or detailed Brave Search)
+
+**File operations** (suite name: `file_tools`)
+- `read_file` — read file contents with pagination (`offset` / `limit`)
+- `list_dir` — list directory contents with configurable depth
+- `grep_files` — search files with a regex pattern
+- `apply_patch` — apply a unified diff patch to files with validation
+
+**Planning** (suite name: `planning`)
+- `create_plan`, `update_plan`, `add_task`, `update_task_info`, `start_task`, `complete_task`, `finish_plan`, `view_plan`
+
+**Agent coordination** (suite name: `agent_tools`)
+- `spawn_agent` — start a child agent session for a subtask; returns `child_session_id`
+- `send_message` — send a follow-up message to an existing child session
+- `await_agent` — wait for a child session to finish and collect its result
+- `lookup_expert` — discover available community experts with their IDs and capabilities
+
+**Knowledge**
+- `search_knowledge` — semantic search over indexed knowledge chunks; accepts `query`, optional `knowledgeIds` to scope to specific documents, `offset`, and `limit`; returns `{ chunks, total, offset, limit }`
+
+**Internal** (auto-injected, not user-configurable)
+- `request_human_input` — ADK-native human input replay for pause/resume flows
 
 ## 5.5 Example: Shell Tool Safety Surface
 
 `ShellCommandTool` characteristics:
 
 - executes with `bash -lc`
-- blocks `rm` pattern
+- blocks the `rm` pattern
 - caps output to 12,000 chars
 - configurable timeout (`timeout_seconds`)
 - risk level marked `HIGH`
 
 ## 5.6 Extension Model
 
-The current codebase exposes extension seams primarily through CDI-discovered providers and tool auto-discovery inside the runtime modules.
+The codebase exposes extension seams primarily through CDI-discovered providers and tool auto-discovery inside the agent runtime modules (`agent:infra` / `agent:core`).
 
 ## 5.7 Prompt Protocol Resources
 
 Runtime protocol text templates live under:
 
-- `runtime/src/main/resources/prompts/shared/protocol/text.txt`
+- `agent/core/src/main/resources/prompts/prompts/shared/protocol/text.txt`
 
-These are used when constructing final prompt instructions for model behavior/protocol conformance.
+These are used when constructing final prompt instructions for model behavior/protocol conformance, and are rendered via Jinjava.

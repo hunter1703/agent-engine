@@ -24,10 +24,11 @@ Default implementation: `DefaultConnectorExecutor`.
 
 ## 6.3 ConnectorDefinition Model
 
-`ConnectorDefinition` includes:
+`ConnectorDefinition` (a record) includes:
 
 - `id`
-- `endpoint`
+- `appName`
+- `endpoint` (`EndpointConfig`)
 - `headers`
 - `query`
 - `body`

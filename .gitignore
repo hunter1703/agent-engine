@@ -21,6 +21,10 @@ bin/
 *.gguf
 llamacpp_models/
 deploy/connections.json
+
+# Model configs that carry provider API keys — keep local, never commit
+configs/models/devstral.json
+configs/models/gemini_3_flash_preview.json
 !gradlew
 !gradlew.bat
 !gradle/wrapper/

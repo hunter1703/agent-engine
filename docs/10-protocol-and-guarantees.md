@@ -3,9 +3,9 @@
 This document defines the runtime protocol enforced by the current codebase.
 It is normative for behavior implemented in:
 
-- `engine` request/response processors
-- `EngineFlow`, `ContextManagementPlugin`, and `GuardrailPlugin`
-- `ParallelAgent`
+- the agent runtime request/response processors (`agent:infra`)
+- `BaseFlow`, `ContextManagementPlugin`, and `GuardrailPlugin`
+- `ParallelOrchestratorAgent`
 - REST event mapper `AGUIEventMapper`
 
 ## 10.1 Terms
@@ -24,14 +24,17 @@ The model invocation plugins apply the following order.
 
 1. ADK `RequestConfirmationLlmRequestProcessor` replay handling
 2. `CorrectionProcessor`
-3. `PlanningRequestProcessor`
+3. `ReminderRequestProcessor`
 4. context manager prompt rebuild (if configured)
 5. guardrail plugin short-circuit, if a guardrail returns a synthetic human-input tool call
 
 ### After model
 
-1. `ToolCallSanitizationResponseProcessor`
-2. `PlanLoopResponseProcessor`
+Response processors run in this order (`ToolCallSanitizationResponseProcessor` is prepended at construction so it runs first):
+
+1. `ToolCallSanitizationResponseProcessor` (acts on partial responses only)
+2. `ResponseFormatValidationProcessor` (acts on finalized responses only)
+3. `PlanLoopResponseProcessor` (acts on finalized responses only)
 
 This order is part of runtime semantics. Reordering changes behavior.
 
@@ -61,7 +64,7 @@ Guarantees:
 
 ## 10.3.3 Planning context injection
 
-If a run-state plan exists, `PlanningRequestProcessor` appends:
+If a run-state plan exists, `ReminderRequestProcessor` appends:
 
 - plan summary content
 - active-task structural anchor when an open task exists
@@ -70,25 +73,26 @@ If no plan exists, this processor is a no-op.
 
 ## 10.4 Response Protocol Guarantees
 
-## 10.4.1 Tool sanitization
+## 10.4.1 Tool-call sanitization (partial responses)
 
-### Partial responses
+`ToolCallSanitizationResponseProcessor` acts on partial responses only; finalized responses pass through untouched.
 
-If a partial response contains function call or function response parts:
+For a partial response that carries tool calls:
 
-- all tool parts are stripped from that chunk
-- violation `partial_tool_calls` is recorded
-- correction message explicitly instructs to emit tool payloads only in non-partial turns
+- non-tool parts are stripped
+- tool calls naming a tool not in the agent's available tool set are removed, and the offending names are collected
+- an `invalid_tool_calls` violation is recorded with an `invalidToolNames` detail
+- valid tool calls are preserved
 
-### Non-partial responses
+## 10.4.2 Response-format validation (finalized responses)
 
-If tool calls are exact repeats of prior-turn summarized calls:
+`ResponseFormatValidationProcessor` acts on finalized responses when the agent config declares a `responseFormat` JSON Schema.
 
-- redundant calls are stripped
-- violation `redundant_tool_calls` is recorded
-- when no tool payload remains, the response is converted into a continuation (`partial=true`) so the model must continue without submitting the same call set again
+- the response text is validated against the schema
+- on failure, a `response_format_validation` violation (with a message) is recorded and a continuation is requested so the model can correct its output
+- agents without a `responseFormat` are unaffected
 
-## 10.4.2 Plan-loop enforcement
+## 10.4.3 Plan-loop enforcement
 
 For finalized responses, when model appears to finish by text (text present, no tool calls):
 
@@ -151,13 +155,12 @@ Core codes (from `GuardrailConstants`):
 - `guardrail_output_block`
 - `guardrail_tool_policy`
 - `guardrail_tool_escalate`
-- `guardrail_tool_block`
 - `relevance_steer`
 - `relevance_block`
 
 ## 10.6 Parallel Orchestration Protocol
 
-`ParallelAgent` rules:
+`ParallelOrchestratorAgent` rules:
 
 - success is strict: branch is successful only when the terminal event satisfies ADK terminal semantics (`Event.finalResponse()` or `EventActions.endInvocation()`)
 - only aggregated orchestrator output is emitted (single final event)
@@ -206,11 +209,10 @@ Metadata guarantee:
 
 Codes emitted directly by runtime processors/orchestrators:
 
-- `partial_tool_calls`
-- `redundant_tool_calls`
-- `incomplete_task`
-- `final_answer_validation`
-- `parallel_policy_fallback`
+- `invalid_tool_calls` (tool-call sanitization)
+- `response_format_validation` (response-format validation)
+- `final_answer_validation` (plan-loop enforcement)
+- `parallel_policy_fallback` (parallel orchestration)
 
 All violations are stored in run state and consumed by `CorrectionProcessor` on the next request cycle.
 
@@ -218,7 +220,7 @@ All violations are stored in run state and consumed by `CorrectionProcessor` on 
 
 To preserve protocol guarantees, changes should maintain:
 
-- processor ordering in the engine flow class (`EngineFlow`)
+- processor ordering in the flow class (`BaseFlow`)
 - explicit handling of partial vs finalized responses
 - deterministic part ordering
 - deterministic fallback behavior in parallel orchestration

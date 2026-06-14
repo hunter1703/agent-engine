@@ -1,132 +1,115 @@
 # 4. REST and gRPC APIs
 
-## 4.1 REST Base Paths
+The REST module is `interfaces:rest`. Primary path groups:
 
-REST module is `interfaces:rest`.
+- `/v1/agent` — agent config CRUD, invocation, and session rollback/deletion
+- `/v1/session` — live event streaming and confirmation/resume
+- `/v1/model` — model config CRUD
+- `/v1/catalog` — asset listing and search
+- `/v1/storage` — object upload/download
+- `/schemas` — builder contract schemas
 
-Primary path groups:
+## 4.1 Agent Endpoints (`AgentRestAPI`, `/v1/agent`)
 
-- `/v1/agent`
-- `/v1/model`
-- `/v1/catalog`
-- `/schemas`
+### `POST /v1/agent/{agentId}/invoke`
 
-## 4.2 Agent Endpoints
+- Content type: `application/json`
+- Response: `text/event-stream` (AG-UI SSE events)
+- Input shape: AG-UI `RunAgentInput`
 
-### `POST /v1/agent/events`
-
-- Content type: JSON request
-- Response: `text/event-stream`
-- Input shape: `AgentRequest`
-- Current supported request type: `STREAM_AGUI_EVENTS`
-
-Minimal body:
+Invokes an agent and streams AG-UI events back to the caller. `threadId` maps to the session ID; omit it to start a new session.
 
 ```json
 {
-  "type": "STREAM_AGUI_EVENTS",
-  "agentId": "echo_agent",
-  "sessionId": "optional-session-id",
-  "message": "Hello"
+  "threadId": "optional-session-uuid",
+  "runId":    "client-run-uuid",
+  "messages": [
+    { "id": "msg-1", "role": "user", "content": "Hello!" }
+  ],
+  "state":          {},
+  "tools":          [],
+  "context":        [],
+  "forwardedProps": {}
 }
 ```
 
-### `POST /v1/agent`
+`messages[].content` may be a plain string or a `List<ContentPart>` for multi-part messages. Unknown fields are ignored (`@JsonIgnoreProperties(ignoreUnknown = true)`).
 
-Create agent config.
+### `POST /v1/agent` — create agent config
+### `POST /v1/agent/upsert` — insert or update agent config
+### `PUT /v1/agent/{agentId}` — update agent config
+### `DELETE /v1/agent/{agentId}` — delete agent config
 
-### `POST /v1/agent/upsert`
+### `POST /v1/agent/session/{sessionId}/rollback`
 
-Insert or update agent config.
+Rolls the session back to the state it held before a specific run.
 
-### `PUT /v1/agent/{agentId}`
+- Query parameter: `runId` (required) — the run ID to remove
+- The `SessionActor` truncates the event log at the boundary of the specified run and records a `RollbackFact`. Returns `204 No Content` on success.
 
-Update agent config.
+### `DELETE /v1/agent/session/{sessionId}` — delete a session
 
-### `DELETE /v1/agent/{agentId}`
+## 4.2 Session Endpoints (`SessionRestAPI`, `/v1/session`)
 
-Delete agent config.
+Session streaming and human-in-the-loop resume are handled separately from invocation.
 
-### `POST /v1/agent/session/{sessionId}/resume/events`
+### `GET /v1/session/{sessionId}/stream`
 
-Resume paused session and continue SSE event stream.
+Subscribes to a session's event stream as AG-UI SSE. Used to (re)attach to an in-flight or resumable session.
 
-Request body:
+- Query parameter: `liveOnly` (boolean) — when `true`, only new events are delivered; otherwise the committed history is replayed first
 
-```json
-{ "message": "resume input" }
-```
+### `POST /v1/session/{sessionId}/confirm/{confirmationId}`
 
-### `DELETE /v1/agent/session/{sessionId}`
+Provides a confirmation or human-input response for a paused session (tool confirmation, escalation, or requested human input). The runtime resolves the pending confirmation through native ADK `FunctionResponse` semantics and resumes execution; subscribe via `stream` to receive the continued events. See [`10-protocol-and-guarantees.md`](./10-protocol-and-guarantees.md) §10.3.1 for the confirmation protocol.
 
-Delete a session.
+## 4.3 Model Endpoints (`ModelRestAPI`, `/v1/model`)
 
-## 4.3 Model Endpoints
+- `GET /v1/model/{modelId}` — get model config by ID
+- `POST /v1/model` — create model config
+- `POST /v1/model/upsert` — insert or update model config
+- `PUT /v1/model/{modelId}` — update model config
+- `DELETE /v1/model/{modelId}` — delete model config
 
-### `GET /v1/model/{modelId}`
+## 4.4 Catalog Endpoints (`CatalogRestAPI`, `/v1/catalog`)
 
-Get model config by ID.
+- `POST /v1/catalog/list` — list named assets by `assetType`
+- `POST /v1/catalog/search` — search assets by `assetType` + query
+- `GET /v1/catalog/{resourceType}/{id}` — fetch a single resource by ID with optional query options
 
-### `POST /v1/model`
+## 4.5 Storage Endpoints (`StorageRestAPI`, `/v1/storage`)
 
-Create model config.
+Object storage backed by `CloudStorageService`.
 
-### `POST /v1/model/upsert`
+- `POST /v1/storage/upload` — upload an object; returns `FileDetails`
+- `GET /v1/storage/download` — download a stored object
 
-Insert or update model config.
-
-### `PUT /v1/model/{modelId}`
-
-Update model config.
-
-### `DELETE /v1/model/{modelId}`
-
-Delete model config.
-
-## 4.4 Schema Endpoints
+## 4.6 Schema Endpoints (`SchemaRestAPI`, `/schemas`)
 
 ### `GET /schemas/{assetType}`
 
-Returns generated Builder Contract V2 for `assetType` (`agent`, `model`).
+Returns the generated builder contract for `assetType` (`agent`, `model`).
 
-Optional query parameter:
-- `mode=create|edit|view` to return mode-resolved visibility/editability metadata.
-
-Caching:
-- Responses include `ETag` and `Cache-Control`.
-- Clients can send `If-None-Match` to receive `304 Not Modified`.
+- Optional `mode=create|edit|view` returns mode-resolved visibility/editability metadata
+- Responses include `ETag` and `Cache-Control`; clients can send `If-None-Match` for `304 Not Modified`
 
 ### `POST /schemas/`
 
 Delegates schema resolution to `SchemaRequestHandler` by `assetType`.
 
-## 4.5 Catalog Endpoints
-
-### `POST /v1/catalog/list`
-
-List named assets by `assetType`.
-
-### `POST /v1/catalog/search`
-
-Search assets by `assetType` + query.
-
-### `GET /v1/catalog/{resourceType}/{id}`
-
-Fetch single resource by ID with optional query options.
-
-## 4.6 Event Mapping Layers
+## 4.7 Event Mapping
 
 Runtime event flow:
 
-- Engine emits ADK `Event`
-- `AGUIEventMapper` maps ADK events -> AG-UI event stream
-- `AgentRestAPI` publishes mapped events as SSE via `AgentExecutionService`
+- the ADK runner emits `Event`s
+- `AGUIEventMapper` maps ADK events to the AG-UI event stream
+- the REST layer publishes mapped events as SSE
 
-Additional response DTO mapper (`ResponsesEventMapper`) exists to map AG-UI events to response-style event DTOs; it is currently utility-level and not exposed as a dedicated REST endpoint in the current code.
+See [`10-protocol-and-guarantees.md`](./10-protocol-and-guarantees.md) §10.7 for the normative event-mapping guarantees.
 
-## 4.7 gRPC Microservice Transport
+## 4.8 gRPC Microservice Transport
 
-Proto: `engine/api/src/main/proto/service.proto`
+Proto: `util/ms/client/src/main/proto/service.proto`
 
 Service:
 
@@ -140,12 +123,9 @@ Request payload:
 
 Runtime behavior:
 
-- REST side uses `MicroServiceClientProviderImpl`
-- local bean is preferred when present
-- otherwise dynamic proxy forwards over gRPC
-- engine side `GRPCServerImpl` dispatches by service+method from startup registry
+- callers use `MicroServiceClientProviderImpl` — a local bean is preferred when present, otherwise a dynamic proxy (`MicroServiceInvocationHandler`) forwards over gRPC
+- the server side `GRPCServerImpl` dispatches by service + method name from its startup registry, on a virtual-thread executor
 
-## 4.8 OpenAPI
+## 4.9 OpenAPI
 
-`interfaces/rest` has MicroProfile OpenAPI annotations on major endpoints.
-OpenAPI schema is generated by Quarkus and used by deployment bootstrap checks (`/q/openapi`).
+`interfaces:rest` carries MicroProfile OpenAPI annotations on major endpoints. The schema is generated by Quarkus and served at `/q/openapi`, which deployment/seed scripts poll for readiness before upserting configs.

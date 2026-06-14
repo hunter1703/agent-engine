@@ -2,7 +2,7 @@
 
 ## 7.1 Toolchain and Build Conventions
 
-Configured via `buildSrc` conventions plugin:
+Configured via the `buildSrc` conventions plugin:
 
 - Java toolchain: 25
 - preview features enabled for compile/test/javaexec
@@ -23,53 +23,56 @@ Common commands:
 Targeted module examples:
 
 ```bash
-./gradlew :runtime:test
-./gradlew :core:test
+./gradlew :agent:core:test
+./gradlew :catalog:test
 ./gradlew :interfaces:rest:test
 ./gradlew :connectors:core:test
+./gradlew :knowledge:core:test
 ```
 
-## 7.3 Test Layout in Current Repo
+## 7.3 Test Layout
 
 ### Unit tests
 
-- `runtime/src/test/java`
-- `core/src/test/java`
+- `agent/core/src/test/java`
+- `catalog/src/test/java`
 - `interfaces/rest/src/test/java`
 
 ### Integration tests
 
 - `interfaces/rest/src/integrationTest/java`
 
-Integration tests use Quarkus test resources with Mongo/Redis test containers.
+Integration tests use Quarkus test resources with MongoDB and Redis Testcontainers.
 
 ## 7.4 Deployment Workflow
 
-This repository now treats Kubernetes as the primary deployment path.
+Kubernetes is the primary deployment path:
 
-Use:
+- `./k8s/scripts/deploy.sh` installs the standard release set
+- `./k8s/scripts/deploy.sh agent catalog rest` deploys a subset while preserving dependency order
+- `./k8s/scripts/cleanup.sh` removes the standard release set
 
-- `./k8s/scripts/deploy.sh` to install the standard release set
-- `./k8s/scripts/deploy.sh runtime core rest` to deploy a subset while preserving dependency order
-- `./k8s/scripts/cleanup.sh` to remove the standard release set
+`deploy.sh` builds the required service images automatically. `k8s/scripts/build-images.sh` remains available for manual or registry-push workflows, and container images are built from `docker/Dockerfile`.
 
-`deploy.sh` builds the required service images automatically. `k8s/scripts/build-images.sh` remains available for manual or registry-push workflows, and container images are still built from `docker/Dockerfile`.
+## 7.5 Seeding Config Data
 
-## 7.5 Bootstrap Data in Dev
+Configs are seeded through the REST API by the deployment scripts, not imported in-process:
 
-`interfaces:local` startup `Bootstrapper` imports configs from `configs/agents` and `configs/models`.
+```bash
+./k8s/scripts/seed-configs.sh
+```
 
-If IDs are missing in JSON, filenames are used.
+This upserts `configs/infra` into `INFRA.InfraConfig`, and `configs/models` and `configs/agents` through the REST API. The asset ID is the JSON filename without its extension.
 
 ## 7.6 Coding and Compatibility Notes
 
-Observed repository conventions:
+Repository conventions:
 
-- enums include `UNKNOWN` and parser helpers
+- enums include `UNKNOWN` and `valueOfOrDefault` parser helpers
 - validation is centralized in `ConfigValidationService` + rule validators
-- service interfaces in `core:api` and `runtime:api` are transport-agnostic and gRPC-capable
-- secure persistence uses `@Secure` + custom Mongo codec convention
+- service interfaces in `catalog:api` and `agent:api` are transport-agnostic and gRPC-capable
+- secure persistence uses `@Secure` + a custom Mongo codec convention
 
-## 7.7 Known Inconsistency to Be Aware Of
+## 7.7 Module Wiring Note
 
-GitHub workflow currently references `:interfaces:cli:test`, but active module in `settings.gradle` is `interfaces:local`. Treat workflow reference as stale unless module layout changes.
+Only `interfaces:rest` is wired as an interface module in `settings.gradle`. An `interfaces:local` directory exists on disk but is not included in the build; historical CI or docs references to `interfaces:cli` are stale.

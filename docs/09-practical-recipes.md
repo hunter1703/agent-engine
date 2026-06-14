@@ -1,6 +1,8 @@
 # 9. Practical Recipes
 
-## 9.1 Create and Use a Model
+These examples assume the REST gateway is reachable at `http://localhost:18080` (adjust to your port-forward or service address; the gateway listens on `8080` in-cluster).
+
+## 9.1 Create a Chat Model
 
 ```bash
 curl -s -X POST http://localhost:18080/v1/model/upsert \
@@ -8,9 +10,11 @@ curl -s -X POST http://localhost:18080/v1/model/upsert \
   -d '{
     "id":"local-qwen",
     "name":"Local Qwen",
-    "type":"open_ai_compatible",
+    "type":"CHAT",
+    "provider":"OPEN_AI_COMPATIBLE",
     "model":"qwen2.5-1.5b-instruct-q5_k_m",
-    "baseUrl":"http://127.0.0.1:17000/v1"
+    "baseUrl":"http://127.0.0.1:17000/v1",
+    "apiKey":""
   }'
 ```
 
@@ -30,25 +34,33 @@ curl -s -X POST http://localhost:18080/v1/agent/upsert \
   }'
 ```
 
-## 9.3 Stream Agent Events
+## 9.3 Invoke an Agent (stream AG-UI events)
 
 ```bash
-curl -N -X POST http://localhost:18080/v1/agent/events \
+curl -N -X POST http://localhost:18080/v1/agent/echo-agent/invoke \
   -H 'Content-Type: application/json' \
+  -H 'Accept: text/event-stream' \
   -d '{
-    "type":"STREAM_AGUI_EVENTS",
-    "agentId":"echo-agent",
-    "message":"hello"
+    "runId":"run-1",
+    "messages":[{"id":"m1","role":"user","content":"hello"}]
   }'
 ```
 
-## 9.4 Resume a Paused Session
+Omit `threadId` to start a new session; pass it to continue an existing one.
+
+## 9.4 Re-attach and Resume a Session
 
 ```bash
-curl -N -X POST http://localhost:18080/v1/agent/session/<session-id>/resume/events \
+# Re-attach to a session's event stream (replays committed history, then live events)
+curl -N "http://localhost:18080/v1/session/<session-id>/stream?liveOnly=false"
+
+# Provide a confirmation / human input for a paused session
+curl -s -X POST "http://localhost:18080/v1/session/<session-id>/confirm/<confirmation-id>" \
   -H 'Content-Type: application/json' \
-  -d '{"message":"approved"}'
+  -d '{"answer":"approved"}'
 ```
+
+See [`10-protocol-and-guarantees.md`](./10-protocol-and-guarantees.md) §10.3.1 for the confirmation payload semantics (binary `ALLOW`/`DISALLOW` vs. text `answer`).
 
 ## 9.5 List Models via Catalog
 
@@ -58,7 +70,7 @@ curl -s -X POST http://localhost:18080/v1/catalog/list \
   -d '{"assetType":"model"}'
 ```
 
-## 9.6 Use Schema Endpoint
+## 9.6 Use the Schema Endpoint
 
 ```bash
 curl -s http://localhost:18080/schemas/model | jq .
