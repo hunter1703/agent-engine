@@ -8,6 +8,7 @@ import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.PromptUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
@@ -54,11 +55,12 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
     }
 
     private static String buildSystemPrompt(final BaseAgentConfig config) {
+        final String rendered = PromptUtils.renderSystemPrompt(config.getSystemPrompt(), config.getName());
         final Map<String, Object> schema = config.getResponseFormat();
         if (CollectionUtils.isEmpty(schema)) {
-            return config.getSystemPrompt();
+            return rendered;
         }
-        return config.getSystemPrompt()
+        return rendered
                 + "\n\nExpected response JSON schema (STRICTLY output in json that conforms to following json schema):\n"
                 + JsonUtils.toJson(schema);
     }
