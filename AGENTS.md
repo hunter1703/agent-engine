@@ -68,6 +68,7 @@ docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 - **Session history source**: committed session events are reconstructed from the session actor's replay state rather than an embedded event blob on `AgentSession`.
 - **Deferred work**: record follow-ups in `TODO.md`, not inline comments.
 - **Enum rule**: all enums must include `UNKNOWN` and a `valueOfOrDefault` parser.
+- **Commits and branches**: Never commit unless explicitly asked. Never create a separate branch unless explicitly asked. Always make changes directly on `main` and leave them unstaged so the user can review before staging or committing.
 
 ## Code Quality Philosophy
 

@@ -6,15 +6,13 @@ import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.agent.infra.model.AbstractLLM;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.PromptUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.LoadArtifactsTool;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends Agent> implements AgentFactory<C, A> {
     protected final ModelProvider modelProvider;
@@ -46,20 +44,11 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         }
         final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);
         return baseLlmAgentBuilder
-                .systemInstructions(buildSystemPrompt(config))
+                .systemInstructions(PromptUtils.renderSystemPrompt(
+                        config.getSystemPrompt(), config.getName(), config.getResponseFormat()))
                 .appendTools(tools)
                 .appendToolSets(toolFactory.buildToolsets(config.getTools()))
                 .agentConfig(config)
                 .closeHook(() -> modelProvider.release(modelId));
-    }
-
-    private static String buildSystemPrompt(final BaseAgentConfig config) {
-        final Map<String, Object> schema = config.getResponseFormat();
-        if (CollectionUtils.isEmpty(schema)) {
-            return config.getSystemPrompt();
-        }
-        return config.getSystemPrompt()
-                + "\n\nExpected response JSON schema (STRICTLY output in json that conforms to following json schema):\n"
-                + JsonUtils.toJson(schema);
     }
 }
