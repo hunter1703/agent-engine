@@ -1,0 +1,36 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.chaos'
+
+dependencies {
+    implementation project(':chaos:api')
+    implementation project(':util:common')
+    implementation project(':util:pekko')
+
+    implementation platform(libs.pekko.bom)
+    implementation libs.pekko.actor.typed
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+
+    implementation libs.okhttp
+    implementation libs.slf4j.api
+
+    implementation libs.fabric8.kubernetes.client
+    implementation libs.toxiproxy.java
+    implementation libs.wiremock
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+    testImplementation libs.okhttp.mockwebserver
+    testImplementation libs.pekko.testkit
+    testImplementation libs.fabric8.kubernetes.server.mock
+
+    testImplementation libs.testcontainers.junit.jupiter
+    testImplementation libs.testcontainers.postgresql
+    testImplementation libs.testcontainers.toxiproxy
+}

@@ -1,0 +1,10 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.connectors'
+
+dependencies {
+    implementation project(':connectors:api')
+    implementation libs.slf4j.api
+}

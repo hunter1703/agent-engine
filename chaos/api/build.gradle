@@ -1,0 +1,14 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.chaos'
+
+dependencies {
+    api libs.jackson.databind
+    api libs.jackson.datatype.jdk8
+    api libs.jackson.datatype.jsr310
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+}

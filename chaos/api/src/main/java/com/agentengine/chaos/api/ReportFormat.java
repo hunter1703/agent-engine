@@ -1,19 +1,19 @@
-package com.agentengine.connectors.core.config;
+package com.agentengine.chaos.api;
 
 import java.util.Locale;
 
-public enum BodyType {
+public enum ReportFormat {
     UNKNOWN,
     JSON,
-    FORM_URLENCODED,
-    TEXT;
+    MARKDOWN,
+    HTML;
 
-    public static BodyType valueOfOrDefault(final String value) {
+    public static ReportFormat valueOfOrDefault(final String value) {
         if (value == null || value.isBlank()) {
             return UNKNOWN;
         }
         try {
-            return BodyType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            return ReportFormat.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return UNKNOWN;
         }

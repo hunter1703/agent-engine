@@ -1,0 +1,17 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.chaos'
+
+dependencies {
+    implementation project(':chaos:core')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+
+    implementation libs.slf4j.api
+}
