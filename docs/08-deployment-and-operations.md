@@ -30,7 +30,7 @@ and removed with:
 ./k8s/scripts/cleanup.sh
 ```
 
-The four application services are `agent`, `catalog`, `knowledge`, and `rest`. They are deployed after shared configuration (`global-properties`) and their infrastructure dependencies (MongoDB, Qdrant, and others under `k8s/`). With no chart arguments, `deploy.sh` targets the full app set.
+The five application services are `agent`, `catalog`, `knowledge`, `connectors`, and `rest`. They are deployed after shared configuration (`global-properties`) and their infrastructure dependencies (MongoDB, Qdrant, and others under `k8s/`). With no chart arguments, `deploy.sh` targets the full app set.
 
 The detailed chart and operator workflow is documented in [`k8s/README.md`](../k8s/README.md), including:
 
@@ -45,18 +45,26 @@ The detailed chart and operator workflow is documented in [`k8s/README.md`](../k
 
 `docker/Dockerfile` builds service images in JVM mode:
 
-- base image: `eclipse-temurin:26-jre-alpine`
-- exposes `8080`, `9000`, and `2552` (HTTP, gRPC, and Pekko remoting respectively)
-- copies the plugin directory to `/deployments/plugins`
-- sets `PLUGIN_DIR=/deployments/plugins`
+- base image: `eclipse-temurin:25-jre-alpine`
+- exposes `8080`, `9000`, and `2552` (HTTP, gRPC, and Pekko remoting respectively — 2552 only
+  matters for `agent`, the only service using Pekko clustering)
+- `ENTRYPOINT` runs `java ... -jar /deployments/quarkus-run.jar` by absolute path — no `WORKDIR`
+  needed, since nothing in the app reads relative to the process working directory anymore
+- `configs/models`, `configs/agents`, and `configs/infra` are **not** copied into the image — they're
+  read from the local checkout by `seed-catalog-configs.sh`/`seed-infra-configs.sh` at deploy time
+  and pushed via the REST API/MongoDB directly, never read by the running container. Community
+  expert agent configs are bundled as a classpath resource instead
+  (`agent/core/src/main/resources/agents/community/experts/`, loaded via
+  `ResourceUtils.listResourceNames`), so they ship with the jar rather than needing a filesystem copy.
 
 Build examples:
 
 ```bash
-docker build --build-arg SERVICE_MODULE=agent           -f docker/Dockerfile .
-docker build --build-arg SERVICE_MODULE=catalog         -f docker/Dockerfile .
-docker build --build-arg SERVICE_MODULE=knowledge       -f docker/Dockerfile .
-docker build --build-arg SERVICE_MODULE=interfaces/rest -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=agent/core       -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=catalog/core     -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=knowledge/core   -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=connectors/core  -f docker/Dockerfile .
+docker build --build-arg SERVICE_MODULE=interfaces/rest  -f docker/Dockerfile .
 ```
 
 ## 8.3 Mongo and Infra Defaults

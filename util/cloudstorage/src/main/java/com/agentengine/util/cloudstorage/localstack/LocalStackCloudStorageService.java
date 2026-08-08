@@ -1,6 +1,7 @@
 package com.agentengine.util.cloudstorage.localstack;
 
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
@@ -49,17 +50,17 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     private static final String DEFAULT_MEDIA_TYPE = "application/octet-stream";
 
     private final InfraConfigService infraConfigService;
-    private final LazyConstant<CloudStorageInfraConfig> config;
-    private LazyConstant<S3Client> s3;
-    private LazyConstant<S3Presigner> presigner;
-    private LazyConstant<String> defaultBucket;
+    private final LazyLoader<CloudStorageInfraConfig> config;
+    private LazyLoader<S3Client> s3;
+    private LazyLoader<S3Presigner> presigner;
+    private LazyLoader<String> defaultBucket;
 
     @Inject
     public LocalStackCloudStorageService(final InfraConfigService infraConfigService) {
         this.infraConfigService = infraConfigService;
-        this.config = LazyConstant.of(
+        this.config = new LazyLoader<>(
                 () -> infraConfigService.findById(CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.CONFIG_ID));
-        this.s3 = LazyConstant.of(() -> {
+        this.s3 = new LazyLoader<>(() -> {
             final CloudStorageInfraConfig cloudStorageInfraConfig = config.get();
             final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(
                     cloudStorageInfraConfig.getAccessKeyId(), cloudStorageInfraConfig.getSecretAccessKey()));
@@ -73,7 +74,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                     .forcePathStyle(true)
                     .build();
         });
-        this.presigner = LazyConstant.of(() -> {
+        this.presigner = new LazyLoader<>(() -> {
             final CloudStorageInfraConfig cloudStorageInfraConfig = config.get();
             final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(
                     cloudStorageInfraConfig.getAccessKeyId(), cloudStorageInfraConfig.getSecretAccessKey()));
@@ -85,7 +86,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                     .credentialsProvider(credentials)
                     .build();
         });
-        this.defaultBucket = LazyConstant.of(() -> {
+        this.defaultBucket = new LazyLoader<>(() -> {
             return config.get().getDefaultBucket();
         });
     }

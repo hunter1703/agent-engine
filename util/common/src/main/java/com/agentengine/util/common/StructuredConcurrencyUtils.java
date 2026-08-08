@@ -7,6 +7,7 @@ import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 @SuppressWarnings("ALL")
 public final class StructuredConcurrencyUtils {
@@ -23,14 +24,14 @@ public final class StructuredConcurrencyUtils {
     }
 
     public static <T> List<TaskOutcome<T>> runConcurrentlyUntil(
-            final List<? extends Callable<T>> tasks, final Predicate<Subtask<T>> stopCondition) {
+            final List<? extends Callable<T>> tasks, final Predicate<Subtask<? extends T>> stopCondition) {
         if (CollectionUtils.isEmpty(tasks)) {
             return List.of();
         }
 
-        final Joiner<T, List<Subtask<T>>> joiner = Joiner.allUntil(stopCondition);
+        final Joiner<T, Stream<Subtask<T>>> joiner = Joiner.allUntil(stopCondition);
 
-        try (StructuredTaskScope<T, List<Subtask<T>>> scope = StructuredTaskScope.open(joiner)) {
+        try (StructuredTaskScope<T, Stream<Subtask<T>>> scope = StructuredTaskScope.open(joiner)) {
             final List<Subtask<T>> subtasks = new ArrayList<>(tasks.size());
             for (final Callable<T> task : tasks) {
                 subtasks.add(scope.fork(task));

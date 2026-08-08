@@ -15,7 +15,7 @@ dependencies {
     implementation project(':util:mongodb')
     implementation project(':util:agents')
     implementation project(':util:ms')
-    implementation project(':connectors:core')
+    implementation project(':connectors:api')
     implementation project(':util:cloudstorage')
 
     implementation files(rootProject.file('libs/google-adk-0.5.1-SNAPSHOT.jar'))

@@ -25,10 +25,10 @@ deploy/connections.json
 # Model configs that carry provider API keys — keep local, never commit
 configs/models/devstral.json
 configs/models/gemini_3_flash_preview.json
+.env
 !gradlew
 !gradlew.bat
 !gradle/wrapper/
-gradle/gradle-daemon-jvm.properties
 .worktrees/
 k8s/*/Chart.lock
 k8s/*/charts/

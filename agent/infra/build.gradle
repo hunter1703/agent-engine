@@ -9,7 +9,6 @@ dependencies {
     implementation project(':catalog:api')
     implementation project(':knowledge:api')
     implementation project(':connectors:api')
-    implementation project(':connectors:core')
     implementation project(':util:common')
     implementation project(':util:scripts')
     implementation project(':util:agents')
