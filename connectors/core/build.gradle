@@ -5,8 +5,10 @@ plugins {
 group = 'com.agentengine.connectors'
 
 dependencies {
+    implementation project(':connectors:api')
+    implementation project(':connectors:infra')
+    implementation project(':connectors:http')
     implementation project(':util:common')
-    implementation project(':util:mongodb')
     implementation libs.jackson.databind
     implementation libs.jakarta.enterprise.cdi.api
     implementation libs.mongodb.driver.sync

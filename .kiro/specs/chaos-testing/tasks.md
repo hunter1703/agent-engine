@@ -20,8 +20,8 @@ immediately after it is built, rather than accumulating untestable code.
   - Create `chaos/api/` and `chaos/core/` module directories with Gradle build files
   - Define `FaultType` enum with all fault types: POD_KILL, NETWORK_PARTITION, NETWORK_LATENCY,
     NETWORK_PACKET_LOSS, CLUSTER_PARTITION, CPU_STRESS, MEMORY_STRESS, DISK_STRESS,
-    DATABASE_FAILURE, EVENT_JOURNAL_FAILURE, SNAPSHOT_STORE_FAILURE, LLM_PROVIDER_UNAVAILABLE,
-    LLM_PROVIDER_LATENCY, CONNECTOR_FAILURE, MESSAGE_DELAY, MESSAGE_DROP
+    DATABASE_FAILURE, EVENT_JOURNAL_FAILURE, SNAPSHOT_STORE_FAILURE, QDRANT_FAILURE,
+    LLM_PROVIDER_UNAVAILABLE, LLM_PROVIDER_LATENCY, CONNECTOR_FAILURE, MESSAGE_DELAY, MESSAGE_DROP
   - Define `BlastRadiusScope` enum: SINGLE_POD, SERVICE, NAMESPACE, CLUSTER
   - Define `ExperimentStatus` enum: SCHEDULED, RUNNING, PASSED, FAILED, ABORTED
   - Define `CriterionType` enum: MAX_ERROR_RATE, MAX_LATENCY_P99, MIN_SUCCESS_RATE,
@@ -34,7 +34,8 @@ immediately after it is built, rather than accumulating untestable code.
     - Sealed interface with subtypes: `PodKillParameters`, `NetworkLatencyParameters`,
       `NetworkPartitionParameters`, `PacketLossParameters`, `CpuStressParameters`,
       `MemoryStressParameters`, `DiskStressParameters`, `DatabaseFailureParameters`,
-      `LlmProviderLatencyParameters`, `MessageDelayParameters`, `MessageDropParameters`
+      `QdrantFailureParameters`, `LlmProviderLatencyParameters`, `MessageDelayParameters`,
+      `MessageDropParameters`
     - Each subtype is a record with only the fields relevant to that fault type
     - Register a Jackson polymorphic deserializer using `"parametersType"` discriminator field
     - _Requirements: 1.3_
@@ -246,13 +247,15 @@ immediately after it is built, rather than accumulating untestable code.
 - [ ] 10. Implement DatabaseFaultInjector and LlmProviderFaultInjector
   - [ ] 10.1 Create `DatabaseFaultInjector` implementing `FaultInjector`
     - Manage Toxiproxy client (`eu.rekawek.toxiproxy:toxiproxy-java`) targeting named proxies:
-      `postgresql` (covers Event_Journal and Snapshot_Store), `mongodb`
+      `postgresql` (covers Event_Journal and Snapshot_Store), `mongodb`, `qdrant`
     - DATABASE_FAILURE: add `timeout` toxic with timeout=0 (connection hang)
     - EVENT_JOURNAL_FAILURE: add `timeout` toxic on `postgresql` proxy upstream
     - SNAPSHOT_STORE_FAILURE: add `latency` toxic on `postgresql` proxy (high latency, not full block)
+    - QDRANT_FAILURE: add `timeout` toxic (full block) or `latency` toxic (from
+      `QdrantFailureParameters.latency`) on the `qdrant` proxy
     - Return toxic name as faultId; removal deletes the toxic by name
     - In integration tests use `ToxiproxyContainer` from Testcontainers
-    - _Requirements: 6.1, 6.2, 23.1, 24.1_
+    - _Requirements: 6.1, 6.2, 23.1, 24.1, 26.1_
 
   - [ ] 10.2 Implement recovery validation for database faults
     - After fault removal, verify reconnection within 30 seconds by polling health endpoint
@@ -270,9 +273,11 @@ immediately after it is built, rather than accumulating untestable code.
   - [ ]* 10.4 Write integration tests for database and LLM fault injection
     - EVENT_JOURNAL_FAILURE: SessionActor rejects new commands; recovers after toxic removed
     - SNAPSHOT_STORE_FAILURE: actor continues with in-memory state; snapshot writes fail quietly
+    - QDRANT_FAILURE: MemoryService returns degraded/empty results; session run completes
+      without failure; success rate stays above MIN_SUCCESS_RATE
     - LLM_PROVIDER_UNAVAILABLE: session transitions to error state without losing committed events
     - CONNECTOR_FAILURE: tool error returned to agent, session state intact
-    - _Requirements: 23.2, 23.3, 24.2, 24.3, 21.3, 21.4, 25.2, 25.3_
+    - _Requirements: 23.2, 23.3, 24.2, 24.3, 26.2, 26.3, 26.4, 21.3, 21.4, 25.2, 25.3_
 
 - [ ] 11. Checkpoint — ensure all tests pass
   - Verify injector unit and integration tests pass
@@ -509,7 +514,9 @@ immediately after it is built, rather than accumulating untestable code.
     - `llm-provider-unavailable.json` — LLM_PROVIDER_UNAVAILABLE with MIN_SUCCESS_RATE criterion
     - `message-delay-actor.json` — MESSAGE_DELAY targeting a specific session entity ID
     - `connector-failure-tool.json` — CONNECTOR_FAILURE with MIN_SUCCESS_RATE criterion
-    - _Requirements: 1.1, 18.1_
+    - `qdrant-failure.json` — QDRANT_FAILURE with MIN_SUCCESS_RATE criterion (memory search must
+      degrade gracefully, not fail sessions)
+    - _Requirements: 1.1, 18.1, 26.1_
 
 - [ ] 26. Final checkpoint — ensure all tests pass and documentation is complete
   - Full test suite; verify all acceptance criteria are addressed; ask the user if questions arise

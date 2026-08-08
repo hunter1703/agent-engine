@@ -1,5 +1,40 @@
 # TODO
 
+## util:pekko Test Suite Does Not Compile (pre-existing, found while adding chaos testing)
+
+`ActorSystemProviderTest`, `SingleChannelTest`, and `BroadcasterStateTest` reference APIs that no
+longer exist: `PekkoConfig.setHostname`/`setPort`, a 4-arg `ActorSystemProvider.buildConfig`,
+`PekkoEventChannel`'s old constructor/`entity()` shape, `EventSubscription.cancel()`, and
+`BroadcasterState.withSubscription`/`withoutSubscription`/`subscriptions()`. `PekkoConfig.java` was
+last modified 2026-04-15, after these tests (2026-04-03) — the tests were not updated when the
+config/channel APIs were refactored. This blocks `./gradlew :util:pekko:test` entirely (main source
+compiles fine; only `compileTestJava` fails), which in turn blocks running the new
+`MessageFaultInterceptorTest` added for chaos testing via Gradle. Not fixed here — out of scope for
+the chaos-testing work — but worth a follow-up pass to update or remove the stale tests.
+
+## Chaos Testing: Open Design Questions Carried From the Original Spec
+
+Tracked while implementing `.kiro/specs/chaos-testing/` (see the plan's Phase 1-5 breakdown):
+
+- **PromQL queries**: `chaos/core/metrics/MetricsQueries.defaults()` ships best-effort PromQL
+  strings (Micrometer `http_server_requests_seconds_*`, a guessed `mongodb_op_latency_seconds`, a
+  guessed `pekko_persistence_journal_write_duration_seconds`). These need validating against
+  whatever exporters actually run in the cluster (mongodb-exporter naming, Pekko persistence
+  metrics naming) — queries are configurable via the `MetricsQueries` record specifically so this
+  doesn't require a code change, just a config update.
+- **`EventJournalValidator` replay hook**: the round-trip idempotence check (Task 12.3) needs a
+  `SessionActorState.applyEvent()`-equivalent entry point to replay an event stream outside the
+  actor. Confirm this method exists or add it when implementing Phase 3 validation.
+- **`OrchestrationMode` structure**: Tasks 17 and 20 (multi-agent orchestration chaos, tool
+  execution resilience) reference `OrchestrationMode.SEQUENTIAL`/`PARALLEL` — confirm the actual
+  orchestrator agent's mode enum/structure in `agent:infra` before wiring these tests.
+- **No circuit breaker around LLM/connector calls**: `DefaultConnectorExecutor` only does
+  retry-with-backoff (`connectors/core/src/main/java/com/agentengine/connectors/core/runtime/DefaultConnectorExecutor.java`).
+  Chaos experiments against `LLM_PROVIDER_UNAVAILABLE`/`CONNECTOR_FAILURE` will likely show retries
+  compounding latency under sustained outage rather than failing fast. Per plan scope this is
+  observed and reported, not fixed, in the chaos-testing work — revisit if experiment results show
+  it's a real production risk.
+
 ## Vector Store: Multi-Vector Search with RRF Fusion
 
 `QdrantVectorStore.findBySemanticQueryInternal` currently handles only a single `SEMANTIC_SEARCH`

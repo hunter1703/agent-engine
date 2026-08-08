@@ -87,8 +87,8 @@ public class MemoryService implements BaseMemoryService {
             final String agentId = session.appName();
             final String userId = session.userId();
             final List<Memory> existing = findExistingMemories(agentId, userId, conversation);
-            final List<MemoryDecision> decisions = invokeMemoryAgent(conversation, existing);
-            applyDecisions(agentId, userId, decisions, existing);
+            final MemoryDecisions decisions = invokeMemoryAgent(conversation, existing);
+            applyDecisions(agentId, userId, existing, decisions);
         });
     }
 
@@ -137,11 +137,11 @@ public class MemoryService implements BaseMemoryService {
      * decisions. The agent framework enforces the {@code responseFormat} schema and applies the
      * correction loop if the model output is invalid, so no manual validation is needed here.
      */
-    private List<MemoryDecision> invokeMemoryAgent(final String conversation, final List<Memory> existing) {
+    private MemoryDecisions invokeMemoryAgent(final String conversation, final List<Memory> existing) {
         final BaseAgentConfig config = communityRegistry.getExpert(CommunityRegistry.MEMORY_AGENT);
         if (config == null) {
             LOG.warn("Memory agent config not found in community registry; skipping memory extraction.");
-            return List.of();
+            return MemoryDecisions.empty();
         }
         try {
             final Agent agent = agentProvider.create(config);
@@ -165,18 +165,15 @@ public class MemoryService implements BaseMemoryService {
             return parseDecisions(responseText);
         } catch (final Exception e) {
             LOG.warn("Memory agent invocation failed; skipping memory extraction.", e);
-            return List.of();
+            return MemoryDecisions.empty();
         }
     }
 
     private void applyDecisions(
-            final String agentId,
-            final String userId,
-            final List<MemoryDecision> decisions,
-            final List<Memory> existing) {
+            final String agentId, final String userId, final List<Memory> existing, final MemoryDecisions decisions) {
         final Map<String, Memory> existingById =
                 CollectionUtils.transformToMap(existing, Memory::getId, Function.identity());
-        for (final MemoryDecision decision : decisions) {
+        for (final MemoryDecision decision : decisions.decisions()) {
             try {
                 switch (decision.operation()) {
                     case "ADD" -> {
@@ -272,21 +269,25 @@ public class MemoryService implements BaseMemoryService {
         return sb.toString();
     }
 
-    private static List<MemoryDecision> parseDecisions(final String responseText) {
+    private static MemoryDecisions parseDecisions(final String responseText) {
         if (StringUtils.isBlank(responseText)) {
-            return List.of();
+            return MemoryDecisions.empty();
         }
         try {
             final MemoryDecisions parsed = JsonUtils.fromJson(responseText, MemoryDecisions.class);
-            return CollectionUtils.nullSafeList(
-                    parsed == null || parsed.decisions() == null ? List.of() : parsed.decisions());
+            return new MemoryDecisions(CollectionUtils.nullSafeList(
+                    parsed == null || parsed.decisions() == null ? List.of() : parsed.decisions()));
         } catch (final Exception e) {
             LOG.warn("Failed to parse memory decisions from response: {}", responseText, e);
-            return List.of();
+            return MemoryDecisions.empty();
         }
     }
 
-    private record MemoryDecisions(List<MemoryDecision> decisions) {}
+    private record MemoryDecisions(List<MemoryDecision> decisions) {
+        public static MemoryDecisions empty() {
+            return new MemoryDecisions(List.of());
+        }
+    }
 
     private record MemoryDecision(String operation, String id, String text) {}
 }

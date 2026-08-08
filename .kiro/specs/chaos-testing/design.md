@@ -74,6 +74,7 @@ graph TB
     subgraph "Persistence"
         PG[(PostgreSQL — Event Journal + Snapshots)]
         MONGO[(MongoDB — Session Metadata + Configs)]
+        QDRANT[(Qdrant — Memory Embeddings)]
     end
 
     subgraph "Observability"
@@ -97,6 +98,7 @@ graph TB
     DBF --> TP
     TP --> PG
     TP --> MONGO
+    TP --> QDRANT
     LLM --> TP
 
     RT --> SR
@@ -104,6 +106,7 @@ graph TB
     SA --> ES
     ES --> PG
     RT --> MONGO
+    RT --> QDRANT
 
     MC --> PROM
     CE --> LOGS
@@ -295,6 +298,7 @@ PostgreSQL and MongoDB connections. Fault types:
 | DATABASE_FAILURE           | `timeout` or `reset`    |
 | EVENT_JOURNAL_FAILURE      | `timeout` on PG proxy   |
 | SNAPSHOT_STORE_FAILURE     | `latency` on PG proxy   |
+| QDRANT_FAILURE             | `timeout` or `latency` on `qdrant` proxy |
 | LLM_PROVIDER_LATENCY       | `latency` on LLM proxy  |
 
 In integration tests, Toxiproxy runs as a Testcontainers `ToxiproxyContainer`. In
@@ -396,6 +400,7 @@ public enum FaultType {
     DATABASE_FAILURE,
     EVENT_JOURNAL_FAILURE,
     SNAPSHOT_STORE_FAILURE,
+    QDRANT_FAILURE,
 
     // External dependencies — via Toxiproxy/WireMock
     LLM_PROVIDER_UNAVAILABLE,
@@ -429,6 +434,7 @@ public sealed interface FaultParameters permits
     MemoryStressParameters,
     DiskStressParameters,
     DatabaseFailureParameters,
+    QdrantFailureParameters,
     LlmProviderLatencyParameters,
     MessageDelayParameters,
     MessageDropParameters {}
@@ -441,6 +447,7 @@ public record CpuStressParameters(int cpuPercentage) implements FaultParameters 
 public record MemoryStressParameters(String memoryLimit) implements FaultParameters {}
 public record DiskStressParameters(String diskIORate) implements FaultParameters {}
 public record DatabaseFailureParameters(DatabaseTarget target) implements FaultParameters {}
+public record QdrantFailureParameters(Optional<Duration> latency) implements FaultParameters {}
 public record LlmProviderLatencyParameters(Duration latency) implements FaultParameters {}
 public record MessageDelayParameters(Duration delay, double percentage) implements FaultParameters {}
 public record MessageDropParameters(double dropPercentage) implements FaultParameters {}
@@ -651,6 +658,7 @@ Stored in `configs/infra/chaos-config.json`:
     "proxies": {
       "postgresql": { "listen": "0.0.0.0:15432", "upstream": "postgresql:5432" },
       "mongodb":    { "listen": "0.0.0.0:27018", "upstream": "mongodb:27017" },
+      "qdrant":     { "listen": "0.0.0.0:16333", "upstream": "qdrant:6333" },
       "llm":        { "listen": "0.0.0.0:18080", "upstream": "llm-provider:443" }
     }
   },

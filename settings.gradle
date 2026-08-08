@@ -4,34 +4,32 @@ plugins {
 
 rootProject.name = 'agent-engine'
 
-include 'agent:api'
-include 'agent:infra'
-include 'agent:core'
-include 'agent'
-
 include 'catalog:api'
-
-include 'catalog'
-
-include 'connectors:core'
+include 'catalog:core'
 
 include 'interfaces:rest'
 
-include 'util:common'
+include 'agent:api'
+include 'agent:infra'
+include 'agent:core'
+
+include 'connectors:api'
+include 'connectors:infra'
+include 'connectors:http'
+include 'connectors:core'
 
 include 'util:mongodb'
 include 'util:vectordb'
-
 include 'util:cloudstorage'
-
-include 'util:ms'
-
 include 'util:ms:client'
-
+include 'util:ms'
 include 'util:agents'
-
 include 'util:pekko'
+include 'util:scripts'
+include 'util:common'
 
 include 'knowledge:api'
 include 'knowledge:core'
-include 'knowledge'
+
+include 'chaos:api'
+include 'chaos:core'

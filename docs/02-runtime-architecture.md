@@ -2,7 +2,7 @@
 
 ## 2.1 Core Services
 
-Configuration and session CRUD live in the **Catalog** service (`catalog/src/main/java/com/agentengine/catalog/services`):
+Configuration and session CRUD live in the **Catalog** service (`../catalog/core/src/com/agentengine/catalog/core/services`):
 
 - `AgentServiceImpl`: CRUD/query for agent configs
 - `ModelServiceImpl`: CRUD/query for model configs

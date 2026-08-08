@@ -18,6 +18,8 @@ dependencies {
     // Exposed in public API (JsonElement in JsonUtils helpers)
     api libs.kotlinx.serialization.json
 
+    api libs.guava
+
     // Jackson modules: internal wiring only, not in public signatures
     implementation libs.jackson.dataformat.yaml
     implementation libs.jackson.datatype.jdk8
@@ -25,7 +27,6 @@ dependencies {
     implementation libs.jackson.datatype.guava
 
     // Internal utilities only
-    implementation libs.guava
     implementation libs.jinjava
     implementation libs.json.path
     implementation libs.commons.text

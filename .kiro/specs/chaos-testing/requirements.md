@@ -31,6 +31,7 @@ message delivery issues.
 - **Event_Journal**: PostgreSQL-backed event store for Pekko persistence, backed by pekko-persistence-jdbc (`jdbc-journal` plugin)
 - **Snapshot_Store**: PostgreSQL-backed snapshot store for Pekko persistence (`jdbc-snapshot-store` plugin)
 - **MongoDB_Store**: Persistence layer for agent session metadata, agent configs, and infra configuration (does **not** store the event journal)
+- **Qdrant_Store**: Vector database backing `MemoryService` (`util:vectordb`) — stores memory embeddings and knowledge chunks for semantic search
 - **LLM_Provider**: External AI model API (e.g., Anthropic, OpenAI, local llama.cpp) called synchronously during agent runs
 - **Connector_Service**: Outbound HTTP transport layer (`connectors:core`) that executes tool calls against external APIs
 - **Runtime_Service**: The deployable runtime artifact hosting the Pekko cluster, agent execution engine, and REST gateway
@@ -51,7 +52,7 @@ can version control and reproduce failure scenarios.
 3. THE Chaos_Engine SHALL support fault types: POD_KILL, NETWORK_PARTITION, NETWORK_LATENCY,
    NETWORK_PACKET_LOSS, CPU_STRESS, MEMORY_STRESS, DISK_STRESS, DATABASE_FAILURE,
    EVENT_JOURNAL_FAILURE, SNAPSHOT_STORE_FAILURE, LLM_PROVIDER_UNAVAILABLE, LLM_PROVIDER_LATENCY,
-   CONNECTOR_FAILURE, MESSAGE_DELAY, MESSAGE_DROP, CLUSTER_PARTITION
+   CONNECTOR_FAILURE, MESSAGE_DELAY, MESSAGE_DROP, CLUSTER_PARTITION, QDRANT_FAILURE
 4. THE Chaos_Engine SHALL support blast radius scopes: SINGLE_POD, SERVICE, NAMESPACE, CLUSTER
 5. WHERE an experiment specifies a schedule, THE Chaos_Engine SHALL execute the experiment at the
    configured interval
@@ -69,7 +70,7 @@ experiments, so that I can measure deviation and recovery.
    components
 2. THE Chaos_Engine SHALL measure baseline metrics: request success rate, p50/p95/p99 latency,
    error rate, active sessions, event sourcing lag, Event_Journal operation latency, MongoDB_Store
-   operation latency
+   operation latency, Qdrant_Store operation latency
 3. THE Chaos_Engine SHALL store baseline measurements with experiment metadata
 4. THE Chaos_Engine SHALL collect steady state metrics for a configurable observation window
    (default 60 seconds)
@@ -501,3 +502,25 @@ do not crash sessions.
    fail) do not corrupt session state
 5. WHEN the connector recovers, THE Session_Actor SHALL be able to retry or issue new tool calls
    in subsequent turns without restart
+
+### Requirement 26: Qdrant Vector Memory Store Failure Testing
+
+**User Story:** As a platform engineer, I want to simulate Qdrant_Store failures, so that I can
+validate that memory search degrades gracefully instead of failing agent runs when semantic
+recall is unavailable.
+
+#### Acceptance Criteria
+
+1. WHEN a QDRANT_FAILURE fault is injected, THE Fault_Injector SHALL block or delay connections to
+   Qdrant_Store via Toxiproxy in test environments or a Chaos_Mesh `NetworkChaos` resource in
+   staging/production
+2. WHEN Qdrant_Store is unreachable, `MemoryService` SHALL return an empty or degraded memory
+   result rather than throwing an unhandled exception to the calling `Session_Actor`
+3. WHEN Qdrant_Store is unreachable, THE Chaos_Engine SHALL validate that in-flight agent runs
+   continue and complete using conversational context alone, with reduced recall quality but no
+   session failure
+4. THE Chaos_Engine SHALL validate that success rate during a QDRANT_FAILURE experiment stays
+   above the configured `MIN_SUCCESS_RATE` threshold, reflecting graceful degradation rather than
+   hard failure
+5. WHEN Qdrant_Store connectivity is restored, THE Runtime_Service SHALL resume semantic memory
+   search within 30 seconds without requiring a `Session_Actor` restart

@@ -32,6 +32,9 @@ hamcrest = "3.0"
 testcontainers = "1.20.6"
 testcontainers-redis = "2.2.4"
 aws-sdk = "2.31.0"
+toxiproxy-java = "2.1.7"
+wiremock = "3.9.1"
+fabric8-kubernetes-client = "6.13.4"
 
 # gRPC & Protobuf
 protobuf = "3.25.8"
@@ -118,6 +121,10 @@ quarkus-arc = { group = "io.quarkus", name = "quarkus-arc" }
 quarkus-config-smallrye = { group = "io.quarkus", name = "quarkus-smallrye-context-propagation" }
 quarkus-agroal = { group = "io.quarkus", name = "quarkus-agroal" }
 quarkus-jdbc-postgresql = { group = "io.quarkus", name = "quarkus-jdbc-postgresql" }
+quarkus-kubernetes-client = { group = "io.quarkus", name = "quarkus-kubernetes-client" }
+quarkus-scheduler = { group = "io.quarkus", name = "quarkus-scheduler" }
+fabric8-kubernetes-client = { group = "io.fabric8", name = "kubernetes-client", version.ref = "fabric8-kubernetes-client" }
+fabric8-kubernetes-server-mock = { group = "io.fabric8", name = "kubernetes-server-mock", version.ref = "fabric8-kubernetes-client" }
 
 # Jakarta APIs
 jakarta-validation-api = { group = "jakarta.validation", name = "jakarta.validation-api", version.ref = "jakarta-validation" }
@@ -148,6 +155,10 @@ testcontainers-junit-jupiter = { group = "org.testcontainers", name = "junit-jup
 testcontainers-mongodb = { group = "org.testcontainers", name = "mongodb", version.ref = "testcontainers" }
 testcontainers-redis = { group = "com.redis", name = "testcontainers-redis", version.ref = "testcontainers-redis" }
 testcontainers-localstack = { group = "org.testcontainers", name = "localstack", version.ref = "testcontainers" }
+testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
+testcontainers-toxiproxy = { group = "org.testcontainers", name = "toxiproxy", version.ref = "testcontainers" }
+toxiproxy-java = { group = "eu.rekawek.toxiproxy", name = "toxiproxy-java", version.ref = "toxiproxy-java" }
+wiremock = { group = "org.wiremock", name = "wiremock", version.ref = "wiremock" }
 
 # AWS SDK v2
 aws-s3 = { group = "software.amazon.awssdk", name = "s3", version.ref = "aws-sdk" }
