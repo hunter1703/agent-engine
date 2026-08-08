@@ -1,5 +1,5 @@
 plugins {
-    id 'com.agentengine.java-library-conventions'
+    id 'com.agentengine.java-application-conventions'
 }
 
 group = 'com.agentengine.connectors'
@@ -9,10 +9,16 @@ dependencies {
     implementation project(':connectors:infra')
     implementation project(':connectors:http')
     implementation project(':util:common')
+    implementation project(':util:ms')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+
     implementation libs.jackson.databind
     implementation libs.jakarta.enterprise.cdi.api
-    implementation libs.mongodb.driver.sync
-    implementation libs.jakarta.validation.api
     implementation libs.jakarta.inject.api
     implementation libs.slf4j.api
     implementation libs.groovy

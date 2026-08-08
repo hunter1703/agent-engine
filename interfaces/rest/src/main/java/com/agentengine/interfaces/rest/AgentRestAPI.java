@@ -11,6 +11,7 @@ import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
@@ -200,9 +201,10 @@ public class AgentRestAPI {
         if (content instanceof List<?> parts) {
             final List<MessagePart> messageParts = new ArrayList<>();
             for (final Object raw : parts) {
-                if (!(raw instanceof Map<?, ?> part)) {
+                if (!(raw instanceof Map<?, ?> rawPart)) {
                     continue;
                 }
+                final Map<String, Object> part = (Map<String, Object>) rawPart;
                 final String type = CollectionUtils.getStringValueFromMap(part, "type");
 
                 if ("text".equals(type)) {

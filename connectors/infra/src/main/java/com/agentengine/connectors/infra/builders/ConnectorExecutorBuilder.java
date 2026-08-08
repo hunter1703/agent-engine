@@ -1,6 +1,5 @@
 package com.agentengine.connectors.infra.builders;
 
-import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 

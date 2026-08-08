@@ -1,5 +1,6 @@
 package com.agentengine.util.common;
 
+import com.hubspot.jinjava.Jinjava;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -9,6 +10,7 @@ public final class PromptUtils {
     public static final String VAR_CURRENT_DATETIME = "current_datetime";
     public static final String VAR_AGENT_NAME = "agent_name";
 
+    private static final Jinjava JINJAVA = new Jinjava();
     private static final DateTimeFormatter DATETIME_FORMATTER =
             DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy, HH:mm:ss xxx", Locale.ENGLISH);
 
@@ -25,7 +27,8 @@ public final class PromptUtils {
                 now.format(DATETIME_FORMATTER),
                 VAR_AGENT_NAME,
                 agentName != null ? agentName : "");
-        final String rendered = TemplateUtils.renderTextTemplate(template, context);
+        final String rendered =
+                template == null ? "" : JINJAVA.render(template, context).trim();
         if (CollectionUtils.isEmpty(responseFormat)) {
             return rendered;
         }

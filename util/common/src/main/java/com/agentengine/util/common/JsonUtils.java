@@ -66,6 +66,13 @@ public final class JsonUtils {
         return builder.build();
     }
 
+    /**
+     * An independent copy of the default mapper
+     */
+    public static ObjectMapper copyMapper() {
+        return JSON_MAPPER.copy();
+    }
+
     public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
         if (map == null) {
             return null;

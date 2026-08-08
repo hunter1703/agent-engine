@@ -39,13 +39,13 @@ stop_workloads() {
   pkill -f "kubectl.*port-forward.*:${LOCAL_PORT}" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting deployments...${RESET}\n"
-  kubectl delete deployment agent-engine-catalog agent-engine-rest agent-engine-knowledge localstack qdrant -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete deployment agent-engine-catalog agent-engine-rest agent-engine-knowledge agent-engine-connectors localstack qdrant -n "$NAMESPACE" 2>/dev/null || true
 
   printf "${CYAN}  → Deleting statefulsets (preserving PVCs)...${RESET}\n"
   kubectl delete statefulset agent-engine-agent mongodb postgres -n "$NAMESPACE" 2>/dev/null || true
 
   printf "${CYAN}  → Deleting services (except headless for PVC retention)...${RESET}\n"
-  kubectl delete service agent-engine-catalog agent-engine-rest agent-engine-agent agent-engine-knowledge qdrant -n "$NAMESPACE" 2>/dev/null || true
+  kubectl delete service agent-engine-catalog agent-engine-rest agent-engine-agent agent-engine-knowledge agent-engine-connectors qdrant -n "$NAMESPACE" 2>/dev/null || true
   
   printf "${CYAN}  → Deleting configmaps and secrets...${RESET}\n"
   kubectl delete configmap -l app.kubernetes.io/part-of=agent-engine -n "$NAMESPACE" 2>/dev/null || true
@@ -83,7 +83,7 @@ Stages (run concurrently where dependencies allow):
   init postgres schema     Starts once postgres is ready.
   seed infra configs       Starts once mongodb is ready.
   global-properties        Starts at T=0 (static ConfigMap, no deps).
-  catalog + rest           Start once build and global-properties are done.
+  catalog + rest + connectors  Start once build and global-properties are done.
   knowledge                Starts once build and global-properties are done.
   agent                    Starts once catalog is ready.
   seed application configs Starts once mongodb, catalog, and rest are ready.
@@ -190,7 +190,7 @@ job_build() {
   fi
   print_phase "Building Docker images"
   require_command docker
-  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" agent catalog rest knowledge || fail
+  TAG=$IMAGE_TAG "$SCRIPT_DIR/build-images.sh" agent catalog rest knowledge connectors || fail
   touch "$STATE_DIR/builds-done"
 }
 
@@ -277,6 +277,7 @@ global-properties::global-properties-ready
 catalog:global-properties-ready,builds-done:catalog-ready
 rest:global-properties-ready,builds-done:rest-ready
 knowledge:global-properties-ready,builds-done,qdrant-collections-ready:knowledge-ready
+connectors:global-properties-ready,builds-done:connectors-ready
 agent:global-properties-ready,catalog-ready,localstack-buckets-ready,builds-done:agent-ready
 "
 

@@ -1,16 +1,19 @@
 {
-  "id": "duckduckgo-instant-answer",
-  "appName": "duckduckgo",
-  "endpoint": {
-    "method": "GET",
+  "name": "duckduckgo_instant_search",
+  "inputSchema": {
+    "query": {
+      "type": "string",
+      "description": "Search query string"
+    }
+  },
+  "spec": {
+    "type": "HTTP",
     "baseUrl": "https://api.duckduckgo.com",
-    "path": "/"
-  },
-  "query": {
-    "q": "${input.query}",
-    "format": "json"
-  },
-  "responseMapping": {
-    "output": "${ response == null ? null : [abstract: response.AbstractText != null ? response.AbstractText : null, url: response.AbstractURL != null ? response.AbstractURL : null, source: response.AbstractSource != null ? response.AbstractSource : null, heading: response.Heading != null ? response.Heading : null, relatedTopics: response.RelatedTopics != null ? response.RelatedTopics : null] }"
+    "path": "/",
+    "method": "GET",
+    "queryParams": {
+      "q": "{{ input.query }}",
+      "format": "json"
+    }
   }
 }

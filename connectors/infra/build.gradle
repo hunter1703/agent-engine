@@ -6,5 +6,6 @@ group = 'com.agentengine.connectors'
 
 dependencies {
     implementation project(':connectors:api')
+    implementation libs.jackson.databind
     implementation libs.slf4j.api
 }

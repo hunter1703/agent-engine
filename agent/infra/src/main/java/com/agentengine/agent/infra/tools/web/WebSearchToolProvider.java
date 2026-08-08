@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.tools.web;
 
 import com.agentengine.agent.infra.tools.ToolProvider;
-import com.agentengine.connectors.core.ConnectorService;
+import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.google.adk.tools.BaseTool;
 import jakarta.inject.Inject;

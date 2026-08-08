@@ -1,8 +1,9 @@
 package com.agentengine.agent.infra.tools.web;
 
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.connectors.core.ConnectorService;
-import com.agentengine.connectors.core.runtime.ConnectorExecutionResult;
+import com.agentengine.connectors.api.beans.ConnectorRequest;
+import com.agentengine.connectors.api.exceptions.ConnectorException;
+import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -10,6 +11,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class WebSearchTool extends Tool {
@@ -59,29 +61,36 @@ public final class WebSearchTool extends Tool {
         connectorInput.put("search_lang", DEFAULT_LANGUAGE);
         connectorInput.put("maximum_number_of_tokens", DEFAULT_MAX_TOKENS);
 
-        final ConnectorExecutionResult result =
-                connectorService.execute(BRAVE_CONNECTOR_ID, Map.copyOf(connectorInput));
-        if (!result.success()) {
-            return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
-        }
-        return Map.of("result", result.mappedData());
+        return executeConnector(BRAVE_CONNECTOR_ID, Map.copyOf(connectorInput));
     }
 
     private Map<String, Object> executeDuckDuckGoLookup(final String query) {
-        final ConnectorExecutionResult result =
-                connectorService.execute(DUCKDUCKGO_CONNECTOR_ID, Map.of("query", query.trim()));
-
-        if (!result.success()) {
-            return Map.of("error", result.errorMessage() == null ? DEFAULT_ERROR : result.errorMessage());
+        final Map<String, Object> response = executeConnector(DUCKDUCKGO_CONNECTOR_ID, Map.of("query", query.trim()));
+        if (response.containsKey("error")) {
+            return response;
         }
 
         // noinspection unchecked
-        final Map<String, Object> mappedData = CollectionUtils.nullSafeMap((Map<String, Object>) result.mappedData());
+        final Map<String, Object> mappedData =
+                CollectionUtils.nullSafeMap((Map<String, Object>) response.get("result"));
         if (StringUtils.isBlank(CollectionUtils.getStringValueFromMap(mappedData, "abstract"))) {
             // DuckDuckGo returned empty results, fallback to Brave
             return executeBraveSearch(query);
         }
 
         return Map.of("result", mappedData);
+    }
+
+    private Map<String, Object> executeConnector(final String connectorId, final Map<String, Object> input) {
+        try {
+            final List<Map<String, Object>> results = connectorService
+                    .<Map<String, Object>>execute(new ConnectorRequest(connectorId, input))
+                    .result();
+            return Map.of(
+                    "result",
+                    CollectionUtils.nullSafeList(results).stream().findFirst().orElseGet(Map::of));
+        } catch (ConnectorException e) {
+            return Map.of("error", StringUtils.isBlank(e.getMessage()) ? DEFAULT_ERROR : e.getMessage());
+        }
     }
 }

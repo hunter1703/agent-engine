@@ -1,8 +1,16 @@
 package com.agentengine.connectors.infra.beans;
 
-public class ConnectorSpec {
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        visible = true)
+public abstract class ConnectorSpec {
     public enum Type {
-        HTTP, UNKNOWN;
+        HTTP,
+        UNKNOWN;
 
         public static Type valueOfOrUnknown(final String type) {
             try {

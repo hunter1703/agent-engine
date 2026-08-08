@@ -70,7 +70,7 @@ for chart in $ALL_CHARTS; do
     echo "# $chart ($release_name)"
     set -- template "$release_name" "$(chart_path "$chart")" --namespace "$NAMESPACE" --set namespace="$NAMESPACE"
     case "$chart" in
-      runtime|core|rest)
+      agent|catalog|rest|knowledge|connectors)
         set -- "$@" --set image.tag="$IMAGE_TAG"
         ;;
     esac

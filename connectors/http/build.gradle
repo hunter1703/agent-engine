@@ -9,6 +9,8 @@ dependencies {
     implementation project(':connectors:infra')
     implementation project(':util:common')
     implementation project(':util:scripts')
+    implementation libs.jackson.databind
     implementation libs.slf4j.api
     implementation libs.okhttp
+    implementation libs.jakarta.inject.api
 }

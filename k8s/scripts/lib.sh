@@ -7,8 +7,8 @@ K8S_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 DEFAULT_NAMESPACE=agent-engine
 DEFAULT_ENVIRONMENT=local
 DEFAULT_TIMEOUT=10m
-DEFAULT_CHARTS="global-properties agent catalog rest knowledge"
-ALL_CHARTS="global-properties agent catalog rest knowledge mongodb postgres localstack qdrant"
+DEFAULT_CHARTS="global-properties agent catalog rest knowledge connectors"
+ALL_CHARTS="global-properties agent catalog rest knowledge connectors mongodb postgres localstack qdrant"
 
 chart_release_name() {
   case "$1" in
@@ -17,6 +17,7 @@ chart_release_name() {
     catalog)    echo "agent-engine-catalog"    ;;
     rest)       echo "agent-engine-rest"       ;;
     knowledge)  echo "agent-engine-knowledge"  ;;
+    connectors) echo "agent-engine-connectors" ;;
     mongodb)    echo "agent-engine-mongodb"    ;;
     postgres)   echo "agent-engine-postgres"   ;;
     localstack) echo "agent-engine-localstack" ;;
@@ -118,7 +119,7 @@ Options:
   -n, --namespace <name>    Kubernetes namespace (default: agent-engine)
   -f, --values <file>       Additional Helm values file (repeatable)
   --set <key=value>         Additional Helm set override (repeatable)
-  --image-tag <tag>         Override the app image tag for agent/catalog/rest/knowledge
+  --image-tag <tag>         Override the app image tag for agent/catalog/rest/knowledge/connectors
   -h, --help                Show help
 EOF
 }

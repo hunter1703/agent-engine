@@ -1,0 +1,78 @@
+component: connectors
+replicas: 1
+revisionHistoryLimit: 3
+terminationGracePeriodSeconds: 90
+
+image:
+  repository: agent-engine/connectors
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  automountToken: false
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+java:
+  opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
+  args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
+
+config:
+  applicationProperties:
+    quarkus.otel.service.name: agent-engine-connectors
+    # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+    quarkus.otel.sdk.disabled: "true"
+    quarkus.log.console.json: "true"
+    # gRPC server configuration - increase message size limit to 100MB
+    quarkus.grpc.server.max-inbound-message-size: "104857600"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  grpcPort: 9000
+
+tmpVolume:
+  enabled: true
+  sizeLimit: 256Mi
+
+probes:
+  readiness:
+    path: /q/health/ready
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 3
+  liveness:
+    path: /q/health/live
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 3
+  startup:
+    enabled: true
+    path: /q/health/live
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 3
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0

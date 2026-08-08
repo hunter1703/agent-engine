@@ -1,9 +1,10 @@
 package com.agentengine.connectors.http.beans;
 
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
-
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Map;
 
+@JsonTypeName("HTTP")
 public class HttpConnectorSpec extends ConnectorSpec {
     private String baseUrl;
     private String path;

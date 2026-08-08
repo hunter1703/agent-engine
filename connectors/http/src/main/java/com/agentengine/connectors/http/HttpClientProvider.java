@@ -2,10 +2,10 @@ package com.agentengine.connectors.http;
 
 import com.agentengine.connectors.http.beans.HttpClientOptions;
 import com.agentengine.connectors.infra.ClientProvider;
-import okhttp3.OkHttpClient;
-
+import jakarta.inject.Singleton;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import okhttp3.OkHttpClient;
 
 @Singleton
 public class HttpClientProvider implements ClientProvider<HttpClientOptions, OkHttpClient> {

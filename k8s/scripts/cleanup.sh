@@ -12,7 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ./k8s/scripts/cleanup.sh
-  ./k8s/scripts/cleanup.sh agent catalog rest knowledge
+  ./k8s/scripts/cleanup.sh agent catalog rest knowledge connectors
   ./k8s/scripts/cleanup.sh --delete-namespace
   ./k8s/scripts/cleanup.sh --keep-volumes
 
@@ -69,7 +69,7 @@ parse_args() {
 parse_args "$@"
 require_command helm
 
-for chart in rest catalog agent knowledge global-properties mongodb postgres localstack qdrant; do
+for chart in rest catalog agent knowledge connectors global-properties mongodb postgres localstack qdrant; do
   # shellcheck disable=SC2086
   if chart_selected "$chart" $REQUESTED_CHARTS; then
     release_name=$(chart_release_name "$chart")

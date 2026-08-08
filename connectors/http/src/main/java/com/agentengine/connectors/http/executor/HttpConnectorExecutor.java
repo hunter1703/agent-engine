@@ -9,21 +9,20 @@ import com.agentengine.connectors.infra.ClientProvider;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import okhttp3.*;
-import okhttp3.internal.http.HttpMethod;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import okhttp3.*;
+import okhttp3.internal.http.HttpMethod;
 
 public class HttpConnectorExecutor implements ConnectorExecutor<Map<String, Object>, Map<String, Object>> {
 
     private final TemplatedHttpConnectorSpec templatedSpec;
     private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
 
-    public HttpConnectorExecutor(TemplatedHttpConnectorSpec templatedSpec, ClientProvider<HttpClientOptions, OkHttpClient> clientProvider) {
+    public HttpConnectorExecutor(
+            TemplatedHttpConnectorSpec templatedSpec, ClientProvider<HttpClientOptions, OkHttpClient> clientProvider) {
         this.templatedSpec = templatedSpec;
         this.clientProvider = clientProvider;
     }
@@ -51,7 +50,10 @@ public class HttpConnectorExecutor implements ConnectorExecutor<Map<String, Obje
                 return new ConnectorResult<>(List.of(Map.of()));
             }
             final List<String> contentTypeHeaders = CollectionUtils.nullSafeList(response.headers("Content-Type"));
-            final String mimeType = contentTypeHeaders.stream().filter(contentType -> contentType.contains("application/")).findFirst().orElse(null);
+            final String mimeType = contentTypeHeaders.stream()
+                    .filter(contentType -> contentType.contains("application/"))
+                    .findFirst()
+                    .orElse(null);
             return new ConnectorResult<>(buildResult(mimeType, responseBody.bytes()));
         } catch (IOException ex) {
             throw new ConnectorException("HTTP request failed", ex);
@@ -74,7 +76,8 @@ public class HttpConnectorExecutor implements ConnectorExecutor<Map<String, Obje
         return builder.build();
     }
 
-    private static RequestBody createRequestBody(final String method, final String mimeType, final Map<String, Object> body) {
+    private static RequestBody createRequestBody(
+            final String method, final String mimeType, final Map<String, Object> body) {
         if (!HttpMethod.permitsRequestBody(method)) {
             return null;
         }

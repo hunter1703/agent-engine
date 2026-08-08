@@ -2,9 +2,12 @@
 # Multi-service Dockerfile for Agent Engine
 # Build with: docker build --build-arg SERVICE_MODULE=<module> -f docker/Dockerfile .
 #
-# SERVICE_MODULE options:
-#   - core
-#   - runtime
+# SERVICE_MODULE options (each must be a Gradle project with the java-application-conventions
+# plugin applied, so `./gradlew :<module colons>:quarkusBuild` produces build/quarkus-app/):
+#   - agent/core
+#   - catalog/core
+#   - knowledge/core
+#   - connectors/core
 #   - interfaces/rest
 ####
 FROM eclipse-temurin:26-jre-alpine

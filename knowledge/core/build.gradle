@@ -1,5 +1,5 @@
 plugins {
-    id 'com.agentengine.java-library-conventions'
+    id 'com.agentengine.java-application-conventions'
 }
 
 group = 'com.agentengine.knowledge'
@@ -10,7 +10,7 @@ dependencies {
     implementation project(':util:agents')
     implementation project(':util:mongodb')
     implementation project(':util:vectordb')
-    implementation project(':util:ms:client')
+    implementation project(':util:ms')
     implementation project(':catalog:api')
     implementation project(':agent:infra')
     implementation project(':util:cloudstorage')
@@ -20,6 +20,10 @@ dependencies {
 
     implementation libs.langchain4j.core
     implementation libs.quarkus.mongodb.client
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
 
     implementation libs.jakarta.inject.api
 }
