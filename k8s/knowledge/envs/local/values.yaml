@@ -1,8 +1,0 @@
-replicas: 1
-pdb:
-  enabled: false
-probes:
-  liveness:
-    timeoutSeconds: 10
-  readiness:
-    timeoutSeconds: 10

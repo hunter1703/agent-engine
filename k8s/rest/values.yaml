@@ -1,93 +1,16 @@
-component: rest
-replicas: 1
-revisionHistoryLimit: 3
-terminationGracePeriodSeconds: 90
+app-base:
+  service:
+    name: rest
 
-lifecycle:
-  # Delay before the container starts shutting down, giving the load balancer time to drain.
-  # terminationGracePeriodSeconds must exceed preStopSleepSeconds + quarkus.shutdown.timeout.
-  preStopSleepSeconds: 20
-
-image:
-  repository: agent-engine/rest
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
-serviceAccount:
-  create: true
-  automountToken: false
-
-podSecurityContext:
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: false
-
-java:
-  opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
-  args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
-
-config:
-  applicationProperties:
-    quarkus.otel.service.name: agent-engine-rest
-    # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
-    quarkus.otel.sdk.disabled: "true"
-    quarkus.log.console.json: "true"
-    quarkus.shutdown.timeout: 60S
-
-    # CORS configuration for React frontend
-    quarkus.http.cors.enabled: "true"
-    quarkus.http.cors.origins: "http://localhost:3000,http://localhost:3001"
-    quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
-    quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"
-    quarkus.http.cors.exposed-headers: "Content-Disposition"
-    quarkus.http.cors.access-control-max-age: "24H"
-    quarkus.http.cors.access-control-allow-credentials: "true"
-
-resources:
-  requests:
-    cpu: "500m"
-    memory: "1Gi"
-  limits:
-    cpu: "500m"
-    memory: "1Gi"
-
-service:
-  type: ClusterIP
-  httpPort: 8080
-
-tmpVolume:
-  enabled: true
-  sizeLimit: 256Mi
-
-probes:
-  readiness:
-    path: /q/health/ready
-    periodSeconds: 10
-    failureThreshold: 3
-    timeoutSeconds: 3
-  liveness:
-    path: /q/health/live
-    periodSeconds: 20
-    failureThreshold: 3
-    timeoutSeconds: 3
-  startup:
+  ingress:
     enabled: true
-    path: /q/health
-    periodSeconds: 10
-    failureThreshold: 30
-    timeoutSeconds: 3
+    className: nginx
+    hosts:
+      - host: rest.agent-engine.local
+        paths:
+          - path: /
+            pathType: Prefix
 
-strategy:
-  type: RollingUpdate
-  rollingUpdate:
-    maxSurge: 1
-    maxUnavailable: 0
-
-ingress:
-  enabled: false
+  java:
+    opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
+    args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"

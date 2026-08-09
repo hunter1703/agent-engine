@@ -1,72 +1,7 @@
-namespace: agent-engine
+service:
+  name: mongodb
 
 image:
   repository: mongo
   tag: "7.0"
-  digest: ""
   pullPolicy: IfNotPresent
-
-serviceName: mongodb
-port: 27017
-connectionString: ""
-
-auth:
-  enabled: true
-  username: agentengine
-  password: agentengine
-  secretName: "mongodb-auth"
-  existingSecret: ""
-  usernameKey: username
-  passwordKey: password
-
-connection:
-  secretName: "mongodb-connection"
-
-requireExistingSecret: false
-
-persistence:
-  enabled: true
-  size: 10Gi
-  storageClassName: ""
-
-service:
-  annotations: {}
-
-podAnnotations: {}
-podLabels: {}
-
-podSecurityContext:
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-
-resources:
-  requests:
-    cpu: 500m
-    memory: 512Mi
-  limits:
-    cpu: 500m
-    memory: 1Gi
-
-probes:
-  startup:
-    periodSeconds: 5
-    failureThreshold: 30
-    timeoutSeconds: 5
-  readiness:
-    periodSeconds: 10
-    failureThreshold: 6
-    timeoutSeconds: 5
-  liveness:
-    periodSeconds: 20
-    failureThreshold: 6
-    timeoutSeconds: 5
-
-imagePullSecrets: []
-commonLabels: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}

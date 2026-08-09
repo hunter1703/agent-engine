@@ -1,19 +1,13 @@
-{{- if .Values.persistence.enabled }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: qdrant-pvc
-  namespace: {{ include "agent-engine-qdrant.namespace" . }}
+  namespace: {{ include "agent-engine.infra-base.namespace" . }}
   labels:
-    app.kubernetes.io/name: qdrant
-    {{- include "agent-engine-qdrant.labels" . | nindent 4 }}
+    {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.persistence.size }}
-  {{- if .Values.persistence.storageClass }}
-  storageClassName: {{ .Values.persistence.storageClass }}
-  {{- end }}
-{{- end }}
+      storage: {{ required "persistence.size must be set" .Values.persistence.size }}

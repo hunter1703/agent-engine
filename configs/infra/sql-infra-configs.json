@@ -3,7 +3,7 @@
     "id": "SQL:default",
     "type": "sql",
     "_t": "com.agentengine.util.mongodb.infra.SQLInfraConfig",
-    "jdbcUrl": "jdbc:postgresql://postgres:5432/agent_engine_events",
+    "jdbcUrl": "jdbc:postgresql://postgres.infra.svc.cluster.local:5432/agent_engine_events",
     "jdbcUser": "agentengine",
     "jdbcPassword": "agentengine"
   }

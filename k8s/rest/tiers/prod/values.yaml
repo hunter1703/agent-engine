@@ -1,0 +1,30 @@
+app-base:
+  tier: prod
+  replicas: 3
+  pdb:
+    enabled: true
+    minAvailable: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  config:
+    applicationProperties:
+      quarkus.otel.service.name: agent-engine-rest
+      # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.log.console.json: "true"
+      # terminationGracePeriodSeconds (base default: 90) must exceed preStopSleepSeconds + this value.
+      quarkus.shutdown.timeout: 60S
+
+      # CORS configuration for React frontend
+      quarkus.http.cors.enabled: "true"
+      quarkus.http.cors.origins: "http://localhost:3000"
+      quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+      quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"
+      quarkus.http.cors.exposed-headers: "Content-Disposition"
+      quarkus.http.cors.access-control-max-age: "24H"
+      quarkus.http.cors.access-control-allow-credentials: "true"

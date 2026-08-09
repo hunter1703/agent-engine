@@ -1,4 +1,8 @@
 apiVersion: v2
+dependencies:
+  - name: infra-base
+    version: 0.1.0
+    repository: "file://../infra-base"
 name: agent-engine-postgres
 description: PostgreSQL for Agent Engine
 type: application

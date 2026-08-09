@@ -1,67 +1,61 @@
+{{- $probes := include "agent-engine.infra-base.httpProbes" . | fromYaml -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: qdrant
-  namespace: {{ include "agent-engine-qdrant.namespace" . }}
+  name: {{ .Values.service.name }}
+  namespace: {{ include "agent-engine.infra-base.namespace" . }}
   labels:
-    app.kubernetes.io/name: qdrant
-    {{- include "agent-engine-qdrant.labels" . | nindent 4 }}
+    {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: qdrant
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "agent-engine.infra-base.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: qdrant
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "agent-engine.infra-base.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext:
+        {{- include "agent-engine.infra-base.podSecurityContext" . | nindent 8 }}
       containers:
         - name: qdrant
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "agent-engine.infra-base.containerSecurityContext" . | nindent 12 }}
           ports:
             - name: http
-              containerPort: {{ .Values.httpPort }}
+              containerPort: 6333
             - name: grpc
-              containerPort: {{ .Values.grpcPort }}
+              containerPort: 6334
           startupProbe:
             httpGet:
               path: /healthz
               port: http
-            periodSeconds: 5
-            failureThreshold: 24
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.startup.periodSeconds }}
+            failureThreshold: {{ $probes.startup.failureThreshold }}
+            timeoutSeconds: {{ $probes.startup.timeoutSeconds }}
           readinessProbe:
             httpGet:
               path: /healthz
               port: http
-            periodSeconds: 10
-            failureThreshold: 3
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.readiness.periodSeconds }}
+            failureThreshold: {{ $probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ $probes.readiness.timeoutSeconds }}
           livenessProbe:
             httpGet:
               path: /healthz
               port: http
-            periodSeconds: 20
-            failureThreshold: 3
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.liveness.periodSeconds }}
+            failureThreshold: {{ $probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ $probes.liveness.timeoutSeconds }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.persistence.enabled }}
+            {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}
           volumeMounts:
             - name: qdrant-storage
               mountPath: /qdrant/storage
-          {{- end }}
-      {{- if .Values.persistence.enabled }}
       volumes:
         - name: qdrant-storage
           persistentVolumeClaim:
             claimName: qdrant-pvc
-      {{- end }}

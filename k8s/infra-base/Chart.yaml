@@ -1,0 +1,5 @@
+apiVersion: v2
+name: infra-base
+description: Shared Helm library templates for Agent Engine infra charts (mongodb, postgres, localstack, qdrant)
+type: library
+version: 0.1.0

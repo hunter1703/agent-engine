@@ -1,36 +1,34 @@
+{{- $probes := include "agent-engine.infra-base.httpProbes" . | fromYaml -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: localstack
-  namespace: {{ include "agent-engine-localstack.namespace" . }}
+  name: {{ .Values.service.name }}
+  namespace: {{ include "agent-engine.infra-base.namespace" . }}
   labels:
-    app.kubernetes.io/name: localstack
-    {{- include "agent-engine-localstack.labels" . | nindent 4 }}
+    {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: localstack
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "agent-engine.infra-base.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: localstack
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "agent-engine.infra-base.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext:
+        {{- include "agent-engine.infra-base.podSecurityContext" . | nindent 8 }}
       containers:
         - name: localstack
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "agent-engine.infra-base.containerSecurityContext" . | nindent 12 }}
           env:
             - name: SERVICES
-              value: {{ .Values.services | quote }}
+              value: "s3"
             - name: DEFAULT_REGION
-              value: {{ .Values.region | quote }}
+              value: "us-east-1"
           ports:
             - name: gateway
               containerPort: 4566
@@ -38,22 +36,22 @@ spec:
             httpGet:
               path: /_localstack/health
               port: gateway
-            periodSeconds: 5
-            failureThreshold: 24
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.startup.periodSeconds }}
+            failureThreshold: {{ $probes.startup.failureThreshold }}
+            timeoutSeconds: {{ $probes.startup.timeoutSeconds }}
           readinessProbe:
             httpGet:
               path: /_localstack/health
               port: gateway
-            periodSeconds: 10
-            failureThreshold: 3
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.readiness.periodSeconds }}
+            failureThreshold: {{ $probes.readiness.failureThreshold }}
+            timeoutSeconds: {{ $probes.readiness.timeoutSeconds }}
           livenessProbe:
             httpGet:
               path: /_localstack/health
               port: gateway
-            periodSeconds: 20
-            failureThreshold: 3
-            timeoutSeconds: 3
+            periodSeconds: {{ $probes.liveness.periodSeconds }}
+            failureThreshold: {{ $probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ $probes.liveness.timeoutSeconds }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}

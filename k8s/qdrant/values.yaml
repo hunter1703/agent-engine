@@ -1,26 +1,7 @@
-namespace: agent-engine
+service:
+  name: qdrant
 
 image:
   repository: qdrant/qdrant
   tag: "v1.13.6"
   pullPolicy: IfNotPresent
-
-serviceName: qdrant
-httpPort: 6333
-grpcPort: 6334
-
-resources:
-  requests:
-    cpu: 250m
-    memory: 512Mi
-  limits:
-    cpu: 500m
-    memory: 1Gi
-
-imagePullSecrets: []
-commonLabels: {}
-
-persistence:
-  enabled: true
-  size: 5Gi
-  storageClass: ""  # Use default storage class

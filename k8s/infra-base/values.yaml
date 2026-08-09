@@ -1,0 +1,41 @@
+namespace: infra
+
+# Namespace app charts (agent/catalog/rest/knowledge/connectors) deploy into — the only namespace
+# each infra chart's NetworkPolicy allows ingress from. See k8s/app-base/values.yaml's own `namespace`.
+appNamespace: agent-engine
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+probes:
+  startup:
+    periodSeconds: 5
+    failureThreshold: 30
+    timeoutSeconds: 5
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 6
+    timeoutSeconds: 5
+  liveness:
+    periodSeconds: 20
+    failureThreshold: 6
+    timeoutSeconds: 5
+
+httpProbes:
+  startup:
+    periodSeconds: 5
+    failureThreshold: 24
+    timeoutSeconds: 3
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 3
+  liveness:
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 3

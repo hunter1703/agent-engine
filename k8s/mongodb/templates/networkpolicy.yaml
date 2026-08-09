@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Values.service.name }}
+  namespace: {{ include "agent-engine.infra-base.namespace" . }}
+  labels:
+    {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "agent-engine.infra-base.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ include "agent-engine.infra-base.appNamespace" . }}
+      ports:
+        - protocol: TCP
+          port: 27017

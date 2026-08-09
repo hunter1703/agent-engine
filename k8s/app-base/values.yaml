@@ -1,0 +1,56 @@
+namespace: agent-engine
+revisionHistoryLimit: 3
+minReadySeconds: 20
+terminationGracePeriodSeconds: 90
+
+tmpVolume:
+  sizeLimit: 256Mi
+
+service:
+  httpPort: 8080
+  grpcPort: 9000
+
+ingress:
+  enabled: false
+
+image:
+  tag: latest
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  automountToken: false
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+probes:
+  readiness:
+    path: /q/health/ready
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 3
+  liveness:
+    path: /q/health/live
+    periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 3
+  startup:
+    enabled: true
+    path: /q/health
+    periodSeconds: 10
+    failureThreshold: 45
+    timeoutSeconds: 3

@@ -4,7 +4,7 @@
     "type": "microservice",
     "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "catalog",
-    "host": "agent-engine-catalog.agent-engine.svc.cluster.local",
+    "host": "catalog.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
@@ -12,7 +12,7 @@
     "type": "microservice",
     "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "agent",
-    "host": "agent-engine-agent.agent-engine.svc.cluster.local",
+    "host": "agent.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
@@ -20,7 +20,7 @@
     "type": "microservice",
     "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
     "serverId": "knowledge",
-    "host": "agent-engine-knowledge.agent-engine.svc.cluster.local",
+    "host": "knowledge.agent-engine.svc.cluster.local",
     "port": 9000
   }
 ]

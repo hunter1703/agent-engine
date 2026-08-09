@@ -1,0 +1,16 @@
+{{- $pdb := .Values.pdb | default dict }}
+{{- $enabled := required "pdb.enabled must be set" $pdb.enabled }}
+{{- if and $enabled (gt (int (required "replicas must be set" .Values.replicas)) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "agent-engine.app-base.instance" . }}
+  namespace: {{ include "agent-engine.app-base.namespace" . }}
+  labels:
+    {{- include "agent-engine.app-base.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ required "pdb.minAvailable must be set" $pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "agent-engine.app-base.selectorLabels" . | nindent 6 }}
+{{- end }}
