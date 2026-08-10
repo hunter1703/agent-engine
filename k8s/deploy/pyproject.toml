@@ -1,0 +1,37 @@
+[project]
+name = "deployae"
+version = "0.1.0"
+description = "Deployment CLI for the agent-engine Helm charts"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0",
+    "pymongo>=4.9",
+    "psycopg[binary]>=3.2",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+deployae = "deployae.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deployae"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
