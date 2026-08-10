@@ -1,0 +1,14 @@
+{
+  "id": "devstral_small",
+  "model": "devstral-small-2507",
+  "name": "Devstral Small (Mistral API)",
+  "baseUrl": "https://api.mistral.ai/v1",
+  "apiKey": "{{ env.DEVSTRAL_API_KEY }}",
+  "temperature": 0.2,
+  "topP": 0.95,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": false,
+  "instructions": "Follow the tool-calling format specified in the tools section when invoking a tool. Do not add user-facing prose after a tool call. Never repeat or restate previously emitted text; always continue from where you left off without re-sending earlier content.",
+  "provider": "OPEN_AI_COMPATIBLE",
+  "type": "CHAT"
+}

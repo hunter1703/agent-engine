@@ -7,6 +7,7 @@ import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.scripts.TemplateUtils;
+import com.agentengine.util.scripts.templated.Template;
 import com.google.adk.models.BaseLlm;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import java.util.HashMap;
@@ -16,6 +17,7 @@ public abstract class DelegatingModelFactory<T extends BaseLlm> implements Model
 
     @Override
     public final DelegatingLLMModel build(final ModelConfig modelConfig) {
+        resolveConfig(modelConfig);
         final ChatModelConfig chatConfig = (ChatModelConfig) modelConfig;
         final boolean toolCallingEnabled = chatConfig.isToolCallingEnabled();
         final ResponseFormatType responseFormatType = resolveResponseFormatType(chatConfig);
@@ -59,5 +61,10 @@ public abstract class DelegatingModelFactory<T extends BaseLlm> implements Model
             return "";
         }
         return ResourceUtils.loadResourceAsString("/schemas/shared/response_schema.json");
+    }
+
+    private static void resolveConfig(final ModelConfig modelConfig) {
+        final Template<String> template = TemplateUtils.buildTemplate(modelConfig.getApiKey());
+        modelConfig.setApiKey(template.getValue(Map.of("env", System.getenv())));
     }
 }
