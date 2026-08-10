@@ -4,6 +4,7 @@ import com.agentengine.agent.core.session.ConfirmResult;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.events.RunResult;
+import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.google.adk.events.Event;
@@ -49,6 +50,8 @@ public interface SelfCommand extends SessionCommand {
             implements SelfCommand {}
 
     record ResumeCommand() implements SelfCommand {}
+
+    record SelfPauseCommand(SessionTopology topology, String confirmationId) implements SelfCommand {}
 
     record StartNextQueuedMessageCommand() implements SelfCommand {}
 

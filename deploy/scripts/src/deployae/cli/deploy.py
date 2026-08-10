@@ -19,14 +19,13 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 
 from deployae import helm, kube, output
-from deployae.charts import K8S_DIR, Chart
+from deployae.charts import REPO_ROOT, Chart
 from deployae.cli.build import build_images
 from deployae.cli.common import add_deploy_flags, build_context
 from deployae.cli.init import init_postgres_schema, init_qdrant_collection
 from deployae.seeding import catalog as catalog_seeding
 from deployae.seeding import infra as infra_seeding
 
-REPO_ROOT = K8S_DIR.parent
 APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors")
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
 DEFAULT_LOCAL_PORT = 8080
@@ -282,7 +281,7 @@ def _app_deploy_action(
         output.phase(f"Deploying {name}")
         await asyncio.to_thread(helm.ensure_dependencies, chart)
         extra_set = (
-            None if dry_run else await asyncio.to_thread(_connectors_env_secret_set, chart, ctx)
+            None if dry_run else await asyncio.to_thread(_env_secret_set, chart, ctx)
         )
         rendered = await asyncio.to_thread(
             helm.upgrade_install,
@@ -309,8 +308,8 @@ def _app_deploy_action(
     return action
 
 
-def _connectors_env_secret_set(chart: Chart, ctx: helm.DeployContext) -> list[str] | None:
-    if chart.name != "connectors":
+def _env_secret_set(chart: Chart, ctx: helm.DeployContext) -> list[str] | None:
+    if chart.name not in ("connectors", "agent", "knowledge"):
         return None
     release_name = chart.release_name(chart.effective_tier(ctx.tier, ctx.environment))
     secret_name = kube.ensure_env_secret(

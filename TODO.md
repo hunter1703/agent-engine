@@ -1,5 +1,110 @@
 # TODO
 
+## No Tier Overlay Provides `replicas`/`resources`/`pdb.enabled`/`persistence.size` for Ad-Hoc/Local Runs (ACTION NEEDED)
+
+There is deliberately no "local" tier — `tier` is only meaningful for real, named deployment
+profiles (currently just `prod`); running any chart without `-t prod` renders with `tier` unset
+(fine — `app.kubernetes.io/instance` just falls back to the plain service name). But
+`replicas`/`resources`/`pdb.enabled` (app charts), `resources` (`mongodb`/`postgres`/
+`localstack`/`qdrant`), and `persistence.size` (`mongodb`/`postgres`/`qdrant`) are still wired
+through Helm's `required` with no base-chart default — by design, so nothing can silently deploy
+with guessed sizing or skip persistence entirely — which means an untiered/local render still
+fails on those specific fields with no `-t prod`. This is expected under the current design
+(there's no fallback sizing profile to fall back to), not a bug, but worth deciding: either accept
+that any real `helm install`/`template` always needs `-t prod` (or a future named tier) even for
+ad-hoc local testing, or add plain (non-`required`) small defaults for these specific fields
+directly in each chart's own base `values.yaml` so an untiered render is usable out of the box.
+
+## MongoDB and Postgres Run With No Authentication at All (ACTION NEEDED before any non-trial deploy)
+
+Both `mongodb` and `postgres` had their whole auth mechanism removed (no more `auth:` block, no
+Secret, no `requireExistingSecret`/`existingSecret` escape hatch): Mongo runs unauthenticated
+(no `MONGO_INITDB_ROOT_*` env vars set), Postgres runs with `POSTGRES_HOST_AUTH_METHOD=trust`
+(connects as the default `postgres` superuser, password ignored). `configs/infra/sql-infra-configs.json`
+now sets `jdbcUser: "postgres"`, `jdbcPassword: ""` to match. This was a deliberate simplification
+on the reasoning that both are ClusterIP-only, in-cluster (`infra` namespace), never
+externally reachable — so username/password auth was pure duplication of network-level isolation
+with no defense-in-depth benefit, at the cost of two Secrets, an `authSecretName` helper each, and
+a prod-only `requireExistingSecret` toggle nothing else in the repo replicated (`localstack`/`qdrant`
+never had auth either). It also incidentally fixed a real pre-existing bug: `infra.mongodb.uri` in
+`k8s/global-properties/tiers/prod/values.yaml` never had credentials embedded, so the app would have
+failed to authenticate against a real (auth-enabled) prod Mongo before this change.
+
+Mitigated (not eliminated) by adding a `NetworkPolicy` per infra chart (`k8s/{mongodb,postgres,
+localstack,qdrant}/templates/networkpolicy.yaml`, via new `agent-engine.base-infra.appNamespace`
+helper): each restricts ingress to its own port(s), only from the `agent-engine` app namespace
+(matched via the auto-populated `kubernetes.io/metadata.name` namespace label). Everything else
+in-cluster is denied by default once a policy selects a pod.
+
+**Caveat (ACTION NEEDED to actually get protection, not just the appearance of it)**: NetworkPolicy
+objects are accepted by the API server regardless of whether anything enforces them — enforcement
+is entirely up to the CNI plugin. `k8s/README.md` documents Docker Desktop Kubernetes as this repo's
+actual deploy target, and **Docker Desktop's built-in CNI does not enforce NetworkPolicy** unless a
+policy-capable CNI (e.g. Calico) is separately installed. So on the environment this repo is
+actually deployed to today, these policies are currently accepted but not enforced — verify
+enforcement (`kubectl exec` into an unrelated pod and confirm `mongodb`/`postgres`/`localstack`/
+`qdrant` become unreachable) before treating this as a real mitigation rather than documentation of
+intent. Will enforce correctly on most managed cloud Kubernetes (GKE, EKS with a CNI add-on, AKS
+with Azure/Calico networking) without further changes.
+
+Also unverified: mongodb/postgres's `tcpSocket`-based liveness/startup probes are kubelet-initiated
+TCP connections to the pod IP — most CNI policy implementations exempt kubelet-origin traffic from
+pod-selector ingress rules, but this isn't guaranteed by the NetworkPolicy spec itself. If probes
+start failing after enforcement is confirmed working, this is the first thing to check.
+
+## LocalStack Endpoint Uses `localhost`, Won't Work From Inside a Pod
+
+`configs/infra/cloudstorage-infra-configs.json`'s `endpointUrl: http://localhost:4566` resolves to
+the calling pod itself when read from inside `catalog`/`connectors`/etc., not the LocalStack
+service — `localhost` only ever worked for non-k8s local JVM dev. Pre-existing, unrelated to this
+session's namespace split; cloudstorage likely doesn't currently work when deployed to k8s at all.
+
+## `rest` Prod CORS Origin Is Set to localhost (ACTION NEEDED before a real prod deploy)
+
+`k8s/rest/tiers/prod/values.yaml`'s `quarkus.http.cors.origins` is `http://localhost:3000` — set that
+way deliberately so `apply-charts.sh -t prod` works against `agent-console` (`npm run dev`) on a
+local Docker Desktop cluster, since that's the only environment this gets deployed to today. It
+used to be a `REPLACE_WITH_PROD_DOMAIN` placeholder forcing this to be revisited; now that the
+placeholder is gone, nothing will flag it automatically. Before ever deploying to a real production
+domain, this must be changed to that domain's real `https://` origin.
+
+## Verify `knowledge`'s Prod Sizing
+
+`k8s/knowledge/tiers/prod/values.yaml` was added with `replicas: 2`, `pdb.minAvailable: 1`, and
+500m/1Gi requests-limits, modeled directly on `catalog`/`connectors` (same shape: Deployment,
+http+grpc, thin API layer with no heavy in-process workload). Worth a real review against actual
+knowledge-service load/traffic once it's observable, rather than assumed correct forever.
+
+## Rotate the Brave API Key That Was Previously Committed in Plaintext (ACTION NEEDED)
+
+`brave_web_search.json` used to contain a live-looking Brave Search API key in plaintext
+(`auth.apiKeyTemplate: "BSA87VeS50GKnb4pp_PecDqzdPcLIN0"`). The config has been rewritten to reference
+`{{ env.BRAVE_API_KEY }}` instead, but the old value is still recoverable from git history. Rotate the
+key if it was ever live, and set `BRAVE_API_KEY` in the deployment environment instead.
+
+## DuckDuckGo Connector: No Response-Mapping Layer, `executeDuckDuckGoLookup` Is Dead Code
+
+The pre-rewrite connector schema had a `responseMapping` step that transformed DuckDuckGo's raw
+Instant Answer API fields (`AbstractText`, `AbstractURL`, `AbstractSource`, `Heading`, `RelatedTopics`)
+into the shape `WebSearchTool.executeDuckDuckGoLookup` expects (lowercase `abstract`, `url`, etc.). The
+new `HttpConnectorExecutor` has no equivalent — it returns the parsed response body as-is. This isn't
+breaking anything today because `executeDuckDuckGoLookup`
+(`agent/infra/src/main/java/com/agentengine/agent/infra/tools/web/WebSearchTool.java`) is unreachable —
+`execute()` only calls `executeBraveSearch`. If DuckDuckGo fallback is ever wired back in, either add a
+response-mapping capability to the connector layer, or update `executeDuckDuckGoLookup` to read
+DuckDuckGo's actual raw field names.
+
+## Connector Rewrite: Orphaned Tests Reference Deleted Classes (found during code review)
+
+`connectors/core/src/test/java/com/agentengine/connectors/core/template/DefaultTemplateResolverTest.java`,
+`GroovySandboxEvaluatorTest.java`, and `connectors/core/src/test/java/com/agentengine/connectors/core/validation/DefaultConnectorConfigValidatorTest.java`
+were left behind when the connector rewrite (`24ad9490`) deleted
+`DefaultTemplateResolver`/`GroovySandboxEvaluator`/`DefaultConnectorConfigValidator` and the whole
+`config`/`pagination`/`template`/`validation` packages under `connectors/core`. These tests no longer
+compile and block `./gradlew :connectors:core:compileTestJava` / `test`. Not fixed here (tests were
+explicitly out of scope for this pass) — either delete them or rewrite them against the new
+`HttpConnectorSpec`/`TemplatedHttpConnectorSpec`/`GroovyTemplateProcessor` design.
+
 ## util:pekko Test Suite Does Not Compile (pre-existing, found while adding chaos testing)
 
 `ActorSystemProviderTest`, `SingleChannelTest`, and `BroadcasterStateTest` reference APIs that no
@@ -87,471 +192,49 @@ buffer. Trades memory for CPU. Track as a known limitation until 100MP use cases
 
 
 
-## SessionActor: Pause Propagation to Parent — At-Least-Once Delivery (DEFERRED)
+## SessionActor: Pause Propagation to Parent — No Proactive Retry on Pure Message Loss (DEFERRED, partially fixed)
 
-### Status: DEFERRED
+### Status: PARTIALLY FIXED — child-side proactive retry still deferred
 
-### Problem
-`propagateSelfPauseToParent` sends a single `PauseChildCommand` ask to the parent with no retry.
-If the ask times out AND the parent genuinely never received the message (network partition, not just
-a lost reply), the child is left permanently paused with no path to resume:
+### Background
+When a child session pauses waiting for a human confirmation, it tells its parent via
+`PauseChildCommand` so the parent can later route the human's answer down to the right child. This
+is a routing-table update (`pauseState.pendingConfirmationIdVsChildSessionId`), **not** a change to
+the parent's own `SessionState` — parent and child run independently; a child pausing never
+suspends or blocks the parent's own execution (`SessionActorState.childPaused()` passes
+`sessionState` through unchanged, unlike `selfPaused()` which explicitly sets `SessionState.PAUSED`
+for the actor's own pause).
 
-1. Child pauses → sends `PauseChildCommand` to parent → ask times out
-2. Parent never received it → parent continues running → eventually completes (IDLE)
-3. Child actor crashes and recovers → re-propagates via `pendingExternalSelfConfirmationIds`
-4. Parent is now IDLE → `childPaused` hits `default → Effect().none()` → silently dropped
-5. Child is stuck in PAUSED forever — no one will ever send it a confirmation
+### Fixed
+`SessionActor.childPaused()` used to only persist the routing entry for
+`TRIGGERED_RUN, RESUMING, PAUSED, RUNNING`, silently dropping it (while still replying
+`Done.done()`, a successful-looking ack) whenever it arrived while the parent was `IDLE`. Since
+`SessionState` has exactly five values and the other four were already matched, that `default`
+branch could only ever mean `IDLE` — and `childPaused()` never actually depended on the parent's
+own state to decide whether to record the entry. Simplified to always persist: an `IDLE` parent
+(its own work already done) can still legitimately have a child waiting on a human, and the
+external status flipping back to `PAUSED` in that case is the *correct* signal — the overall
+interaction isn't really done while a child is still waiting on a human answer.
 
-### Why Not Fixed Now
-Requires at-least-once delivery with acknowledgement: the child must keep retrying until the parent
-persists the pause, AND the parent must be idempotent about receiving the same pause ID twice.
-Non-trivial to add cleanly. The failure requires two unlikely events simultaneously (network
-partition + parent completing before child recovers), so the practical risk is low.
+This closes the most likely real-world trigger: `onRecoveryCompleted`'s `case PAUSED` branch
+already re-sends `PauseChildCommand` for everything in `pendingExternalSelfConfirmationIds` when
+the child actor restarts (pods restart routinely in k8s), and that retry now succeeds even if the
+parent has gone `IDLE` in the meantime.
 
-### Proposed Fix (when prioritised)
-- Child retries `propagateSelfPauseToParent` on a schedule until the parent ACKs (persists `PausedFact`)
-- Parent's `childPaused` handler is already idempotent (`Map.put` with same key/value)
-- Add a `IDLE` case to `childPaused` that accepts re-delivered pauses from children whose
-  confirmation IDs are still in the parent's completed state — or reject with a meaningful error
-  that causes the child to self-fail rather than hang
+### Still Open
+`propagateSelfPauseToParent` still does a single `ask` with no retry of its own — on timeout it
+just `LOG.error`s. If the message is genuinely lost (not just delayed) and the child actor never
+happens to restart afterward, there's still no path to re-send it: the only retry is the
+opportunistic one tied to child restart, not a proactive schedule. Needs the child to keep retrying
+on its own timer until it gets confirmation the parent durably persisted the entry (not just that
+the `ask` succeeded) — non-trivial to add cleanly, and now that the parent-side drop is fixed, this
+requires two unlikely events at once (pure message loss + the child never restarting for any other
+reason for the lifetime of the pause), so the remaining practical risk is low.
 
 ### Affected Files
-- `runtime/src/main/java/com/agentengine/runtime/session/SessionActor.java`
-  — `propagateSelfPauseToParent()`, `childPaused()`
-
----
-
-## Custom Actor-Based Sequential Agent Implementation (DEFERRED)
-
-### Status: DEFERRED
-The custom actor-based sequential orchestrator design is documented below but **not currently needed** since we've successfully migrated to MANAGER mode, which provides better flexibility and control.
-
-### Original Problem Statement
-The current ADK `SequentialAgent` has two critical issues:
-
-1. **Recovery Problem**: If a sequential agent with 5 phases stops after phase 3, recovery will replay turns from phases 1-3, but the system will restart from phase 1 instead of resuming from phase 4.
-
-2. **Terminal Event Problem**: The session actor never emits a terminal event because the `SequentialAgent` itself never emits events—only its sub-agents do. This breaks the event flow contract expected by the system.
-
-### Proposed Solution: Actor-Based Sequential Orchestrator
-
-Implement a custom `SequentialOrchestratorAgent` that:
-- Manages phase progression explicitly in actor state
-- Emits its own events (including terminal events)
-- Supports proper recovery from any phase
-- Maintains phase context across restarts
-
-### Design Overview
-
-#### 1. Core Components
-
-**SequentialOrchestratorAgent** (extends `Agent`)
-- Custom agent implementation that orchestrates sub-agents sequentially
-- Does NOT delegate to ADK's `SequentialAgent`
-- Emits events at orchestrator level (not just sub-agent level)
-- Tracks current phase index in invocation context state
-
-**SequentialPhaseState** (stored in `InvocationContext.state`)
-```java
-{
-  "currentPhaseIndex": 2,           // which sub-agent we're on (0-based)
-  "phaseResults": [                 // results from completed phases
-    {"phase": 0, "result": "..."},
-    {"phase": 1, "result": "..."}
-  ],
-  "originalMessage": "user input",  // initial user message
-  "isComplete": false
-}
-```
-
-#### 2. Execution Flow
-
-**Initial Run:**
-1. User sends message → SessionActor → SessionRunner.start()
-2. SequentialOrchestratorAgent.runAsyncImpl() called
-3. Extract/initialize phase state from context
-4. Execute current phase sub-agent
-5. Emit orchestrator event with phase completion
-6. Update phase state, increment index
-7. If more phases, continue; else emit terminal event
-
-**Recovery Scenario:**
-1. SessionActor recovers, finds RUNNING state
-2. Replays committed events (phases 1-3)
-3. SessionRunner.start("continue")
-4. SequentialOrchestratorAgent reads phase state from context
-5. Sees `currentPhaseIndex: 3`, skips to phase 4
-6. Continues from correct phase
-
-**Terminal Event:**
-1. Last phase completes
-2. SequentialOrchestratorAgent emits event with `finishReason=STOP`
-3. Event has `author=orchestrator-name` (not sub-agent)
-4. SessionActor sees terminal event, publishes `SessionEvent.terminal()`
-
-#### 3. Implementation Details
-
-**Phase Execution Pattern:**
-```java
-@Override
-protected Flowable<Event> runAsyncImpl(InvocationContext context) {
-    SequentialPhaseState state = loadOrInitState(context);
-    
-    if (state.isComplete()) {
-        return Flowable.just(buildTerminalEvent());
-    }
-    
-    return Flowable.defer(() -> {
-        int currentPhase = state.currentPhaseIndex();
-        if (currentPhase >= subAgents().size()) {
-            state.markComplete();
-            return Flowable.just(buildTerminalEvent());
-        }
-        
-        BaseAgent subAgent = subAgents().get(currentPhase);
-        
-        return subAgent.runAsync(context)
-            .concatMap(subEvent -> {
-                // Wrap sub-agent events with orchestrator context
-                Event wrappedEvent = wrapSubAgentEvent(subEvent, currentPhase);
-                
-                if (isPhaseComplete(subEvent)) {
-                    state.recordPhaseResult(currentPhase, extractResult(subEvent));
-                    state.incrementPhase();
-                    
-                    // Emit orchestrator-level phase completion event
-                    Event phaseCompleteEvent = buildPhaseCompleteEvent(currentPhase);
-                    
-                    // Continue to next phase or complete
-                    if (state.currentPhaseIndex() < subAgents().size()) {
-                        return Flowable.just(wrappedEvent, phaseCompleteEvent)
-                            .concatWith(runAsyncImpl(context)); // recursive for next phase
-                    } else {
-                        state.markComplete();
-                        return Flowable.just(wrappedEvent, phaseCompleteEvent, buildTerminalEvent());
-                    }
-                }
-                
-                return Flowable.just(wrappedEvent);
-            });
-    });
-}
-```
-
-**State Management:**
-```java
-private SequentialPhaseState loadOrInitState(InvocationContext context) {
-    Map<String, Object> stateMap = context.state();
-    String stateJson = (String) stateMap.get("sequential_phase_state");
-    
-    if (stateJson != null) {
-        return JsonUtils.fromJson(stateJson, SequentialPhaseState.class);
-    }
-    
-    // Initialize new state
-    SequentialPhaseState newState = new SequentialPhaseState(
-        0, // start at phase 0
-        new ArrayList<>(),
-        extractOriginalMessage(context),
-        false
-    );
-    
-    saveState(context, newState);
-    return newState;
-}
-
-private void saveState(InvocationContext context, SequentialPhaseState state) {
-    context.state().put("sequential_phase_state", JsonUtils.toJson(state));
-}
-```
-
-**Event Building:**
-```java
-private Event buildPhaseCompleteEvent(int phaseIndex) {
-    return Event.builder()
-        .author(name()) // orchestrator name, not sub-agent
-        .content(Content.text(String.format("Phase %d complete", phaseIndex + 1)))
-        .turnComplete(false) // not end of turn, just phase boundary
-        .build();
-}
-
-private Event buildTerminalEvent() {
-    return Event.builder()
-        .author(name())
-        .content(Content.text("Sequential orchestration complete"))
-        .finishReason(new FinishReason(FinishReason.Known.STOP))
-        .turnComplete(true)
-        .finalResponse(true)
-        .build();
-}
-
-private Event wrapSubAgentEvent(Event subEvent, int phaseIndex) {
-    // Option 1: Pass through with metadata
-    return Event.builder()
-        .from(subEvent)
-        .metadata(Map.of(
-            "orchestrator", name(),
-            "phase", phaseIndex,
-            "subAgent", subEvent.author()
-        ))
-        .build();
-    
-    // Option 2: Re-author to orchestrator (more invasive)
-    // return Event.builder()
-    //     .from(subEvent)
-    //     .author(name())
-    //     .build();
-}
-```
-
-#### 4. Recovery Handling
-
-The key insight: **InvocationContext.state is persisted in AgentSession.state**, which survives actor restarts.
-
-When SessionActor recovers:
-1. Loads AgentSession from MongoDB
-2. AgentSession.state contains `sequential_phase_state`
-3. SessionRunner creates new Runner with restored state
-4. SequentialOrchestratorAgent.runAsyncImpl() reads phase state
-5. Skips completed phases, continues from current phase
-
-**Critical**: Phase state must be updated **before** emitting phase completion event, so if actor crashes after event but before state update, we replay the phase (idempotent).
-
-#### 5. Integration Points
-
-**OrchestratorAgentFactory:**
-```java
-private DelegatedAgent buildSequential(BaseAgentConfig config, List<? extends Agent> subAgents) {
-    if (CollectionUtils.isEmpty(subAgents)) {
-        throw new IllegalArgumentException(
-            "orchestrator mode SEQUENTIAL requires non-empty subAgentIds for agent_id=" + config.getId());
-    }
-    
-    // Replace ADK SequentialAgent with custom implementation
-    return new SequentialOrchestratorAgent(
-        config.getId(),
-        config.getDescription(),
-        subAgents,
-        config
-    );
-}
-```
-
-**SequentialOrchestratorAgent:**
-```java
-public class SequentialOrchestratorAgent extends Agent {
-    
-    public SequentialOrchestratorAgent(
-            String name,
-            String description,
-            List<? extends BaseAgent> subAgents,
-            BaseAgentConfig config) {
-        super(name, description, subAgents, config, null, null);
-    }
-    
-    @Override
-    protected Flowable<Event> runAsyncImpl(InvocationContext context) {
-        // Implementation as described above
-    }
-    
-    @Override
-    protected Flowable<Event> runLiveImpl(InvocationContext context) {
-        // Similar to runAsyncImpl but with streaming
-        return runAsyncImpl(context);
-    }
-}
-```
-
-#### 6. Testing Strategy
-
-**Unit Tests:**
-- `SequentialOrchestratorAgentTest.shouldExecutePhasesInOrder()`
-- `SequentialOrchestratorAgentTest.shouldEmitTerminalEventAfterLastPhase()`
-- `SequentialOrchestratorAgentTest.shouldPreservePhaseStateInContext()`
-
-**Integration Tests:**
-- `SequentialOrchestratorIT.shouldRecoverFromPhase3AndContinue()`
-  - Start 5-phase orchestrator
-  - Stop after phase 3
-  - Restart actor
-  - Verify continues from phase 4
-  - Verify terminal event emitted
-
-- `SequentialOrchestratorIT.shouldEmitTerminalEventToSessionActor()`
-  - Run complete orchestration
-  - Verify SessionActor receives terminal event
-  - Verify SessionEvent.terminal() published
-
-#### 7. Migration Path
-
-1. Implement `SequentialOrchestratorAgent` alongside existing `SequentialAgentBuilder`
-2. Add feature flag: `orchestrator.sequential.use_custom=true`
-3. Update `OrchestratorAgentFactory.buildSequential()` to check flag
-4. Test with existing sequential agents
-5. Once stable, remove ADK `SequentialAgent` dependency
-6. Remove feature flag, make custom implementation default
-
-#### 8. Advantages Over ADK SequentialAgent
-
-| Aspect | ADK SequentialAgent | Custom SequentialOrchestratorAgent |
-|--------|---------------------|-------------------------------------|
-| Recovery | Replays all phases, restarts from phase 1 | Resumes from last completed phase |
-| Terminal Events | Never emits (only sub-agents do) | Emits terminal event after last phase |
-| Phase Tracking | Implicit in ADK internals | Explicit in actor state |
-| Debugging | Black box | Full visibility into phase state |
-| Customization | Limited | Full control over orchestration logic |
-| Event Authorship | Sub-agents only | Orchestrator + sub-agents |
-
-#### 9. Open Questions
-
-1. **Phase Context Passing**: Should each phase receive results from previous phases?
-   - Option A: Pass in message content
-   - Option B: Store in shared context state
-   - **Recommendation**: Option B (already in state)
-
-2. **Partial Phase Failure**: What if phase 3 fails mid-execution?
-   - Current: SessionActor handles via RunFailedCommand
-   - Proposed: Same, but phase state shows which phase failed
-   - **Recommendation**: Add `failedPhase` field to state
-
-3. **Parallel Sub-Phases**: Should we support parallel execution within a phase?
-   - **Recommendation**: No, use separate ParallelOrchestratorAgent for that
-
-4. **Phase Naming**: Should phases have names beyond indices?
-   - **Recommendation**: Yes, add optional `phaseNames` config
-   - Example: `["analyze", "plan", "execute", "verify", "report"]`
-
-#### 10. Implementation Checklist
-
-- [ ] Create `SequentialPhaseState` record
-- [ ] Implement `SequentialOrchestratorAgent`
-- [ ] Add state serialization/deserialization
-- [ ] Implement phase execution loop
-- [ ] Add terminal event emission
-- [ ] Update `OrchestratorAgentFactory`
-- [ ] Write unit tests
-- [ ] Write integration tests (with actor restart)
-- [ ] Test recovery scenarios
-- [ ] Verify terminal event propagation
-- [ ] Add phase naming support (optional)
-- [ ] Document usage in agent config
-- [ ] Migration guide for existing sequential agents
-
-### Alternative Approaches Considered
-
-**Alternative 1: Patch ADK SequentialAgent**
-- Pros: Minimal code changes
-- Cons: Don't control ADK internals, may break on updates
-- **Rejected**: Too fragile
-
-**Alternative 2: Wrapper Around ADK SequentialAgent**
-- Pros: Reuse ADK logic
-- Cons: Still can't fix recovery or terminal event issues
-- **Rejected**: Doesn't solve core problems
-
-**Alternative 3: State Machine in SessionActor**
-- Pros: Full control at actor level
-- Cons: Mixes orchestration logic with session management
-- **Rejected**: Violates separation of concerns
-
-**Selected: Custom Agent Implementation**
-- Pros: Clean separation, full control, proper event flow
-- Cons: More code to maintain
-- **Accepted**: Best long-term solution
-
-### References
-
-- SessionActor: `agent-engine/runtime/src/main/java/com/agentengine/runtime/session/SessionActor.java`
-- DelegatedAgent: `agent-engine/runtime/src/main/java/com/agentengine/runtime/agents/DelegatedAgent.java`
-- SequentialAgentBuilder: `agent-engine/runtime/src/main/java/com/agentengine/runtime/factories/agent/builders/SequentialAgentBuilder.java`
-- OrchestratorAgentFactory: `agent-engine/runtime/src/main/java/com/agentengine/runtime/factories/agent/OrchestratorAgentFactory.java`
-
-
----
-
-## Qdrant HTTP Migration Complete (2026-05-01)
-
-### Status: COMPLETED
-
-Successfully migrated from gRPC-based Qdrant client to HTTP REST API to eliminate protobuf classpath conflicts.
-
-### Changes Made
-
-1. **Removed gRPC Dependencies**:
-   - Removed `io.qdrant:client` (gRPC-based)
-   - Removed `protobuf-java`, `grpc-protobuf`, `grpc-stub`
-   - Eliminated `grpc.health.v1.HealthGrpc` duplicate class conflict
-
-2. **Implemented Custom HTTP Client**:
-   - Created `QdrantHttpClient` using Java 11+ `HttpClient`
-   - Supports all required operations: upsert, search, retrieve, delete
-   - Uses Jackson for JSON serialization with snake_case naming
-
-3. **Updated Configuration**:
-   - Changed from `grpcPort: 6334` to `httpPort: 6333`
-   - Added optional `apiKey` field for Qdrant Cloud support
-   - Updated `QdrantInfraConfig` and `qdrant-infra-configs.json`
-
-4. **Refactored Vector Store**:
-   - Updated `QdrantVectorStore` to use HTTP client
-   - Changed payload type from `Map<String, io.qdrant.client.grpc.JsonWithInt.Value>` to `Map<String, Object>`
-   - Updated `KnowledgeChunkStore` accordingly
-
-5. **Build Verification**:
-   - ✅ `./gradlew :util:vectordb:build` passes
-   - ✅ `./gradlew :knowledge:core:build` passes
-   - ✅ No compilation errors
-
-### Benefits
-
-- **No Classpath Conflicts**: Completely eliminates protobuf/gRPC conflicts
-- **Simpler Dependencies**: Fewer transitive dependencies
-- **Easier Debugging**: HTTP requests are easier to inspect
-- **Better Compatibility**: Avoids protobuf version drift
-- **Smaller Footprint**: Reduced dependency tree
-
-### Performance Impact
-
-- HTTP adds ~1-5ms latency vs gRPC for typical operations
-- Negligible for most use cases (<10K ops/sec)
-- Trade-off: Simplicity and stability over marginal performance
-
-### Migration Documentation
-
-See `QDRANT_HTTP_MIGRATION.md` for:
-- Detailed change summary
-- API mapping (gRPC → HTTP)
-- Troubleshooting guide
-- Rollback instructions
-
-### Testing Required
-
-- [ ] Run vector store unit tests: `./gradlew :util:vectordb:test`
-- [ ] Run knowledge integration tests: `./gradlew :knowledge:core:integrationTest`
-- [ ] Verify Qdrant connection in local dev environment
-- [ ] Test with Kubernetes deployment
-- [ ] Verify existing vector data is accessible
-
-### Follow-Up Items
-
-1. **Multi-Vector Search**: The existing TODO about RRF fusion still applies. The HTTP API supports `QueryPoints` with multi-vector fusion via the `/collections/{name}/points/query` endpoint.
-
-2. **Collection Initialization**: The existing TODO about creating collections at deployment time still applies. Use HTTP endpoint:
-   ```bash
-   curl -X PUT http://qdrant:6333/collections/knowledge \
-     -H 'Content-Type: application/json' \
-     -d '{"vectors": {"size": 768, "distance": "Cosine"}}'
-   ```
-
-### Files Modified
-
-- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantHttpClient.java` (new)
-- `util/vectordb/src/main/java/com/agentengine/util/vectordb/VectorDbClientFactory.java`
-- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantVectorStore.java`
-- `util/vectordb/src/main/java/com/agentengine/util/vectordb/QdrantInfraConfig.java`
-- `knowledge/core/src/main/java/com/agentengine/knowledge/core/store/KnowledgeChunkStore.java`
-- `util/vectordb/build.gradle`
-- `knowledge/core/build.gradle`
-- `gradle/libs.versions.toml`
-- `configs/infra/qdrant-infra-configs.json`
-- `QDRANT_HTTP_MIGRATION.md` (new)
+- `agent/core/src/main/java/com/agentengine/agent/core/session/SessionActor.java` —
+  `propagateSelfPauseToParent()` (still needs the retry timer), `childPaused()` (fixed)
+- `agent/core/src/main/java/com/agentengine/agent/core/session/state/SessionActorState.java` —
+  `childPaused()`, `getPausedChild()`
+- `agent/core/src/main/java/com/agentengine/agent/core/session/state/PauseState.java` —
+  `pendingConfirmationIdVsChildSessionId`

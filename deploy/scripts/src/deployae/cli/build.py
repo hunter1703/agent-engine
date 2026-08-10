@@ -8,10 +8,8 @@ import argparse
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-from deployae.charts import APP_CHART_NAMES, K8S_DIR
+from deployae.charts import APP_CHART_NAMES, DEPLOY_DIR, REPO_ROOT
 from deployae.cli.common import default_image_tag
-
-REPO_ROOT = K8S_DIR.parent
 
 _GRADLE_TASKS = {
     "agent": ":agent:core:quarkusBuild",
@@ -48,7 +46,7 @@ def _build_component_image(
             "-t",
             image,
             "-f",
-            str(REPO_ROOT / "docker" / "Dockerfile"),
+            str(DEPLOY_DIR / "docker" / "Dockerfile"),
             str(REPO_ROOT),
         ],
         check=True,

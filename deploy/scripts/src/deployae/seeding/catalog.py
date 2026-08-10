@@ -12,9 +12,8 @@ from pathlib import Path
 import httpx
 
 from deployae import kube
-from deployae.charts import K8S_DIR, Chart
+from deployae.charts import DEPLOY_DIR, K8S_DIR, Chart
 
-REPO_ROOT = K8S_DIR.parent
 DEFAULT_REST_PORT = 8080
 READY_PATH = "/q/health/ready"
 
@@ -94,11 +93,11 @@ def run(
         return
 
     model_files = pick_config_files(
-        REPO_ROOT / "configs" / "models", K8S_DIR / "tiers" / tier / "catalog" / "models"
+        DEPLOY_DIR / "configs" / "models", K8S_DIR / "tiers" / tier / "catalog" / "models"
     )
     agent_files = topological_agent_order(
         pick_config_files(
-            REPO_ROOT / "configs" / "agents", K8S_DIR / "tiers" / tier / "catalog" / "agents"
+            DEPLOY_DIR / "configs" / "agents", K8S_DIR / "tiers" / tier / "catalog" / "agents"
         )
     )
 

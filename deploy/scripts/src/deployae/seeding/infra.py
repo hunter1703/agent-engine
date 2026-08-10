@@ -12,9 +12,8 @@ from typing import Any
 from pymongo import MongoClient
 
 from deployae import kube
-from deployae.charts import K8S_DIR, Chart
+from deployae.charts import DEPLOY_DIR, K8S_DIR, Chart
 
-REPO_ROOT = K8S_DIR.parent
 DEFAULT_MONGODB_PORT = 27017
 
 
@@ -75,7 +74,7 @@ def _merge_json_dir(base_dir: Path, overlay_dir: Path) -> list[dict[str, Any]]:
 
 
 def merged_configs(tier: str) -> list[dict[str, Any]]:
-    base_dir = REPO_ROOT / "configs" / "infra"
+    base_dir = DEPLOY_DIR / "configs" / "infra"
     overlay_dir = K8S_DIR / "tiers" / tier / "configs" / "infra"
     return _merge_json_dir(base_dir, overlay_dir)
 

@@ -21,17 +21,15 @@ bin/
 *.gguf
 llamacpp_models/
 deploy/connections.json
-
-# Model configs that carry provider API keys — keep local, never commit
-configs/models/devstral.json
-configs/models/gemini_3_flash_preview.json
 .env
 !gradlew
 !gradlew.bat
 !gradle/wrapper/
 .worktrees/
-k8s/*/Chart.lock
-k8s/*/charts/
 
 # Python virtual environment
 .venv/
+
+# Helm downloaded dependency tarballs and lock files (reproducible via helm dependency update)
+deploy/k8s/*/charts/
+deploy/k8s/*/Chart.lock

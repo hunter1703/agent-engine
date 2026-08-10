@@ -38,21 +38,25 @@ import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.pekko.Done;
+import org.apache.pekko.actor.Scheduler;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.PostStop;
 import org.apache.pekko.actor.typed.javadsl.ActorContext;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 import org.apache.pekko.japi.function.Function;
+import org.apache.pekko.pattern.Patterns;
 import org.apache.pekko.persistence.typed.RecoveryCompleted;
 import org.apache.pekko.persistence.typed.SnapshotAdapter;
 import org.apache.pekko.persistence.typed.javadsl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.concurrent.ExecutionContextExecutor;
 
 /**
  * Persistent, cluster-sharded actor that manages a single agent session.
@@ -65,6 +69,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             EntityTypeKey.create(SessionCommand.class, AssetClass.AGENT_SESSION);
 
     private static final int MAX_CHILD_POLL_ATTEMPTS = 10;
+    private static final Duration SELF_PAUSE_RETRY_INTERVAL = Duration.ofMinutes(1);
 
     private final ActorContext<SessionCommand> context;
     private final ActorRef<SessionCommand> self;
@@ -250,7 +255,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onCommand(CompleteRunCommand.class, this::completeRun)
                 .onCommand(StartNextQueuedMessageCommand.class, this::startNextQueuedMessage)
                 .onCommand(GetCurrentTurnEventsCommand.class, this::getCurrentTurnEvents)
-                .onCommand(RollbackCommand.class, this::rollback);
+                .onCommand(RollbackCommand.class, this::rollback)
+                .onCommand(SelfPauseCommand.class, this::retryPropagateSelfPause);
 
         return builder.build();
     }
@@ -756,16 +762,26 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
 
     private Effect<SessionFact, SessionActorState> childPaused(
             final SessionActorState state, final PauseChildCommand command) {
-        return switch (state.sessionState()) {
-            case TRIGGERED_RUN, RESUMING, PAUSED, RUNNING ->
-                Effect()
-                        .persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()))
-                        .thenRun(newState -> updateSessionStatus(newState, SessionStatus.PAUSED))
-                        .thenReply(command.replyTo(), _ -> Done.done());
-            default -> Effect().none().thenReply(command.replyTo(), _ -> Done.done());
-        };
+        EffectBuilder<SessionFact, SessionActorState> effect;
+        if (state.pauseState().getPausedChild(command.confirmationId()) != null) {
+            // already received the pause command
+            effect = Effect().none();
+        } else {
+            effect = Effect().persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()));
+        }
+        return effect.thenReply(command.replyTo(), _ -> Done.done());
     }
 
+    /**
+     * TODO: retry is bounded ask attempts plus an in-memory rescheduled fallback ({@link
+     * #SELF_PAUSE_RETRY_INTERVAL}); neither survives this actor's process dying while a retry is
+     * armed. Recovery re-arms it on restart, but nothing else proactively wakes a paused child, so
+     * if the process dies mid-retry and this actor is never touched again, propagation is lost for
+     * good. Closing that fully requires an external reconciliation sweep over PAUSED sessions with
+     * unresolved {@code pendingExternalSelfConfirmationIds} — out of scope here; risk accepted as
+     * low (needs message loss and no further restart/relocation of this actor for the pause's
+     * lifetime).
+     */
     private void propagateSelfPauseToParent(final SessionTopology topology, final String confirmationId) {
         if (topology.isRoot()) {
             return;
@@ -776,21 +792,54 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final String parentAgentId = topology.parentAgentId();
         final EntityRef<SessionCommand> parent = refSupplier.apply(parentSessionId);
 
-        parent.ask(
-                        (Function<ActorRef<Done>, SessionCommand>)
-                                replyTo -> new PauseChildCommand(currentSessionId, confirmationId, replyTo),
-                        ASK_TIMEOUT)
+        // Captured on the actor's own thread; whenComplete below may run on another thread, and
+        // these are the only two actor-affiliated references that are safe to touch from there.
+        final Scheduler scheduler = context.getSystem().classicSystem().scheduler();
+        final ExecutionContextExecutor executionContext = context.getExecutionContext();
+
+        Patterns.retry(
+                        () -> parent.ask(
+                                (Function<ActorRef<Done>, SessionCommand>)
+                                        replyTo -> new PauseChildCommand(currentSessionId, confirmationId, replyTo),
+                                ASK_TIMEOUT),
+                        5,
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(30),
+                        0.2,
+                        context.getSystem())
                 .whenComplete((ignored, error) -> {
                     if (error != null) {
                         LOG.error(
-                                "Failed to propagate pause confirmation '{}' from session '{}' to parent '{}:{}'",
+                                "Failed to propagate pause confirmation '{}' from session '{}' to parent '{}:{}' "
+                                        + "after retries; scheduling async retry in {}",
                                 confirmationId,
                                 currentSessionId,
                                 parentAgentId,
                                 parentSessionId,
+                                SELF_PAUSE_RETRY_INTERVAL,
                                 error);
+                        scheduler.scheduleOnce(
+                                SELF_PAUSE_RETRY_INTERVAL,
+                                () -> self.tell(new SelfPauseCommand(topology, confirmationId)),
+                                executionContext);
                     }
                 });
+    }
+
+    /**
+     * Fallback for when the bounded ask-retry in {@link #propagateSelfPauseToParent} is exhausted.
+     * Keeps rescheduling itself until the confirmation is no longer pending — either the parent
+     * finally durably persisted the routing entry, or the human answered it directly, making
+     * propagation moot. This also self-heals across actor restarts: {@code onRecoveryCompleted}
+     * already re-invokes {@code propagateSelfPauseToParent} for every still-pending confirmation,
+     * which re-arms this loop even if the in-memory schedule was lost.
+     */
+    private Effect<SessionFact, SessionActorState> retryPropagateSelfPause(
+            final SessionActorState state, final SelfPauseCommand command) {
+        if (state.pauseState().pendingExternalSelfConfirmationIds().contains(command.confirmationId())) {
+            propagateSelfPauseToParent(command.topology(), command.confirmationId());
+        }
+        return Effect().none();
     }
 
     private Effect<SessionFact, SessionActorState> getCurrentTurnEvents(

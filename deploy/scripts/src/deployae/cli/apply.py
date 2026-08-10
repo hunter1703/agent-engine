@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 from deployae import helm, kube
-from deployae.charts import K8S_DIR, Chart, resolve_charts
+from deployae.charts import REPO_ROOT, Chart, resolve_charts
 from deployae.cli.build import build_images
 from deployae.cli.common import (
     add_chart_selector,
@@ -20,8 +20,6 @@ from deployae.cli.common import (
     build_context,
     run_on_each_chart,
 )
-
-REPO_ROOT = K8S_DIR.parent
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -101,15 +99,17 @@ def _deploy_parallel(
             ctx,
             atomic=atomic,
             timeout=timeout,
-            extra_set=_connectors_env_secret_set(chart, ctx),
+            extra_set=_env_secret_set(chart, ctx),
         )
         print(f"Deployed {chart.name} to namespace {chart.namespace(ctx.namespace)}")
 
     run_on_each_chart(charts, deploy_one)
 
 
-def _connectors_env_secret_set(chart: Chart, ctx: helm.DeployContext) -> list[str] | None:
-    if chart.name != "connectors":
+def _env_secret_set(chart: Chart, ctx: helm.DeployContext) -> list[str] | None:
+    """Creates/updates the .env Secret for charts that need runtime API keys injected
+    as environment variables. Only a no-op when .env doesn't exist on disk."""
+    if chart.name not in ("connectors", "agent", "knowledge"):
         return None
     release_name = chart.release_name(chart.effective_tier(ctx.tier, ctx.environment))
     secret_name = kube.ensure_env_secret(

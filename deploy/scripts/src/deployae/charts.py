@@ -8,7 +8,15 @@ from pathlib import Path
 
 from deployae.values import load_yaml, parent_chart_name
 
-K8S_DIR = Path(__file__).resolve().parents[3]
+# deploy/scripts/src/deployae/charts.py
+#   parents[0] = deployae/
+#   parents[1] = src/
+#   parents[2] = scripts/
+#   parents[3] = deploy/
+#   parents[4] = repo root
+DEPLOY_DIR = Path(__file__).resolve().parents[3]
+K8S_DIR = DEPLOY_DIR / "k8s"
+REPO_ROOT = DEPLOY_DIR.parent
 
 APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors")
 INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
