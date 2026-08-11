@@ -3,20 +3,30 @@ under k8s/."""
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 from deployae.values import load_yaml, parent_chart_name
 
-# deploy/scripts/src/deployae/charts.py
-#   parents[0] = deployae/
-#   parents[1] = src/
-#   parents[2] = scripts/
-#   parents[3] = deploy/
-#   parents[4] = repo root
-DEPLOY_DIR = Path(__file__).resolve().parents[3]
+# When running from source:
+#   deploy/scripts/src/deployae/charts.py
+#   parents[0]=deployae/ parents[1]=src/ parents[2]=scripts/ parents[3]=deploy/ parents[4]=repo root
+#
+# When installed as a uv tool, __file__ lands in site-packages and the parent-counting
+# trick breaks. Set DEPLOYAE_DEPLOY_DIR (and optionally DEPLOYAE_REPO_ROOT) to point at
+# the actual repo's deploy/ directory — or just run from the deploy/scripts source tree.
+DEPLOY_DIR = (
+    Path(os.environ["DEPLOYAE_DEPLOY_DIR"])
+    if "DEPLOYAE_DEPLOY_DIR" in os.environ
+    else Path(__file__).resolve().parents[3]
+)
+REPO_ROOT = (
+    Path(os.environ["DEPLOYAE_REPO_ROOT"])
+    if "DEPLOYAE_REPO_ROOT" in os.environ
+    else DEPLOY_DIR.parent
+)
 K8S_DIR = DEPLOY_DIR / "k8s"
-REPO_ROOT = DEPLOY_DIR.parent
 
 APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors")
 INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
@@ -65,6 +75,13 @@ class Chart:
         whatever namespace their own chart values declare — nothing gets injected for them."""
         return None if self.is_app_chart else f"namespace={namespace}"
 
+    def tier_set(self, tier: str | None) -> str | None:
+        """--set override carrying the tier into infra charts so {{ .Values.tier }} is
+        populated and the instance helper produces a tier-suffixed resource name."""
+        if self.is_app_chart or self.name == "global-properties" or not tier:
+            return None
+        return f"tier={tier}"
+
     def release_name(self, tier_or_env: str | None) -> str:
         """`tier_or_env` is whatever `effective_tier()` resolved for this chart: the
         tier for app charts, or the environment for global-properties.
@@ -91,6 +108,8 @@ class Chart:
                 raise TierRequiredError(
                     f"TIER must be set (-t/--tier) to deploy or reference '{self.name}'"
                 )
+            return f"agent-engine-{self.name}-{tier_or_env}"
+        if tier_or_env:
             return f"agent-engine-{self.name}-{tier_or_env}"
         return f"agent-engine-{self.name}"
 
@@ -122,12 +141,17 @@ class Chart:
 
     def resource_name(self, tier: str | None) -> str:
         """The literal Deployment/StatefulSet name — distinct from release_name, which
-        carries Helm's own `agent-engine-` release-tracking prefix."""
+        carries Helm's own `agent-engine-` release-tracking prefix. Mirrors
+        release_name()'s tier handling: required for app charts, optional (falls back
+        to the plain chart name) for infra charts, matching the infra-base `instance`
+        Helm helper's own `{{- if .Values.tier -}}` fallback."""
+        if self.name == "global-properties":
+            return self.name
         if self.is_app_chart:
             if not tier:
                 raise TierRequiredError(f"TIER must be set (-t/--tier) for '{self.name}'")
             return f"{self.name}-{tier}"
-        return self.name
+        return f"{self.name}-{tier}" if tier else self.name
 
     def workload_kind(self) -> str | None:
         """Which kubectl rollout status to wait on. None for global-properties (a

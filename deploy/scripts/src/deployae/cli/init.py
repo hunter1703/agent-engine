@@ -57,7 +57,10 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         "postgres", help="Create the Pekko Persistence JDBC schema"
     )
     postgres_parser.add_argument("-n", "--namespace", help="Namespace postgres lives in")
-    postgres_parser.add_argument("--service-name", default="postgres")
+    postgres_parser.add_argument(
+        "-t", "--tier", help="Tier (e.g. prod) — used to derive the service name"
+    )
+    postgres_parser.add_argument("--service-name", default=None, help="Override service name")
     postgres_parser.add_argument("--port", type=int, default=DEFAULT_POSTGRES_PORT)
     postgres_parser.add_argument("--user", default="postgres")
     postgres_parser.add_argument("--database", default="agent_engine_events")
@@ -65,7 +68,10 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
     qdrant_parser = subparsers.add_parser("qdrant", help="Create the KnowledgeChunk collection")
     qdrant_parser.add_argument("-n", "--namespace", help="Namespace qdrant lives in")
-    qdrant_parser.add_argument("--service-name", default="qdrant")
+    qdrant_parser.add_argument(
+        "-t", "--tier", help="Tier (e.g. prod) — used to derive the service name"
+    )
+    qdrant_parser.add_argument("--service-name", default=None, help="Override service name")
     qdrant_parser.add_argument("--port", type=int, default=DEFAULT_QDRANT_PORT)
     qdrant_parser.add_argument("--vector-size", type=int, default=DEFAULT_VECTOR_SIZE)
     qdrant_parser.set_defaults(handler=run_qdrant)
@@ -76,16 +82,20 @@ def run(args: argparse.Namespace) -> None:
 
 
 def run_postgres(args: argparse.Namespace) -> None:
-    init_postgres_schema(args.namespace, args.service_name, args.port, args.user, args.database)
+    tier = getattr(args, "tier", None)
+    service_name = args.service_name or Chart("postgres").resource_name(tier)
+    init_postgres_schema(args.namespace, service_name, args.port, args.user, args.database)
 
 
 def run_qdrant(args: argparse.Namespace) -> None:
-    init_qdrant_collection(args.namespace, args.service_name, args.port, args.vector_size)
+    tier = getattr(args, "tier", None)
+    service_name = args.service_name or Chart("qdrant").resource_name(tier)
+    init_qdrant_collection(args.namespace, service_name, args.port, args.vector_size)
 
 
 def init_postgres_schema(
     namespace_override: str | None,
-    service_name: str = "postgres",
+    service_name: str,
     port: int = DEFAULT_POSTGRES_PORT,
     user: str = "postgres",
     database: str = "agent_engine_events",
@@ -103,7 +113,7 @@ def init_postgres_schema(
 
 def init_qdrant_collection(
     namespace_override: str | None,
-    service_name: str = "qdrant",
+    service_name: str,
     port: int = DEFAULT_QDRANT_PORT,
     vector_size: int = DEFAULT_VECTOR_SIZE,
 ) -> None:

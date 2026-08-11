@@ -62,6 +62,10 @@ def value_flags(chart: Chart, ctx: DeployContext) -> list[str]:
     if namespace_set:
         flags += ["--set", namespace_set]
 
+    tier_set = chart.tier_set(ctx.tier)
+    if tier_set:
+        flags += ["--set", tier_set]
+
     env_set = chart.env_set(ctx.environment)
     if env_set:
         flags += ["--set", env_set]

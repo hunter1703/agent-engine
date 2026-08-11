@@ -267,7 +267,11 @@ def _infra_deploy_action(
         kind = chart.workload_kind()
         if kind:
             await asyncio.to_thread(
-                kube.rollout_status, chart.namespace(ctx.namespace), kind, name, timeout
+                kube.rollout_status,
+                chart.namespace(ctx.namespace),
+                kind,
+                chart.resource_name(ctx.tier),
+                timeout,
             )
 
     return action
@@ -280,9 +284,7 @@ def _app_deploy_action(
         chart = Chart(name)
         output.phase(f"Deploying {name}")
         await asyncio.to_thread(helm.ensure_dependencies, chart)
-        extra_set = (
-            None if dry_run else await asyncio.to_thread(_env_secret_set, chart, ctx)
-        )
+        extra_set = None if dry_run else await asyncio.to_thread(_env_secret_set, chart, ctx)
         rendered = await asyncio.to_thread(
             helm.upgrade_install,
             chart,
@@ -339,7 +341,11 @@ def _init_postgres_action(
         if skip_infra or dry_run:
             return
         output.phase("Initializing PostgreSQL schema")
-        await asyncio.to_thread(init_postgres_schema, ctx.namespace)
+        await asyncio.to_thread(
+            init_postgres_schema,
+            ctx.namespace,
+            Chart("postgres").resource_name(ctx.tier),
+        )
 
     return action
 
@@ -351,7 +357,11 @@ def _init_qdrant_action(
         if skip_infra or dry_run:
             return
         output.phase("Initializing Qdrant collections")
-        await asyncio.to_thread(init_qdrant_collection, ctx.namespace)
+        await asyncio.to_thread(
+            init_qdrant_collection,
+            ctx.namespace,
+            Chart("qdrant").resource_name(ctx.tier),
+        )
 
     return action
 

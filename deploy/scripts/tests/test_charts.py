@@ -39,8 +39,12 @@ def test_global_properties_release_name_keyed_by_environment() -> None:
     assert Chart("global-properties").release_name("prod") == "agent-engine-global-properties-prod"
 
 
-def test_infra_chart_release_name_is_fixed() -> None:
-    assert Chart("mongodb").release_name("anything") == "agent-engine-mongodb"
+def test_infra_chart_release_name_includes_tier() -> None:
+    assert Chart("mongodb").release_name("prod") == "agent-engine-mongodb-prod"
+
+
+def test_infra_chart_release_name_without_tier() -> None:
+    assert Chart("mongodb").release_name(None) == "agent-engine-mongodb"
 
 
 def test_effective_tier_routes_environment_for_global_properties() -> None:
@@ -99,8 +103,12 @@ def test_resource_name_app_chart() -> None:
     assert Chart("catalog").resource_name("prod") == "catalog-prod"
 
 
-def test_resource_name_infra_chart_ignores_tier() -> None:
-    assert Chart("mongodb").resource_name("prod") == "mongodb"
+def test_resource_name_infra_chart_includes_tier() -> None:
+    assert Chart("mongodb").resource_name("prod") == "mongodb-prod"
+
+
+def test_resource_name_infra_chart_without_tier() -> None:
+    assert Chart("mongodb").resource_name(None) == "mongodb"
 
 
 def test_resource_name_app_chart_requires_tier() -> None:

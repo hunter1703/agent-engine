@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.service.name }}
+  name: {{ include "agent-engine.infra-base.instance" . }}
   namespace: {{ include "agent-engine.infra-base.namespace" . }}
   labels:
     {{- include "agent-engine.infra-base.labels" . | nindent 4 }}

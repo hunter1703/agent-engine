@@ -28,13 +28,9 @@ class SeedInfraOptions:
     compaction_model_id: str | None = None
     evaluator_model_id: str | None = None
     embedding_model_id: str | None = None
-    mongodb_service_name: str = "mongodb"
     mongodb_port: int = DEFAULT_MONGODB_PORT
-    postgres_service_name: str = "postgres"
     postgres_port: int = 5432
     postgres_database: str = "agent_engine_events"
-    localstack_service_name: str = "localstack"
-    qdrant_service_name: str = "qdrant"
 
 
 @dataclass(frozen=True)
@@ -144,6 +140,9 @@ def build_context(
     agent_name = agent.resource_name(tier)
     agent_headless = f"{agent_name}-internal"
     knowledge_name = knowledge.resource_name(tier)
+    localstack_name = localstack.resource_name(tier)
+    qdrant_name = qdrant.resource_name(tier)
+    postgres_name = postgres.resource_name(tier)
 
     catalog_grpc_port = kube.service_port(catalog_ns, catalog_name, "grpc", 9000)
     agent_grpc_port = kube.service_port(agent_ns, agent_name, "grpc", 9000)
@@ -159,7 +158,7 @@ def build_context(
     ]
 
     sql_jdbc_url = (
-        f"jdbc:postgresql://{options.postgres_service_name}.{postgres_ns}"
+        f"jdbc:postgresql://{postgres_name}.{postgres_ns}"
         f".svc.cluster.local:{options.postgres_port}/{options.postgres_database}"
     )
 
@@ -174,10 +173,8 @@ def build_context(
         sql_jdbc_url=sql_jdbc_url,
         knowledge_host=f"{knowledge_name}.{knowledge_ns}.svc.cluster.local",
         knowledge_grpc_port=knowledge_grpc_port,
-        localstack_endpoint=(
-            f"http://{options.localstack_service_name}.{localstack_ns}.svc.cluster.local:4566"
-        ),
-        qdrant_host=f"{options.qdrant_service_name}.{qdrant_ns}.svc.cluster.local",
+        localstack_endpoint=(f"http://{localstack_name}.{localstack_ns}.svc.cluster.local:4566"),
+        qdrant_host=f"{qdrant_name}.{qdrant_ns}.svc.cluster.local",
         title_model_id=options.title_model_id,
         compaction_model_id=options.compaction_model_id,
         evaluator_model_id=options.evaluator_model_id,
@@ -204,13 +201,13 @@ def upsert(collection: Any, doc: dict[str, Any]) -> None:
 
 
 def run(tier: str, namespace_override: str | None, options: SeedInfraOptions) -> None:
-    mongodb_ns = Chart("mongodb").namespace(namespace_override)
+    mongodb = Chart("mongodb")
+    mongodb_ns = mongodb.namespace(namespace_override)
+    mongodb_name = mongodb.resource_name(tier)
     ctx = build_context(tier, namespace_override, options)
     docs = [apply_overrides(config, ctx) for config in merged_configs(tier)]
 
-    with kube.port_forward(
-        mongodb_ns, options.mongodb_service_name, options.mongodb_port
-    ) as local_port:
+    with kube.port_forward(mongodb_ns, mongodb_name, options.mongodb_port) as local_port:
         client: MongoClient[dict[str, Any]] = MongoClient(f"mongodb://127.0.0.1:{local_port}")
         try:
             collection = client["INFRA"]["InfraConfig"]
