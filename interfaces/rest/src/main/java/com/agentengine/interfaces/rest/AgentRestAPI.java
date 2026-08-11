@@ -7,7 +7,6 @@ import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
@@ -45,14 +44,11 @@ import org.reactivestreams.Publisher;
 @RunOnVirtualThread
 public class AgentRestAPI {
     private final AgentService agentService;
-    private final SessionService sessionService;
     private final RuntimeService runtimeService;
 
     @Inject
-    public AgentRestAPI(
-            final AgentService agentService, final SessionService sessionService, final RuntimeService runtimeService) {
+    public AgentRestAPI(final AgentService agentService, final RuntimeService runtimeService) {
         this.agentService = agentService;
-        this.sessionService = sessionService;
         this.runtimeService = runtimeService;
     }
 
@@ -123,34 +119,6 @@ public class AgentRestAPI {
         if (!deleted) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
-    }
-
-    @DELETE
-    @Path("/session/{sessionId}")
-    @Operation(summary = "Delete a session")
-    @APIResponse(responseCode = "204", description = "Session deleted")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    public void deleteSession(@PathParam("sessionId") final String sessionId) {
-        if (StringUtils.isBlank(sessionId)) {
-            throw new IllegalArgumentException("Session ID is required");
-        }
-        sessionService.deleteSession(sessionId);
-    }
-
-    @POST
-    @Path("/session/{sessionId}/rollback")
-    @Operation(summary = "Roll back a session to before the given run")
-    @APIResponse(responseCode = "204", description = "Rollback applied")
-    @APIResponse(responseCode = "400", description = "runId is required")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    @APIResponse(responseCode = "409", description = "Session is currently running")
-    public void rollbackSession(
-            @NotBlank @PathParam("sessionId") final String sessionId,
-            @NotBlank @QueryParam("runId") final String runId) {
-        if (sessionService.getSession(sessionId) == null) {
-            throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
-        }
-        runtimeService.rollbackSession(sessionId, runId);
     }
 
     @POST

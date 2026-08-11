@@ -5,7 +5,6 @@ import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agui.community.core.event.CustomEvent;
-import com.agui.core.types.CustomEvent;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
