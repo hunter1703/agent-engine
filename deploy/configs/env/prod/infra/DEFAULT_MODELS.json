@@ -4,7 +4,7 @@
     "_t": "com.agentengine.util.mongodb.infra.DefaultModelsConfig",
     "type": "DEFAULT_MODELS",
     "category": "DEFAULT_MODELS",
-    "titleModelId": "devstral_small",
+    "titleModelId": "mistral",
     "compactionModelId": "llama3.1-8b",
     "evaluatorModelId": "llama3.1-8b",
     "embeddingModelId": "nomic-embed-text",

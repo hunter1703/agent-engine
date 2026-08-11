@@ -1,9 +1,9 @@
 {
-  "id": "devstral_small",
-  "model": "devstral-small-2507",
-  "name": "Devstral Small (Mistral API)",
+  "id": "mistral",
+  "model": "mistral-medium-3-5",
+  "name": "Mistral Medium 3.5",
   "baseUrl": "https://api.mistral.ai/v1",
-  "apiKey": "{{ env.DEVSTRAL_API_KEY }}",
+  "apiKey": "{{ env.MISTRAL_API_KEY }}",
   "temperature": 0.2,
   "topP": 0.95,
   "toolCallingEnabled": true,
