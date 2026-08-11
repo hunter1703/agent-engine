@@ -1,9 +1,10 @@
-package com.agentengine.util.ms;
+package com.agentengine.util.ms.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
+import com.agentengine.util.ms.client.MicroService;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import io.grpc.Status;

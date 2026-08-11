@@ -3,7 +3,7 @@ package com.agentengine.connectors.api.services;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
-import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("connectors")
 public interface ConnectorService {

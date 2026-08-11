@@ -1,4 +1,4 @@
-package com.agentengine.util.ms;
+package com.agentengine.util.ms.client;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

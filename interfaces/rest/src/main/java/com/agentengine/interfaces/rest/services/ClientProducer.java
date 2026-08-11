@@ -5,7 +5,7 @@ import com.agentengine.agent.api.services.ToolCatalog;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.ModelService;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.util.ms.MicroServiceClientProvider;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;

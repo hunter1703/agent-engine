@@ -1,8 +1,8 @@
-package com.agentengine.catalog.services;
+package com.agentengine.catalog.core.services;
 
 import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.catalog.repository.SessionRepository;
+import com.agentengine.catalog.core.repository.SessionRepository;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;

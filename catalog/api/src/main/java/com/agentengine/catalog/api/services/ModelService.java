@@ -3,7 +3,7 @@ package com.agentengine.catalog.api.services;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.client.MicroService;
 import java.util.Collection;
 import java.util.Map;
 

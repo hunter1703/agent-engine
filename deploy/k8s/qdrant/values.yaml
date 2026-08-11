@@ -1,6 +1,9 @@
 service:
   name: qdrant
 
+deploymentStrategy:
+  type: Recreate
+
 image:
   repository: qdrant/qdrant
   tag: "v1.13.6"

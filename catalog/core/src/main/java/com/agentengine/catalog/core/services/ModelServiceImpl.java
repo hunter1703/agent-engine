@@ -1,7 +1,7 @@
-package com.agentengine.catalog.services;
+package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.ModelService;
-import com.agentengine.catalog.repository.ModelRepository;
+import com.agentengine.catalog.core.repository.ModelRepository;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;

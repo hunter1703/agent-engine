@@ -4,7 +4,7 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
-import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.client.MicroService;
 import java.util.Collection;
 import java.util.Map;
 

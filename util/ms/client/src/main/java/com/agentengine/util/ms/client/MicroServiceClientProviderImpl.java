@@ -1,4 +1,4 @@
-package com.agentengine.util.ms;
+package com.agentengine.util.ms.client;
 
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import io.grpc.ManagedChannel;

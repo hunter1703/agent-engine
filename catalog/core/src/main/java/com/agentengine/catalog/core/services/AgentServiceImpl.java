@@ -1,7 +1,7 @@
-package com.agentengine.catalog.services;
+package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.AgentService;
-import com.agentengine.catalog.repository.AgentRepository;
+import com.agentengine.catalog.core.repository.AgentRepository;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.GuardrailRule;
 import com.agentengine.util.agents.beans.config.GuardrailsConfig;

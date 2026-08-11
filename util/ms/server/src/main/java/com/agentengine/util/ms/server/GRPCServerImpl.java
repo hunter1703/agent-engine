@@ -1,9 +1,10 @@
-package com.agentengine.util.ms;
+package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.ms.client.MicroService;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;

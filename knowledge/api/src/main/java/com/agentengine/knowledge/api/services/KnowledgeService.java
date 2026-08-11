@@ -3,7 +3,7 @@ package com.agentengine.knowledge.api.services;
 import com.agentengine.knowledge.api.beans.*;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("knowledge")
 public interface KnowledgeService {

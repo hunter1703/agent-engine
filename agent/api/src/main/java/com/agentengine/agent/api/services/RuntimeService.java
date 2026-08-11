@@ -3,7 +3,7 @@ package com.agentengine.agent.api.services;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
-import com.agentengine.util.ms.MicroService;
+import com.agentengine.util.ms.client.MicroService;
 import org.reactivestreams.Publisher;
 
 @MicroService("agent")

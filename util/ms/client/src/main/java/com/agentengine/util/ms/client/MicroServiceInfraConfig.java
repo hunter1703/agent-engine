@@ -1,4 +1,4 @@
-package com.agentengine.util.ms;
+package com.agentengine.util.ms.client;
 
 import com.agentengine.util.mongodb.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
@@ -9,7 +9,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
  * <p>One document per server ID (e.g. {@code "agent"}), stored in the {@code MicroServiceConfig}
  * collection of the {@code INFRA} database.
  */
-@BsonDiscriminator(value = "com.agentengine.util.ms.MicroServiceInfraConfig")
+@BsonDiscriminator(value = "com.agentengine.util.ms.client.MicroServiceInfraConfig")
 public class MicroServiceInfraConfig extends InfraConfig {
     public static final String TYPE = "MICROSERVICE_SERVER";
     public static final String CATEGORY = "MICROSERVICE";

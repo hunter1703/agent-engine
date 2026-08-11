@@ -1,4 +1,4 @@
-package com.agentengine.catalog.repository;
+package com.agentengine.catalog.core.repository;
 
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.beans.AssetClass;
