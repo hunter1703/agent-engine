@@ -8,6 +8,8 @@ metadata:
     {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "agent-engine.infra-base.selectorLabels" . | nindent 6 }}
