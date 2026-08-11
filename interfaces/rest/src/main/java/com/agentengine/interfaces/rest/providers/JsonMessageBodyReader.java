@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.providers;
 
 import com.agentengine.util.common.JsonUtils;
+import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.message.*;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -23,13 +25,13 @@ import java.lang.reflect.Type;
 public class JsonMessageBodyReader implements MessageBodyReader<Object> {
 
     /**
-     * A copy of the shared base mapper with an additional AG-UI {@link Message}
-     * deserializer registered. Kept here so AG-UI-specific config stays in the
-     * REST module and does not leak into the common utility mapper.
+     * A copy of the shared base mapper with AG-UI-specific deserializers registered.
+     * Kept here so this config stays in the REST module and does not leak into the
+     * common utility mapper.
      */
     private static final ObjectMapper MAPPER = JsonUtils.copyMapper()
-            .registerModule(new SimpleModule("AGUIMessageModule")
-                    .addDeserializer(Message.class, new AGUIMessageDeserializer()));
+            .registerModule(
+                    new SimpleModule("AGUIModule").addDeserializer(Message.class, new AGUIMessageDeserializer()));
 
     @Override
     public boolean isReadable(
@@ -47,6 +49,19 @@ public class JsonMessageBodyReader implements MessageBodyReader<Object> {
             final MultivaluedMap<String, String> httpHeaders,
             final InputStream entityStream) {
         try {
+            if (RunAgentInput.class.equals(type)) {
+                // Default threadId/runId to empty string when absent so the record's
+                // requireNonNull check does not fire. RuntimeServiceImpl already treats
+                // a blank threadId as "create a new session".
+                final ObjectNode node = (ObjectNode) MAPPER.readTree(entityStream);
+                if (!node.hasNonNull("threadId")) {
+                    node.set("threadId", TextNode.valueOf(""));
+                }
+                if (!node.hasNonNull("runId")) {
+                    node.set("runId", TextNode.valueOf(""));
+                }
+                return MAPPER.treeToValue(node, RunAgentInput.class);
+            }
             return MAPPER.readValue(entityStream, type);
         } catch (final Exception exception) {
             throw new IllegalArgumentException(

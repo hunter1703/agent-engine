@@ -139,8 +139,8 @@ public class AgentRestAPI {
         }
 
         final AtomicReference<AGUIEventMapper> mapper = new AtomicReference<>();
-        return Flowable.fromPublisher(
-                        runtimeService.startSession(agentId, request.threadId(), extractUserMessage(request)))
+        final String threadId = StringUtils.isBlank(request.threadId()) ? null : request.threadId();
+        return Flowable.fromPublisher(runtimeService.startSession(agentId, threadId, extractUserMessage(request)))
                 .doOnNext(event -> {
                     if (mapper.get() == null) {
                         mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
