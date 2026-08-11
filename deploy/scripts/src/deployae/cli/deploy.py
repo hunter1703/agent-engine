@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import signal
 import subprocess
 import time
 from dataclasses import replace
 from pathlib import Path
 
-from deployae import helm, kube, output
+from deployae import helm, output
 from deployae.charts import REPO_ROOT, Chart
 from deployae.stages import (
     BuildDockerImageStage,
@@ -136,7 +137,7 @@ async def _deploy(
 ) -> None:
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
     interrupted = asyncio.Event()
-    _install_shutdown_handler(interrupted, ctx)
+    _install_shutdown_handler(interrupted)
 
     stages = build_stages(
         ctx, atomic=atomic, skip_infra=skip_infra, dry_run=dry_run, timeout=timeout
@@ -159,16 +160,16 @@ async def _deploy(
                 print(stage.rendered)
 
     output.phase("Deployment complete — application is ready")
-    if ctx.tier == "local" and not dry_run:
-        await _local_port_forward(Chart("rest").namespace(ctx.namespace), local_port)
+    if not dry_run:
+        rest = Chart("rest")
+        await _port_forward_rest(
+            rest.namespace(ctx.namespace), rest.resource_name(ctx.tier), local_port, interrupted
+        )
 
 
-def _install_shutdown_handler(interrupted: asyncio.Event, ctx: helm.DeployContext) -> None:
+def _install_shutdown_handler(interrupted: asyncio.Event) -> None:
     def handle_signal() -> None:
-        output.warn("Shutdown signal received. Deleting workloads (preserving volumes)...")
-        kube.delete_workloads(Chart("agent").namespace(ctx.namespace))
-        kube.delete_workloads(Chart("mongodb").namespace(ctx.namespace))
-        output.info("Workloads deleted. PVCs preserved for next deployment.")
+        output.warn("Shutdown signal received. Stopping (deployed workloads are left running).")
         interrupted.set()
 
     loop = asyncio.get_event_loop()
@@ -176,15 +177,26 @@ def _install_shutdown_handler(interrupted: asyncio.Event, ctx: helm.DeployContex
         loop.add_signal_handler(sig, handle_signal)
 
 
-async def _local_port_forward(namespace: str, local_port: int) -> None:
-    output.step(f"Starting port-forward rest:8080 → localhost:{local_port}")
+async def _port_forward_rest(
+    namespace: str, service_name: str, local_port: int, interrupted: asyncio.Event
+) -> None:
+    output.step(f"Starting port-forward {service_name}:8080 → localhost:{local_port}")
     output.info(f"REST API available at http://localhost:{local_port}")
     output.note("Press Ctrl+C to stop.")
-    while True:
+    while not interrupted.is_set():
         process = await asyncio.create_subprocess_exec(
-            "kubectl", "port-forward", "-n", namespace, "svc/rest", f"{local_port}:8080"
+            "kubectl", "port-forward", "-n", namespace, f"svc/{service_name}", f"{local_port}:8080"
         )
-        await process.wait()
+        wait_task = asyncio.ensure_future(process.wait())
+        interrupted_task = asyncio.ensure_future(interrupted.wait())
+        await asyncio.wait({wait_task, interrupted_task}, return_when=asyncio.FIRST_COMPLETED)
+        if interrupted.is_set():
+            wait_task.cancel()
+            process.terminate()
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(process.wait(), timeout=5)
+            break
+        interrupted_task.cancel()
         output.warn("Port-forward dropped, restarting...")
         await asyncio.sleep(2)
 

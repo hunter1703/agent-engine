@@ -98,11 +98,15 @@ public final class CollectionUtils {
     }
 
     public static <K> String getStringValueFromMap(final Map<K, ?> map, final K key) {
+        return getStringValueFromMap(map, key, null);
+    }
+
+    public static <K> String getStringValueFromMap(final Map<K, ?> map, final K key, final String defaultValue) {
         if (CollectionUtils.isEmpty(map)) {
-            return null;
+            return defaultValue;
         }
         final Object value = map.get(key);
-        return value == null ? null : (value instanceof String str ? str : value.toString());
+        return value == null ? defaultValue : (value instanceof String str ? str : value.toString());
     }
 
     @SuppressWarnings("unchecked")

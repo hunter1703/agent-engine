@@ -6,12 +6,8 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agui.core.types.BaseEvent;
-import com.agui.core.types.RunErrorEvent;
-import com.agui.core.types.RunFinishedEvent;
-import com.agui.core.types.RunStartedEvent;
-import com.agui.core.types.StepFinishedEvent;
-import com.agui.core.types.StepStartedEvent;
+import com.agui.community.core.event.*;
+import com.agui.community.core.interrupt.SuccessOutcome;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
@@ -24,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Maps runtime SessionEvent to AGUI events */
-public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEvent> {
+public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     private static final Logger LOG = LoggerFactory.getLogger(AGUIEventMapper.class);
 
     public enum Mode {
@@ -43,7 +39,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     @Override
-    public Flowable<BaseEvent> map(final SessionEvent event) {
+    public Flowable<Event> map(final SessionEvent event) {
         LOG.info("=== AGUIEventMapper.map() START ===");
         LOG.info(
                 "Input SessionEvent - id={}, runId={}, author={}, turnComplete={}, finishReason={}, content={}, terminal={}",
@@ -74,7 +70,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         }
 
         state.recordSourceEvent(event);
-        Flowable<BaseEvent> eventFlow = Flowable.empty();
+        Flowable<Event> eventFlow = Flowable.empty();
 
         final boolean hasNewRun = state.hasNewRun(event.getRunId());
         LOG.info(
@@ -88,7 +84,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
             eventFlow = eventFlow.concatWith(startRun(event.getRunId()));
         }
 
-        final Flowable<BaseEvent> result =
+        final Flowable<Event> result =
                 eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
 
         LOG.info("=== AGUIEventMapper.map() END - will emit events ===");
@@ -96,12 +92,12 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
     }
 
     @Override
-    public Flowable<BaseEvent> onComplete() {
+    public Flowable<Event> onComplete() {
         return Flowable.empty();
     }
 
     @Override
-    public Flowable<BaseEvent> onError(final Throwable throwable) {
+    public Flowable<Event> onError(final Throwable throwable) {
         LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
         final RunErrorEvent errorEvent =
                 new RunErrorEvent(ExceptionUtils.getErrorMessage(throwable), null, state.timestamp(), null);
@@ -109,13 +105,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         return Flowable.just(errorEvent);
     }
 
-    private Flowable<BaseEvent> mapEventInternal(final SessionEvent event) {
+    private Flowable<Event> mapEventInternal(final SessionEvent event) {
         LOG.info("mapEventInternal called - event : {}", JsonUtils.toJson(event));
         final boolean internal = SessionEventUtils.isInternal(event);
         if (internal) {
             return Flowable.empty();
         }
-        Flowable<BaseEvent> flowable = startStepIfNeeded();
+        Flowable<Event> flowable = startStepIfNeeded();
         if (SessionEventUtils.isCorrectionEvent(event)) {
             return flowable.concatWith(mapCorrectionEvent(event)).concatWith(finishStepIfNeeded(event));
         }
@@ -153,12 +149,12 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         return flowable.concatWith(finishStepIfNeeded(event));
     }
 
-    private Flowable<BaseEvent> mapPart(final Part part, final boolean partial) {
+    private Flowable<Event> mapPart(final Part part, final boolean partial) {
         if (part.thought().orElse(false)) {
             return textMapper.mapThought(part.text().orElse(""), partial);
         }
 
-        Flowable<BaseEvent> flowable = Flowable.empty();
+        Flowable<Event> flowable = Flowable.empty();
         final String text = part.text().orElse(null);
 
         if (text != null) {
@@ -179,16 +175,16 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         return flowable;
     }
 
-    private Flowable<BaseEvent> startRun(final String runId) {
+    private Flowable<Event> startRun(final String runId) {
         LOG.info(">>> EMITTING RUN_STARTED - runId={}", runId);
         state.startRun(runId);
         final RunStartedEvent event =
-                new RunStartedEvent(state.sessionId(), state.currentRunId(), state.timestamp(), null);
-        LOG.debug("Generated output event - eventType=RunStartedEvent, runId={}", event.getRunId());
+                new RunStartedEvent(state.sessionId(), state.currentRunId(), null, null, state.timestamp(), null);
+        LOG.debug("Generated output event - eventType=RunStartedEvent, runId={}", event.threadId());
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> finishRunIfNeeded(final SessionEvent event) {
+    private Flowable<Event> finishRunIfNeeded(final SessionEvent event) {
         LOG.info(
                 "finishRunIfNeeded - eventFinishReason={}, currentRunId={}",
                 event.getFinishReason(),
@@ -205,24 +201,24 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
                 ">>> RUN_FINISHED - finishedRunId={}, state.currentRunId() is now={}",
                 finishedRunId,
                 state.currentRunId());
-        final RunFinishedEvent finishedEvent =
-                new RunFinishedEvent(state.sessionId(), finishedRunId, state.timestamp(), null);
-        LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.getRunId());
+        final RunFinishedEvent finishedEvent = new RunFinishedEvent(
+                state.sessionId(), finishedRunId, new SuccessOutcome(), null, state.timestamp(), null);
+        LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.threadId());
         return Flowable.just(finishedEvent);
     }
 
-    private Flowable<BaseEvent> startStepIfNeeded() {
+    private Flowable<Event> startStepIfNeeded() {
         if (state.hasStartedStep()) {
             LOG.info("Step already started - skipping StepStartedEvent generation");
             return Flowable.empty();
         }
 
         final StepStartedEvent stepEvent = new StepStartedEvent(state.startNextStep(), state.timestamp(), null);
-        LOG.info("STEP STARTED - Generated StepStartedEvent, stepName={}", stepEvent.getStepName());
+        LOG.info("STEP STARTED - Generated StepStartedEvent, stepName={}", stepEvent.stepName());
         return Flowable.just(stepEvent);
     }
 
-    private Flowable<BaseEvent> finishStepIfNeeded(final SessionEvent event) {
+    private Flowable<Event> finishStepIfNeeded(final SessionEvent event) {
         LOG.info(
                 "finishStepIfNeeded called - sessionId={}, turnComplete={}, hasStartedStep={}, event={}",
                 event.getSessionId(),
@@ -245,13 +241,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, BaseEven
         return finishStep();
     }
 
-    private Flowable<BaseEvent> finishStep() {
+    private Flowable<Event> finishStep() {
         final StepFinishedEvent event = new StepFinishedEvent(state.finishStep(), state.timestamp(), null);
-        LOG.info("STEP FINISHED - Generated StepFinishedEvent, stepName={}", event.getStepName());
+        LOG.info("STEP FINISHED - Generated StepFinishedEvent, stepName={}", event.stepName());
         return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
     }
 
-    private Flowable<BaseEvent> mapCorrectionEvent(final SessionEvent event) {
+    private Flowable<Event> mapCorrectionEvent(final SessionEvent event) {
         final Violation violation = Objects.requireNonNull(
                 CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION));
         LOG.debug("Generated correction event - correctionMetadataPresent=true");

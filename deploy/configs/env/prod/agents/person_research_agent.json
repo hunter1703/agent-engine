@@ -2,7 +2,7 @@
   "type": "ORCHESTRATOR",
   "id": "story_agent",
   "name": "Story Agent",
-  "modelId": "devstral-small",
+  "modelId": "devstral_small",
   "description": "Story Agent",
   "systemPrompt": "You are a private investigator that will investigate the ",
   "orchestrationMode": "MANAGER",

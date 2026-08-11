@@ -9,7 +9,7 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
-import com.agui.core.types.BaseEvent;
+import com.agui.community.core.event.Event;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
@@ -90,7 +90,7 @@ public class SessionServiceImpl implements SessionService {
 
         final AGUIEventMapper mapper =
                 new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
-        final List<BaseEvent> aguiEvents = new ArrayList<>();
+        final List<Event> aguiEvents = new ArrayList<>();
         final boolean isRootSession = session.getParentSessionId() == null;
         final List<SessionEvent> events = isRootSession
                 ? sessionHistoryService.getAllSessionEvents(session.getId())

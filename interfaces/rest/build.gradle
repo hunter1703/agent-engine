@@ -24,6 +24,7 @@ dependencies {
     implementation libs.ag.ui.core
     implementation libs.rxjava
     implementation libs.slf4j.api
+    implementation("com.ag-ui.community:java-core:0.1.0")
 
     testImplementation libs.quarkus.junit5
     testImplementation libs.assertj.core

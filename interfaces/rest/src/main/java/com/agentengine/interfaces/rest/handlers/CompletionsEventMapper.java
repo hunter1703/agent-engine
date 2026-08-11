@@ -5,7 +5,7 @@ import com.agentengine.interfaces.rest.dto.responses.ChunkChoice;
 import com.agentengine.interfaces.rest.dto.responses.CompletionUsage;
 import com.agentengine.interfaces.rest.dto.responses.MessageDelta;
 import com.agentengine.interfaces.rest.handlers.ResponsesEventMapper.ResponseOutputEvent;
-import com.agui.core.types.BaseEvent;
+import com.agui.community.core.event.Event;
 import io.reactivex.rxjava3.core.Flowable;
 import java.time.Instant;
 import java.util.List;
@@ -32,7 +32,7 @@ public final class CompletionsEventMapper {
      * Map an AG-UI event to a Flowable of ChatCompletionChunk objects. RESTEasy Reactive will handle
      * JSON serialization and SSE formatting.
      */
-    public Flowable<ChatCompletionChunk> mapEvent(BaseEvent event) {
+    public Flowable<ChatCompletionChunk> mapEvent(Event event) {
         return responsesMapper.mapEvent(event).map(this::toChatCompletionChunk);
     }
 

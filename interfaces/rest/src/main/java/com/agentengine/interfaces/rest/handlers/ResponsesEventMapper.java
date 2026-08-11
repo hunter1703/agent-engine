@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest.handlers;
 
-import com.agui.core.types.*;
+import com.agui.community.core.event.*;
 import io.reactivex.rxjava3.core.Flowable;
 
 /**
@@ -37,14 +37,14 @@ public final class ResponsesEventMapper {
      * Map an AG-UI event to a Flowable of ResponseOutputEvent objects. RESTEasy Reactive will handle
      * JSON serialization and SSE formatting.
      */
-    public Flowable<ResponseOutputEvent> mapEvent(BaseEvent event) {
+    public Flowable<ResponseOutputEvent> mapEvent(Event event) {
         if (event == null) {
             return Flowable.empty();
         }
 
         // Text message events
         if (event instanceof TextMessageChunkEvent chunk) {
-            String delta = chunk.getDelta();
+            String delta = chunk.delta();
             if (delta == null || delta.isEmpty()) {
                 return Flowable.empty();
             }
@@ -52,7 +52,7 @@ public final class ResponsesEventMapper {
         }
 
         if (event instanceof TextMessageContentEvent content) {
-            String delta = content.getDelta();
+            String delta = content.delta();
             if (delta == null || delta.isEmpty()) {
                 return Flowable.empty();
             }
@@ -68,37 +68,37 @@ public final class ResponsesEventMapper {
         }
 
         // Reasoning/thinking events
-        if (event instanceof ThinkingTextMessageContentEvent thinking) {
-            String delta = thinking.getDelta();
+        if (event instanceof ReasoningMessageContentEvent thinking) {
+            String delta = thinking.delta();
             if (delta.isEmpty()) {
                 return Flowable.empty();
             }
             return reasoningDelta(delta);
         }
 
-        if (event instanceof ThinkingTextMessageStartEvent) {
+        if (event instanceof ReasoningMessageStartEvent) {
             return outputItemAdded("reasoning");
         }
 
-        if (event instanceof ThinkingTextMessageEndEvent) {
+        if (event instanceof ReasoningMessageEndEvent) {
             return outputItemDone("reasoning");
         }
 
-        if (event instanceof ThinkingStartEvent) {
+        if (event instanceof ReasoningStartEvent) {
             return Flowable.just(new ResponseOutputEvent("response.reasoning.started", null, null, null));
         }
 
-        if (event instanceof ThinkingEndEvent) {
+        if (event instanceof ReasoningEndEvent) {
             return Flowable.just(new ResponseOutputEvent("response.reasoning.done", null, null, null));
         }
 
         // Tool call events
         if (event instanceof ToolCallStartEvent toolStart) {
-            return toolCallAdded(toolStart.getToolCallId(), toolStart.getToolCallName());
+            return toolCallAdded(toolStart.toolCallId(), toolStart.toolCallName());
         }
 
         if (event instanceof ToolCallArgsEvent toolArgs) {
-            return toolCallArgumentsDelta(toolArgs.getToolCallId(), toolArgs.getDelta());
+            return toolCallArgumentsDelta(toolArgs.toolCallId(), toolArgs.delta());
         }
 
         if (event instanceof ToolCallEndEvent) {
@@ -106,7 +106,7 @@ public final class ResponsesEventMapper {
         }
 
         if (event instanceof ToolCallResultEvent toolResult) {
-            return toolResultAdded(toolResult.getToolCallId(), toolResult.getContent());
+            return toolResultAdded(toolResult.toolCallId(), toolResult.content());
         }
 
         // Run lifecycle events
@@ -115,7 +115,7 @@ public final class ResponsesEventMapper {
         }
 
         if (event instanceof RunErrorEvent error) {
-            return error(error.getMessage());
+            return error(error.message());
         }
 
         return Flowable.empty();

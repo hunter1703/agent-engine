@@ -7,12 +7,12 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ConfirmationKind;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agui.core.types.BaseEvent;
-import com.agui.core.types.CustomEvent;
-import com.agui.core.types.ToolCallArgsEvent;
-import com.agui.core.types.ToolCallEndEvent;
-import com.agui.core.types.ToolCallResultEvent;
-import com.agui.core.types.ToolCallStartEvent;
+import com.agui.community.core.event.*;
+import com.agui.community.core.event.CustomEvent;
+import com.agui.community.core.event.Event;
+import com.agui.community.core.event.ToolCallEndEvent;
+import com.agui.community.core.event.ToolCallResultEvent;
+import com.agui.community.core.message.Role;
 import com.google.adk.events.ToolConfirmation;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
@@ -35,7 +35,7 @@ public final class AGUIToolCallMapper {
         this.state = state;
     }
 
-    public Flowable<BaseEvent> mapToolCall(final FunctionCall call) {
+    public Flowable<Event> mapToolCall(final FunctionCall call) {
         final String callName = call.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(callName)) {
             return mapConfirmationCall(call);
@@ -57,7 +57,7 @@ public final class AGUIToolCallMapper {
         return Flowable.just(start, argsEvent, end);
     }
 
-    public Flowable<BaseEvent> mapToolResponse(final FunctionResponse response) {
+    public Flowable<Event> mapToolResponse(final FunctionResponse response) {
         final String responseName = response.name().orElse("");
         if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(responseName)) {
             return mapConfirmedResponse(response);
@@ -70,13 +70,13 @@ public final class AGUIToolCallMapper {
         LOG.debug("Processing tool response mapping - callId='{}'", callId);
 
         final ToolCallResultEvent result = new ToolCallResultEvent(
-                state.consumeToolCallParentStep(callId), callId, contentResult, "tool", state.timestamp(), null);
+                state.consumeToolCallParentStep(callId), callId, contentResult, Role.TOOL, state.timestamp(), null);
 
-        LOG.debug("Generated output event - eventType=ToolCallResultEvent, callId={}", result.getToolCallId());
+        LOG.debug("Generated output event - eventType=ToolCallResultEvent, callId={}", result.toolCallId());
         return Flowable.just(result);
     }
 
-    private Flowable<BaseEvent> mapConfirmationCall(final FunctionCall call) {
+    private Flowable<Event> mapConfirmationCall(final FunctionCall call) {
         final String confirmationId = call.id().orElseThrow();
         final Map<String, Object> args = CollectionUtils.nullSafeMap(call.args().orElse(Map.of()));
 
@@ -109,7 +109,7 @@ public final class AGUIToolCallMapper {
         return Flowable.just(event);
     }
 
-    public Flowable<BaseEvent> mapConfirmedResponse(final FunctionResponse response) {
+    public Flowable<Event> mapConfirmedResponse(final FunctionResponse response) {
         final String confirmationId = response.id().orElse(null);
         final ToolConfirmation toolConfirmation = JsonUtils.fromMap(
                 CollectionUtils.nullSafeMap(response.response().orElse(Map.of())), ToolConfirmation.class);

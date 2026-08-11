@@ -2,7 +2,7 @@ package com.agentengine.util.agents.beans.session;
 
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.NamedEntity;
-import com.agui.core.types.BaseEvent;
+import com.agui.community.core.event.Event;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +18,7 @@ public class AgentSession extends NamedEntity {
 
     private String agentId;
     private Map<String, Object> state = new HashMap<>();
-    private List<BaseEvent> aguiEvents;
+    private List<Event> aguiEvents;
     private String rootSessionId;
     private String rootAgentId;
     private String parentSessionId;
@@ -62,11 +62,11 @@ public class AgentSession extends NamedEntity {
         this.state = state == null ? new HashMap<>() : new HashMap<>(state);
     }
 
-    public List<BaseEvent> getAguiEvents() {
+    public List<Event> getAguiEvents() {
         return aguiEvents;
     }
 
-    public void setAguiEvents(final List<BaseEvent> aguiEvents) {
+    public void setAguiEvents(final List<Event> aguiEvents) {
         this.aguiEvents = aguiEvents;
     }
 

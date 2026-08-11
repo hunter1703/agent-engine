@@ -5,19 +5,18 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.interfaces.rest.dto.ConfirmSessionRequest;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agui.core.types.BaseEvent;
+import com.agui.community.core.event.Event;
+import com.agui.community.core.interrupt.Resume;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
@@ -50,9 +49,9 @@ public class SessionRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "SSE stream of AG-UI events: committed history, uncommitted turn events, then live events",
-            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
+            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = Event.class)))
     @APIResponse(responseCode = "404", description = "Session not found")
-    public Publisher<BaseEvent> stream(
+    public Publisher<Event> stream(
             @NotBlank @PathParam("sessionId") final String sessionId, @QueryParam("liveOnly") boolean liveOnly) {
         final AgentSession session = sessionService.getSession(sessionId);
         if (session == null) {
@@ -67,20 +66,22 @@ public class SessionRestAPI {
     }
 
     @POST
-    @Path("/{sessionId}/confirm/{confirmationId}")
+    @Path("/{sessionId}/confirm")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
     @RunOnVirtualThread
     @Operation(summary = "Confirm a paused session")
     @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
-    public Response confirm(
-            @NotBlank @PathParam("sessionId") final String sessionId,
-            @NotBlank @PathParam("confirmationId") final String confirmationId,
-            @Valid @NotNull final ConfirmSessionRequest confirmRequest) {
+    public Response confirm(@NotBlank @PathParam("sessionId") final String sessionId, Resume confirmRequest) {
+        //noinspection unchecked
+        final Map<String, Object> payload = (Map<String, Object>) confirmRequest.payload();
+        final Boolean confirmed = CollectionUtils.getBooleanValueFromMap(payload, "confirmed");
         runtimeService.confirmSession(
                 sessionId,
                 new Confirmation(
-                        confirmationId, confirmRequest.getConfirmed(), Map.of("answer", confirmRequest.getMessage())));
+                        confirmRequest.interruptId(),
+                        confirmed,
+                        Map.of("answer", CollectionUtils.getStringValueFromMap(payload, "answer", ""))));
         return Response.accepted().build();
     }
 }

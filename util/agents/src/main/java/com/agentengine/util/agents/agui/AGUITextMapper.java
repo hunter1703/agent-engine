@@ -4,16 +4,8 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
-import com.agui.core.types.BaseEvent;
-import com.agui.core.types.Role;
-import com.agui.core.types.TextMessageChunkEvent;
-import com.agui.core.types.TextMessageEndEvent;
-import com.agui.core.types.TextMessageStartEvent;
-import com.agui.core.types.ThinkingEndEvent;
-import com.agui.core.types.ThinkingStartEvent;
-import com.agui.core.types.ThinkingTextMessageContentEvent;
-import com.agui.core.types.ThinkingTextMessageEndEvent;
-import com.agui.core.types.ThinkingTextMessageStartEvent;
+import com.agui.community.core.event.*;
+import com.agui.community.core.message.Role;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.Map;
 import java.util.Optional;
@@ -38,12 +30,12 @@ public final class AGUITextMapper {
         mode = AGUIEventMapper.Mode.LIVE;
     }
 
-    public Flowable<BaseEvent> mapThought(final String thoughtText, final boolean partial) {
+    public Flowable<Event> mapThought(final String thoughtText, final boolean partial) {
         if (StringUtils.isEmpty(thoughtText)) {
             return Flowable.empty();
         }
 
-        Flowable<BaseEvent> flowable = Flowable.empty();
+        Flowable<Event> flowable = Flowable.empty();
         if (state.hasOpenTextMessage()) {
             flowable = flowable.concatWith(finalizeTextMessageIfNeeded());
         }
@@ -56,7 +48,7 @@ public final class AGUITextMapper {
         return flowable;
     }
 
-    public Flowable<BaseEvent> mapText(final String text, final boolean partial) {
+    public Flowable<Event> mapText(final String text, final boolean partial) {
         if (StringUtils.isEmpty(text)) {
             return Flowable.empty();
         }
@@ -66,12 +58,12 @@ public final class AGUITextMapper {
                 .concatWith(endTextMessageIfNeeded(partial));
     }
 
-    public Flowable<BaseEvent> finalizeOpenContent() {
+    public Flowable<Event> finalizeOpenContent() {
         return finalizeTextMessageIfNeeded().concatWith(closeReasoningIfNeeded());
     }
 
-    public Flowable<BaseEvent> mapAttachment(final FileDetails fileDetails) {
-        final Flowable<BaseEvent> flowable = startTextMessageIfNeeded();
+    public Flowable<Event> mapAttachment(final FileDetails fileDetails) {
+        final Flowable<Event> flowable = startTextMessageIfNeeded();
         final String parentMessageId = state.currentTextMessageId();
         final long timestamp = state.timestamp();
         LOG.debug(
@@ -82,14 +74,14 @@ public final class AGUITextMapper {
                 Flowable.just(AGUIUtils.buildAttachmentEvent(parentMessageId, fileDetails, timestamp)));
     }
 
-    public Flowable<BaseEvent> closeReasoningIfNeeded() {
+    public Flowable<Event> closeReasoningIfNeeded() {
         if (!state.hasOpenReasoning()) {
             return Flowable.empty();
         }
         return endReasoningMessageIfNeeded().concatWith(endReasoningIfNeeded());
     }
 
-    public Flowable<BaseEvent> mapUserMessage(final SessionEvent event) {
+    public Flowable<Event> mapUserMessage(final SessionEvent event) {
         // Record the source event so the generated message ID is based on this event's ID,
         // not the stale ID from the previous (assistant) event — which would cause collisions.
         state.recordSourceEvent(event);
@@ -113,7 +105,7 @@ public final class AGUITextMapper {
                         })
                         .orElse(null)
                 : null;
-        final String messageId = state.nextReplayTextMessageId(event.getId());
+        final String messageId = state.nextTextMessageId(event.getId());
 
         final TextMessageStartEvent start = new TextMessageStartEvent(
                 messageId, Role.USER, state.timestamp(), new JsonObject(Map.of("author", (JsonElement)
@@ -126,59 +118,61 @@ public final class AGUITextMapper {
         return Flowable.just(start, content, end);
     }
 
-    private Flowable<BaseEvent> startReasoningIfNeeded() {
+    private Flowable<Event> startReasoningIfNeeded() {
         if (state.hasOpenReasoning()) {
             LOG.debug("Already in reasoning state, skipping ThinkingStartEvent generation");
             return Flowable.empty();
         }
         state.startReasoning();
-        final ThinkingStartEvent event = new ThinkingStartEvent(null, state.timestamp(), null);
+        final ReasoningStartEvent event = new ReasoningStartEvent(null, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingStartEvent");
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> startReasoningMessageIfNeeded() {
+    private Flowable<Event> startReasoningMessageIfNeeded() {
         if (state.hasOpenReasoningMessage()) {
             LOG.debug("Reasoning message already open, skipping ThinkingTextMessageStartEvent generation");
             return Flowable.empty();
         }
-        state.startReasoningMessage();
-        final ThinkingTextMessageStartEvent event = new ThinkingTextMessageStartEvent(state.timestamp(), null);
+        final String reasoningMessageId = state.startReasoningMessage();
+        final ReasoningMessageStartEvent event =
+                new ReasoningMessageStartEvent(reasoningMessageId, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingTextMessageStartEvent");
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> mapReasoningContent(final String text) {
+    private Flowable<Event> mapReasoningContent(final String text) {
         if (StringUtils.isEmpty(text) || !state.hasOpenReasoningMessage()) {
             return Flowable.empty();
         }
-        final ThinkingTextMessageContentEvent event =
-                new ThinkingTextMessageContentEvent(text, state.timestamp(), null);
-        LOG.debug("Generated output event - eventType=ThinkingTextMessageContentEvent");
+        final ReasoningMessageContentEvent event =
+                new ReasoningMessageContentEvent(state.currentReasoningMessageId(), text, state.timestamp(), null);
+        LOG.debug("Generated output event - eventType=ReasoningMessageContentEvent");
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> endReasoningMessageIfNeeded() {
+    private Flowable<Event> endReasoningMessageIfNeeded() {
         if (!state.hasOpenReasoningMessage()) {
             return Flowable.empty();
         }
         state.closeReasoningMessage();
-        final ThinkingTextMessageEndEvent event = new ThinkingTextMessageEndEvent(state.timestamp(), null);
+        final ReasoningMessageEndEvent event =
+                new ReasoningMessageEndEvent(state.currentReasoningMessageId(), state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingTextMessageEndEvent");
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> endReasoningIfNeeded() {
+    private Flowable<Event> endReasoningIfNeeded() {
         if (!state.hasOpenReasoning()) {
             return Flowable.empty();
         }
         state.closeReasoning();
-        final ThinkingEndEvent event = new ThinkingEndEvent(state.timestamp(), null);
+        final ReasoningEndEvent event = new ReasoningEndEvent(null, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingEndEvent");
         return Flowable.just(event);
     }
 
-    private Flowable<BaseEvent> startTextMessageIfNeeded() {
+    private Flowable<Event> startTextMessageIfNeeded() {
         if (state.hasOpenTextMessage()) {
             LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
             return Flowable.empty();
@@ -188,11 +182,11 @@ public final class AGUITextMapper {
                 Role.ASSISTANT,
                 state.timestamp(),
                 new JsonObject(Map.of("author", (JsonElement) JsonUtils.strVal(state.currentAuthor()))));
-        LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.getMessageId());
+        LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.messageId());
         return Flowable.just(start);
     }
 
-    private Flowable<BaseEvent> mapTextMessageContent(final String text, final boolean partial) {
+    private Flowable<Event> mapTextMessageContent(final String text, final boolean partial) {
         if (StringUtils.isEmpty(text)) {
             return Flowable.empty();
         }
@@ -217,11 +211,11 @@ public final class AGUITextMapper {
         }
         final TextMessageChunkEvent chunk =
                 new TextMessageChunkEvent(state.currentTextMessageId(), Role.ASSISTANT, text, state.timestamp(), null);
-        LOG.debug("Generated output event - eventType=TextMessageChunkEvent, msgId={}", chunk.getMessageId());
+        LOG.debug("Generated output event - eventType=TextMessageChunkEvent, msgId={}", chunk.messageId());
         return Flowable.just(chunk);
     }
 
-    private Flowable<BaseEvent> endTextMessageIfNeeded(final boolean partial) {
+    private Flowable<Event> endTextMessageIfNeeded(final boolean partial) {
         if (partial) {
             LOG.debug("Partial message, skipping TextMessageEndEvent generation");
             return Flowable.empty();
@@ -229,14 +223,14 @@ public final class AGUITextMapper {
         return emitTextMessageEnd();
     }
 
-    private Flowable<BaseEvent> finalizeTextMessageIfNeeded() {
+    private Flowable<Event> finalizeTextMessageIfNeeded() {
         if (!state.hasOpenTextMessage()) {
             return Flowable.empty();
         }
         return emitTextMessageEnd();
     }
 
-    private Flowable<BaseEvent> emitTextMessageEnd() {
+    private Flowable<Event> emitTextMessageEnd() {
         if (!state.hasOpenTextMessage()) {
             return Flowable.empty();
         }
@@ -245,7 +239,7 @@ public final class AGUITextMapper {
         final String finalAnswer = state.completeTextMessage();
         state.resetTextMessage();
 
-        Flowable<BaseEvent> flowable = Flowable.empty();
+        Flowable<Event> flowable = Flowable.empty();
         if (mode == AGUIEventMapper.Mode.REPLAY && StringUtils.isNotBlank(finalAnswer)) {
             final TextMessageChunkEvent content =
                     new TextMessageChunkEvent(messageId, Role.ASSISTANT, finalAnswer, state.timestamp(), null);
@@ -254,7 +248,7 @@ public final class AGUITextMapper {
         }
 
         final TextMessageEndEvent end = new TextMessageEndEvent(messageId, state.timestamp(), null);
-        LOG.debug("Generated output event - eventType=TextMessageEndEvent, msgId={}", end.getMessageId());
+        LOG.debug("Generated output event - eventType=TextMessageEndEvent, msgId={}", end.messageId());
         return flowable.concatWith(Flowable.just(end));
     }
 }

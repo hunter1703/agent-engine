@@ -8,15 +8,18 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.interfaces.rest.dto.InvokeAgentRequest;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.exception.AssetNotFoundException;
-import com.agui.core.types.BaseEvent;
+import com.agui.community.core.agent.Context;
+import com.agui.community.core.agent.RunAgentInput;
+import com.agui.community.core.event.Event;
+import com.agui.community.core.message.Message;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
@@ -26,7 +29,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
@@ -157,20 +159,20 @@ public class AgentRestAPI {
     @APIResponse(
             responseCode = "200",
             description = "SSE stream of AG-UI events",
-            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = BaseEvent.class)))
+            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = Event.class)))
     @APIResponse(responseCode = "400", description = "Invalid request parameters")
     @APIResponse(responseCode = "404", description = "Agent not found")
     @Produces(SERVER_SENT_EVENTS)
     @RestStreamElementType(APPLICATION_JSON)
-    public Publisher<BaseEvent> invoke(
-            @NotBlank @PathParam("agentId") final String agentId, @Valid final InvokeAgentRequest request) {
+    public Publisher<Event> invoke(
+            @NotBlank @PathParam("agentId") final String agentId, @Valid final RunAgentInput request) {
         if (agentService.getAgent(agentId) == null) {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
 
         final AtomicReference<AGUIEventMapper> mapper = new AtomicReference<>();
         return Flowable.fromPublisher(
-                        runtimeService.startSession(agentId, request.getThreadId(), extractUserMessage(request)))
+                        runtimeService.startSession(agentId, request.threadId(), extractUserMessage(request)))
                 .doOnNext(event -> {
                     if (mapper.get() == null) {
                         mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
@@ -179,69 +181,21 @@ public class AgentRestAPI {
                 .concatMap(event -> mapper.get().map(event));
     }
 
-    private static UserMessage extractUserMessage(final InvokeAgentRequest request) {
-        final List<InvokeAgentRequest.AguiMessage> msgs = request.getMessages();
-        for (int i = msgs.size() - 1; i >= 0; i--) {
-            final InvokeAgentRequest.AguiMessage msg = msgs.get(i);
-            if ("user".equalsIgnoreCase(msg.getRole())) {
-                return convertAguiMessage(msg);
+    private static UserMessage extractUserMessage(final RunAgentInput request) {
+        final List<Message> msgs = request.messages();
+        final List<MessagePart> parts = new ArrayList<>();
+        for (final Context context : CollectionUtils.nullSafeList(request.context())) {
+            final FileDetails fileDetails = JsonUtils.fromJson(context.value(), FileDetails.class);
+            parts.add(new MessagePart.FilePart(fileDetails));
+        }
+        for (final Message msg : CollectionUtils.nullSafeList(msgs)) {
+            if (msg instanceof com.agui.community.core.message.UserMessage aguiUserMessage) {
+                parts.add(new MessagePart.TextPart(aguiUserMessage.content()));
             }
+        }
+        if (CollectionUtils.isNotEmpty(parts)) {
+            return new UserMessage(parts);
         }
         throw new WebApplicationException("No user message found in messages array", 400);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static UserMessage convertAguiMessage(final InvokeAgentRequest.AguiMessage msg) {
-        final Object content = msg.getContent();
-
-        if (content instanceof String text) {
-            return UserMessage.ofText(text);
-        }
-
-        if (content instanceof List<?> parts) {
-            final List<MessagePart> messageParts = new ArrayList<>();
-            for (final Object raw : parts) {
-                if (!(raw instanceof Map<?, ?> rawPart)) {
-                    continue;
-                }
-                final Map<String, Object> part = (Map<String, Object>) rawPart;
-                final String type = CollectionUtils.getStringValueFromMap(part, "type");
-
-                if ("text".equals(type)) {
-                    final String text = CollectionUtils.getStringValueFromMap(part, "text");
-                    if (StringUtils.isNotBlank(text)) {
-                        messageParts.add(new MessagePart.TextPart(text));
-                    }
-                } else if ("document".equals(type) || "image".equals(type)) {
-                    final FileDetails fd = extractFileDetails(part);
-                    if (fd != null) {
-                        messageParts.add(new MessagePart.FilePart(fd));
-                    }
-                }
-            }
-            if (!messageParts.isEmpty()) {
-                return new UserMessage(messageParts);
-            }
-        }
-
-        throw new WebApplicationException("Unable to parse message content", 400);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static FileDetails extractFileDetails(final Map<String, Object> part) {
-        final Map<String, Object> source = CollectionUtils.getValueFromMap(part, "source");
-        final String sourceType = CollectionUtils.getStringValueFromMap(source, "type");
-        final String value = CollectionUtils.getStringValueFromMap(source, "value");
-        final String mimeType = CollectionUtils.getStringValueFromMap(source, "mimeType");
-
-        if (StringUtils.isBlank(value)) {
-            return null;
-        }
-
-        final String name = value.substring(value.lastIndexOf('/') + 1);
-        final FileDetails.StorageType storageType =
-                "url".equalsIgnoreCase(sourceType) ? FileDetails.StorageType.URL : FileDetails.StorageType.UNKNOWN;
-
-        return new FileDetails(name, value, storageType, mimeType, -1L);
     }
 }

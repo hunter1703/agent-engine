@@ -55,22 +55,6 @@ def delete_pvcs(namespace: str) -> None:
     _run(["delete", "pvc", "-n", namespace, "--all", "--ignore-not-found"], capture=True)
 
 
-def delete_workloads(namespace: str) -> None:
-    """Deletes Deployments/StatefulSets/Services/ConfigMaps/Secrets but leaves PVCs
-    alone — used for the local Ctrl+C shutdown path, which preserves data volumes."""
-    subprocess.run(
-        [
-            "kubectl",
-            "delete",
-            "deployment,statefulset,service,configmap,secret",
-            "--all",
-            "-n",
-            namespace,
-        ],
-        capture_output=True,
-    )
-
-
 def delete_by_label(namespace: str, label_selector: str) -> None:
     _run(
         ["delete", "all", "-l", label_selector, "--namespace", namespace, "--ignore-not-found"],

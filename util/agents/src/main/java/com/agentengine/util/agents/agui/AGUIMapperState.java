@@ -16,6 +16,7 @@ public final class AGUIMapperState {
     private String runId;
     private String currentStepName;
     private String currentTextMessageId;
+    private String currentReasoningMessageId;
     private boolean reasoningOpen;
     private boolean reasoningMessageOpen;
     private String finalAnswer;
@@ -24,6 +25,7 @@ public final class AGUIMapperState {
     private String currentAuthor;
     private int stepSequence;
     private int textMessageSequence;
+    private int reasoningMessageSequence;
     private final Map<String, FunctionCall> requestConfirmationCalls = new HashMap<>();
 
     public AGUIMapperState(final String sessionId, final String agentId) {
@@ -90,11 +92,11 @@ public final class AGUIMapperState {
     }
 
     public String startNextTextMessage() {
-        currentTextMessageId = nextReplayTextMessageId(currentSourceEventId);
+        currentTextMessageId = nextTextMessageId(currentSourceEventId);
         return currentTextMessageId;
     }
 
-    public String nextReplayTextMessageId(final String sourceEventId) {
+    public String nextTextMessageId(final String sourceEventId) {
         // Include runId to ensure uniqueness across runs in the same session
         final String prefix = runId != null ? "msg-" + runId + "-" : "msg-";
         return stableReplayId(prefix, sourceEventId, ++textMessageSequence);
@@ -102,6 +104,10 @@ public final class AGUIMapperState {
 
     public String currentTextMessageId() {
         return currentTextMessageId;
+    }
+
+    public String currentReasoningMessageId() {
+        return currentReasoningMessageId;
     }
 
     public boolean isTextBufferEmpty() {
@@ -140,17 +146,25 @@ public final class AGUIMapperState {
         return reasoningMessageOpen;
     }
 
-    public void startReasoningMessage() {
+    public String startReasoningMessage() {
         reasoningMessageOpen = true;
+        currentReasoningMessageId = nextReasoningMessageId(currentSourceEventId);
+        return currentReasoningMessageId;
+    }
+
+    public String nextReasoningMessageId(final String sourceEventId) {
+        // Include runId to ensure uniqueness across runs in the same session
+        final String prefix = runId != null ? "think-" + runId + "-" : "think-";
+        return stableReplayId(prefix, sourceEventId, ++reasoningMessageSequence);
     }
 
     public void closeReasoningMessage() {
         reasoningMessageOpen = false;
+        currentReasoningMessageId = null;
     }
 
     public void closeReasoning() {
         reasoningOpen = false;
-        reasoningMessageOpen = false;
     }
 
     public void rememberToolCallParentStep(final String callId) {
