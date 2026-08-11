@@ -10,20 +10,16 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
  * deploy time by {@code seed-infra-configs.sh}, which overrides {@link #host} to the
  * in-cluster Qdrant service name. Defaults target a local Qdrant instance.
  */
-@BsonDiscriminator(value = "com.agentengine.util.vectordb.QdrantInfraConfig")
-public class QdrantInfraConfig extends InfraConfig {
+@BsonDiscriminator(value = "com.agentengine.util.vectordb.VectorDatabaseInfraConfig")
+public class VectorDatabaseInfraConfig extends InfraConfig {
 
-    public static final String TYPE = "qdrant";
-    public static final String CATEGORY = "QDRANT";
+    public static final String TYPE = "VECTOR_SERVER";
+    public static final String CATEGORY = "VECTOR";
     public static final String CONFIG_ID = "default";
 
     private String host = "localhost";
     private int httpPort = 6333;
     private String apiKey = null;
-
-    public QdrantInfraConfig() {
-        super(TYPE);
-    }
 
     public String getHost() {
         return host;

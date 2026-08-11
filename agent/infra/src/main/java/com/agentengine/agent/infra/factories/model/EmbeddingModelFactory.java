@@ -74,8 +74,8 @@ public class EmbeddingModelFactory {
         if (StringUtils.isNotBlank(modelId)) {
             return modelId;
         }
-        final DefaultModelsConfig defaults =
-                infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+        final DefaultModelsConfig defaults = infraConfigService.findById(
+                DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
         return defaults != null ? defaults.getEmbeddingModelId() : null;
     }
 

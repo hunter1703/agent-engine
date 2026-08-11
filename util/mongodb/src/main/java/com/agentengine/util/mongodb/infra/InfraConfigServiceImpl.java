@@ -17,7 +17,8 @@ public class InfraConfigServiceImpl implements InfraConfigService {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends InfraConfig> T findById(final String configCategory, final String configId) {
-        return (T) cache.get(configCategory + ":" + configId);
+    public <T extends InfraConfig> T findById(
+            final String configCategory, final String configType, final String configId) {
+        return (T) cache.get(configCategory + ":" + configType + ":" + configId);
     }
 }

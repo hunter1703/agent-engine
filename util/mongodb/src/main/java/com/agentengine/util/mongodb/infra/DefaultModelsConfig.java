@@ -4,7 +4,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.mongodb.infra.DefaultModelsConfig")
 public class DefaultModelsConfig extends InfraConfig {
-    public static final String TYPE = "default_models";
+    public static final String TYPE = "DEFAULT_MODELS";
     public static final String CATEGORY = "DEFAULT_MODELS";
     public static final String CONFIG_ID = "default";
 
@@ -13,10 +13,6 @@ public class DefaultModelsConfig extends InfraConfig {
     private String evaluatorModelId;
     private String embeddingModelId;
     private String chatModelId;
-
-    public DefaultModelsConfig() {
-        super(TYPE);
-    }
 
     public String getTitleModelId() {
         return titleModelId;

@@ -5,7 +5,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.cloudstorage.CloudStorageInfraConfig")
 public class CloudStorageInfraConfig extends InfraConfig {
-    public static final String TYPE = "cloudstorage";
+    public static final String TYPE = "CLOUDSTORAGE";
     public static final String CATEGORY = "CLOUDSTORAGE";
     public static final String CONFIG_ID = "default";
 
@@ -14,10 +14,6 @@ public class CloudStorageInfraConfig extends InfraConfig {
     private String accessKeyId = "test";
     private String secretAccessKey = "test";
     private String defaultBucket = "agent-assets";
-
-    public CloudStorageInfraConfig() {
-        super(TYPE);
-    }
 
     public String getEndpointUrl() {
         return endpointUrl;

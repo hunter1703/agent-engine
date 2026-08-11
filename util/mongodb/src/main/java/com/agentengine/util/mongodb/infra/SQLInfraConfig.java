@@ -5,19 +5,15 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.mongodb.infra.SQLInfraConfig")
 public class SQLInfraConfig extends InfraConfig {
-    public static final String TYPE = "sql";
+    public static final String TYPE = "SQL_SERVER";
     public static final String CATEGORY = "SQL";
-    public static final String CONFIG_ID = "default";
+    public static final String DEFAULT_CONFIG_ID = "default";
 
     private String jdbcUrl;
     private String jdbcUser;
 
     @Secure
     private String jdbcPassword;
-
-    public SQLInfraConfig() {
-        super(TYPE);
-    }
 
     public String getJdbcUrl() {
         return jdbcUrl;

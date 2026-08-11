@@ -14,10 +14,6 @@ public class PekkoConfig extends InfraConfig {
     private String clusterName;
     private int snapshotThreshold = 100;
 
-    public PekkoConfig() {
-        super(TYPE);
-    }
-
     public List<String> getSeedNodes() {
         return seedNodes;
     }

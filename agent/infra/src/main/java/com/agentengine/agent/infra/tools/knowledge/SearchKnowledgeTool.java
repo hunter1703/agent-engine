@@ -112,8 +112,8 @@ public final class SearchKnowledgeTool extends Tool {
         if (StringUtils.isNotBlank(agentModelId)) {
             return agentModelId;
         }
-        final DefaultModelsConfig defaults =
-                infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+        final DefaultModelsConfig defaults = infraConfigService.findById(
+                DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
         return defaults.getEmbeddingModelId();
     }
 }

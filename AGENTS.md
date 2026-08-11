@@ -111,6 +111,10 @@ the reader and the runtime equally.
 14. Avoid qualified class names; add explicit imports instead.
 15. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
 16. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-17. Avoid needless, simple, or tautological comments; keep comments for non-obvious context.
+17. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never
+    write changelog-style comments that explain what changed or why code was removed/simplified
+    (e.g. "X is now unconditional, so the old check isn't needed") — that narrates the diff, not
+    the resulting code; a reader with no session context gets no value from it once the change is
+    old. State that reasoning in chat instead.
 18. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
 19. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.

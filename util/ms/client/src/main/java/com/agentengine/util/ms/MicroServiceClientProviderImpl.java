@@ -69,8 +69,8 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
         // does not trigger MongoDB lookups or gRPC connections at startup.
         final Supplier<ManagedChannel> channelSupplier = () -> channels.computeIfAbsent(serviceClass, cls -> {
             final String serverId = cls.getAnnotation(MicroService.class).value();
-            final MicroServiceInfraConfig config =
-                    infraConfigService.findById(MicroServiceInfraConfig.CATEGORY, serverId);
+            final MicroServiceInfraConfig config = infraConfigService.findById(
+                    MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
             final String host = config != null ? config.getHost() : DEFAULT_HOST;
             final int port = config != null ? config.getPort() : DEFAULT_PORT;
             LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);

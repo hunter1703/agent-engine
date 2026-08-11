@@ -1,0 +1,38 @@
+[
+  {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:catalog",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "catalog",
+    "host": "catalog-prod.agent-engine.svc.cluster.local",
+    "port": 9000
+  },
+  {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:agent",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "agent",
+    "host": "agent-prod.agent-engine.svc.cluster.local",
+    "port": 9000
+  },
+  {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:knowledge",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "knowledge",
+    "host": "knowledge-prod.agent-engine.svc.cluster.local",
+    "port": 9000
+  },
+  {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:connectors",
+    "_t": "com.agentengine.util.ms.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "connectors",
+    "host": "connectors-prod.agent-engine.svc.cluster.local",
+    "port": 9000
+  }
+]

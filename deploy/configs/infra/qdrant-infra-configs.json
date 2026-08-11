@@ -1,9 +1,0 @@
-[
-  {
-    "id": "QDRANT:default",
-    "type": "qdrant",
-    "_t": "com.agentengine.util.vectordb.QdrantInfraConfig",
-    "host": "qdrant.infra.svc.cluster.local",
-    "httpPort": 6333
-  }
-]

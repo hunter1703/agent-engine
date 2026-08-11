@@ -42,8 +42,8 @@ public final class OutputRelevanceGuardrailFactory implements GuardrailFactory<O
 
     private String resolveDefaultModelId() {
         try {
-            final DefaultModelsConfig defaults =
-                    infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+            final DefaultModelsConfig defaults = infraConfigService.findById(
+                    DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
             return defaults == null ? null : defaults.getEvaluatorModelId();
         } catch (Exception ex) {
             return null;

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Singleton factory that owns the shared {@link QdrantHttpClient} connection.
  *
- * <p>Reads connection details from {@link QdrantInfraConfig} via {@link InfraConfigService}
+ * <p>Reads connection details from {@link VectorDatabaseInfraConfig} via {@link InfraConfigService}
  * (backed by {@code INFRA.InfraConfig} in MongoDB), mirroring the pattern used by
  * {@code MongoClientFactory} and {@code LocalStackCloudStorageService}.
  *
@@ -26,8 +26,10 @@ public class VectorDbClientFactory {
     @Inject
     public VectorDbClientFactory(final InfraConfigService infraConfigService) {
         this.client = new LazyLoader<>(() -> {
-            final QdrantInfraConfig config =
-                    infraConfigService.findById(QdrantInfraConfig.CATEGORY, QdrantInfraConfig.CONFIG_ID);
+            final VectorDatabaseInfraConfig config = infraConfigService.findById(
+                    VectorDatabaseInfraConfig.CATEGORY,
+                    VectorDatabaseInfraConfig.TYPE,
+                    VectorDatabaseInfraConfig.CONFIG_ID);
             final String host = config != null ? config.getHost() : "localhost";
             final int port = config != null ? config.getHttpPort() : 6333;
             final String apiKey = config != null ? config.getApiKey() : null;

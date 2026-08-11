@@ -33,8 +33,8 @@ public class EncryptionServiceImpl implements EncryptionService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EncryptionServiceImpl(final InfraConfigService infraConfigService) {
-        final EncryptionInfraConfig config =
-                infraConfigService.findById(EncryptionInfraConfig.CATEGORY, EncryptionInfraConfig.CONFIG_ID);
+        final EncryptionInfraConfig config = infraConfigService.findById(
+                EncryptionInfraConfig.CATEGORY, EncryptionInfraConfig.TYPE, EncryptionInfraConfig.CONFIG_ID);
         if (config == null || config.getKey() == null || config.getKey().isBlank()) {
             LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
             this.secretKey = null;

@@ -73,7 +73,8 @@ public class ChunkingPipelineFactory {
                 && StringUtils.isNotBlank(settings.getChatModelId())) {
             return null;
         }
-        return infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+        return infraConfigService.findById(
+                DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
     }
 
     private static String resolveModelId(

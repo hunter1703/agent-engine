@@ -118,7 +118,8 @@ public class MemoryService implements BaseMemoryService {
     private List<Memory> semanticMemorySearch(
             final String agentId, final String userId, final String queryText, final int limit) {
         final String embeddingModelId = infraConfigService
-                .<DefaultModelsConfig>findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID)
+                .<DefaultModelsConfig>findById(
+                        DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID)
                 .getEmbeddingModelId();
         if (StringUtils.isBlank(embeddingModelId)) {
             return List.of();

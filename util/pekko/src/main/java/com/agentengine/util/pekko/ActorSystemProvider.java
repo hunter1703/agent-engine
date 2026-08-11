@@ -56,8 +56,9 @@ public class ActorSystemProvider {
      * and hence would result into circular dependency.
      */
     public void onStart(@Observes final StartupEvent event) {
-        this.pekkoConfig = infraConfigService.findById(PekkoConfig.CATEGORY, PekkoConfig.CONFIG_ID);
-        final SQLInfraConfig sqlConfig = infraConfigService.findById(SQLInfraConfig.CATEGORY, SQLInfraConfig.CONFIG_ID);
+        this.pekkoConfig = infraConfigService.findById(PekkoConfig.CATEGORY, PekkoConfig.TYPE, PekkoConfig.CONFIG_ID);
+        final SQLInfraConfig sqlConfig = infraConfigService.findById(
+                SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
         LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
         final Config config = buildConfig(pekkoConfig, sqlConfig);
         this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);

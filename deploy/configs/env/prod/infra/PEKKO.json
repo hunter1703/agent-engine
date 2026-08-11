@@ -1,0 +1,14 @@
+[
+  {
+    "id": "PEKKO:PEKKO:default",
+    "_t": "com.agentengine.util.pekko.PekkoConfig",
+    "type": "PEKKO",
+    "category": "PEKKO",
+    "seedNodes": [
+      "pekko://agent@agent-prod-0.agent-prod-internal.agent-engine.svc.cluster.local:2552",
+      "pekko://agent@agent-prod-1.agent-prod-internal.agent-engine.svc.cluster.local:2552"
+    ],
+    "clusterName": "agent",
+    "snapshotThreshold": 100
+  }
+]

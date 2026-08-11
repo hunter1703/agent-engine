@@ -34,8 +34,8 @@ public class SessionTitleGenerator {
             final ModelProvider modelProvider) {
         this.sessionHistoryService = sessionHistoryService;
         this.titleGeneratorModelCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), _ -> {
-            final DefaultModelsConfig defaultModelConfig =
-                    infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+            final DefaultModelsConfig defaultModelConfig = infraConfigService.findById(
+                    DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
             if (defaultModelConfig == null) {
                 throw new IllegalStateException(
                         "Default models config not found. Ensure infra configs are seeded before starting the runtime.");

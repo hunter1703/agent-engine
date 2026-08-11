@@ -52,8 +52,8 @@ public class CompactionContextManagerFactory
         if (StringUtils.isNotBlank(config.getModelId())) {
             return config.getModelId();
         }
-        final DefaultModelsConfig defaults =
-                infraConfigService.findById(DefaultModelsConfig.CATEGORY, DefaultModelsConfig.CONFIG_ID);
+        final DefaultModelsConfig defaults = infraConfigService.findById(
+                DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
         if (defaults != null && StringUtils.isNotBlank(defaults.getCompactionModelId())) {
             return defaults.getCompactionModelId();
         }

@@ -58,8 +58,8 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     @Inject
     public LocalStackCloudStorageService(final InfraConfigService infraConfigService) {
         this.infraConfigService = infraConfigService;
-        this.config = new LazyLoader<>(
-                () -> infraConfigService.findById(CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.CONFIG_ID));
+        this.config = new LazyLoader<>(() -> infraConfigService.findById(
+                CloudStorageInfraConfig.CATEGORY, CloudStorageInfraConfig.TYPE, CloudStorageInfraConfig.CONFIG_ID));
         this.s3 = new LazyLoader<>(() -> {
             final CloudStorageInfraConfig cloudStorageInfraConfig = config.get();
             final StaticCredentialsProvider credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(
