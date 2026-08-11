@@ -10,7 +10,7 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:mongodb')
     implementation project(':util:agents')
-    implementation project(':util:ms')
+    implementation project(':util:ms:server')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.ag.ui.core

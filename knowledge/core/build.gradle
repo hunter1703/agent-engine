@@ -10,7 +10,7 @@ dependencies {
     implementation project(':util:agents')
     implementation project(':util:mongodb')
     implementation project(':util:vectordb')
-    implementation project(':util:ms')
+    implementation project(':util:ms:server')
     implementation project(':catalog:api')
     implementation project(':connectors:api')
     implementation project(':agent:infra')

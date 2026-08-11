@@ -12,7 +12,7 @@ dependencies {
     implementation project(':util:common')
     implementation project(':util:scripts')
     implementation project(':util:agents')
-    implementation project(':util:ms')
+    implementation project(':util:ms:server')
     implementation project(':util:mongodb')
 
     implementation platform(libs.langchain4j.bom)

@@ -14,7 +14,7 @@ dependencies {
     implementation project(':util:pekko')
     implementation project(':util:mongodb')
     implementation project(':util:agents')
-    implementation project(':util:ms')
+    implementation project(':util:ms:server')
     implementation project(':connectors:api')
     implementation project(':util:cloudstorage')
 
