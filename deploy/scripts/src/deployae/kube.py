@@ -85,44 +85,6 @@ def service_exists(namespace: str, name: str) -> bool:
     return result.returncode == 0
 
 
-def service_port(namespace: str, service_name: str, port_name: str, fallback: int) -> int:
-    result = subprocess.run(
-        [
-            "kubectl",
-            "get",
-            "svc",
-            service_name,
-            "--namespace",
-            namespace,
-            "-o",
-            f"jsonpath={{.spec.ports[?(@.name=='{port_name}')].port}}",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    value = result.stdout.strip()
-    return int(value) if value else fallback
-
-
-def statefulset_replicas(namespace: str, name: str, fallback: int) -> int:
-    result = subprocess.run(
-        [
-            "kubectl",
-            "get",
-            "statefulset",
-            name,
-            "--namespace",
-            namespace,
-            "-o",
-            "jsonpath={.spec.replicas}",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    value = result.stdout.strip()
-    return int(value) if value else fallback
-
-
 def rollout_status(namespace: str, kind: str, name: str, timeout: str) -> None:
     _run(["rollout", "status", f"{kind}/{name}", "--namespace", namespace, "--timeout", timeout])
 

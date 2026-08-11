@@ -93,19 +93,6 @@ def lint(chart: Chart, ctx: DeployContext) -> None:
     _run(args)
 
 
-def template(chart: Chart, ctx: DeployContext) -> str:
-    release_name = chart.release_name(chart.effective_tier(ctx.tier, ctx.environment))
-    args = [
-        "template",
-        release_name,
-        str(chart.path),
-        "--namespace",
-        chart.namespace(ctx.namespace),
-    ]
-    args += value_flags(chart, ctx)
-    return _output(args)
-
-
 def upgrade_install(
     chart: Chart,
     ctx: DeployContext,
@@ -134,7 +121,7 @@ def upgrade_install(
             timeout,
         ]
         if atomic:
-            args.append("--atomic")
+            args.append("--rollback-on-failure")
 
     args += value_flags(chart, ctx)
     for set_arg in extra_set or []:

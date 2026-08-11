@@ -29,6 +29,7 @@ deploy/connections.json
 
 # Python virtual environment
 .venv/
+uv.lock
 
 # Helm downloaded dependency tarballs and lock files (reproducible via helm dependency update)
 deploy/k8s/*/charts/

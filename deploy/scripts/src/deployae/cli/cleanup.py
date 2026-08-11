@@ -1,26 +1,21 @@
 """`deployae cleanup` — removes Helm releases (and optionally PVCs/namespaces) for one or
-more charts."""
+more charts. Uninstalls run in parallel (they're independent releases); PVC and
+namespace deletion each depend on the uninstall(s) for their own namespace finishing
+first."""
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 
-from deployae import helm, kube
 from deployae.charts import ALL_CHART_NAMES, ALL_CHARTS, Chart, resolve_charts
-
-# App charts (which depend on global-properties and the infra charts) come out first,
-# shared/infra charts last.
-_REMOVAL_ORDER = (
-    "rest",
-    "catalog",
-    "agent",
-    "knowledge",
-    "connectors",
-    "global-properties",
-    "mongodb",
-    "postgres",
-    "localstack",
-    "qdrant",
+from deployae.stages import (
+    DeleteNamespaceStage,
+    DeletePvcsStage,
+    RemoveLocalstackResourcesStage,
+    Stage,
+    UninstallChartStage,
+    run_graph,
 )
 
 
@@ -49,32 +44,80 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
 
 def run(args: argparse.Namespace) -> None:
     charts = resolve_charts(args.charts) if args.charts else list(ALL_CHARTS)
-    selected = {chart.name for chart in charts}
+    asyncio.run(
+        cleanup_charts(
+            charts,
+            tier=args.tier,
+            environment=args.environment,
+            namespace_override=args.namespace,
+            delete_namespace=args.delete_namespace,
+            keep_volumes=args.keep_volumes,
+        )
+    )
 
-    namespaces: set[str] = set()
-    for name in _REMOVAL_ORDER:
-        if name not in selected:
-            continue
-        chart = Chart(name)
-        namespace = chart.namespace(args.namespace)
-        namespaces.add(namespace)
-        if helm.uninstall(chart, args.tier, args.environment, namespace):
-            print(f"Removed {name} from namespace {namespace}")
 
-    print(f"Removed selected releases from namespaces: {', '.join(sorted(namespaces))}")
+async def cleanup_charts(
+    charts: list[Chart],
+    *,
+    tier: str | None,
+    environment: str | None,
+    namespace_override: str | None,
+    delete_namespace: bool,
+    keep_volumes: bool,
+) -> None:
+    namespace_by_chart = {chart.name: chart.namespace(namespace_override) for chart in charts}
+    namespaces = sorted(set(namespace_by_chart.values()))
 
-    if "localstack" in selected:
-        localstack_ns = Chart("localstack").namespace(args.namespace)
-        kube.delete_by_label(localstack_ns, "app.kubernetes.io/name=localstack")
-        print(f"Removed localstack resources from namespace {localstack_ns}")
+    uninstall_stages = [
+        UninstallChartStage(
+            name=f"uninstall-{chart.name}",
+            chart=chart,
+            tier=tier,
+            environment=environment,
+            namespace=namespace_by_chart[chart.name],
+        )
+        for chart in charts
+    ]
+    uninstalls_by_namespace: dict[str, list[UninstallChartStage]] = {
+        namespace: [] for namespace in namespaces
+    }
+    for stage in uninstall_stages:
+        uninstalls_by_namespace[namespace_by_chart[stage.chart.name]].append(stage)
 
-    if not args.keep_volumes:
-        print("Deleting PVCs (data volumes)...")
+    stages: list[Stage] = list(uninstall_stages)
+
+    localstack_uninstall = next((s for s in uninstall_stages if s.chart.name == "localstack"), None)
+    if localstack_uninstall:
+        stages.append(
+            RemoveLocalstackResourcesStage(
+                name="remove-localstack-resources",
+                depends_on=(localstack_uninstall,),
+                namespace=namespace_by_chart["localstack"],
+            )
+        )
+
+    pvc_stage_by_namespace: dict[str, DeletePvcsStage] = {}
+    if not keep_volumes:
         for namespace in namespaces:
-            kube.delete_pvcs(namespace)
-        print(f"Deleted all PVCs from namespaces: {', '.join(sorted(namespaces))}")
+            stage = DeletePvcsStage(
+                name=f"delete-pvcs-{namespace}",
+                depends_on=tuple(uninstalls_by_namespace[namespace]),
+                namespace=namespace,
+            )
+            pvc_stage_by_namespace[namespace] = stage
+            stages.append(stage)
 
-    if args.delete_namespace:
+    if delete_namespace:
         for namespace in namespaces:
-            kube.delete_namespace(namespace)
-        print(f"Deleted namespaces: {', '.join(sorted(namespaces))}")
+            depends_on = (
+                (pvc_stage_by_namespace[namespace],)
+                if namespace in pvc_stage_by_namespace
+                else tuple(uninstalls_by_namespace[namespace])
+            )
+            stages.append(
+                DeleteNamespaceStage(
+                    name=f"delete-namespace-{namespace}", depends_on=depends_on, namespace=namespace
+                )
+            )
+
+    await run_graph(stages)

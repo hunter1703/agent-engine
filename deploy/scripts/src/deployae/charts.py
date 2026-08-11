@@ -9,24 +9,49 @@ from pathlib import Path
 
 from deployae.values import load_yaml, parent_chart_name
 
-# When running from source:
-#   deploy/scripts/src/deployae/charts.py
-#   parents[0]=deployae/ parents[1]=src/ parents[2]=scripts/ parents[3]=deploy/ parents[4]=repo root
-#
-# When installed as a uv tool, __file__ lands in site-packages and the parent-counting
-# trick breaks. Set DEPLOYAE_DEPLOY_DIR (and optionally DEPLOYAE_REPO_ROOT) to point at
-# the actual repo's deploy/ directory — or just run from the deploy/scripts source tree.
-DEPLOY_DIR = (
-    Path(os.environ["DEPLOYAE_DEPLOY_DIR"])
-    if "DEPLOYAE_DEPLOY_DIR" in os.environ
-    else Path(__file__).resolve().parents[3]
-)
+
+def _find_deploy_dir() -> Path:
+    """Locates this checkout's deploy/ directory, checked in order:
+
+    1. DEPLOYAE_DEPLOY_DIR, if set — an explicit escape hatch, always wins.
+    2. Walk up from the current working directory looking for a deploy/k8s
+       directory, the same way `git`/`npm` locate a project root by walking up
+       looking for .git/package.json. This is what makes `deployae` work when
+       installed globally via `uv tool install` and invoked from anywhere inside
+       the repo — __file__ then lives in an isolated site-packages tree that has
+       nothing to do with any particular checkout, so it can't be used to find one.
+    3. The parent-counting trick, for the one case cwd-walking can't cover: running
+       straight from the deploy/scripts source tree (e.g. `uv run`) from a working
+       directory outside the repo entirely.
+    """
+    if "DEPLOYAE_DEPLOY_DIR" in os.environ:
+        return Path(os.environ["DEPLOYAE_DEPLOY_DIR"]).resolve()
+
+    for candidate in (Path.cwd(), *Path.cwd().resolve().parents):
+        deploy_dir = candidate / "deploy"
+        if (deploy_dir / "k8s").is_dir():
+            return deploy_dir
+
+    # deploy/scripts/src/deployae/charts.py
+    #   parents[0]=deployae/ parents[1]=src/ parents[2]=scripts/ parents[3]=deploy/
+    from_source = Path(__file__).resolve().parents[3]
+    if (from_source / "k8s").is_dir():
+        return from_source
+
+    raise RuntimeError(
+        "Could not locate the deploy/ directory. Run deployae from inside the "
+        "agent-engine repo, or set DEPLOYAE_DEPLOY_DIR explicitly."
+    )
+
+
+DEPLOY_DIR = _find_deploy_dir()
 REPO_ROOT = (
     Path(os.environ["DEPLOYAE_REPO_ROOT"])
     if "DEPLOYAE_REPO_ROOT" in os.environ
     else DEPLOY_DIR.parent
 )
 K8S_DIR = DEPLOY_DIR / "k8s"
+CONFIGS_DIR = DEPLOY_DIR / "configs"
 
 APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors")
 INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
@@ -183,3 +208,10 @@ def resolve_charts(requested: list[str]) -> list[Chart]:
     for name in requested:
         seen.setdefault(name, CHARTS_BY_NAME[name])
     return list(seen.values())
+
+
+def env_config_dir(environment: str, subdir: str) -> Path:
+    """Path to one environment's seed-data directory, e.g. env_config_dir("prod", "infra")
+    -> deploy/configs/env/prod/infra. Seed data is inserted as-is, one file per config
+    type — no base/overlay merge, since each environment has exactly one copy."""
+    return CONFIGS_DIR / "env" / environment / subdir

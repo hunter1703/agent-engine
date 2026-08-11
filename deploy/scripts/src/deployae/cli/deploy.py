@@ -1,11 +1,7 @@
-"""`deployae deploy` — deploys the full stack as a dependency graph of concurrent stages
-(build images, infra services, config seeding, app services), rather than a flat list.
-
-Each stage is a coroutine; a stage's dependencies are `asyncio.Event`s it awaits before
-starting, so downstream stages start the instant their prerequisites are actually ready —
-no polling. One stage failing sets a shared abort flag: stages already running finish
-(there's no value in killing an in-flight `helm upgrade`), but anything still waiting on
-a dependency unblocks immediately and skips its own action.
+"""`deployae deploy` — deploys the full stack as a dependency graph of concurrent
+stages: build images, infra services, config seeding, app services. Every stage type is
+one of the classes in `deployae.stages`; this module's only job is to wire up which
+stage depends on which and hand the resulting graph to `run_graph()`.
 """
 
 from __future__ import annotations
@@ -15,56 +11,78 @@ import asyncio
 import signal
 import subprocess
 import time
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, replace
+from dataclasses import replace
+from pathlib import Path
 
 from deployae import helm, kube, output
 from deployae.charts import REPO_ROOT, Chart
-from deployae.cli.build import build_images
-from deployae.cli.common import add_deploy_flags, build_context
-from deployae.cli.init import init_postgres_schema, init_qdrant_collection
-from deployae.seeding import catalog as catalog_seeding
-from deployae.seeding import infra as infra_seeding
+from deployae.stages import (
+    BuildDockerImageStage,
+    BuildGradleStage,
+    DeployChartStage,
+    EnsureIngressControllerStage,
+    EnsureLocalstackBucketsStage,
+    EnsureNamespaceStage,
+    InitPostgresSchemaStage,
+    InitQdrantCollectionStage,
+    SeedInfraConfigStage,
+    SeedRestCatalogStage,
+    Stage,
+    run_graph,
+)
 
 APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors")
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
+ENV_SECRET_CHARTS = ("connectors", "agent", "knowledge")
 DEFAULT_LOCAL_PORT = 8080
 
 
-@dataclass
-class Stage:
-    name: str
-    depends_on: tuple[str, ...]
-    action: Callable[[], Awaitable[None]]
-
-
-async def run_stages(stages: list[Stage]) -> None:
-    events = {stage.name: asyncio.Event() for stage in stages}
-    abort = asyncio.Event()
-    errors: list[tuple[str, BaseException]] = []
-
-    async def run_one(stage: Stage) -> None:
-        try:
-            for dep in stage.depends_on:
-                await events[dep].wait()
-            if not abort.is_set():
-                await stage.action()
-        except Exception as error:
-            errors.append((stage.name, error))
-            abort.set()
-        finally:
-            events[stage.name].set()
-
-    await asyncio.gather(*(run_one(stage) for stage in stages))
-
-    if errors:
-        for name, error in errors:
-            output.error(f"{name}: {error}")
-        raise SystemExit(1)
+def _default_image_tag() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=REPO_ROOT
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except FileNotFoundError:
+        pass
+    return "dev"
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    add_deploy_flags(parser)
+    parser.add_argument(
+        "-t",
+        "--tier",
+        help="Tier overlay under k8s/<chart>/tiers (required for values a chart marks `required`)",
+    )
+    parser.add_argument(
+        "-e",
+        "--environment",
+        help="Environment: selects global-properties' own overlay, and tells app charts "
+        "which global-properties ConfigMap to mount",
+    )
+    parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
+    parser.add_argument(
+        "-f",
+        "--values",
+        action="append",
+        default=[],
+        dest="values_files",
+        type=Path,
+        help="Additional Helm values file (repeatable)",
+    )
+    parser.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        dest="set_arguments",
+        help="Additional Helm --set override (repeatable)",
+    )
+    parser.add_argument(
+        "--image-tag",
+        default=_default_image_tag(),
+        help="Override the app image tag for app charts",
+    )
     parser.add_argument(
         "--no-atomic", action="store_true", help="Disable atomic rollback on Helm failure"
     )
@@ -82,8 +100,19 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--local-port", type=int, default=DEFAULT_LOCAL_PORT)
 
 
+def _build_context(args: argparse.Namespace) -> helm.DeployContext:
+    return helm.DeployContext(
+        tier=args.tier,
+        environment=args.environment,
+        namespace=args.namespace,
+        extra_values_files=args.values_files,
+        set_arguments=args.set_arguments,
+        image_tag=args.image_tag,
+    )
+
+
 def run(args: argparse.Namespace) -> None:
-    ctx = build_context(args)
+    ctx = _build_context(args)
     asyncio.run(
         _deploy(
             ctx,
@@ -109,10 +138,10 @@ async def _deploy(
     interrupted = asyncio.Event()
     _install_shutdown_handler(interrupted, ctx)
 
-    stages = _build_stages(
+    stages = build_stages(
         ctx, atomic=atomic, skip_infra=skip_infra, dry_run=dry_run, timeout=timeout
     )
-    deploy_task = asyncio.ensure_future(run_stages(stages))
+    deploy_task = asyncio.ensure_future(run_graph(stages))
     await asyncio.wait(
         {deploy_task, asyncio.ensure_future(interrupted.wait())},
         return_when=asyncio.FIRST_COMPLETED,
@@ -120,6 +149,14 @@ async def _deploy(
     if interrupted.is_set():
         return
     await deploy_task
+
+    if dry_run:
+        # Infra chart stages are disabled under dry-run (their `.rendered` stays None),
+        # so this naturally prints only the app charts that were actually rendered.
+        for stage in stages:
+            if isinstance(stage, DeployChartStage) and stage.rendered is not None:
+                print(stage.header())
+                print(stage.rendered)
 
     output.phase("Deployment complete — application is ready")
     if ctx.tier == "local" and not dry_run:
@@ -152,276 +189,177 @@ async def _local_port_forward(namespace: str, local_port: int) -> None:
         await asyncio.sleep(2)
 
 
-def _build_stages(
+def _namespace_stages_for(
+    charts: list[Chart], ctx: helm.DeployContext
+) -> dict[str, EnsureNamespaceStage]:
+    """One EnsureNamespaceStage per unique namespace the given charts deploy into."""
+    return {
+        namespace: EnsureNamespaceStage(name=f"ensure-namespace-{namespace}", namespace=namespace)
+        for namespace in {chart.namespace(ctx.namespace) for chart in charts}
+    }
+
+
+def _chart_prerequisites(
+    chart: Chart,
+    ctx: helm.DeployContext,
+    namespace_stages: dict[str, EnsureNamespaceStage],
+    ingress_stage: EnsureIngressControllerStage,
+) -> tuple[Stage, ...]:
+    """The setup stages one chart's DeployChartStage should depend on: its namespace,
+    plus the ingress controller if this is `rest`."""
+    prerequisites: tuple[Stage, ...] = (namespace_stages[chart.namespace(ctx.namespace)],)
+    if chart.name == "rest":
+        prerequisites = (*prerequisites, ingress_stage)
+    return prerequisites
+
+
+def build_stages(
     ctx: helm.DeployContext, *, atomic: bool, skip_infra: bool, dry_run: bool, timeout: str
 ) -> list[Stage]:
-    stages: list[Stage] = [Stage("builds-done", (), _build_action(ctx, dry_run))]
+    """Builds the full stage graph.
 
-    for name in INFRA_COMPONENTS:
-        stages.append(
-            Stage(
-                f"{name}-ready",
-                (),
-                _infra_deploy_action(name, ctx, atomic, timeout, skip_infra, dry_run),
-            )
-        )
+    The graph's *shape* never changes with skip_infra/dry_run — every stage always
+    exists, so dependency references are always valid objects. What changes is each
+    stage's `enabled` flag: a disabled stage's dependents still unblock the instant it
+    "completes" (run_graph treats a disabled stage as an immediate no-op), so turning a
+    stage off never stalls anything downstream.
+    """
+    all_charts = [Chart(name) for name in (*INFRA_COMPONENTS, "global-properties", *APP_COMPONENTS)]
+    namespace_stages = _namespace_stages_for(all_charts, ctx)
+    ingress_stage = EnsureIngressControllerStage(name="ensure-ingress-controller")
+    stages: list[Stage] = [*namespace_stages.values(), ingress_stage]
 
-    stages.append(
-        Stage("infra-seeded", ("mongodb-ready",), _seed_infra_action(ctx, skip_infra, dry_run))
+    # --- Build: one gradle build feeding one docker-image stage per component ---
+    gradle_stage = BuildGradleStage(
+        name="build-gradle", components=APP_COMPONENTS, enabled=not dry_run
     )
-    stages.append(
-        Stage(
-            "postgres-schema-ready",
-            ("postgres-ready",),
-            _init_postgres_action(ctx, skip_infra, dry_run),
+    stages.append(gradle_stage)
+    image_stage_by_component = {
+        component: BuildDockerImageStage(
+            name=f"build-image-{component}",
+            depends_on=(gradle_stage,),
+            component=component,
+            tag=ctx.image_tag or "dev",
+            enabled=not dry_run,
         )
-    )
-    stages.append(
-        Stage(
-            "qdrant-collections-ready",
-            ("qdrant-ready",),
-            _init_qdrant_action(ctx, skip_infra, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "localstack-buckets-ready",
-            ("localstack-ready",),
-            _localstack_buckets_action(ctx, skip_infra, dry_run),
-        )
-    )
+        for component in APP_COMPONENTS
+    }
+    stages.extend(image_stage_by_component.values())
 
-    stages.append(
-        Stage(
-            "global-properties-ready",
-            (),
-            _app_deploy_action("global-properties", ctx, atomic, timeout, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "catalog-ready",
-            ("global-properties-ready", "builds-done"),
-            _app_deploy_action("catalog", ctx, atomic, timeout, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "rest-ready",
-            ("global-properties-ready", "builds-done"),
-            _app_deploy_action("rest", ctx, atomic, timeout, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "knowledge-ready",
-            ("global-properties-ready", "builds-done", "qdrant-collections-ready"),
-            _app_deploy_action("knowledge", ctx, atomic, timeout, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "connectors-ready",
-            ("global-properties-ready", "builds-done"),
-            _app_deploy_action("connectors", ctx, atomic, timeout, dry_run),
-        )
-    )
-    stages.append(
-        Stage(
-            "agent-ready",
-            ("global-properties-ready", "catalog-ready", "localstack-buckets-ready", "builds-done"),
-            _app_deploy_action("agent", ctx, atomic, timeout, dry_run),
-        )
-    )
-
-    stages.append(
-        Stage(
-            "catalog-seeded",
-            ("mongodb-ready", "catalog-ready", "rest-ready"),
-            _seed_catalog_action(ctx, dry_run),
-        )
-    )
-    return stages
-
-
-def _build_action(ctx: helm.DeployContext, dry_run: bool) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if dry_run:
-            return
-        output.phase("Building Docker images")
-        await asyncio.to_thread(build_images, list(APP_COMPONENTS), tag=ctx.image_tag or "dev")
-
-    return action
-
-
-def _infra_deploy_action(
-    name: str, ctx: helm.DeployContext, atomic: bool, timeout: str, skip_infra: bool, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if skip_infra or dry_run:
-            return
-        chart = Chart(name)
-        output.phase(f"Deploying {name}")
-        await asyncio.to_thread(helm.ensure_dependencies, chart)
-        await asyncio.to_thread(helm.upgrade_install, chart, ctx, atomic=atomic, timeout=timeout)
-        kind = chart.workload_kind()
-        if kind:
-            await asyncio.to_thread(
-                kube.rollout_status,
-                chart.namespace(ctx.namespace),
-                kind,
-                chart.resource_name(ctx.tier),
-                timeout,
-            )
-
-    return action
-
-
-def _app_deploy_action(
-    name: str, ctx: helm.DeployContext, atomic: bool, timeout: str, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        chart = Chart(name)
-        output.phase(f"Deploying {name}")
-        await asyncio.to_thread(helm.ensure_dependencies, chart)
-        extra_set = None if dry_run else await asyncio.to_thread(_env_secret_set, chart, ctx)
-        rendered = await asyncio.to_thread(
-            helm.upgrade_install,
-            chart,
-            ctx,
-            dry_run=dry_run,
+    # --- Infra charts ---
+    infra_enabled = not (skip_infra or dry_run)
+    infra_deploy_by_name = {
+        name: DeployChartStage(
+            name=f"deploy-{name}",
+            depends_on=_chart_prerequisites(Chart(name), ctx, namespace_stages, ingress_stage),
+            chart=Chart(name),
+            ctx=ctx,
             atomic=atomic,
             timeout=timeout,
-            extra_set=extra_set,
+            enabled=infra_enabled,
         )
-        if dry_run:
-            print(rendered)
-            return
-        kind = chart.workload_kind()
-        if kind:
-            await asyncio.to_thread(
-                kube.rollout_status,
-                chart.namespace(ctx.namespace),
-                kind,
-                chart.resource_name(ctx.tier),
-                timeout,
-            )
+        for name in INFRA_COMPONENTS
+    }
+    stages.extend(infra_deploy_by_name.values())
 
-    return action
-
-
-def _env_secret_set(chart: Chart, ctx: helm.DeployContext) -> list[str] | None:
-    if chart.name not in ("connectors", "agent", "knowledge"):
-        return None
-    release_name = chart.release_name(chart.effective_tier(ctx.tier, ctx.environment))
-    secret_name = kube.ensure_env_secret(
-        release_name, chart.namespace(ctx.namespace), REPO_ROOT / ".env"
+    stages.append(
+        SeedInfraConfigStage(
+            name="seed-infra-config",
+            depends_on=(infra_deploy_by_name["mongodb"],),
+            tier=ctx.tier,
+            environment=ctx.environment,
+            namespace_override=ctx.namespace,
+            enabled=infra_enabled,
+        )
     )
-    return [f"app-base.secrets.envSecretName={secret_name}"] if secret_name else None
-
-
-def _seed_infra_action(
-    ctx: helm.DeployContext, skip_infra: bool, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if skip_infra or dry_run:
-            return
-        output.phase("Seeding infrastructure configuration")
-        await asyncio.to_thread(
-            infra_seeding.run, ctx.tier, ctx.namespace, infra_seeding.SeedInfraOptions()
+    stages.append(
+        InitPostgresSchemaStage(
+            name="init-postgres-schema",
+            depends_on=(infra_deploy_by_name["postgres"],),
+            namespace_override=ctx.namespace,
+            tier=ctx.tier,
+            enabled=infra_enabled,
         )
+    )
+    qdrant_collections_stage = InitQdrantCollectionStage(
+        name="init-qdrant-collections",
+        depends_on=(infra_deploy_by_name["qdrant"],),
+        namespace_override=ctx.namespace,
+        tier=ctx.tier,
+        enabled=infra_enabled,
+    )
+    stages.append(qdrant_collections_stage)
+    localstack_buckets_stage = EnsureLocalstackBucketsStage(
+        name="ensure-localstack-buckets",
+        depends_on=(infra_deploy_by_name["localstack"],),
+        namespace_override=ctx.namespace,
+        tier=ctx.tier,
+        enabled=infra_enabled,
+    )
+    stages.append(localstack_buckets_stage)
 
-    return action
-
-
-def _init_postgres_action(
-    ctx: helm.DeployContext, skip_infra: bool, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if skip_infra or dry_run:
-            return
-        output.phase("Initializing PostgreSQL schema")
-        await asyncio.to_thread(
-            init_postgres_schema,
-            ctx.namespace,
-            Chart("postgres").resource_name(ctx.tier),
+    # --- App charts ---
+    def deploy_app_chart(name: str, *extra_deps: Stage) -> DeployChartStage:
+        chart = Chart(name)
+        depends_on = (
+            *_chart_prerequisites(chart, ctx, namespace_stages, ingress_stage),
+            *extra_deps,
         )
-
-    return action
-
-
-def _init_qdrant_action(
-    ctx: helm.DeployContext, skip_infra: bool, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if skip_infra or dry_run:
-            return
-        output.phase("Initializing Qdrant collections")
-        await asyncio.to_thread(
-            init_qdrant_collection,
-            ctx.namespace,
-            Chart("qdrant").resource_name(ctx.tier),
+        stage = DeployChartStage(
+            name=f"deploy-{name}",
+            depends_on=depends_on,
+            chart=chart,
+            ctx=ctx,
+            atomic=atomic,
+            timeout=timeout,
+            dry_run=dry_run,
+            needs_env_secret=name in ENV_SECRET_CHARTS,
+            env_file=REPO_ROOT / ".env",
         )
+        stages.append(stage)
+        return stage
 
-    return action
+    global_properties_stage = deploy_app_chart("global-properties")
+    catalog_stage = deploy_app_chart(
+        "catalog", global_properties_stage, image_stage_by_component["catalog"]
+    )
+    rest_stage = deploy_app_chart("rest", global_properties_stage, image_stage_by_component["rest"])
+    deploy_app_chart(
+        "knowledge",
+        global_properties_stage,
+        image_stage_by_component["knowledge"],
+        qdrant_collections_stage,
+    )
+    deploy_app_chart("connectors", global_properties_stage, image_stage_by_component["connectors"])
+    deploy_app_chart(
+        "agent",
+        global_properties_stage,
+        image_stage_by_component["agent"],
+        catalog_stage,
+        localstack_buckets_stage,
+    )
 
-
-def _localstack_buckets_action(
-    ctx: helm.DeployContext, skip_infra: bool, dry_run: bool
-) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if skip_infra or dry_run:
-            return
-        output.phase("Ensuring LocalStack S3 buckets")
-        await asyncio.to_thread(
-            _ensure_localstack_buckets, Chart("localstack").namespace(ctx.namespace)
+    # --- Catalog seeding: models, then agents ---
+    seed_models_stage = SeedRestCatalogStage(
+        name="seed-models",
+        depends_on=(infra_deploy_by_name["mongodb"], catalog_stage, rest_stage),
+        kind="models",
+        tier=ctx.tier,
+        environment=ctx.environment,
+        namespace_override=ctx.namespace,
+        enabled=not dry_run,
+    )
+    stages.append(seed_models_stage)
+    stages.append(
+        SeedRestCatalogStage(
+            name="seed-agents",
+            depends_on=(seed_models_stage,),
+            kind="agents",
+            tier=ctx.tier,
+            environment=ctx.environment,
+            namespace_override=ctx.namespace,
+            enabled=not dry_run,
         )
+    )
 
-    return action
-
-
-def _ensure_localstack_buckets(
-    namespace: str, buckets: tuple[str, ...] = ("agent-assets",)
-) -> None:
-    pod = subprocess.run(
-        [
-            "kubectl",
-            "get",
-            "pods",
-            "--namespace",
-            namespace,
-            "-l",
-            "app.kubernetes.io/name=localstack",
-            "-o",
-            "jsonpath={.items[0].metadata.name}",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-    for bucket in buckets:
-        subprocess.run(
-            [
-                "kubectl",
-                "exec",
-                "--namespace",
-                namespace,
-                pod,
-                "--",
-                "sh",
-                "-c",
-                f"awslocal s3api head-bucket --bucket '{bucket}' 2>/dev/null || awslocal s3 mb 's3://{bucket}'",
-            ],
-            check=True,
-        )
-        output.info(f"Bucket ready: {bucket}")
-
-
-def _seed_catalog_action(ctx: helm.DeployContext, dry_run: bool) -> Callable[[], Awaitable[None]]:
-    async def action() -> None:
-        if dry_run:
-            return
-        output.phase("Seeding application catalog")
-        await asyncio.to_thread(catalog_seeding.run, ctx.tier, ctx.namespace)
-
-    return action
+    return stages

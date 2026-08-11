@@ -7,20 +7,13 @@ import argparse
 import sys
 
 from deployae.charts import TierRequiredError
-from deployae.cli import apply, build, cleanup, deploy, init, lint, seed, status, template
+from deployae.cli import cleanup, deploy
 from deployae.helm import HelmError
 from deployae.kube import KubectlError
 
 _COMMANDS = {
-    "apply": apply,
-    "lint": lint,
-    "template": template,
     "cleanup": cleanup,
-    "status": status,
-    "build": build,
     "deploy": deploy,
-    "seed": seed,
-    "init": init,
 }
 
 
