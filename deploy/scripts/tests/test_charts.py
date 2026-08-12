@@ -27,7 +27,7 @@ def test_app_chart_release_name_requires_tier() -> None:
 
 
 def test_app_chart_release_name() -> None:
-    assert Chart("catalog").release_name("prod") == "agent-engine-catalog-prod"
+    assert Chart("catalog").release_name("local") == "agent-engine-catalog-local"
 
 
 def test_global_properties_release_name_requires_environment() -> None:
@@ -36,11 +36,11 @@ def test_global_properties_release_name_requires_environment() -> None:
 
 
 def test_global_properties_release_name_keyed_by_environment() -> None:
-    assert Chart("global-properties").release_name("prod") == "agent-engine-global-properties-prod"
+    assert Chart("global-properties").release_name("local") == "agent-engine-global-properties-local"
 
 
 def test_infra_chart_release_name_includes_tier() -> None:
-    assert Chart("mongodb").release_name("prod") == "agent-engine-mongodb-prod"
+    assert Chart("mongodb").release_name("local") == "agent-engine-mongodb-local"
 
 
 def test_infra_chart_release_name_without_tier() -> None:
@@ -48,11 +48,11 @@ def test_infra_chart_release_name_without_tier() -> None:
 
 
 def test_effective_tier_routes_environment_for_global_properties() -> None:
-    assert Chart("global-properties").effective_tier("prod", "staging") == "staging"
+    assert Chart("global-properties").effective_tier("local", "staging") == "staging"
 
 
 def test_effective_tier_routes_tier_for_everyone_else() -> None:
-    assert Chart("catalog").effective_tier("prod", "staging") == "prod"
+    assert Chart("catalog").effective_tier("local", "staging") == "local"
 
 
 def test_namespace_set_is_none_for_app_charts() -> None:
@@ -64,15 +64,15 @@ def test_namespace_set_for_infra_charts() -> None:
 
 
 def test_env_set_for_app_charts() -> None:
-    assert Chart("catalog").env_set("prod") == "global.env=prod"
+    assert Chart("catalog").env_set("local") == "global.env=local"
 
 
 def test_env_set_for_global_properties() -> None:
-    assert Chart("global-properties").env_set("prod") == "env=prod"
+    assert Chart("global-properties").env_set("local") == "env=local"
 
 
 def test_env_set_for_infra_charts_is_none() -> None:
-    assert Chart("mongodb").env_set("prod") is None
+    assert Chart("mongodb").env_set("local") is None
 
 
 def test_env_set_without_environment_is_none() -> None:
@@ -80,13 +80,13 @@ def test_env_set_without_environment_is_none() -> None:
 
 
 def test_values_overlay_file_uses_envs_dir_for_global_properties() -> None:
-    overlay = Chart("global-properties").values_overlay_file("prod")
+    overlay = Chart("global-properties").values_overlay_file("local")
     assert overlay is not None
     assert overlay.parent.parent.name == "envs"
 
 
 def test_values_overlay_file_uses_tiers_dir_for_others() -> None:
-    overlay = Chart("mongodb").values_overlay_file("prod")
+    overlay = Chart("mongodb").values_overlay_file("local")
     assert overlay is not None
     assert overlay.parent.parent.name == "tiers"
 
@@ -100,11 +100,11 @@ def test_values_overlay_file_nonexistent_tier_returns_none() -> None:
 
 
 def test_resource_name_app_chart() -> None:
-    assert Chart("catalog").resource_name("prod") == "catalog-prod"
+    assert Chart("catalog").resource_name("local") == "catalog-local"
 
 
 def test_resource_name_infra_chart_includes_tier() -> None:
-    assert Chart("mongodb").resource_name("prod") == "mongodb-prod"
+    assert Chart("mongodb").resource_name("local") == "mongodb-local"
 
 
 def test_resource_name_infra_chart_without_tier() -> None:

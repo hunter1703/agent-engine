@@ -56,20 +56,53 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         Page page = query.getPage();
         page = page == null ? new Page(0, DEFAULT_MAX_RESULTS) : page;
         final int maxResults = page.getLimit();
-        final float[] queryVector = extractQueryVector(query.getFilter());
-        final String vectorField = extractVectorField(query.getFilter());
-        final double minScore = extractMinScore(query.getFilter());
         final QdrantHttpClient.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
-        final QdrantHttpClient.SearchRequest request = new QdrantHttpClient.SearchRequest(
-                toFloatList(queryVector),
-                StringUtils.isNotBlank(vectorField) ? vectorField : null,
-                maxResults,
-                (float) minScore,
-                qdrantFilter,
-                true);
+        final List<Filter> semanticFilters = extractSemanticFilters(query.getFilter());
+        if (semanticFilters.isEmpty()) {
+            return PaginatedResult.create(List.of(), page, null);
+        }
 
-        final QdrantHttpClient.SearchResponse response = client().search(collection, request);
+        final QdrantHttpClient.QueryRequest request;
+
+        // If there is only one vector, we can execute a simple, direct QueryRequest.
+        // If there are multiple vectors, Qdrant requires each vector search to be wrapped
+        // in a 'prefetch' sub-query so they can be executed in parallel and merged via RRF.
+        if (semanticFilters.size() == 1) {
+            final Filter semantic = semanticFilters.getFirst();
+            final float[] queryVector = (float[]) semantic.getValues().getFirst();
+            final String vectorField = semantic.getField();
+            final double minScore = extractMinScore(semantic);
+
+            request = new QdrantHttpClient.QueryRequest(
+                    null,
+                    toFloatList(queryVector),
+                    StringUtils.isNotBlank(vectorField) ? vectorField : null,
+                    qdrantFilter,
+                    maxResults,
+                    (float) minScore,
+                    true);
+        } else {
+            final List<QdrantHttpClient.PrefetchQuery> prefetch = new ArrayList<>();
+            for (final Filter semantic : semanticFilters) {
+                final float[] queryVector = (float[]) semantic.getValues().getFirst();
+                final String vectorField = semantic.getField();
+                prefetch.add(new QdrantHttpClient.PrefetchQuery(
+                        toFloatList(queryVector),
+                        StringUtils.isNotBlank(vectorField) ? vectorField : null,
+                        maxResults));
+            }
+            request = new QdrantHttpClient.QueryRequest(
+                    prefetch,
+                    Map.of("fusion", "rrf"),
+                    null,
+                    qdrantFilter,
+                    maxResults,
+                    null, // scoreThreshold applies globally if present, but tricky with RRF. Leave null.
+                    true);
+        }
+
+        final QdrantHttpClient.QueryResponse response = client().query(collection, request);
         final List<T> results =
                 response.result().stream().map(p -> fromPayload(p.payload())).toList();
         return PaginatedResult.create(results, page, null);
@@ -261,37 +294,22 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         return null;
     }
 
-    private static String extractVectorField(final Filter filter) {
-        final Filter semantic = findSemanticFilter(filter);
-        return semantic == null ? null : semantic.getField();
-    }
-
-    private static float[] extractQueryVector(final Filter filter) {
-        final Filter semantic = findSemanticFilter(filter);
-        if (semantic == null
-                || semantic.getValues() == null
-                || semantic.getValues().isEmpty()) {
-            throw new IllegalArgumentException("SEMANTIC_SEARCH filter must have a queryVector value");
+    private static List<Filter> extractSemanticFilters(final Filter filter) {
+        final List<Filter> semantics = new ArrayList<>();
+        if (filter == null) return semantics;
+        if (filter.getOp() == Operator.SEMANTIC_SEARCH) {
+            semantics.add(filter);
+        } else if (filter.getOp().isCompound() && filter.getValues() != null) {
+            for (final Object child : filter.getValues()) {
+                if (child instanceof Filter childFilter) {
+                    semantics.addAll(extractSemanticFilters(childFilter));
+                }
+            }
         }
-        return (float[]) semantic.getValues().getFirst();
+        return semantics;
     }
 
-    private static Filter findSemanticFilter(final Filter filter) {
-        if (filter == null) return null;
-        if (filter.getOp() == Operator.SEMANTIC_SEARCH) return filter;
-        if (filter.getOp() == Operator.AND && filter.getValues() != null) {
-            return filter.getValues().stream()
-                    .filter(Filter.class::isInstance)
-                    .map(Filter.class::cast)
-                    .filter(f -> f.getOp() == Operator.SEMANTIC_SEARCH)
-                    .findFirst()
-                    .orElse(null);
-        }
-        return null;
-    }
-
-    private static double extractMinScore(final Filter filter) {
-        final Filter semantic = findSemanticFilter(filter);
+    private static double extractMinScore(final Filter semantic) {
         if (semantic == null || semantic.getAdditional() == null) return 0.0;
         final Object val = semantic.getAdditional().get("minScore");
         return val instanceof Number n ? n.doubleValue() : 0.0;

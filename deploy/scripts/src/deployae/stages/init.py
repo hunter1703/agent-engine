@@ -130,7 +130,7 @@ class EnsureLocalstackBucketsStage(_BootstrapStage):
         await asyncio.to_thread(self._ensure)
 
     def _ensure(self) -> None:
-        # app.kubernetes.io/instance is the tier-suffixed label (e.g. "localstack-prod");
+        # app.kubernetes.io/instance is the tier-suffixed label (e.g. "localstack-local");
         # app.kubernetes.io/name stays the plain untiered chart name regardless of tier.
         namespace, instance = self._resolve_target("localstack", self.namespace_override, self.tier)
         pod = subprocess.run(

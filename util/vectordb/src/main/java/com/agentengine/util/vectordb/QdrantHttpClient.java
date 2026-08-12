@@ -58,6 +58,11 @@ public final class QdrantHttpClient {
         return post(url, request, RetrieveResponse.class);
     }
 
+    public QueryResponse query(final String collection, final QueryRequest request) {
+        final String url = String.format("%s/collections/%s/points/query", baseUrl, collection);
+        return post(url, request, QueryResponse.class);
+    }
+
     public DeleteResponse delete(final String collection, final DeleteRequest request) {
         final String url = String.format("%s/collections/%s/points/delete", baseUrl, collection);
 
@@ -154,6 +159,17 @@ public final class QdrantHttpClient {
             Filter filter,
             Boolean withPayload) {}
 
+    public record QueryRequest(
+            List<PrefetchQuery> prefetch,
+            Object query,
+            String using,
+            Filter filter,
+            Integer limit,
+            Float scoreThreshold,
+            Boolean withPayload) {}
+
+    public record PrefetchQuery(List<Float> query, String using, Integer limit) {}
+
     public record RetrieveRequest(List<String> ids, Boolean withPayload) {}
 
     public record DeleteRequest(List<String> points, Filter filter) {}
@@ -178,6 +194,9 @@ public final class QdrantHttpClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SearchResponse(List<ScoredPoint> result) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record QueryResponse(List<ScoredPoint> result) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ScoredPoint(String id, Float score, Map<String, Object> payload) {}
