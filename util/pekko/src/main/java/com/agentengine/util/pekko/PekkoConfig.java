@@ -1,7 +1,6 @@
 package com.agentengine.util.pekko;
 
 import com.agentengine.util.mongodb.infra.InfraConfig;
-import java.util.List;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator(value = "com.agentengine.util.pekko.PekkoConfig")
@@ -10,17 +9,8 @@ public class PekkoConfig extends InfraConfig {
     public static final String CATEGORY = "PEKKO";
     public static final String CONFIG_ID = "default";
 
-    private List<String> seedNodes;
     private String clusterName;
     private int snapshotThreshold = 100;
-
-    public List<String> getSeedNodes() {
-        return seedNodes;
-    }
-
-    public void setSeedNodes(final List<String> seedNodes) {
-        this.seedNodes = seedNodes;
-    }
 
     public String getClusterName() {
         return clusterName;

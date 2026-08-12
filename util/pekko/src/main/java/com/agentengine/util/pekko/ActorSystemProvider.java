@@ -95,7 +95,6 @@ public class ActorSystemProvider {
 
     private Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
         final String hostname = EnvUtils.getHostname();
-        final List<String> seedNodes = config.getSeedNodes() == null ? List.of() : config.getSeedNodes();
         final String jdbcUrl = sqlConfig.getJdbcUrl();
         final String jdbcUser = sqlConfig.getJdbcUser();
         final String jdbcPassword = sqlConfig.getJdbcPassword();
@@ -115,7 +114,6 @@ public class ActorSystemProvider {
                 .withValue("pekko.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(hostname))
                 .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
                 .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
-                .withValue("pekko.cluster.seed-nodes", ConfigValueFactory.fromIterable(seedNodes))
                 .withValue(
                         "pekko.cluster.roles",
                         ConfigValueFactory.fromIterable(applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY)))
