@@ -1,5 +1,8 @@
 app-base:
   tier: local
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
   replicas: 1
   resources:
     requests:
@@ -13,9 +16,9 @@ app-base:
       quarkus.otel.service.name: agent-engine-rest
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"
-      quarkus.log.console.json: "true"
+      quarkus.grpc.server.use-separate-server: "false"
       # terminationGracePeriodSeconds (base default: 90) must exceed preStopSleepSeconds + this value.
-      quarkus.shutdown.timeout: 60S
+      quarkus.shutdown.timeout: 5S
 
       # CORS configuration for React frontend
       quarkus.http.cors.enabled: "true"

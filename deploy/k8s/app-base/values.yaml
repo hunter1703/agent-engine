@@ -1,8 +1,8 @@
 namespace: agent-engine
 revisionHistoryLimit: 3
 minReadySeconds: 20
+preStopSleepSeconds: 15
 terminationGracePeriodSeconds: 90
-
 pdb:
   enabled: false
 
