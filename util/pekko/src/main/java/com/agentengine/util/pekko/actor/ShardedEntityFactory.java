@@ -50,7 +50,7 @@ public abstract class ShardedEntityFactory<Command> implements ShardedEntityDefi
     @SuppressWarnings("unchecked")
     public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
         Entity<Command, ShardingEnvelope<Command>> entity = Entity.of(entityTypeKey, builder)
-                .withEntityProps(DispatcherSelector.fromConfig("actor-virtual-dispatcher"));
+                .withEntityProps(DispatcherSelector.fromConfig("pekko.actor.actor-virtual-dispatcher"));
         if (role != null) {
             entity = entity.withRole(role);
         }
