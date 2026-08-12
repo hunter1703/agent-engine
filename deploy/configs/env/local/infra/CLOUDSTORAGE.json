@@ -4,7 +4,7 @@
     "_t": "com.agentengine.util.cloudstorage.CloudStorageInfraConfig",
     "type": "CLOUDSTORAGE",
     "category": "CLOUDSTORAGE",
-    "endpointUrl": "http://localstack-prod.infra.svc.cluster.local:4566",
+    "endpointUrl": "http://localstack-local.infra.svc.cluster.local:4566",
     "region": "us-east-1",
     "accessKeyId": "test",
     "secretAccessKey": "test",

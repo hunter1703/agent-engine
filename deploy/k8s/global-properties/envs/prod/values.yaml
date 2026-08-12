@@ -1,4 +1,0 @@
-globalProperties:
-  infra.mongodb.uri: mongodb://mongodb-prod.infra.svc.cluster.local:27017/?authSource=admin
-  infra.mongodb.database: INFRA
-  app.mongodb.database: AGENT_ENGINE

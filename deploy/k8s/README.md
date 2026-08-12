@@ -3,7 +3,7 @@
 This directory now ships as an operator-friendly Helm layout with:
 
 - chart-per-component packaging
-- a single built-in production overlay under `k8s/environments/prod/`
+- a single built-in local overlay under `k8s/environments/local/`
 - versioned infra config payloads under `configs/infra/`
 - repeatable entrypoint scripts under `k8s/scripts/`
 - safer defaults for probes, security context, PDBs, rollout settings, and layered global/local application config
@@ -19,7 +19,7 @@ k8s/
   rest/                # REST gateway chart, optional ingress
   runtime/             # Runtime StatefulSet and headless service
   environments/
-    prod/              # The default and only built-in overlay
+    local/              # The default and only built-in overlay
   scripts/
     apply-charts.sh    # Internal Helm chart applier used by stage scripts
     deploy-infra.sh    # Stage 1: deploy MongoDB/PostgreSQL infra
@@ -37,7 +37,7 @@ k8s/
 
 ## Deployment Flow
 
-Default deployment uses the staged `prod` overlay flow:
+Default deployment uses the staged `local` overlay flow:
 
 ```bash
 ./k8s/scripts/deploy.sh
@@ -55,7 +55,7 @@ Use `--skip-build` when you want to deploy prebuilt or registry-hosted images.
 Alternative namespace:
 
 ```bash
-./k8s/scripts/deploy.sh -n agent-engine-prod
+./k8s/scripts/deploy.sh -n agent-engine-local
 ```
 
 Run individual stages directly when needed:
@@ -81,24 +81,24 @@ Validate rendered output before applying:
 Check current release state:
 
 ```bash
-./k8s/scripts/status.sh -n agent-engine-prod
+./k8s/scripts/status.sh -n agent-engine-local
 ```
 
 Remove the default application stack:
 
 ```bash
-./k8s/scripts/cleanup.sh -n agent-engine-prod
+./k8s/scripts/cleanup.sh -n agent-engine-local
 ```
 
 ## Environment Overlays
 
-The built-in production overlay is:
+The built-in local overlay is:
 
-- `k8s/environments/prod/infra.yaml`
-- `k8s/environments/prod/global-properties.yaml`
-- `k8s/environments/prod/runtime.yaml`
-- `k8s/environments/prod/core.yaml`
-- `k8s/environments/prod/rest.yaml`
+- `k8s/environments/local/infra.yaml`
+- `k8s/environments/local/global-properties.yaml`
+- `k8s/environments/local/runtime.yaml`
+- `k8s/environments/local/core.yaml`
+- `k8s/environments/local/rest.yaml`
 
 It assumes external MongoDB/PostgreSQL and disables public ingress until a real host/TLS override is supplied.
 
@@ -155,7 +155,7 @@ For Docker Desktop Kubernetes, local Docker images tagged as `agent-engine/runti
 
 ## Production Notes
 
-- The built-in overlay is production-oriented and deploys application workloads only by default.
+- The built-in overlay is local-oriented and deploys application workloads only by default.
 - Runtime, core, and REST charts support image pull secrets, topology spread, service accounts, pod labels/annotations, and extra env/config injection.
 - Each service mounts a single external `/config/application.properties` file from a ConfigMap and sets `QUARKUS_CONFIG_LOCATIONS=file:/config/application.properties`.
 - Shared static settings are mounted from `/config/global.properties`, while service-specific non-secret runtime config lives in `/config/application.properties`.
@@ -165,7 +165,7 @@ For Docker Desktop Kubernetes, local Docker images tagged as `agent-engine/runti
 
 ## Secret Strategy
 
-Default production behavior is external or pre-created credentials and endpoints.
+Default local behavior is external or pre-created credentials and endpoints.
 
 If you want local/dev in-cluster databases, explicitly deploy the `infra` chart.
 

@@ -1,4 +1,4 @@
-tier: prod
+tier: local
 persistence:
   size: 10Gi
 resources:

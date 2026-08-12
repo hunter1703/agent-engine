@@ -29,10 +29,6 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.initContainers }}
-      initContainers:
-        {{- toYaml .Values.initContainers | nindent 8 }}
-      {{- end }}
       containers:
         - name: {{ .Values.service.name }}
           image: {{ include "agent-engine.app-base.image" . | quote }}

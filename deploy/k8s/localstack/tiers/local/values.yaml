@@ -1,4 +1,4 @@
-tier: prod
+tier: local
 resources:
   requests:
     cpu: 250m

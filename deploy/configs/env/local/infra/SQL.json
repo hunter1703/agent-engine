@@ -4,7 +4,7 @@
     "_t": "com.agentengine.util.mongodb.infra.SQLInfraConfig",
     "type": "SQL_SERVER",
     "category": "SQL",
-    "jdbcUrl": "jdbc:postgresql://postgres-prod.infra.svc.cluster.local:5432/agent_engine_events",
+    "jdbcUrl": "jdbc:postgresql://postgres-local.infra.svc.cluster.local:5432/agent_engine_events",
     "jdbcUser": "postgres",
     "jdbcPassword": ""
   }

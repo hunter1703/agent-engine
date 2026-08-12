@@ -4,7 +4,7 @@
     "_t": "com.agentengine.util.vectordb.VectorDatabaseInfraConfig",
     "type": "VECTOR_SERVER",
     "category": "VECTOR",
-    "host": "qdrant-prod.infra.svc.cluster.local",
+    "host": "qdrant-local.infra.svc.cluster.local",
     "httpPort": 6333
   }
 ]

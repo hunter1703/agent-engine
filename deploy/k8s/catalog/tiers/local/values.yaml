@@ -1,5 +1,5 @@
 app-base:
-  tier: prod
+  tier: local
   replicas: 1
   pdb:
     enabled: false
@@ -12,7 +12,7 @@ app-base:
       memory: "750Mi"
   config:
     applicationProperties:
-      quarkus.otel.service.name: agent-engine-connectors
+      quarkus.otel.service.name: agent-engine-catalog
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"
       quarkus.log.console.json: "true"

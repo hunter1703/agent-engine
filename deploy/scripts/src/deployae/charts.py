@@ -211,7 +211,7 @@ def resolve_charts(requested: list[str]) -> list[Chart]:
 
 
 def env_config_dir(environment: str, subdir: str) -> Path:
-    """Path to one environment's seed-data directory, e.g. env_config_dir("prod", "infra")
-    -> deploy/configs/env/prod/infra. Seed data is inserted as-is, one file per config
+    """Path to one environment's seed-data directory, e.g. env_config_dir("local", "infra")
+    -> deploy/configs/env/local/infra. Seed data is inserted as-is, one file per config
     type — no base/overlay merge, since each environment has exactly one copy."""
     return CONFIGS_DIR / "env" / environment / subdir

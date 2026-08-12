@@ -1,23 +1,20 @@
 app-base:
-  tier: prod
-  replicas: 2
+  tier: local
+  replicas: 1
   pdb:
-    enabled: true
-    minAvailable: 1
+    enabled: false
   resources:
     requests:
-      cpu: "500m"
-      memory: "1.5Gi"
+      cpu: "250m"
+      memory: "750Mi"
     limits:
-      cpu: "500m"
-      memory: "1.5Gi"
+      cpu: "250m"
+      memory: "750Mi"
   config:
     applicationProperties:
-      pekko.cluster.roles: agent
-      quarkus.otel.service.name: agent-engine-agent
+      quarkus.otel.service.name: agent-engine-connectors
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"
       quarkus.log.console.json: "true"
-      agent-engine.session-actor.passivation.idle-timeout: PT1H
       # gRPC server configuration - increase message size limit to 100MB
       quarkus.grpc.server.max-inbound-message-size: "104857600"

@@ -5,7 +5,7 @@
     "type": "MICROSERVICE_SERVER",
     "category": "MICROSERVICE",
     "serverId": "catalog",
-    "host": "catalog-prod.agent-engine.svc.cluster.local",
+    "host": "catalog-local.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
@@ -14,7 +14,7 @@
     "type": "MICROSERVICE_SERVER",
     "category": "MICROSERVICE",
     "serverId": "agent",
-    "host": "agent-prod.agent-engine.svc.cluster.local",
+    "host": "agent-local.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
@@ -23,7 +23,7 @@
     "type": "MICROSERVICE_SERVER",
     "category": "MICROSERVICE",
     "serverId": "knowledge",
-    "host": "knowledge-prod.agent-engine.svc.cluster.local",
+    "host": "knowledge-local.agent-engine.svc.cluster.local",
     "port": 9000
   },
   {
@@ -32,7 +32,7 @@
     "type": "MICROSERVICE_SERVER",
     "category": "MICROSERVICE",
     "serverId": "connectors",
-    "host": "connectors-prod.agent-engine.svc.cluster.local",
+    "host": "connectors-local.agent-engine.svc.cluster.local",
     "port": 9000
   }
 ]
