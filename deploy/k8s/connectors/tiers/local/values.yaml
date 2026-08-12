@@ -1,7 +1,7 @@
 app-base:
   tier: local
-  minReadySeconds: 5
-  preStopSleepSeconds: 5
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
   terminationGracePeriodSeconds: 10
   replicas: 1
   resources:
