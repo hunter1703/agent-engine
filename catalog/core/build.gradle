@@ -16,6 +16,7 @@ dependencies {
     implementation libs.ag.ui.core
     implementation libs.quarkus.arc
     implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.logging.json
     implementation libs.quarkus.opentelemetry
     implementation libs.quarkus.smallrye.health
     implementation libs.slf4j.api

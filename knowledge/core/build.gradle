@@ -23,6 +23,7 @@ dependencies {
     implementation libs.quarkus.mongodb.client
     implementation libs.quarkus.arc
     implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.logging.json
     implementation libs.quarkus.opentelemetry
     implementation libs.quarkus.smallrye.health
 

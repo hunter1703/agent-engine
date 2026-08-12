@@ -54,7 +54,7 @@ public abstract class Tool extends BaseTool {
         this.toolDescriptor = toolDescriptor;
         this.executeMethod = getExecuteMethod();
         this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
-        LOG.info("descriptor : {}, declaration : {}", JsonUtils.toJson(toolDescriptor), JsonUtils.toJson(declaration));
+        LOG.debug("descriptor : {}, declaration : {}", JsonUtils.toJson(toolDescriptor), JsonUtils.toJson(declaration));
         this.parameterBindings = PARAMETER_BINDINGS_CACHE.computeIfAbsent(executeMethod, Tool::buildParameterBindings);
     }
 
