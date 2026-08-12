@@ -116,6 +116,8 @@ public class ActorSystemProvider {
                 .withValue("pekko.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
                 .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
                 .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
+                .withValue("pekko.management.http.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
+                .withValue("pekko.management.http.bind-hostname", ConfigValueFactory.fromAnyRef("0.0.0.0"))
                 .withValue(
                         "pekko.cluster.roles",
                         ConfigValueFactory.fromIterable(applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY)))

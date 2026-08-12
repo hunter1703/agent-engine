@@ -29,6 +29,10 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Values.service.name }}
           image: {{ include "agent-engine.app-base.image" . | quote }}
@@ -74,6 +78,8 @@ spec:
             - name: pekko
               containerPort: {{ .Values.service.pekkoPort }}
             {{- end }}
+            - name: management
+              containerPort: 8558
           {{- include "agent-engine.app-base.probes" . | nindent 10 }}
           resources:
             {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}
