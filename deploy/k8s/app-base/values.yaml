@@ -3,6 +3,9 @@ revisionHistoryLimit: 3
 minReadySeconds: 20
 terminationGracePeriodSeconds: 90
 
+pdb:
+  enabled: false
+
 tmpVolume:
   sizeLimit: 256Mi
 

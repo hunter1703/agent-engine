@@ -1,8 +1,6 @@
 app-base:
   tier: local
   replicas: 1
-  pdb:
-    enabled: false
   resources:
     requests:
       cpu: "250m"
