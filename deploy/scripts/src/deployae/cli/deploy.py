@@ -340,15 +340,12 @@ def build_stages(
         "knowledge",
         global_properties_stage,
         image_stage_by_component["knowledge"],
-        qdrant_collections_stage,
     )
     deploy_app_chart("connectors", global_properties_stage, image_stage_by_component["connectors"])
     deploy_app_chart(
         "agent",
         global_properties_stage,
         image_stage_by_component["agent"],
-        catalog_stage,
-        localstack_buckets_stage,
     )
 
     # --- Catalog seeding: models, then agents ---

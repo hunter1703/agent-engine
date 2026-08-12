@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from deployae.charts import ALL_CHART_NAMES, ALL_CHARTS, Chart, resolve_charts
+from deployae.charts import ALL_CHART_NAMES, APP_CHART_NAMES, CHARTS_BY_NAME, Chart
 from deployae.stages import (
     DeleteNamespaceStage,
     DeletePvcsStage,
@@ -20,38 +20,44 @@ from deployae.stages import (
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "charts",
-        nargs="*",
-        choices=list(ALL_CHART_NAMES),
-        default=[],
-        help="Charts to remove (default: every chart, including infra)",
-    )
-    parser.add_argument("-t", "--tier", help="Tier to remove for the five app charts")
-    parser.add_argument("-e", "--environment", help="Environment to remove for global-properties")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--app", action="store_true", help="Remove only app services")
+    group.add_argument("--app-infra", action="store_true", help="Remove app + infra services")
+    group.add_argument("--all", action="store_true", help="Remove everything including persistence (PVCs, Namespaces, Ingress)")
+
+    parser.add_argument("-t", "--tier", help="Tier to remove for the app/infra charts")
     parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
-    parser.add_argument(
-        "--delete-namespace",
-        action="store_true",
-        help="Delete every namespace touched by the selected charts, after removal",
-    )
-    parser.add_argument(
-        "--keep-volumes",
-        action="store_true",
-        help="Preserve PVCs (MongoDB and Postgres data volumes)",
-    )
 
 
 def run(args: argparse.Namespace) -> None:
-    charts = resolve_charts(args.charts) if args.charts else list(ALL_CHARTS)
+    if args.all:
+        print("Nuclear cleanup initiated: deleting namespaces agent-engine, infra, ingress-nginx...")
+        # For --all, we don't need to specify tier or run helm uninstalls individually,
+        # deleting the namespaces will cascade and delete everything in them (including PVCs and Helm releases).
+        asyncio.run(run_graph([
+            DeleteNamespaceStage(name="delete-ns-agent-engine", namespace="agent-engine"),
+            DeleteNamespaceStage(name="delete-ns-infra", namespace="infra"),
+            DeleteNamespaceStage(name="delete-ns-ingress", namespace="ingress-nginx"),
+        ]))
+        return
+
+    if not args.tier:
+        print("Error: -t/--tier is required for --app and --app-infra")
+        import sys
+        sys.exit(1)
+
+    if args.app:
+        chart_names = APP_CHART_NAMES
+    else: # args.app_infra
+        chart_names = (*APP_CHART_NAMES, *INFRA_CHART_NAMES)
+
+    charts = [CHARTS_BY_NAME[n] for n in chart_names]
+
     asyncio.run(
         cleanup_charts(
             charts,
             tier=args.tier,
-            environment=args.environment,
             namespace_override=args.namespace,
-            delete_namespace=args.delete_namespace,
-            keep_volumes=args.keep_volumes,
         )
     )
 
@@ -59,11 +65,8 @@ def run(args: argparse.Namespace) -> None:
 async def cleanup_charts(
     charts: list[Chart],
     *,
-    tier: str | None,
-    environment: str | None,
+    tier: str,
     namespace_override: str | None,
-    delete_namespace: bool,
-    keep_volumes: bool,
 ) -> None:
     namespace_by_chart = {chart.name: chart.namespace(namespace_override) for chart in charts}
     namespaces = sorted(set(namespace_by_chart.values()))
@@ -73,7 +76,7 @@ async def cleanup_charts(
             name=f"uninstall-{chart.name}",
             chart=chart,
             tier=tier,
-            environment=environment,
+            environment=None,
             namespace=namespace_by_chart[chart.name],
         )
         for chart in charts
@@ -96,28 +99,6 @@ async def cleanup_charts(
             )
         )
 
-    pvc_stage_by_namespace: dict[str, DeletePvcsStage] = {}
-    if not keep_volumes:
-        for namespace in namespaces:
-            stage = DeletePvcsStage(
-                name=f"delete-pvcs-{namespace}",
-                depends_on=tuple(uninstalls_by_namespace[namespace]),
-                namespace=namespace,
-            )
-            pvc_stage_by_namespace[namespace] = stage
-            stages.append(stage)
 
-    if delete_namespace:
-        for namespace in namespaces:
-            depends_on = (
-                (pvc_stage_by_namespace[namespace],)
-                if namespace in pvc_stage_by_namespace
-                else tuple(uninstalls_by_namespace[namespace])
-            )
-            stages.append(
-                DeleteNamespaceStage(
-                    name=f"delete-namespace-{namespace}", depends_on=depends_on, namespace=namespace
-                )
-            )
 
     await run_graph(stages)

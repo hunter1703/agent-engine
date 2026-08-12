@@ -51,8 +51,8 @@ def delete_namespace(namespace: str) -> None:
     _run(["delete", "namespace", namespace, "--ignore-not-found"], capture=True)
 
 
-def delete_pvcs(namespace: str) -> None:
-    _run(["delete", "pvc", "-n", namespace, "--all", "--ignore-not-found"], capture=True)
+def delete_pvcs_by_instance(namespace: str, instance: str) -> None:
+    _run(["delete", "pvc", "-n", namespace, "-l", f"app.kubernetes.io/instance={instance}", "--ignore-not-found"], capture=True)
 
 
 def delete_by_label(namespace: str, label_selector: str) -> None:

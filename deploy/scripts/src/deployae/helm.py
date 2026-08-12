@@ -161,5 +161,6 @@ def ensure_ingress_controller() -> None:
             "--namespace",
             "ingress-nginx",
             "--create-namespace",
+            "--wait",
         ]
     )

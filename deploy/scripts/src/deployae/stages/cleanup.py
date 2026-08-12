@@ -13,10 +13,12 @@ from deployae.stages.base import Stage
 @dataclass(eq=False, kw_only=True)
 class DeletePvcsStage(Stage):
     namespace: str
+    instances: list[str]
 
     async def run(self) -> None:
-        await asyncio.to_thread(kube.delete_pvcs, self.namespace)
-        print(f"Deleted PVCs from namespace {self.namespace}")
+        for instance in self.instances:
+            await asyncio.to_thread(kube.delete_pvcs_by_instance, self.namespace, instance)
+        print(f"Deleted PVCs from namespace {self.namespace} for instances: {', '.join(self.instances)}")
 
 
 @dataclass(eq=False, kw_only=True)
