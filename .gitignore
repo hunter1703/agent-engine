@@ -34,3 +34,6 @@ uv.lock
 # Helm downloaded dependency tarballs and lock files (reproducible via helm dependency update)
 deploy/k8s/*/charts/
 deploy/k8s/*/Chart.lock
+
+# Helm temporary charts
+deploy/k8s/**/tmpcharts-*/
