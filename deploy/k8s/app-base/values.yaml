@@ -20,6 +20,9 @@ image:
 serviceAccount:
   automountToken: false
 
+rbac:
+  rules: []
+
 deploymentStrategy:
   type: RollingUpdate
   rollingUpdate:

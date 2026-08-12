@@ -20,6 +20,8 @@ import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
+import org.apache.pekko.management.cluster.bootstrap.ClusterBootstrap;
+import org.apache.pekko.management.javadsl.PekkoManagement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +64,8 @@ public class ActorSystemProvider {
         LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
         final Config config = buildConfig(pekkoConfig, sqlConfig);
         this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);
+        PekkoManagement.get(system).start();
+        ClusterBootstrap.get(system).start();
         // Publish system before initialising sharding: remember-entities triggers entity recovery
         // on actor dispatcher threads immediately upon init(), and those actors call back into
         // actorSystemProvider.system(). If system is still null at that point we get a NPE.

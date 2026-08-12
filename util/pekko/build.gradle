@@ -20,6 +20,9 @@ dependencies {
     implementation libs.pekko.persistence.jdbc
     implementation libs.pekko.serialization.jackson
     implementation libs.pekko.streams
+    implementation libs.pekko.management.cluster.bootstrap
+    implementation libs.pekko.management.cluster.http
+    implementation libs.pekko.discovery.kubernetes.api
     implementation libs.rxjava
 
     testImplementation libs.pekko.testkit

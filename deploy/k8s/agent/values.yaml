@@ -1,12 +1,19 @@
 app-base:
-  type: statefulset
 
   service:
     name: agent
     pekkoPort: 2552
-    publishNotReadyAddresses: true
 
-  podManagementPolicy: Parallel
+  rbac:
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "watch", "list"]
+
+  serviceAccount:
+    automountToken: true
+
+
 
   java:
     opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"

@@ -15,6 +15,7 @@ google-genai = "1.44.0"
 pekko = "1.2.1"
 pekko-persistence-jdbc = "1.2.0"
 pekko-projections = "1.1.1"
+pekko-management = "1.0.0"
 
 # Jackson & JSON
 jackson = "2.18.6"
@@ -95,6 +96,9 @@ pekko-persistence-testkit = { module = "org.apache.pekko:pekko-persistence-testk
 pekko-projection-core = { module = "org.apache.pekko:pekko-projection-core_2.13", version.ref = "pekko-projections" }
 pekko-projection-eventsourced = { module = "org.apache.pekko:pekko-projection-eventsourced_2.13", version.ref = "pekko-projections" }
 pekko-projection-jdbc = { module = "org.apache.pekko:pekko-projection-jdbc_2.13", version.ref = "pekko-projections" }
+pekko-management-cluster-bootstrap = { module = "org.apache.pekko:pekko-management-cluster-bootstrap_2.13", version.ref = "pekko-management" }
+pekko-management-cluster-http = { module = "org.apache.pekko:pekko-management-cluster-http_2.13", version.ref = "pekko-management" }
+pekko-discovery-kubernetes-api = { module = "org.apache.pekko:pekko-discovery-kubernetes-api_2.13", version.ref = "pekko-management" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 
 # Google AI

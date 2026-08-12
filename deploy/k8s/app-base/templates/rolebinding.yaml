@@ -1,0 +1,17 @@
+{{- if .Values.rbac.rules -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "agent-engine.app-base.instance" . }}-rolebinding
+  namespace: {{ include "agent-engine.app-base.namespace" . }}
+  labels:
+    {{- include "agent-engine.app-base.labels" . | nindent 4 }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "agent-engine.app-base.instance" . }}
+  namespace: {{ include "agent-engine.app-base.namespace" . }}
+roleRef:
+  kind: Role
+  name: {{ include "agent-engine.app-base.instance" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

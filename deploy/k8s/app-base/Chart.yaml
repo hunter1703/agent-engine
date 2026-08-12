@@ -1,5 +1,5 @@
 apiVersion: v2
 name: app-base
-description: Shared Deployment/StatefulSet chart for Agent Engine's Quarkus app services
+description: Shared Deployment chart for Agent Engine's Quarkus app services
 type: application
 version: 0.1.0

@@ -1,4 +1,3 @@
-{{- if ne (.Values.type | default "deployment") "statefulset" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -67,6 +66,10 @@ spec:
               containerPort: {{ .Values.service.httpPort }}
             - name: grpc
               containerPort: {{ .Values.service.grpcPort }}
+            {{- if .Values.service.pekkoPort }}
+            - name: pekko
+              containerPort: {{ .Values.service.pekkoPort }}
+            {{- end }}
           {{- include "agent-engine.app-base.probes" . | nindent 10 }}
           resources:
             {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}
@@ -91,4 +94,3 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: {{ .Values.tmpVolume.sizeLimit }}
-{{- end }}
