@@ -5,9 +5,9 @@
     "type": "DEFAULT_MODELS",
     "category": "DEFAULT_MODELS",
     "titleModelId": "mistral",
-    "compactionModelId": "llama3.1-8b",
-    "evaluatorModelId": "llama3.1-8b",
+    "compactionModelId": "mistral",
+    "evaluatorModelId": "mistral",
     "embeddingModelId": "nomic-embed-text",
-    "chatModelId": "gemma4:e4b"
+    "chatModelId": "mistral"
   }
 ]

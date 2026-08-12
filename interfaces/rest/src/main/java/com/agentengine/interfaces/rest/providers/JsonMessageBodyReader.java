@@ -3,10 +3,10 @@ package com.agentengine.interfaces.rest.providers;
 import com.agentengine.util.common.JsonUtils;
 import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.message.*;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -15,23 +15,22 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.ext.MessageBodyReader;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.util.UUID;
 
 @Provider
 @Consumes({MediaType.APPLICATION_JSON, "application/*+json"})
 public class JsonMessageBodyReader implements MessageBodyReader<Object> {
 
     /**
-     * A copy of the shared base mapper with AG-UI-specific deserializers registered.
+     * A copy of the shared base mapper with AG-UI-specific deserializer mixins registered.
      * Kept here so this config stays in the REST module and does not leak into the
      * common utility mapper.
      */
     private static final ObjectMapper MAPPER = JsonUtils.copyMapper()
-            .registerModule(
-                    new SimpleModule("AGUIModule").addDeserializer(Message.class, new AGUIMessageDeserializer()));
+            .registerModule(new SimpleModule("AGUIModule").setMixInAnnotation(Message.class, MessageMixin.class));
 
     @Override
     public boolean isReadable(
@@ -60,6 +59,18 @@ public class JsonMessageBodyReader implements MessageBodyReader<Object> {
                 if (!node.hasNonNull("runId")) {
                     node.set("runId", TextNode.valueOf(""));
                 }
+                // Default missing message id to a generated UUID so the concrete Message
+                // record's requireNonNull check does not fire on partial payloads.
+                if (node.hasNonNull("messages") && node.get("messages").isArray()) {
+                    for (final JsonNode msg : node.get("messages")) {
+                        if (msg.isObject() && !msg.hasNonNull("id")) {
+                            ((ObjectNode) msg)
+                                    .set(
+                                            "id",
+                                            TextNode.valueOf(UUID.randomUUID().toString()));
+                        }
+                    }
+                }
                 return MAPPER.treeToValue(node, RunAgentInput.class);
             }
             return MAPPER.readValue(entityStream, type);
@@ -70,27 +81,19 @@ public class JsonMessageBodyReader implements MessageBodyReader<Object> {
     }
 
     /**
-     * Deserializes the AG-UI {@link Message} sealed interface by reading the
-     * {@code "role"} discriminator and delegating to the correct concrete type.
+     * Mixin that configures polymorphic deserialization for {@link Message} based on the {@code "role"} property.
      */
-    private static final class AGUIMessageDeserializer extends StdDeserializer<Message> {
-
-        private AGUIMessageDeserializer() {
-            super(Message.class);
-        }
-
-        @Override
-        public Message deserialize(final JsonParser p, final DeserializationContext ctx) throws IOException {
-            final ObjectNode node = p.readValueAsTree();
-            final Role role = Role.fromValue(node.path("role").asText(""));
-            final ObjectMapper mapper = (ObjectMapper) p.getCodec();
-            return switch (role) {
-                case Role.USER -> mapper.treeToValue(node, UserMessage.class);
-                case Role.ASSISTANT -> mapper.treeToValue(node, AssistantMessage.class);
-                case Role.SYSTEM -> mapper.treeToValue(node, SystemMessage.class);
-                case Role.DEVELOPER -> mapper.treeToValue(node, DeveloperMessage.class);
-                case Role.TOOL -> mapper.treeToValue(node, ToolMessage.class);
-            };
-        }
-    }
+    @JsonTypeInfo(
+            use = JsonTypeInfo.Id.NAME,
+            include = JsonTypeInfo.As.EXISTING_PROPERTY,
+            property = "role",
+            visible = true)
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = UserMessage.class, name = "user"),
+        @JsonSubTypes.Type(value = AssistantMessage.class, name = "assistant"),
+        @JsonSubTypes.Type(value = SystemMessage.class, name = "system"),
+        @JsonSubTypes.Type(value = DeveloperMessage.class, name = "developer"),
+        @JsonSubTypes.Type(value = ToolMessage.class, name = "tool")
+    })
+    private abstract static class MessageMixin {}
 }
