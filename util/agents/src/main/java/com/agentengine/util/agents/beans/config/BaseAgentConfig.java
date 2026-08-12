@@ -111,6 +111,10 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     private KnowledgeSettings knowledgeSettings;
 
+    @UiField(label = "Standard Tools", step = "identity", order = 45)
+    @UiLookup(assetType = AssetClass.STANDARD_TOOL)
+    private List<String> standardTools;
+
     protected BaseAgentConfig(final AgentType agentType) {
         this.type = agentType.type();
     }
@@ -258,6 +262,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     public void setKnowledgeSettings(final KnowledgeSettings knowledgeSettings) {
         this.knowledgeSettings = knowledgeSettings;
+    }
+
+    public List<String> getStandardTools() {
+        return standardTools;
+    }
+
+    public void setStandardTools(List<String> standardTools) {
+        this.standardTools = standardTools;
     }
 
     public enum AgentType {

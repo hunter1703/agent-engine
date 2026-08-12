@@ -1,9 +1,13 @@
 package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.ServiceUtils;
+import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.SchemaUtils;
 import com.agentengine.util.common.StringUtils;
+import com.google.adk.tools.LoadArtifactsTool;
+import io.vertx.json.schema.common.dsl.Schemas;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -15,6 +19,14 @@ import java.util.stream.Collectors;
 
 @Singleton
 public final class ToolServiceImpl implements ToolService {
+    private static final ToolDescriptor LOAD_ARTIFACT_TOOL_DESCRIPTOR = new ToolDescriptor(
+            LoadArtifactsTool.INSTANCE.name(),
+            LoadArtifactsTool.INSTANCE.description(),
+            SchemaUtils.toMap(Schemas.objectSchema()
+                    .property("artifact_names", Schemas.arraySchema().items(Schemas.stringSchema()))),
+            null);
+    private static final List<ToolDescriptor> STANDARD_TOOLS =
+            List.of(SearchKnowledgeTool.DESCRIPTOR, LOAD_ARTIFACT_TOOL_DESCRIPTOR);
     private final Map<String, ToolEntry> toolNameVsEntry;
     private final Map<String, ToolsetEntry> toolsetNameVsEntry;
     private final List<ToolDescriptor> allTools;
@@ -63,6 +75,11 @@ public final class ToolServiceImpl implements ToolService {
         }
         final ToolsetEntry toolsetEntry = toolsetNameVsEntry.get(toolName);
         return toolsetEntry == null ? null : toolsetEntry.descriptor();
+    }
+
+    @Override
+    public List<ToolDescriptor> getStandardTools() {
+        return STANDARD_TOOLS;
     }
 
     @Override

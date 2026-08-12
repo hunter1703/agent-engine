@@ -103,6 +103,11 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                     final String message,
             @ToolSchema(name = "goal", description = "The outcome this child agent is expected to deliver.")
                     final String goal) {
+        if (!subAgentIds.contains(childAgentId)) {
+            return ToolOutput.direct(Map.of(
+                    "error",
+                    "Invalid agent_id '" + childAgentId + "'. Must be one of: " + String.join(", ", subAgentIds)));
+        }
         final StartChildResult startChildResult = actorRef(toolContext)
                 .<StartChildResult>ask(
                         replyTo -> new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),

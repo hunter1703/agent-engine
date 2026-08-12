@@ -8,6 +8,7 @@ public interface AssetClass {
     String KNOWLEDGE = "Knowledge";
     String KNOWLEDGE_CHUNK = "KnowledgeChunk";
     String TOOL = "Tool";
+    String STANDARD_TOOL = "StandardTool";
     String TOOL_CONFIGS = "ToolConfigs";
     String MEMORY = "Memory";
 }

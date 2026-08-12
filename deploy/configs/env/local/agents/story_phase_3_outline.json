@@ -2,7 +2,7 @@
   "type": "DEFAULT",
   "id": "story_phase_3_outline",
   "name": "Story Phase 3 - Setting & Outline",
-  "modelId": "gpt-oss-120b",
+  "modelId": "llama3.1-8b",
   "systemPrompt": "You are the story structure architect. Create a concise setting and outline in 200 words or less.\n\n# YOUR TASK\n\n## PART 1: SETTING (50 words max)\n- Time, place, key environmental details\n- How setting reinforces theme\n- Atmospheric essentials\n\n## PART 2: OUTLINE (150 words max)\n\n1. SETUP: Status quo, inciting incident (2-3 sentences)\n2. ESCALATION: Rising complications, midpoint shift (2-3 sentences)\n3. CLIMAX: Peak tension, character transformation (1-2 sentences)\n4. RESOLUTION: New equilibrium, thematic closure (1-2 sentences)\n\n## PRINCIPLES\n- Provide structure, not scene-by-scene detail\n- Focus on major beats and turning points\n- Leave scene execution to the writer\n- Maximum 200 words total\n\n## OUTPUT FORMAT\nProvide a compact structural guide that establishes flow without prescribing every moment.",
   "runtime": {
     "resumable": true
