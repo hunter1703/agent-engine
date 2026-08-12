@@ -65,6 +65,8 @@ public abstract class DelegatingModelFactory<T extends BaseLlm> implements Model
 
     private static void resolveConfig(final ModelConfig modelConfig) {
         final Template<String> template = TemplateUtils.buildTemplate(modelConfig.getApiKey());
-        modelConfig.setApiKey(template.getValue(Map.of("env", System.getenv())));
+        if (template != null) {
+            modelConfig.setApiKey(template.getValue(Map.of("env", System.getenv())));
+        }
     }
 }
