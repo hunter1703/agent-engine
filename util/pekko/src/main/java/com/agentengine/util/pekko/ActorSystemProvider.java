@@ -120,15 +120,6 @@ public class ActorSystemProvider {
                         "pekko.cluster.roles",
                         ConfigValueFactory.fromIterable(applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY)))
                 .withValue(JACKSON_MODULES_KEY, ConfigValueFactory.fromIterable(allJacksonModules))
-                .withValue("jdbc-journal.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
-                .withValue("jdbc-journal.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
-                .withValue("jdbc-journal.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
-                .withValue("jdbc-snapshot-store.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
-                .withValue("jdbc-snapshot-store.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
-                .withValue("jdbc-snapshot-store.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
-                .withValue("jdbc-read-journal.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
-                .withValue("jdbc-read-journal.slick.db.user", ConfigValueFactory.fromAnyRef(jdbcUser))
-                .withValue("jdbc-read-journal.slick.db.password", ConfigValueFactory.fromAnyRef(jdbcPassword))
                 .withValue(
                         "pekko-persistence-jdbc.shared-databases.slick.db.url", ConfigValueFactory.fromAnyRef(jdbcUrl))
                 .withValue(
