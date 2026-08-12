@@ -17,7 +17,6 @@ import java.util.Map;
 public final class WebSearchTool extends Tool {
     private static final String TOOL_NAME = "web_research";
     private static final String BRAVE_CONNECTOR_ID = "brave_web_search";
-    private static final String DUCKDUCKGO_CONNECTOR_ID = "duckduckgo_instant_search";
     private static final String DEFAULT_COUNTRY = "US";
     private static final String DEFAULT_LANGUAGE = "en";
     private static final int DEFAULT_MAX_TOKENS = 8192;
@@ -62,23 +61,6 @@ public final class WebSearchTool extends Tool {
         connectorInput.put("maximum_number_of_tokens", DEFAULT_MAX_TOKENS);
 
         return executeConnector(BRAVE_CONNECTOR_ID, Map.copyOf(connectorInput));
-    }
-
-    private Map<String, Object> executeDuckDuckGoLookup(final String query) {
-        final Map<String, Object> response = executeConnector(DUCKDUCKGO_CONNECTOR_ID, Map.of("query", query.trim()));
-        if (response.containsKey("error")) {
-            return response;
-        }
-
-        // noinspection unchecked
-        final Map<String, Object> mappedData =
-                CollectionUtils.nullSafeMap((Map<String, Object>) response.get("result"));
-        if (StringUtils.isBlank(CollectionUtils.getStringValueFromMap(mappedData, "abstract"))) {
-            // DuckDuckGo returned empty results, fallback to Brave
-            return executeBraveSearch(query);
-        }
-
-        return Map.of("result", mappedData);
     }
 
     private Map<String, Object> executeConnector(final String connectorId, final Map<String, Object> input) {
