@@ -23,10 +23,7 @@ import com.agentengine.util.agents.beans.Confirmation;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
@@ -42,6 +39,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
 import org.apache.pekko.Done;
 import org.apache.pekko.actor.Scheduler;
 import org.apache.pekko.actor.typed.ActorRef;
@@ -70,6 +68,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
 
     private static final int MAX_CHILD_POLL_ATTEMPTS = 10;
     private static final Duration SELF_PAUSE_RETRY_INTERVAL = Duration.ofMinutes(1);
+    private static final ExecutorService UPDATE_TITLE_EXECUTOR =
+            ThreadUtils.newVirtualThreadExecutor("update-title-task-");
+    private static final ExecutorService UPDATE_MEMORY_EXECUTOR =
+            ThreadUtils.newVirtualThreadExecutor("update-memory-task-");
 
     private final ActorContext<SessionCommand> context;
     private final ActorRef<SessionCommand> self;
@@ -222,29 +224,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onCommand(ConfirmCommand.class, this::confirm)
                 .onCommand(ConfirmChildCommand.class, this::confirmChild)
                 .onCommand(CompleteChildCommand.class, this::completeChild)
-                .onCommand(ResumeCommand.class, (state, _) -> {
-                    // Only resume if the session is actually paused;
-                    if (state.sessionState() != SessionState.PAUSED) {
-                        LOG.info(
-                                "Ignoring ResumeCommand for session in state {} for topology : {}",
-                                state.sessionState(),
-                                JsonUtils.toJson(state.topology()));
-                        return Effect().none();
-                    }
-                    final Collection<Confirmation> confirmations = state.getAllReceivedConfirmations();
-                    LOG.info(
-                            "Resuming confirmations : {} for topology : {}",
-                            JsonUtils.toJson(confirmations),
-                            JsonUtils.toJson(state.topology()));
-                    return Effect().persist(new ResumingFact()).thenRun(newState -> {
-                        runner.resume(confirmations);
-                        LOG.info(
-                                "Resumed confirmations : {} for topology : {}",
-                                JsonUtils.toJson(confirmations),
-                                JsonUtils.toJson(state.topology()));
-                        updateSessionStatus(newState, SessionStatus.RUNNING);
-                    });
-                })
+                .onCommand(ResumeCommand.class, this::resume)
                 .onCommand(AwaitCommand.class, this::await)
                 .onCommand(AwaitChildCommand.class, this::awaitChild)
                 .onCommand(StartChildCommand.class, this::startChild)
@@ -256,7 +236,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .onCommand(StartNextQueuedMessageCommand.class, this::startNextQueuedMessage)
                 .onCommand(GetCurrentTurnEventsCommand.class, this::getCurrentTurnEvents)
                 .onCommand(RollbackCommand.class, this::rollback)
-                .onCommand(SelfPauseCommand.class, this::retryPropagateSelfPause);
+                .onCommand(SelfPauseCommand.class, this::retryPropagateSelfPause)
+                .onCommand(ReapChildCommand.class, this::reapChild)
+                .onCommand(ReapChildResultCommand.class, this::reapResult);
 
         return builder.build();
     }
@@ -309,9 +291,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         return switch (state.sessionState()) {
             case IDLE -> {
                 if (isDuplicate) {
-                    // if message present in queue but still in idle state, something is wrong and trigger to the
-                    // message
-                    // processing loop
+                    // if message present in queue but still in idle state, something went wrong on client side and
+                    // start processing next message as current message has already been processed
                     self.tell(new StartNextQueuedMessageCommand());
                     yield Effect().none().thenReply(command.replyTo(), _ -> new StartSessionResult.DuplicateRequest());
                 } else {
@@ -448,6 +429,31 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         return replyTo != null ? builder.thenReply(replyTo, _ -> new ConfirmResult.Accepted()) : builder;
     }
 
+    private EffectBuilder<SessionFact, SessionActorState> resume(
+            final SessionActorState state, final ResumeCommand command) {
+        // Only resume if the session is actually paused;
+        if (state.sessionState() != SessionState.PAUSED) {
+            LOG.info(
+                    "Ignoring ResumeCommand for session in state {} for topology : {}",
+                    state.sessionState(),
+                    JsonUtils.toJson(state.topology()));
+            return Effect().none();
+        }
+        final Collection<Confirmation> confirmations = state.getAllReceivedConfirmations();
+        LOG.info(
+                "Resuming confirmations : {} for topology : {}",
+                JsonUtils.toJson(confirmations),
+                JsonUtils.toJson(state.topology()));
+        return Effect().persist(new ResumingFact()).thenRun(newState -> {
+            runner.resume(confirmations);
+            LOG.info(
+                    "Resumed confirmations : {} for topology : {}",
+                    JsonUtils.toJson(confirmations),
+                    JsonUtils.toJson(state.topology()));
+            updateSessionStatus(newState, SessionStatus.RUNNING);
+        });
+    }
+
     private Effect<SessionFact, SessionActorState> await(final SessionActorState state, final AwaitCommand command) {
         return switch (state.sessionState()) {
             case PAUSED, TRIGGERED_RUN, RUNNING ->
@@ -465,32 +471,45 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     .none()
                     .thenReply(command.replyTo(), _ -> RunResult.failure("Unknown child session: " + childSessionId));
         }
-        pollChildForResult(command.replyTo(), childSessionId);
+        self.tell(new ReapChildCommand(command.replyTo(), childSessionId, 1));
         return Effect().none();
     }
 
-    private void pollChildForResult(final ActorRef<RunResult> replyToRef, final String childSessionId) {
-        pollChildForResult(replyToRef, childSessionId, 1);
+    private Effect<SessionFact, SessionActorState> reapChild(
+            final SessionActorState state, final ReapChildCommand command) {
+        final EntityRef<SessionCommand> childRef = refSupplier.apply(command.childSessionId());
+        context.pipeToSelf(
+                childRef.ask((Function<ActorRef<RunResult>, SessionCommand>) AwaitCommand::new, ASK_TIMEOUT),
+                (result, error) -> new ReapChildResultCommand(
+                        command.replyTo(), command.childSessionId(), command.attempt(), result, error));
+        return Effect().none();
     }
 
-    private void pollChildForResult(
-            final ActorRef<RunResult> replyToRef, final String childSessionId, final int attempt) {
-        final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
-        childRef.ask((Function<ActorRef<RunResult>, SessionCommand>) AwaitCommand::new, ASK_TIMEOUT)
-                .whenComplete((result, error) -> {
-                    if (error != null) {
-                        if (attempt >= MAX_CHILD_POLL_ATTEMPTS) {
-                            LOG.error("Giving up polling child session {} after {} attempts", childSessionId, attempt);
-                            replyToRef.tell(RunResult.failure(
-                                    "Child session " + childSessionId + " unreachable after " + attempt + " attempts"));
-                        } else {
-                            // retry on timeout — child may still be starting up
-                            pollChildForResult(replyToRef, childSessionId, attempt + 1);
-                        }
-                    } else {
-                        replyToRef.tell(result);
-                    }
-                });
+    private Effect<SessionFact, SessionActorState> reapResult(
+            final SessionActorState state, final ReapChildResultCommand command) {
+        if (command.error() != null) {
+            if (command.attempt() >= MAX_CHILD_POLL_ATTEMPTS) {
+                LOG.error(
+                        "Giving up polling child session {} after {} attempts",
+                        command.childSessionId(),
+                        command.attempt());
+                command.replyTo()
+                        .tell(RunResult.failure("Child session " + command.childSessionId() + " unreachable after "
+                                + command.attempt() + " attempts"));
+            } else {
+                context.getSystem()
+                        .classicSystem()
+                        .scheduler()
+                        .scheduleOnce(
+                                Duration.ofSeconds(1),
+                                () -> self.tell(new ReapChildCommand(
+                                        command.replyTo(), command.childSessionId(), command.attempt() + 1)),
+                                context.getExecutionContext());
+            }
+        } else {
+            command.replyTo().tell(command.result());
+        }
+        return Effect().none();
     }
 
     private Effect<SessionFact, SessionActorState> startChild(
@@ -1019,7 +1038,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
      * multiple vector-store writes.
      */
     private void updateSessionMemory(final String rootSessionId) {
-        Thread.startVirtualThread(() -> {
+        UPDATE_MEMORY_EXECUTOR.execute(() -> {
             try {
                 final AgentSession session = sessionService.getSession(rootSessionId);
                 if (session == null) {
@@ -1042,7 +1061,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
      * both of which are unsuitable for the actor thread.
      */
     private void generateSessionTitle(final String rootSessionId, final boolean isRecovery) {
-        Thread.startVirtualThread(() -> {
+        UPDATE_TITLE_EXECUTOR.execute(() -> {
             try {
                 if (isRecovery) {
                     final AgentSession session = sessionService.getSession(rootSessionId);

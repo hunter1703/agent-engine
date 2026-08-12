@@ -55,6 +55,12 @@ public interface SelfCommand extends SessionCommand {
 
     record StartNextQueuedMessageCommand() implements SelfCommand {}
 
+    record ReapChildResultCommand(
+            ActorRef<RunResult> replyTo, String childSessionId, int attempt, RunResult result, Throwable error)
+            implements SelfCommand {}
+
+    record ReapChildCommand(ActorRef<RunResult> replyTo, String childSessionId, int attempt) implements SelfCommand {}
+
     /** Delivers a follow-up message to this session, preserving its existing context. */
     record SendMessageCommand(String sessionId, UniqueRecord<String> message, ActorRef<StartSessionResult> replyTo)
             implements ParentCommand {}

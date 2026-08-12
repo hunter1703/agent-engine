@@ -4,6 +4,7 @@ import com.agentengine.util.pekko.ActorSystemProvider;
 import java.time.Duration;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.apache.pekko.actor.typed.Behavior;
+import org.apache.pekko.actor.typed.DispatcherSelector;
 import org.apache.pekko.cluster.sharding.typed.ClusterShardingSettings;
 import org.apache.pekko.cluster.sharding.typed.ShardingEnvelope;
 import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
@@ -48,7 +49,8 @@ public abstract class ShardedEntityFactory<Command> implements ShardedEntityDefi
     @Override
     @SuppressWarnings("unchecked")
     public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
-        Entity<Command, ShardingEnvelope<Command>> entity = Entity.of(entityTypeKey, builder);
+        Entity<Command, ShardingEnvelope<Command>> entity = Entity.of(entityTypeKey, builder)
+                .withEntityProps(DispatcherSelector.fromConfig("actor-virtual-dispatcher"));
         if (role != null) {
             entity = entity.withRole(role);
         }
