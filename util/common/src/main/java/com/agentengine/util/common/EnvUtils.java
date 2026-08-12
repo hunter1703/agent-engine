@@ -14,4 +14,13 @@ public final class EnvUtils {
     public static String getHostname() {
         return System.getenv(HOSTNAME_ENV);
     }
+
+    /**
+     * Returns the IP address of the current pod, read from the {@code POD_IP} environment
+     * variable (usually injected via the Kubernetes Downward API).
+     * Returns {@code null} if the variable is not set or is empty.
+     */
+    public static String getPodIp() {
+        return System.getenv("POD_IP");
+    }
 }

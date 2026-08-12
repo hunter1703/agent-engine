@@ -46,6 +46,10 @@ spec:
               value: {{ .Values.service.grpcPort | quote }}
             - name: QUARKUS_CONFIG_LOCATIONS
               value: file:/config/application.properties
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             {{- $java := .Values.java | default dict }}
             {{- if $java.opts }}
             - name: JAVA_OPTS

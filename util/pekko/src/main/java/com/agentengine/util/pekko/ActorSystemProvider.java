@@ -1,6 +1,7 @@
 package com.agentengine.util.pekko;
 
 import com.agentengine.util.common.EnvUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import com.agentengine.util.mongodb.infra.SQLInfraConfig;
@@ -94,7 +95,8 @@ public class ActorSystemProvider {
     }
 
     private Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
-        final String hostname = EnvUtils.getHostname();
+        final String podIp = EnvUtils.getPodIp();
+        final String canonicalHostname = StringUtils.isNotBlank(podIp) ? podIp : EnvUtils.getHostname();
         final String jdbcUrl = sqlConfig.getJdbcUrl();
         final String jdbcUser = sqlConfig.getJdbcUser();
         final String jdbcPassword = sqlConfig.getJdbcPassword();
@@ -111,7 +113,7 @@ public class ActorSystemProvider {
         // Static structure is in pekko-base.conf; dynamic/sensitive values are overlaid via withValue
         // so they are never present in a logged HOCON string.
         return baseConfig
-                .withValue("pekko.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(hostname))
+                .withValue("pekko.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
                 .withValue("pekko.remote.artery.canonical.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
                 .withValue("pekko.remote.artery.bind.port", ConfigValueFactory.fromAnyRef(PEKKO_PORT))
                 .withValue(
