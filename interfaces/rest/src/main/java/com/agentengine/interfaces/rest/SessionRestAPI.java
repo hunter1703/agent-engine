@@ -31,6 +31,7 @@ import org.reactivestreams.Publisher;
 
 @Path("/v1/session")
 @Tag(name = "Session Stream", description = "Session event stream and resume APIs")
+@RunOnVirtualThread
 public class SessionRestAPI {
 
     private final RuntimeService runtimeService;
@@ -62,18 +63,22 @@ public class SessionRestAPI {
                 session.getRootSessionId(),
                 session.getRootAgentId(),
                 liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
-        return Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly))
-                .concatMap(mapper::map);
+        return mapper.map(Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly)));
     }
 
     @POST
     @Path("/{sessionId}/resume")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    @RunOnVirtualThread
     @Operation(summary = "Resume a paused session")
     @APIResponse(responseCode = "400", description = "Invalid resume payload")
-    public Response resume(@NotBlank @PathParam("sessionId") final String sessionId, Resume resume) {
+    public Response resume(@NotBlank @PathParam("sessionId") final String sessionId, final Resume resume) {
+        if (resume == null) {
+            throw new IllegalArgumentException("Resume payload is required");
+        }
+        if (StringUtils.isBlank(resume.interruptId())) {
+            throw new IllegalArgumentException("Interrupt ID is required");
+        }
         //noinspection unchecked
         final Map<String, Object> payload = (Map<String, Object>) resume.payload();
         final Boolean accepted = CollectionUtils.getBooleanValueFromMap(payload, "accepted");

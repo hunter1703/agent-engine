@@ -28,7 +28,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -138,15 +137,17 @@ public class AgentRestAPI {
             throw new AssetNotFoundException(AssetClass.AGENT, agentId);
         }
 
-        final AtomicReference<AGUIEventMapper> mapper = new AtomicReference<>();
         final String threadId = StringUtils.isBlank(request.threadId()) ? null : request.threadId();
+        // The mapper needs the resolved sessionId, only known from the stream's first event, so
+        // multicast the source once (publish) and build the mapper from a peek at that first item
+        // before feeding the same shared stream through it — this lets the whole stream run through
+        // EventMapper.map(Flowable), which catches per-item mapping failures and closes the SSE
+        // response with a graceful RunErrorEvent instead of dropping the connection.
         return Flowable.fromPublisher(runtimeService.startSession(agentId, threadId, extractUserMessage(request)))
-                .doOnNext(event -> {
-                    if (mapper.get() == null) {
-                        mapper.set(new AGUIEventMapper(event.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE));
-                    }
-                })
-                .concatMap(event -> mapper.get().map(event));
+                .publish(shared -> shared.firstElement()
+                        .flatMapPublisher(
+                                first -> new AGUIEventMapper(first.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE)
+                                        .map(shared)));
     }
 
     private static UserMessage extractUserMessage(final RunAgentInput request) {
