@@ -6,7 +6,7 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -30,7 +30,7 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 import org.reactivestreams.Publisher;
 
 @Path("/v1/session")
-@Tag(name = "Session Stream", description = "Session event stream and confirmation APIs")
+@Tag(name = "Session Stream", description = "Session event stream and resume APIs")
 public class SessionRestAPI {
 
     private final RuntimeService runtimeService;
@@ -67,21 +67,21 @@ public class SessionRestAPI {
     }
 
     @POST
-    @Path("/{sessionId}/confirm")
+    @Path("/{sessionId}/resume")
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
     @RunOnVirtualThread
-    @Operation(summary = "Confirm a paused session")
-    @APIResponse(responseCode = "400", description = "Invalid confirmation payload")
-    public Response confirm(@NotBlank @PathParam("sessionId") final String sessionId, Resume confirmRequest) {
+    @Operation(summary = "Resume a paused session")
+    @APIResponse(responseCode = "400", description = "Invalid resume payload")
+    public Response resume(@NotBlank @PathParam("sessionId") final String sessionId, Resume resume) {
         //noinspection unchecked
-        final Map<String, Object> payload = (Map<String, Object>) confirmRequest.payload();
-        final Boolean confirmed = CollectionUtils.getBooleanValueFromMap(payload, "confirmed");
-        runtimeService.confirmSession(
+        final Map<String, Object> payload = (Map<String, Object>) resume.payload();
+        final Boolean accepted = CollectionUtils.getBooleanValueFromMap(payload, "accepted");
+        runtimeService.resumeSession(
                 sessionId,
-                new Confirmation(
-                        confirmRequest.interruptId(),
-                        confirmed,
+                new ResumeRequest(
+                        resume.interruptId(),
+                        accepted,
                         Map.of("answer", CollectionUtils.getStringValueFromMap(payload, "answer", ""))));
         return Response.accepted().build();
     }

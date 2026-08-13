@@ -6,7 +6,7 @@ public enum SessionStatus {
     /** The session is actively processing a turn. */
     INIT,
     RUNNING,
-    /** The session is paused, awaiting human-in-the-loop confirmation. */
+    /** The session is paused, awaiting human input to resume. */
     PAUSED,
     /** The session has produced a final answer and is no longer active. */
     COMPLETED,

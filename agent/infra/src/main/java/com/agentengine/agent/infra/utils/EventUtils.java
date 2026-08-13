@@ -4,7 +4,7 @@ import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.MarkdownUtils;
@@ -111,16 +111,16 @@ public final class EventUtils {
         return String.join("\n", intents.reversed());
     }
 
-    public static Event buildConfirmationEvent(
-            final String confirmationId, final Boolean confirmed, final Map<String, Object> answer) {
-        final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(confirmed, answer);
+    public static Event buildResumeAnswerEvent(
+            final String interruptId, final Boolean accepted, final Map<String, Object> answer) {
+        final ToolConfirmation toolConfirmation = ResponseUtils.buildToolConfirmation(accepted, answer);
         final FunctionResponse functionResponse = FunctionResponse.builder()
-                .id(confirmationId)
+                .id(interruptId)
                 .name(Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME)
                 .response(JsonUtils.toMap(toolConfirmation))
                 .build();
         return Event.builder()
-                .id(confirmationId)
+                .id(interruptId)
                 .author(Constants.AUTHOR_USER)
                 .content(Content.builder()
                         .role(Constants.AUTHOR_USER)
@@ -144,10 +144,10 @@ public final class EventUtils {
         return event;
     }
 
-    public static Event buildConfirmationsEvent(
-            final Collection<Confirmation> confirmations, final String invocationId, final long timestamp) {
-        final Content confirmationsContent = ContentUtils.buildConfirmationsContent(confirmations);
-        return _buildUserEvent(invocationId, confirmationsContent, timestamp);
+    public static Event buildResumeEvent(
+            final Collection<ResumeRequest> resumeRequests, final String invocationId, final long timestamp) {
+        final Content resumeContent = ContentUtils.buildResumeContent(resumeRequests);
+        return _buildUserEvent(invocationId, resumeContent, timestamp);
     }
 
     private static Event _buildUserEvent(final String invocationId, final Content content, final long timestamp) {

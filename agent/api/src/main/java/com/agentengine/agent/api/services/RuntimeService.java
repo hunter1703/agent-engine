@@ -1,7 +1,7 @@
 package com.agentengine.agent.api.services;
 
 import com.agentengine.agent.api.model.UserMessage;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.client.MicroService;
 import org.reactivestreams.Publisher;
@@ -16,10 +16,10 @@ public interface RuntimeService {
     Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
 
     /**
-     * Records a confirmation on the session actor. Returns immediately; resumed events are
-     * delivered via {@link #subscribeToSession}.
+     * Answers a pending interrupt on the session actor. Returns immediately; the run's
+     * continuation events are delivered via {@link #subscribeToSession}.
      */
-    void confirmSession(String sessionId, Confirmation confirmation);
+    void resumeSession(String sessionId, ResumeRequest resumeRequest);
 
     /**
      * Returns a publisher that emits committed history, then uncommitted current-turn events,

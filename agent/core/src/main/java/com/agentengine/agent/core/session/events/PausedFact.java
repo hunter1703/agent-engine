@@ -6,34 +6,34 @@ public final class PausedFact extends SessionFact {
     private String sessionId;
     /**
      * For self-pauses: the {@code adk_request_confirmation} wrapper call ID, which is also the
-     * {@code confirmationId} the client echoes back. For child pauses: the confirmation ID
-     * propagated from the child.
+     * {@code interruptId} the client echoes back. For child pauses: the interrupt ID propagated
+     * from the child.
      */
     private String correlationId;
 
-    private String confirmationId;
+    private String interruptId;
     private boolean internal;
 
     public PausedFact() {}
 
     private PausedFact(
-            final String sessionId, final String correlationId, final String confirmationId, final boolean internal) {
+            final String sessionId, final String correlationId, final String interruptId, final boolean internal) {
         this.sessionId = sessionId;
         this.correlationId = correlationId;
-        this.confirmationId = confirmationId;
+        this.interruptId = interruptId;
         this.internal = internal;
     }
 
-    public static PausedFact childPaused(final String sessionId, final String confirmationId) {
-        return new PausedFact(sessionId, null, confirmationId, false);
+    public static PausedFact childPaused(final String sessionId, final String interruptId) {
+        return new PausedFact(sessionId, null, interruptId, false);
     }
 
-    public static PausedFact externalSelfPaused(final String confirmationId) {
-        return new PausedFact(null, null, confirmationId, false);
+    public static PausedFact externalSelfPaused(final String interruptId) {
+        return new PausedFact(null, null, interruptId, false);
     }
 
-    public static PausedFact internalSelfPause(final String correlationId, final String confirmationId) {
-        return new PausedFact(null, correlationId, confirmationId, true);
+    public static PausedFact internalSelfPause(final String correlationId, final String interruptId) {
+        return new PausedFact(null, correlationId, interruptId, true);
     }
 
     public String getSessionId() {
@@ -44,12 +44,12 @@ public final class PausedFact extends SessionFact {
         this.sessionId = sessionId;
     }
 
-    public String getConfirmationId() {
-        return confirmationId;
+    public String getInterruptId() {
+        return interruptId;
     }
 
-    public void setConfirmationId(final String confirmationId) {
-        this.confirmationId = confirmationId;
+    public void setInterruptId(final String interruptId) {
+        this.interruptId = interruptId;
     }
 
     public boolean isInternal() {

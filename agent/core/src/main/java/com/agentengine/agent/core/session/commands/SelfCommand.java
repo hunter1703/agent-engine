@@ -1,11 +1,11 @@
 package com.agentengine.agent.core.session.commands;
 
-import com.agentengine.agent.core.session.ConfirmResult;
+import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.core.session.state.SessionTopology;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.google.adk.events.Event;
 import org.apache.pekko.actor.typed.ActorRef;
@@ -19,7 +19,7 @@ import org.apache.pekko.actor.typed.ActorRef;
  *   <li><b>Tool call results</b> — async operations initiated by tool execution, piped back via
  *       {@code pipeToSelf} so they are processed on the actor thread.</li>
  *   <li><b>Loop signals</b> — internal triggers that advance the session's own state machine
- *       (resume after confirmation, start next queued message).</li>
+ *       (continue the run once all interrupts are resumed, start next queued message).</li>
  * </ul>
  */
 public interface SelfCommand extends SessionCommand {
@@ -37,8 +37,8 @@ public interface SelfCommand extends SessionCommand {
 
     record AwaitChildCommand(String childSessionId, ActorRef<RunResult> replyTo) implements SelfCommand {}
 
-    record ConfirmChildCommand(
-            Confirmation confirmation, ActorRef<ConfirmResult> replyTo, ConfirmResult result, String error)
+    record ResumeChildCommand(
+            ResumeRequest resumeRequest, ActorRef<ResumeResult> replyTo, ResumeResult result, String error)
             implements SelfCommand {}
 
     record StartChildCompletedCommand(
@@ -49,9 +49,9 @@ public interface SelfCommand extends SessionCommand {
             String error)
             implements SelfCommand {}
 
-    record ResumeCommand() implements SelfCommand {}
+    record ContinueRunCommand() implements SelfCommand {}
 
-    record SelfPauseCommand(SessionTopology topology, String confirmationId) implements SelfCommand {}
+    record SelfPauseCommand(SessionTopology topology, String interruptId) implements SelfCommand {}
 
     record StartNextQueuedMessageCommand() implements SelfCommand {}
 

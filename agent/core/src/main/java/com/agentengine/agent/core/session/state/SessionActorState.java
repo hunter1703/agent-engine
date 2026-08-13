@@ -2,7 +2,7 @@ package com.agentengine.agent.core.session.state;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.events.RunResult;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.PekkoSerializable;
@@ -134,7 +134,7 @@ public record SessionActorState(
         return this;
     }
 
-    public SessionActorState childPaused(final String childSessionId, final String confirmationId) {
+    public SessionActorState childPaused(final String childSessionId, final String interruptId) {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -143,11 +143,11 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withChildPaused(childSessionId, confirmationId),
+                pauseState.withChildPaused(childSessionId, interruptId),
                 runState);
     }
 
-    public SessionActorState selfPaused(final String confirmationId) {
+    public SessionActorState selfPaused(final String interruptId) {
         return new SessionActorState(
                 SessionState.PAUSED,
                 queue,
@@ -156,37 +156,35 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withSelfPaused(confirmationId),
+                pauseState.withSelfPaused(interruptId),
                 runState);
     }
 
-    public String getPausedChild(final Confirmation confirmation) {
-        return pauseState.getPausedChild(confirmation.getConfirmationId());
+    public String getPausedChild(final ResumeRequest resumeRequest) {
+        return pauseState.getPausedChild(resumeRequest.getInterruptId());
     }
 
-    public boolean isSelfConfirmation(final Confirmation confirmation) {
-        return isExternalSelfConfirmation(confirmation)
-                || pauseState
-                        .correlationIdVsPendingInternalConfirmationId()
-                        .containsValue(confirmation.getConfirmationId());
+    public boolean isSelfInterrupt(final ResumeRequest resumeRequest) {
+        return isExternalSelfInterrupt(resumeRequest)
+                || pauseState.correlationIdVsPendingInternalInterruptId().containsValue(resumeRequest.getInterruptId());
     }
 
-    public boolean isExternalSelfConfirmation(final Confirmation confirmation) {
-        final String id = confirmation.getConfirmationId();
-        return pauseState.pendingExternalSelfConfirmationIds().contains(id)
-                || pauseState.receivedSelfConfirmations().containsKey(id);
+    public boolean isExternalSelfInterrupt(final ResumeRequest resumeRequest) {
+        final String id = resumeRequest.getInterruptId();
+        return pauseState.pendingExternalSelfInterruptIds().contains(id)
+                || pauseState.receivedSelfResumes().containsKey(id);
     }
 
-    public boolean allConfirmationsReceived() {
-        return CollectionUtils.isEmpty(pauseState.pendingExternalSelfConfirmationIds())
-                && CollectionUtils.isEmpty(pauseState.correlationIdVsPendingInternalConfirmationId());
+    public boolean allInterruptsAnswered() {
+        return CollectionUtils.isEmpty(pauseState.pendingExternalSelfInterruptIds())
+                && CollectionUtils.isEmpty(pauseState.correlationIdVsPendingInternalInterruptId());
     }
 
-    public Collection<Confirmation> getAllReceivedConfirmations() {
-        return pauseState.receivedSelfConfirmations().values();
+    public Collection<ResumeRequest> getAllReceivedResumes() {
+        return pauseState.receivedSelfResumes().values();
     }
 
-    public SessionActorState withInternalSelfPause(final String correlationId, final String confirmationId) {
+    public SessionActorState withInternalSelfPause(final String correlationId, final String interruptId) {
         return new SessionActorState(
                 SessionState.PAUSED,
                 queue,
@@ -195,21 +193,21 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withInternalSelfPause(correlationId, confirmationId),
+                pauseState.withInternalSelfPause(correlationId, interruptId),
                 runState);
     }
 
-    public boolean isPausedOnExternalConfirmations() {
+    public boolean isPausedOnExternalInterrupts() {
         return sessionState == SessionState.PAUSED
-                && CollectionUtils.isNotEmpty(pauseState.pendingExternalSelfConfirmationIds())
-                && CollectionUtils.isNotEmpty(pauseState.pendingConfirmationIdVsChildSessionId());
+                && CollectionUtils.isNotEmpty(pauseState.pendingExternalSelfInterruptIds())
+                && CollectionUtils.isNotEmpty(pauseState.pendingInterruptIdVsChildSessionId());
     }
 
-    public String getInternalConfirmationId(final String correlationId) {
-        return pauseState().correlationIdVsPendingInternalConfirmationId().get(correlationId);
+    public String getInternalInterruptId(final String correlationId) {
+        return pauseState().correlationIdVsPendingInternalInterruptId().get(correlationId);
     }
 
-    public SessionActorState selfConfirm(final Confirmation confirmation) {
+    public SessionActorState selfResume(final ResumeRequest resumeRequest) {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -218,11 +216,11 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withSelfConfirmed(confirmation),
+                pauseState.withSelfResumed(resumeRequest),
                 runState);
     }
 
-    public SessionActorState childConfirm(final Confirmation confirmation) {
+    public SessionActorState childResume(final ResumeRequest resumeRequest) {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -231,7 +229,7 @@ public record SessionActorState(
                 nextSequence,
                 topology,
                 lastResult,
-                pauseState.withChildConfirmed(confirmation.getConfirmationId()),
+                pauseState.withChildResumed(resumeRequest.getInterruptId()),
                 runState);
     }
 
@@ -244,7 +242,7 @@ public record SessionActorState(
                 last == null ? null : last.id(), turnEvents.getLast().id());
     }
 
-    public SessionActorState clearSelfConfirmationStates() {
+    public SessionActorState clearSelfInterruptStates() {
         return new SessionActorState(
                 sessionState,
                 queue,
@@ -256,7 +254,7 @@ public record SessionActorState(
                 new PauseState(
                         new HashSet<>(),
                         new HashMap<>(),
-                        pauseState.pendingConfirmationIdVsChildSessionId(),
+                        pauseState.pendingInterruptIdVsChildSessionId(),
                         new HashMap<>()),
                 runState);
     }

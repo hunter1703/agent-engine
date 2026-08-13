@@ -6,12 +6,12 @@ public abstract class ToolOutput<T> {
 
     public abstract T toResult();
 
-    /** Returns {@code true} when this output carries no result (confirmation pending). */
+    /** Returns {@code true} when this output carries no result (interrupt answer pending). */
     public boolean isEmpty() {
         return false;
     }
 
-    /** Returns a sentinel {@code ToolOutput} that signals the tool is awaiting confirmation. */
+    /** Returns a sentinel {@code ToolOutput} that signals the tool is awaiting an interrupt answer. */
     public static <S> ToolOutput<S> empty() {
         return direct(null);
     }

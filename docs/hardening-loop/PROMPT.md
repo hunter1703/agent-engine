@@ -121,7 +121,7 @@ You are running a persistent, self-improving hardening loop for /Users/rhp/Proje
   - For concurrency tests: use `curl ... & curl ... & wait` with at least 3 parallel calls,
     repeated 3 times to surface non-determinism.
   - For multi-step flows: perform each step in order; use state from prior responses
-    (sessionId, confirmationId, etc.) in subsequent calls.
+    (sessionId, interruptId, etc.) in subsequent calls.
   - On any unexpected response: capture last 200 lines of server log immediately.
 
   ════════════════════════════════════════

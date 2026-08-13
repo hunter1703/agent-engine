@@ -18,7 +18,7 @@ import java.util.Optional;
  * Awaits a previously spawned child agent run.
  *
  * <p>If the child has already completed, returns the result immediately. Otherwise this tool
- * requests a lightweight confirmation pause and returns a waiting status to the caller.
+ * raises a lightweight interrupt and returns a waiting status to the caller.
  */
 @SuppressWarnings("ALL")
 public final class AwaitAgentTool extends AbstractAgentTool {

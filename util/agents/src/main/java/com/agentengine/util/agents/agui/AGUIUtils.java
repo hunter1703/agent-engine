@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.agui;
 
-import com.agentengine.util.agents.beans.ConfirmationKind;
+import com.agentengine.util.agents.beans.InterruptKind;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
@@ -37,18 +37,18 @@ public final class AGUIUtils {
     }
 
     /**
-     * Emitted when a session pauses to request human confirmation. {@code confirmationId} is the
-     * ID the client must echo back via the confirm endpoint.
+     * Emitted when a session pauses to raise an interrupt requesting human input. {@code
+     * interruptId} is the ID the client must echo back via the resume endpoint.
      */
-    public static CustomEvent buildConfirmationRequestedEvent(
-            final String confirmationId,
+    public static CustomEvent buildInterruptRequestedEvent(
+            final String interruptId,
             final String prompt,
             final String originalToolCallId,
             final List<String> options,
-            final ConfirmationKind kind,
+            final InterruptKind kind,
             final long timestamp) {
         final LinkedHashMap<String, JsonElement> fields = new LinkedHashMap<>();
-        fields.put("confirmationId", JsonUtils.strVal(confirmationId));
+        fields.put("interruptId", JsonUtils.strVal(interruptId));
         fields.put("prompt", JsonUtils.nullableVal(prompt));
         fields.put("originalToolCallId", JsonUtils.nullableVal(originalToolCallId));
         fields.put(
@@ -59,17 +59,17 @@ public final class AGUIUtils {
                                 .map(option -> (JsonElement) JsonUtils.strVal(option))
                                 .toList()));
         fields.put("kind", kind == null ? JsonNull.INSTANCE : JsonUtils.strVal(kind.name()));
-        return new CustomEvent("confirmation_requested", new JsonObject(fields), timestamp, null);
+        return new CustomEvent("interrupt_requested", new JsonObject(fields), timestamp, null);
     }
 
-    /** Emitted when a user responds to a confirmation request. */
-    public static CustomEvent buildConfirmedEvent(
-            final String confirmationId, final boolean confirmed, final String answer, final long timestamp) {
+    /** Emitted when a user resumes a paused session by answering an interrupt. */
+    public static CustomEvent buildResumedEvent(
+            final String interruptId, final boolean accepted, final String answer, final long timestamp) {
         final Map<String, JsonElement> fields = Map.of(
-                "confirmationId", JsonUtils.strVal(confirmationId),
-                "confirmed", JsonUtils.boolVal(confirmed),
+                "interruptId", JsonUtils.strVal(interruptId),
+                "accepted", JsonUtils.boolVal(accepted),
                 "answer", JsonUtils.nullableVal(answer));
-        return new CustomEvent("confirmed", new JsonObject(fields), timestamp, null);
+        return new CustomEvent("resumed", new JsonObject(fields), timestamp, null);
     }
 
     /** Emitted when a guardrail violation is detected and corrected. */

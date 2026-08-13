@@ -3,20 +3,20 @@ package com.agentengine.agent.core.services;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.api.services.SessionHistoryService;
-import com.agentengine.agent.core.session.ConfirmResult;
+import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
-import com.agentengine.agent.core.session.commands.ExternalCommand.ConfirmCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
+import com.agentengine.agent.core.session.commands.ExternalCommand.ResumeCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.RollbackCommand;
 import com.agentengine.agent.core.session.commands.ExternalCommand.StartCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.catalog.api.services.SessionService;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
@@ -103,15 +103,15 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     @Override
-    public void confirmSession(final String sessionId, final Confirmation confirmation) {
-        LOG.info("Confirming session {} with id '{}'", sessionId, confirmation.getConfirmationId());
+    public void resumeSession(final String sessionId, final ResumeRequest resumeRequest) {
+        LOG.info("Resuming session {} with interrupt id '{}'", sessionId, resumeRequest.getInterruptId());
         final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
-        ref.<ConfirmResult>ask(replyTo -> new ConfirmCommand(confirmation, replyTo), SessionActorFactory.ASK_TIMEOUT)
+        ref.<ResumeResult>ask(replyTo -> new ResumeCommand(resumeRequest, replyTo), SessionActorFactory.ASK_TIMEOUT)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        LOG.error("Failed to confirm session {}", sessionId, ex);
+                        LOG.error("Failed to resume session {}", sessionId, ex);
                     } else {
-                        LOG.info("Session {} confirm result: {}", sessionId, result);
+                        LOG.info("Session {} resume result: {}", sessionId, result);
                     }
                 });
     }

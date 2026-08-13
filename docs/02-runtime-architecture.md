@@ -10,7 +10,7 @@ Configuration and session CRUD live in the **Catalog** service (`../catalog/core
 
 Execution lives in the **Agent** service (`agent/core/src/main/java/com/agentengine/agent/core/services`):
 
-- `RuntimeServiceImpl`: the execution center — starts sessions, streams events, handles confirmations and rollback
+- `RuntimeServiceImpl`: the execution center — starts sessions, streams events, handles resumes and rollback
 - `SessionHistoryServiceImpl`: reconstructs committed session history from actor state
 
 ## 2.2 Execution Lifecycle (`RuntimeServiceImpl`)
@@ -21,7 +21,7 @@ For a request, `RuntimeServiceImpl`:
 
 1. Resolves the target session (existing or new) and effective agent config.
 2. Obtains the session's actor reference via `SessionActorFactory` (cluster sharding routes by session ID, so a given session is owned by exactly one actor across the cluster).
-3. Issues a command to the actor (`ask` with `SessionActorFactory.ASK_TIMEOUT`) — `startSession`, `confirmSession`, `rollbackSession`, or a subscribe.
+3. Issues a command to the actor (`ask` with `SessionActorFactory.ASK_TIMEOUT`) — `startSession`, `resumeSession`, `rollbackSession`, or a subscribe.
 4. The actor builds a `SessionRunner` via `RunnerFactory`, which constructs the ADK `Runner` over the resolved agent graph, model, toolsets, and resumability config.
 5. Execution runs with `RunConfig` in SSE streaming mode; events are returned as a `Publisher<SessionEvent>`.
 6. The actor persists finalized events to its journal and updates the session title on completion.
@@ -96,7 +96,7 @@ Terminal step/run semantics follow ADK event semantics directly:
 - tool guardrails before tool call execution
 - output guardrails after model generation
 - optimistic mode support with async output guardrail futures
-- native escalation behavior for tool confirmations and synthetic internal human-input tool calls
+- native escalation behavior for tool-call interrupts and synthetic internal human-input tool calls
 
 ## 2.7 Context Management
 

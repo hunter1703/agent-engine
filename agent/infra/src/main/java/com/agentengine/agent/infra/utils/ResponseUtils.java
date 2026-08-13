@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.infra.tools.HumanInTheLoopTool;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.ConfirmationKind;
+import com.agentengine.util.agents.beans.InterruptKind;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
@@ -56,13 +56,12 @@ public final class ResponseUtils {
     }
 
     public static LlmResponse requestHumanToDecide(final String prompt) {
-        final String message =
-                StringUtils.isBlank(prompt) ? "User confirmation is required to continue." : prompt.trim();
+        final String message = StringUtils.isBlank(prompt) ? "User input is required to continue." : prompt.trim();
         final FunctionCall functionCall = FunctionCall.builder()
                 .id(Functions.generateClientFunctionCallId())
                 .name(Constants.HITL_TOOL_NAME)
                 .args(Map.of(
-                        HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, ConfirmationKind.DECISION.name()))
+                        HumanInTheLoopTool.PROMPT, message, HumanInTheLoopTool.KIND, InterruptKind.DECISION.name()))
                 .build();
         final Content content = Content.builder()
                 .role("model")

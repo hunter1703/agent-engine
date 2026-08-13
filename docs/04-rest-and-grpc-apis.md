@@ -3,7 +3,7 @@
 The REST module is `interfaces:rest`. Primary path groups:
 
 - `/v1/agent` — agent config CRUD, invocation, and session rollback/deletion
-- `/v1/session` — live event streaming and confirmation/resume
+- `/v1/session` — live event streaming and interrupt/resume
 - `/v1/model` — model config CRUD
 - `/v1/catalog` — asset listing and search
 - `/v1/storage` — object upload/download

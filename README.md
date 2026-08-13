@@ -56,7 +56,7 @@ The result is a runtime where the interesting work lives in configuration and sm
 - **Multi-stage guardrails** — `INPUT`, `TOOL`, and `OUTPUT` stages with `allow / warn / block / escalate` semantics and configurable fail-open or fail-closed behavior.
 - **Pluggable tools** — tools and toolsets discovered via CDI and annotations, globally visible to every agent, with parallel or sequential execution per turn.
 - **Persistent memory and knowledge** — cross-session per-user memory and document semantic search, both backed by Qdrant.
-- **Stateful sessions** — pause/resume for human-in-the-loop and confirmation flows, plus run-level rollback.
+- **Stateful sessions** — pause/resume for human-in-the-loop and tool-approval interrupts, plus run-level rollback.
 - **Streaming API** — REST gateway emitting AG-UI server-sent events.
 - **Distributed by design** — internal gRPC microservice transport with local-bean-first dispatch and dynamic proxy fallback.
 - **Multi-provider models** — LangChain4j adapters for Ollama, OpenAI-compatible, and Gemini backends.

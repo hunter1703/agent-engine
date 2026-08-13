@@ -95,8 +95,8 @@ public final class BaseFlow extends SingleFlow {
         // Reset per-turn flags so a final answer from a previous continuation turn
         // does not bleed into the current turn's outcome resolution.
         final AtomicBoolean foundFinalAnswer = new AtomicBoolean();
-        // original tool call id that requested the confirmation
-        final ConcurrentHashSet<String> confirmationRequested = new ConcurrentHashSet<>();
+        // original tool call id that raised the interrupt
+        final ConcurrentHashSet<String> interruptRequested = new ConcurrentHashSet<>();
         return super.run(invocationContext)
                 .map(event -> {
                     // ADK may emit events with null IDs (e.g. adk_request_confirmation); assign a
@@ -104,19 +104,19 @@ public final class BaseFlow extends SingleFlow {
                     if (StringUtils.isBlank(event.id())) {
                         event = event.toBuilder().id(Event.generateEventId()).build();
                     }
-                    confirmationRequested.addAll(
+                    interruptRequested.addAll(
                             event.actions().requestedToolConfirmations().keySet());
                     final Content content =
                             event.content().orElse(Content.builder().build());
 
-                    // every tool needs to return something, even if it requires confirmation; tools that require
-                    // confirmation can emit empty response, so filter out before emitting to the stream for correctness
+                    // every tool needs to return something, even if it raises an interrupt; tools that raise an
+                    // interrupt can emit empty response, so filter out before emitting to the stream for correctness
                     final List<Part> filteredParts = content.parts().orElse(List.of()).stream()
                             .filter(part -> {
                                 final FunctionResponse response =
                                         part.functionResponse().orElse(null);
                                 return response == null
-                                        || !confirmationRequested.contains(
+                                        || !interruptRequested.contains(
                                                 response.id().orElse(null))
                                         || CollectionUtils.isNotEmpty(
                                                 response.response().orElse(Map.of()));
@@ -142,7 +142,7 @@ public final class BaseFlow extends SingleFlow {
                 .concatWith(Flowable.defer(() -> {
                     final TurnOutcome outcome = resolveOutcome(
                             endInvocation.get(),
-                            CollectionUtils.isNotEmpty(confirmationRequested),
+                            CollectionUtils.isNotEmpty(interruptRequested),
                             foundFinalAnswer.get(),
                             runState.consumeContinuation());
                     final Flowable<Event> turnCompletedEvent =
@@ -156,7 +156,7 @@ public final class BaseFlow extends SingleFlow {
 
     private static TurnOutcome resolveOutcome(
             final boolean endInvocation,
-            final boolean confirmationRequested,
+            final boolean interruptRequested,
             final boolean foundFinalAnswer,
             final boolean continuationRequested) {
         if (endInvocation) {
@@ -164,9 +164,9 @@ public final class BaseFlow extends SingleFlow {
         }
         // ADK guarantee: when the LLM issues multiple tool calls in one turn, Functions merges all
         // individual tool responses into a single event (mergeParallelFunctionResponseEvents) and
-        // then generates at most one adk_request_confirmation event containing N confirmation
+        // then generates at most one adk_request_confirmation event containing N interrupt
         // function calls — one per tool that called toolContext.requestConfirmation().
-        if (confirmationRequested) {
+        if (interruptRequested) {
             return TurnOutcome.PAUSED;
         }
         if (foundFinalAnswer) {

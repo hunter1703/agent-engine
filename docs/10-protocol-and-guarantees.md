@@ -45,11 +45,11 @@ This order is part of runtime semantics. Reordering changes behavior.
 Human input is represented only through unresolved `adk_request_confirmation` events.
 
 Guarantees:
-- actual tool confirmations replay the original tool call through ADK
+- actual tool-call interrupts replay the original tool call through ADK
 - non-tool human input is requested through the internal `request_human_input` tool
 - REST resume sends a native `FunctionResponse` for `adk_request_confirmation`
-- binary confirmations use `ALLOW` / `DISALLOW` at the API boundary and map to `confirmed=true|false`
-- text confirmations use `answer` and map to `confirmed=true` plus `payload.answer`
+- binary (decision) interrupts use `ALLOW` / `DISALLOW` at the API boundary and map to `confirmed=true|false`
+- text interrupts use `answer` and map to `confirmed=true` plus `payload.answer`
 - no marker text protocol exists
 
 ## 10.3.2 Violation correction injection
@@ -123,8 +123,8 @@ The engine does not synthesize `turnComplete` or reorder parts. ADK owns respons
 - `WARN`: continue and record violation
 - `BLOCK`: return blocked tool result payload
 - `ESCALATE`:
-  - requests native confirmation through tool context
-  - returns confirmation-requested payload
+  - raises a native interrupt through tool context
+  - returns an interrupt-requested payload
 
 ## 10.5.3 Output stage (`afterModelCallback` + `onEventCallback`)
 

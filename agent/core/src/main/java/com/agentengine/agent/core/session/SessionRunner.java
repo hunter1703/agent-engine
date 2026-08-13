@@ -11,7 +11,7 @@ import com.agentengine.agent.infra.utils.ContentUtils;
 import com.agentengine.knowledge.api.beans.IndexRequest;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.FileUtils;
@@ -163,12 +163,12 @@ public final class SessionRunner {
                         });
     }
 
-    public synchronized void resume(final Collection<Confirmation> confirmations) {
+    public synchronized void resume(final Collection<ResumeRequest> resumeRequests) {
         cancel();
         disposable = runner.runAsync(
                         AgentSession.DEFAULT_USER_ID,
                         sessionId,
-                        ContentUtils.buildConfirmationsContent(confirmations),
+                        ContentUtils.buildResumeContent(resumeRequests),
                         runConfig())
                 .subscribeOn(SCHEDULER)
                 .doOnNext(event -> LOG.debug(

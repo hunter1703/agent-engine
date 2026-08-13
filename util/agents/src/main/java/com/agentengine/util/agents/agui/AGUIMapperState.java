@@ -4,36 +4,39 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.StringUtils;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
+/**
+ * Mutable state for {@link AGUIEventMapper}.
+ *
+ * <p>One mapper instance handles the entire SSE stream for a single HTTP invocation, but that
+ * stream can carry events from more than one {@code sessionId}. Run/step/message/tool-call tracking is therefore scoped per source {@code
+ * sessionId} via {@link RunScope}, so one session's in-flight run can never be started, finished,
+ * or have its steps/messages clobbered by an interleaved event from another session.
+ */
 public final class AGUIMapperState {
 
     private final String sessionId;
     private final String agentId;
-    private final StringBuilder textBuffer = new StringBuilder();
-    private final Map<String, String> toolCallParentSteps = new HashMap<>();
+    private final Map<String, RunScope> sessionVsScope = new HashMap<>();
+    private final Map<String, FunctionCall> idVsFunctionCall = new HashMap<>();
 
-    private String runId;
-    private String currentStepName;
-    private String currentTextMessageId;
-    private String currentReasoningMessageId;
-    private boolean reasoningOpen;
-    private boolean reasoningMessageOpen;
-    private String finalAnswer;
+    private String currentEventSessionId;
     private long currentSourceTimestamp;
     private String currentSourceEventId;
     private String currentAuthor;
-    private int stepSequence;
-    private int textMessageSequence;
-    private int reasoningMessageSequence;
-    private final Map<String, FunctionCall> requestConfirmationCalls = new HashMap<>();
 
     public AGUIMapperState(final String sessionId, final String agentId) {
         this.sessionId = sessionId;
         this.agentId = agentId;
     }
 
+    /** Must be called first for every incoming event so subsequent state lookups are scoped correctly. */
     public void recordSourceEvent(final SessionEvent event) {
+        currentEventSessionId = event.getSessionId();
         currentSourceTimestamp = event.getTimestamp();
         currentSourceEventId = event.getId();
         currentAuthor = event.getAuthor();
@@ -42,137 +45,126 @@ public final class AGUIMapperState {
             content.parts()
                     .orElse(List.of())
                     .forEach(part -> part.functionCall()
-                            .ifPresent(functionCall -> requestConfirmationCalls.put(
-                                    functionCall.id().orElseThrow(), functionCall)));
+                            .filter(functionCall -> functionCall.id().isPresent())
+                            .ifPresent(functionCall ->
+                                    idVsFunctionCall.put(functionCall.id().get(), functionCall)));
         }
     }
 
     public boolean hasNewRun(final String candidateRunId) {
-        return candidateRunId != null && !Objects.equals(runId, candidateRunId);
+        return candidateRunId != null && !Objects.equals(scope().runId, candidateRunId);
     }
 
     public void startRun(final String runId) {
-        this.runId = runId;
+        scope().runId = runId;
     }
 
+    /** Clears the tracked run for the current event's session and returns the runId that was active. */
     public String finishRun() {
-        final String finishedRunId = runId;
-        runId = null;
+        final RunScope scope = scope();
+        final String finishedRunId = scope.runId;
+        scope.runId = null;
         return finishedRunId;
     }
 
     public String currentRunId() {
-        return runId;
+        return scope().runId;
     }
 
     public boolean hasStartedStep() {
-        return StringUtils.isNotBlank(currentStepName);
+        return StringUtils.isNotBlank(scope().currentStepName);
     }
 
     public String startNextStep() {
-        // Include runId to ensure uniqueness across runs in the same session
-        final String prefix = runId != null ? "step-" + runId + "-" : "step-";
-        currentStepName = stableReplayId(prefix, currentSourceEventId, ++stepSequence);
-        return currentStepName;
-    }
-
-    public String currentStepName() {
-        return currentStepName;
+        return scope().startNextStep(currentSourceEventId);
     }
 
     public String finishStep() {
-        final String stepName = currentStepName;
-        currentStepName = null;
-        toolCallParentSteps.clear();
-        return stepName;
+        return scope().finishStep();
     }
 
     public boolean hasOpenTextMessage() {
-        return currentTextMessageId != null;
+        return scope().currentTextMessageId != null;
     }
 
     public String startNextTextMessage() {
-        currentTextMessageId = nextTextMessageId(currentSourceEventId);
-        return currentTextMessageId;
-    }
-
-    public String nextTextMessageId(final String sourceEventId) {
-        // Include runId to ensure uniqueness across runs in the same session
-        final String prefix = runId != null ? "msg-" + runId + "-" : "msg-";
-        return stableReplayId(prefix, sourceEventId, ++textMessageSequence);
+        return scope().startNextTextMessage(currentSourceEventId);
     }
 
     public String currentTextMessageId() {
-        return currentTextMessageId;
+        return scope().currentTextMessageId;
     }
 
     public String currentReasoningMessageId() {
-        return currentReasoningMessageId;
+        return scope().currentReasoningMessageId;
     }
 
     public boolean isTextBufferEmpty() {
-        return textBuffer.isEmpty();
+        return scope().textBuffer.isEmpty();
     }
 
     public void appendText(final String text) {
         if (StringUtils.isNotEmpty(text)) {
-            textBuffer.append(text);
+            scope().textBuffer.append(text);
         }
     }
 
     public String completeTextMessage() {
-        finalAnswer = textBuffer.toString();
-        return finalAnswer;
+        final RunScope scope = scope();
+        return scope.textBuffer.toString();
     }
 
     public void resetTextMessage() {
-        currentTextMessageId = null;
-        textBuffer.setLength(0);
-    }
-
-    public String finalAnswer() {
-        return finalAnswer;
+        final RunScope scope = scope();
+        scope.currentTextMessageId = null;
+        scope.textBuffer.setLength(0);
     }
 
     public boolean hasOpenReasoning() {
-        return reasoningOpen;
+        return scope().reasoningOpen;
     }
 
     public void startReasoning() {
-        reasoningOpen = true;
+        scope().reasoningOpen = true;
     }
 
     public boolean hasOpenReasoningMessage() {
-        return reasoningMessageOpen;
+        return scope().reasoningMessageOpen;
     }
 
     public String startReasoningMessage() {
-        reasoningMessageOpen = true;
-        currentReasoningMessageId = nextReasoningMessageId(currentSourceEventId);
-        return currentReasoningMessageId;
+        return scope().startReasoningMessage(currentSourceEventId);
     }
 
-    public String nextReasoningMessageId(final String sourceEventId) {
-        // Include runId to ensure uniqueness across runs in the same session
-        final String prefix = runId != null ? "think-" + runId + "-" : "think-";
-        return stableReplayId(prefix, sourceEventId, ++reasoningMessageSequence);
+    public void appendReasoning(final String text) {
+        if (StringUtils.isNotEmpty(text)) {
+            scope().reasoningBuffer.append(text);
+        }
+    }
+
+    /** Returns the accumulated reasoning text without clearing it; pair with {@link #closeReasoningMessage()}. */
+    public String completeReasoningMessage() {
+        return scope().reasoningBuffer.toString();
     }
 
     public void closeReasoningMessage() {
-        reasoningMessageOpen = false;
-        currentReasoningMessageId = null;
+        final RunScope scope = scope();
+        scope.reasoningMessageOpen = false;
+        scope.currentReasoningMessageId = null;
+        scope.reasoningBuffer.setLength(0);
     }
 
     public void closeReasoning() {
-        reasoningOpen = false;
+        scope().reasoningOpen = false;
     }
 
-    public void rememberToolCallParentStep(final String callId) {
-        toolCallParentSteps.put(callId, currentStepName);
-    }
-
-    public String consumeToolCallParentStep(final String callId) {
-        return toolCallParentSteps.remove(callId);
+    /**
+     * Mints a fresh, stable id for a tool call's result message — every {@code ToolCallResultEvent}
+     * introduces a new conversation message (mirroring {@code ToolMessage} in the AG-UI message
+     * model), so this is never the id of the call's parent step or of any other message.
+     */
+    public String nextToolResultMessageId() {
+        return scope().nextToolResultMessageId(currentSourceEventId);
     }
 
     /** Returns the timestamp to stamp onto the current event, falling back to wall clock. */
@@ -192,8 +184,62 @@ public final class AGUIMapperState {
         return currentAuthor != null ? currentAuthor : agentId;
     }
 
-    public FunctionCall getConfirmationRequestedCall(final String confirmationId) {
-        return requestConfirmationCalls.get(confirmationId);
+    public FunctionCall getFunctionCall(final String callId) {
+        return idVsFunctionCall.get(callId);
+    }
+
+    private RunScope scope() {
+        return sessionVsScope.computeIfAbsent(currentEventSessionId, ignored -> new RunScope());
+    }
+
+    /**
+     * Run/step/message tracking for a single source session
+     */
+    private static final class RunScope {
+        private String runId;
+        private String currentStepName;
+        private int stepSequence;
+
+        private String currentTextMessageId;
+        private final StringBuilder textBuffer = new StringBuilder();
+        private int textMessageSequence;
+        private int toolResultMessageSequence;
+
+        private String currentReasoningMessageId;
+        private final StringBuilder reasoningBuffer = new StringBuilder();
+        private boolean reasoningOpen;
+        private boolean reasoningMessageOpen;
+        private int reasoningMessageSequence;
+
+        private String startNextStep(final String sourceEventId) {
+            final String prefix = runId != null ? "step-" + runId + "-" : "step-";
+            currentStepName = stableReplayId(prefix, sourceEventId, ++stepSequence);
+            return currentStepName;
+        }
+
+        private String finishStep() {
+            final String stepName = currentStepName;
+            currentStepName = null;
+            return stepName;
+        }
+
+        private String startNextTextMessage(final String sourceEventId) {
+            final String prefix = runId != null ? "msg-" + runId + "-" : "msg-";
+            currentTextMessageId = stableReplayId(prefix, sourceEventId, ++textMessageSequence);
+            return currentTextMessageId;
+        }
+
+        private String nextToolResultMessageId(final String sourceEventId) {
+            final String prefix = runId != null ? "toolresult-" + runId + "-" : "toolresult-";
+            return stableReplayId(prefix, sourceEventId, ++toolResultMessageSequence);
+        }
+
+        private String startReasoningMessage(final String sourceEventId) {
+            final String prefix = runId != null ? "think-" + runId + "-" : "think-";
+            reasoningMessageOpen = true;
+            currentReasoningMessageId = stableReplayId(prefix, sourceEventId, ++reasoningMessageSequence);
+            return currentReasoningMessageId;
+        }
     }
 
     private static String stableReplayId(final String prefix, final String sourceEventId, final int sequence) {

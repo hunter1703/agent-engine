@@ -1,106 +1,103 @@
 package com.agentengine.agent.core.session.state;
 
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.*;
 
 public record PauseState(
-        Set<String> pendingExternalSelfConfirmationIds,
-        Map<String, Confirmation> receivedSelfConfirmations,
-        Map<String, String> pendingConfirmationIdVsChildSessionId,
-        Map<String, String> correlationIdVsPendingInternalConfirmationId) {
+        Set<String> pendingExternalSelfInterruptIds,
+        Map<String, ResumeRequest> receivedSelfResumes,
+        Map<String, String> pendingInterruptIdVsChildSessionId,
+        Map<String, String> correlationIdVsPendingInternalInterruptId) {
     public PauseState() {
         this(new HashSet<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
     }
 
     @JsonCreator
     public PauseState(
-            @JsonProperty("pendingExternalSelfConfirmationIds") final Set<String> pendingExternalSelfConfirmationIds,
-            @JsonProperty("receivedSelfConfirmations") final Map<String, Confirmation> receivedSelfConfirmations,
-            @JsonProperty("pendingConfirmationIdVsChildSessionId")
-                    final Map<String, String> pendingConfirmationIdVsChildSessionId,
-            @JsonProperty("correlationIdVsPendingInternalConfirmationId")
-                    final Map<String, String> correlationIdVsPendingInternalConfirmationId) {
-        this.pendingExternalSelfConfirmationIds = pendingExternalSelfConfirmationIds == null
+            @JsonProperty("pendingExternalSelfInterruptIds") final Set<String> pendingExternalSelfInterruptIds,
+            @JsonProperty("receivedSelfResumes") final Map<String, ResumeRequest> receivedSelfResumes,
+            @JsonProperty("pendingInterruptIdVsChildSessionId")
+                    final Map<String, String> pendingInterruptIdVsChildSessionId,
+            @JsonProperty("correlationIdVsPendingInternalInterruptId")
+                    final Map<String, String> correlationIdVsPendingInternalInterruptId) {
+        this.pendingExternalSelfInterruptIds = pendingExternalSelfInterruptIds == null
                 ? new HashSet<>()
-                : new HashSet<>(pendingExternalSelfConfirmationIds);
-        this.receivedSelfConfirmations = CollectionUtils.nullSafeMutableMap(receivedSelfConfirmations);
-        this.pendingConfirmationIdVsChildSessionId =
-                CollectionUtils.nullSafeMutableMap(pendingConfirmationIdVsChildSessionId);
-        this.correlationIdVsPendingInternalConfirmationId =
-                CollectionUtils.nullSafeMutableMap(correlationIdVsPendingInternalConfirmationId);
+                : new HashSet<>(pendingExternalSelfInterruptIds);
+        this.receivedSelfResumes = CollectionUtils.nullSafeMutableMap(receivedSelfResumes);
+        this.pendingInterruptIdVsChildSessionId =
+                CollectionUtils.nullSafeMutableMap(pendingInterruptIdVsChildSessionId);
+        this.correlationIdVsPendingInternalInterruptId =
+                CollectionUtils.nullSafeMutableMap(correlationIdVsPendingInternalInterruptId);
     }
 
-    public PauseState withChildPaused(final String childSessionId, final String confirmationId) {
-        final Map<String, String> updated = new HashMap<>(pendingConfirmationIdVsChildSessionId);
-        updated.put(confirmationId, childSessionId);
+    public PauseState withChildPaused(final String childSessionId, final String interruptId) {
+        final Map<String, String> updated = new HashMap<>(pendingInterruptIdVsChildSessionId);
+        updated.put(interruptId, childSessionId);
         return new PauseState(
-                pendingExternalSelfConfirmationIds,
-                receivedSelfConfirmations,
+                pendingExternalSelfInterruptIds,
+                receivedSelfResumes,
                 updated,
-                correlationIdVsPendingInternalConfirmationId);
+                correlationIdVsPendingInternalInterruptId);
     }
 
-    public PauseState withSelfPaused(final String confirmationId) {
-        final Set<String> updated = new HashSet<>(pendingExternalSelfConfirmationIds);
-        updated.add(confirmationId);
+    public PauseState withSelfPaused(final String interruptId) {
+        final Set<String> updated = new HashSet<>(pendingExternalSelfInterruptIds);
+        updated.add(interruptId);
         return new PauseState(
                 updated,
-                receivedSelfConfirmations,
-                pendingConfirmationIdVsChildSessionId,
-                correlationIdVsPendingInternalConfirmationId);
+                receivedSelfResumes,
+                pendingInterruptIdVsChildSessionId,
+                correlationIdVsPendingInternalInterruptId);
     }
 
-    public PauseState withSelfConfirmed(final Confirmation confirmation) {
-        final String id = confirmation.getConfirmationId();
-        final Map<String, Confirmation> updatedReceived = new HashMap<>(receivedSelfConfirmations);
-        updatedReceived.put(id, confirmation);
-        if (pendingExternalSelfConfirmationIds.contains(id) || receivedSelfConfirmations.containsKey(id)) {
-            final Set<String> updatedPending = new HashSet<>(pendingExternalSelfConfirmationIds);
+    public PauseState withSelfResumed(final ResumeRequest resumeRequest) {
+        final String id = resumeRequest.getInterruptId();
+        final Map<String, ResumeRequest> updatedReceived = new HashMap<>(receivedSelfResumes);
+        updatedReceived.put(id, resumeRequest);
+        if (pendingExternalSelfInterruptIds.contains(id) || receivedSelfResumes.containsKey(id)) {
+            final Set<String> updatedPending = new HashSet<>(pendingExternalSelfInterruptIds);
             updatedPending.remove(id);
             return new PauseState(
                     updatedPending,
                     updatedReceived,
-                    pendingConfirmationIdVsChildSessionId,
-                    correlationIdVsPendingInternalConfirmationId);
+                    pendingInterruptIdVsChildSessionId,
+                    correlationIdVsPendingInternalInterruptId);
         } else {
-            final Map<String, String> updatedPending = new HashMap<>(correlationIdVsPendingInternalConfirmationId);
-            correlationIdVsPendingInternalConfirmationId.entrySet().stream()
+            final Map<String, String> updatedPending = new HashMap<>(correlationIdVsPendingInternalInterruptId);
+            correlationIdVsPendingInternalInterruptId.entrySet().stream()
                     .filter(entry -> Objects.equals(entry.getValue(), id))
                     .map(Map.Entry::getKey)
                     .findFirst()
                     .ifPresent(updatedPending::remove);
             return new PauseState(
-                    pendingExternalSelfConfirmationIds,
+                    pendingExternalSelfInterruptIds,
                     updatedReceived,
-                    pendingConfirmationIdVsChildSessionId,
+                    pendingInterruptIdVsChildSessionId,
                     updatedPending);
         }
     }
 
-    public PauseState withChildConfirmed(final String confirmationId) {
-        final Map<String, String> updated = new HashMap<>(pendingConfirmationIdVsChildSessionId);
-        updated.remove(confirmationId);
+    public PauseState withChildResumed(final String interruptId) {
+        final Map<String, String> updated = new HashMap<>(pendingInterruptIdVsChildSessionId);
+        updated.remove(interruptId);
         return new PauseState(
-                pendingExternalSelfConfirmationIds,
-                receivedSelfConfirmations,
+                pendingExternalSelfInterruptIds,
+                receivedSelfResumes,
                 updated,
-                correlationIdVsPendingInternalConfirmationId);
+                correlationIdVsPendingInternalInterruptId);
     }
 
-    public PauseState withInternalSelfPause(String correlationId, final String confirmationId) {
-        final Map<String, String> updated = new HashMap<>(correlationIdVsPendingInternalConfirmationId);
-        updated.put(correlationId, confirmationId);
+    public PauseState withInternalSelfPause(String correlationId, final String interruptId) {
+        final Map<String, String> updated = new HashMap<>(correlationIdVsPendingInternalInterruptId);
+        updated.put(correlationId, interruptId);
         return new PauseState(
-                pendingExternalSelfConfirmationIds,
-                receivedSelfConfirmations,
-                pendingConfirmationIdVsChildSessionId,
-                updated);
+                pendingExternalSelfInterruptIds, receivedSelfResumes, pendingInterruptIdVsChildSessionId, updated);
     }
 
-    public String getPausedChild(final String confirmationId) {
-        return pendingConfirmationIdVsChildSessionId.get(confirmationId);
+    public String getPausedChild(final String interruptId) {
+        return pendingInterruptIdVsChildSessionId.get(interruptId);
     }
 }

@@ -7,7 +7,7 @@ public enum SessionState implements PekkoSerializable {
     IDLE(true),
     TRIGGERED_RUN(false),
     RUNNING(false),
-    RESUMING(false),
+    CONTINUING(false),
     PAUSED(true);
 
     private final boolean terminal;

@@ -118,3 +118,7 @@ the reader and the runtime equally.
     old. State that reasoning in chat instead.
 18. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
 19. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
+20. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
+    `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
+21. Order class members with all `public` methods first, then all `private` methods after —
+    never interleave them, even when a private helper is only used by one nearby public method.

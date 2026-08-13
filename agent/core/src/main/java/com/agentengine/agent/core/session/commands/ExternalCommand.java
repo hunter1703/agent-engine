@@ -1,11 +1,11 @@
 package com.agentengine.agent.core.session.commands;
 
 import com.agentengine.agent.api.model.UserMessage;
-import com.agentengine.agent.core.session.ConfirmResult;
 import com.agentengine.agent.core.session.CurrentTurnEvents;
+import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.StartSessionResult;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.beans.UniqueRecord;
 import org.apache.pekko.actor.typed.ActorRef;
 
@@ -18,7 +18,7 @@ public interface ExternalCommand extends SessionCommand {
     record StartCommand(UniqueRecord<UserMessage> message, ActorRef<StartSessionResult> replyTo)
             implements ExternalCommand {}
 
-    record ConfirmCommand(Confirmation confirmation, ActorRef<ConfirmResult> replyTo) implements ExternalCommand {}
+    record ResumeCommand(ResumeRequest resumeRequest, ActorRef<ResumeResult> replyTo) implements ExternalCommand {}
 
     /**
      * Requests the current uncommitted turn events from the session actor.

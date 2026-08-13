@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.utils;
 import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -163,10 +163,10 @@ public final class ContentUtils {
                 .build();
     }
 
-    public static Content buildConfirmationsContent(final Collection<Confirmation> confirmations) {
-        final List<Part> parts = CollectionUtils.nullSafeList(confirmations).stream()
-                .map(confirmation -> EventUtils.buildConfirmationEvent(
-                        confirmation.getConfirmationId(), confirmation.getConfirmed(), confirmation.getAnswer()))
+    public static Content buildResumeContent(final Collection<ResumeRequest> resumeRequests) {
+        final List<Part> parts = CollectionUtils.nullSafeList(resumeRequests).stream()
+                .map(resumeRequest -> EventUtils.buildResumeAnswerEvent(
+                        resumeRequest.getInterruptId(), resumeRequest.getAccepted(), resumeRequest.getAnswer()))
                 .flatMap(event -> event.content().stream())
                 .flatMap(content -> content.parts().stream())
                 .flatMap(List::stream)

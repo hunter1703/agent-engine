@@ -56,7 +56,7 @@ A single agent request follows this shape:
 - Context strategies: `compaction`, `last_n`, `none`
 - Guardrail stages: `INPUT`, `TOOL`, `OUTPUT`
 - Tool registry with globally visible tools and toolset suites
-- Session pause/resume for confirmation and human-in-the-loop flows
+- Session pause/resume for interrupt-driven and human-in-the-loop flows
 - Session rollback to a prior run state
 - Built-in toolsets such as `planning` and `agent_tools`
 - Persistent cross-session memory backed by Qdrant (extracted by the `memory-agent` community expert)

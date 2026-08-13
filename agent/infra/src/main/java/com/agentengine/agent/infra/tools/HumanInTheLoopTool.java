@@ -1,7 +1,7 @@
 package com.agentengine.agent.infra.tools;
 
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.ConfirmationKind;
+import com.agentengine.util.agents.beans.InterruptKind;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
@@ -66,28 +66,28 @@ public final class HumanInTheLoopTool extends Tool {
         if (toolContext == null) {
             return ToolOutput.direct(Map.of("message", "Invocation context is not available for request_human_input."));
         }
-        final ConfirmationKind pauseKind = ConfirmationKind.valueOfOrDefault(kind);
+        final InterruptKind pauseKind = InterruptKind.valueOfOrDefault(kind);
         final ToolConfirmation confirmation = toolContext.toolConfirmation().orElse(null);
         if (confirmation != null) {
             LOG.info(
-                    "Consuming HITL confirmation kind={} confirmed={} payloadPresent={}",
+                    "Consuming HITL interrupt kind={} confirmed={} payloadPresent={}",
                     pauseKind,
                     confirmation.confirmed(),
                     confirmation.payload() != null);
-            return ToolOutput.direct(confirm(confirmation, pauseKind));
+            return ToolOutput.direct(resolveInterruptResult(confirmation, pauseKind));
         }
 
-        LOG.info("Requesting HITL confirmation kind={}", pauseKind);
-        requestConfirmation(toolContext, prompt, options, context, pauseKind);
+        LOG.info("Requesting HITL interrupt kind={}", pauseKind);
+        requestInterrupt(toolContext, prompt, options, context, pauseKind);
         return ToolOutput.empty();
     }
 
-    private void requestConfirmation(
+    private void requestInterrupt(
             final ToolContext toolContext,
             final String prompt,
             List<String> options,
             final Map<String, Object> context,
-            final ConfirmationKind pauseKind) {
+            final InterruptKind pauseKind) {
         final String sanitizedPrompt =
                 StringUtils.isNotBlank(prompt) ? prompt.trim() : "User input is required to continue.";
         options = CollectionUtils.nullSafeList(options).stream()
@@ -107,9 +107,9 @@ public final class HumanInTheLoopTool extends Tool {
         toolContext.requestConfirmation(sanitizedPrompt, payload);
     }
 
-    private static Map<String, Object> confirm(
-            final ToolConfirmation confirmation, final ConfirmationKind confirmationKind) {
-        return switch (confirmationKind) {
+    private static Map<String, Object> resolveInterruptResult(
+            final ToolConfirmation confirmation, final InterruptKind interruptKind) {
+        return switch (interruptKind) {
             // The decision is surfaced in the function response so the LLM can reason about
             // whether to proceed or abort — especially critical in the rejection case where
             // the LLM must not continue with the originally requested action.

@@ -19,7 +19,7 @@ import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
-import com.agentengine.util.agents.beans.Confirmation;
+import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
@@ -176,8 +176,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 runner.start(state.runState().message().getRecord());
                 updateSessionStatus(state, SessionStatus.RUNNING);
             }
-            case RESUMING -> {
-                runner.resume(state.getAllReceivedConfirmations());
+            case CONTINUING -> {
+                runner.resume(state.getAllReceivedResumes());
                 updateSessionStatus(state, SessionStatus.RUNNING);
             }
             case RUNNING -> {
@@ -204,8 +204,8 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             }
             case PAUSED -> {
                 if (!topology.isRoot()) {
-                    for (final String confirmationId : state.pauseState().pendingExternalSelfConfirmationIds()) {
-                        propagateSelfPauseToParent(topology, confirmationId);
+                    for (final String interruptId : state.pauseState().pendingExternalSelfInterruptIds()) {
+                        propagateSelfPauseToParent(topology, interruptId);
                     }
                 }
                 updateSessionStatus(state, SessionStatus.PAUSED);
@@ -221,10 +221,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         builder.forAnyState()
                 .onCommand(InitializeCommand.class, this::initialize)
                 .onCommand(StartCommand.class, this::start)
-                .onCommand(ConfirmCommand.class, this::confirm)
-                .onCommand(ConfirmChildCommand.class, this::confirmChild)
-                .onCommand(CompleteChildCommand.class, this::completeChild)
                 .onCommand(ResumeCommand.class, this::resume)
+                .onCommand(ResumeChildCommand.class, this::resumeChild)
+                .onCommand(CompleteChildCommand.class, this::completeChild)
+                .onCommand(ContinueRunCommand.class, this::continueRun)
                 .onCommand(AwaitCommand.class, this::await)
                 .onCommand(AwaitChildCommand.class, this::awaitChild)
                 .onCommand(StartChildCommand.class, this::startChild)
@@ -324,131 +324,129 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         };
     }
 
-    private Effect<SessionFact, SessionActorState> confirm(
-            final SessionActorState state, final ConfirmCommand command) {
-        final Confirmation confirmation = command.confirmation();
-        final String childSessionId = state.getPausedChild(confirmation);
+    private Effect<SessionFact, SessionActorState> resume(final SessionActorState state, final ResumeCommand command) {
+        final ResumeRequest resumeRequest = command.resumeRequest();
+        final String childSessionId = state.getPausedChild(resumeRequest);
 
-        final ActorRef<ConfirmResult> replyTo = command.replyTo();
+        final ActorRef<ResumeResult> replyTo = command.replyTo();
         if (childSessionId != null) {
             final Optional<ChildSession> child = state.child(childSessionId);
             if (child.isEmpty()) {
                 return Effect()
                         .none()
-                        .thenReply(
-                                replyTo, _ -> new ConfirmResult.Rejected("Unknown child session: " + childSessionId));
+                        .thenReply(replyTo, _ -> new ResumeResult.Rejected("Unknown child session: " + childSessionId));
             }
 
             final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
             context.pipeToSelf(
                     childRef.ask(
-                            (Function<ActorRef<ConfirmResult>, SessionCommand>)
-                                    askReplyTo -> new ConfirmCommand(confirmation, askReplyTo),
+                            (Function<ActorRef<ResumeResult>, SessionCommand>)
+                                    askReplyTo -> new ResumeCommand(resumeRequest, askReplyTo),
                             ASK_TIMEOUT),
                     // processing result via command and not inline because completable future thread would be different
                     // then actor thread so cannot access actor-specific abstractions like "persist", etc.
-                    (resumeResult, error) -> new ConfirmChildCommand(
-                            confirmation, replyTo, resumeResult, error == null ? null : error.getMessage()));
+                    (resumeResult, error) -> new ResumeChildCommand(
+                            resumeRequest, replyTo, resumeResult, error == null ? null : error.getMessage()));
             return Effect().none();
         }
 
-        // checking whether it is either accepted or pending confirmation id. if already accepted id is received, it is
+        // checking whether it is either accepted or a pending interrupt id. if already accepted id is received, it is
         // not a failure but we will silently ignore in event handler
-        if (!state.isExternalSelfConfirmation(confirmation)) {
-            return Effect().none().thenReply(replyTo, _ -> new ConfirmResult.UnknownConfirmationId());
+        if (!state.isExternalSelfInterrupt(resumeRequest)) {
+            return Effect().none().thenReply(replyTo, _ -> new ResumeResult.UnknownInterruptId());
         }
 
-        return confirmed(
+        return resumed(
                 replyTo,
-                confirmation,
-                // only checking whether PENDING confirmation id was received; if we did not have this check, everytime
-                // someone sends already accepted confirmation id it would resume the agent
-                state.pauseState().pendingExternalSelfConfirmationIds().contains(confirmation.getConfirmationId()));
+                resumeRequest,
+                // only checking whether PENDING interrupt id was received; if we did not have this check, everytime
+                // someone sends an already-answered interrupt id it would continue the run
+                state.pauseState().pendingExternalSelfInterruptIds().contains(resumeRequest.getInterruptId()));
     }
 
-    private Effect<SessionFact, SessionActorState> confirmChild(
-            final SessionActorState state, final ConfirmChildCommand command) {
-        final ActorRef<ConfirmResult> replyTo = command.replyTo();
+    private Effect<SessionFact, SessionActorState> resumeChild(
+            final SessionActorState state, final ResumeChildCommand command) {
+        final ActorRef<ResumeResult> replyTo = command.replyTo();
         if (command.error() != null) {
             return Effect()
                     .none()
                     .thenReply(
                             replyTo,
-                            _ -> new ConfirmResult.Rejected(
+                            _ -> new ResumeResult.Rejected(
                                     "Failed to forward resume to child session: " + command.error()));
         }
 
-        if (command.result() instanceof ConfirmResult.Rejected rejected) {
+        if (command.result() instanceof ResumeResult.Rejected rejected) {
             return Effect().none().thenReply(replyTo, _ -> rejected);
         }
 
-        return confirmed(
+        return resumed(
                 replyTo,
-                command.confirmation(),
-                // only checking whether PENDING confirmation id was received; if we did not have this check, everytime
-                // someone sends already accepted confirmation id it would resume the agent
+                command.resumeRequest(),
+                // only checking whether PENDING interrupt id was received; if we did not have this check, everytime
+                // someone sends an already-answered interrupt id it would continue the run
                 state.pauseState()
-                        .pendingExternalSelfConfirmationIds()
-                        .contains(command.confirmation().getConfirmationId()));
+                        .pendingExternalSelfInterruptIds()
+                        .contains(command.resumeRequest().getInterruptId()));
     }
 
     private Effect<SessionFact, SessionActorState> completeChild(
             final SessionActorState state, final CompleteChildCommand command) {
-        final String confirmationId = state.getInternalConfirmationId(command.childSessionId());
+        final String interruptId = state.getInternalInterruptId(command.childSessionId());
         LOG.info(
-                "Received Child completed for topology : {}, child sessionId : {}, confirmationId : {}",
+                "Received Child completed for topology : {}, child sessionId : {}, interruptId : {}",
                 JsonUtils.toJson(state.topology()),
                 command.childSessionId(),
-                confirmationId);
-        if (confirmationId == null) {
+                interruptId);
+        if (interruptId == null) {
             return Effect().none();
         }
-        final Confirmation confirmation = new Confirmation(
-                confirmationId,
+        final ResumeRequest resumeRequest = new ResumeRequest(
+                interruptId,
                 true,
                 AwaitAgentTool.buildCompletedResponseMap(command.childSessionId(), command.result()));
-        return confirmed(null, confirmation, true);
+        return resumed(null, resumeRequest, true);
     }
 
-    private Effect<SessionFact, SessionActorState> confirmed(
-            final ActorRef<ConfirmResult> replyTo,
-            final Confirmation confirmation,
-            final boolean pendingSelfConfirmation) {
+    private Effect<SessionFact, SessionActorState> resumed(
+            final ActorRef<ResumeResult> replyTo,
+            final ResumeRequest resumeRequest,
+            final boolean pendingSelfInterrupt) {
         final EffectBuilder<SessionFact, SessionActorState> builder = Effect()
-                .persist(new ConfirmedFact(confirmation))
+                .persist(new ResumedFact(resumeRequest))
                 .thenRun(newState -> {
                     LOG.info(
-                            "confirmed for topology : {}, all confirmationsReceived : {}, pendingSelfConfirmation:{}",
+                            "resumed for topology : {}, all interruptsAnswered : {}, pendingSelfInterrupt:{}",
                             JsonUtils.toJson(newState.topology()),
-                            newState.allConfirmationsReceived(),
-                            pendingSelfConfirmation);
-                    if (pendingSelfConfirmation && newState.allConfirmationsReceived()) {
-                        self.tell(new ResumeCommand());
+                            newState.allInterruptsAnswered(),
+                            pendingSelfInterrupt);
+                    if (pendingSelfInterrupt && newState.allInterruptsAnswered()) {
+                        self.tell(new ContinueRunCommand());
                     }
                 });
-        return replyTo != null ? builder.thenReply(replyTo, _ -> new ConfirmResult.Accepted()) : builder;
+        return replyTo != null ? builder.thenReply(replyTo, _ -> new ResumeResult.Accepted()) : builder;
     }
 
-    private EffectBuilder<SessionFact, SessionActorState> resume(
-            final SessionActorState state, final ResumeCommand command) {
-        // Only resume if the session is actually paused;
+    private EffectBuilder<SessionFact, SessionActorState> continueRun(
+            final SessionActorState state, final ContinueRunCommand command) {
+        // Only continue if the session is actually paused;
         if (state.sessionState() != SessionState.PAUSED) {
             LOG.info(
-                    "Ignoring ResumeCommand for session in state {} for topology : {}",
+                    "Ignoring ContinueRunCommand for session in state {} for topology : {}",
                     state.sessionState(),
                     JsonUtils.toJson(state.topology()));
             return Effect().none();
         }
-        final Collection<Confirmation> confirmations = state.getAllReceivedConfirmations();
+        final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
         LOG.info(
-                "Resuming confirmations : {} for topology : {}",
-                JsonUtils.toJson(confirmations),
+                "Continuing run with resumes : {} for topology : {}",
+                JsonUtils.toJson(resumeRequests),
                 JsonUtils.toJson(state.topology()));
-        return Effect().persist(new ResumingFact()).thenRun(newState -> {
-            runner.resume(confirmations);
+        return Effect().persist(new ContinuingFact()).thenRun(newState -> {
+            runner.resume(resumeRequests);
             LOG.info(
-                    "Resumed confirmations : {} for topology : {}",
-                    JsonUtils.toJson(confirmations),
+                    "Continued run with resumes : {} for topology : {}",
+                    JsonUtils.toJson(resumeRequests),
                     JsonUtils.toJson(state.topology()));
             updateSessionStatus(newState, SessionStatus.RUNNING);
         });
@@ -528,11 +526,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         }
         final SessionState sessionState = state.sessionState();
         if (sessionState == SessionState.RUNNING
-                || ((sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.RESUMING)
+                || ((sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.CONTINUING)
                         && runStarted)) {
-            // (sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.RESUMING) && runStarted when
-            // the spawn child is invoked in first run or first run when the state is still in TRIGGERED_RUN after
-            // resume ; state moves to RUNNING only when the first turn is committed
+            // (sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.CONTINUING) && runStarted
+            // when the spawn child is invoked in first run or first run when the state is still in TRIGGERED_RUN
+            // after the run continues; state moves to RUNNING only when the first turn is committed
             return Effect()
                     .persist(
                             new ChildStartingFact(new StartingChild(command.agentId(), childSessionId, commandMessage)))
@@ -648,13 +646,13 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 event.turnComplete().orElse(false),
                 event.content().map(Content::text).orElse("<no-content>"));
 
-        // Detect self-pause: the adk_request_confirmation call ID is the confirmationId the client
+        // Detect self-pause: the adk_request_confirmation call ID is the interruptId the client
         // echoes back, so it is used directly as the pause key.
         final List<SessionFact> pauseFacts = new ArrayList<>();
-        final List<String> externalConfirmationIds = new ArrayList<>();
-        final List<FunctionCall> confirmationCalls = Functions.getAskUserConfirmationFunctionCalls(event);
-        for (final FunctionCall call : confirmationCalls) {
-            final String confirmationId = call.id().orElse(null);
+        final List<String> externalInterruptIds = new ArrayList<>();
+        final List<FunctionCall> interruptCalls = Functions.getAskUserConfirmationFunctionCalls(event);
+        for (final FunctionCall call : interruptCalls) {
+            final String interruptId = call.id().orElse(null);
             final Map<String, Object> args = call.args().orElse(Map.of());
             final FunctionCall originalFunctionCall =
                     Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
@@ -662,10 +660,10 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                     Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
                 final String childSessionId = CollectionUtils.getValueFromMap(
                         originalFunctionCall.args().orElse(Map.of()), AwaitAgentTool.CHILD_SESSION_ID);
-                pauseFacts.add(PausedFact.internalSelfPause(childSessionId, confirmationId));
+                pauseFacts.add(PausedFact.internalSelfPause(childSessionId, interruptId));
             } else {
-                pauseFacts.add(PausedFact.externalSelfPaused(confirmationId));
-                externalConfirmationIds.add(confirmationId);
+                pauseFacts.add(PausedFact.externalSelfPaused(interruptId));
+                externalInterruptIds.add(interruptId);
             }
         }
 
@@ -692,7 +690,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
             } else {
                 LOG.info("Publishing with pause effect");
                 effectBuilder = Effect().persist(pauseFacts).thenRun(newState -> {
-                    externalConfirmationIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
+                    externalInterruptIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
                     updateSessionStatus(newState, SessionStatus.PAUSED);
                 });
             }
@@ -709,7 +707,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 LOG.warn("Duplicate turn detected for session {}, skipping commit", topology.sessionId());
                 effectBuilder = Effect().none();
             } else {
-                // Prepend user message/confirmations on first turn
+                // Prepend user message/resume answers on first turn
                 final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
                 final String invocationId = events.getFirst().invocationId();
                 if (isFirstTurn) {
@@ -728,17 +726,17 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 userMessage.getRecord(),
                                 invocationId);
                     }
-                } else if (!state.getAllReceivedConfirmations().isEmpty()) {
-                    // Resume with confirmations
-                    final Event confirmationEvent = EventUtils.buildConfirmationsEvent(
-                            state.getAllReceivedConfirmations(),
+                } else if (!state.getAllReceivedResumes().isEmpty()) {
+                    // Continue the run with the resume answers
+                    final Event resumeEvent = EventUtils.buildResumeEvent(
+                            state.getAllReceivedResumes(),
                             invocationId,
                             events.getFirst().timestamp());
-                    events.addFirst(confirmationEvent);
+                    events.addFirst(resumeEvent);
                     LOG.info(
-                            "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} confirmation(s) with invocationId: {}",
+                            "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} resume answer(s) with invocationId: {}",
                             topology.sessionId(),
-                            state.getAllReceivedConfirmations().size(),
+                            state.getAllReceivedResumes().size(),
                             invocationId);
                 }
 
@@ -761,7 +759,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 commitFacts.addAll(pauseFacts);
                 LOG.info("Publishing with commit effect");
                 effectBuilder = Effect().persist(commitFacts).thenRun(newState -> {
-                    externalConfirmationIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
+                    externalInterruptIds.forEach(id -> propagateSelfPauseToParent(newState.topology(), id));
                     if (newState.sessionState() == SessionState.PAUSED) {
                         updateSessionStatus(newState, SessionStatus.PAUSED);
                     }
@@ -782,11 +780,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
     private Effect<SessionFact, SessionActorState> childPaused(
             final SessionActorState state, final PauseChildCommand command) {
         EffectBuilder<SessionFact, SessionActorState> effect;
-        if (state.pauseState().getPausedChild(command.confirmationId()) != null) {
+        if (state.pauseState().getPausedChild(command.interruptId()) != null) {
             // already received the pause command
             effect = Effect().none();
         } else {
-            effect = Effect().persist(PausedFact.childPaused(command.childSessionId(), command.confirmationId()));
+            effect = Effect().persist(PausedFact.childPaused(command.childSessionId(), command.interruptId()));
         }
         return effect.thenReply(command.replyTo(), _ -> Done.done());
     }
@@ -797,11 +795,11 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
      * armed. Recovery re-arms it on restart, but nothing else proactively wakes a paused child, so
      * if the process dies mid-retry and this actor is never touched again, propagation is lost for
      * good. Closing that fully requires an external reconciliation sweep over PAUSED sessions with
-     * unresolved {@code pendingExternalSelfConfirmationIds} — out of scope here; risk accepted as
+     * unresolved {@code pendingExternalSelfInterruptIds} — out of scope here; risk accepted as
      * low (needs message loss and no further restart/relocation of this actor for the pause's
      * lifetime).
      */
-    private void propagateSelfPauseToParent(final SessionTopology topology, final String confirmationId) {
+    private void propagateSelfPauseToParent(final SessionTopology topology, final String interruptId) {
         if (topology.isRoot()) {
             return;
         }
@@ -819,7 +817,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         Patterns.retry(
                         () -> parent.ask(
                                 (Function<ActorRef<Done>, SessionCommand>)
-                                        replyTo -> new PauseChildCommand(currentSessionId, confirmationId, replyTo),
+                                        replyTo -> new PauseChildCommand(currentSessionId, interruptId, replyTo),
                                 ASK_TIMEOUT),
                         5,
                         Duration.ofSeconds(1),
@@ -829,9 +827,9 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                 .whenComplete((ignored, error) -> {
                     if (error != null) {
                         LOG.error(
-                                "Failed to propagate pause confirmation '{}' from session '{}' to parent '{}:{}' "
+                                "Failed to propagate paused interrupt '{}' from session '{}' to parent '{}:{}' "
                                         + "after retries; scheduling async retry in {}",
-                                confirmationId,
+                                interruptId,
                                 currentSessionId,
                                 parentAgentId,
                                 parentSessionId,
@@ -839,7 +837,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                                 error);
                         scheduler.scheduleOnce(
                                 SELF_PAUSE_RETRY_INTERVAL,
-                                () -> self.tell(new SelfPauseCommand(topology, confirmationId)),
+                                () -> self.tell(new SelfPauseCommand(topology, interruptId)),
                                 executionContext);
                     }
                 });
@@ -847,16 +845,16 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
 
     /**
      * Fallback for when the bounded ask-retry in {@link #propagateSelfPauseToParent} is exhausted.
-     * Keeps rescheduling itself until the confirmation is no longer pending — either the parent
+     * Keeps rescheduling itself until the interrupt is no longer pending — either the parent
      * finally durably persisted the routing entry, or the human answered it directly, making
      * propagation moot. This also self-heals across actor restarts: {@code onRecoveryCompleted}
-     * already re-invokes {@code propagateSelfPauseToParent} for every still-pending confirmation,
+     * already re-invokes {@code propagateSelfPauseToParent} for every still-pending interrupt,
      * which re-arms this loop even if the in-memory schedule was lost.
      */
     private Effect<SessionFact, SessionActorState> retryPropagateSelfPause(
             final SessionActorState state, final SelfPauseCommand command) {
-        if (state.pauseState().pendingExternalSelfConfirmationIds().contains(command.confirmationId())) {
-            propagateSelfPauseToParent(command.topology(), command.confirmationId());
+        if (state.pauseState().pendingExternalSelfInterruptIds().contains(command.interruptId())) {
+            propagateSelfPauseToParent(command.topology(), command.interruptId());
         }
         return Effect().none();
     }
@@ -916,35 +914,35 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
                         (state, fact) -> state.dequeue()
                                 .withSessionState(SessionState.TRIGGERED_RUN)
                                 .withCurrentMessage(fact.getMessage()))
-                .onEvent(ConfirmedFact.class, (state, fact) -> {
-                    final Confirmation confirmation = fact.getConfirmation();
+                .onEvent(ResumedFact.class, (state, fact) -> {
+                    final ResumeRequest resumeRequest = fact.getResumeRequest();
                     LOG.info(
-                            "received confirmed fact : {} for topology : {} for confirmation : {}",
-                            state.isSelfConfirmation(confirmation),
+                            "received resumed fact : {} for topology : {} for resume request : {}",
+                            state.isSelfInterrupt(resumeRequest),
                             JsonUtils.toJson(state.topology()),
-                            JsonUtils.toJson(confirmation));
-                    return state.isSelfConfirmation(confirmation)
-                            ? state.selfConfirm(confirmation)
-                            : state.childConfirm(confirmation);
+                            JsonUtils.toJson(resumeRequest));
+                    return state.isSelfInterrupt(resumeRequest)
+                            ? state.selfResume(resumeRequest)
+                            : state.childResume(resumeRequest);
                 })
-                .onEvent(ResumingFact.class, (state, _) -> state.withSessionState(SessionState.RESUMING))
+                .onEvent(ContinuingFact.class, (state, _) -> state.withSessionState(SessionState.CONTINUING))
                 .onEvent(PausedFact.class, (state, fact) -> {
                     LOG.info(
                             "paused fact for topology : {}, {}",
                             JsonUtils.toJson(state.topology()),
                             JsonUtils.toJson(fact));
                     final String childSessionId = fact.getSessionId();
-                    final String confirmationId = fact.getConfirmationId();
+                    final String interruptId = fact.getInterruptId();
                     if (childSessionId != null) {
-                        return state.childPaused(childSessionId, confirmationId);
+                        return state.childPaused(childSessionId, interruptId);
                     }
                     runStarted = false;
                     if (fact.isInternal()) {
                         String correlationId = fact.getCorrelationId();
-                        correlationId = correlationId == null ? confirmationId : correlationId;
-                        return state.withInternalSelfPause(correlationId, confirmationId);
+                        correlationId = correlationId == null ? interruptId : correlationId;
+                        return state.withInternalSelfPause(correlationId, interruptId);
                     }
-                    return state.selfPaused(confirmationId);
+                    return state.selfPaused(interruptId);
                 })
                 .onEvent(TurnCommittedFact.class, SessionActor::applyCommittedTurn)
                 .onEvent(CompletedFact.class, (state, fact) -> {
@@ -968,17 +966,17 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final List<Event> events = CollectionUtils.nullSafeList(fact.getEvents());
         SessionActorState newState = state.withCommitedEvents(events);
         final SessionState existingState = state.sessionState();
-        if (existingState == SessionState.TRIGGERED_RUN || existingState == SessionState.RESUMING) {
+        if (existingState == SessionState.TRIGGERED_RUN || existingState == SessionState.CONTINUING) {
             newState = newState.withSessionState(SessionState.RUNNING);
         }
 
-        if (state.allConfirmationsReceived()) {
+        if (state.allInterruptsAnswered()) {
             // clear all states as they have been consumed
             LOG.info(
-                    "Applying committed turn for topology : {} and clearing confirmations : {}",
+                    "Applying committed turn for topology : {} and clearing interrupt state : {}",
                     JsonUtils.toJson(newState.topology()),
-                    JsonUtils.toJson(newState.getAllReceivedConfirmations()));
-            newState = newState.clearSelfConfirmationStates();
+                    JsonUtils.toJson(newState.getAllReceivedResumes()));
+            newState = newState.clearSelfInterruptStates();
         }
         return newState;
     }
@@ -988,7 +986,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final SessionState sessionState = state.sessionState();
         if (sessionState != SessionState.RUNNING
                 && sessionState != SessionState.TRIGGERED_RUN
-                && sessionState != SessionState.RESUMING) {
+                && sessionState != SessionState.CONTINUING) {
             return Effect().none();
         }
         final String error = command.error();
