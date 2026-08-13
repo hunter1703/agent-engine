@@ -2,14 +2,11 @@ package com.agentengine.util.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -22,24 +19,11 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import kotlinx.serialization.json.JsonElement;
-import kotlinx.serialization.json.JsonLiteral;
-import kotlinx.serialization.json.JsonNull;
-import kotlinx.serialization.json.JsonPrimitive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class JsonUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
-
-    private static final SimpleModule KOTLINX_JSON_MODULE = new SimpleModule()
-            .addSerializer(JsonElement.class, new StdSerializer<>(JsonElement.class) {
-                @Override
-                public void serialize(JsonElement value, JsonGenerator gen, SerializerProvider provider)
-                        throws IOException {
-                    gen.writeRawValue(value.toString());
-                }
-            });
 
     private static final JsonMapper JSON_MAPPER = createJsonMapper(false);
     private static final JsonMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
@@ -53,7 +37,6 @@ public final class JsonUtils {
                 .addModule(new Jdk8Module())
                 .addModule(new JavaTimeModule())
                 .addModule(new GuavaModule())
-                .addModule(KOTLINX_JSON_MODULE)
                 .serializationInclusion(JsonInclude.Include.NON_ABSENT);
 
         if (includeTypeInfo) {
@@ -255,24 +238,6 @@ public final class JsonUtils {
         } catch (JsonProcessingException ex) {
             return null;
         }
-    }
-
-    // --- kotlinx JsonElement helpers ---
-
-    public static JsonPrimitive strVal(final String value) {
-        return new JsonLiteral(value, true, null);
-    }
-
-    public static JsonElement nullableVal(final String value) {
-        return value != null ? strVal(value) : JsonNull.INSTANCE;
-    }
-
-    public static JsonElement boolVal(final boolean value) {
-        return new JsonLiteral(value, false, null);
-    }
-
-    public static JsonElement numVal(final long value) {
-        return new JsonLiteral(value, false, null);
     }
 
     private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {

@@ -1,23 +1,18 @@
 package com.agentengine.util.agents.agui;
 
 import com.agentengine.util.agents.beans.InterruptKind;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.Violation;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agui.community.core.event.CustomEvent;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import kotlinx.serialization.json.JsonArray;
-import kotlinx.serialization.json.JsonElement;
-import kotlinx.serialization.json.JsonNull;
-import kotlinx.serialization.json.JsonObject;
 
 /**
  * Factory for custom AG-UI events that don't have a standard event type in the AG-UI spec.
  *
  * <p>All methods return {@link CustomEvent} instances (which are valid {@code BaseEvent}
- * subclasses) constructed with the event-specific name and a {@link JsonObject} payload.
+ * subclasses) constructed with the event-specific name and a plain {@code Map} payload.
  */
 public final class AGUIUtils {
 
@@ -30,10 +25,10 @@ public final class AGUIUtils {
      */
     public static CustomEvent buildAttachmentEvent(
             final String parentMessageId, final FileDetails fileDetails, final long timestamp) {
-        final Map<String, JsonElement> fields = Map.of(
-                "parentMessageId", JsonUtils.strVal(parentMessageId),
-                "fileDetails", fileDetailsJson(fileDetails));
-        return new CustomEvent("attachment", new JsonObject(fields), timestamp, null);
+        final Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("parentMessageId", parentMessageId);
+        fields.put("fileDetails", fileDetailsJson(fileDetails));
+        return new CustomEvent("attachment", fields, timestamp, null);
     }
 
     /**
@@ -47,52 +42,40 @@ public final class AGUIUtils {
             final List<String> options,
             final InterruptKind kind,
             final long timestamp) {
-        final LinkedHashMap<String, JsonElement> fields = new LinkedHashMap<>();
-        fields.put("interruptId", JsonUtils.strVal(interruptId));
-        fields.put("prompt", JsonUtils.nullableVal(prompt));
-        fields.put("originalToolCallId", JsonUtils.nullableVal(originalToolCallId));
-        fields.put(
-                "options",
-                options == null
-                        ? JsonNull.INSTANCE
-                        : new JsonArray(options.stream()
-                                .map(option -> (JsonElement) JsonUtils.strVal(option))
-                                .toList()));
-        fields.put("kind", kind == null ? JsonNull.INSTANCE : JsonUtils.strVal(kind.name()));
-        return new CustomEvent("interrupt_requested", new JsonObject(fields), timestamp, null);
+        final Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("interruptId", interruptId);
+        fields.put("prompt", prompt);
+        fields.put("originalToolCallId", originalToolCallId);
+        fields.put("options", options);
+        fields.put("kind", kind == null ? null : kind.name());
+        return new CustomEvent("interrupt_requested", fields, timestamp, null);
     }
 
     /** Emitted when a user resumes a paused session by answering an interrupt. */
     public static CustomEvent buildResumedEvent(
             final String interruptId, final boolean accepted, final String answer, final long timestamp) {
-        final Map<String, JsonElement> fields = Map.of(
-                "interruptId", JsonUtils.strVal(interruptId),
-                "accepted", JsonUtils.boolVal(accepted),
-                "answer", JsonUtils.nullableVal(answer));
-        return new CustomEvent("resumed", new JsonObject(fields), timestamp, null);
+        final Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("interruptId", interruptId);
+        fields.put("accepted", accepted);
+        fields.put("answer", answer);
+        return new CustomEvent("resumed", fields, timestamp, null);
     }
 
     /** Emitted when a guardrail violation is detected and corrected. */
     public static CustomEvent buildCorrectionEvent(final Violation violation, final long timestamp) {
-        return new CustomEvent(
-                "correction",
-                new JsonObject(Map.of("message", JsonUtils.strVal(violation.message()))),
-                timestamp,
-                null);
+        return new CustomEvent("correction", Map.of("message", violation.message()), timestamp, null);
     }
 
-    private static JsonObject fileDetailsJson(final FileDetails fileDetails) {
+    private static Map<String, Object> fileDetailsJson(final FileDetails fileDetails) {
         if (fileDetails == null) {
-            return new JsonObject(Map.of());
+            return Map.of();
         }
-        final LinkedHashMap<String, JsonElement> fields = new LinkedHashMap<>();
-        fields.put("name", JsonUtils.nullableVal(fileDetails.name()));
-        fields.put("source", JsonUtils.nullableVal(fileDetails.source()));
-        fields.put(
-                "type",
-                fileDetails.type() != null ? JsonUtils.strVal(fileDetails.type().name()) : JsonNull.INSTANCE);
-        fields.put("mimeType", JsonUtils.nullableVal(fileDetails.mimeType()));
-        fields.put("size", JsonUtils.numVal(fileDetails.size()));
-        return new JsonObject(fields);
+        final Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("name", fileDetails.name());
+        fields.put("source", fileDetails.source());
+        fields.put("type", fileDetails.type() != null ? fileDetails.type().name() : null);
+        fields.put("mimeType", fileDetails.mimeType());
+        fields.put("size", fileDetails.size());
+        return fields;
     }
 }

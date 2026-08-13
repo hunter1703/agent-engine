@@ -7,9 +7,6 @@ import com.agentengine.util.common.beans.FileDetails;
 import com.agui.community.core.event.*;
 import com.agui.community.core.message.Role;
 import io.reactivex.rxjava3.core.Flowable;
-import java.util.Map;
-import kotlinx.serialization.json.JsonElement;
-import kotlinx.serialization.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,11 +157,8 @@ public final class AGUITextMapper {
             LOG.debug("Text message already in progress, skipping TextMessageStartEvent generation");
             return Flowable.empty();
         }
-        final TextMessageStartEvent start = new TextMessageStartEvent(
-                state.startNextTextMessage(),
-                currentRole(),
-                state.timestamp(),
-                new JsonObject(Map.of("author", (JsonElement) JsonUtils.strVal(state.currentAuthor()))));
+        final TextMessageStartEvent start =
+                new TextMessageStartEvent(state.startNextTextMessage(), currentRole(), state.timestamp(), null);
         LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.messageId());
         return Flowable.just(start);
     }

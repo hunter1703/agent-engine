@@ -12,13 +12,10 @@ public interface EventMapper<S, T> {
                         return Flowable.error(exception);
                     }
                 })
-                .concatWith(Flowable.defer(this::onComplete))
                 .onErrorResumeNext(this::onError);
     }
 
     Flowable<T> map(final S event);
-
-    Flowable<T> onComplete();
 
     Flowable<T> onError(final Throwable throwable);
 }

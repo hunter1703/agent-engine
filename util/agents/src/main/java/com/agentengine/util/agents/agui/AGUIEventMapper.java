@@ -14,6 +14,7 @@ import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -40,6 +41,19 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
     @Override
     public Flowable<Event> map(final SessionEvent event) {
+        return mapInternal(event).map(this::withAuthor);
+    }
+
+    @Override
+    public Flowable<Event> onError(final Throwable throwable) {
+        LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
+        final RunErrorEvent errorEvent =
+                new RunErrorEvent(ExceptionUtils.getErrorMessage(throwable), null, state.timestamp(), null);
+        LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
+        return Flowable.just(errorEvent);
+    }
+
+    private Flowable<Event> mapInternal(final SessionEvent event) {
         // Scope all state lookups below to this event's source session before anything else runs
         // — including the early-return branches, so a stale error/live-marker event never reads
         // or mutates the wrong session's in-flight run/step/message state.
@@ -72,20 +86,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
             eventFlow = eventFlow.concatWith(startRun(event.getRunId()));
         }
         return eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
-    }
-
-    @Override
-    public Flowable<Event> onComplete() {
-        return Flowable.empty();
-    }
-
-    @Override
-    public Flowable<Event> onError(final Throwable throwable) {
-        LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
-        final RunErrorEvent errorEvent =
-                new RunErrorEvent(ExceptionUtils.getErrorMessage(throwable), null, state.timestamp(), null);
-        LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
-        return Flowable.just(errorEvent);
     }
 
     private Flowable<Event> mapEventInternal(final SessionEvent event) {
@@ -197,5 +197,151 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
                 CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION));
         LOG.debug("Generated correction event - correctionMetadataPresent=true");
         return Flowable.just(AGUIUtils.buildCorrectionEvent(violation, state.timestamp()));
+    }
+
+    /**
+     * Stamps the id of whoever actually generated this event onto every emitted event's {@code
+     * rawEvent} — the source event's own author (an agent's name, or {@code "user"}), not the root
+     * agent the client invoked — merged alongside whatever that event already carries there rather
+     * than overwriting it. A single stage at the end of the pipeline, instead of threading {@code
+     * author} through every {@code new XxxEvent(...)} call site across the mapper.
+     */
+    private Event withAuthor(final Event event) {
+        //noinspection unchecked
+        final Map<String, Object> rawEvent = CollectionUtils.nullSafeMutableMap((Map<String, Object>) event.rawEvent());
+        rawEvent.put("author", state.currentAuthor());
+        return switch (event) {
+            case RunStartedEvent runStartedEvent ->
+                new RunStartedEvent(
+                        runStartedEvent.threadId(),
+                        runStartedEvent.runId(),
+                        runStartedEvent.parentRunId(),
+                        runStartedEvent.input(),
+                        runStartedEvent.timestamp(),
+                        rawEvent);
+            case RunFinishedEvent runFinishedEvent ->
+                new RunFinishedEvent(
+                        runFinishedEvent.threadId(),
+                        runFinishedEvent.runId(),
+                        runFinishedEvent.outcome(),
+                        runFinishedEvent.result(),
+                        runFinishedEvent.timestamp(),
+                        rawEvent);
+            case RunErrorEvent runErrorEvent ->
+                new RunErrorEvent(runErrorEvent.message(), runErrorEvent.code(), runErrorEvent.timestamp(), rawEvent);
+            case StepStartedEvent stepStartedEvent ->
+                new StepStartedEvent(stepStartedEvent.stepName(), stepStartedEvent.timestamp(), rawEvent);
+            case StepFinishedEvent stepFinishedEvent ->
+                new StepFinishedEvent(stepFinishedEvent.stepName(), stepFinishedEvent.timestamp(), rawEvent);
+            case TextMessageStartEvent textMessageStartEvent ->
+                new TextMessageStartEvent(
+                        textMessageStartEvent.messageId(),
+                        textMessageStartEvent.role(),
+                        textMessageStartEvent.timestamp(),
+                        rawEvent);
+            case TextMessageContentEvent textMessageContentEvent ->
+                new TextMessageContentEvent(
+                        textMessageContentEvent.messageId(),
+                        textMessageContentEvent.delta(),
+                        textMessageContentEvent.timestamp(),
+                        rawEvent);
+            case TextMessageEndEvent textMessageEndEvent ->
+                new TextMessageEndEvent(textMessageEndEvent.messageId(), textMessageEndEvent.timestamp(), rawEvent);
+            case TextMessageChunkEvent textMessageChunkEvent ->
+                new TextMessageChunkEvent(
+                        textMessageChunkEvent.messageId(),
+                        textMessageChunkEvent.role(),
+                        textMessageChunkEvent.delta(),
+                        textMessageChunkEvent.timestamp(),
+                        rawEvent);
+            case ToolCallStartEvent toolCallStartEvent ->
+                new ToolCallStartEvent(
+                        toolCallStartEvent.toolCallId(),
+                        toolCallStartEvent.toolCallName(),
+                        toolCallStartEvent.parentMessageId(),
+                        toolCallStartEvent.timestamp(),
+                        rawEvent);
+            case ToolCallArgsEvent toolCallArgsEvent ->
+                new ToolCallArgsEvent(
+                        toolCallArgsEvent.toolCallId(),
+                        toolCallArgsEvent.delta(),
+                        toolCallArgsEvent.timestamp(),
+                        rawEvent);
+            case ToolCallEndEvent toolCallEndEvent ->
+                new ToolCallEndEvent(toolCallEndEvent.toolCallId(), toolCallEndEvent.timestamp(), rawEvent);
+            case ToolCallChunkEvent toolCallChunkEvent ->
+                new ToolCallChunkEvent(
+                        toolCallChunkEvent.toolCallId(),
+                        toolCallChunkEvent.toolCallName(),
+                        toolCallChunkEvent.parentMessageId(),
+                        toolCallChunkEvent.delta(),
+                        toolCallChunkEvent.timestamp(),
+                        rawEvent);
+            case ToolCallResultEvent toolCallResultEvent ->
+                new ToolCallResultEvent(
+                        toolCallResultEvent.messageId(),
+                        toolCallResultEvent.toolCallId(),
+                        toolCallResultEvent.content(),
+                        toolCallResultEvent.role(),
+                        toolCallResultEvent.timestamp(),
+                        rawEvent);
+            case ReasoningStartEvent reasoningStartEvent ->
+                new ReasoningStartEvent(reasoningStartEvent.messageId(), reasoningStartEvent.timestamp(), rawEvent);
+            case ReasoningEndEvent reasoningEndEvent ->
+                new ReasoningEndEvent(reasoningEndEvent.messageId(), reasoningEndEvent.timestamp(), rawEvent);
+            case ReasoningMessageStartEvent reasoningMessageStartEvent ->
+                new ReasoningMessageStartEvent(
+                        reasoningMessageStartEvent.messageId(), reasoningMessageStartEvent.timestamp(), rawEvent);
+            case ReasoningMessageContentEvent reasoningMessageContentEvent ->
+                new ReasoningMessageContentEvent(
+                        reasoningMessageContentEvent.messageId(),
+                        reasoningMessageContentEvent.delta(),
+                        reasoningMessageContentEvent.timestamp(),
+                        rawEvent);
+            case ReasoningMessageEndEvent reasoningMessageEndEvent ->
+                new ReasoningMessageEndEvent(
+                        reasoningMessageEndEvent.messageId(), reasoningMessageEndEvent.timestamp(), rawEvent);
+            case ReasoningMessageChunkEvent reasoningMessageChunkEvent ->
+                new ReasoningMessageChunkEvent(
+                        reasoningMessageChunkEvent.messageId(),
+                        reasoningMessageChunkEvent.delta(),
+                        reasoningMessageChunkEvent.timestamp(),
+                        rawEvent);
+            case ReasoningEncryptedValueEvent reasoningEncryptedValueEvent ->
+                new ReasoningEncryptedValueEvent(
+                        reasoningEncryptedValueEvent.subtype(),
+                        reasoningEncryptedValueEvent.entityId(),
+                        reasoningEncryptedValueEvent.encryptedValue(),
+                        reasoningEncryptedValueEvent.timestamp(),
+                        rawEvent);
+            case StateSnapshotEvent stateSnapshotEvent ->
+                new StateSnapshotEvent(stateSnapshotEvent.snapshot(), stateSnapshotEvent.timestamp(), rawEvent);
+            case StateDeltaEvent stateDeltaEvent ->
+                new StateDeltaEvent(stateDeltaEvent.delta(), stateDeltaEvent.timestamp(), rawEvent);
+            case MessagesSnapshotEvent messagesSnapshotEvent ->
+                new MessagesSnapshotEvent(
+                        messagesSnapshotEvent.messages(), messagesSnapshotEvent.timestamp(), rawEvent);
+            case ActivitySnapshotEvent activitySnapshotEvent ->
+                new ActivitySnapshotEvent(
+                        activitySnapshotEvent.messageId(),
+                        activitySnapshotEvent.activityType(),
+                        activitySnapshotEvent.content(),
+                        activitySnapshotEvent.replace(),
+                        activitySnapshotEvent.timestamp(),
+                        rawEvent);
+            case ActivityDeltaEvent activityDeltaEvent ->
+                new ActivityDeltaEvent(
+                        activityDeltaEvent.messageId(),
+                        activityDeltaEvent.activityType(),
+                        activityDeltaEvent.patch(),
+                        activityDeltaEvent.timestamp(),
+                        rawEvent);
+            case RawEvent rawSourceEvent ->
+                new RawEvent(rawSourceEvent.event(), rawSourceEvent.source(), rawSourceEvent.timestamp(), rawEvent);
+            case CustomEvent customEvent ->
+                new CustomEvent(customEvent.name(), customEvent.value(), customEvent.timestamp(), rawEvent);
+            case MetaEvent metaEvent ->
+                new MetaEvent(metaEvent.metaType(), metaEvent.payload(), metaEvent.timestamp(), rawEvent);
+        };
     }
 }
