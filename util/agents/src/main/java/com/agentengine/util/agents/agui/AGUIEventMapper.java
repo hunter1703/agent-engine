@@ -40,20 +40,18 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
     @Override
     public Flowable<Event> map(final SessionEvent event) {
-        LOG.info("=== AGUIEventMapper.map() START ===");
-        LOG.info(
-                "Input SessionEvent - id={}, runId={}, author={}, turnComplete={}, finishReason={}, content={}, terminal={}",
+        // Scope all state lookups below to this event's source session before anything else runs
+        // — including the early-return branches, so a stale error/live-marker event never reads
+        // or mutates the wrong session's in-flight run/step/message state.
+        state.recordSourceEvent(event);
+        LOG.debug(
+                "Mapping SessionEvent - id={}, sessionId={}, runId={}, author={}, turnComplete={}, finishReason={}",
                 event.getId(),
+                event.getSessionId(),
                 event.getRunId(),
                 event.getAuthor(),
                 event.getTurnComplete(),
-                event.getFinishReason(),
-                JsonUtils.toJson(event.getContent()),
-                event.isTerminal());
-        LOG.info(
-                "Current mapper state BEFORE processing - currentRunId={}, hasStartedStep={}",
-                state.currentRunId(),
-                state.hasStartedStep());
+                event.getFinishReason());
 
         if (event.isLiveMarker()) {
             textMapper.switchToLiveMode();
@@ -61,7 +59,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
         }
 
         if (event.isError()) {
-            LOG.info(
+            LOG.debug(
                     "Mapping error event for session={}, errorMessage={}",
                     event.getSessionId(),
                     event.getErrorMessage());
@@ -69,26 +67,11 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
             return textMapper.finalizeOpenContent().concatWith(Flowable.just(errorEvent));
         }
 
-        state.recordSourceEvent(event);
         Flowable<Event> eventFlow = Flowable.empty();
-
-        final boolean hasNewRun = state.hasNewRun(event.getRunId());
-        LOG.info(
-                "hasNewRun check - eventRunId={}, currentStateRunId={}, hasNewRun={}",
-                event.getRunId(),
-                state.currentRunId(),
-                hasNewRun);
-
-        if (hasNewRun) {
-            LOG.info("Starting new run - runId={}", event.getRunId());
+        if (state.hasNewRun(event.getRunId())) {
             eventFlow = eventFlow.concatWith(startRun(event.getRunId()));
         }
-
-        final Flowable<Event> result =
-                eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
-
-        LOG.info("=== AGUIEventMapper.map() END - will emit events ===");
-        return result;
+        return eventFlow.concatWith(mapEventInternal(event)).concatWith(finishRunIfNeeded(event));
     }
 
     @Override
@@ -106,9 +89,7 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     }
 
     private Flowable<Event> mapEventInternal(final SessionEvent event) {
-        LOG.info("mapEventInternal called - event : {}", JsonUtils.toJson(event));
-        final boolean internal = SessionEventUtils.isInternal(event);
-        if (internal) {
+        if (SessionEventUtils.isInternal(event)) {
             return Flowable.empty();
         }
         Flowable<Event> flowable = startStepIfNeeded();
@@ -117,20 +98,11 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
         }
 
         final Optional<Content> content = Optional.ofNullable(event.getContent());
-        if (content.isEmpty()) {
-            LOG.info("Event has no content - calling finishStepIfNeeded");
-            return flowable.concatWith(finishStepIfNeeded(event));
-        }
-
-        final boolean partial = Boolean.TRUE.equals(event.isPartial());
-        LOG.info(
-                "Processing content - partial={}, internal={}, partsCount={}",
-                partial,
-                false,
-                content.get().parts().map(List::size).orElse(0));
-
-        for (final Part part : content.get().parts().orElse(List.of())) {
-            flowable = flowable.concatWith(mapPart(part, partial));
+        if (content.isPresent()) {
+            final boolean partial = Boolean.TRUE.equals(event.isPartial());
+            for (final Part part : content.get().parts().orElse(List.of())) {
+                flowable = flowable.concatWith(mapPart(part, partial));
+            }
         }
 
         // Emit attachment events for user messages that carried file metadata.
@@ -139,10 +111,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
         if (Constants.AUTHOR_USER.equals(event.getAuthor())) {
             final List<FileDetails> attachments =
                     CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
-            if (CollectionUtils.isNotEmpty(attachments)) {
-                for (final FileDetails fileDetails : attachments) {
-                    flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
-                }
+            for (final FileDetails fileDetails : CollectionUtils.nullSafeList(attachments)) {
+                flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
             }
         }
 
@@ -176,7 +146,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     }
 
     private Flowable<Event> startRun(final String runId) {
-        LOG.info(">>> EMITTING RUN_STARTED - runId={}", runId);
         state.startRun(runId);
         final RunStartedEvent event =
                 new RunStartedEvent(state.sessionId(), state.currentRunId(), null, null, state.timestamp(), null);
@@ -185,22 +154,15 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
     }
 
     private Flowable<Event> finishRunIfNeeded(final SessionEvent event) {
-        LOG.info(
-                "finishRunIfNeeded - eventFinishReason={}, currentRunId={}",
-                event.getFinishReason(),
-                state.currentRunId());
-
         if (event.getFinishReason() == null) {
-            LOG.info("No finishReason - not finishing run");
             return Flowable.empty();
         }
 
-        LOG.info(">>> EMITTING RUN_FINISHED - about to call state.finishRun()");
         final String finishedRunId = state.finishRun();
-        LOG.info(
-                ">>> RUN_FINISHED - finishedRunId={}, state.currentRunId() is now={}",
-                finishedRunId,
-                state.currentRunId());
+        if (finishedRunId == null) {
+            // No run was ever started for this event's session — nothing to close out.
+            return Flowable.empty();
+        }
         final RunFinishedEvent finishedEvent = new RunFinishedEvent(
                 state.sessionId(), finishedRunId, new SuccessOutcome(), null, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=RunFinishedEvent, runId={}", finishedEvent.threadId());
@@ -209,41 +171,24 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
 
     private Flowable<Event> startStepIfNeeded() {
         if (state.hasStartedStep()) {
-            LOG.info("Step already started - skipping StepStartedEvent generation");
             return Flowable.empty();
         }
 
         final StepStartedEvent stepEvent = new StepStartedEvent(state.startNextStep(), state.timestamp(), null);
-        LOG.info("STEP STARTED - Generated StepStartedEvent, stepName={}", stepEvent.stepName());
+        LOG.debug("Generated output event - eventType=StepStartedEvent, stepName={}", stepEvent.stepName());
         return Flowable.just(stepEvent);
     }
 
     private Flowable<Event> finishStepIfNeeded(final SessionEvent event) {
-        LOG.info(
-                "finishStepIfNeeded called - sessionId={}, turnComplete={}, hasStartedStep={}, event={}",
-                event.getSessionId(),
-                event.getTurnComplete(),
-                state.hasStartedStep(),
-                JsonUtils.toJson(event));
-
         if (!Boolean.TRUE.equals(event.isTurnComplete()) || !state.hasStartedStep()) {
-            LOG.info(
-                    "Step NOT finished - conditions not met: turnComplete={}, hasStartedStep={}",
-                    event.getTurnComplete(),
-                    state.hasStartedStep());
             return Flowable.empty();
         }
-
-        LOG.info(
-                "Step WILL finish - all conditions met: turnComplete={}, hasStartedStep={}",
-                event.getTurnComplete(),
-                true);
         return finishStep();
     }
 
     private Flowable<Event> finishStep() {
         final StepFinishedEvent event = new StepFinishedEvent(state.finishStep(), state.timestamp(), null);
-        LOG.info("STEP FINISHED - Generated StepFinishedEvent, stepName={}", event.stepName());
+        LOG.debug("Generated output event - eventType=StepFinishedEvent, stepName={}", event.stepName());
         return textMapper.finalizeOpenContent().concatWith(Flowable.just(event));
     }
 

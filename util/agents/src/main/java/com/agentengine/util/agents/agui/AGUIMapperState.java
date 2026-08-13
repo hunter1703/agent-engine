@@ -124,8 +124,12 @@ public final class AGUIMapperState {
         return scope().reasoningOpen;
     }
 
-    public void startReasoning() {
-        scope().reasoningOpen = true;
+    public String startReasoning() {
+        return scope().startReasoning(currentSourceEventId);
+    }
+
+    public String currentReasoningId() {
+        return scope().currentReasoningId;
     }
 
     public boolean hasOpenReasoningMessage() {
@@ -155,7 +159,9 @@ public final class AGUIMapperState {
     }
 
     public void closeReasoning() {
-        scope().reasoningOpen = false;
+        final RunScope scope = scope();
+        scope.reasoningOpen = false;
+        scope.currentReasoningId = null;
     }
 
     /**
@@ -205,6 +211,8 @@ public final class AGUIMapperState {
         private int textMessageSequence;
         private int toolResultMessageSequence;
 
+        private String currentReasoningId;
+        private int reasoningSequence;
         private String currentReasoningMessageId;
         private final StringBuilder reasoningBuffer = new StringBuilder();
         private boolean reasoningOpen;
@@ -221,6 +229,13 @@ public final class AGUIMapperState {
             final String stepName = currentStepName;
             currentStepName = null;
             return stepName;
+        }
+
+        private String startReasoning(final String sourceEventId) {
+            final String prefix = runId != null ? "reasoning-" + runId + "-" : "reasoning-";
+            reasoningOpen = true;
+            currentReasoningId = stableReplayId(prefix, sourceEventId, ++reasoningSequence);
+            return currentReasoningId;
         }
 
         private String startNextTextMessage(final String sourceEventId) {

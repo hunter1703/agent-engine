@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.agui;
 
-import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
@@ -8,7 +8,6 @@ import com.agui.community.core.event.*;
 import com.agui.community.core.message.Role;
 import io.reactivex.rxjava3.core.Flowable;
 import java.util.Map;
-import java.util.Optional;
 import kotlinx.serialization.json.JsonElement;
 import kotlinx.serialization.json.JsonObject;
 import org.slf4j.Logger;
@@ -81,41 +80,8 @@ public final class AGUITextMapper {
         return endReasoningMessageIfNeeded().concatWith(endReasoningIfNeeded());
     }
 
-    public Flowable<Event> mapUserMessage(final SessionEvent event) {
-        // Record the source event so the generated message ID is based on this event's ID,
-        // not the stale ID from the previous (assistant) event — which would cause collisions.
-        state.recordSourceEvent(event);
-        final String text = event.getContent() != null
-                ? event.getContent()
-                        .parts()
-                        .flatMap(parts -> {
-                            final String textContent = parts.stream()
-                                    .map(part -> part.text().orElse(""))
-                                    .filter(StringUtils::isNotBlank)
-                                    .findFirst()
-                                    .orElse(null);
-                            if (textContent != null) {
-                                return Optional.of(textContent);
-                            }
-                            // Image-only message: emit a placeholder so the replay shows
-                            // something meaningful instead of a null delta.
-                            final boolean hasImages = parts.stream()
-                                    .anyMatch(part -> part.inlineData().isPresent());
-                            return hasImages ? java.util.Optional.of("[Image]") : Optional.empty();
-                        })
-                        .orElse(null)
-                : null;
-        final String messageId = state.nextTextMessageId(event.getId());
-
-        final TextMessageStartEvent start = new TextMessageStartEvent(
-                messageId, Role.USER, state.timestamp(), new JsonObject(Map.of("author", (JsonElement)
-                        JsonUtils.strVal(state.currentAuthor()))));
-        final TextMessageChunkEvent content =
-                new TextMessageChunkEvent(messageId, Role.USER, text, state.timestamp(), null);
-        final TextMessageEndEvent end = new TextMessageEndEvent(messageId, state.timestamp(), null);
-
-        LOG.debug("Generated user message events for replay - msgId={}", messageId);
-        return Flowable.just(start, content, end);
+    private Role currentRole() {
+        return Constants.AUTHOR_USER.equals(state.currentAuthor()) ? Role.USER : Role.ASSISTANT;
     }
 
     private Flowable<Event> startReasoningIfNeeded() {
@@ -123,8 +89,7 @@ public final class AGUITextMapper {
             LOG.debug("Already in reasoning state, skipping ThinkingStartEvent generation");
             return Flowable.empty();
         }
-        state.startReasoning();
-        final ReasoningStartEvent event = new ReasoningStartEvent(null, state.timestamp(), null);
+        final ReasoningStartEvent event = new ReasoningStartEvent(state.startReasoning(), state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingStartEvent");
         return Flowable.just(event);
     }
@@ -145,6 +110,12 @@ public final class AGUITextMapper {
         if (StringUtils.isEmpty(text) || !state.hasOpenReasoningMessage()) {
             return Flowable.empty();
         }
+        state.appendReasoning(text);
+        // Mirrors mapTextMessageContent: buffer in REPLAY mode and flush once at message end
+        // instead of re-animating every original token.
+        if (mode == AGUIEventMapper.Mode.REPLAY) {
+            return Flowable.empty();
+        }
         final ReasoningMessageContentEvent event =
                 new ReasoningMessageContentEvent(state.currentReasoningMessageId(), text, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ReasoningMessageContentEvent");
@@ -155,19 +126,31 @@ public final class AGUITextMapper {
         if (!state.hasOpenReasoningMessage()) {
             return Flowable.empty();
         }
+        // Capture the id before closing — closeReasoningMessage() clears it from state.
+        final String reasoningMessageId = state.currentReasoningMessageId();
+        final String accumulated = state.completeReasoningMessage();
         state.closeReasoningMessage();
+
+        Flowable<Event> flowable = Flowable.empty();
+        if (mode == AGUIEventMapper.Mode.REPLAY && StringUtils.isNotBlank(accumulated)) {
+            final ReasoningMessageContentEvent content =
+                    new ReasoningMessageContentEvent(reasoningMessageId, accumulated, state.timestamp(), null);
+            flowable = flowable.concatWith(Flowable.just(content));
+        }
         final ReasoningMessageEndEvent event =
-                new ReasoningMessageEndEvent(state.currentReasoningMessageId(), state.timestamp(), null);
+                new ReasoningMessageEndEvent(reasoningMessageId, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingTextMessageEndEvent");
-        return Flowable.just(event);
+        return flowable.concatWith(Flowable.just(event));
     }
 
     private Flowable<Event> endReasoningIfNeeded() {
         if (!state.hasOpenReasoning()) {
             return Flowable.empty();
         }
+        // Capture the id before closing — closeReasoning() clears it from state.
+        final String reasoningId = state.currentReasoningId();
         state.closeReasoning();
-        final ReasoningEndEvent event = new ReasoningEndEvent(null, state.timestamp(), null);
+        final ReasoningEndEvent event = new ReasoningEndEvent(reasoningId, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=ThinkingEndEvent");
         return Flowable.just(event);
     }
@@ -179,7 +162,7 @@ public final class AGUITextMapper {
         }
         final TextMessageStartEvent start = new TextMessageStartEvent(
                 state.startNextTextMessage(),
-                Role.ASSISTANT,
+                currentRole(),
                 state.timestamp(),
                 new JsonObject(Map.of("author", (JsonElement) JsonUtils.strVal(state.currentAuthor()))));
         LOG.debug("Generated output event - eventType=TextMessageStartEvent, msgId={}", start.messageId());
@@ -190,15 +173,13 @@ public final class AGUITextMapper {
         if (StringUtils.isEmpty(text)) {
             return Flowable.empty();
         }
-        LOG.debug(
-                "Processing message mapping - msgId={}, partial={}, isNewText={}",
-                state.currentTextMessageId(),
-                partial,
-                state.isTextBufferEmpty());
-        if (!partial) {
-            if (state.isTextBufferEmpty()) {
-                state.appendText(text);
-            }
+        // A trailing non-partial event after partial chunks already streamed the text is a
+        // redundant echo of content the client has already seen — buffer it (for replay's
+        // end-of-message flush) but don't re-emit it live. A non-partial event that arrives as
+        // the message's *first* content (no partial chunks preceded it) is genuinely new and must
+        // still be emitted live, so "buffer was empty" — not "partial" — is what decides that.
+        final boolean isNewContent = state.isTextBufferEmpty();
+        if (!partial && !isNewContent) {
             return Flowable.empty();
         }
 
@@ -210,7 +191,7 @@ public final class AGUITextMapper {
             return Flowable.empty();
         }
         final TextMessageChunkEvent chunk =
-                new TextMessageChunkEvent(state.currentTextMessageId(), Role.ASSISTANT, text, state.timestamp(), null);
+                new TextMessageChunkEvent(state.currentTextMessageId(), currentRole(), text, state.timestamp(), null);
         LOG.debug("Generated output event - eventType=TextMessageChunkEvent, msgId={}", chunk.messageId());
         return Flowable.just(chunk);
     }
@@ -237,12 +218,13 @@ public final class AGUITextMapper {
 
         final String messageId = state.currentTextMessageId();
         final String finalAnswer = state.completeTextMessage();
+        final Role role = currentRole();
         state.resetTextMessage();
 
         Flowable<Event> flowable = Flowable.empty();
         if (mode == AGUIEventMapper.Mode.REPLAY && StringUtils.isNotBlank(finalAnswer)) {
             final TextMessageChunkEvent content =
-                    new TextMessageChunkEvent(messageId, Role.ASSISTANT, finalAnswer, state.timestamp(), null);
+                    new TextMessageChunkEvent(messageId, role, finalAnswer, state.timestamp(), null);
             LOG.debug("Generated output event - eventType=TextMessageChunkEvent (replay), msgId={}", messageId);
             flowable = flowable.concatWith(Flowable.just(content));
         }
