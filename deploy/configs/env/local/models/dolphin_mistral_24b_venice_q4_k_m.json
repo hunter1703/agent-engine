@@ -2,10 +2,13 @@
   "id": "dolphin-mistral-24b-venice-edition-q4_k_m",
   "model": "dolphin-mistral-24b-venice:latest",
   "name": "Dolphin Mistral 24B Venice Edition",
-  "baseUrl": "http://host.docker.internal:11434",
-  "temperature": 0.7,
+  "baseUrl": "http://host.docker.internal:9000/v1",
+  "temperature": 0.6,
+  "topK": 50,
   "topP": 0.9,
-  "thoughtsEnabled": true,
-  "provider": "OLLAMA",
+  "repeatPenalty": 1.1,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": false,
+  "provider": "OPEN_AI_COMPATIBLE",
   "type": "CHAT"
 }
