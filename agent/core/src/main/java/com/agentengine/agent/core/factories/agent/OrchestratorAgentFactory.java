@@ -54,7 +54,6 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
         }
         return switch (mode) {
             case MANAGER -> buildManager(config);
-            case TRANSFER -> buildTransfer(config);
             case PARALLEL -> buildParallel(config);
             default ->
                 throw new IllegalArgumentException(
@@ -96,15 +95,6 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
                 .build();
     }
 
-    private DelegatedAgent buildTransfer(final OrchestratorAgentConfig config) {
-        final List<? extends Agent> subAgents = buildSubAgents(config.getSubAgentIds());
-        final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
-        if (CollectionUtils.isNotEmpty(subAgents)) {
-            builder.subAgents(subAgents);
-        }
-        return builder.build();
-    }
-
     private DelegatedAgent buildManager(final OrchestratorAgentConfig config) {
         final List<String> subAgentIds = CollectionUtils.nullSafeList(config.getSubAgentIds());
         final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
@@ -112,6 +102,11 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
                 new SpawnAgentTool(actorSystemProvider, subAgentIds),
                 new SendMessageTool(actorSystemProvider),
                 new AwaitAgentTool(actorSystemProvider)));
+
+        final List<? extends Agent> transferableSubAgents = buildSubAgents(config.getTransferableSubAgentIds());
+        if (CollectionUtils.isNotEmpty(transferableSubAgents)) {
+            builder.subAgents(transferableSubAgents);
+        }
         return builder.build();
     }
 

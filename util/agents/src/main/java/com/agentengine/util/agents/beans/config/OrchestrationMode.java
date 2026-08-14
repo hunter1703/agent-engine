@@ -6,8 +6,6 @@ import java.util.Locale;
 public enum OrchestrationMode {
     /** Fallback for invalid or missing config values. */
     UNKNOWN,
-    /** Handoff-capable manager pattern. */
-    TRANSFER,
     /** Deterministic sequential execution over sub-agents. */
     SEQUENTIAL,
     /** Deterministic parallel execution over sub-agents. */

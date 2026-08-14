@@ -13,8 +13,10 @@ import com.agentengine.util.common.validation.ValidationCollector;
 import com.agentengine.util.common.validation.Validator;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Singleton;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Singleton
 public class AgentValidator implements Validator<BaseAgentConfig> {
@@ -56,9 +58,9 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
     private void validateOrchestratorConfig(final OrchestratorAgentConfig config, final ValidationCollector errors) {
         final List<String> subAgentIds = config.getSubAgentIds();
         final OrchestrationMode orchestrationMode = config.orchestrationModeEnum();
-        if ((orchestrationMode == OrchestrationMode.SEQUENTIAL || orchestrationMode == OrchestrationMode.PARALLEL)
-                && CollectionUtils.isEmpty(subAgentIds)) {
-            errors.add("orchestrator agent requires non-empty subAgentIds; agent_id=" + config.getId());
+        if (CollectionUtils.isEmpty(subAgentIds) && CollectionUtils.isEmpty(config.getTransferableSubAgentIds())) {
+            errors.add("orchestrator agent requires non-empty subAgentIds or transferableSubAgentIds; agent_id="
+                    + config.getId());
         }
         final OrchestratorParallelConfig parallel = config.getParallel();
         if (orchestrationMode == OrchestrationMode.PARALLEL
@@ -81,8 +83,12 @@ public class AgentValidator implements Validator<BaseAgentConfig> {
         if (CollectionUtils.isEmpty(config.getSubAgentIds())) {
             return;
         }
-        final List<String> allSubAgentIds =
-                config.getSubAgentIds().stream().filter(StringUtils::isNotBlank).toList();
+        final List<String> allSubAgentIds = config.getSubAgentIds().stream()
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toCollection(ArrayList::new));
+        allSubAgentIds.addAll(config.getTransferableSubAgentIds().stream()
+                .filter(StringUtils::isNotBlank)
+                .toList());
         final Map<String, BaseAgentConfig> subAgents = agentRepository.get().findByIds(allSubAgentIds);
         final List<String> missing =
                 allSubAgentIds.stream().filter(id -> !subAgents.containsKey(id)).toList();

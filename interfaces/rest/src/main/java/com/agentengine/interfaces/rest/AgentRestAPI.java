@@ -147,7 +147,7 @@ public class AgentRestAPI {
                 .publish(shared -> shared.firstElement()
                         .flatMapPublisher(
                                 first -> new AGUIEventMapper(first.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE)
-                                        .map(shared)));
+                                        .map(Flowable.concat(Flowable.just(first), shared))));
     }
 
     private static UserMessage extractUserMessage(final RunAgentInput request) {

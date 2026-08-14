@@ -97,6 +97,15 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
             values = {"ORCHESTRATOR"})
     private List<String> subAgentIds = new ArrayList<>();
 
+    @UiField(label = "Transferable Sub Agents", step = "identity", order = 25)
+    @UiLookup(assetType = AssetClass.AGENT)
+    @UiRule(
+            effect = UiRuleEffect.VISIBLE,
+            field = "type",
+            operator = UiConditionOperator.IN,
+            values = {"ORCHESTRATOR"})
+    private List<String> transferableSubAgentIds = new ArrayList<>();
+
     @UiField(label = "Guardrails", step = "guardrails", order = 10)
     private GuardrailsConfig guardrails = new GuardrailsConfig();
 
@@ -222,6 +231,14 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
     public void setSubAgentIds(final List<String> subAgentIds) {
         this.subAgentIds = subAgentIds == null ? new ArrayList<>() : new ArrayList<>(subAgentIds);
+    }
+
+    public List<String> getTransferableSubAgentIds() {
+        return transferableSubAgentIds;
+    }
+
+    public void setTransferableSubAgentIds(List<String> transferableSubAgentIds) {
+        this.transferableSubAgentIds = transferableSubAgentIds;
     }
 
     public GuardrailsConfig getGuardrails() {

@@ -220,7 +220,7 @@ public final class AGUIMapperState {
         private int reasoningMessageSequence;
 
         private String startNextStep(final String sourceEventId) {
-            final String prefix = runId != null ? "step-" + runId + "-" : "step-";
+            final String prefix = runId != null ? "step-" + shortId(runId) + "-" : "step-";
             currentStepName = stableReplayId(prefix, sourceEventId, ++stepSequence);
             return currentStepName;
         }
@@ -232,34 +232,41 @@ public final class AGUIMapperState {
         }
 
         private String startReasoning(final String sourceEventId) {
-            final String prefix = runId != null ? "reasoning-" + runId + "-" : "reasoning-";
+            final String prefix = runId != null ? "reasoning-" + shortId(runId) + "-" : "reasoning-";
             reasoningOpen = true;
             currentReasoningId = stableReplayId(prefix, sourceEventId, ++reasoningSequence);
             return currentReasoningId;
         }
 
         private String startNextTextMessage(final String sourceEventId) {
-            final String prefix = runId != null ? "msg-" + runId + "-" : "msg-";
+            final String prefix = runId != null ? "msg-" + shortId(runId) + "-" : "msg-";
             currentTextMessageId = stableReplayId(prefix, sourceEventId, ++textMessageSequence);
             return currentTextMessageId;
         }
 
         private String nextToolResultMessageId(final String sourceEventId) {
-            final String prefix = runId != null ? "toolresult-" + runId + "-" : "toolresult-";
+            final String prefix = runId != null ? "toolresult-" + shortId(runId) + "-" : "toolresult-";
             return stableReplayId(prefix, sourceEventId, ++toolResultMessageSequence);
         }
 
         private String startReasoningMessage(final String sourceEventId) {
-            final String prefix = runId != null ? "think-" + runId + "-" : "think-";
+            final String prefix = runId != null ? "think-" + shortId(runId) + "-" : "think-";
             reasoningMessageOpen = true;
             currentReasoningMessageId = stableReplayId(prefix, sourceEventId, ++reasoningMessageSequence);
             return currentReasoningMessageId;
         }
     }
 
+    private static String shortId(final String id) {
+        if (id == null || id.length() <= 8) {
+            return id != null ? id : "";
+        }
+        return id.substring(id.length() - 8);
+    }
+
     private static String stableReplayId(final String prefix, final String sourceEventId, final int sequence) {
         if (StringUtils.isNotBlank(sourceEventId)) {
-            return prefix + sourceEventId + "-" + sequence;
+            return prefix + shortId(sourceEventId) + "-" + sequence;
         }
         return prefix + sequence;
     }

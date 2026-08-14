@@ -1,13 +1,13 @@
 {
-  "id": "dolphin-mistral-nemo-12b",
-  "model": "dolphin-mistral-nemo-12b",
-  "name": "Dolphin Mistral Nemo 12B",
+  "id": "hermes-2-pro-llama-3-8b",
+  "model": "adrienbrault/nous-hermes2pro-llama3-8b:q4_K_M",
+  "name": "Hermes 2 Pro Llama 3 8B",
   "baseUrl": "http://host.docker.internal:11434/v1",
-  "temperature": 0.6,
+  "temperature": 0.3,
   "topK": 50,
   "topP": 0.9,
   "repeatPenalty": 1.1,
-  "toolCallingEnabled": false,
+  "toolCallingEnabled": true,
   "thoughtsEnabled": false,
   "provider": "OPEN_AI_COMPATIBLE",
   "type": "CHAT"
