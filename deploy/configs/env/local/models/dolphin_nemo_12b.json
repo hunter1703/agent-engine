@@ -1,0 +1,14 @@
+{
+  "id": "dolphin-mistral-nemo-12b",
+  "model": "dolphin-mistral-nemo-12b",
+  "name": "Dolphin Mistral Nemo 12B",
+  "baseUrl": "http://host.docker.internal:11434",
+  "temperature": 0.6,
+  "topK": 50,
+  "topP": 0.9,
+  "repeatPenalty": 1.1,
+  "toolCallingEnabled": true,
+  "thoughtsEnabled": false,
+  "provider": "OLLAMA",
+  "type": "CHAT"
+}

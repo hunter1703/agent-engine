@@ -1,8 +1,8 @@
 {
   "id": "dolphin-mistral-24b-venice-edition-q4_k_m",
-  "model": "dolphin-mistral-24b-venice:latest",
+  "model": "dolphin-24b",
   "name": "Dolphin Mistral 24B Venice Edition",
-  "baseUrl": "http://host.docker.internal:9000/v1",
+  "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.6,
   "topK": 50,
   "topP": 0.9,
