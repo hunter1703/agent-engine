@@ -1,9 +1,9 @@
 {
-  "id": "hermes-2-pro-llama-3-8b",
-  "model": "adrienbrault/nous-hermes2pro-llama3-8b:q4_K_M",
-  "name": "Hermes 2 Pro Llama 3 8B",
+  "id": "hermes-3-8b",
+  "model": "hermes-3-8b",
+  "name": "Hermes 3 Llama 3.1 8B",
   "baseUrl": "http://host.docker.internal:11434/v1",
-  "temperature": 0.3,
+  "temperature": 0.6,
   "topK": 50,
   "topP": 0.9,
   "repeatPenalty": 1.1,

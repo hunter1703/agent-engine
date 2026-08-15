@@ -1,0 +1,6 @@
+FROM hermes3
+
+PARAMETER num_thread 4
+PARAMETER num_ctx 16384
+PARAMETER num_gpu 99
+PARAMETER num_batch 512
