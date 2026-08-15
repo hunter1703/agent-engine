@@ -36,6 +36,7 @@ public final class MongoUtils {
         return switch (operation.type()) {
             case SET -> Updates.set(operation.field(), operation.value());
             case UNSET -> Updates.unset(operation.field());
+            case INC -> Updates.inc(operation.field(), (Number) operation.value());
             default -> throw new IllegalStateException("Unexpected value: " + operation.type());
         };
     }

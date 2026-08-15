@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Path("/schemas")
+@Path("/v1/schemas")
 @RunOnVirtualThread
 public class SchemaRestAPI {
 

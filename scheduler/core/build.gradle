@@ -1,0 +1,19 @@
+plugins {
+    id 'com.agentengine.java-application-conventions'
+}
+
+group = 'com.agentengine.scheduler'
+
+dependencies {
+    implementation project(':scheduler:api')
+    implementation project(':util:common')
+    implementation project(':util:mongodb')
+    implementation project(':util:pekko')
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
+    implementation libs.quarkus.hibernate.validator
+    implementation libs.quarkus.logging.json
+    implementation libs.quarkus.opentelemetry
+    implementation libs.quarkus.smallrye.health
+}

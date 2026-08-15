@@ -76,6 +76,7 @@ jandex = "2.3.0"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+cron-utils = { group = "com.cronutils", name = "cron-utils" }
 
 # BOMs
 langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version.ref = "langchain4j" }

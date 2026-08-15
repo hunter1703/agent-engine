@@ -6,9 +6,11 @@ public abstract class BaseEntity {
     public static final String FIELD_ID = "id";
     public static final String FIELD_CREATED_TIME = "createdTime";
     public static final String FIELD_UPDATED_TIME = "updatedTime";
+    public static final String FIELD_VERSION = "version";
     private String id;
     private long createdTime;
     private long updatedTime;
+    private long version = 0;
 
     public BaseEntity() {}
 
@@ -38,6 +40,14 @@ public abstract class BaseEntity {
 
     public void setUpdatedTime(final long updatedTime) {
         this.updatedTime = updatedTime;
+    }
+
+    public long getVersion() {
+        return version;
+    }
+
+    public void setVersion(final long version) {
+        this.version = version;
     }
 
     @Override

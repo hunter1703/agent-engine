@@ -21,6 +21,7 @@ import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
+import org.apache.pekko.cluster.typed.ClusterSingleton;
 import org.apache.pekko.management.cluster.bootstrap.ClusterBootstrap;
 import org.apache.pekko.management.javadsl.PekkoManagement;
 import org.slf4j.Logger;
@@ -88,6 +89,10 @@ public class ActorSystemProvider {
 
     public ClusterSharding sharding() {
         return sharding;
+    }
+
+    public ClusterSingleton singleton() {
+        return ClusterSingleton.get(system);
     }
 
     public <Command> EntityRef<Command> entityRefFor(final EntityTypeKey<Command> key, final String id) {

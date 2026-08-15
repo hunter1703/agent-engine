@@ -33,6 +33,7 @@ dependencies {
     implementation libs.flexmark.all
     implementation libs.commonmark
     implementation libs.slf4j.api
+    implementation libs.cron.utils
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

@@ -33,3 +33,6 @@ include 'knowledge:core'
 
 include 'chaos:api'
 include 'chaos:core'
+
+include 'scheduler:api'
+include 'scheduler:core'

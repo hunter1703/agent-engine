@@ -5,7 +5,8 @@ import java.util.Locale;
 public enum OperationType {
     UNKNOWN,
     SET,
-    UNSET;
+    UNSET,
+    INC;
 
     public static OperationType valueOfOrDefault(final String value) {
         if (value == null || value.isBlank()) {

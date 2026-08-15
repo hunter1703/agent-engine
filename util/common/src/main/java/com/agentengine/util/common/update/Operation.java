@@ -18,4 +18,8 @@ public record Operation(String field, OperationType type, Object value) {
     public static Operation unset(final String field) {
         return new Operation(field, OperationType.UNSET, null);
     }
+
+    public static Operation inc(final String field, final Number value) {
+        return new Operation(field, OperationType.INC, value);
+    }
 }
