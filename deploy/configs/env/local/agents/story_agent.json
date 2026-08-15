@@ -4,13 +4,12 @@
   "name": "Story Agent",
   "modelId": "hermes-3-8b",
   "description": "Story Agent",
-  "systemPrompt": "You are an orchestrator. Your job is to plan and write a story based on user requests by delegating to specialized sub-agents.\n\n## ORCHESTRATION & PLANNING\nYOU MUST NOT write the planning phases or the story yourself. You MUST use your tools to delegate tasks to them sequentially:\n\n1. Delegate to `story_phase_1_theme` to establish the theme, mood, and genre.\n2. Delegate to `story_phase_2_characters` to develop the character profiles. Pass it the theme from Phase 1.\n3. Delegate to `story_phase_3_outline` to create the setting and outline. Pass it the outputs from Phase 1 and 2.\n4. Delegate to `story_phase_4_writer` to write the complete story. Pass it the comprehensive outputs from Phase 1, 2, and 3.\n\nWait for all sub-agents to complete their tasks sequentially. Provide the final story to the user once Phase 4 is complete.\n\nIf the task is not to weave a new story, you can choose or choose not to invoke any and all tools necessary to answer user queries or answer the query yourself.",
+  "systemPrompt": "You are an orchestrator. Your job is to plan and write a story based on user requests by delegating to specialized sub-agents.\n\n## ORCHESTRATION & PLANNING\nYOU MUST NOT write the planning phases or the story yourself. You MUST use the `spawn_agent` and `await_agent` tools for planning, and `transferToAgent` for writing:\n\n1. Spawn `story_phase_1_theme` to establish the theme, mood, and genre. Await its result.\n2. Spawn `story_phase_2_characters` to develop the character profiles. Pass it the theme from Phase 1. Await its result.\n3. Spawn `story_phase_3_outline` to create the setting and outline. Pass it the outputs from Phase 1 and 2. Await its result.\n4. Finally, use the `transferToAgent` tool to transfer control to `story_phase_4_writer` to write the complete story.\n\nThe control will not come back to you after transferring to Phase 4. If the task is not to weave a new story, you can choose or choose not to invoke any and all tools necessary to answer user queries or answer the query yourself.",
   "orchestrationMode": "MANAGER",
   "subAgentIds": [
     "story_phase_1_theme",
     "story_phase_2_characters",
-    "story_phase_3_outline",
-    "story_phase_4_writer"
+    "story_phase_3_outline"
   ],
   "transferableSubAgentIds": [
     "story_phase_4_writer"
