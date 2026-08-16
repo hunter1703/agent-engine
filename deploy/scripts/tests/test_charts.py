@@ -138,7 +138,16 @@ def test_workload_kind_infra_deployment() -> None:
 
 def test_resolve_charts_defaults_to_default_charts() -> None:
     names = [chart.name for chart in resolve_charts([])]
-    assert names == ["global-properties", "agent", "catalog", "rest", "knowledge", "connectors"]
+    assert names == [
+        "global-properties",
+        "agent",
+        "catalog",
+        "rest",
+        "knowledge",
+        "connectors",
+        "scheduler",
+        "internal",
+    ]
 
 
 def test_resolve_charts_dedupes_preserving_order() -> None:

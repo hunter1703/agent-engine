@@ -2,6 +2,9 @@ FROM eclipse-temurin:25-jre-alpine
 
 ARG SERVICE_MODULE
 
+# set explicit timezone
+ENV TZ=UTC
+
 # create non-root user
 RUN addgroup -S quarkus && adduser -S quarkus -G quarkus
 

@@ -4,20 +4,17 @@ import com.agentengine.util.pekko.ActorSystemProvider;
 import java.time.Duration;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.apache.pekko.actor.typed.Behavior;
-import org.apache.pekko.actor.typed.DispatcherSelector;
 import org.apache.pekko.cluster.sharding.typed.ClusterShardingSettings;
 import org.apache.pekko.cluster.sharding.typed.ShardingEnvelope;
 import org.apache.pekko.cluster.sharding.typed.javadsl.Entity;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityContext;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
-import org.apache.pekko.japi.function.Function;
 
 /**
  * Base factory for cluster-sharded entities. Handles sharding registration and entity ref
- * acquisition. The {@code builder} function receives the {@link EntityContext} and should return a
- * {@link Behavior} — typically a {@code Behaviors.setup()} wrapper so that the entity can receive
- * an {@code ActorContext} in its constructor.
+ * acquisition; subclasses supply only {@link #behavior(EntityContext)}, typically a {@code
+ * Behaviors.setup()} wrapper so the entity receives an {@code ActorContext} in its constructor.
  *
  * <p>An optional {@code role} constrains the shard coordinator singleton and entity hosting to
  * cluster members that carry that role, preventing the coordinator from migrating to nodes that
@@ -29,19 +26,16 @@ public abstract class ShardedEntityFactory<Command> implements ShardedEntityDefi
 
     private final ActorSystemProvider actorSystemProvider;
     private final EntityTypeKey<Command> entityTypeKey;
-    private final Function<EntityContext<Command>, Behavior<Command>> builder;
     private final Duration passivationDuration;
     private final String role;
 
     protected ShardedEntityFactory(
             final ActorSystemProvider actorSystemProvider,
             final EntityTypeKey<Command> entityTypeKey,
-            final Function<EntityContext<Command>, Behavior<Command>> builder,
             final Duration passivationDuration,
             final String role) {
         this.actorSystemProvider = actorSystemProvider;
         this.entityTypeKey = entityTypeKey;
-        this.builder = builder;
         this.passivationDuration = passivationDuration;
         this.role = role;
     }
@@ -49,19 +43,38 @@ public abstract class ShardedEntityFactory<Command> implements ShardedEntityDefi
     @Override
     @SuppressWarnings("unchecked")
     public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
-        Entity<Command, ShardingEnvelope<Command>> entity = Entity.of(entityTypeKey, builder)
-                .withEntityProps(DispatcherSelector.fromConfig("pekko.actor.actor-virtual-dispatcher"));
+        ClusterShardingSettings settings =
+                ClusterShardingSettings.create(system).withRememberEntities(rememberEntities());
+        if (passivationDuration != null) {
+            settings = settings.withPassivationStrategy(ClusterShardingSettings.PassivationStrategySettings$.MODULE$
+                    .defaults()
+                    .withIdleEntityPassivation(passivationDuration));
+        }
+        Entity<Command, ShardingEnvelope<Command>> entity =
+                Entity.of(entityTypeKey, this::behavior).withSettings(settings);
         if (role != null) {
             entity = entity.withRole(role);
         }
-        if (passivationDuration == null) {
-            return (Entity<M, E>) entity;
-        }
-        final ClusterShardingSettings settings = ClusterShardingSettings.create(system)
-                .withPassivationStrategy(ClusterShardingSettings.PassivationStrategySettings$.MODULE$
-                        .defaults()
-                        .withIdleEntityPassivation(passivationDuration));
-        return (Entity<M, E>) entity.withSettings(settings);
+        return (Entity<M, E>) entity;
+    }
+
+    /**
+     * Builds the behaviour for one entity. A method rather than a constructor argument so that a
+     * subclass can use its own fields — anything passed to {@code super(...)} has to exist before the
+     * subclass's fields are assigned, which forces its collaborators to be built somewhere else.
+     */
+    protected abstract Behavior<Command> behavior(EntityContext<Command> context);
+
+    /**
+     * Whether the shard should recreate this type's entities after a rebalance or a cluster restart.
+     *
+     * <p>True suits an entity that stands for something long-lived, where losing it loses the thing.
+     * Override to false where entity ids are unbounded — one per unit of work rather than one per
+     * durable thing — because the remembered set then grows with every id ever used, and each entry
+     * costs a write to the remember-entities store.
+     */
+    protected boolean rememberEntities() {
+        return true;
     }
 
     public EntityRef<Command> entityRef(final String id) {

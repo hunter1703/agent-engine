@@ -11,4 +11,6 @@ public interface AssetClass {
     String STANDARD_TOOL = "StandardTool";
     String TOOL_CONFIGS = "ToolConfigs";
     String MEMORY = "Memory";
+    String JOB_DEFINITION = "JobDefinition";
+    String TRIGGER_DEFINITION = "TriggerDefinition";
 }

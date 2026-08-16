@@ -15,6 +15,8 @@ GRADLE_TASKS = {
     "rest": ":interfaces:rest:quarkusBuild",
     "knowledge": ":knowledge:core:quarkusBuild",
     "connectors": ":connectors:core:quarkusBuild",
+    "scheduler": ":scheduler:core:quarkusBuild",
+    "internal": ":internal:quarkusBuild",
 }
 
 DOCKER_MODULES = {
@@ -23,6 +25,8 @@ DOCKER_MODULES = {
     "rest": "interfaces/rest",
     "knowledge": "knowledge/core",
     "connectors": "connectors/core",
+    "scheduler": "scheduler/core",
+    "internal": "internal",
 }
 
 

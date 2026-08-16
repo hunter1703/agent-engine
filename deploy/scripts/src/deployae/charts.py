@@ -53,7 +53,7 @@ REPO_ROOT = (
 K8S_DIR = DEPLOY_DIR / "k8s"
 CONFIGS_DIR = DEPLOY_DIR / "configs"
 
-APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors")
+APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
 INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
 ALL_CHART_NAMES = ("global-properties", *APP_CHART_NAMES, *INFRA_CHART_NAMES)
 DEFAULT_CHART_NAMES = ("global-properties", *APP_CHART_NAMES)

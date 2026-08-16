@@ -25,7 +25,6 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
-import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
@@ -1100,10 +1099,7 @@ public final class SessionActor extends ShardedEntity<SessionCommand, SessionFac
         final SessionTopology topology = state.topology();
         try {
             sessionService.updateSession(
-                    topology.sessionId(),
-                    Update.of(
-                            Operation.set(AgentSession.FIELD_STATUS, status.name()),
-                            Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
+                    topology.sessionId(), Update.of(Operation.set(AgentSession.FIELD_STATUS, status.name())));
         } catch (final Exception e) {
             LOG.warn("Failed to update session status to {} for session {}", status, topology.sessionId(), e);
         }

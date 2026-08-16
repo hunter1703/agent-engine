@@ -6,5 +6,7 @@ group = 'com.agentengine.scheduler'
 
 dependencies {
     implementation project(':util:common')
+    implementation project(':util:ms:client')
     implementation libs.mongodb.bson
+    implementation libs.jakarta.validation.api
 }

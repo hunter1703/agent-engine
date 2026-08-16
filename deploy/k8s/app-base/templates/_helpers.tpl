@@ -61,3 +61,30 @@ startupProbe:
   timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
 {{- end }}
 {{- end -}}
+
+{{/*
+Pekko clustering is a single switch: `service.pekkoEnabled` turns on the runtime property, the
+pod-discovery RBAC that cluster bootstrap needs, the service account token it reads the API with,
+and the remoting and management ports. Keeping these together stops a service from being half
+configured — enabled but unable to discover peers, or granted pod read access it never uses.
+*/}}
+{{- define "agent-engine.app-base.pekkoEnabled" -}}
+{{- if .Values.service.pekkoEnabled }}true{{ end -}}
+{{- end -}}
+
+{{- define "agent-engine.app-base.rbacRules" -}}
+{{- $rules := .Values.rbac.rules | default list -}}
+{{- if .Values.service.pekkoEnabled -}}
+{{- $discovery := dict "apiGroups" (list "") "resources" (list "pods") "verbs" (list "get" "watch" "list") -}}
+{{- $rules = concat $rules (list $discovery) -}}
+{{- end -}}
+{{- toYaml $rules -}}
+{{- end -}}
+
+{{- define "agent-engine.app-base.needsRbac" -}}
+{{- if or .Values.rbac.rules .Values.service.pekkoEnabled }}true{{ end -}}
+{{- end -}}
+
+{{- define "agent-engine.app-base.automountToken" -}}
+{{- or .Values.serviceAccount.automountToken .Values.service.pekkoEnabled -}}
+{{- end -}}

@@ -10,6 +10,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
 import io.quarkus.runtime.StartupEvent;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -34,6 +35,10 @@ public class ActorSystemProvider {
     private static final int PEKKO_PORT = 2552;
     private static final String PEKKO_CLUSTER_ROLES_KEY = "pekko.cluster.roles";
     private static final String JACKSON_MODULES_KEY = "pekko.serialization.jackson.jackson-modules";
+    private static final String PEKKO_ENABLED_KEY = "agent-engine.pekko.enabled";
+
+    /** Observers that spawn actors must order themselves after this. */
+    public static final int ACTOR_SYSTEM_STARTUP_PRIORITY = 100;
 
     private final ApplicationConfig applicationConfig;
     private final InfraConfigService infraConfigService;
@@ -41,6 +46,7 @@ public class ActorSystemProvider {
     private volatile PekkoConfig pekkoConfig;
     private volatile ActorSystem<SpawnProtocol.Command> system;
     private volatile ClusterSharding sharding;
+    private volatile boolean enabled;
 
     @Inject
     public ActorSystemProvider(
@@ -58,8 +64,17 @@ public class ActorSystemProvider {
      *
      * <p>Not initializing in constructor as some ShardedEntityDefinitions require ActorSystemProvider
      * and hence would result into circular dependency.
+     *
+     * <p>Disabled unless {@code agent-engine.pekko.enabled} is set, so that a service which merely
+     * links a module containing sharded entities does not join the cluster. Only services that
+     * actually host actors — agent and scheduler — enable it.
      */
-    public void onStart(@Observes final StartupEvent event) {
+    public void onStart(@Observes @Priority(ACTOR_SYSTEM_STARTUP_PRIORITY) final StartupEvent event) {
+        this.enabled = applicationConfig.getBoolean(PEKKO_ENABLED_KEY, false);
+        if (!enabled) {
+            LOG.info("Pekko is disabled ({} is not set); no ActorSystem will be created", PEKKO_ENABLED_KEY);
+            return;
+        }
         this.pekkoConfig = infraConfigService.findById(PekkoConfig.CATEGORY, PekkoConfig.TYPE, PekkoConfig.CONFIG_ID);
         final SQLInfraConfig sqlConfig = infraConfigService.findById(
                 SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
@@ -77,6 +92,11 @@ public class ActorSystemProvider {
             LOG.info("Registered sharded entity: {}", definition.getClass().getSimpleName());
         }
         this.sharding = clusterSharding;
+    }
+
+    /** Whether this service hosts actors. Callers that start actors must check this first. */
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public PekkoConfig pekkoConfig() {

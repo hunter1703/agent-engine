@@ -4,8 +4,11 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
+import com.agentengine.util.common.exception.StaleStateException;
+import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.Repository;
+import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
 import com.mongodb.MongoWriteException;
@@ -15,6 +18,8 @@ import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
+import java.util.ArrayList;
+import java.util.List;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
@@ -29,6 +34,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> extends Abst
         implements Repository<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoRepository.class);
+    private static final int DUPLICATE_KEY_ERROR = 11000;
 
     private final ValidationService validationService;
 
@@ -57,39 +63,40 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> extends Abst
             if (StringUtils.isBlank(entity.getId())) {
                 entity.setId(new ObjectId().toHexString());
             }
+            sanitizeForWrite(entity);
             try {
                 getCollection().insertOne(entity);
                 return entity;
             } catch (final MongoWriteException exception) {
-                if (exception.getError().getCode() == 11000) {
-                    throw new DuplicateAssetException(entityClass.getSimpleName(), entity.getId());
-                }
-                LOG.error("Error inserting entity: {}", entity, exception);
-                throw new RuntimeException("Error saving entity", exception);
+                throw translateWriteException(exception, entity.getId());
             }
         } catch (final RuntimeException exception) {
             throw exception;
         } catch (final Exception exception) {
-            LOG.error("Error saving entity: {}", entity, exception);
-            throw new RuntimeException("Error saving entity", exception);
+            LOG.error("Error inserting entity: {}", entity, exception);
+            throw new RuntimeException("Error inserting entity", exception);
         }
     }
 
     @Override
     public T update(final String id, final T entity) {
-        return updateEntity(id, entity, false);
+        return update(id, null, entity);
+    }
+
+    @Override
+    public T update(final String id, final Long expectedVersion, final T entity) {
+        return replaceEntity(id, expectedVersion, entity, false);
     }
 
     @Override
     public T update(final String id, final Update update) {
         try {
-            final Bson updateOperation = MongoUtils.toBsonUpdate(update);
             final FindOneAndUpdateOptions options = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
-            final T updated = getCollection().findOneAndUpdate(Filters.eq("_id", id), updateOperation, options);
-            if (updated != null && validationService != null) {
-                validationService.validate(updated);
-            }
-            return updated;
+            return getCollection()
+                    .findOneAndUpdate(
+                            Filters.eq(MongoUtils.FIELD_MONGO_ID, id),
+                            MongoUtils.toBsonUpdate(sanitizeForWrite(update)),
+                            options);
         } catch (final RuntimeException exception) {
             throw exception;
         } catch (final Exception exception) {
@@ -99,24 +106,66 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> extends Abst
     }
 
     @Override
-    public T save(final T entity) {
+    public T findOneAndUpdate(final Query query, final Update update) {
         try {
-            if (StringUtils.isBlank(entity.getId())) {
-                return insert(entity);
+            final FindOneAndUpdateOptions options = new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
+            final Bson sort = MongoUtils.toSortBson(query.getSort());
+            if (sort != null) {
+                options.sort(sort);
             }
-            return updateEntity(entity.getId(), entity, true);
+            return getCollection()
+                    .findOneAndUpdate(
+                            MongoUtils.toBson(query.getFilter()),
+                            MongoUtils.toBsonUpdate(sanitizeForWrite(update)),
+                            options);
         } catch (final RuntimeException exception) {
             throw exception;
         } catch (final Exception exception) {
-            LOG.error("Error saving entity: {}", entity, exception);
-            throw new RuntimeException("Error saving entity", exception);
+            LOG.error("Error in findOneAndUpdate for query: {}", query, exception);
+            throw new RuntimeException("Error in findOneAndUpdate", exception);
         }
+    }
+
+    @Override
+    public long updateOne(final Filter filter, final Update update) {
+        try {
+            return getCollection()
+                    .updateOne(MongoUtils.toBson(filter), MongoUtils.toBsonUpdate(sanitizeForWrite(update)))
+                    .getModifiedCount();
+        } catch (final RuntimeException exception) {
+            throw exception;
+        } catch (final Exception exception) {
+            LOG.error("Error in updateOne for filter: {}", filter, exception);
+            throw new RuntimeException("Error in updateOne", exception);
+        }
+    }
+
+    @Override
+    public long updateMany(final Filter filter, final Update update) {
+        try {
+            return getCollection()
+                    .updateMany(MongoUtils.toBson(filter), MongoUtils.toBsonUpdate(sanitizeForWrite(update)))
+                    .getModifiedCount();
+        } catch (final RuntimeException exception) {
+            throw exception;
+        } catch (final Exception exception) {
+            LOG.error("Error in updateMany for filter: {}", filter, exception);
+            throw new RuntimeException("Error in updateMany", exception);
+        }
+    }
+
+    @Override
+    public T save(final T entity) {
+        if (entity != null && StringUtils.isBlank(entity.getId())) {
+            return insert(entity);
+        }
+        return replaceEntity(entity == null ? null : entity.getId(), null, entity, true);
     }
 
     @Override
     public boolean deleteById(final String id) {
         try {
-            final DeleteResult result = getCollection().deleteOne(Filters.eq("_id", id));
+            final DeleteResult result = getCollection().deleteOne(Filters.eq(MongoUtils.FIELD_MONGO_ID, id));
             return result.getDeletedCount() > 0;
         } catch (final Exception exception) {
             LOG.error("Error deleting entity by ID: {}", id, exception);
@@ -129,30 +178,83 @@ public abstract class AbstractMongoRepository<T extends BaseEntity> extends Abst
         return getCollection().deleteMany(MongoUtils.toBson(query.getFilter())).getDeletedCount();
     }
 
-    private T updateEntity(final String id, final T entity, final boolean upsert) {
+    private T replaceEntity(final String id, final Long expectedVersion, final T entity, final boolean upsert) {
+        validateEntity(entity);
+        final long currentVersion = entity.getVersion();
+        entity.setId(id);
+        entity.setVersion(currentVersion + 1);
+        sanitizeForWrite(entity);
         try {
-            entity.setId(id);
-            validateEntity(entity);
-            final ReplaceOptions options = new ReplaceOptions().upsert(upsert);
-            final UpdateResult result = getCollection().replaceOne(Filters.eq("_id", entity.getId()), entity, options);
-            if (!upsert && result.getMatchedCount() == 0) {
-                throw new AssetNotFoundException(entityClass.getSimpleName(), id);
+            final Bson filter = expectedVersion == null
+                    ? Filters.eq(MongoUtils.FIELD_MONGO_ID, id)
+                    : Filters.and(
+                            Filters.eq(MongoUtils.FIELD_MONGO_ID, id),
+                            Filters.eq(BaseEntity.FIELD_VERSION, expectedVersion));
+            final UpdateResult result = getCollection().replaceOne(filter, entity, new ReplaceOptions().upsert(upsert));
+            if (upsert || result.getMatchedCount() > 0) {
+                return entity;
             }
-            return entity;
+            entity.setVersion(currentVersion);
+            if (expectedVersion != null) {
+                throw new StaleStateException(id, expectedVersion);
+            }
+            throw new AssetNotFoundException(entityClass.getSimpleName(), id);
+        } catch (final MongoWriteException exception) {
+            entity.setVersion(currentVersion);
+            throw translateWriteException(exception, id);
         } catch (final RuntimeException exception) {
             throw exception;
         } catch (final Exception exception) {
-            LOG.error("Error saving entity: {}", entity, exception);
-            throw new RuntimeException("Error saving entity", exception);
+            LOG.error("Error replacing entity: {}", entity, exception);
+            throw new RuntimeException("Error replacing entity", exception);
         }
+    }
+
+    /**
+     * Fills in the fields the repository owns before a partial update is applied, leaving any the
+     * caller set explicitly alone. Version is incremented rather than assigned so that concurrent
+     * updates cannot lose one another's increments.
+     */
+    private Update sanitizeForWrite(final Update update) {
+        boolean hasUpdatedTime = false;
+        boolean hasVersion = false;
+        for (final Operation operation : update.operations()) {
+            hasUpdatedTime |= BaseEntity.FIELD_UPDATED_TIME.equals(operation.field());
+            hasVersion |= BaseEntity.FIELD_VERSION.equals(operation.field());
+        }
+        if (hasUpdatedTime && hasVersion) {
+            return update;
+        }
+        final List<Operation> operations = new ArrayList<>(update.operations());
+        if (!hasUpdatedTime) {
+            operations.add(Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis()));
+        }
+        if (!hasVersion) {
+            operations.add(Operation.inc(BaseEntity.FIELD_VERSION, 1L));
+        }
+        return new Update(operations);
+    }
+
+    private void sanitizeForWrite(final T entity) {
+        final long now = System.currentTimeMillis();
+        if (entity.getCreatedTime() == 0) {
+            entity.setCreatedTime(now);
+        }
+        entity.setUpdatedTime(now);
+    }
+
+    private RuntimeException translateWriteException(final MongoWriteException exception, final String id) {
+        if (exception.getError().getCode() == DUPLICATE_KEY_ERROR) {
+            return new DuplicateAssetException(entityClass.getSimpleName(), id);
+        }
+        LOG.error("Error writing entity: {}", id, exception);
+        return new RuntimeException("Error writing entity: " + id, exception);
     }
 
     private void validateEntity(final T entity) {
         if (entity == null) {
             throw new IllegalArgumentException("Entity is required.");
         }
-        if (validationService != null) {
-            validationService.validate(entity);
-        }
+        validationService.validate(entity);
     }
 }

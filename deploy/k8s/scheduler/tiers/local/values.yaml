@@ -1,0 +1,24 @@
+app-base:
+  tier: local
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
+  replicas: 2
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "512Mi"
+    limits:
+      cpu: "150m"
+      memory: "512Mi"
+  config:
+    applicationProperties:
+      pekko.cluster.roles: scheduler
+      quarkus.otel.service.name: agent-engine-scheduler
+      # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.grpc.server.use-separate-server: "false"
+      quarkus.shutdown.timeout: 5S
+      pekko.coordinated-shutdown.phases.cluster-sharding-shutdown-region.timeout: 5s
+      pekko.coordinated-shutdown.phases.cluster-leave.timeout: 5s
+      pekko.coordinated-shutdown.phases.actor-system-terminate.timeout: 5s

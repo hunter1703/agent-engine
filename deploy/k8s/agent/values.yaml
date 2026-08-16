@@ -1,20 +1,4 @@
 app-base:
-
   service:
     name: agent
-    pekkoPort: 2552
-
-  rbac:
-    rules:
-      - apiGroups: [""]
-        resources: ["pods"]
-        verbs: ["get", "watch", "list"]
-
-  serviceAccount:
-    automountToken: true
-
-
-
-  java:
-    opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
-    args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
+    pekkoEnabled: true

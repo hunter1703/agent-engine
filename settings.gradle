@@ -34,5 +34,7 @@ include 'knowledge:core'
 include 'chaos:api'
 include 'chaos:core'
 
+include 'internal'
+
 include 'scheduler:api'
 include 'scheduler:core'

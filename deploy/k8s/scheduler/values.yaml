@@ -1,0 +1,4 @@
+app-base:
+  service:
+    name: scheduler
+    pekkoEnabled: true

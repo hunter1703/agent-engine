@@ -25,7 +25,7 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: {{ include "agent-engine.app-base.instance" . }}
-      automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
+      automountServiceAccountToken: {{ include "agent-engine.app-base.automountToken" . }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -70,12 +70,12 @@ spec:
               containerPort: {{ .Values.service.httpPort }}
             - name: grpc
               containerPort: {{ .Values.service.grpcPort }}
-            {{- if .Values.service.pekkoPort }}
+            {{- if .Values.service.pekkoEnabled }}
             - name: pekko
               containerPort: {{ .Values.service.pekkoPort }}
-            {{- end }}
             - name: management
-              containerPort: 8558
+              containerPort: {{ .Values.service.managementPort }}
+            {{- end }}
           {{- include "agent-engine.app-base.probes" . | nindent 10 }}
           resources:
             {{- toYaml (required "resources must be set" .Values.resources) | nindent 12 }}

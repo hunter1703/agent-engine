@@ -14,6 +14,7 @@ from deployae.stages.cleanup import (
     DeletePvcsStage,
     RemoveLocalstackResourcesStage,
 )
+from deployae.stages.indexes import EnsureIndexesStage
 from deployae.stages.init import (
     EnsureLocalstackBucketsStage,
     InitPostgresSchemaStage,
@@ -27,6 +28,7 @@ __all__ = [
     "DeleteNamespaceStage",
     "DeletePvcsStage",
     "DeployChartStage",
+    "EnsureIndexesStage",
     "EnsureIngressControllerStage",
     "EnsureLocalstackBucketsStage",
     "EnsureNamespaceStage",

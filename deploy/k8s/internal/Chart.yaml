@@ -1,0 +1,10 @@
+apiVersion: v2
+name: agent-engine-internal
+description: Agent Engine internal service chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: app-base
+    version: 0.1.0
+    repository: "file://../app-base"

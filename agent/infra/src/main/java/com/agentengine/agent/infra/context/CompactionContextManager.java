@@ -9,7 +9,6 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.scripts.TemplateUtils;
@@ -186,11 +185,7 @@ public final class CompactionContextManager implements ContextManager {
 
     private void persistSummary(final String sessionId, final String summary) {
         try {
-            sessionService.updateSession(
-                    sessionId,
-                    Update.of(
-                            Operation.set(AgentSession.FIELD_SUMMARY, summary),
-                            Operation.set(BaseEntity.FIELD_UPDATED_TIME, System.currentTimeMillis())));
+            sessionService.updateSession(sessionId, Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary)));
         } catch (Exception ex) {
             LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);
         }

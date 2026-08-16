@@ -1,19 +1,30 @@
 package com.agentengine.scheduler.api.models;
 
 import com.agentengine.util.common.beans.BaseEntity;
+import java.util.List;
 import java.util.Map;
 
-public class Job extends BaseEntity {
-    private String type;
+public class JobDefinition extends BaseEntity {
+
+    private String jobClassName;
+    private List<String> jobTags;
     private String cronSchedule;
     private Map<String, Object> payload;
 
-    public String getType() {
-        return type;
+    public String getJobClassName() {
+        return jobClassName;
     }
 
-    public void setType(final String type) {
-        this.type = type;
+    public void setJobClassName(final String jobClassName) {
+        this.jobClassName = jobClassName;
+    }
+
+    public List<String> getJobTags() {
+        return jobTags;
+    }
+
+    public void setJobTags(final List<String> jobTags) {
+        this.jobTags = jobTags;
     }
 
     public String getCronSchedule() {

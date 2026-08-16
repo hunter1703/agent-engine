@@ -8,6 +8,9 @@ metadata:
 data:
   application.properties: |-
     {{- $config := .Values.config | default dict }}
+    {{- if .Values.service.pekkoEnabled }}
+    agent-engine.pekko.enabled=true
+    {{- end }}
     {{- range $key, $value := $config.applicationProperties }}
     {{ $key }}={{ $value }}
     {{- end }}

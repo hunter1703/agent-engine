@@ -1,5 +1,6 @@
 package com.agentengine.util.common.config;
 
+import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Singleton;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,6 +31,21 @@ public final class ApplicationConfig {
 
     public String getString(final String key, final String defaultValue) {
         return properties.getProperty(key, defaultValue);
+    }
+
+    public int getInt(final String key, final int defaultValue) {
+        final String value = getString(key);
+        return StringUtils.isBlank(value) ? defaultValue : Integer.parseInt(value.trim());
+    }
+
+    public boolean getBoolean(final String key, final boolean defaultValue) {
+        final String value = getString(key);
+        return StringUtils.isBlank(value) ? defaultValue : Boolean.parseBoolean(value.trim());
+    }
+
+    public long getLong(final String key, final long defaultValue) {
+        final String value = getString(key);
+        return StringUtils.isBlank(value) ? defaultValue : Long.parseLong(value.trim());
     }
 
     public List<String> getListOfString(final String key) {

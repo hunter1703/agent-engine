@@ -1,11 +1,13 @@
 package com.agentengine.scheduler.api.runner;
 
-import com.agentengine.scheduler.api.models.Job;
+import com.agentengine.scheduler.api.models.JobDefinition;
+import com.agentengine.util.ms.client.MicroService;
 
+@MicroService("scheduler")
 public interface SchedulerService {
-    void schedule(Job job);
+    void schedule(JobDefinition jobDefinition);
 
-    Job getJob(String jobId);
+    JobDefinition getJob(String jobId);
 
     void cancelJob(String jobId);
 }

@@ -1,6 +1,6 @@
 package com.agentengine.interfaces.rest;
 
-import com.agentengine.scheduler.api.models.Job;
+import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
@@ -29,31 +29,27 @@ public class SchedulerRestAPI {
 
     @POST
     @Path("/jobs")
-    public Response schedule(final Job job) {
-        if (schedulerService.schedule(job)) {
-            return Response.status(Response.Status.CREATED).entity(job).build();
-        }
-        return Response.status(Response.Status.BAD_REQUEST).build();
+    public Response schedule(final JobDefinition jobDefinition) {
+        schedulerService.schedule(jobDefinition);
+        return Response.status(Response.Status.CREATED).entity(jobDefinition).build();
     }
 
     @PUT
     @Path("/jobs/{jobId}")
-    public Response updateJob(@NotBlank @PathParam("jobId") final String jobId, final Job job) {
-        job.setId(jobId);
-        if (schedulerService.schedule(job)) {
-            return Response.ok(job).build();
-        }
-        return Response.status(Response.Status.BAD_REQUEST).build();
+    public Response updateJob(@NotBlank @PathParam("jobId") final String jobId, final JobDefinition jobDefinition) {
+        jobDefinition.setId(jobId);
+        schedulerService.schedule(jobDefinition);
+        return Response.ok(jobDefinition).build();
     }
 
     @GET
     @Path("/jobs/{jobId}")
     public Response getJob(@PathParam("jobId") final String jobId) {
-        final Job job = schedulerService.getJob(jobId);
-        if (job == null) {
+        final JobDefinition jobDefinition = schedulerService.getJob(jobId);
+        if (jobDefinition == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.ok(job).build();
+        return Response.ok(jobDefinition).build();
     }
 
     @DELETE

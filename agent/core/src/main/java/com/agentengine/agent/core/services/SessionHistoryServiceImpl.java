@@ -13,7 +13,9 @@ import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.mongodb.mongo.MongoClientFactory;
+import com.agentengine.util.mongodb.mongo.MongoUtils;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.persistence.AbstractJournalReadRepository;
 import com.google.adk.events.Event;
@@ -98,7 +100,7 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
         final List<SessionEvent> allEvents = new ArrayList<>();
 
         final List<AgentSession> childSessions = sessions.find(
-                        or(eq(AgentSession.FIELD_ROOT_SESSION_ID, sessionId), eq(AgentSession.FIELD_ID, sessionId)))
+                        or(eq(AgentSession.FIELD_ROOT_SESSION_ID, sessionId), eq(BaseEntity.FIELD_ID, sessionId)))
                 .into(new ArrayList<>());
 
         for (final AgentSession childSession : childSessions) {
@@ -131,7 +133,8 @@ public class SessionHistoryServiceImpl extends AbstractJournalReadRepository imp
             return null;
         }
 
-        final AgentSession session = sessions.find(eq("_id", sessionId)).first();
+        final AgentSession session =
+                sessions.find(eq(MongoUtils.FIELD_MONGO_ID, sessionId)).first();
         if (session == null || StringUtils.isBlank(session.getAgentId())) {
             return null;
         }

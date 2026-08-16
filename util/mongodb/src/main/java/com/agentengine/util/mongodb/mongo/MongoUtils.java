@@ -22,6 +22,14 @@ import org.bson.conversions.Bson;
 
 public final class MongoUtils {
 
+    /**
+     * The document's identifier as MongoDB names it. Entities call the same value {@code id} (see
+     * {@link BaseEntity#FIELD_ID}) because that is the name it carries in APIs and payloads; this is
+     * the name to use whenever a query is built against the collection, including calls made
+     * directly on the driver rather than through {@link Query}.
+     */
+    public static final String FIELD_MONGO_ID = "_id";
+
     private MongoUtils() {}
 
     public static Bson toBsonUpdate(final Update update) {
@@ -140,9 +148,10 @@ public final class MongoUtils {
         return null;
     }
 
+    /** Translates the entity's name for the identifier into the one the collection stores it under. */
     private static String normalizeField(final String field) {
         if (BaseEntity.FIELD_ID.equals(field)) {
-            return "_id";
+            return FIELD_MONGO_ID;
         }
         return field;
     }

@@ -21,6 +21,7 @@ from deployae.stages import (
     BuildDockerImageStage,
     BuildGradleStage,
     DeployChartStage,
+    EnsureIndexesStage,
     EnsureIngressControllerStage,
     EnsureLocalstackBucketsStage,
     EnsureNamespaceStage,
@@ -32,7 +33,7 @@ from deployae.stages import (
     run_graph,
 )
 
-APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors")
+APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
 ENV_SECRET_CHARTS = ("connectors", "agent", "knowledge")
 DEFAULT_LOCAL_PORT = 8080
@@ -342,10 +343,26 @@ def build_stages(
         image_stage_by_component["knowledge"],
     )
     deploy_app_chart("connectors", global_properties_stage, image_stage_by_component["connectors"])
+    deploy_app_chart("scheduler", global_properties_stage, image_stage_by_component["scheduler"])
+    internal_stage = deploy_app_chart(
+        "internal", global_properties_stage, image_stage_by_component["internal"]
+    )
     deploy_app_chart(
         "agent",
         global_properties_stage,
         image_stage_by_component["agent"],
+    )
+
+    # --- Index creation: internal links every repository, so one call covers all collections ---
+    stages.append(
+        EnsureIndexesStage(
+            name="ensure-indexes",
+            depends_on=(infra_deploy_by_name["mongodb"], internal_stage),
+            chart_name="internal",
+            tier=ctx.tier,
+            namespace_override=ctx.namespace,
+            enabled=not dry_run,
+        )
     )
 
     # --- Catalog seeding: models, then agents ---

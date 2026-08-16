@@ -34,5 +34,14 @@
     "serverId": "connectors",
     "host": "connectors-local.agent-engine.svc.cluster.local",
     "port": 8080
+  },
+  {
+    "id": "MICROSERVICE:MICROSERVICE_SERVER:scheduler",
+    "_t": "com.agentengine.util.ms.client.MicroServiceInfraConfig",
+    "type": "MICROSERVICE_SERVER",
+    "category": "MICROSERVICE",
+    "serverId": "scheduler",
+    "host": "scheduler-local.agent-engine.svc.cluster.local",
+    "port": 8080
   }
 ]

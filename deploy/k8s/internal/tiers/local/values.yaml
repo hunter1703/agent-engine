@@ -1,0 +1,22 @@
+app-base:
+  tier: local
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
+  replicas: 1
+  # Idle except during a deploy, so CPU is minimal. Memory is the only real floor: this service
+  # links every other service's beans purely so one call can apply every collection's indexes.
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "384Mi"
+    limits:
+      cpu: "50m"
+      memory: "384Mi"
+  config:
+    applicationProperties:
+      quarkus.otel.service.name: agent-engine-internal
+      # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.grpc.server.use-separate-server: "false"
+      quarkus.shutdown.timeout: 5S

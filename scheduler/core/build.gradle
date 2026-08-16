@@ -8,6 +8,7 @@ dependencies {
     implementation project(':scheduler:api')
     implementation project(':util:common')
     implementation project(':util:mongodb')
+    implementation project(':util:ms:server')
     implementation project(':util:pekko')
 
     implementation platform(libs.quarkus.bom)

@@ -145,6 +145,26 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     }
 
     @Override
+    public T findOneAndUpdate(final Query query, final Update update) {
+        throw new UnsupportedOperationException("Partial updates are not supported on the vector store");
+    }
+
+    @Override
+    public long updateOne(final Filter filter, final Update update) {
+        throw new UnsupportedOperationException("Partial updates are not supported on the vector store");
+    }
+
+    @Override
+    public long updateMany(final Filter filter, final Update update) {
+        throw new UnsupportedOperationException("Partial updates are not supported on the vector store");
+    }
+
+    @Override
+    public T update(final String id, final Long expectedVersion, final T entity) {
+        throw new UnsupportedOperationException("Versioned updates are not supported on the vector store");
+    }
+
+    @Override
     public T findById(final String id) {
         return findById(id, null, null);
     }
