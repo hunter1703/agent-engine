@@ -36,136 +36,137 @@ import java.util.Map;
  */
 public final class PluginGroup extends BasePlugin {
 
-    private final List<BasePlugin> plugins;
+  private final List<BasePlugin> plugins;
 
-    public PluginGroup(final String name, final List<BasePlugin> plugins) {
-        super(name);
-        this.plugins = List.copyOf(plugins);
+  public PluginGroup(final String name, final List<BasePlugin> plugins) {
+    super(name);
+    this.plugins = List.copyOf(plugins);
+  }
+
+  // ── before* : forward order, first non-empty short-circuits ─────────────
+
+  @Override
+  public Maybe<Content> onUserMessageCallback(
+      final InvocationContext ctx, final Content userMessage) {
+    for (final BasePlugin plugin : plugins) {
+      final Content result = plugin.onUserMessageCallback(ctx, userMessage).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    // ── before* : forward order, first non-empty short-circuits ─────────────
-
-    @Override
-    public Maybe<Content> onUserMessageCallback(final InvocationContext ctx, final Content userMessage) {
-        for (final BasePlugin plugin : plugins) {
-            final Content result =
-                    plugin.onUserMessageCallback(ctx, userMessage).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Maybe<Content> beforeRunCallback(final InvocationContext ctx) {
+    for (final BasePlugin plugin : plugins) {
+      final Content result = plugin.beforeRunCallback(ctx).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<Content> beforeRunCallback(final InvocationContext ctx) {
-        for (final BasePlugin plugin : plugins) {
-            final Content result = plugin.beforeRunCallback(ctx).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Maybe<Content> beforeAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
+    for (final BasePlugin plugin : plugins) {
+      final Content result = plugin.beforeAgentCallback(agent, ctx).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<Content> beforeAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-        for (final BasePlugin plugin : plugins) {
-            final Content result = plugin.beforeAgentCallback(agent, ctx).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Maybe<LlmResponse> beforeModelCallback(
+      final CallbackContext ctx, final LlmRequest.Builder requestBuilder) {
+    for (final BasePlugin plugin : plugins) {
+      final LlmResponse result = plugin.beforeModelCallback(ctx, requestBuilder).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<LlmResponse> beforeModelCallback(final CallbackContext ctx, final LlmRequest.Builder requestBuilder) {
-        for (final BasePlugin plugin : plugins) {
-            final LlmResponse result =
-                    plugin.beforeModelCallback(ctx, requestBuilder).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Maybe<Map<String, Object>> beforeToolCallback(
+      final BaseTool tool, final Map<String, Object> args, final ToolContext toolContext) {
+    for (final BasePlugin plugin : plugins) {
+      final Map<String, Object> result =
+          plugin.beforeToolCallback(tool, args, toolContext).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<Map<String, Object>> beforeToolCallback(
-            final BaseTool tool, final Map<String, Object> args, final ToolContext toolContext) {
-        for (final BasePlugin plugin : plugins) {
-            final Map<String, Object> result =
-                    plugin.beforeToolCallback(tool, args, toolContext).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Maybe<Event> onEventCallback(final InvocationContext ctx, final Event event) {
+    // forward order; first non-empty wins
+    for (final BasePlugin plugin : plugins) {
+      final Event result = plugin.onEventCallback(ctx, event).blockingGet();
+      if (result != null) return Maybe.just(result);
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<Event> onEventCallback(final InvocationContext ctx, final Event event) {
-        // forward order; first non-empty wins
-        for (final BasePlugin plugin : plugins) {
-            final Event result = plugin.onEventCallback(ctx, event).blockingGet();
-            if (result != null) return Maybe.just(result);
-        }
-        return Maybe.empty();
+  // ── after* : reverse order, sequential pipeline ──────────────────────────
+
+  @Override
+  public Maybe<Map<String, Object>> afterToolCallback(
+      final BaseTool tool,
+      final Map<String, Object> args,
+      final ToolContext toolContext,
+      final Map<String, Object> toolResult) {
+    boolean changed = false;
+    Map<String, Object> current = toolResult;
+    for (final BasePlugin plugin : plugins.reversed()) {
+      final Map<String, Object> result =
+          plugin.afterToolCallback(tool, args, toolContext, current).blockingGet();
+      if (result != null) {
+        current = result;
+        changed = true;
+      }
     }
+    return changed ? Maybe.just(current) : Maybe.empty();
+  }
 
-    // ── after* : reverse order, sequential pipeline ──────────────────────────
-
-    @Override
-    public Maybe<Map<String, Object>> afterToolCallback(
-            final BaseTool tool,
-            final Map<String, Object> args,
-            final ToolContext toolContext,
-            final Map<String, Object> toolResult) {
-        boolean changed = false;
-        Map<String, Object> current = toolResult;
-        for (final BasePlugin plugin : plugins.reversed()) {
-            final Map<String, Object> result =
-                    plugin.afterToolCallback(tool, args, toolContext, current).blockingGet();
-            if (result != null) {
-                current = result;
-                changed = true;
-            }
-        }
-        return changed ? Maybe.just(current) : Maybe.empty();
+  @Override
+  public Maybe<LlmResponse> afterModelCallback(
+      final CallbackContext ctx, final LlmResponse llmResponse) {
+    boolean changed = false;
+    LlmResponse current = llmResponse;
+    for (final BasePlugin plugin : plugins.reversed()) {
+      final LlmResponse result = plugin.afterModelCallback(ctx, current).blockingGet();
+      if (result != null) {
+        current = result;
+        changed = true;
+      }
     }
+    return changed ? Maybe.just(current) : Maybe.empty();
+  }
 
-    @Override
-    public Maybe<LlmResponse> afterModelCallback(final CallbackContext ctx, final LlmResponse llmResponse) {
-        boolean changed = false;
-        LlmResponse current = llmResponse;
-        for (final BasePlugin plugin : plugins.reversed()) {
-            final LlmResponse result = plugin.afterModelCallback(ctx, current).blockingGet();
-            if (result != null) {
-                current = result;
-                changed = true;
-            }
-        }
-        return changed ? Maybe.just(current) : Maybe.empty();
+  @Override
+  public Maybe<Content> afterAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
+    for (final BasePlugin plugin : plugins.reversed()) {
+      final Content result = plugin.afterAgentCallback(agent, ctx).blockingGet();
+      if (result != null) {
+        return Maybe.just(result);
+      }
     }
+    return Maybe.empty();
+  }
 
-    @Override
-    public Maybe<Content> afterAgentCallback(final BaseAgent agent, final CallbackContext ctx) {
-        for (final BasePlugin plugin : plugins.reversed()) {
-            final Content result = plugin.afterAgentCallback(agent, ctx).blockingGet();
-            if (result != null) {
-                return Maybe.just(result);
-            }
-        }
-        return Maybe.empty();
+  @Override
+  public Completable afterRunCallback(final InvocationContext ctx) {
+    Completable chain = Completable.complete();
+    for (final BasePlugin plugin : plugins.reversed()) {
+      chain = chain.andThen(plugin.afterRunCallback(ctx));
     }
-
-    @Override
-    public Completable afterRunCallback(final InvocationContext ctx) {
-        Completable chain = Completable.complete();
-        for (final BasePlugin plugin : plugins.reversed()) {
-            chain = chain.andThen(plugin.afterRunCallback(ctx));
-        }
-        return chain;
-    }
+    return chain;
+  }
 }

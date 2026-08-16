@@ -6,9 +6,9 @@ import java.util.List;
 
 @MicroService("agent")
 public interface ToolCatalog {
-    List<ToolDescriptor> getTools();
+  List<ToolDescriptor> getTools();
 
-    ToolDescriptor getToolByName(String toolName);
+  ToolDescriptor getToolByName(String toolName);
 
-    List<ToolDescriptor> getStandardTools();
+  List<ToolDescriptor> getStandardTools();
 }

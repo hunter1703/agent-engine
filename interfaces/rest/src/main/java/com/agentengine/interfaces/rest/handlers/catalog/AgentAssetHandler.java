@@ -16,40 +16,41 @@ import java.util.Map;
 @Singleton
 public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
 
-    private final AgentService agentService;
+  private final AgentService agentService;
 
-    @Inject
-    public AgentAssetHandler(AgentService agentService) {
-        this.agentService = agentService;
-    }
+  @Inject
+  public AgentAssetHandler(AgentService agentService) {
+    this.agentService = agentService;
+  }
 
-    @Override
-    public String getAssetType() {
-        return AssetClass.AGENT;
-    }
+  @Override
+  public String getAssetType() {
+    return AssetClass.AGENT;
+  }
 
-    @Override
-    public PaginatedResult<BaseAgentConfig> findAssets(AssetRequest request) {
-        return agentService.findAgents(request.getQuery());
-    }
+  @Override
+  public PaginatedResult<BaseAgentConfig> findAssets(AssetRequest request) {
+    return agentService.findAgents(request.getQuery());
+  }
 
-    @Override
-    public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
-        return agentService.getAgents(request.getKeys());
-    }
+  @Override
+  public Map<String, BaseAgentConfig> getAssetsByIds(AssetRequest request) {
+    return agentService.getAgents(request.getKeys());
+  }
 
-    @Override
-    public PaginatedResult<BaseAgentConfig> listAssets(final AssetRequest request) {
-        Query query = request.getQuery();
-        query = query == null ? new Query() : query;
-        // need _t field else deserializer won't know which class to deserialize into
-        query.withIncludeFields(List.of(
-                "_t",
-                BaseEntity.FIELD_ID,
-                BaseEntity.FIELD_CREATED_TIME,
-                BaseEntity.FIELD_UPDATED_TIME,
-                NamedEntity.FIELD_NAME,
-                BaseAgentConfig.FIELD_DESCRIPTION));
-        return findAssets(request);
-    }
+  @Override
+  public PaginatedResult<BaseAgentConfig> listAssets(final AssetRequest request) {
+    Query query = request.getQuery();
+    query = query == null ? new Query() : query;
+    // need _t field else deserializer won't know which class to deserialize into
+    query.withIncludeFields(
+        List.of(
+            "_t",
+            BaseEntity.FIELD_ID,
+            BaseEntity.FIELD_CREATED_TIME,
+            BaseEntity.FIELD_UPDATED_TIME,
+            NamedEntity.FIELD_NAME,
+            BaseAgentConfig.FIELD_DESCRIPTION));
+    return findAssets(request);
+  }
 }

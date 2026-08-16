@@ -7,20 +7,20 @@ package com.agentengine.util.common.exception;
  */
 public class StaleStateException extends RuntimeException {
 
-    private final String id;
-    private final long expectedVersion;
+  private final String id;
+  private final long expectedVersion;
 
-    public StaleStateException(final String id, final long expectedVersion) {
-        super("Stale state for entity with ID " + id + ": expected version=" + expectedVersion);
-        this.id = id;
-        this.expectedVersion = expectedVersion;
-    }
+  public StaleStateException(final String id, final long expectedVersion) {
+    super("Stale state for entity with ID " + id + ": expected version=" + expectedVersion);
+    this.id = id;
+    this.expectedVersion = expectedVersion;
+  }
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public long getExpectedVersion() {
-        return expectedVersion;
-    }
+  public long getExpectedVersion() {
+    return expectedVersion;
+  }
 }

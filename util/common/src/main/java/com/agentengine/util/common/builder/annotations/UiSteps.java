@@ -7,8 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares the layout structure for a configuration class, defining the order of steps and
- * sections within the UI.
+ * Declares the layout structure for a configuration class, defining the order of steps and sections
+ * within the UI.
  *
  * <p>This annotation should be placed on the root configuration class to explicitly define how
  * steps and sections are ordered in the multi-step form wizard.
@@ -35,10 +35,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface UiSteps {
-    /**
-     * Ordered array of steps that define the multi-step wizard structure.
-     *
-     * @return array of step definitions
-     */
-    UiStep[] steps();
+  /**
+   * Ordered array of steps that define the multi-step wizard structure.
+   *
+   * @return array of step definitions
+   */
+  UiStep[] steps();
 }

@@ -23,229 +23,231 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class JsonUtils {
-    private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
 
-    private static final JsonMapper JSON_MAPPER = createJsonMapper(false);
-    private static final JsonMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
+  private static final JsonMapper JSON_MAPPER = createJsonMapper(false);
+  private static final JsonMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
 
-    private JsonUtils() {}
+  private JsonUtils() {}
 
-    private static JsonMapper createJsonMapper(boolean includeTypeInfo) {
-        JsonMapper.Builder builder = JsonMapper.builder()
-                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .addModule(new Jdk8Module())
-                .addModule(new JavaTimeModule())
-                .addModule(new GuavaModule())
-                .serializationInclusion(JsonInclude.Include.NON_ABSENT);
+  private static JsonMapper createJsonMapper(boolean includeTypeInfo) {
+    JsonMapper.Builder builder =
+        JsonMapper.builder()
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .addModule(new Jdk8Module())
+            .addModule(new JavaTimeModule())
+            .addModule(new GuavaModule())
+            .serializationInclusion(JsonInclude.Include.NON_ABSENT);
 
-        if (includeTypeInfo) {
-            BasicPolymorphicTypeValidator validator = BasicPolymorphicTypeValidator.builder()
-                    .allowIfSubType(Object.class)
-                    .build();
-            builder.activateDefaultTyping(validator, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+    if (includeTypeInfo) {
+      BasicPolymorphicTypeValidator validator =
+          BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
+      builder.activateDefaultTyping(
+          validator, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+    }
+
+    return builder.build();
+  }
+
+  /** An independent copy of the default mapper */
+  public static ObjectMapper copyMapper() {
+    return JSON_MAPPER.copy();
+  }
+
+  public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
+    if (map == null) {
+      return null;
+    }
+    return JSON_MAPPER.convertValue(map, clazz);
+  }
+
+  public static <T> T fromMap(final Map<String, Object> map, final TypeReference<T> typeReference) {
+    if (map == null) {
+      return null;
+    }
+    return JSON_MAPPER.convertValue(map, typeReference);
+  }
+
+  public static <T> T fromJson(final String json, final Class<T> clazz) {
+    return fromJson(json, clazz, false);
+  }
+
+  public static <T> T fromJson(final String json, final Class<T> clazz, boolean includesTypeInfo) {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    try {
+      return mapper(includesTypeInfo).readValue(json, clazz);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static <T> T fromJson(final String json, final Type type) {
+    return fromJson(json, type, false);
+  }
+
+  public static <T> T fromJson(final String json, final Type type, boolean includesTypeInfo) {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    try {
+      ObjectMapper mapper = mapper(includesTypeInfo);
+      return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static <T> T fromJson(final String json, final TypeReference<T> typeReference) {
+    return fromJson(json, typeReference, false);
+  }
+
+  public static <T> T fromJson(
+      final String json, final TypeReference<T> typeReference, boolean includesTypeInfo) {
+    if (json == null || json.isBlank()) {
+      return null;
+    }
+    try {
+      return mapper(includesTypeInfo).readValue(json, typeReference);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static <T> T fromStream(final InputStream inputStream, final Class<T> clazz) {
+    return fromStream(inputStream, clazz, false);
+  }
+
+  public static <T> T fromStream(
+      final InputStream inputStream, final Class<T> clazz, boolean includesTypeInfo) {
+    if (inputStream == null) {
+      return null;
+    }
+    try {
+      return mapper(includesTypeInfo).readValue(inputStream, clazz);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static <T> T fromFile(final Path path, final Class<T> clazz) {
+    return fromFile(path, clazz, false);
+  }
+
+  public static <T> T fromFile(final Path path, final Class<T> clazz, boolean includesTypeInfo) {
+    try (InputStream stream = Files.newInputStream(path)) {
+      return mapper(includesTypeInfo).readValue(stream, clazz);
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static <T> T fromFile(final Path path, final TypeReference<T> typeReference) {
+    return fromFile(path, typeReference, false);
+  }
+
+  public static <T> T fromFile(
+      final Path path, final TypeReference<T> typeReference, boolean includesTypeInfo) {
+    try (InputStream stream = Files.newInputStream(path)) {
+      return mapper(includesTypeInfo).readValue(stream, typeReference);
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  public static String toJson(final Object value) {
+    return toJson(value, false);
+  }
+
+  public static String toJson(final Object value, boolean includeTypeInfo) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return getObjectWriter(includeTypeInfo).writeValueAsString(value);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public static void toStream(final OutputStream os, final Object value) throws IOException {
+    JSON_MAPPER.writeValue(os, value);
+  }
+
+  public static Map<String, Object> toMap(final Object obj) {
+    if (obj == null) {
+      return null;
+    }
+    return JSON_MAPPER.convertValue(obj, new TypeReference<>() {});
+  }
+
+  public static String toStableJson(final Object value) {
+    return toJson(value);
+  }
+
+  public static void removeValue(final Object jsonObject, final String path) {
+    JsonPath.using(Configuration.builder().build()).parse(jsonObject).delete(path);
+  }
+
+  public static Map<String, Object> parseJsonPayload(final String text) {
+    if (text == null || text.isBlank()) {
+      return null;
+    }
+    String cleaned = text.trim();
+    if (cleaned.startsWith("```")) {
+      final int end = cleaned.lastIndexOf("```");
+      if (end > 2) {
+        cleaned = cleaned.substring(3, end).trim();
+        if (cleaned.startsWith("json")) {
+          cleaned = cleaned.substring(4).trim();
         }
-
-        return builder.build();
+      }
     }
-
-    /**
-     * An independent copy of the default mapper
-     */
-    public static ObjectMapper copyMapper() {
-        return JSON_MAPPER.copy();
-    }
-
-    public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
-        if (map == null) {
-            return null;
-        }
-        return JSON_MAPPER.convertValue(map, clazz);
-    }
-
-    public static <T> T fromMap(final Map<String, Object> map, final TypeReference<T> typeReference) {
-        if (map == null) {
-            return null;
-        }
-        return JSON_MAPPER.convertValue(map, typeReference);
-    }
-
-    public static <T> T fromJson(final String json, final Class<T> clazz) {
-        return fromJson(json, clazz, false);
-    }
-
-    public static <T> T fromJson(final String json, final Class<T> clazz, boolean includesTypeInfo) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
+    Map<String, Object> payload = null;
+    try {
+      payload = fromJson(cleaned, new TypeReference<>() {});
+    } catch (Exception ex) {
+      final int start = cleaned.indexOf('{');
+      final int end = cleaned.lastIndexOf('}');
+      if (start >= 0 && end > start) {
         try {
-            return mapper(includesTypeInfo).readValue(json, clazz);
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
+          payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
+        } catch (Exception innerEx) {
+          LOGGER.warn("Failed to parse JSON payload from substring", innerEx);
         }
+      }
+    }
+    return payload;
+  }
+
+  public static JsonNode toJsonNode(final Object object) {
+    if (object == null) {
+      return null;
     }
 
-    public static <T> T fromJson(final String json, final Type type) {
-        return fromJson(json, type, false);
+    return mapper(false).valueToTree(object);
+  }
+
+  public static JsonNode toJsonNode(final String json) {
+    if (StringUtils.isBlank(json)) {
+      return null;
     }
 
-    public static <T> T fromJson(final String json, final Type type, boolean includesTypeInfo) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            ObjectMapper mapper = mapper(includesTypeInfo);
-            return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
-        }
+    try {
+      return mapper(false).readTree(json);
+    } catch (JsonProcessingException ex) {
+      return null;
     }
+  }
 
-    public static <T> T fromJson(final String json, final TypeReference<T> typeReference) {
-        return fromJson(json, typeReference, false);
-    }
+  private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {
+    JsonMapper mapper = mapper(includeTypeInfo);
+    return includeTypeInfo ? mapper.writerFor(Object.class) : mapper.writer();
+  }
 
-    public static <T> T fromJson(final String json, final TypeReference<T> typeReference, boolean includesTypeInfo) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            return mapper(includesTypeInfo).readValue(json, typeReference);
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    public static <T> T fromStream(final InputStream inputStream, final Class<T> clazz) {
-        return fromStream(inputStream, clazz, false);
-    }
-
-    public static <T> T fromStream(final InputStream inputStream, final Class<T> clazz, boolean includesTypeInfo) {
-        if (inputStream == null) {
-            return null;
-        }
-        try {
-            return mapper(includesTypeInfo).readValue(inputStream, clazz);
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    public static <T> T fromFile(final Path path, final Class<T> clazz) {
-        return fromFile(path, clazz, false);
-    }
-
-    public static <T> T fromFile(final Path path, final Class<T> clazz, boolean includesTypeInfo) {
-        try (InputStream stream = Files.newInputStream(path)) {
-            return mapper(includesTypeInfo).readValue(stream, clazz);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public static <T> T fromFile(final Path path, final TypeReference<T> typeReference) {
-        return fromFile(path, typeReference, false);
-    }
-
-    public static <T> T fromFile(final Path path, final TypeReference<T> typeReference, boolean includesTypeInfo) {
-        try (InputStream stream = Files.newInputStream(path)) {
-            return mapper(includesTypeInfo).readValue(stream, typeReference);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public static String toJson(final Object value) {
-        return toJson(value, false);
-    }
-
-    public static String toJson(final Object value, boolean includeTypeInfo) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            return getObjectWriter(includeTypeInfo).writeValueAsString(value);
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    public static void toStream(final OutputStream os, final Object value) throws IOException {
-        JSON_MAPPER.writeValue(os, value);
-    }
-
-    public static Map<String, Object> toMap(final Object obj) {
-        if (obj == null) {
-            return null;
-        }
-        return JSON_MAPPER.convertValue(obj, new TypeReference<>() {});
-    }
-
-    public static String toStableJson(final Object value) {
-        return toJson(value);
-    }
-
-    public static void removeValue(final Object jsonObject, final String path) {
-        JsonPath.using(Configuration.builder().build()).parse(jsonObject).delete(path);
-    }
-
-    public static Map<String, Object> parseJsonPayload(final String text) {
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-        String cleaned = text.trim();
-        if (cleaned.startsWith("```")) {
-            final int end = cleaned.lastIndexOf("```");
-            if (end > 2) {
-                cleaned = cleaned.substring(3, end).trim();
-                if (cleaned.startsWith("json")) {
-                    cleaned = cleaned.substring(4).trim();
-                }
-            }
-        }
-        Map<String, Object> payload = null;
-        try {
-            payload = fromJson(cleaned, new TypeReference<>() {});
-        } catch (Exception ex) {
-            final int start = cleaned.indexOf('{');
-            final int end = cleaned.lastIndexOf('}');
-            if (start >= 0 && end > start) {
-                try {
-                    payload = fromJson(cleaned.substring(start, end + 1), new TypeReference<>() {});
-                } catch (Exception innerEx) {
-                    LOGGER.warn("Failed to parse JSON payload from substring", innerEx);
-                }
-            }
-        }
-        return payload;
-    }
-
-    public static JsonNode toJsonNode(final Object object) {
-        if (object == null) {
-            return null;
-        }
-
-        return mapper(false).valueToTree(object);
-    }
-
-    public static JsonNode toJsonNode(final String json) {
-        if (StringUtils.isBlank(json)) {
-            return null;
-        }
-
-        try {
-            return mapper(false).readTree(json);
-        } catch (JsonProcessingException ex) {
-            return null;
-        }
-    }
-
-    private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {
-        JsonMapper mapper = mapper(includeTypeInfo);
-        return includeTypeInfo ? mapper.writerFor(Object.class) : mapper.writer();
-    }
-
-    private static JsonMapper mapper(boolean includeTypeInfo) {
-        return includeTypeInfo ? JSON_MAPPER_WITH_TYPE : JSON_MAPPER;
-    }
+  private static JsonMapper mapper(boolean includeTypeInfo) {
+    return includeTypeInfo ? JSON_MAPPER_WITH_TYPE : JSON_MAPPER;
+  }
 }

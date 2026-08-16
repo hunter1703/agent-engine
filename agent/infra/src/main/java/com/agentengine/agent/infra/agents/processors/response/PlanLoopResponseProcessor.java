@@ -39,67 +39,66 @@ import io.reactivex.rxjava3.core.Single;
  * </ul>
  */
 public final class PlanLoopResponseProcessor implements ResponseProcessor {
-    public static final PlanLoopResponseProcessor INSTANCE = new PlanLoopResponseProcessor();
+  public static final PlanLoopResponseProcessor INSTANCE = new PlanLoopResponseProcessor();
 
-    private PlanLoopResponseProcessor() {}
+  private PlanLoopResponseProcessor() {}
 
-    @Override
-    public Single<ResponseProcessingResult> processResponse(
-            final InvocationContext context, final LlmResponse response) {
-        if (response.partial().orElse(false)) {
-            return ResponseUtils.single(response);
-        }
-
-        final RunState runState = RunUtils.getOrInitState(context);
-
-        if (!runState.hasActivePlan()) {
-            // Plan completed or absent — clear any stale plan reminder
-            runState.removeReminder("plan");
-            return ResponseUtils.single(response);
-        }
-
-        final Plan plan = runState.plan();
-
-        // Sync the plan reminder to reflect current state
-        runState.addReminder(new Reminder(Reminder.GROUP_ACTIVE_PLAN, "plan", buildPlanBrief(plan)));
-
-        if (!ResponseUtils.isFinalAnswer(response)) {
-            return ResponseUtils.single(response);
-        }
-
-        final String planViolation = PlanningValidator.getPrematureCompleteViolation(plan);
-        if (StringUtils.isBlank(planViolation)) {
-            return ResponseUtils.single(response);
-        }
-        runState.requestContinuation(Violation.builder("final_answer_validation")
-                .message(planViolation)
-                .build());
-        return ResponseUtils.single(response);
+  @Override
+  public Single<ResponseProcessingResult> processResponse(
+      final InvocationContext context, final LlmResponse response) {
+    if (response.partial().orElse(false)) {
+      return ResponseUtils.single(response);
     }
 
-    private static String buildPlanBrief(final Plan plan) {
-        final StringBuilder sb = new StringBuilder();
-        sb.append(PlanningUtils.buildPlanSummary(plan));
+    final RunState runState = RunUtils.getOrInitState(context);
 
-        final Task openTask = PlanningUtils.getOpenTask(plan);
-        if (openTask != null) {
-            sb.append("\n\nActive task — stay focused on this:\n");
-            sb.append(PlanningUtils.buildTaskFocusPrompt(plan));
-            sb.append("\n→ Do not start a new task until this one is complete or explicitly abandoned.");
-        } else {
-            final Task nextTask = PlanningUtils.findNextTodoTask(plan);
-            if (nextTask != null) {
-                sb.append("\n\nNo active task — pick up the next one:\n");
-                sb.append("Task [")
-                        .append(PlanningUtils.getTaskIdValue(nextTask))
-                        .append("] — ")
-                        .append(nextTask.getName());
-                if (StringUtils.isNotBlank(nextTask.getGoal())) {
-                    sb.append("\nGoal: ").append(nextTask.getGoal());
-                }
-                sb.append("\n→ Mark it in_progress before starting work.");
-            }
-        }
-        return sb.toString().trim();
+    if (!runState.hasActivePlan()) {
+      // Plan completed or absent — clear any stale plan reminder
+      runState.removeReminder("plan");
+      return ResponseUtils.single(response);
     }
+
+    final Plan plan = runState.plan();
+
+    // Sync the plan reminder to reflect current state
+    runState.addReminder(new Reminder(Reminder.GROUP_ACTIVE_PLAN, "plan", buildPlanBrief(plan)));
+
+    if (!ResponseUtils.isFinalAnswer(response)) {
+      return ResponseUtils.single(response);
+    }
+
+    final String planViolation = PlanningValidator.getPrematureCompleteViolation(plan);
+    if (StringUtils.isBlank(planViolation)) {
+      return ResponseUtils.single(response);
+    }
+    runState.requestContinuation(
+        Violation.builder("final_answer_validation").message(planViolation).build());
+    return ResponseUtils.single(response);
+  }
+
+  private static String buildPlanBrief(final Plan plan) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(PlanningUtils.buildPlanSummary(plan));
+
+    final Task openTask = PlanningUtils.getOpenTask(plan);
+    if (openTask != null) {
+      sb.append("\n\nActive task — stay focused on this:\n");
+      sb.append(PlanningUtils.buildTaskFocusPrompt(plan));
+      sb.append("\n→ Do not start a new task until this one is complete or explicitly abandoned.");
+    } else {
+      final Task nextTask = PlanningUtils.findNextTodoTask(plan);
+      if (nextTask != null) {
+        sb.append("\n\nNo active task — pick up the next one:\n");
+        sb.append("Task [")
+            .append(PlanningUtils.getTaskIdValue(nextTask))
+            .append("] — ")
+            .append(nextTask.getName());
+        if (StringUtils.isNotBlank(nextTask.getGoal())) {
+          sb.append("\nGoal: ").append(nextTask.getGoal());
+        }
+        sb.append("\n→ Mark it in_progress before starting work.");
+      }
+    }
+    return sb.toString().trim();
+  }
 }

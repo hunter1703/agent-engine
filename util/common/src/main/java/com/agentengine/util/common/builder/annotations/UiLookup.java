@@ -17,6 +17,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiLookup {
 
-    /** Asset type to query through the resource catalog API. */
-    String assetType();
+  /** Asset type to query through the resource catalog API. */
+  String assetType();
 }

@@ -15,36 +15,36 @@ import java.util.List;
  * #runAsyncImpl} and {@link #runLiveImpl} directly instead.
  */
 public class DelegatedAgent extends Agent {
-    private final BaseAgent delegated;
+  private final BaseAgent delegated;
 
-    public DelegatedAgent(final BaseAgent delegated, final BaseAgentConfig agentConfig) {
-        super(
-                delegated.name(),
-                delegated.description(),
-                delegated.subAgents(),
-                agentConfig,
-                delegated.beforeAgentCallback(),
-                delegated.afterAgentCallback());
-        this.delegated = delegated;
-    }
+  public DelegatedAgent(final BaseAgent delegated, final BaseAgentConfig agentConfig) {
+    super(
+        delegated.name(),
+        delegated.description(),
+        delegated.subAgents(),
+        agentConfig,
+        delegated.beforeAgentCallback(),
+        delegated.afterAgentCallback());
+    this.delegated = delegated;
+  }
 
-    @Override
-    public List<? extends BaseAgent> subAgents() {
-        return delegated != null ? delegated.subAgents() : super.subAgents();
-    }
+  @Override
+  public List<? extends BaseAgent> subAgents() {
+    return delegated != null ? delegated.subAgents() : super.subAgents();
+  }
 
-    @Override
-    public Completable close() {
-        return delegated.close();
-    }
+  @Override
+  public Completable close() {
+    return delegated.close();
+  }
 
-    @Override
-    protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
-        return delegated.runAsync(invocationContext);
-    }
+  @Override
+  protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
+    return delegated.runAsync(invocationContext);
+  }
 
-    @Override
-    protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
-        return delegated.runLive(invocationContext);
-    }
+  @Override
+  protected Flowable<Event> runLiveImpl(final InvocationContext invocationContext) {
+    return delegated.runLive(invocationContext);
+  }
 }

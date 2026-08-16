@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
  * and HITL pauses.
  *
  * <p>The parent {@code BaseLlmFlow} is configured with {@code maxSteps=1} so each {@code
- * super.run()} executes exactly one ADK step (one LLM call + tool execution). Events stream
- * through immediately for low-latency UX. After the step completes, a synthetic boundary event
- * is appended to commit the turn and signal the outcome.
+ * super.run()} executes exactly one ADK step (one LLM call + tool execution). Events stream through
+ * immediately for low-latency UX. After the step completes, a synthetic boundary event is appended
+ * to commit the turn and signal the outcome.
  *
  * <h3>Step outcomes</h3>
  *
@@ -54,144 +54,152 @@ import org.slf4j.LoggerFactory;
  * </ul>
  */
 public final class BaseFlow extends SingleFlow {
-    private static final Logger LOG = LoggerFactory.getLogger(BaseFlow.class);
-    private static final ImmutableList<RequestProcessor> REQUEST_PROCESSORS = ImmutableList.<RequestProcessor>builder()
-            .addAll(SingleFlow.REQUEST_PROCESSORS)
-            .add(new AgentTransfer())
-            .add(CorrectionProcessor.INSTANCE)
-            .add(ReminderRequestProcessor.INSTANCE)
-            .build();
+  private static final Logger LOG = LoggerFactory.getLogger(BaseFlow.class);
+  private static final ImmutableList<RequestProcessor> REQUEST_PROCESSORS =
+      ImmutableList.<RequestProcessor>builder()
+          .addAll(SingleFlow.REQUEST_PROCESSORS)
+          .add(new AgentTransfer())
+          .add(CorrectionProcessor.INSTANCE)
+          .add(ReminderRequestProcessor.INSTANCE)
+          .build();
 
-    private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =
-            ImmutableList.<ResponseProcessor>builder()
-                    .add(ResponseFormatValidationProcessor.INSTANCE)
-                    .add(PlanLoopResponseProcessor.INSTANCE)
-                    .addAll(SingleFlow.RESPONSE_PROCESSORS)
-                    .build();
+  private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =
+      ImmutableList.<ResponseProcessor>builder()
+          .add(ResponseFormatValidationProcessor.INSTANCE)
+          .add(PlanLoopResponseProcessor.INSTANCE)
+          .addAll(SingleFlow.RESPONSE_PROCESSORS)
+          .build();
 
-    private final int maxSteps;
+  private final int maxSteps;
 
-    public BaseFlow(final Integer maxSteps, final Collection<String> availableTools) {
-        super(
-                REQUEST_PROCESSORS,
-                CollectionUtils.append(new ToolCallSanitizationResponseProcessor(availableTools), RESPONSE_PROCESSORS),
-                Optional.of(1));
-        this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
+  public BaseFlow(final Integer maxSteps, final Collection<String> availableTools) {
+    super(
+        REQUEST_PROCESSORS,
+        CollectionUtils.append(
+            new ToolCallSanitizationResponseProcessor(availableTools), RESPONSE_PROCESSORS),
+        Optional.of(1));
+    this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
+  }
+
+  @Override
+  public Flowable<Event> run(final InvocationContext invocationContext) {
+    return runLoop(invocationContext);
+  }
+
+  private Flowable<Event> runLoop(final InvocationContext invocationContext) {
+    final RunState runState = RunUtils.getOrInitState(invocationContext);
+    final boolean mayContinue = runState.consumeTurn(maxSteps);
+    if (!mayContinue) {
+      return Flowable.empty();
     }
 
-    @Override
-    public Flowable<Event> run(final InvocationContext invocationContext) {
-        return runLoop(invocationContext);
-    }
+    final AtomicBoolean endInvocation = new AtomicBoolean();
+    // Reset per-turn flags so a final answer from a previous continuation turn
+    // does not bleed into the current turn's outcome resolution.
+    final AtomicBoolean foundFinalAnswer = new AtomicBoolean();
+    // original tool call id that raised the interrupt
+    final ConcurrentHashSet<String> interruptRequested = new ConcurrentHashSet<>();
+    return super.run(invocationContext)
+        .map(
+            event -> {
+              // ADK may emit events with null IDs (e.g. adk_request_confirmation); assign a
+              // generated ID to provide reliable guarantee
+              if (StringUtils.isBlank(event.id())) {
+                event = event.toBuilder().id(Event.generateEventId()).build();
+              }
+              interruptRequested.addAll(event.actions().requestedToolConfirmations().keySet());
+              final Content content = event.content().orElse(Content.builder().build());
 
-    private Flowable<Event> runLoop(final InvocationContext invocationContext) {
-        final RunState runState = RunUtils.getOrInitState(invocationContext);
-        final boolean mayContinue = runState.consumeTurn(maxSteps);
-        if (!mayContinue) {
-            return Flowable.empty();
-        }
+              // every tool needs to return something, even if it raises an interrupt; tools that
+              // raise an
+              // interrupt can emit empty response, so filter out before emitting to the stream for
+              // correctness
+              final List<Part> filteredParts =
+                  content.parts().orElse(List.of()).stream()
+                      .filter(
+                          part -> {
+                            final FunctionResponse response = part.functionResponse().orElse(null);
+                            return response == null
+                                || !interruptRequested.contains(response.id().orElse(null))
+                                || CollectionUtils.isNotEmpty(response.response().orElse(Map.of()));
+                          })
+                      .toList();
 
-        final AtomicBoolean endInvocation = new AtomicBoolean();
-        // Reset per-turn flags so a final answer from a previous continuation turn
-        // does not bleed into the current turn's outcome resolution.
-        final AtomicBoolean foundFinalAnswer = new AtomicBoolean();
-        // original tool call id that raised the interrupt
-        final ConcurrentHashSet<String> interruptRequested = new ConcurrentHashSet<>();
-        return super.run(invocationContext)
-                .map(event -> {
-                    // ADK may emit events with null IDs (e.g. adk_request_confirmation); assign a
-                    // generated ID to provide reliable guarantee
-                    if (StringUtils.isBlank(event.id())) {
-                        event = event.toBuilder().id(Event.generateEventId()).build();
-                    }
-                    interruptRequested.addAll(
-                            event.actions().requestedToolConfirmations().keySet());
-                    final Content content =
-                            event.content().orElse(Content.builder().build());
-
-                    // every tool needs to return something, even if it raises an interrupt; tools that raise an
-                    // interrupt can emit empty response, so filter out before emitting to the stream for correctness
-                    final List<Part> filteredParts = content.parts().orElse(List.of()).stream()
-                            .filter(part -> {
-                                final FunctionResponse response =
-                                        part.functionResponse().orElse(null);
-                                return response == null
-                                        || !interruptRequested.contains(
-                                                response.id().orElse(null))
-                                        || CollectionUtils.isNotEmpty(
-                                                response.response().orElse(Map.of()));
-                            })
-                            .toList();
-
-                    if (event.actions().endInvocation().orElse(false)) {
-                        endInvocation.set(true);
-                    }
-                    // Only model/agent events count as a final answer — user events (e.g. corrective
-                    // messages injected by CorrectionProcessor) must not set this flag
-                    if (!Constants.AUTHOR_USER.equals(event.author()) && event.finalResponse()) {
-                        foundFinalAnswer.set(true);
-                    }
-                    // Strip turnComplete and finishReason — the synthetic boundary event is the
-                    // sole authoritative commit point for the turn.
-                    return event.toBuilder()
-                            .content(content.toBuilder().parts(filteredParts).build())
-                            .turnComplete(Optional.empty())
-                            .finishReason(Optional.empty())
-                            .build();
-                })
-                .concatWith(Flowable.defer(() -> {
-                    final TurnOutcome outcome = resolveOutcome(
-                            endInvocation.get(),
-                            CollectionUtils.isNotEmpty(interruptRequested),
-                            foundFinalAnswer.get(),
-                            runState.consumeContinuation());
-                    final Flowable<Event> turnCompletedEvent =
-                            Flowable.just(getTurnCompletedEvent(invocationContext, outcome));
-                    return outcome == TurnOutcome.CONTINUE
-                            ? turnCompletedEvent.concatWith(Flowable.defer(() -> runLoop(invocationContext)))
-                            : turnCompletedEvent;
+              if (event.actions().endInvocation().orElse(false)) {
+                endInvocation.set(true);
+              }
+              // Only model/agent events count as a final answer — user events (e.g. corrective
+              // messages injected by CorrectionProcessor) must not set this flag
+              if (!Constants.AUTHOR_USER.equals(event.author()) && event.finalResponse()) {
+                foundFinalAnswer.set(true);
+              }
+              // Strip turnComplete and finishReason — the synthetic boundary event is the
+              // sole authoritative commit point for the turn.
+              return event.toBuilder()
+                  .content(content.toBuilder().parts(filteredParts).build())
+                  .turnComplete(Optional.empty())
+                  .finishReason(Optional.empty())
+                  .build();
+            })
+        .concatWith(
+            Flowable.defer(
+                () -> {
+                  final TurnOutcome outcome =
+                      resolveOutcome(
+                          endInvocation.get(),
+                          CollectionUtils.isNotEmpty(interruptRequested),
+                          foundFinalAnswer.get(),
+                          runState.consumeContinuation());
+                  final Flowable<Event> turnCompletedEvent =
+                      Flowable.just(getTurnCompletedEvent(invocationContext, outcome));
+                  return outcome == TurnOutcome.CONTINUE
+                      ? turnCompletedEvent.concatWith(
+                          Flowable.defer(() -> runLoop(invocationContext)))
+                      : turnCompletedEvent;
                 }))
-                .doOnNext(event -> LOG.info("baseflow : {}", JsonUtils.toJson(event)));
-    }
+        .doOnNext(event -> LOG.info("baseflow : {}", JsonUtils.toJson(event)));
+  }
 
-    private static TurnOutcome resolveOutcome(
-            final boolean endInvocation,
-            final boolean interruptRequested,
-            final boolean foundFinalAnswer,
-            final boolean continuationRequested) {
-        if (endInvocation) {
-            return TurnOutcome.TERMINAL;
-        }
-        // ADK guarantee: when the LLM issues multiple tool calls in one turn, Functions merges all
-        // individual tool responses into a single event (mergeParallelFunctionResponseEvents) and
-        // then generates at most one adk_request_confirmation event containing N interrupt
-        // function calls — one per tool that called toolContext.requestConfirmation().
-        if (interruptRequested) {
-            return TurnOutcome.PAUSED;
-        }
-        if (foundFinalAnswer) {
-            return continuationRequested ? TurnOutcome.CONTINUE : TurnOutcome.TERMINAL;
-        }
-        return TurnOutcome.CONTINUE;
+  private static TurnOutcome resolveOutcome(
+      final boolean endInvocation,
+      final boolean interruptRequested,
+      final boolean foundFinalAnswer,
+      final boolean continuationRequested) {
+    if (endInvocation) {
+      return TurnOutcome.TERMINAL;
     }
+    // ADK guarantee: when the LLM issues multiple tool calls in one turn, Functions merges all
+    // individual tool responses into a single event (mergeParallelFunctionResponseEvents) and
+    // then generates at most one adk_request_confirmation event containing N interrupt
+    // function calls — one per tool that called toolContext.requestConfirmation().
+    if (interruptRequested) {
+      return TurnOutcome.PAUSED;
+    }
+    if (foundFinalAnswer) {
+      return continuationRequested ? TurnOutcome.CONTINUE : TurnOutcome.TERMINAL;
+    }
+    return TurnOutcome.CONTINUE;
+  }
 
-    // Synthetic event appended after each turn to provide the single, authoritative commit point.
-    // All preceding turn events have turnComplete/finishReason stripped, so only this event controls
-    // the commit decision.
-    private static Event getTurnCompletedEvent(final InvocationContext invocationContext, final TurnOutcome outcome) {
-        final Event.Builder builder = Event.builder()
-                .invocationId(invocationContext.invocationId())
-                .author(invocationContext.agent().name())
-                .turnComplete(true);
-        if (outcome == TurnOutcome.TERMINAL || outcome == TurnOutcome.PAUSED) {
-            builder.finishReason(new FinishReason(FinishReason.Known.STOP));
-        }
-        return builder.id(UUID.randomUUID().toString()).build();
+  // Synthetic event appended after each turn to provide the single, authoritative commit point.
+  // All preceding turn events have turnComplete/finishReason stripped, so only this event controls
+  // the commit decision.
+  private static Event getTurnCompletedEvent(
+      final InvocationContext invocationContext, final TurnOutcome outcome) {
+    final Event.Builder builder =
+        Event.builder()
+            .invocationId(invocationContext.invocationId())
+            .author(invocationContext.agent().name())
+            .turnComplete(true);
+    if (outcome == TurnOutcome.TERMINAL || outcome == TurnOutcome.PAUSED) {
+      builder.finishReason(new FinishReason(FinishReason.Known.STOP));
     }
+    return builder.id(UUID.randomUUID().toString()).build();
+  }
 
-    private enum TurnOutcome {
-        CONTINUE,
-        TERMINAL,
-        PAUSED
-    }
+  private enum TurnOutcome {
+    CONTINUE,
+    TERMINAL,
+    PAUSED
+  }
 }

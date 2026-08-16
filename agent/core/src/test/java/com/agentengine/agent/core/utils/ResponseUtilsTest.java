@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 
 class ResponseUtilsTest {
 
-    @Test
-    void shouldKeepAnswerPayloadWhenExplicitConfirmationFlagIsProvided() {
-        final ToolConfirmation confirmation =
-                com.agentengine.agent.infra.utils.ResponseUtils.buildToolConfirmation(true, "approved");
+  @Test
+  void shouldKeepAnswerPayloadWhenExplicitConfirmationFlagIsProvided() {
+    final ToolConfirmation confirmation =
+        com.agentengine.agent.infra.utils.ResponseUtils.buildToolConfirmation(true, "approved");
 
-        assertThat(confirmation.confirmed()).isTrue();
-        assertThat(confirmation.payload()).isEqualTo(java.util.Map.of("answer", "approved"));
-    }
+    assertThat(confirmation.confirmed()).isTrue();
+    assertThat(confirmation.payload()).isEqualTo(java.util.Map.of("answer", "approved"));
+  }
 }

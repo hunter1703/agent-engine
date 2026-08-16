@@ -21,94 +21,99 @@ import org.junit.jupiter.api.Test;
 
 class FabricPodCounterTest {
 
-    private static final String NAMESPACE = "agent-engine";
+  private static final String NAMESPACE = "agent-engine";
 
-    private KubernetesMockServer mockServer;
-    private KubernetesClient client;
-    private FabricPodCounter podCounter;
+  private KubernetesMockServer mockServer;
+  private KubernetesClient client;
+  private FabricPodCounter podCounter;
 
-    @BeforeEach
-    void setUp() {
-        final Map<ServerRequest, Queue<ServerResponse>> responses = new HashMap<>();
-        mockServer = new KubernetesMockServer(
-                new Context(Serialization.jsonMapper()),
-                new MockWebServer(),
-                responses,
-                new KubernetesMixedDispatcher(responses),
-                true);
-        mockServer.init();
-        client = mockServer.createClient();
-        podCounter = new FabricPodCounter(client);
-    }
+  @BeforeEach
+  void setUp() {
+    final Map<ServerRequest, Queue<ServerResponse>> responses = new HashMap<>();
+    mockServer =
+        new KubernetesMockServer(
+            new Context(Serialization.jsonMapper()),
+            new MockWebServer(),
+            responses,
+            new KubernetesMixedDispatcher(responses),
+            true);
+    mockServer.init();
+    client = mockServer.createClient();
+    podCounter = new FabricPodCounter(client);
+  }
 
-    @AfterEach
-    void tearDown() {
-        mockServer.destroy();
-    }
+  @AfterEach
+  void tearDown() {
+    mockServer.destroy();
+  }
 
-    @Test
-    void shouldCountPodsMatchingLabels() {
-        createPod("runtime-1", Map.of("app", "runtime"));
-        createPod("runtime-2", Map.of("app", "runtime"));
-        createPod("gateway-1", Map.of("app", "gateway"));
+  @Test
+  void shouldCountPodsMatchingLabels() {
+    createPod("runtime-1", Map.of("app", "runtime"));
+    createPod("runtime-2", Map.of("app", "runtime"));
+    createPod("gateway-1", Map.of("app", "gateway"));
 
-        final int matching = podCounter.countMatchingPods(NAMESPACE, Map.of("app", "runtime"));
+    final int matching = podCounter.countMatchingPods(NAMESPACE, Map.of("app", "runtime"));
 
-        assertThat(matching).isEqualTo(2);
-    }
+    assertThat(matching).isEqualTo(2);
+  }
 
-    @Test
-    void shouldReturnZeroWhenNoPodsMatchLabels() {
-        createPod("gateway-1", Map.of("app", "gateway"));
+  @Test
+  void shouldReturnZeroWhenNoPodsMatchLabels() {
+    createPod("gateway-1", Map.of("app", "gateway"));
 
-        final int matching = podCounter.countMatchingPods(NAMESPACE, Map.of("app", "runtime"));
+    final int matching = podCounter.countMatchingPods(NAMESPACE, Map.of("app", "runtime"));
 
-        assertThat(matching).isZero();
-    }
+    assertThat(matching).isZero();
+  }
 
-    @Test
-    void shouldCountServicePodsUsingServiceSelector() {
-        createPod("runtime-1", Map.of("app", "runtime", "tier", "backend"));
-        createPod("runtime-2", Map.of("app", "runtime", "tier", "backend"));
-        createPod("runtime-canary", Map.of("app", "runtime", "tier", "canary"));
-        client.services()
-                .inNamespace(NAMESPACE)
-                .resource(new ServiceBuilder()
-                        .withNewMetadata()
-                        .withName("runtime")
-                        .withNamespace(NAMESPACE)
-                        .endMetadata()
-                        .withNewSpec()
-                        .withSelector(Map.of("app", "runtime", "tier", "backend"))
-                        .endSpec()
-                        .build())
-                .create();
+  @Test
+  void shouldCountServicePodsUsingServiceSelector() {
+    createPod("runtime-1", Map.of("app", "runtime", "tier", "backend"));
+    createPod("runtime-2", Map.of("app", "runtime", "tier", "backend"));
+    createPod("runtime-canary", Map.of("app", "runtime", "tier", "canary"));
+    client
+        .services()
+        .inNamespace(NAMESPACE)
+        .resource(
+            new ServiceBuilder()
+                .withNewMetadata()
+                .withName("runtime")
+                .withNamespace(NAMESPACE)
+                .endMetadata()
+                .withNewSpec()
+                .withSelector(Map.of("app", "runtime", "tier", "backend"))
+                .endSpec()
+                .build())
+        .create();
 
-        final int servicePods = podCounter.countServicePods(NAMESPACE, "runtime");
+    final int servicePods = podCounter.countServicePods(NAMESPACE, "runtime");
 
-        assertThat(servicePods).isEqualTo(2);
-    }
+    assertThat(servicePods).isEqualTo(2);
+  }
 
-    @Test
-    void shouldFallBackToAppLabelWhenServiceHasNoSelector() {
-        createPod("worker-1", Map.of("app", "worker"));
-        createPod("worker-2", Map.of("app", "worker"));
+  @Test
+  void shouldFallBackToAppLabelWhenServiceHasNoSelector() {
+    createPod("worker-1", Map.of("app", "worker"));
+    createPod("worker-2", Map.of("app", "worker"));
 
-        final int servicePods = podCounter.countServicePods(NAMESPACE, "worker");
+    final int servicePods = podCounter.countServicePods(NAMESPACE, "worker");
 
-        assertThat(servicePods).isEqualTo(2);
-    }
+    assertThat(servicePods).isEqualTo(2);
+  }
 
-    private void createPod(final String name, final Map<String, String> labels) {
-        client.pods()
-                .inNamespace(NAMESPACE)
-                .resource(new PodBuilder()
-                        .withNewMetadata()
-                        .withName(name)
-                        .withNamespace(NAMESPACE)
-                        .withLabels(labels)
-                        .endMetadata()
-                        .build())
-                .create();
-    }
+  private void createPod(final String name, final Map<String, String> labels) {
+    client
+        .pods()
+        .inNamespace(NAMESPACE)
+        .resource(
+            new PodBuilder()
+                .withNewMetadata()
+                .withName(name)
+                .withNamespace(NAMESPACE)
+                .withLabels(labels)
+                .endMetadata()
+                .build())
+        .create();
+  }
 }

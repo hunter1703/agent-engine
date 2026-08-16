@@ -23,62 +23,64 @@ import java.util.List;
  */
 public abstract class BaseFileTool extends Tool {
 
-    protected BaseFileTool(final ToolDescriptor toolDescriptor) {
-        super(toolDescriptor);
-    }
+  protected BaseFileTool(final ToolDescriptor toolDescriptor) {
+    super(toolDescriptor);
+  }
 
-    protected static FileDetails readFile(Path path, long offset, long limit) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            List<String> selectedLines = new ArrayList<>();
-            long lineCount = 0;
-            long to = offset + limit;
-            try (InputStream in = Files.newInputStream(path);
-                    DigestInputStream din = new DigestInputStream(in, digest);
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(din, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    lineCount++;
+  protected static FileDetails readFile(Path path, long offset, long limit) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      List<String> selectedLines = new ArrayList<>();
+      long lineCount = 0;
+      long to = offset + limit;
+      try (InputStream in = Files.newInputStream(path);
+          DigestInputStream din = new DigestInputStream(in, digest);
+          BufferedReader reader =
+              new BufferedReader(new InputStreamReader(din, StandardCharsets.UTF_8))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          lineCount++;
 
-                    if (lineCount >= offset && lineCount < to) {
-                        selectedLines.add(line);
-                    }
-                }
-            } catch (IOException exception) {
-                throw new RuntimeException(exception);
-            }
-
-            return new FileDetails(lineCount, HexFormat.of().formatHex(digest.digest()), List.copyOf(selectedLines));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 algorithm not available", exception);
+          if (lineCount >= offset && lineCount < to) {
+            selectedLines.add(line);
+          }
         }
+      } catch (IOException exception) {
+        throw new RuntimeException(exception);
+      }
+
+      return new FileDetails(
+          lineCount, HexFormat.of().formatHex(digest.digest()), List.copyOf(selectedLines));
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 algorithm not available", exception);
+    }
+  }
+
+  /**
+   * Resolves a file path, handling both absolute and relative paths.
+   *
+   * @param filePath the file path to resolve (can be absolute or relative)
+   * @return resolved Path
+   */
+  protected Path resolvePath(String filePath) {
+    Path path = Paths.get(filePath);
+
+    // If absolute path, use as-is
+    if (path.isAbsolute()) {
+      return path;
     }
 
-    /**
-     * Resolves a file path, handling both absolute and relative paths.
-     *
-     * @param filePath the file path to resolve (can be absolute or relative)
-     * @return resolved Path
-     */
-    protected Path resolvePath(String filePath) {
-        Path path = Paths.get(filePath);
+    // Use current working directory for relative paths
+    String cwd = System.getProperty("user.dir", ".");
+    return Paths.get(cwd).resolve(filePath).normalize();
+  }
 
-        // If absolute path, use as-is
-        if (path.isAbsolute()) {
-            return path;
-        }
-
-        // Use current working directory for relative paths
-        String cwd = System.getProperty("user.dir", ".");
-        return Paths.get(cwd).resolve(filePath).normalize();
+  protected static String truncate(String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
     }
+    return value.substring(0, maxLength) + "... [truncated]";
+  }
 
-    protected static String truncate(String value, int maxLength) {
-        if (value == null || value.length() <= maxLength) {
-            return value;
-        }
-        return value.substring(0, maxLength) + "... [truncated]";
-    }
-
-    protected record FileDetails(long numLines, String hash, List<String> content) {}
+  protected record FileDetails(long numLines, String hash, List<String> content) {}
 }

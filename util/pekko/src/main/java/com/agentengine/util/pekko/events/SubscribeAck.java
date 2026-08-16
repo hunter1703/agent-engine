@@ -6,9 +6,9 @@ import java.util.List;
 import org.apache.pekko.actor.typed.ActorRef;
 
 public record SubscribeAck(
-        ActorRef<BroadcasterCommand> broadcasterRef,
-        boolean replayAccepted,
-        long oldestAvailableSequence,
-        long latestAvailableSequence,
-        List<SequencedEvent<?>> backlog)
-        implements PekkoSerializable {}
+    ActorRef<BroadcasterCommand> broadcasterRef,
+    boolean replayAccepted,
+    long oldestAvailableSequence,
+    long latestAvailableSequence,
+    List<SequencedEvent<?>> backlog)
+    implements PekkoSerializable {}

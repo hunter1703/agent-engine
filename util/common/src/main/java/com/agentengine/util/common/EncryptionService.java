@@ -2,9 +2,9 @@ package com.agentengine.util.common;
 
 public interface EncryptionService {
 
-    boolean isEncryptionEnabled();
+  boolean isEncryptionEnabled();
 
-    String encrypt(String plaintext);
+  String encrypt(String plaintext);
 
-    String decrypt(String ciphertext);
+  String decrypt(String ciphertext);
 }

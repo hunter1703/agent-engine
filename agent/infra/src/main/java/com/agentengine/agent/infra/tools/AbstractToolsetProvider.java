@@ -12,39 +12,40 @@ import java.util.function.Supplier;
 /** Shared base for toolset providers backed by a fixed list of tool factories. */
 public abstract class AbstractToolsetProvider implements ToolsetProvider {
 
-    private final ToolDescriptor descriptor;
-    private final List<ToolDefinition> toolDefinitions;
+  private final ToolDescriptor descriptor;
+  private final List<ToolDefinition> toolDefinitions;
 
-    protected AbstractToolsetProvider(final ToolDescriptor descriptor, final List<ToolDefinition> toolDefinitions) {
-        this.descriptor = descriptor;
-        this.toolDefinitions = List.copyOf(toolDefinitions);
+  protected AbstractToolsetProvider(
+      final ToolDescriptor descriptor, final List<ToolDefinition> toolDefinitions) {
+    this.descriptor = descriptor;
+    this.toolDefinitions = List.copyOf(toolDefinitions);
+  }
+
+  @Override
+  public final ToolDescriptor descriptor() {
+    return descriptor;
+  }
+
+  @Override
+  public BaseToolset create(final Map<String, Object> toolConfig) {
+    return new Toolset(toolDefinitions);
+  }
+
+  public record ToolDefinition(ToolDescriptor descriptor, Supplier<? extends BaseTool> factory) {}
+
+  private record Toolset(List<ToolDefinition> toolDefinitions) implements BaseToolset {
+
+    @Override
+    public Flowable<BaseTool> getTools(final ReadonlyContext context) {
+      return Flowable.fromIterable(toolDefinitions)
+          .map(ToolDefinition::factory)
+          .map(Supplier::get)
+          .cast(BaseTool.class);
     }
 
     @Override
-    public final ToolDescriptor descriptor() {
-        return descriptor;
+    public void close() {
+      // No resources to release.
     }
-
-    @Override
-    public BaseToolset create(final Map<String, Object> toolConfig) {
-        return new Toolset(toolDefinitions);
-    }
-
-    public record ToolDefinition(ToolDescriptor descriptor, Supplier<? extends BaseTool> factory) {}
-
-    private record Toolset(List<ToolDefinition> toolDefinitions) implements BaseToolset {
-
-        @Override
-        public Flowable<BaseTool> getTools(final ReadonlyContext context) {
-            return Flowable.fromIterable(toolDefinitions)
-                    .map(ToolDefinition::factory)
-                    .map(Supplier::get)
-                    .cast(BaseTool.class);
-        }
-
-        @Override
-        public void close() {
-            // No resources to release.
-        }
-    }
+  }
 }

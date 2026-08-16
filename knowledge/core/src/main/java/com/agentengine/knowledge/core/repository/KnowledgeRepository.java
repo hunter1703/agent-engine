@@ -11,8 +11,9 @@ import jakarta.inject.Singleton;
 @Singleton
 public class KnowledgeRepository extends AbstractMongoRepository<Knowledge> {
 
-    @Inject
-    public KnowledgeRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-        super(mongoClientFactory, AssetClass.KNOWLEDGE, Knowledge.class, validationService);
-    }
+  @Inject
+  public KnowledgeRepository(
+      final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+    super(mongoClientFactory, AssetClass.KNOWLEDGE, Knowledge.class, validationService);
+  }
 }

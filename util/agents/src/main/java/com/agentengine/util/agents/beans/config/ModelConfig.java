@@ -22,182 +22,188 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @Schema(
-        oneOf = {ChatModelConfig.class, EmbeddingModelConfig.class},
-        discriminatorProperty = "type",
-        discriminatorMapping = {
-            @DiscriminatorMapping(value = "CHAT", schema = ChatModelConfig.class),
-            @DiscriminatorMapping(value = "EMBEDDING", schema = EmbeddingModelConfig.class)
-        })
+    oneOf = {ChatModelConfig.class, EmbeddingModelConfig.class},
+    discriminatorProperty = "type",
+    discriminatorMapping = {
+      @DiscriminatorMapping(value = "CHAT", schema = ChatModelConfig.class),
+      @DiscriminatorMapping(value = "EMBEDDING", schema = EmbeddingModelConfig.class)
+    })
 @JsonTypeInfo(
-        use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.EXISTING_PROPERTY,
-        property = "type",
-        visible = true)
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "type",
+    visible = true)
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = ChatModelConfig.class, name = "CHAT"),
-    @JsonSubTypes.Type(value = EmbeddingModelConfig.class, name = "EMBEDDING")
+  @JsonSubTypes.Type(value = ChatModelConfig.class, name = "CHAT"),
+  @JsonSubTypes.Type(value = EmbeddingModelConfig.class, name = "EMBEDDING")
 })
 @BsonDiscriminator
 @UiSteps(
-        steps = {
-            @UiStep(id = "identity", label = "Identity", order = 0),
-            @UiStep(id = "integration", label = "Integration", order = 1),
-            @UiStep(id = "sampling", label = "Sampling Parameters", order = 2)
-        })
+    steps = {
+      @UiStep(id = "identity", label = "Identity", order = 0),
+      @UiStep(id = "integration", label = "Integration", order = 1),
+      @UiStep(id = "sampling", label = "Sampling Parameters", order = 2)
+    })
 public abstract class ModelConfig extends NamedEntity implements Config {
 
-    public enum Provider {
-        UNKNOWN,
-        OLLAMA,
-        OPEN_AI_COMPATIBLE,
-        GEMINI;
+  public enum Provider {
+    UNKNOWN,
+    OLLAMA,
+    OPEN_AI_COMPATIBLE,
+    GEMINI;
 
-        public String type() {
-            return name();
-        }
-
-        public static Provider fromType(final String value) {
-            final Provider provider = valueOfOrDefault(value);
-            if (provider == UNKNOWN) {
-                throw new IllegalArgumentException("Unsupported model provider: " + value);
-            }
-            return provider;
-        }
-
-        public static Provider valueOfOrDefault(final String value) {
-            if (StringUtils.isBlank(value)) {
-                return UNKNOWN;
-            }
-            try {
-                return Provider.valueOf(value);
-            } catch (IllegalArgumentException ex) {
-                return UNKNOWN;
-            }
-        }
+    public String type() {
+      return name();
     }
 
-    public enum ModelType {
-        UNKNOWN,
-        CHAT,
-        EMBEDDING;
-
-        public static ModelType valueOfOrDefault(final String value) {
-            if (value == null || value.isBlank()) {
-                return UNKNOWN;
-            }
-            try {
-                return ModelType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException ex) {
-                return UNKNOWN;
-            }
-        }
+    public static Provider fromType(final String value) {
+      final Provider provider = valueOfOrDefault(value);
+      if (provider == UNKNOWN) {
+        throw new IllegalArgumentException("Unsupported model provider: " + value);
+      }
+      return provider;
     }
 
-    @UiField(label = "Provider", step = "identity", order = 20)
-    @UiSelect(enumType = Provider.class)
-    @NotBlank
-    private String provider;
-
-    @UiField(label = "Model Type", step = "identity", order = 25)
-    @UiSelect(enumType = ModelType.class)
-    @NotBlank
-    private String type;
-
-    @UiField(label = "Model Identifier", step = "identity", order = 30)
-    @UiText
-    @NotBlank
-    private String model;
-
-    @UiField(label = "Base URL", step = "integration", order = 10)
-    @UiText
-    @UiRule(
-            effect = UiRuleEffect.VISIBLE,
-            field = "provider",
-            operator = UiConditionOperator.IN,
-            values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
-    private String baseUrl;
-
-    @UiField(label = "API Key", step = "integration", order = 20)
-    @UiText
-    @Secure
-    @UiRule(
-            effect = UiRuleEffect.VISIBLE,
-            field = "provider",
-            values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
-    private String apiKey;
-
-    protected ModelConfig(final ModelType modelType) {
-        this.type = modelType.name();
+    public static Provider valueOfOrDefault(final String value) {
+      if (StringUtils.isBlank(value)) {
+        return UNKNOWN;
+      }
+      try {
+        return Provider.valueOf(value);
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
     }
+  }
 
-    protected ModelConfig() {
-        this(ModelType.UNKNOWN);
-    }
+  public enum ModelType {
+    UNKNOWN,
+    CHAT,
+    EMBEDDING;
 
-    @Override
-    @UiField(label = "ID", step = "identity", order = 0)
-    @UiText
-    @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
-    public String getId() {
-        return super.getId();
+    public static ModelType valueOfOrDefault(final String value) {
+      if (value == null || value.isBlank()) {
+        return UNKNOWN;
+      }
+      try {
+        return ModelType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+      } catch (IllegalArgumentException ex) {
+        return UNKNOWN;
+      }
     }
+  }
 
-    @Override
-    @UiAccess(create = UiAccessLevel.HIDDEN, edit = UiAccessLevel.READ_ONLY, view = UiAccessLevel.READ_ONLY)
-    public void setId(final String id) {
-        super.setId(id);
-    }
+  @UiField(label = "Provider", step = "identity", order = 20)
+  @UiSelect(enumType = Provider.class)
+  @NotBlank
+  private String provider;
 
-    @Override
-    @UiField(label = "Name", step = "identity", order = 10)
-    @UiText
-    public String getName() {
-        return super.getName();
-    }
+  @UiField(label = "Model Type", step = "identity", order = 25)
+  @UiSelect(enumType = ModelType.class)
+  @NotBlank
+  private String type;
 
-    @Override
-    public void setName(final String name) {
-        super.setName(name);
-    }
+  @UiField(label = "Model Identifier", step = "identity", order = 30)
+  @UiText
+  @NotBlank
+  private String model;
 
-    @Override
-    public String getType() {
-        return type;
-    }
+  @UiField(label = "Base URL", step = "integration", order = 10)
+  @UiText
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "provider",
+      operator = UiConditionOperator.IN,
+      values = {"OLLAMA", "OPEN_AI_COMPATIBLE"})
+  private String baseUrl;
 
-    public void setType(final String type) {
-        this.type = type;
-    }
+  @UiField(label = "API Key", step = "integration", order = 20)
+  @UiText
+  @Secure
+  @UiRule(
+      effect = UiRuleEffect.VISIBLE,
+      field = "provider",
+      values = {"GEMINI", "OPEN_AI_COMPATIBLE"})
+  private String apiKey;
 
-    public String getProvider() {
-        return provider;
-    }
+  protected ModelConfig(final ModelType modelType) {
+    this.type = modelType.name();
+  }
 
-    public void setProvider(final String provider) {
-        this.provider = provider;
-    }
+  protected ModelConfig() {
+    this(ModelType.UNKNOWN);
+  }
 
-    public String getModel() {
-        return model;
-    }
+  @Override
+  @UiField(label = "ID", step = "identity", order = 0)
+  @UiText
+  @UiAccess(
+      create = UiAccessLevel.HIDDEN,
+      edit = UiAccessLevel.READ_ONLY,
+      view = UiAccessLevel.READ_ONLY)
+  public String getId() {
+    return super.getId();
+  }
 
-    public void setModel(final String model) {
-        this.model = model;
-    }
+  @Override
+  @UiAccess(
+      create = UiAccessLevel.HIDDEN,
+      edit = UiAccessLevel.READ_ONLY,
+      view = UiAccessLevel.READ_ONLY)
+  public void setId(final String id) {
+    super.setId(id);
+  }
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
+  @Override
+  @UiField(label = "Name", step = "identity", order = 10)
+  @UiText
+  public String getName() {
+    return super.getName();
+  }
 
-    public void setBaseUrl(final String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
+  @Override
+  public void setName(final String name) {
+    super.setName(name);
+  }
 
-    public String getApiKey() {
-        return apiKey;
-    }
+  @Override
+  public String getType() {
+    return type;
+  }
 
-    public void setApiKey(final String apiKey) {
-        this.apiKey = apiKey;
-    }
+  public void setType(final String type) {
+    this.type = type;
+  }
+
+  public String getProvider() {
+    return provider;
+  }
+
+  public void setProvider(final String provider) {
+    this.provider = provider;
+  }
+
+  public String getModel() {
+    return model;
+  }
+
+  public void setModel(final String model) {
+    this.model = model;
+  }
+
+  public String getBaseUrl() {
+    return baseUrl;
+  }
+
+  public void setBaseUrl(final String baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+
+  public String getApiKey() {
+    return apiKey;
+  }
+
+  public void setApiKey(final String apiKey) {
+    this.apiKey = apiKey;
+  }
 }

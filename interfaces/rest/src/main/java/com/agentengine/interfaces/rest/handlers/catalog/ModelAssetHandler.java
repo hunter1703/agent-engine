@@ -12,25 +12,25 @@ import java.util.Map;
 @Singleton
 public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
 
-    private final ModelService modelService;
+  private final ModelService modelService;
 
-    @Inject
-    public ModelAssetHandler(ModelService modelService) {
-        this.modelService = modelService;
-    }
+  @Inject
+  public ModelAssetHandler(ModelService modelService) {
+    this.modelService = modelService;
+  }
 
-    @Override
-    public String getAssetType() {
-        return AssetClass.MODEL;
-    }
+  @Override
+  public String getAssetType() {
+    return AssetClass.MODEL;
+  }
 
-    @Override
-    public PaginatedResult<ModelConfig> findAssets(AssetRequest request) {
-        return modelService.findModels(request.getQuery());
-    }
+  @Override
+  public PaginatedResult<ModelConfig> findAssets(AssetRequest request) {
+    return modelService.findModels(request.getQuery());
+  }
 
-    @Override
-    public Map<String, ModelConfig> getAssetsByIds(AssetRequest request) {
-        return modelService.getModels(request.getKeys());
-    }
+  @Override
+  public Map<String, ModelConfig> getAssetsByIds(AssetRequest request) {
+    return modelService.getModels(request.getKeys());
+  }
 }

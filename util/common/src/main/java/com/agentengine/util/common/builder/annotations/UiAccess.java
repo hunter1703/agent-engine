@@ -16,24 +16,24 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiAccess {
-    /**
-     * Access level to apply when rendering or validating the field in create mode.
-     *
-     * @return create-mode access level
-     */
-    UiAccessLevel create() default UiAccessLevel.EDITABLE;
+  /**
+   * Access level to apply when rendering or validating the field in create mode.
+   *
+   * @return create-mode access level
+   */
+  UiAccessLevel create() default UiAccessLevel.EDITABLE;
 
-    /**
-     * Access level to apply when rendering or validating the field in edit mode.
-     *
-     * @return edit-mode access level
-     */
-    UiAccessLevel edit() default UiAccessLevel.EDITABLE;
+  /**
+   * Access level to apply when rendering or validating the field in edit mode.
+   *
+   * @return edit-mode access level
+   */
+  UiAccessLevel edit() default UiAccessLevel.EDITABLE;
 
-    /**
-     * Access level to apply when rendering the field in view mode.
-     *
-     * @return view-mode access level
-     */
-    UiAccessLevel view() default UiAccessLevel.READ_ONLY;
+  /**
+   * Access level to apply when rendering the field in view mode.
+   *
+   * @return view-mode access level
+   */
+  UiAccessLevel view() default UiAccessLevel.READ_ONLY;
 }

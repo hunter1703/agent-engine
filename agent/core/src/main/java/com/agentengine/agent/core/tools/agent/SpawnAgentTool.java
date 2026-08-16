@@ -29,111 +29,135 @@ import java.util.Optional;
  */
 public final class SpawnAgentTool extends AbstractAgentTool {
 
-    public static final String TOOL_NAME = "spawn_agent";
+  public static final String TOOL_NAME = "spawn_agent";
 
-    public static final ToolDescriptor DESCRIPTOR = new ToolDescriptor(
-            TOOL_NAME,
-            "Creates a new subordinate agent session and starts it immediately with an initial message. "
-                    + "Use to delegate a self-contained task to a specialised agent, or to run multiple tasks "
-                    + "concurrently across independent child sessions. Returns a session identifier before the child "
-                    + "has produced any output — the child runs asynchronously. The returned identifier can be used "
-                    + "in subsequent calls to deliver follow-up messages or to wait for the result. "
-                    + "Returns: { child_session_id } on success, or { error } on failure.",
-            Map.of());
+  public static final ToolDescriptor DESCRIPTOR =
+      new ToolDescriptor(
+          TOOL_NAME,
+          "Creates a new subordinate agent session and starts it immediately with an initial message. "
+              + "Use to delegate a self-contained task to a specialised agent, or to run multiple tasks "
+              + "concurrently across independent child sessions. Returns a session identifier before the child "
+              + "has produced any output — the child runs asynchronously. The returned identifier can be used "
+              + "in subsequent calls to deliver follow-up messages or to wait for the result. "
+              + "Returns: { child_session_id } on success, or { error } on failure.",
+          Map.of());
 
-    private final List<String> subAgentIds;
+  private final List<String> subAgentIds;
 
-    public SpawnAgentTool(final ActorSystemProvider actorSystemProvider, final List<String> subAgentIds) {
-        super(DESCRIPTOR, actorSystemProvider);
-        this.subAgentIds = List.copyOf(subAgentIds);
+  public SpawnAgentTool(
+      final ActorSystemProvider actorSystemProvider, final List<String> subAgentIds) {
+    super(DESCRIPTOR, actorSystemProvider);
+    this.subAgentIds = List.copyOf(subAgentIds);
+  }
+
+  @Override
+  public Optional<FunctionDeclaration> declaration() {
+    if (subAgentIds.isEmpty()) {
+      return super.declaration();
     }
+    final String agentList = String.join(", ", subAgentIds);
+    final Map<String, Schema> properties = new LinkedHashMap<>();
+    properties.put(
+        "agent_id",
+        Schema.builder()
+            .type("STRING")
+            .enum_(subAgentIds)
+            .description("ID of the agent to spawn. Available agents: " + agentList + ". Required.")
+            .build());
+    properties.put(
+        "message",
+        Schema.builder()
+            .type("STRING")
+            .description("Initial message to send to the spawned agent. Required.")
+            .build());
+    properties.put(
+        "goal",
+        Schema.builder()
+            .type("STRING")
+            .description("The outcome this child agent is expected to deliver. Required.")
+            .build());
+    final Schema params =
+        Schema.builder()
+            .type("OBJECT")
+            .properties(properties)
+            .required(List.of("agent_id", "message", "goal"))
+            .build();
+    return Optional.of(
+        FunctionDeclaration.builder()
+            .name(TOOL_NAME)
+            .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
+            .parameters(params)
+            .build());
+  }
 
-    @Override
-    public Optional<FunctionDeclaration> declaration() {
-        if (subAgentIds.isEmpty()) {
-            return super.declaration();
-        }
-        final String agentList = String.join(", ", subAgentIds);
-        final Map<String, Schema> properties = new LinkedHashMap<>();
-        properties.put(
-                "agent_id",
-                Schema.builder()
-                        .type("STRING")
-                        .enum_(subAgentIds)
-                        .description("ID of the agent to spawn. Available agents: " + agentList + ". Required.")
-                        .build());
-        properties.put(
-                "message",
-                Schema.builder()
-                        .type("STRING")
-                        .description("Initial message to send to the spawned agent. Required.")
-                        .build());
-        properties.put(
-                "goal",
-                Schema.builder()
-                        .type("STRING")
-                        .description("The outcome this child agent is expected to deliver. Required.")
-                        .build());
-        final Schema params = Schema.builder()
-                .type("OBJECT")
-                .properties(properties)
-                .required(List.of("agent_id", "message", "goal"))
-                .build();
-        return Optional.of(FunctionDeclaration.builder()
-                .name(TOOL_NAME)
-                .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
-                .parameters(params)
-                .build());
+  public ToolOutput<Map<String, Object>> execute(
+      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+          final ToolContext toolContext,
+      @ToolSchema(
+              name = "agent_id",
+              description =
+                  "Identifier of the agent type to instantiate. Determines the agent's instructions, "
+                      + "tools, and behaviour profile. Must be one of the available agents in the current deployment.")
+          final String childAgentId,
+      @ToolSchema(
+              name = "message",
+              description =
+                  "The first message to deliver to the newly created agent session, framing the task "
+                      + "or question the child should work on.")
+          final String message,
+      @ToolSchema(
+              name = "goal",
+              description = "The outcome this child agent is expected to deliver.")
+          final String goal) {
+    if (!subAgentIds.contains(childAgentId)) {
+      return ToolOutput.direct(
+          Map.of(
+              "error",
+              "Invalid agent_id '"
+                  + childAgentId
+                  + "'. Must be one of: "
+                  + String.join(", ", subAgentIds)));
     }
+    final StartChildResult startChildResult =
+        actorRef(toolContext)
+            .<StartChildResult>ask(
+                replyTo ->
+                    new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
+                SessionActorFactory.ASK_TIMEOUT)
+            .toCompletableFuture()
+            .join();
 
-    public ToolOutput<Map<String, Object>> execute(
-            @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
-                    final ToolContext toolContext,
-            @ToolSchema(
-                            name = "agent_id",
-                            description =
-                                    "Identifier of the agent type to instantiate. Determines the agent's instructions, "
-                                            + "tools, and behaviour profile. Must be one of the available agents in the current deployment.")
-                    final String childAgentId,
-            @ToolSchema(
-                            name = "message",
-                            description =
-                                    "The first message to deliver to the newly created agent session, framing the task "
-                                            + "or question the child should work on.")
-                    final String message,
-            @ToolSchema(name = "goal", description = "The outcome this child agent is expected to deliver.")
-                    final String goal) {
-        if (!subAgentIds.contains(childAgentId)) {
-            return ToolOutput.direct(Map.of(
-                    "error",
-                    "Invalid agent_id '" + childAgentId + "'. Must be one of: " + String.join(", ", subAgentIds)));
-        }
-        final StartChildResult startChildResult = actorRef(toolContext)
-                .<StartChildResult>ask(
-                        replyTo -> new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
-                        SessionActorFactory.ASK_TIMEOUT)
-                .toCompletableFuture()
-                .join();
-
-        final String childSessionId = startChildResult.sessionId();
-        final StartSessionResult result = startChildResult.result();
-        return switch (result) {
-            case StartSessionResult.Accepted ignored -> {
-                final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-                runState.addReminder(new Reminder(
-                        Reminder.GROUP_SPAWNED_AGENTS,
-                        childSessionId,
-                        "agent='" + childAgentId + "' goal='" + goal + "' — running asynchronously, not yet awaited. "
-                                + "Use " + AwaitAgentTool.DESCRIPTOR.name()
-                                + " with child_session_id='" + childSessionId + "' when you need its result."));
-                yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
-            }
-            case StartSessionResult.Rejected(String r) ->
-                ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + r));
-            case StartSessionResult.Queued(int position) ->
-                ToolOutput.direct(Map.of(
-                        "error", "Failed to spawn agent: unexpected queued response", "queue_position", position));
-            default -> ToolOutput.direct(Map.of("error", "Failed to spawn agent: unknown response"));
-        };
-    }
+    final String childSessionId = startChildResult.sessionId();
+    final StartSessionResult result = startChildResult.result();
+    return switch (result) {
+      case StartSessionResult.Accepted ignored -> {
+        final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
+        runState.addReminder(
+            new Reminder(
+                Reminder.GROUP_SPAWNED_AGENTS,
+                childSessionId,
+                "agent='"
+                    + childAgentId
+                    + "' goal='"
+                    + goal
+                    + "' — running asynchronously, not yet awaited. "
+                    + "Use "
+                    + AwaitAgentTool.DESCRIPTOR.name()
+                    + " with child_session_id='"
+                    + childSessionId
+                    + "' when you need its result."));
+        yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
+      }
+      case StartSessionResult.Rejected(String r) ->
+          ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + r));
+      case StartSessionResult.Queued(int position) ->
+          ToolOutput.direct(
+              Map.of(
+                  "error",
+                  "Failed to spawn agent: unexpected queued response",
+                  "queue_position",
+                  position));
+      default -> ToolOutput.direct(Map.of("error", "Failed to spawn agent: unknown response"));
+    };
+  }
 }

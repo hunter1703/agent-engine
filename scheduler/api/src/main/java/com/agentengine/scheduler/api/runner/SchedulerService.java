@@ -5,9 +5,9 @@ import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("scheduler")
 public interface SchedulerService {
-    void schedule(JobDefinition jobDefinition);
+  void schedule(JobDefinition jobDefinition);
 
-    JobDefinition getJob(String jobId);
+  JobDefinition getJob(String jobId);
 
-    void cancelJob(String jobId);
+  void cancelJob(String jobId);
 }

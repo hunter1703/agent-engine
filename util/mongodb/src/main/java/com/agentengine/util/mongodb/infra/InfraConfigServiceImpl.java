@@ -8,17 +8,17 @@ import jakarta.inject.Singleton;
 @Singleton
 public class InfraConfigServiceImpl implements InfraConfigService {
 
-    private final Cache<String, InfraConfig> cache;
+  private final Cache<String, InfraConfig> cache;
 
-    @Inject
-    public InfraConfigServiceImpl(final InfraMongoRepository repository) {
-        this.cache = new Cache<>(CacheBuilder.newBuilder().maximumSize(256), repository::findById);
-    }
+  @Inject
+  public InfraConfigServiceImpl(final InfraMongoRepository repository) {
+    this.cache = new Cache<>(CacheBuilder.newBuilder().maximumSize(256), repository::findById);
+  }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T extends InfraConfig> T findById(
-            final String configCategory, final String configType, final String configId) {
-        return (T) cache.get(configCategory + ":" + configType + ":" + configId);
-    }
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T extends InfraConfig> T findById(
+      final String configCategory, final String configType, final String configId) {
+    return (T) cache.get(configCategory + ":" + configType + ":" + configId);
+  }
 }

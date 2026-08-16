@@ -10,10 +10,11 @@ import java.util.Map;
  * time the run belongs to — paired with {@code jobId} it forms a stable idempotency key a job can
  * hand to whatever it calls.
  */
-public record JobContext(String jobId, Map<String, Object> jobData, Map<String, Object> previousResult) {
+public record JobContext(
+    String jobId, Map<String, Object> jobData, Map<String, Object> previousResult) {
 
-    public JobContext {
-        jobData = jobData == null ? Map.of() : Map.copyOf(jobData);
-        previousResult = previousResult == null ? Map.of() : Map.copyOf(previousResult);
-    }
+  public JobContext {
+    jobData = jobData == null ? Map.of() : Map.copyOf(jobData);
+    previousResult = previousResult == null ? Map.of() : Map.copyOf(previousResult);
+  }
 }

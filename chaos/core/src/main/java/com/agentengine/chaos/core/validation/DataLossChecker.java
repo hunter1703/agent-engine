@@ -10,9 +10,9 @@ import com.agentengine.chaos.api.ExperimentDefinition;
  */
 public interface DataLossChecker {
 
-    boolean dataLossDetected(ExperimentDefinition experiment);
+  boolean dataLossDetected(ExperimentDefinition experiment);
 
-    static DataLossChecker noOp() {
-        return experiment -> false;
-    }
+  static DataLossChecker noOp() {
+    return experiment -> false;
+  }
 }

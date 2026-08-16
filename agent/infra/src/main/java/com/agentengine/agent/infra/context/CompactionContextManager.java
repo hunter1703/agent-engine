@@ -32,172 +32,191 @@ import org.slf4j.LoggerFactory;
  * retain the full event history while the LLM receives only compacted context.
  */
 public final class CompactionContextManager implements ContextManager {
-    private static final Logger LOG = LoggerFactory.getLogger(CompactionContextManager.class);
-    private static final String DEFAULT_PROMPT_TEMPLATE = """
+  private static final Logger LOG = LoggerFactory.getLogger(CompactionContextManager.class);
+  private static final String DEFAULT_PROMPT_TEMPLATE =
+      """
               Summarize the following conversation history concisely, preserving all key facts, decisions, tool calls, and outcomes:
 
               {context}
       """;
 
-    private final int tokenThreshold;
-    private final int recencyThreshold;
-    private final String modelId;
-    private final String promptTemplate;
-    private final ModelProvider modelProvider;
-    private final SessionService sessionService;
-    private final Cache<String, String> summaryCache;
+  private final int tokenThreshold;
+  private final int recencyThreshold;
+  private final String modelId;
+  private final String promptTemplate;
+  private final ModelProvider modelProvider;
+  private final SessionService sessionService;
+  private final Cache<String, String> summaryCache;
 
-    public CompactionContextManager(
-            final int tokenThreshold,
-            int recencyThreshold,
-            final String modelId,
-            final String promptTemplate,
-            final ModelProvider modelProvider,
-            final SessionService sessionService) {
-        this.tokenThreshold = Math.max(1, tokenThreshold);
-        recencyThreshold = Math.max(1, recencyThreshold);
-        this.recencyThreshold = recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
-        this.modelId = modelId;
-        this.promptTemplate = StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
-        this.modelProvider = modelProvider;
-        this.sessionService = sessionService;
-        this.summaryCache =
-                new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), key -> loadSummary(key.split(":")[0]));
+  public CompactionContextManager(
+      final int tokenThreshold,
+      int recencyThreshold,
+      final String modelId,
+      final String promptTemplate,
+      final ModelProvider modelProvider,
+      final SessionService sessionService) {
+    this.tokenThreshold = Math.max(1, tokenThreshold);
+    recencyThreshold = Math.max(1, recencyThreshold);
+    this.recencyThreshold =
+        recencyThreshold > tokenThreshold ? (int) (tokenThreshold * 0.75) : recencyThreshold;
+    this.modelId = modelId;
+    this.promptTemplate =
+        StringUtils.isNotBlank(promptTemplate) ? promptTemplate : DEFAULT_PROMPT_TEMPLATE;
+    this.modelProvider = modelProvider;
+    this.sessionService = sessionService;
+    this.summaryCache =
+        new Cache<>(
+            CacheBuilder.newBuilder().maximumSize(1000), key -> loadSummary(key.split(":")[0]));
+  }
+
+  @Override
+  public List<Content> buildPrompt(
+      final String agentId, final String sessionId, final List<Content> contents) {
+    if (CollectionUtils.isEmpty(contents)) {
+      return List.of();
+    }
+    final String existingSummary = summaryCache.get(sessionId + ":" + agentId);
+    final int totalTokens =
+        estimateTotalTokens(contents) + StringUtils.estimateTextContent(existingSummary);
+
+    if (totalTokens <= tokenThreshold) {
+      return withSummaryPrefix(existingSummary, contents);
     }
 
-    @Override
-    public List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents) {
-        if (CollectionUtils.isEmpty(contents)) {
-            return List.of();
-        }
-        final String existingSummary = summaryCache.get(sessionId + ":" + agentId);
-        final int totalTokens = estimateTotalTokens(contents) + StringUtils.estimateTextContent(existingSummary);
+    final int splitIndex = findRecentSplitIndex(contents, recencyThreshold);
+    final List<Content> older = contents.subList(0, splitIndex);
+    final List<Content> recent = contents.subList(splitIndex, contents.size());
 
-        if (totalTokens <= tokenThreshold) {
-            return withSummaryPrefix(existingSummary, contents);
-        }
+    final String newSummary = callSummaryModel(buildSummaryInput(existingSummary, older));
 
-        final int splitIndex = findRecentSplitIndex(contents, recencyThreshold);
-        final List<Content> older = contents.subList(0, splitIndex);
-        final List<Content> recent = contents.subList(splitIndex, contents.size());
-
-        final String newSummary = callSummaryModel(buildSummaryInput(existingSummary, older));
-
-        if (StringUtils.isNotBlank(newSummary)) {
-            persistSummary(sessionId, newSummary);
-            return withSummaryPrefix(newSummary, recent);
-        }
-
-        LOG.warn("Compaction failed for agent_id={} session_id={}; using full context.", agentId, sessionId);
-        return withSummaryPrefix(existingSummary, contents);
+    if (StringUtils.isNotBlank(newSummary)) {
+      persistSummary(sessionId, newSummary);
+      return withSummaryPrefix(newSummary, recent);
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────────
+    LOG.warn(
+        "Compaction failed for agent_id={} session_id={}; using full context.", agentId, sessionId);
+    return withSummaryPrefix(existingSummary, contents);
+  }
 
-    /**
-     * Returns the index at which the "recent" window starts, keeping the last {@code
-     * recencyThreshold} tokens intact.
-     */
-    private static int findRecentSplitIndex(final List<Content> contents, final int recencyTokens) {
-        int consumed = 0;
-        for (int i = contents.size() - 1; i >= 0; i--) {
-            final int tokens = estimateTokens(contents.get(i));
-            if (consumed + tokens > recencyTokens) {
-                return i + 1;
-            }
-            consumed += tokens;
-        }
-        return 0;
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  /**
+   * Returns the index at which the "recent" window starts, keeping the last {@code
+   * recencyThreshold} tokens intact.
+   */
+  private static int findRecentSplitIndex(final List<Content> contents, final int recencyTokens) {
+    int consumed = 0;
+    for (int i = contents.size() - 1; i >= 0; i--) {
+      final int tokens = estimateTokens(contents.get(i));
+      if (consumed + tokens > recencyTokens) {
+        return i + 1;
+      }
+      consumed += tokens;
     }
+    return 0;
+  }
 
-    private static List<Content> withSummaryPrefix(final String summary, final List<Content> contents) {
-        if (StringUtils.isBlank(summary)) {
-            return new ArrayList<>(contents);
-        }
-        final List<Content> result = new ArrayList<>(contents.size() + 1);
-        result.add(Content.builder()
-                .role(Constants.AUTHOR_USER)
-                .parts(List.of(Part.fromText("[Conversation Summary]\n" + summary)))
-                .build());
-        result.addAll(contents);
-        return result;
+  private static List<Content> withSummaryPrefix(
+      final String summary, final List<Content> contents) {
+    if (StringUtils.isBlank(summary)) {
+      return new ArrayList<>(contents);
     }
+    final List<Content> result = new ArrayList<>(contents.size() + 1);
+    result.add(
+        Content.builder()
+            .role(Constants.AUTHOR_USER)
+            .parts(List.of(Part.fromText("[Conversation Summary]\n" + summary)))
+            .build());
+    result.addAll(contents);
+    return result;
+  }
 
-    private static String buildSummaryInput(final String existingSummary, final List<Content> older) {
-        final StringBuilder sb = new StringBuilder();
-        if (StringUtils.isNotBlank(existingSummary)) {
-            sb.append("[Previous Summary]\n").append(existingSummary).append("\n\n");
-        }
-        sb.append("[Conversation]\n");
-        for (final Content content : older) {
-            sb.append(serialize(content)).append("\n");
-        }
-        return sb.toString().trim();
+  private static String buildSummaryInput(final String existingSummary, final List<Content> older) {
+    final StringBuilder sb = new StringBuilder();
+    if (StringUtils.isNotBlank(existingSummary)) {
+      sb.append("[Previous Summary]\n").append(existingSummary).append("\n\n");
     }
-
-    private static String serialize(final Content content) {
-        if (content == null) {
-            return "";
-        }
-        final StringBuilder sb = new StringBuilder(content.role().orElse("unknown")).append(": ");
-        for (final Part part : content.parts().orElse(List.of())) {
-            if (part.text().isPresent() && StringUtils.isNotBlank(part.text().get())) {
-                sb.append(part.text().get()).append(" ");
-            }
-            part.functionCall()
-                    .ifPresent(fc -> sb.append("[tool_call: ")
-                            .append(fc.name().orElse("?"))
-                            .append(fc.args())
-                            .append("]"));
-            part.functionResponse()
-                    .ifPresent(fr -> sb.append("[tool_result: ")
-                            .append(fr.name().orElse("?"))
-                            .append(" → ")
-                            .append(fr.response())
-                            .append("]"));
-        }
-        return sb.toString();
+    sb.append("[Conversation]\n");
+    for (final Content content : older) {
+      sb.append(serialize(content)).append("\n");
     }
+    return sb.toString().trim();
+  }
 
-    private String callSummaryModel(final String input) {
-        if (StringUtils.isBlank(modelId)) {
-            LOG.warn("No summary model configured; skipping compaction.");
-            return null;
-        }
-        final String prompt = TemplateUtils.renderTextTemplate(promptTemplate, Map.of("context", input));
-        final LlmRequest request = LlmRequest.builder()
-                .contents(List.of(Content.builder()
+  private static String serialize(final Content content) {
+    if (content == null) {
+      return "";
+    }
+    final StringBuilder sb = new StringBuilder(content.role().orElse("unknown")).append(": ");
+    for (final Part part : content.parts().orElse(List.of())) {
+      if (part.text().isPresent() && StringUtils.isNotBlank(part.text().get())) {
+        sb.append(part.text().get()).append(" ");
+      }
+      part.functionCall()
+          .ifPresent(
+              fc ->
+                  sb.append("[tool_call: ")
+                      .append(fc.name().orElse("?"))
+                      .append(fc.args())
+                      .append("]"));
+      part.functionResponse()
+          .ifPresent(
+              fr ->
+                  sb.append("[tool_result: ")
+                      .append(fr.name().orElse("?"))
+                      .append(" → ")
+                      .append(fr.response())
+                      .append("]"));
+    }
+    return sb.toString();
+  }
+
+  private String callSummaryModel(final String input) {
+    if (StringUtils.isBlank(modelId)) {
+      LOG.warn("No summary model configured; skipping compaction.");
+      return null;
+    }
+    final String prompt =
+        TemplateUtils.renderTextTemplate(promptTemplate, Map.of("context", input));
+    final LlmRequest request =
+        LlmRequest.builder()
+            .contents(
+                List.of(
+                    Content.builder()
                         .role(Constants.AUTHOR_USER)
                         .parts(List.of(Part.fromText(prompt)))
                         .build()))
-                .build();
-        final LlmResponse response = modelProvider
-                .invokeAcquiring(modelId, model -> model.generateContent(request, false))
-                .blockingSingle();
-        return response.content().map(Content::text).orElse(null);
-    }
+            .build();
+    final LlmResponse response =
+        modelProvider
+            .invokeAcquiring(modelId, model -> model.generateContent(request, false))
+            .blockingSingle();
+    return response.content().map(Content::text).orElse(null);
+  }
 
-    private String loadSummary(final String sessionId) {
-        return Optional.ofNullable(sessionService.getSession(sessionId))
-                .map(AgentSession::getSummary)
-                .orElse(null);
-    }
+  private String loadSummary(final String sessionId) {
+    return Optional.ofNullable(sessionService.getSession(sessionId))
+        .map(AgentSession::getSummary)
+        .orElse(null);
+  }
 
-    private void persistSummary(final String sessionId, final String summary) {
-        try {
-            sessionService.updateSession(sessionId, Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary)));
-        } catch (Exception ex) {
-            LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);
-        }
+  private void persistSummary(final String sessionId, final String summary) {
+    try {
+      sessionService.updateSession(
+          sessionId, Update.of(Operation.set(AgentSession.FIELD_SUMMARY, summary)));
+    } catch (Exception ex) {
+      LOG.warn("Failed to persist summary for session_id={}", sessionId, ex);
     }
+  }
 
-    // ── token estimation ──────────────────────────────────────────────────────
+  // ── token estimation ──────────────────────────────────────────────────────
 
-    private static int estimateTotalTokens(final List<Content> contents) {
-        int total = 0;
-        for (final Content content : contents) {
-            total += estimateTokens(content);
-        }
-        return total;
+  private static int estimateTotalTokens(final List<Content> contents) {
+    int total = 0;
+    for (final Content content : contents) {
+      total += estimateTokens(content);
     }
+    return total;
+  }
 }

@@ -7,58 +7,59 @@ import com.agentengine.util.common.annotations.ToolSchema;
  *
  * <p>For {@link StorageType#CLOUDSTORAGE}, {@code source} is {@code <bucket>/<key>}.
  *
- * @param name         original filename including extension (e.g. {@code photo.jpg})
- * @param source         storage-specific source to the file
- * @param type         storage backend type
- * @param mimeType     optional MIME type (e.g. {@code "image/jpeg"})
- * @param size         optional file size in bytes; {@code -1} if unknown
+ * @param name original filename including extension (e.g. {@code photo.jpg})
+ * @param source storage-specific source to the file
+ * @param type storage backend type
+ * @param mimeType optional MIME type (e.g. {@code "image/jpeg"})
+ * @param size optional file size in bytes; {@code -1} if unknown
  */
 public record FileDetails(
-        @ToolSchema(
-                name = "name",
-                description = "Display name for the file, e.g. photo.jpg. Optional — leave blank if unknown.",
-                optional = true)
+    @ToolSchema(
+            name = "name",
+            description =
+                "Display name for the file, e.g. photo.jpg. Optional — leave blank if unknown.",
+            optional = true)
         String name,
-
-        @ToolSchema(
-                name = "source",
-                description =
-                        "The complete storage location of the file. For CLOUDSTORAGE this is the full bucket/key e.g. 'agent-assets/2ec11fea6b814ddc91fc57829890e788'. Do not split, shorten, or modify this value.")
+    @ToolSchema(
+            name = "source",
+            description =
+                "The complete storage location of the file. For CLOUDSTORAGE this is the full bucket/key e.g. 'agent-assets/2ec11fea6b814ddc91fc57829890e788'. Do not split, shorten, or modify this value.")
         String source,
-
-        @ToolSchema(
-                name = "type",
-                description = "Where the file is stored — NOT the file format. This is not a MIME type.",
-                enums = {"CLOUDSTORAGE", "URL", "LOCAL", "UNKNOWN"})
+    @ToolSchema(
+            name = "type",
+            description =
+                "Where the file is stored — NOT the file format. This is not a MIME type.",
+            enums = {"CLOUDSTORAGE", "URL", "LOCAL", "UNKNOWN"})
         StorageType type,
-
-        @ToolSchema(
-                name = "mimeType",
-                description = "MIME type of the file, e.g. image/jpeg or image/png.",
-                optional = true)
+    @ToolSchema(
+            name = "mimeType",
+            description = "MIME type of the file, e.g. image/jpeg or image/png.",
+            optional = true)
         String mimeType,
-
-        @ToolSchema(name = "size", description = "File size in bytes. Use -1 if unknown.", optional = true)
+    @ToolSchema(
+            name = "size",
+            description = "File size in bytes. Use -1 if unknown.",
+            optional = true)
         long size) {
 
-    public enum StorageType {
-        CLOUDSTORAGE,
-        URL,
-        LOCAL,
-        UNKNOWN;
+  public enum StorageType {
+    CLOUDSTORAGE,
+    URL,
+    LOCAL,
+    UNKNOWN;
 
-        public static StorageType valueOfOrDefault(final String value) {
-            if (value == null) return UNKNOWN;
-            try {
-                return valueOf(value.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                return UNKNOWN;
-            }
-        }
+    public static StorageType valueOfOrDefault(final String value) {
+      if (value == null) return UNKNOWN;
+      try {
+        return valueOf(value.toUpperCase());
+      } catch (IllegalArgumentException e) {
+        return UNKNOWN;
+      }
     }
+  }
 
-    public static FileDetails fromUrl(final String url) {
-        final String name = url.substring(url.lastIndexOf('/') + 1);
-        return new FileDetails(name, url, StorageType.URL, "application/image", -1L);
-    }
+  public static FileDetails fromUrl(final String url) {
+    final String name = url.substring(url.lastIndexOf('/') + 1);
+    return new FileDetails(name, url, StorageType.URL, "application/image", -1L);
+  }
 }

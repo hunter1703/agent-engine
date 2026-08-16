@@ -11,32 +11,33 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeName("TEXT_CONTENT")
 @BsonDiscriminator(value = "com.agentengine.util.agents.beans.config.TextContentGuardrailRule")
 public class TextContentGuardrailRule extends GuardrailRule {
-    @UiField(label = "Max Text Length", order = 10)
-    @UiNumber
-    private Integer maxTextLength;
+  @UiField(label = "Max Text Length", order = 10)
+  @UiNumber
+  private Integer maxTextLength;
 
-    @UiField(label = "Blocked Patterns", order = 20)
-    @UiText(multiline = true, rows = 4)
-    private List<String> blockedPatterns = new ArrayList<>();
+  @UiField(label = "Blocked Patterns", order = 20)
+  @UiText(multiline = true, rows = 4)
+  private List<String> blockedPatterns = new ArrayList<>();
 
-    public TextContentGuardrailRule() {
-        super(GuardrailRuleType.TEXT_CONTENT);
-        setStage(GuardrailStage.INPUT.name());
-    }
+  public TextContentGuardrailRule() {
+    super(GuardrailRuleType.TEXT_CONTENT);
+    setStage(GuardrailStage.INPUT.name());
+  }
 
-    public Integer getMaxTextLength() {
-        return maxTextLength;
-    }
+  public Integer getMaxTextLength() {
+    return maxTextLength;
+  }
 
-    public void setMaxTextLength(final Integer maxTextLength) {
-        this.maxTextLength = maxTextLength;
-    }
+  public void setMaxTextLength(final Integer maxTextLength) {
+    this.maxTextLength = maxTextLength;
+  }
 
-    public List<String> getBlockedPatterns() {
-        return blockedPatterns;
-    }
+  public List<String> getBlockedPatterns() {
+    return blockedPatterns;
+  }
 
-    public void setBlockedPatterns(final List<String> blockedPatterns) {
-        this.blockedPatterns = blockedPatterns == null ? new ArrayList<>() : new ArrayList<>(blockedPatterns);
-    }
+  public void setBlockedPatterns(final List<String> blockedPatterns) {
+    this.blockedPatterns =
+        blockedPatterns == null ? new ArrayList<>() : new ArrayList<>(blockedPatterns);
+  }
 }

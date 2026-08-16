@@ -13,34 +13,30 @@ import java.util.Map;
  */
 public final class FabricPodCounter implements PodCounter {
 
-    private final KubernetesClient client;
+  private final KubernetesClient client;
 
-    public FabricPodCounter(final KubernetesClient client) {
-        this.client = client;
-    }
+  public FabricPodCounter(final KubernetesClient client) {
+    this.client = client;
+  }
 
-    @Override
-    public int countMatchingPods(final String namespace, final Map<String, String> podLabels) {
-        return client.pods()
-                .inNamespace(namespace)
-                .withLabels(podLabels)
-                .list()
-                .getItems()
-                .size();
-    }
+  @Override
+  public int countMatchingPods(final String namespace, final Map<String, String> podLabels) {
+    return client.pods().inNamespace(namespace).withLabels(podLabels).list().getItems().size();
+  }
 
-    @Override
-    public int countServicePods(final String namespace, final String service) {
-        final Map<String, String> selector = serviceSelector(namespace, service);
-        return countMatchingPods(namespace, selector);
-    }
+  @Override
+  public int countServicePods(final String namespace, final String service) {
+    final Map<String, String> selector = serviceSelector(namespace, service);
+    return countMatchingPods(namespace, selector);
+  }
 
-    private Map<String, String> serviceSelector(final String namespace, final String service) {
-        final Service resource =
-                client.services().inNamespace(namespace).withName(service).get();
-        if (resource != null && resource.getSpec() != null && resource.getSpec().getSelector() != null) {
-            return resource.getSpec().getSelector();
-        }
-        return Map.of("app", service);
+  private Map<String, String> serviceSelector(final String namespace, final String service) {
+    final Service resource = client.services().inNamespace(namespace).withName(service).get();
+    if (resource != null
+        && resource.getSpec() != null
+        && resource.getSpec().getSelector() != null) {
+      return resource.getSpec().getSelector();
     }
+    return Map.of("app", service);
+  }
 }

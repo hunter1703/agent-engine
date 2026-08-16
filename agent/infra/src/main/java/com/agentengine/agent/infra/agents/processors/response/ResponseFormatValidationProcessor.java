@@ -30,74 +30,78 @@ import org.slf4j.LoggerFactory;
  * <p>Partial responses and agents without a {@code responseFormat} pass through unchanged.
  */
 public final class ResponseFormatValidationProcessor implements ResponseProcessor {
-    public static final ResponseFormatValidationProcessor INSTANCE = new ResponseFormatValidationProcessor();
+  public static final ResponseFormatValidationProcessor INSTANCE =
+      new ResponseFormatValidationProcessor();
 
-    private static final Logger LOG = LoggerFactory.getLogger(ResponseFormatValidationProcessor.class);
-    private static final int MAX_ERRORS = 5;
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ResponseFormatValidationProcessor.class);
+  private static final int MAX_ERRORS = 5;
 
-    private final ConcurrentHashMap<String, Schema> schemaCache = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Schema> schemaCache = new ConcurrentHashMap<>();
 
-    private ResponseFormatValidationProcessor() {}
+  private ResponseFormatValidationProcessor() {}
 
-    @Override
-    public Single<ResponseProcessingResult> processResponse(
-            final InvocationContext context, final LlmResponse response) {
-        if (response.partial().orElse(false)) {
-            return ResponseUtils.single(response);
-        }
-
-        if (!(context.agent() instanceof Agent engineAgent)) {
-            return ResponseUtils.single(response);
-        }
-
-        final Map<String, Object> schemaMap = engineAgent.getAgentConfig().getResponseFormat();
-        if (CollectionUtils.isEmpty(schemaMap)) {
-            return ResponseUtils.single(response);
-        }
-
-        final String text = response.content()
-                .map(Content::text)
-                .filter(StringUtils::isNotBlank)
-                .orElse(null);
-        //        if (text == null) {
-        //            return ResponseUtils.single(response);
-        //        }
-
-        final String violationMessage = validate(context.agent().name(), schemaMap, text);
-        if (violationMessage != null) {
-            LOG.info(
-                    "Response format violation for agent {}: {}",
-                    context.agent().name(),
-                    violationMessage);
-            RunUtils.getOrInitState(context)
-                    .requestContinuation(Violation.builder("response_format_validation")
-                            .message(violationMessage)
-                            .build());
-        }
-
-        return ResponseUtils.single(response);
+  @Override
+  public Single<ResponseProcessingResult> processResponse(
+      final InvocationContext context, final LlmResponse response) {
+    if (response.partial().orElse(false)) {
+      return ResponseUtils.single(response);
     }
 
-    private String validate(final String agentId, final Map<String, Object> schemaMap, final String text) {
-        final JsonNode node = JsonUtils.toJsonNode(text);
-        final Schema schema = schemaCache.computeIfAbsent(agentId, ignoredKey -> SchemaUtils.buildSchema(schemaMap));
-        if (schema == null) {
-            return null;
-        }
-
-        if (node == null) {
-            return "Empty response, not a json";
-        }
-        final List<Error> errors = schema.validate(node);
-        if (CollectionUtils.isEmpty(errors)) {
-            return null;
-        }
-
-        final String errorList =
-                errors.stream().limit(MAX_ERRORS).map(Error::getMessage).collect(Collectors.joining("\n- ", "- ", ""));
-        final String suffix = errors.size() > MAX_ERRORS ? "\n- ...and more. Re-read the schema and try again." : "";
-        return "Your response was valid JSON but did not match the required schema. Fix these issues:\n"
-                + errorList + suffix
-                + "\nRespond again with only valid JSON matching the schema.";
+    if (!(context.agent() instanceof Agent engineAgent)) {
+      return ResponseUtils.single(response);
     }
+
+    final Map<String, Object> schemaMap = engineAgent.getAgentConfig().getResponseFormat();
+    if (CollectionUtils.isEmpty(schemaMap)) {
+      return ResponseUtils.single(response);
+    }
+
+    final String text =
+        response.content().map(Content::text).filter(StringUtils::isNotBlank).orElse(null);
+    //        if (text == null) {
+    //            return ResponseUtils.single(response);
+    //        }
+
+    final String violationMessage = validate(context.agent().name(), schemaMap, text);
+    if (violationMessage != null) {
+      LOG.info(
+          "Response format violation for agent {}: {}", context.agent().name(), violationMessage);
+      RunUtils.getOrInitState(context)
+          .requestContinuation(
+              Violation.builder("response_format_validation").message(violationMessage).build());
+    }
+
+    return ResponseUtils.single(response);
+  }
+
+  private String validate(
+      final String agentId, final Map<String, Object> schemaMap, final String text) {
+    final JsonNode node = JsonUtils.toJsonNode(text);
+    final Schema schema =
+        schemaCache.computeIfAbsent(agentId, ignoredKey -> SchemaUtils.buildSchema(schemaMap));
+    if (schema == null) {
+      return null;
+    }
+
+    if (node == null) {
+      return "Empty response, not a json";
+    }
+    final List<Error> errors = schema.validate(node);
+    if (CollectionUtils.isEmpty(errors)) {
+      return null;
+    }
+
+    final String errorList =
+        errors.stream()
+            .limit(MAX_ERRORS)
+            .map(Error::getMessage)
+            .collect(Collectors.joining("\n- ", "- ", ""));
+    final String suffix =
+        errors.size() > MAX_ERRORS ? "\n- ...and more. Re-read the schema and try again." : "";
+    return "Your response was valid JSON but did not match the required schema. Fix these issues:\n"
+        + errorList
+        + suffix
+        + "\nRespond again with only valid JSON matching the schema.";
+  }
 }

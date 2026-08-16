@@ -17,33 +17,31 @@ import java.util.Map;
 @Singleton
 public class MemoryStore extends QdrantVectorStore<Memory> {
 
-    @Inject
-    public MemoryStore(final VectorDbClientFactory clientFactory, final EmbeddingModelFactory embeddingModelFactory) {
-        super(
-                AssetClass.MEMORY,
-                clientFactory,
-                (modelId, query) -> embeddingModelFactory
-                        .get(modelId)
-                        .embed(query)
-                        .content()
-                        .vector());
-    }
+  @Inject
+  public MemoryStore(
+      final VectorDbClientFactory clientFactory,
+      final EmbeddingModelFactory embeddingModelFactory) {
+    super(
+        AssetClass.MEMORY,
+        clientFactory,
+        (modelId, query) -> embeddingModelFactory.get(modelId).embed(query).content().vector());
+  }
 
-    @Override
-    protected Map<String, Object> toPayload(final Memory memory) {
-        final Map<String, Object> payload = new HashMap<>();
-        payload.put(Memory.FIELD_AGENT_ID, memory.getAgentId());
-        payload.put(Memory.FIELD_USER_ID, memory.getUserId());
-        payload.put(Memory.FIELD_TEXT, memory.getText());
-        return payload;
-    }
+  @Override
+  protected Map<String, Object> toPayload(final Memory memory) {
+    final Map<String, Object> payload = new HashMap<>();
+    payload.put(Memory.FIELD_AGENT_ID, memory.getAgentId());
+    payload.put(Memory.FIELD_USER_ID, memory.getUserId());
+    payload.put(Memory.FIELD_TEXT, memory.getText());
+    return payload;
+  }
 
-    @Override
-    protected Memory fromPayload(final Map<String, Object> payload) {
-        final Memory memory = new Memory();
-        memory.setAgentId(strValue(payload, Memory.FIELD_AGENT_ID));
-        memory.setUserId(strValue(payload, Memory.FIELD_USER_ID));
-        memory.setText(strValue(payload, Memory.FIELD_TEXT));
-        return memory;
-    }
+  @Override
+  protected Memory fromPayload(final Map<String, Object> payload) {
+    final Memory memory = new Memory();
+    memory.setAgentId(strValue(payload, Memory.FIELD_AGENT_ID));
+    memory.setUserId(strValue(payload, Memory.FIELD_USER_ID));
+    memory.setText(strValue(payload, Memory.FIELD_TEXT));
+    return memory;
+  }
 }

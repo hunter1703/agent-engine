@@ -15,6 +15,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiSelect {
-    /** Enum whose constants supply the selectable options. */
-    Class<? extends Enum<?>> enumType();
+  /** Enum whose constants supply the selectable options. */
+  Class<? extends Enum<?>> enumType();
 }

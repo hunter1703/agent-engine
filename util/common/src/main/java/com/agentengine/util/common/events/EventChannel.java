@@ -16,26 +16,28 @@ import java.util.function.Predicate;
  *   <li>{@link #subscribe} linearizes at acknowledgement: all events published after the returned
  *       stage completes are delivered at least once to the subscriber's mailbox.
  *   <li>{@link #publish} linearizes at acknowledgement and returns the assigned monotonic sequence.
- *   <li>Cancellation happens automatically when the stream terminates; broadcaster state is
- *       cleaned up automatically.
+ *   <li>Cancellation happens automatically when the stream terminates; broadcaster state is cleaned
+ *       up automatically.
  *   <li>If a subscriber dies, it must re-subscribe; the channel cleans up stale state
  *       automatically.
  * </ul>
  */
 public interface EventChannel<Scope, Event> {
 
-    CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(Scope scope);
+  CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(Scope scope);
 
-    CompletionStage<Long> publish(Scope scope, Event event);
+  CompletionStage<Long> publish(Scope scope, Event event);
 
-    default CompletionStage<SequencedEvent<Event>> waitFor(
-            final Scope scope, final Predicate<SequencedEvent<Event>> predicate, final Duration timeout) {
-        return subscribe(scope)
-                .thenCompose(subscription ->
-                        CompletionUtils.completeWithRootCause(Flowable.fromPublisher(subscription.publisher())
-                                .filter(predicate::test)
-                                .firstOrError()
-                                .timeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-                                .toCompletionStage()));
-    }
+  default CompletionStage<SequencedEvent<Event>> waitFor(
+      final Scope scope, final Predicate<SequencedEvent<Event>> predicate, final Duration timeout) {
+    return subscribe(scope)
+        .thenCompose(
+            subscription ->
+                CompletionUtils.completeWithRootCause(
+                    Flowable.fromPublisher(subscription.publisher())
+                        .filter(predicate::test)
+                        .firstOrError()
+                        .timeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+                        .toCompletionStage()));
+  }
 }

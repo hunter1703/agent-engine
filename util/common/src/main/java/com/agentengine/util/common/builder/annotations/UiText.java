@@ -12,9 +12,9 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiText {
 
-    /** When true, renders as a multi-line textarea instead of a single-line input. */
-    boolean multiline() default false;
+  /** When true, renders as a multi-line textarea instead of a single-line input. */
+  boolean multiline() default false;
 
-    /** Visible row count for multi-line rendering. Ignored when {@code multiline = false}. */
-    int rows() default 4;
+  /** Visible row count for multi-line rendering. Ignored when {@code multiline = false}. */
+  int rows() default 4;
 }

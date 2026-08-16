@@ -4,7 +4,7 @@ import com.agentengine.util.pekko.PekkoSerializable;
 
 /** Reply to a session rollback request. */
 public interface RollbackResult extends PekkoSerializable {
-    record Applied() implements RollbackResult {}
+  record Applied() implements RollbackResult {}
 
-    record Rejected(String reason) implements RollbackResult {}
+  record Rejected(String reason) implements RollbackResult {}
 }

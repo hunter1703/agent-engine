@@ -7,5 +7,5 @@ import com.agentengine.util.ms.client.MicroService;
 
 @MicroService("connectors")
 public interface ConnectorService {
-    <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException;
+  <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException;
 }

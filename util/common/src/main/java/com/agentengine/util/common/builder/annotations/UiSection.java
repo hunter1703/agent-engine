@@ -13,37 +13,37 @@ import java.lang.annotation.RetentionPolicy;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 public @interface UiSection {
-    /**
-     * Unique identifier for the section within its step.
-     *
-     * <p>This ID must match the section IDs used in {@link UiField#section()}.
-     *
-     * @return section identifier
-     */
-    String id();
+  /**
+   * Unique identifier for the section within its step.
+   *
+   * <p>This ID must match the section IDs used in {@link UiField#section()}.
+   *
+   * @return section identifier
+   */
+  String id();
 
-    /**
-     * Human-readable label for the section.
-     *
-     * <p>This label is displayed as a section header if the step has multiple sections.
-     *
-     * @return section label
-     */
-    String label();
+  /**
+   * Human-readable label for the section.
+   *
+   * <p>This label is displayed as a section header if the step has multiple sections.
+   *
+   * @return section label
+   */
+  String label();
 
-    /**
-     * Optional description of the section.
-     *
-     * @return section description
-     */
-    String description() default "";
+  /**
+   * Optional description of the section.
+   *
+   * @return section description
+   */
+  String description() default "";
 
-    /**
-     * Sort order for the section within its step.
-     *
-     * <p>Sections are displayed in ascending order. Lower values appear first.
-     *
-     * @return sort order
-     */
-    int order();
+  /**
+   * Sort order for the section within its step.
+   *
+   * <p>Sections are displayed in ascending order. Lower values appear first.
+   *
+   * @return sort order
+   */
+  int order();
 }

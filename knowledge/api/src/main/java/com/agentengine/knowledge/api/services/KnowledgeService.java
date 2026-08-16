@@ -8,15 +8,15 @@ import com.agentengine.util.ms.client.MicroService;
 @MicroService("knowledge")
 public interface KnowledgeService {
 
-    Knowledge create(IndexRequest request);
+  Knowledge create(IndexRequest request);
 
-    Knowledge findById(String id);
+  Knowledge findById(String id);
 
-    PaginatedResult<Knowledge> findByQuery(Query query);
+  PaginatedResult<Knowledge> findByQuery(Query query);
 
-    Knowledge reindex(String id, IndexRequest request);
+  Knowledge reindex(String id, IndexRequest request);
 
-    boolean deleteById(String id);
+  boolean deleteById(String id);
 
-    PaginatedResult<KnowledgeChunk> searchInKnowledge(Query query);
+  PaginatedResult<KnowledgeChunk> searchInKnowledge(Query query);
 }

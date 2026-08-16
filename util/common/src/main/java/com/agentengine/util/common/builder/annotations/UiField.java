@@ -21,22 +21,18 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiField {
 
-    /** Human-readable label. Defaults to the humanized field name when blank. */
-    String label() default "";
+  /** Human-readable label. Defaults to the humanized field name when blank. */
+  String label() default "";
 
-    /** Relative ordering within the section. Lower values render first. */
-    int order() default 100;
+  /** Relative ordering within the section. Lower values render first. */
+  int order() default 100;
 
-    /** When true the UI may collapse or de-emphasize the field by default. */
-    boolean advanced() default false;
+  /** When true the UI may collapse or de-emphasize the field by default. */
+  boolean advanced() default false;
 
-    /**
-     * The step that this field belongs to. When blank, defaults to {@code "general"}.
-     */
-    String step() default "";
+  /** The step that this field belongs to. When blank, defaults to {@code "general"}. */
+  String step() default "";
 
-    /**
-     * The section within the step. When blank, defaults to {@code "general"}.
-     */
-    String section() default "";
+  /** The section within the step. When blank, defaults to {@code "general"}. */
+  String section() default "";
 }

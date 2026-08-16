@@ -31,76 +31,84 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MicroServiceClientProviderImpl.class);
-    private static final String DEFAULT_HOST = "localhost";
-    private static final int DEFAULT_PORT = 9000;
+  private static final Logger LOG = LoggerFactory.getLogger(MicroServiceClientProviderImpl.class);
+  private static final String DEFAULT_HOST = "localhost";
+  private static final int DEFAULT_PORT = 9000;
 
-    private final ConcurrentMap<Class<?>, ManagedChannel> channels = new ConcurrentHashMap<>();
-    private final InfraConfigService infraConfigService;
+  private final ConcurrentMap<Class<?>, ManagedChannel> channels = new ConcurrentHashMap<>();
+  private final InfraConfigService infraConfigService;
 
-    @Inject
-    public MicroServiceClientProviderImpl(final InfraConfigService infraConfigService) {
-        this.infraConfigService = infraConfigService;
+  @Inject
+  public MicroServiceClientProviderImpl(final InfraConfigService infraConfigService) {
+    this.infraConfigService = infraConfigService;
+  }
+
+  @Override
+  public <T> T get(Class<T> serviceClass) {
+    if (!serviceClass.isAnnotationPresent(MicroService.class)) {
+      throw new IllegalArgumentException(
+          serviceClass.getName() + " is not annotated with @MicroService");
     }
 
-    @Override
-    public <T> T get(Class<T> serviceClass) {
-        if (!serviceClass.isAnnotationPresent(MicroService.class)) {
-            throw new IllegalArgumentException(serviceClass.getName() + " is not annotated with @MicroService");
-        }
-
-        // Prefer a local implementation when co-located in the same process
-        ArcContainer container = Arc.container();
-        final Set<Bean<?>> beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
-        for (Bean<?> bean : beans) {
-            if (bean instanceof InjectableBean<?> injectable) {
-                if (injectable.getKind() == InjectableBean.Kind.CLASS) {
-                    try (InstanceHandle<T> localInstance = container.instance(serviceClass)) {
-                        if (localInstance.isAvailable()) {
-                            return localInstance.get();
-                        }
-                    }
-                }
+    // Prefer a local implementation when co-located in the same process
+    ArcContainer container = Arc.container();
+    final Set<Bean<?>> beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
+    for (Bean<?> bean : beans) {
+      if (bean instanceof InjectableBean<?> injectable) {
+        if (injectable.getKind() == InjectableBean.Kind.CLASS) {
+          try (InstanceHandle<T> localInstance = container.instance(serviceClass)) {
+            if (localInstance.isAvailable()) {
+              return localInstance.get();
             }
+          }
         }
-
-        // Fall back to a transparent gRPC proxy for remote services. The channel is
-        // resolved lazily on the first method invocation so that bean initialization
-        // does not trigger MongoDB lookups or gRPC connections at startup.
-        final Supplier<ManagedChannel> channelSupplier = () -> channels.computeIfAbsent(serviceClass, cls -> {
-            final String serverId = cls.getAnnotation(MicroService.class).value();
-            final MicroServiceInfraConfig config = infraConfigService.findById(
-                    MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
-            final String host = config != null ? config.getHost() : DEFAULT_HOST;
-            final int port = config != null ? config.getPort() : DEFAULT_PORT;
-            LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
-            return ManagedChannelBuilder.forAddress(host, port)
-                    .usePlaintext()
-                    .maxInboundMessageSize(MicroServiceInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
-                    .build();
-        });
-
-        // noinspection unchecked
-        return (T) Proxy.newProxyInstance(
-                serviceClass.getClassLoader(),
-                new Class<?>[] {serviceClass},
-                new MicroServiceInvocationHandler(serviceClass, channelSupplier));
+      }
     }
 
-    @PreDestroy
-    private void shutdown() {
-        channels.forEach((serviceClass, channel) -> {
-            LOG.debug("Shutting down gRPC channel for {}", serviceClass.getSimpleName());
-            channel.shutdown();
-            try {
-                if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
-                    channel.shutdownNow();
-                }
-            } catch (InterruptedException exception) {
-                channel.shutdownNow();
-                Thread.currentThread().interrupt();
+    // Fall back to a transparent gRPC proxy for remote services. The channel is
+    // resolved lazily on the first method invocation so that bean initialization
+    // does not trigger MongoDB lookups or gRPC connections at startup.
+    final Supplier<ManagedChannel> channelSupplier =
+        () ->
+            channels.computeIfAbsent(
+                serviceClass,
+                cls -> {
+                  final String serverId = cls.getAnnotation(MicroService.class).value();
+                  final MicroServiceInfraConfig config =
+                      infraConfigService.findById(
+                          MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
+                  final String host = config != null ? config.getHost() : DEFAULT_HOST;
+                  final int port = config != null ? config.getPort() : DEFAULT_PORT;
+                  LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
+                  return ManagedChannelBuilder.forAddress(host, port)
+                      .usePlaintext()
+                      .maxInboundMessageSize(MicroServiceInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
+                      .build();
+                });
+
+    // noinspection unchecked
+    return (T)
+        Proxy.newProxyInstance(
+            serviceClass.getClassLoader(),
+            new Class<?>[] {serviceClass},
+            new MicroServiceInvocationHandler(serviceClass, channelSupplier));
+  }
+
+  @PreDestroy
+  private void shutdown() {
+    channels.forEach(
+        (serviceClass, channel) -> {
+          LOG.debug("Shutting down gRPC channel for {}", serviceClass.getSimpleName());
+          channel.shutdown();
+          try {
+            if (!channel.awaitTermination(5, TimeUnit.SECONDS)) {
+              channel.shutdownNow();
             }
+          } catch (InterruptedException exception) {
+            channel.shutdownNow();
+            Thread.currentThread().interrupt();
+          }
         });
-        channels.clear();
-    }
+    channels.clear();
+  }
 }

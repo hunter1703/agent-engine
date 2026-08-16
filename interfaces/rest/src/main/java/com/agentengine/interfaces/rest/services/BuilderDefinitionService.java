@@ -12,18 +12,18 @@ import jakarta.inject.Singleton;
 @Singleton
 public class BuilderDefinitionService {
 
-    private final Cache<String, BuilderDefinition> definitions =
-            new Cache<>(CacheBuilder.newBuilder(), this::generateDefinition);
+  private final Cache<String, BuilderDefinition> definitions =
+      new Cache<>(CacheBuilder.newBuilder(), this::generateDefinition);
 
-    public BuilderDefinition getDefinition(final String assetType) {
-        return definitions.get(assetType);
-    }
+  public BuilderDefinition getDefinition(final String assetType) {
+    return definitions.get(assetType);
+  }
 
-    private BuilderDefinition generateDefinition(final String assetType) {
-        return switch (assetType) {
-            case AssetClass.AGENT -> BuilderDefinitionUtils.generate(BaseAgentConfig.class);
-            case AssetClass.MODEL -> BuilderDefinitionUtils.generate(ModelConfig.class);
-            default -> throw new IllegalArgumentException("Unsupported assetType: " + assetType);
-        };
-    }
+  private BuilderDefinition generateDefinition(final String assetType) {
+    return switch (assetType) {
+      case AssetClass.AGENT -> BuilderDefinitionUtils.generate(BaseAgentConfig.class);
+      case AssetClass.MODEL -> BuilderDefinitionUtils.generate(ModelConfig.class);
+      default -> throw new IllegalArgumentException("Unsupported assetType: " + assetType);
+    };
+  }
 }

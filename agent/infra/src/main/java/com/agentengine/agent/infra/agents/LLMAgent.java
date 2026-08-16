@@ -7,22 +7,21 @@ import com.google.adk.tools.BaseTool;
 import io.reactivex.rxjava3.core.Completable;
 
 public final class LLMAgent extends LlmAgent {
-    private final Runnable closeHook;
+  private final Runnable closeHook;
 
-    public LLMAgent(final Builder builder, final Runnable closeHook) {
-        super(builder);
-        this.closeHook = closeHook;
-    }
+  public LLMAgent(final Builder builder, final Runnable closeHook) {
+    super(builder);
+    this.closeHook = closeHook;
+  }
 
-    @Override
-    protected BaseLlmFlow determineLlmFlow() {
-        return new BaseFlow(
-                maxSteps().orElse(null),
-                tools().blockingGet().stream().map(BaseTool::name).toList());
-    }
+  @Override
+  protected BaseLlmFlow determineLlmFlow() {
+    return new BaseFlow(
+        maxSteps().orElse(null), tools().blockingGet().stream().map(BaseTool::name).toList());
+  }
 
-    @Override
-    public Completable close() {
-        return super.close().doOnComplete(closeHook::run);
-    }
+  @Override
+  public Completable close() {
+    return super.close().doOnComplete(closeHook::run);
+  }
 }

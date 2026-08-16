@@ -9,24 +9,24 @@ import org.reactivestreams.Publisher;
 @MicroService("agent")
 public interface RuntimeService {
 
-    /**
-     * Initialises the session actor and enqueues the message. Returns immediately with the
-     * resolved session ID; the agent runs in the background.
-     */
-    Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
+  /**
+   * Initialises the session actor and enqueues the message. Returns immediately with the resolved
+   * session ID; the agent runs in the background.
+   */
+  Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
 
-    /**
-     * Answers a pending interrupt on the session actor. Returns immediately; the run's
-     * continuation events are delivered via {@link #subscribeToSession}.
-     */
-    void resumeSession(String sessionId, ResumeRequest resumeRequest);
+  /**
+   * Answers a pending interrupt on the session actor. Returns immediately; the run's continuation
+   * events are delivered via {@link #subscribeToSession}.
+   */
+  void resumeSession(String sessionId, ResumeRequest resumeRequest);
 
-    /**
-     * Returns a publisher that emits committed history, then uncommitted current-turn events,
-     * then live events, and completes when the terminal event is received. Safe to call from
-     * multiple concurrent subscribers for the same session.
-     */
-    Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
+  /**
+   * Returns a publisher that emits committed history, then uncommitted current-turn events, then
+   * live events, and completes when the terminal event is received. Safe to call from multiple
+   * concurrent subscribers for the same session.
+   */
+  Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
 
-    void rollbackSession(String sessionId, String runId);
+  void rollbackSession(String sessionId, String runId);
 }

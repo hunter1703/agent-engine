@@ -12,7 +12,7 @@ import jakarta.inject.Singleton;
 @Singleton
 public final class SessionEventChannel extends PekkoEventChannel<String, SessionEvent> {
 
-    public SessionEventChannel(final ActorSystemProvider actorSystemProvider) {
-        super(actorSystemProvider, "session-events");
-    }
+  public SessionEventChannel(final ActorSystemProvider actorSystemProvider) {
+    super(actorSystemProvider, "session-events");
+  }
 }

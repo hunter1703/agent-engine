@@ -34,88 +34,94 @@ import org.reactivestreams.Publisher;
 @RunOnVirtualThread
 public class SessionRestAPI {
 
-    private final RuntimeService runtimeService;
-    private final SessionService sessionService;
+  private final RuntimeService runtimeService;
+  private final SessionService sessionService;
 
-    @Inject
-    public SessionRestAPI(final RuntimeService runtimeService, final SessionService sessionService) {
-        this.runtimeService = runtimeService;
-        this.sessionService = sessionService;
-    }
+  @Inject
+  public SessionRestAPI(final RuntimeService runtimeService, final SessionService sessionService) {
+    this.runtimeService = runtimeService;
+    this.sessionService = sessionService;
+  }
 
-    @GET
-    @Path("/{sessionId}/stream")
-    @Produces(SERVER_SENT_EVENTS)
-    @RestStreamElementType(APPLICATION_JSON)
-    @Operation(summary = "Subscribe to a session event stream")
-    @APIResponse(
-            responseCode = "200",
-            description = "SSE stream of AG-UI events: committed history, uncommitted turn events, then live events",
-            content = @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = Event.class)))
-    @APIResponse(responseCode = "404", description = "Session not found")
-    public Publisher<Event> stream(
-            @NotBlank @PathParam("sessionId") final String sessionId, @QueryParam("liveOnly") boolean liveOnly) {
-        final AgentSession session = sessionService.getSession(sessionId);
-        if (session == null) {
-            throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
-        }
-        final AGUIEventMapper mapper = new AGUIEventMapper(
-                session.getRootSessionId(),
-                session.getRootAgentId(),
-                liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
-        return mapper.map(Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly)));
+  @GET
+  @Path("/{sessionId}/stream")
+  @Produces(SERVER_SENT_EVENTS)
+  @RestStreamElementType(APPLICATION_JSON)
+  @Operation(summary = "Subscribe to a session event stream")
+  @APIResponse(
+      responseCode = "200",
+      description =
+          "SSE stream of AG-UI events: committed history, uncommitted turn events, then live events",
+      content =
+          @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = Event.class)))
+  @APIResponse(responseCode = "404", description = "Session not found")
+  public Publisher<Event> stream(
+      @NotBlank @PathParam("sessionId") final String sessionId,
+      @QueryParam("liveOnly") boolean liveOnly) {
+    final AgentSession session = sessionService.getSession(sessionId);
+    if (session == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
+    final AGUIEventMapper mapper =
+        new AGUIEventMapper(
+            session.getRootSessionId(),
+            session.getRootAgentId(),
+            liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
+    return mapper.map(
+        Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly)));
+  }
 
-    @POST
-    @Path("/{sessionId}/resume")
-    @Consumes(APPLICATION_JSON)
-    @Produces(APPLICATION_JSON)
-    @Operation(summary = "Resume a paused session")
-    @APIResponse(responseCode = "400", description = "Invalid resume payload")
-    public Response resume(@NotBlank @PathParam("sessionId") final String sessionId, final Resume resume) {
-        if (resume == null) {
-            throw new IllegalArgumentException("Resume payload is required");
-        }
-        if (StringUtils.isBlank(resume.interruptId())) {
-            throw new IllegalArgumentException("Interrupt ID is required");
-        }
-        //noinspection unchecked
-        final Map<String, Object> payload = (Map<String, Object>) resume.payload();
-        final Boolean accepted = CollectionUtils.getBooleanValueFromMap(payload, "accepted");
-        runtimeService.resumeSession(
-                sessionId,
-                new ResumeRequest(
-                        resume.interruptId(),
-                        accepted,
-                        Map.of("answer", CollectionUtils.getStringValueFromMap(payload, "answer", ""))));
-        return Response.accepted().build();
+  @POST
+  @Path("/{sessionId}/resume")
+  @Consumes(APPLICATION_JSON)
+  @Produces(APPLICATION_JSON)
+  @Operation(summary = "Resume a paused session")
+  @APIResponse(responseCode = "400", description = "Invalid resume payload")
+  public Response resume(
+      @NotBlank @PathParam("sessionId") final String sessionId, final Resume resume) {
+    if (resume == null) {
+      throw new IllegalArgumentException("Resume payload is required");
     }
+    if (StringUtils.isBlank(resume.interruptId())) {
+      throw new IllegalArgumentException("Interrupt ID is required");
+    }
+    //noinspection unchecked
+    final Map<String, Object> payload = (Map<String, Object>) resume.payload();
+    final Boolean accepted = CollectionUtils.getBooleanValueFromMap(payload, "accepted");
+    runtimeService.resumeSession(
+        sessionId,
+        new ResumeRequest(
+            resume.interruptId(),
+            accepted,
+            Map.of("answer", CollectionUtils.getStringValueFromMap(payload, "answer", ""))));
+    return Response.accepted().build();
+  }
 
-    @DELETE
-    @Path("/session/{sessionId}")
-    @Operation(summary = "Delete a session")
-    @APIResponse(responseCode = "204", description = "Session deleted")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    public void deleteSession(@PathParam("sessionId") final String sessionId) {
-        if (StringUtils.isBlank(sessionId)) {
-            throw new IllegalArgumentException("Session ID is required");
-        }
-        sessionService.deleteSession(sessionId);
+  @DELETE
+  @Path("/session/{sessionId}")
+  @Operation(summary = "Delete a session")
+  @APIResponse(responseCode = "204", description = "Session deleted")
+  @APIResponse(responseCode = "404", description = "Session not found")
+  public void deleteSession(@PathParam("sessionId") final String sessionId) {
+    if (StringUtils.isBlank(sessionId)) {
+      throw new IllegalArgumentException("Session ID is required");
     }
+    sessionService.deleteSession(sessionId);
+  }
 
-    @POST
-    @Path("/session/{sessionId}/rollback")
-    @Operation(summary = "Roll back a session to before the given run")
-    @APIResponse(responseCode = "204", description = "Rollback applied")
-    @APIResponse(responseCode = "400", description = "runId is required")
-    @APIResponse(responseCode = "404", description = "Session not found")
-    @APIResponse(responseCode = "409", description = "Session is currently running")
-    public void rollbackSession(
-            @NotBlank @PathParam("sessionId") final String sessionId,
-            @NotBlank @QueryParam("runId") final String runId) {
-        if (sessionService.getSession(sessionId) == null) {
-            throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
-        }
-        runtimeService.rollbackSession(sessionId, runId);
+  @POST
+  @Path("/session/{sessionId}/rollback")
+  @Operation(summary = "Roll back a session to before the given run")
+  @APIResponse(responseCode = "204", description = "Rollback applied")
+  @APIResponse(responseCode = "400", description = "runId is required")
+  @APIResponse(responseCode = "404", description = "Session not found")
+  @APIResponse(responseCode = "409", description = "Session is currently running")
+  public void rollbackSession(
+      @NotBlank @PathParam("sessionId") final String sessionId,
+      @NotBlank @QueryParam("runId") final String runId) {
+    if (sessionService.getSession(sessionId) == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
+    runtimeService.rollbackSession(sessionId, runId);
+  }
 }

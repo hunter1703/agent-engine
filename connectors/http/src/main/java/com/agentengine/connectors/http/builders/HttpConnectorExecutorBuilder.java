@@ -16,22 +16,24 @@ import okhttp3.OkHttpClient;
 
 @Singleton
 public class HttpConnectorExecutorBuilder
-        implements ConnectorExecutorBuilder<HttpConnectorSpec, Map<String, Object>, Map<String, Object>> {
-    private final ConcurrentHashMap<HttpConnectorSpec, HttpConnectorExecutor> executorCache = new ConcurrentHashMap<>();
-    private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
+    implements ConnectorExecutorBuilder<
+        HttpConnectorSpec, Map<String, Object>, Map<String, Object>> {
+  private final ConcurrentHashMap<HttpConnectorSpec, HttpConnectorExecutor> executorCache =
+      new ConcurrentHashMap<>();
+  private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
 
-    public HttpConnectorExecutorBuilder(HttpClientProvider clientProvider) {
-        this.clientProvider = clientProvider;
-    }
+  public HttpConnectorExecutorBuilder(HttpClientProvider clientProvider) {
+    this.clientProvider = clientProvider;
+  }
 
-    @Override
-    public ConnectorExecutor<Map<String, Object>, Map<String, Object>> build(HttpConnectorSpec spec) {
-        return executorCache.computeIfAbsent(
-                spec, _ -> new HttpConnectorExecutor(new TemplatedHttpConnectorSpec(spec), clientProvider));
-    }
+  @Override
+  public ConnectorExecutor<Map<String, Object>, Map<String, Object>> build(HttpConnectorSpec spec) {
+    return executorCache.computeIfAbsent(
+        spec, _ -> new HttpConnectorExecutor(new TemplatedHttpConnectorSpec(spec), clientProvider));
+  }
 
-    @Override
-    public ConnectorSpec.Type getType() {
-        return ConnectorSpec.Type.HTTP;
-    }
+  @Override
+  public ConnectorSpec.Type getType() {
+    return ConnectorSpec.Type.HTTP;
+  }
 }

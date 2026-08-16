@@ -11,11 +11,11 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class JobDefinitionRepositoryImpl extends AbstractMongoRepository<JobDefinition>
-        implements JobDefinitionRepository {
+    implements JobDefinitionRepository {
 
-    @Inject
-    public JobDefinitionRepositoryImpl(
-            final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-        super(mongoClientFactory, AssetClass.JOB_DEFINITION, JobDefinition.class, validationService);
-    }
+  @Inject
+  public JobDefinitionRepositoryImpl(
+      final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+    super(mongoClientFactory, AssetClass.JOB_DEFINITION, JobDefinition.class, validationService);
+  }
 }

@@ -10,19 +10,19 @@ import java.util.Map;
 
 @MicroService("catalog")
 public interface SessionService {
-    AgentSession getSession(String id);
+  AgentSession getSession(String id);
 
-    AgentSession getSession(String id, boolean includeEvents);
+  AgentSession getSession(String id, boolean includeEvents);
 
-    Map<String, AgentSession> getSessions(Collection<String> ids);
+  Map<String, AgentSession> getSessions(Collection<String> ids);
 
-    Map<String, AgentSession> getSessions(Collection<String> ids, boolean includeEvents);
+  Map<String, AgentSession> getSessions(Collection<String> ids, boolean includeEvents);
 
-    PaginatedResult<AgentSession> findSessions(Query query);
+  PaginatedResult<AgentSession> findSessions(Query query);
 
-    boolean deleteSession(String id);
+  boolean deleteSession(String id);
 
-    AgentSession updateSession(String id, Update update);
+  AgentSession updateSession(String id, Update update);
 
-    AgentSession create(AgentSession session);
+  AgentSession create(AgentSession session);
 }

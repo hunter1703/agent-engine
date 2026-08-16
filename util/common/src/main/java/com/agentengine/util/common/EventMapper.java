@@ -4,18 +4,20 @@ import io.reactivex.rxjava3.core.Flowable;
 
 public interface EventMapper<S, T> {
 
-    default Flowable<T> map(final Flowable<S> source) {
-        return source.concatMap(event -> {
-                    try {
-                        return map(event);
-                    } catch (Exception exception) {
-                        return Flowable.error(exception);
-                    }
-                })
-                .onErrorResumeNext(this::onError);
-    }
+  default Flowable<T> map(final Flowable<S> source) {
+    return source
+        .concatMap(
+            event -> {
+              try {
+                return map(event);
+              } catch (Exception exception) {
+                return Flowable.error(exception);
+              }
+            })
+        .onErrorResumeNext(this::onError);
+  }
 
-    Flowable<T> map(final S event);
+  Flowable<T> map(final S event);
 
-    Flowable<T> onError(final Throwable throwable);
+  Flowable<T> onError(final Throwable throwable);
 }

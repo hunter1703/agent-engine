@@ -29,81 +29,94 @@ import org.apache.pekko.japi.function.Function;
 import org.reactivestreams.Publisher;
 
 /** Distributed, scope-keyed event channel backed by a persistent sharded broadcaster. */
-public class PekkoEventChannel<Scope, Event> implements EventChannel<Scope, Event>, ShardedEntityDefinition {
+public class PekkoEventChannel<Scope, Event>
+    implements EventChannel<Scope, Event>, ShardedEntityDefinition {
 
-    private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(10);
-    private static final int SUBSCRIBER_BUFFER_SIZE = 256;
+  private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(10);
+  private static final int SUBSCRIBER_BUFFER_SIZE = 256;
 
-    // ActorSystemProvider is stored rather than ActorSystem directly because ActorSystemProvider
-    // initialises its system field in @Observes StartupEvent, which fires after CDI constructs
-    // all singletons. Extracting system() eagerly in the constructor would capture null.
-    private final ActorSystemProvider actorSystemProvider;
-    private final EntityTypeKey<BroadcasterCommand> typeKey;
-    private final Entity<BroadcasterCommand, ShardingEnvelope<BroadcasterCommand>> entityDef;
+  // ActorSystemProvider is stored rather than ActorSystem directly because ActorSystemProvider
+  // initialises its system field in @Observes StartupEvent, which fires after CDI constructs
+  // all singletons. Extracting system() eagerly in the constructor would capture null.
+  private final ActorSystemProvider actorSystemProvider;
+  private final EntityTypeKey<BroadcasterCommand> typeKey;
+  private final Entity<BroadcasterCommand, ShardingEnvelope<BroadcasterCommand>> entityDef;
 
-    public PekkoEventChannel(final ActorSystemProvider actorSystemProvider, final String channelName) {
-        this.actorSystemProvider = actorSystemProvider;
-        this.typeKey = EntityTypeKey.create(BroadcasterCommand.class, sanitizeTypeKey(channelName));
-        this.entityDef = Entity.of(
-                        typeKey,
-                        entityContext -> Behaviors.setup(actorCtx ->
-                                new BroadcasterEntity(actorCtx, typeKey.name(), entityContext.getEntityId())))
-                .withAllocationStrategy(RequesterFirstAllocationStrategy.INSTANCE);
-    }
+  public PekkoEventChannel(
+      final ActorSystemProvider actorSystemProvider, final String channelName) {
+    this.actorSystemProvider = actorSystemProvider;
+    this.typeKey = EntityTypeKey.create(BroadcasterCommand.class, sanitizeTypeKey(channelName));
+    this.entityDef =
+        Entity.of(
+                typeKey,
+                entityContext ->
+                    Behaviors.setup(
+                        actorCtx ->
+                            new BroadcasterEntity(
+                                actorCtx, typeKey.name(), entityContext.getEntityId())))
+            .withAllocationStrategy(RequesterFirstAllocationStrategy.INSTANCE);
+  }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
-        final String subscriptionId = UUID.randomUUID().toString();
+  @Override
+  @SuppressWarnings("unchecked")
+  public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
+    final String subscriptionId = UUID.randomUUID().toString();
 
-        final Publisher<SequencedEvent<Event>> publisher = Flowable.<SequencedEvent<?>>create(
-                        emitter -> {
-                            final ActorRef<SubscriberCommand> actor = AskPattern.ask(
-                                            actorSystemProvider.system(),
-                                            (Function<ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
-                                                    replyTo -> new SpawnProtocol.Spawn<>(
-                                                            SubscriberActor.create(
-                                                                    subscriptionId, broadcaster(scope), emitter),
-                                                            "event-subscriber-" + subscriptionId,
-                                                            Props.empty(),
-                                                            replyTo),
-                                            COMMAND_TIMEOUT,
-                                            actorSystemProvider.system().scheduler())
-                                    .toCompletableFuture()
-                                    .join();
-                            // The actor owns all cleanup: it unsubscribes from the broadcaster
-                            // and completes the emitter in onPostStop(). The cancellable only
-                            // needs to stop the actor; everything else follows from that.
-                            emitter.setCancellable(() -> actor.tell(new SubscriberCommand.StopCommand()));
-                        },
-                        BackpressureStrategy.MISSING)
-                .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
-                .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
+    final Publisher<SequencedEvent<Event>> publisher =
+        Flowable.<SequencedEvent<?>>create(
+                emitter -> {
+                  final ActorRef<SubscriberCommand> actor =
+                      AskPattern.ask(
+                              actorSystemProvider.system(),
+                              (Function<
+                                      ActorRef<ActorRef<SubscriberCommand>>, SpawnProtocol.Command>)
+                                  replyTo ->
+                                      new SpawnProtocol.Spawn<>(
+                                          SubscriberActor.create(
+                                              subscriptionId, broadcaster(scope), emitter),
+                                          "event-subscriber-" + subscriptionId,
+                                          Props.empty(),
+                                          replyTo),
+                              COMMAND_TIMEOUT,
+                              actorSystemProvider.system().scheduler())
+                          .toCompletableFuture()
+                          .join();
+                  // The actor owns all cleanup: it unsubscribes from the broadcaster
+                  // and completes the emitter in onPostStop(). The cancellable only
+                  // needs to stop the actor; everything else follows from that.
+                  emitter.setCancellable(() -> actor.tell(new SubscriberCommand.StopCommand()));
+                },
+                BackpressureStrategy.MISSING)
+            .onBackpressureBuffer(
+                SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
+            .map(event -> new SequencedEvent<>(event.sequence(), (Event) event.payload()));
 
-        return CompletableFuture.completedFuture(new EventSubscription<>(subscriptionId, publisher));
-    }
+    return CompletableFuture.completedFuture(new EventSubscription<>(subscriptionId, publisher));
+  }
 
-    @Override
-    public CompletionStage<Long> publish(final Scope scope, final Event event) {
-        return CompletionUtils.completeWithRootCause(broadcaster(scope)
-                .ask(
-                        (Function<ActorRef<PublishAck>, BroadcasterCommand>)
-                                replyTo -> new BroadcasterCommand.PublishCommand<>(event, replyTo),
-                        COMMAND_TIMEOUT)
-                .thenApply(PublishAck::sequence));
-    }
+  @Override
+  public CompletionStage<Long> publish(final Scope scope, final Event event) {
+    return CompletionUtils.completeWithRootCause(
+        broadcaster(scope)
+            .ask(
+                (Function<ActorRef<PublishAck>, BroadcasterCommand>)
+                    replyTo -> new BroadcasterCommand.PublishCommand<>(event, replyTo),
+                COMMAND_TIMEOUT)
+            .thenApply(PublishAck::sequence));
+  }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
-        return (Entity<M, E>) entityDef;
-    }
+  @Override
+  @SuppressWarnings("unchecked")
+  public <M, E> Entity<M, E> entity(final ActorSystem<?> system) {
+    return (Entity<M, E>) entityDef;
+  }
 
-    private EntityRef<BroadcasterCommand> broadcaster(final Scope scope) {
-        return ClusterSharding.get(actorSystemProvider.system()).entityRefFor(typeKey, scope.toString());
-    }
+  private EntityRef<BroadcasterCommand> broadcaster(final Scope scope) {
+    return ClusterSharding.get(actorSystemProvider.system())
+        .entityRefFor(typeKey, scope.toString());
+  }
 
-    private static String sanitizeTypeKey(final String name) {
-        return "event-channel-" + name.replaceAll("[^A-Za-z0-9_-]", "-");
-    }
+  private static String sanitizeTypeKey(final String name) {
+    return "event-channel-" + name.replaceAll("[^A-Za-z0-9_-]", "-");
+  }
 }

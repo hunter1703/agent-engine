@@ -23,130 +23,136 @@ import org.junit.jupiter.api.Test;
 
 public class ResourceCatalogAPITest {
 
-    @Test
-    public void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+  @Test
+  public void shouldThrowBadRequestWhenListResourcesMissingAssetType() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
 
-        assertThatThrownBy(() -> api.listResources(new AssetRequest()))
-                .isInstanceOf(WebApplicationException.class)
-                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-                .isEqualTo(400);
+    assertThatThrownBy(() -> api.listResources(new AssetRequest()))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  public void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final AssetRequest request = new AssetRequest();
+    request.setAssetType("unknown");
+
+    assertThatThrownBy(() -> api.listResources(request))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  public void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
+    final AssetRequest request = new AssetRequest();
+    request.setAssetType("model");
+
+    assertThatThrownBy(() -> api.listResources(request))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
+
+  @Test
+  public void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+    final AssetRequest request = new AssetRequest();
+    request.setAssetType("model");
+    request.setQuery(new Query().withPage(new Page(0, 10)));
+
+    final PaginatedResult<? extends NamedEntity> result = api.listResources(request);
+
+    assertThat(result.getItems()).hasSize(1);
+    assertThat(result.getItems().getFirst().getId()).isEqualTo("model-1");
+    assertThat(result.getItems().getFirst().getName()).isEqualTo("Model One");
+  }
+
+  @Test
+  public void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+
+    final ModelConfig resource = api.getResource("model", "model-1", null);
+
+    assertThat(resource.getId()).isEqualTo("model-1");
+  }
+
+  @Test
+  public void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
+    final ResourceCatalogAPI api =
+        new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
+
+    assertThatThrownBy(() -> api.getResource("model", "missing", null))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(404);
+  }
+
+  @SafeVarargs
+  @SuppressWarnings("unchecked")
+  private static Instance<AssetHandler<?>> handlerInstanceWith(final AssetHandler<?>... handlers) {
+    final Instance<AssetHandler<?>> instance = mock(Instance.class);
+    when(instance.stream()).thenReturn(Stream.of(handlers));
+    return instance;
+  }
+
+  private static final class PlainModelHandler implements AssetHandler<ModelConfig> {
+
+    @Override
+    public String getAssetType() {
+      return "model";
     }
 
-    @Test
-    public void shouldThrowBadRequestWhenListResourcesHandlerUnsupported() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
-        final AssetRequest request = new AssetRequest();
-        request.setAssetType("unknown");
-
-        assertThatThrownBy(() -> api.listResources(request))
-                .isInstanceOf(WebApplicationException.class)
-                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-                .isEqualTo(400);
+    @Override
+    public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
+      return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
     }
 
-    @Test
-    public void shouldThrowBadRequestWhenListResourcesHandlerNotNamed() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new PlainModelHandler()));
-        final AssetRequest request = new AssetRequest();
-        request.setAssetType("model");
+    @Override
+    public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
+      return Map.of("model-1", newModel("model-1", "Model One"));
+    }
+  }
 
-        assertThatThrownBy(() -> api.listResources(request))
-                .isInstanceOf(WebApplicationException.class)
-                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-                .isEqualTo(400);
+  private static final class NamedModelHandler extends NamedAssetHandler<ModelConfig> {
+
+    @Override
+    public String getAssetType() {
+      return "model";
     }
 
-    @Test
-    public void shouldReturnResourcesWhenListResourcesHandlerIsNamed() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
-        final AssetRequest request = new AssetRequest();
-        request.setAssetType("model");
-        request.setQuery(new Query().withPage(new Page(0, 10)));
-
-        final PaginatedResult<? extends NamedEntity> result = api.listResources(request);
-
-        assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getItems().getFirst().getId()).isEqualTo("model-1");
-        assertThat(result.getItems().getFirst().getName()).isEqualTo("Model One");
+    @Override
+    public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
+      return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
     }
 
-    @Test
-    public void shouldReturnResourceWhenGetResourceCalledWithKnownId() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
-
-        final ModelConfig resource = api.getResource("model", "model-1", null);
-
-        assertThat(resource.getId()).isEqualTo("model-1");
+    @Override
+    public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
+      if (request.getKeys() == null || request.getKeys().isEmpty()) {
+        return Map.of();
+      }
+      final String key = request.getKeys().getFirst();
+      if (!"model-1".equals(key)) {
+        return Map.of();
+      }
+      return Map.of("model-1", newModel("model-1", "Model One"));
     }
+  }
 
-    @Test
-    public void shouldThrowNotFoundWhenGetResourceCalledWithUnknownId() {
-        final ResourceCatalogAPI api = new ResourceCatalogAPI(handlerInstanceWith(new NamedModelHandler()));
-
-        assertThatThrownBy(() -> api.getResource("model", "missing", null))
-                .isInstanceOf(WebApplicationException.class)
-                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-                .isEqualTo(404);
-    }
-
-    @SafeVarargs
-    @SuppressWarnings("unchecked")
-    private static Instance<AssetHandler<?>> handlerInstanceWith(final AssetHandler<?>... handlers) {
-        final Instance<AssetHandler<?>> instance = mock(Instance.class);
-        when(instance.stream()).thenReturn(Stream.of(handlers));
-        return instance;
-    }
-
-    private static final class PlainModelHandler implements AssetHandler<ModelConfig> {
-
-        @Override
-        public String getAssetType() {
-            return "model";
-        }
-
-        @Override
-        public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
-            return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
-        }
-
-        @Override
-        public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
-            return Map.of("model-1", newModel("model-1", "Model One"));
-        }
-    }
-
-    private static final class NamedModelHandler extends NamedAssetHandler<ModelConfig> {
-
-        @Override
-        public String getAssetType() {
-            return "model";
-        }
-
-        @Override
-        public PaginatedResult<ModelConfig> findAssets(final AssetRequest request) {
-            return PaginatedResult.create(List.of(newModel("model-1", "Model One")));
-        }
-
-        @Override
-        public Map<String, ModelConfig> getAssetsByIds(final AssetRequest request) {
-            if (request.getKeys() == null || request.getKeys().isEmpty()) {
-                return Map.of();
-            }
-            final String key = request.getKeys().getFirst();
-            if (!"model-1".equals(key)) {
-                return Map.of();
-            }
-            return Map.of("model-1", newModel("model-1", "Model One"));
-        }
-    }
-
-    private static ModelConfig newModel(final String id, final String name) {
-        final ModelConfig config = new ModelConfig();
-        config.setId(id);
-        config.setName(name);
-        config.setType("OLLAMA");
-        config.setModel("qwen");
-        return config;
-    }
+  private static ModelConfig newModel(final String id, final String name) {
+    final ModelConfig config = new ModelConfig();
+    config.setId(id);
+    config.setName(name);
+    config.setType("OLLAMA");
+    config.setModel("qwen");
+    return config;
+  }
 }

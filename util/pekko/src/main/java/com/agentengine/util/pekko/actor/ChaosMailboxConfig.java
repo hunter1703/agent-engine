@@ -10,16 +10,21 @@ import java.util.concurrent.ThreadLocalRandom;
  * it straight through.
  */
 public record ChaosMailboxConfig(
-        double dropPercentage, Optional<Duration> delayDuration, double delayPercentage, boolean active) {
+    double dropPercentage,
+    Optional<Duration> delayDuration,
+    double delayPercentage,
+    boolean active) {
 
-    public boolean shouldDrop() {
-        return active && dropPercentage > 0 && ThreadLocalRandom.current().nextDouble() < dropPercentage;
-    }
+  public boolean shouldDrop() {
+    return active
+        && dropPercentage > 0
+        && ThreadLocalRandom.current().nextDouble() < dropPercentage;
+  }
 
-    public boolean shouldDelay() {
-        return active
-                && delayDuration.isPresent()
-                && delayPercentage > 0
-                && ThreadLocalRandom.current().nextDouble() < delayPercentage;
-    }
+  public boolean shouldDelay() {
+    return active
+        && delayDuration.isPresent()
+        && delayPercentage > 0
+        && ThreadLocalRandom.current().nextDouble() < delayPercentage;
+  }
 }

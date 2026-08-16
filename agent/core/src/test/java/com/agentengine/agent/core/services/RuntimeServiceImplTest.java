@@ -27,45 +27,48 @@ import org.junit.jupiter.api.Test;
 
 class RuntimeServiceImplTest {
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    @Test
-    void shouldStreamLiveEventsWhenStartingNewTurnOnCompletedSession() {
-        final SessionActorFactory sessionActorFactory = mock(SessionActorFactory.class);
-        final SessionEventChannel eventChannel = mock(SessionEventChannel.class);
-        final SessionService sessionService = mock(SessionService.class);
-        final SessionHistoryService sessionHistoryService = mock(SessionHistoryService.class);
-        final RuntimeServiceImpl runtimeService =
-                new RuntimeServiceImpl(sessionActorFactory, eventChannel, sessionService, sessionHistoryService);
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  @Test
+  void shouldStreamLiveEventsWhenStartingNewTurnOnCompletedSession() {
+    final SessionActorFactory sessionActorFactory = mock(SessionActorFactory.class);
+    final SessionEventChannel eventChannel = mock(SessionEventChannel.class);
+    final SessionService sessionService = mock(SessionService.class);
+    final SessionHistoryService sessionHistoryService = mock(SessionHistoryService.class);
+    final RuntimeServiceImpl runtimeService =
+        new RuntimeServiceImpl(
+            sessionActorFactory, eventChannel, sessionService, sessionHistoryService);
 
-        final String agentId = "story_agent";
-        final String sessionId = "session-1";
+    final String agentId = "story_agent";
+    final String sessionId = "session-1";
 
-        final AgentSession session = new AgentSession(sessionId, agentId, Map.of());
-        session.setRootSessionId(sessionId);
-        session.setStatus(SessionStatus.COMPLETED);
-        when(sessionService.getSession(sessionId)).thenReturn(session);
+    final AgentSession session = new AgentSession(sessionId, agentId, Map.of());
+    session.setRootSessionId(sessionId);
+    session.setStatus(SessionStatus.COMPLETED);
+    when(sessionService.getSession(sessionId)).thenReturn(session);
 
-        final EntityRef<SessionCommand> ref = mock(EntityRef.class);
-        when(sessionActorFactory.entityRef(sessionId)).thenReturn(ref);
-        when(((EntityRef) ref).ask(any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(Done.done()))
-                .thenReturn(CompletableFuture.completedFuture(new StartSessionResult.Accepted()));
+    final EntityRef<SessionCommand> ref = mock(EntityRef.class);
+    when(sessionActorFactory.entityRef(sessionId)).thenReturn(ref);
+    when(((EntityRef) ref).ask(any(), any()))
+        .thenReturn(CompletableFuture.completedFuture(Done.done()))
+        .thenReturn(CompletableFuture.completedFuture(new StartSessionResult.Accepted()));
 
-        final PublishProcessor<SequencedEvent<SessionEvent>> liveEvents = PublishProcessor.create();
-        when(eventChannel.subscribe(sessionId))
-                .thenReturn(CompletableFuture.completedFuture(new EventSubscription<>("sub-1", liveEvents)));
+    final PublishProcessor<SequencedEvent<SessionEvent>> liveEvents = PublishProcessor.create();
+    when(eventChannel.subscribe(sessionId))
+        .thenReturn(
+            CompletableFuture.completedFuture(new EventSubscription<>("sub-1", liveEvents)));
 
-        final SessionEvent event = new SessionEvent();
-        event.setId("event-1");
-        event.setSessionId(sessionId);
-        event.setRootSessionId(sessionId);
+    final SessionEvent event = new SessionEvent();
+    event.setId("event-1");
+    event.setSessionId(sessionId);
+    event.setRootSessionId(sessionId);
 
-        final var subscriber = Flowable.fromPublisher(
-                        runtimeService.startSession(agentId, sessionId, UserMessage.ofText("hello")))
-                .test();
+    final var subscriber =
+        Flowable.fromPublisher(
+                runtimeService.startSession(agentId, sessionId, UserMessage.ofText("hello")))
+            .test();
 
-        liveEvents.onNext(new SequencedEvent<>(1L, event));
+    liveEvents.onNext(new SequencedEvent<>(1L, event));
 
-        assertThat(subscriber.values()).containsExactly(event);
-    }
+    assertThat(subscriber.values()).containsExactly(event);
+  }
 }

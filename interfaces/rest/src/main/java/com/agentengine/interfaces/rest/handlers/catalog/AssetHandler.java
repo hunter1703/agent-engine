@@ -7,12 +7,12 @@ import java.util.Map;
 /** Interface for asset handlers that process requests for specific asset types */
 public interface AssetHandler<T> {
 
-    /** Returns the asset type this handler supports */
-    String getAssetType();
+  /** Returns the asset type this handler supports */
+  String getAssetType();
 
-    /** Lists assets based on the provided criteria */
-    PaginatedResult<T> findAssets(AssetRequest request);
+  /** Lists assets based on the provided criteria */
+  PaginatedResult<T> findAssets(AssetRequest request);
 
-    /** Gets specific assets by their keys */
-    Map<String, T> getAssetsByIds(AssetRequest request);
+  /** Gets specific assets by their keys */
+  Map<String, T> getAssetsByIds(AssetRequest request);
 }

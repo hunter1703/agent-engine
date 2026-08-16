@@ -6,40 +6,40 @@ import java.util.Map;
 
 public class JobDefinition extends BaseEntity {
 
-    private String jobClassName;
-    private List<String> jobTags;
-    private String cronSchedule;
-    private Map<String, Object> payload;
+  private String jobClassName;
+  private List<String> jobTags;
+  private String cronSchedule;
+  private Map<String, Object> payload;
 
-    public String getJobClassName() {
-        return jobClassName;
-    }
+  public String getJobClassName() {
+    return jobClassName;
+  }
 
-    public void setJobClassName(final String jobClassName) {
-        this.jobClassName = jobClassName;
-    }
+  public void setJobClassName(final String jobClassName) {
+    this.jobClassName = jobClassName;
+  }
 
-    public List<String> getJobTags() {
-        return jobTags;
-    }
+  public List<String> getJobTags() {
+    return jobTags;
+  }
 
-    public void setJobTags(final List<String> jobTags) {
-        this.jobTags = jobTags;
-    }
+  public void setJobTags(final List<String> jobTags) {
+    this.jobTags = jobTags;
+  }
 
-    public String getCronSchedule() {
-        return cronSchedule;
-    }
+  public String getCronSchedule() {
+    return cronSchedule;
+  }
 
-    public void setCronSchedule(final String cronSchedule) {
-        this.cronSchedule = cronSchedule;
-    }
+  public void setCronSchedule(final String cronSchedule) {
+    this.cronSchedule = cronSchedule;
+  }
 
-    public Map<String, Object> getPayload() {
-        return payload;
-    }
+  public Map<String, Object> getPayload() {
+    return payload;
+  }
 
-    public void setPayload(final Map<String, Object> payload) {
-        this.payload = payload;
-    }
+  public void setPayload(final Map<String, Object> payload) {
+    this.payload = payload;
+  }
 }

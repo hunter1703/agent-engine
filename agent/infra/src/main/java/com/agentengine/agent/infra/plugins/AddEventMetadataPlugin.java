@@ -8,16 +8,15 @@ import com.google.adk.plugins.BasePlugin;
 import io.reactivex.rxjava3.core.Maybe;
 
 public final class AddEventMetadataPlugin extends BasePlugin {
-    public static final AddEventMetadataPlugin INSTANCE = new AddEventMetadataPlugin();
+  public static final AddEventMetadataPlugin INSTANCE = new AddEventMetadataPlugin();
 
-    public AddEventMetadataPlugin() {
-        super("add_event_metadata");
-    }
+  public AddEventMetadataPlugin() {
+    super("add_event_metadata");
+  }
 
-    @Override
-    public Maybe<Event> onEventCallback(InvocationContext invocationContext, Event event) {
-        EventUtils.addMetadata(
-                event, SessionEventUtils.SESSION_ID, invocationContext.session().id());
-        return Maybe.empty();
-    }
+  @Override
+  public Maybe<Event> onEventCallback(InvocationContext invocationContext, Event event) {
+    EventUtils.addMetadata(event, SessionEventUtils.SESSION_ID, invocationContext.session().id());
+    return Maybe.empty();
+  }
 }

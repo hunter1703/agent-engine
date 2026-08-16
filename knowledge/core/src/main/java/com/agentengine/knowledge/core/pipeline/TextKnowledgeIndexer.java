@@ -25,73 +25,73 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class TextKnowledgeIndexer implements KnowledgeIndexer {
 
-    private static final Logger LOG = LoggerFactory.getLogger(TextKnowledgeIndexer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TextKnowledgeIndexer.class);
 
-    private final ChunkingPipelineFactory chunkingPipelineFactory;
-    private final KnowledgeChunkStore vectorStore;
-    private final FileService fileService;
+  private final ChunkingPipelineFactory chunkingPipelineFactory;
+  private final KnowledgeChunkStore vectorStore;
+  private final FileService fileService;
 
-    @Inject
-    public TextKnowledgeIndexer(
-            final ChunkingPipelineFactory chunkingPipelineFactory,
-            final KnowledgeChunkStore vectorStore,
-            final FileService fileService) {
-        this.chunkingPipelineFactory = chunkingPipelineFactory;
-        this.vectorStore = vectorStore;
-        this.fileService = fileService;
+  @Inject
+  public TextKnowledgeIndexer(
+      final ChunkingPipelineFactory chunkingPipelineFactory,
+      final KnowledgeChunkStore vectorStore,
+      final FileService fileService) {
+    this.chunkingPipelineFactory = chunkingPipelineFactory;
+    this.vectorStore = vectorStore;
+    this.fileService = fileService;
+  }
+
+  @Override
+  public boolean canIndex(final Knowledge knowledge) {
+    return true;
+  }
+
+  @Override
+  public int index(final Knowledge knowledge) {
+    try (final InputStream content = fileService.getContent(knowledge.getFileDetails())) {
+      final String text = new String(content.readAllBytes(), UTF_8);
+      final KnowledgeSettings settings = knowledge.getSettings();
+      final ChunkingPipeline pipeline = chunkingPipelineFactory.create(settings);
+
+      // Seed chunk carries the full document text and identity metadata.
+      // Pipeline stages split, merge, and finally embed — producing ready-to-persist chunks.
+      final KnowledgeChunk seed = new KnowledgeChunk();
+      seed.setKnowledgeId(knowledge.getId());
+      seed.setAgentId(knowledge.getAgentId());
+      seed.setChunkIndex(0);
+      seed.setText(text);
+      seed.setChunkStart(0);
+      seed.setChunkEnd(text.length());
+
+      final List<KnowledgeChunk> chunks = pipeline.run(seed);
+
+      // Assign stable UUIDs before persisting
+      // Qdrant requires point IDs to be either unsigned integers or UUIDs
+      for (int i = 0; i < chunks.size(); i++) {
+        final String deterministicId = generateChunkId(knowledge.getId(), i);
+        chunks.get(i).setId(deterministicId);
+        chunks.get(i).setChunkIndex(i);
+      }
+
+      chunks.forEach(vectorStore::save);
+      LOG.info("Indexed {} chunks for knowledge {}", chunks.size(), knowledge.getId());
+      return chunks.size();
+    } catch (final IOException e) {
+      throw new RuntimeException("Failed to index knowledge " + knowledge.getId(), e);
     }
+  }
 
-    @Override
-    public boolean canIndex(final Knowledge knowledge) {
-        return true;
-    }
+  /**
+   * Generates a deterministic UUID for a knowledge chunk. Uses UUID v5 (name-based with SHA-1) to
+   * create a stable, reproducible ID.
+   */
+  private static String generateChunkId(final String knowledgeId, final int chunkIndex) {
+    final String name = knowledgeId + "-" + chunkIndex;
+    return java.util.UUID.nameUUIDFromBytes(name.getBytes(UTF_8)).toString();
+  }
 
-    @Override
-    public int index(final Knowledge knowledge) {
-        try (final InputStream content = fileService.getContent(knowledge.getFileDetails())) {
-            final String text = new String(content.readAllBytes(), UTF_8);
-            final KnowledgeSettings settings = knowledge.getSettings();
-            final ChunkingPipeline pipeline = chunkingPipelineFactory.create(settings);
-
-            // Seed chunk carries the full document text and identity metadata.
-            // Pipeline stages split, merge, and finally embed — producing ready-to-persist chunks.
-            final KnowledgeChunk seed = new KnowledgeChunk();
-            seed.setKnowledgeId(knowledge.getId());
-            seed.setAgentId(knowledge.getAgentId());
-            seed.setChunkIndex(0);
-            seed.setText(text);
-            seed.setChunkStart(0);
-            seed.setChunkEnd(text.length());
-
-            final List<KnowledgeChunk> chunks = pipeline.run(seed);
-
-            // Assign stable UUIDs before persisting
-            // Qdrant requires point IDs to be either unsigned integers or UUIDs
-            for (int i = 0; i < chunks.size(); i++) {
-                final String deterministicId = generateChunkId(knowledge.getId(), i);
-                chunks.get(i).setId(deterministicId);
-                chunks.get(i).setChunkIndex(i);
-            }
-
-            chunks.forEach(vectorStore::save);
-            LOG.info("Indexed {} chunks for knowledge {}", chunks.size(), knowledge.getId());
-            return chunks.size();
-        } catch (final IOException e) {
-            throw new RuntimeException("Failed to index knowledge " + knowledge.getId(), e);
-        }
-    }
-
-    /**
-     * Generates a deterministic UUID for a knowledge chunk.
-     * Uses UUID v5 (name-based with SHA-1) to create a stable, reproducible ID.
-     */
-    private static String generateChunkId(final String knowledgeId, final int chunkIndex) {
-        final String name = knowledgeId + "-" + chunkIndex;
-        return java.util.UUID.nameUUIDFromBytes(name.getBytes(UTF_8)).toString();
-    }
-
-    @Override
-    public int priority() {
-        return Integer.MAX_VALUE;
-    }
+  @Override
+  public int priority() {
+    return Integer.MAX_VALUE;
+  }
 }

@@ -36,29 +36,30 @@ import org.apache.pekko.persistence.typed.javadsl.EventSourcedBehavior;
  * @param <Event> event type
  * @param <State> state type
  */
-public abstract class ShardedEntity<Command, Event, State> extends EventSourcedBehavior<Command, Event, State> {
+public abstract class ShardedEntity<Command, Event, State>
+    extends EventSourcedBehavior<Command, Event, State> {
 
-    /**
-     * Derives the persistence ID from the type key name and the shard entity ID, following the Pekko
-     * convention of {@code PersistenceId.of(typeKey.name(), entityId)}.
-     *
-     * <p>Note: {@code getClass().getSimpleName()} cannot be used here because {@code getClass()} is
-     * not accessible before the supertype constructor completes. Pass {@code TYPE_KEY.name()} as
-     * {@code typeKeyName}.
-     *
-     * @param typeKeyName the entity type key name — pass {@code TYPE_KEY.name()}
-     * @param entityId the shard entity ID
-     */
-    protected ShardedEntity(final String typeKeyName, final String entityId) {
-        super(PersistenceId.of(typeKeyName, entityId));
-    }
+  /**
+   * Derives the persistence ID from the type key name and the shard entity ID, following the Pekko
+   * convention of {@code PersistenceId.of(typeKey.name(), entityId)}.
+   *
+   * <p>Note: {@code getClass().getSimpleName()} cannot be used here because {@code getClass()} is
+   * not accessible before the supertype constructor completes. Pass {@code TYPE_KEY.name()} as
+   * {@code typeKeyName}.
+   *
+   * @param typeKeyName the entity type key name — pass {@code TYPE_KEY.name()}
+   * @param entityId the shard entity ID
+   */
+  protected ShardedEntity(final String typeKeyName, final String entityId) {
+    super(PersistenceId.of(typeKeyName, entityId));
+  }
 
-    @Override
-    public abstract State emptyState();
+  @Override
+  public abstract State emptyState();
 
-    @Override
-    public abstract CommandHandler<Command, Event, State> commandHandler();
+  @Override
+  public abstract CommandHandler<Command, Event, State> commandHandler();
 
-    @Override
-    public abstract EventHandler<State, Event> eventHandler();
+  @Override
+  public abstract EventHandler<State, Event> eventHandler();
 }

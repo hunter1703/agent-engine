@@ -14,31 +14,34 @@ import java.util.concurrent.ConcurrentMap;
 
 @Singleton
 public final class ConnectorRegistry {
-    private static final ObjectMapper CONNECTOR_MAPPER = buildConnectorMapper();
+  private static final ObjectMapper CONNECTOR_MAPPER = buildConnectorMapper();
 
-    private static ObjectMapper buildConnectorMapper() {
-        final ObjectMapper mapper = JsonUtils.copyMapper();
-        mapper.registerSubtypes(new NamedType(HttpConnectorSpec.class, ConnectorSpec.Type.HTTP.name()));
-        return mapper;
-    }
+  private static ObjectMapper buildConnectorMapper() {
+    final ObjectMapper mapper = JsonUtils.copyMapper();
+    mapper.registerSubtypes(new NamedType(HttpConnectorSpec.class, ConnectorSpec.Type.HTTP.name()));
+    return mapper;
+  }
 
-    private final ConcurrentMap<String, Connector> connectorCache;
+  private final ConcurrentMap<String, Connector> connectorCache;
 
-    public ConnectorRegistry() {
-        this.connectorCache = new ConcurrentHashMap<>();
-    }
+  public ConnectorRegistry() {
+    this.connectorCache = new ConcurrentHashMap<>();
+  }
 
-    public Connector get(final String name) {
-        return connectorCache.computeIfAbsent(name, _ -> {
-            final String content = ResourceUtils.loadResourceAsString("/connectors/" + name + ".json");
-            if (StringUtils.isBlank(content)) {
-                return null;
-            }
-            try {
-                return CONNECTOR_MAPPER.readValue(content, Connector.class);
-            } catch (Exception e) {
-                return null;
-            }
+  public Connector get(final String name) {
+    return connectorCache.computeIfAbsent(
+        name,
+        _ -> {
+          final String content =
+              ResourceUtils.loadResourceAsString("/connectors/" + name + ".json");
+          if (StringUtils.isBlank(content)) {
+            return null;
+          }
+          try {
+            return CONNECTOR_MAPPER.readValue(content, Connector.class);
+          } catch (Exception e) {
+            return null;
+          }
         });
-    }
+  }
 }

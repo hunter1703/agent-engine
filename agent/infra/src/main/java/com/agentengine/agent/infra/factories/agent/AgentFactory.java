@@ -5,7 +5,7 @@ import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 
 public interface AgentFactory<C extends BaseAgentConfig, A extends Agent> {
 
-    A build(C agentConfig);
+  A build(C agentConfig);
 
-    String type();
+  String type();
 }

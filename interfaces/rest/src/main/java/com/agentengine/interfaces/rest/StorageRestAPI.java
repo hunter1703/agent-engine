@@ -20,40 +20,43 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Tag(name = "Storage", description = "Object storage upload API")
 public class StorageRestAPI {
 
-    private final CloudStorageService cloudStorageService;
+  private final CloudStorageService cloudStorageService;
 
-    @Inject
-    public StorageRestAPI(final CloudStorageService cloudStorageService) {
-        this.cloudStorageService = cloudStorageService;
-    }
+  @Inject
+  public StorageRestAPI(final CloudStorageService cloudStorageService) {
+    this.cloudStorageService = cloudStorageService;
+  }
 
-    @POST
-    @Path("/upload")
-    @Produces(APPLICATION_JSON)
-    @RunOnVirtualThread
-    @Operation(summary = "Upload an object to cloud storage")
-    @APIResponse(
-            responseCode = "200",
-            description = "Object uploaded successfully",
-            content = @Content(mediaType = APPLICATION_JSON, schema = @Schema(implementation = FileDetails.class)))
-    public FileDetails upload(
-            @QueryParam("name") final String name,
-            @HeaderParam(HttpHeaders.CONTENT_TYPE) final String contentType,
-            @HeaderParam(HttpHeaders.CONTENT_LENGTH) final long contentLength,
-            final InputStream body) {
-        return cloudStorageService.upload(name, body, contentLength, contentType);
-    }
+  @POST
+  @Path("/upload")
+  @Produces(APPLICATION_JSON)
+  @RunOnVirtualThread
+  @Operation(summary = "Upload an object to cloud storage")
+  @APIResponse(
+      responseCode = "200",
+      description = "Object uploaded successfully",
+      content =
+          @Content(
+              mediaType = APPLICATION_JSON,
+              schema = @Schema(implementation = FileDetails.class)))
+  public FileDetails upload(
+      @QueryParam("name") final String name,
+      @HeaderParam(HttpHeaders.CONTENT_TYPE) final String contentType,
+      @HeaderParam(HttpHeaders.CONTENT_LENGTH) final long contentLength,
+      final InputStream body) {
+    return cloudStorageService.upload(name, body, contentLength, contentType);
+  }
 
-    @POST
-    @Path("/download")
-    @RunOnVirtualThread
-    @Operation(summary = "Downloads an object from cloud storage")
-    @APIResponse(responseCode = "200", description = "Object downloaded successfully")
-    public Response download(final FileDetails fileDetails) {
-        final String source = fileDetails.source();
-        final int sep = source.indexOf('/');
-        final String key = sep >= 0 ? source.substring(sep + 1) : source;
-        final CloudStorageService.Content content = cloudStorageService.download(key);
-        return Response.ok(content.stream()).type(content.mimeType()).build();
-    }
+  @POST
+  @Path("/download")
+  @RunOnVirtualThread
+  @Operation(summary = "Downloads an object from cloud storage")
+  @APIResponse(responseCode = "200", description = "Object downloaded successfully")
+  public Response download(final FileDetails fileDetails) {
+    final String source = fileDetails.source();
+    final int sep = source.indexOf('/');
+    final String key = sep >= 0 ? source.substring(sep + 1) : source;
+    final CloudStorageService.Content content = cloudStorageService.download(key);
+    return Response.ok(content.stream()).type(content.mimeType()).build();
+  }
 }

@@ -5,19 +5,19 @@ import com.agentengine.util.common.beans.UniqueRecord;
 
 public final class MessageEnqueuedFact extends SessionFact {
 
-    private UniqueRecord<UserMessage> message;
+  private UniqueRecord<UserMessage> message;
 
-    public MessageEnqueuedFact() {}
+  public MessageEnqueuedFact() {}
 
-    public MessageEnqueuedFact(final UniqueRecord<UserMessage> message) {
-        this.message = message;
-    }
+  public MessageEnqueuedFact(final UniqueRecord<UserMessage> message) {
+    this.message = message;
+  }
 
-    public UniqueRecord<UserMessage> getMessage() {
-        return message;
-    }
+  public UniqueRecord<UserMessage> getMessage() {
+    return message;
+  }
 
-    public void setMessage(final UniqueRecord<UserMessage> message) {
-        this.message = message;
-    }
+  public void setMessage(final UniqueRecord<UserMessage> message) {
+    this.message = message;
+  }
 }

@@ -16,23 +16,26 @@ import scala.concurrent.Future;
  * With the subscribe-before-publish contract, this naturally co-locates broadcasters with their
  * subscribers.
  */
-public final class RequesterFirstAllocationStrategy extends ShardCoordinator.AbstractShardAllocationStrategy {
+public final class RequesterFirstAllocationStrategy
+    extends ShardCoordinator.AbstractShardAllocationStrategy {
 
-    public static final RequesterFirstAllocationStrategy INSTANCE = new RequesterFirstAllocationStrategy();
+  public static final RequesterFirstAllocationStrategy INSTANCE =
+      new RequesterFirstAllocationStrategy();
 
-    private RequesterFirstAllocationStrategy() {}
+  private RequesterFirstAllocationStrategy() {}
 
-    @Override
-    public Future<ActorRef> allocateShard(
-            final ActorRef requester,
-            final String shardId,
-            final Map<ActorRef, IndexedSeq<String>> currentShardAllocations) {
-        return Future.successful(requester);
-    }
+  @Override
+  public Future<ActorRef> allocateShard(
+      final ActorRef requester,
+      final String shardId,
+      final Map<ActorRef, IndexedSeq<String>> currentShardAllocations) {
+    return Future.successful(requester);
+  }
 
-    @Override
-    public Future<Set<String>> rebalance(
-            final Map<ActorRef, IndexedSeq<String>> currentShardAllocations, final Set<String> rebalanceInProgress) {
-        return Future.successful(Set.of());
-    }
+  @Override
+  public Future<Set<String>> rebalance(
+      final Map<ActorRef, IndexedSeq<String>> currentShardAllocations,
+      final Set<String> rebalanceInProgress) {
+    return Future.successful(Set.of());
+  }
 }

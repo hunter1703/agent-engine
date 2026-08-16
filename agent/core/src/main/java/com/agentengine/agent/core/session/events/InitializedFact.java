@@ -4,19 +4,19 @@ import com.agentengine.agent.core.session.state.SessionTopology;
 
 public final class InitializedFact extends SessionFact {
 
-    private SessionTopology topology;
+  private SessionTopology topology;
 
-    public InitializedFact() {}
+  public InitializedFact() {}
 
-    public InitializedFact(final SessionTopology topology) {
-        this.topology = topology;
-    }
+  public InitializedFact(final SessionTopology topology) {
+    this.topology = topology;
+  }
 
-    public SessionTopology getTopology() {
-        return topology;
-    }
+  public SessionTopology getTopology() {
+    return topology;
+  }
 
-    public void setTopology(final SessionTopology topology) {
-        this.topology = topology;
-    }
+  public void setTopology(final SessionTopology topology) {
+    this.topology = topology;
+  }
 }

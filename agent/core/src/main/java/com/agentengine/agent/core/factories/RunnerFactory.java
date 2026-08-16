@@ -38,108 +38,120 @@ import org.apache.pekko.actor.typed.ActorRef;
 @Singleton
 public class RunnerFactory {
 
-    private final AgentService agentService;
-    private final AgentProvider agentProvider;
-    private final ContextManagerProvider contextManagerProvider;
-    private final GuardrailPolicyFactory guardrailPolicyFactory;
-    private final SessionService sessionService;
-    private final SessionHistoryServiceImpl historyService;
-    private final CloudStorageArtifactService artifactService;
-    private final CloudStorageService cloudStorageService;
-    private final KnowledgeService knowledgeService;
-    private final MemoryService memoryService;
+  private final AgentService agentService;
+  private final AgentProvider agentProvider;
+  private final ContextManagerProvider contextManagerProvider;
+  private final GuardrailPolicyFactory guardrailPolicyFactory;
+  private final SessionService sessionService;
+  private final SessionHistoryServiceImpl historyService;
+  private final CloudStorageArtifactService artifactService;
+  private final CloudStorageService cloudStorageService;
+  private final KnowledgeService knowledgeService;
+  private final MemoryService memoryService;
 
-    public RunnerFactory(
-            AgentService agentService,
-            AgentProvider agentProvider,
-            ContextManagerProvider contextManagerProvider,
-            GuardrailPolicyFactory guardrailPolicyFactory,
-            SessionService sessionService,
-            final SessionHistoryServiceImpl historyService,
-            final CloudStorageArtifactService artifactService,
-            final CloudStorageService cloudStorageService,
-            final KnowledgeService knowledgeService,
-            final MemoryService memoryService) {
-        this.agentService = agentService;
-        this.agentProvider = agentProvider;
-        this.contextManagerProvider = contextManagerProvider;
-        this.guardrailPolicyFactory = guardrailPolicyFactory;
-        this.sessionService = sessionService;
-        this.historyService = historyService;
-        this.artifactService = artifactService;
-        this.cloudStorageService = cloudStorageService;
-        this.knowledgeService = knowledgeService;
-        this.memoryService = memoryService;
+  public RunnerFactory(
+      AgentService agentService,
+      AgentProvider agentProvider,
+      ContextManagerProvider contextManagerProvider,
+      GuardrailPolicyFactory guardrailPolicyFactory,
+      SessionService sessionService,
+      final SessionHistoryServiceImpl historyService,
+      final CloudStorageArtifactService artifactService,
+      final CloudStorageService cloudStorageService,
+      final KnowledgeService knowledgeService,
+      final MemoryService memoryService) {
+    this.agentService = agentService;
+    this.agentProvider = agentProvider;
+    this.contextManagerProvider = contextManagerProvider;
+    this.guardrailPolicyFactory = guardrailPolicyFactory;
+    this.sessionService = sessionService;
+    this.historyService = historyService;
+    this.artifactService = artifactService;
+    this.cloudStorageService = cloudStorageService;
+    this.knowledgeService = knowledgeService;
+    this.memoryService = memoryService;
+  }
+
+  public SessionRunner buildRunner(
+      final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
+    final BaseAgentConfig config = agentService.getAgent(agentId);
+    final Agent agent = agentProvider.create(config);
+    final App app =
+        App.builder()
+            .plugins(buildPlugins(agent))
+            .rootAgent(agent)
+            .name(agentId)
+            .resumabilityConfig(new ResumabilityConfig(config.getRuntime().isResumable()))
+            .build();
+    final InMemorySessionService inMemorySessionService =
+        buildInMemorySessionService(agentId, sessionId);
+    final Runner runner =
+        Runner.builder()
+            .app(app)
+            .artifactService(artifactService)
+            .sessionService(inMemorySessionService)
+            .memoryService(memoryService)
+            .build();
+    return new SessionRunner(
+        sessionId, actor, agent, runner, cloudStorageService, knowledgeService);
+  }
+
+  private InMemorySessionService buildInMemorySessionService(
+      final String agentId, final String sessionId) {
+    final InMemorySessionService inMemorySessionService = new InMemorySessionService();
+    final AgentSession agentSession = sessionService.getSession(sessionId, false);
+    final Session persistedSession =
+        SessionUtils.toSession(agentSession, historyService.getEvents(sessionId));
+
+    final ConcurrentHashMap<String, Object> initialState =
+        persistedSession == null
+            ? new ConcurrentHashMap<>()
+            : new ConcurrentHashMap<>(
+                persistedSession.state() == null ? Map.of() : persistedSession.state());
+    final Session session =
+        inMemorySessionService
+            .createSession(agentId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
+            .blockingGet();
+
+    if (persistedSession != null) {
+
+      for (final var event : CollectionUtils.nullSafeList(persistedSession.events())) {
+        inMemorySessionService.appendEvent(session, event).blockingGet();
+      }
     }
+    return inMemorySessionService;
+  }
 
-    public SessionRunner buildRunner(
-            final String agentId, final String sessionId, final ActorRef<SessionCommand> actor) {
-        final BaseAgentConfig config = agentService.getAgent(agentId);
-        final Agent agent = agentProvider.create(config);
-        final App app = App.builder()
-                .plugins(buildPlugins(agent))
-                .rootAgent(agent)
-                .name(agentId)
-                .resumabilityConfig(new ResumabilityConfig(config.getRuntime().isResumable()))
-                .build();
-        final InMemorySessionService inMemorySessionService = buildInMemorySessionService(agentId, sessionId);
-        final Runner runner = Runner.builder()
-                .app(app)
-                .artifactService(artifactService)
-                .sessionService(inMemorySessionService)
-                .memoryService(memoryService)
-                .build();
-        return new SessionRunner(sessionId, actor, agent, runner, cloudStorageService, knowledgeService);
-    }
+  private List<BasePlugin> buildPlugins(final Agent rootAgent) {
+    final Queue<Agent> queue = new ArrayDeque<>();
+    queue.add(rootAgent);
+    final Set<String> visited = new HashSet<>();
+    final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
+    final Map<String, ContextManager> contextManagers = new LinkedHashMap<>();
 
-    private InMemorySessionService buildInMemorySessionService(final String agentId, final String sessionId) {
-        final InMemorySessionService inMemorySessionService = new InMemorySessionService();
-        final AgentSession agentSession = sessionService.getSession(sessionId, false);
-        final Session persistedSession = SessionUtils.toSession(agentSession, historyService.getEvents(sessionId));
-
-        final ConcurrentHashMap<String, Object> initialState = persistedSession == null
-                ? new ConcurrentHashMap<>()
-                : new ConcurrentHashMap<>(persistedSession.state() == null ? Map.of() : persistedSession.state());
-        final Session session = inMemorySessionService
-                .createSession(agentId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
-                .blockingGet();
-
-        if (persistedSession != null) {
-
-            for (final var event : CollectionUtils.nullSafeList(persistedSession.events())) {
-                inMemorySessionService.appendEvent(session, event).blockingGet();
-            }
+    while (!queue.isEmpty()) {
+      final Agent agent = queue.poll();
+      if (!visited.add(agent.name())) {
+        continue;
+      }
+      contextManagers.put(agent.name(), contextManagerProvider.create(agent.getAgentConfig()));
+      final GuardrailPolicyFactory.GuardrailPolicy policy =
+          guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
+      if (policy.enabled()) {
+        policies.put(agent.name(), policy);
+      }
+      for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
+        if (subAgent instanceof Agent nestedAgent) {
+          queue.add(nestedAgent);
         }
-        return inMemorySessionService;
+      }
     }
 
-    private List<BasePlugin> buildPlugins(final Agent rootAgent) {
-        final Queue<Agent> queue = new ArrayDeque<>();
-        queue.add(rootAgent);
-        final Set<String> visited = new HashSet<>();
-        final Map<String, GuardrailPolicyFactory.GuardrailPolicy> policies = new LinkedHashMap<>();
-        final Map<String, ContextManager> contextManagers = new LinkedHashMap<>();
-
-        while (!queue.isEmpty()) {
-            final Agent agent = queue.poll();
-            if (!visited.add(agent.name())) {
-                continue;
-            }
-            contextManagers.put(agent.name(), contextManagerProvider.create(agent.getAgentConfig()));
-            final GuardrailPolicyFactory.GuardrailPolicy policy =
-                    guardrailPolicyFactory.build(agent.getAgentConfig().getGuardrails());
-            if (policy.enabled()) {
-                policies.put(agent.name(), policy);
-            }
-            for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
-                if (subAgent instanceof Agent nestedAgent) {
-                    queue.add(nestedAgent);
-                }
-            }
-        }
-
-        final List<BasePlugin> plugins = List.of(
-                new GuardrailPlugin(policies), new ContextManagementPlugin(contextManagers), new LoggingPlugin());
-        return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
-    }
+    final List<BasePlugin> plugins =
+        List.of(
+            new GuardrailPlugin(policies),
+            new ContextManagementPlugin(contextManagers),
+            new LoggingPlugin());
+    return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
+  }
 }

@@ -4,9 +4,9 @@ import com.agentengine.knowledge.api.beans.Knowledge;
 
 public interface KnowledgeIndexer {
 
-    boolean canIndex(Knowledge knowledge);
+  boolean canIndex(Knowledge knowledge);
 
-    int index(Knowledge knowledge);
+  int index(Knowledge knowledge);
 
-    int priority();
+  int priority();
 }

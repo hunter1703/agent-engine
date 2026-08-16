@@ -10,8 +10,9 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class SessionRepository extends AbstractMongoRepository<AgentSession> {
-    @Inject
-    public SessionRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-        super(mongoClientFactory, AssetClass.AGENT_SESSION, AgentSession.class, validationService);
-    }
+  @Inject
+  public SessionRepository(
+      final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+    super(mongoClientFactory, AssetClass.AGENT_SESSION, AgentSession.class, validationService);
+  }
 }

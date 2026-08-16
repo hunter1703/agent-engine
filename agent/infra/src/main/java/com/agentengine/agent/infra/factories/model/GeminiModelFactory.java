@@ -8,16 +8,13 @@ import jakarta.inject.Singleton;
 @Singleton
 public class GeminiModelFactory extends DelegatingModelFactory<Gemini> {
 
-    @Override
-    public String type() {
-        return ModelConfig.Provider.GEMINI.name();
-    }
+  @Override
+  public String type() {
+    return ModelConfig.Provider.GEMINI.name();
+  }
 
-    @Override
-    protected Gemini buildDelegate(final ChatModelConfig chatConfig) {
-        return Gemini.builder()
-                .modelName(chatConfig.getModel())
-                .apiKey(chatConfig.getApiKey())
-                .build();
-    }
+  @Override
+  protected Gemini buildDelegate(final ChatModelConfig chatConfig) {
+    return Gemini.builder().modelName(chatConfig.getModel()).apiKey(chatConfig.getApiKey()).build();
+  }
 }

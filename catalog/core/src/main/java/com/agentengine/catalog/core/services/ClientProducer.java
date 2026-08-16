@@ -11,17 +11,17 @@ import jakarta.inject.Singleton;
 @Singleton
 public class ClientProducer {
 
-    @Produces
-    @Singleton
-    @DefaultBean
-    public RuntimeService runtimeService(MicroServiceClientProvider provider) {
-        return provider.get(RuntimeService.class);
-    }
+  @Produces
+  @Singleton
+  @DefaultBean
+  public RuntimeService runtimeService(MicroServiceClientProvider provider) {
+    return provider.get(RuntimeService.class);
+  }
 
-    @Produces
-    @Singleton
-    @DefaultBean
-    public SessionHistoryService sessionHistory(MicroServiceClientProvider provider) {
-        return provider.get(SessionHistoryService.class);
-    }
+  @Produces
+  @Singleton
+  @DefaultBean
+  public SessionHistoryService sessionHistory(MicroServiceClientProvider provider) {
+    return provider.get(SessionHistoryService.class);
+  }
 }

@@ -21,77 +21,89 @@ import java.util.Objects;
 
 @Singleton
 public class SessionTitleGenerator {
-    private static final Content INSTRUCTIONS = Content.fromParts(
-            Part.fromText("INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
-    private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
-    private final SessionHistoryService sessionHistoryService;
-    private final Cache<String, String> titleGeneratorModelCache;
-    private final ModelProvider modelProvider;
+  private static final Content INSTRUCTIONS =
+      Content.fromParts(
+          Part.fromText(
+              "INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
+  private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
+  private final SessionHistoryService sessionHistoryService;
+  private final Cache<String, String> titleGeneratorModelCache;
+  private final ModelProvider modelProvider;
 
-    public SessionTitleGenerator(
-            final SessionHistoryService sessionHistoryService,
-            final InfraConfigService infraConfigService,
-            final ModelProvider modelProvider) {
-        this.sessionHistoryService = sessionHistoryService;
-        this.titleGeneratorModelCache = new Cache<>(CacheBuilder.newBuilder().maximumSize(1000), _ -> {
-            final DefaultModelsConfig defaultModelConfig = infraConfigService.findById(
-                    DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-            if (defaultModelConfig == null) {
+  public SessionTitleGenerator(
+      final SessionHistoryService sessionHistoryService,
+      final InfraConfigService infraConfigService,
+      final ModelProvider modelProvider) {
+    this.sessionHistoryService = sessionHistoryService;
+    this.titleGeneratorModelCache =
+        new Cache<>(
+            CacheBuilder.newBuilder().maximumSize(1000),
+            _ -> {
+              final DefaultModelsConfig defaultModelConfig =
+                  infraConfigService.findById(
+                      DefaultModelsConfig.CATEGORY,
+                      DefaultModelsConfig.TYPE,
+                      DefaultModelsConfig.CONFIG_ID);
+              if (defaultModelConfig == null) {
                 throw new IllegalStateException(
-                        "Default models config not found. Ensure infra configs are seeded before starting the runtime.");
-            }
-            return defaultModelConfig.getTitleModelId();
-        });
-        this.modelProvider = modelProvider;
+                    "Default models config not found. Ensure infra configs are seeded before starting the runtime.");
+              }
+              return defaultModelConfig.getTitleModelId();
+            });
+    this.modelProvider = modelProvider;
+  }
+
+  public String generateTitle(final String sessionId) {
+    final List<SessionEvent> sessionEvents =
+        CollectionUtils.nullSafeList(sessionHistoryService.getSessionEvents(sessionId));
+    if (CollectionUtils.isEmpty(sessionEvents)) {
+      return null;
+    }
+    final List<SessionEvent> eventsToGenerateTitleOn = new ArrayList<>();
+
+    int numRunsFound = 0;
+    // skips partial runs; collects text events across the latest complete runs
+    for (final SessionEvent event : sessionEvents.reversed()) {
+      if (event.getFinishReason() != null) {
+        if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
+          break;
+        } else {
+          numRunsFound++;
+        }
+      }
+      final Content content = event.getContent();
+      final String text = content == null ? null : content.text();
+      if (StringUtils.isBlank(text)) {
+        continue;
+      }
+      eventsToGenerateTitleOn.add(event);
     }
 
-    public String generateTitle(final String sessionId) {
-        final List<SessionEvent> sessionEvents =
-                CollectionUtils.nullSafeList(sessionHistoryService.getSessionEvents(sessionId));
-        if (CollectionUtils.isEmpty(sessionEvents)) {
-            return null;
-        }
-        final List<SessionEvent> eventsToGenerateTitleOn = new ArrayList<>();
-
-        int numRunsFound = 0;
-        // skips partial runs; collects text events across the latest complete runs
-        for (final SessionEvent event : sessionEvents.reversed()) {
-            if (event.getFinishReason() != null) {
-                if (numRunsFound >= MAX_RUNS_TO_GENERATE_TITLE_ON) {
-                    break;
-                } else {
-                    numRunsFound++;
-                }
-            }
-            final Content content = event.getContent();
-            final String text = content == null ? null : content.text();
-            if (StringUtils.isBlank(text)) {
-                continue;
-            }
-            eventsToGenerateTitleOn.add(event);
-        }
-
-        if (eventsToGenerateTitleOn.isEmpty()) {
-            return null;
-        }
-        final StringBuilder sb = new StringBuilder();
-
-        for (final SessionEvent event : eventsToGenerateTitleOn.reversed()) {
-            final String author = Objects.equals(Constants.AUTHOR_USER, event.getAuthor()) ? "USER" : "ASSISTANT";
-            final Content content = event.getContent();
-            sb.append(author).append(": ").append(content.text()).append("\n");
-        }
-
-        final Content content = Content.fromParts(Part.fromText(sb.toString()));
-        final LlmRequest request =
-                LlmRequest.builder().contents(List.of(INSTRUCTIONS, content)).build();
-        final LlmResponse response = modelProvider
-                .invokeAcquiring(titleGeneratorModelCache.get("model"), model -> model.generateContent(request, false))
-                .blockingSingle();
-        final Content responseContent = response.content().orElse(null);
-        if (responseContent == null) {
-            return null;
-        }
-        return responseContent.text();
+    if (eventsToGenerateTitleOn.isEmpty()) {
+      return null;
     }
+    final StringBuilder sb = new StringBuilder();
+
+    for (final SessionEvent event : eventsToGenerateTitleOn.reversed()) {
+      final String author =
+          Objects.equals(Constants.AUTHOR_USER, event.getAuthor()) ? "USER" : "ASSISTANT";
+      final Content content = event.getContent();
+      sb.append(author).append(": ").append(content.text()).append("\n");
+    }
+
+    final Content content = Content.fromParts(Part.fromText(sb.toString()));
+    final LlmRequest request =
+        LlmRequest.builder().contents(List.of(INSTRUCTIONS, content)).build();
+    final LlmResponse response =
+        modelProvider
+            .invokeAcquiring(
+                titleGeneratorModelCache.get("model"),
+                model -> model.generateContent(request, false))
+            .blockingSingle();
+    final Content responseContent = response.content().orElse(null);
+    if (responseContent == null) {
+      return null;
+    }
+    return responseContent.text();
+  }
 }

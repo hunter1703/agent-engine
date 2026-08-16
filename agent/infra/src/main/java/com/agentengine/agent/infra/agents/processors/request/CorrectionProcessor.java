@@ -42,34 +42,35 @@ import org.slf4j.LoggerFactory;
  * </ul>
  */
 public final class CorrectionProcessor implements RequestProcessor {
-    public static final CorrectionProcessor INSTANCE = new CorrectionProcessor();
+  public static final CorrectionProcessor INSTANCE = new CorrectionProcessor();
 
-    private static final Logger LOG = LoggerFactory.getLogger(CorrectionProcessor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CorrectionProcessor.class);
 
-    private CorrectionProcessor() {}
+  private CorrectionProcessor() {}
 
-    @Override
-    public Single<RequestProcessingResult> processRequest(final InvocationContext context, final LlmRequest request) {
-        final RunState runState = RunUtils.getOrInitState(context);
-        final List<Violation> violations = runState.violations();
+  @Override
+  public Single<RequestProcessingResult> processRequest(
+      final InvocationContext context, final LlmRequest request) {
+    final RunState runState = RunUtils.getOrInitState(context);
+    final List<Violation> violations = runState.violations();
 
-        if (CollectionUtils.isEmpty(violations)) {
-            return Single.just(RequestProcessingResult.create(request, List.of()));
-        }
-
-        LOG.info("Gathered {} violation(s) for correction", violations.size());
-
-        final List<Event> correctiveEvents = new ArrayList<>();
-        final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
-
-        for (final Violation violation : violations) {
-            LOG.debug("Violation: code={} message={}", violation.code(), violation.message());
-            final Event correctiveEvent = EventUtils.buildCorrectiveEvent(context, violation);
-            correctiveEvent.content().ifPresent(contents::add);
-            correctiveEvents.add(correctiveEvent);
-        }
-        runState.clearViolations();
-        final LlmRequest updatedRequest = request.toBuilder().contents(contents).build();
-        return Single.just(RequestProcessingResult.create(updatedRequest, correctiveEvents));
+    if (CollectionUtils.isEmpty(violations)) {
+      return Single.just(RequestProcessingResult.create(request, List.of()));
     }
+
+    LOG.info("Gathered {} violation(s) for correction", violations.size());
+
+    final List<Event> correctiveEvents = new ArrayList<>();
+    final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
+
+    for (final Violation violation : violations) {
+      LOG.debug("Violation: code={} message={}", violation.code(), violation.message());
+      final Event correctiveEvent = EventUtils.buildCorrectiveEvent(context, violation);
+      correctiveEvent.content().ifPresent(contents::add);
+      correctiveEvents.add(correctiveEvent);
+    }
+    runState.clearViolations();
+    final LlmRequest updatedRequest = request.toBuilder().contents(contents).build();
+    return Single.just(RequestProcessingResult.create(updatedRequest, correctiveEvents));
+  }
 }

@@ -18,55 +18,56 @@ import java.util.stream.Collectors;
 @Singleton
 public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
-    private final ToolCatalog toolCatalog;
+  private final ToolCatalog toolCatalog;
 
-    @Inject
-    public ToolAssetHandler(ToolCatalog toolCatalog) {
-        this.toolCatalog = toolCatalog;
+  @Inject
+  public ToolAssetHandler(ToolCatalog toolCatalog) {
+    this.toolCatalog = toolCatalog;
+  }
+
+  @Override
+  public String getAssetType() {
+    return AssetClass.TOOL;
+  }
+
+  @Override
+  public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
+    List<ToolDescriptor> tools = toolCatalog.getTools();
+
+    Page page =
+        request.getQuery() != null && request.getQuery().getPage() != null
+            ? request.getQuery().getPage()
+            : new Page(0, 100);
+
+    final long total = tools.size();
+    final int start = (int) Math.min(page.getOffset(), total);
+    final int end = (int) Math.min(start + page.getLimit(), total);
+    final List<ToolDescriptor> pagedTools = tools.subList(start, end);
+
+    return PaginatedResult.create(pagedTools, page, total);
+  }
+
+  @Override
+  public Map<String, ToolDescriptor> getAssetsByIds(AssetRequest request) {
+    if (request.getKeys() == null || request.getKeys().isEmpty()) {
+      return Map.of();
     }
+    List<ToolDescriptor> tools = toolCatalog.getTools();
+    final Map<String, ToolDescriptor> nameVsCatalog =
+        CollectionUtils.transformToMap(tools, ToolDescriptor::name, Function.identity());
+    return request.getKeys().stream()
+        .map(nameVsCatalog::get)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
+  }
 
-    @Override
-    public String getAssetType() {
-        return AssetClass.TOOL;
-    }
+  @Override
+  protected String getId(ToolDescriptor asset) {
+    return asset.name();
+  }
 
-    @Override
-    public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
-        List<ToolDescriptor> tools = toolCatalog.getTools();
-
-        Page page = request.getQuery() != null && request.getQuery().getPage() != null
-                ? request.getQuery().getPage()
-                : new Page(0, 100);
-
-        final long total = tools.size();
-        final int start = (int) Math.min(page.getOffset(), total);
-        final int end = (int) Math.min(start + page.getLimit(), total);
-        final List<ToolDescriptor> pagedTools = tools.subList(start, end);
-
-        return PaginatedResult.create(pagedTools, page, total);
-    }
-
-    @Override
-    public Map<String, ToolDescriptor> getAssetsByIds(AssetRequest request) {
-        if (request.getKeys() == null || request.getKeys().isEmpty()) {
-            return Map.of();
-        }
-        List<ToolDescriptor> tools = toolCatalog.getTools();
-        final Map<String, ToolDescriptor> nameVsCatalog =
-                CollectionUtils.transformToMap(tools, ToolDescriptor::name, Function.identity());
-        return request.getKeys().stream()
-                .map(nameVsCatalog::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
-    }
-
-    @Override
-    protected String getId(ToolDescriptor asset) {
-        return asset.name();
-    }
-
-    @Override
-    protected String getName(ToolDescriptor asset) {
-        return asset.name();
-    }
+  @Override
+  protected String getName(ToolDescriptor asset) {
+    return asset.name();
+  }
 }

@@ -11,36 +11,37 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
  */
 @BsonDiscriminator(value = "com.agentengine.util.ms.client.MicroServiceInfraConfig")
 public class MicroServiceInfraConfig extends InfraConfig {
-    public static final String TYPE = "MICROSERVICE_SERVER";
-    public static final String CATEGORY = "MICROSERVICE";
-    /** Max inbound message size for gRPC: 100 MB. Used by both client and server. */
-    public static final int MAX_INBOUND_MESSAGE_SIZE = 100 * 1024 * 1024;
+  public static final String TYPE = "MICROSERVICE_SERVER";
+  public static final String CATEGORY = "MICROSERVICE";
 
-    private String serverId;
-    private String host;
-    private int port;
+  /** Max inbound message size for gRPC: 100 MB. Used by both client and server. */
+  public static final int MAX_INBOUND_MESSAGE_SIZE = 100 * 1024 * 1024;
 
-    public String getServerId() {
-        return serverId;
-    }
+  private String serverId;
+  private String host;
+  private int port;
 
-    public void setServerId(final String serverId) {
-        this.serverId = serverId;
-    }
+  public String getServerId() {
+    return serverId;
+  }
 
-    public String getHost() {
-        return host;
-    }
+  public void setServerId(final String serverId) {
+    this.serverId = serverId;
+  }
 
-    public void setHost(final String host) {
-        this.host = host;
-    }
+  public String getHost() {
+    return host;
+  }
 
-    public int getPort() {
-        return port;
-    }
+  public void setHost(final String host) {
+    this.host = host;
+  }
 
-    public void setPort(final int port) {
-        this.port = port;
-    }
+  public int getPort() {
+    return port;
+  }
+
+  public void setPort(final int port) {
+    this.port = port;
+  }
 }

@@ -9,9 +9,11 @@ import org.junit.jupiter.api.Test;
 
 class JsonUtilsTest {
 
-    @Test
-    void shouldIgnoreUnknownPropertiesByDefault() {
-        final BasePayload payload = JsonUtils.fromJson("""
+  @Test
+  void shouldIgnoreUnknownPropertiesByDefault() {
+    final BasePayload payload =
+        JsonUtils.fromJson(
+            """
         {
           "type": "ORCHESTRATOR",
           "parallelConfig": {
@@ -19,17 +21,20 @@ class JsonUtilsTest {
             "quorum": 3
           }
         }
-        """, BasePayload.class);
+        """,
+            BasePayload.class);
 
-        assertThat(payload).isInstanceOf(OrchestratorPayload.class);
-        final OrchestratorPayload orchestrator = (OrchestratorPayload) payload;
-        assertThat(orchestrator.getParallel().getStoppingPolicy()).isEqualTo("ALL_COMPLETE");
-        assertThat(orchestrator.getParallel().getQuorum()).isEqualTo(1);
-    }
+    assertThat(payload).isInstanceOf(OrchestratorPayload.class);
+    final OrchestratorPayload orchestrator = (OrchestratorPayload) payload;
+    assertThat(orchestrator.getParallel().getStoppingPolicy()).isEqualTo("ALL_COMPLETE");
+    assertThat(orchestrator.getParallel().getQuorum()).isEqualTo(1);
+  }
 
-    @Test
-    void shouldDeserializeDeclaredProperties() {
-        final BasePayload payload = JsonUtils.fromJson("""
+  @Test
+  void shouldDeserializeDeclaredProperties() {
+    final BasePayload payload =
+        JsonUtils.fromJson(
+            """
         {
           "type": "ORCHESTRATOR",
           "parallel": {
@@ -37,63 +42,64 @@ class JsonUtilsTest {
             "quorum": 2
           }
         }
-        """, BasePayload.class);
+        """,
+            BasePayload.class);
 
-        assertThat(payload).isInstanceOf(OrchestratorPayload.class);
-        final OrchestratorPayload orchestrator = (OrchestratorPayload) payload;
-        assertThat(orchestrator.getParallel().getStoppingPolicy()).isEqualTo("QUORUM");
-        assertThat(orchestrator.getParallel().getQuorum()).isEqualTo(2);
+    assertThat(payload).isInstanceOf(OrchestratorPayload.class);
+    final OrchestratorPayload orchestrator = (OrchestratorPayload) payload;
+    assertThat(orchestrator.getParallel().getStoppingPolicy()).isEqualTo("QUORUM");
+    assertThat(orchestrator.getParallel().getQuorum()).isEqualTo(2);
+  }
+
+  @JsonTypeInfo(
+      use = JsonTypeInfo.Id.NAME,
+      include = JsonTypeInfo.As.EXISTING_PROPERTY,
+      property = "type",
+      visible = true)
+  @JsonSubTypes(@JsonSubTypes.Type(value = OrchestratorPayload.class, name = "ORCHESTRATOR"))
+  private abstract static class BasePayload {
+    private String type;
+
+    public String getType() {
+      return type;
     }
 
-    @JsonTypeInfo(
-            use = JsonTypeInfo.Id.NAME,
-            include = JsonTypeInfo.As.EXISTING_PROPERTY,
-            property = "type",
-            visible = true)
-    @JsonSubTypes(@JsonSubTypes.Type(value = OrchestratorPayload.class, name = "ORCHESTRATOR"))
-    private abstract static class BasePayload {
-        private String type;
+    public void setType(final String type) {
+      this.type = type;
+    }
+  }
 
-        public String getType() {
-            return type;
-        }
+  @JsonTypeName("ORCHESTRATOR")
+  private static final class OrchestratorPayload extends BasePayload {
+    private ParallelPayload parallel = new ParallelPayload();
 
-        public void setType(final String type) {
-            this.type = type;
-        }
+    public ParallelPayload getParallel() {
+      return parallel;
     }
 
-    @JsonTypeName("ORCHESTRATOR")
-    private static final class OrchestratorPayload extends BasePayload {
-        private ParallelPayload parallel = new ParallelPayload();
+    public void setParallel(final ParallelPayload parallel) {
+      this.parallel = parallel == null ? new ParallelPayload() : parallel;
+    }
+  }
 
-        public ParallelPayload getParallel() {
-            return parallel;
-        }
+  private static final class ParallelPayload {
+    private String stoppingPolicy = "ALL_COMPLETE";
+    private int quorum = 1;
 
-        public void setParallel(final ParallelPayload parallel) {
-            this.parallel = parallel == null ? new ParallelPayload() : parallel;
-        }
+    public String getStoppingPolicy() {
+      return stoppingPolicy;
     }
 
-    private static final class ParallelPayload {
-        private String stoppingPolicy = "ALL_COMPLETE";
-        private int quorum = 1;
-
-        public String getStoppingPolicy() {
-            return stoppingPolicy;
-        }
-
-        public void setStoppingPolicy(final String stoppingPolicy) {
-            this.stoppingPolicy = stoppingPolicy;
-        }
-
-        public int getQuorum() {
-            return quorum;
-        }
-
-        public void setQuorum(final int quorum) {
-            this.quorum = quorum;
-        }
+    public void setStoppingPolicy(final String stoppingPolicy) {
+      this.stoppingPolicy = stoppingPolicy;
     }
+
+    public int getQuorum() {
+      return quorum;
+    }
+
+    public void setQuorum(final int quorum) {
+      this.quorum = quorum;
+    }
+  }
 }

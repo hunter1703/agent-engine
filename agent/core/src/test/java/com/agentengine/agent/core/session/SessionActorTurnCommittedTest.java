@@ -11,27 +11,30 @@ import org.junit.jupiter.api.Test;
 
 class SessionActorTurnCommittedTest {
 
-    @Test
-    void shouldKeepSessionPausedWhenPausedTurnIsCommittedWithoutFinalAnswer() {
-        final SessionActorState pausedState = SessionActorState.initial().selfPaused("confirmation-1");
-        final Event event = Event.builder().id("event-1").build();
+  @Test
+  void shouldKeepSessionPausedWhenPausedTurnIsCommittedWithoutFinalAnswer() {
+    final SessionActorState pausedState = SessionActorState.initial().selfPaused("confirmation-1");
+    final Event event = Event.builder().id("event-1").build();
 
-        final SessionActorState newState =
-                SessionActor.applyCommittedTurn(pausedState, new TurnCommittedFact(List.of(event), null, null));
+    final SessionActorState newState =
+        SessionActor.applyCommittedTurn(
+            pausedState, new TurnCommittedFact(List.of(event), null, null));
 
-        assertThat(newState.sessionState()).isEqualTo(SessionState.PAUSED);
-        assertThat(newState.lastCommittedEvents()).isEqualTo("event-1");
-    }
+    assertThat(newState.sessionState()).isEqualTo(SessionState.PAUSED);
+    assertThat(newState.lastCommittedEvents()).isEqualTo("event-1");
+  }
 
-    @Test
-    void shouldReturnRunningWhenActiveTurnIsCommittedWithoutFinalAnswer() {
-        final SessionActorState runningState = SessionActorState.initial().withSessionState(SessionState.RUNNING);
-        final Event event = Event.builder().id("event-2").build();
+  @Test
+  void shouldReturnRunningWhenActiveTurnIsCommittedWithoutFinalAnswer() {
+    final SessionActorState runningState =
+        SessionActorState.initial().withSessionState(SessionState.RUNNING);
+    final Event event = Event.builder().id("event-2").build();
 
-        final SessionActorState newState =
-                SessionActor.applyCommittedTurn(runningState, new TurnCommittedFact(List.of(event), null, null));
+    final SessionActorState newState =
+        SessionActor.applyCommittedTurn(
+            runningState, new TurnCommittedFact(List.of(event), null, null));
 
-        assertThat(newState.sessionState()).isEqualTo(SessionState.RUNNING);
-        assertThat(newState.lastCommittedEvents()).isEqualTo("event-2");
-    }
+    assertThat(newState.sessionState()).isEqualTo(SessionState.RUNNING);
+    assertThat(newState.lastCommittedEvents()).isEqualTo("event-2");
+  }
 }

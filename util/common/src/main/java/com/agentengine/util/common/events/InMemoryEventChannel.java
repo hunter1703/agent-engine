@@ -20,119 +20,123 @@ import org.reactivestreams.Publisher;
  * <p>Per-scope linearized subscribe/publish/cancel with per-scope monotonic sequences.
  */
 public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, Event> {
-    private static final int SUBSCRIBER_BUFFER_SIZE = 256;
+  private static final int SUBSCRIBER_BUFFER_SIZE = 256;
 
-    private final ConcurrentMap<Scope, ScopeState<Event>> scopes = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Scope, ScopeState<Event>> scopes = new ConcurrentHashMap<>();
 
-    @Override
-    public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
-        return channel(scope).subscribe();
+  @Override
+  public CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(final Scope scope) {
+    return channel(scope).subscribe();
+  }
+
+  @Override
+  public CompletionStage<Long> publish(final Scope scope, final Event event) {
+    return channel(scope).publish(event);
+  }
+
+  private ScopeState<Event> channel(final Scope scope) {
+    return scopes.computeIfAbsent(scope, ignored -> new ScopeState<>());
+  }
+
+  private static final class ScopeState<E> {
+    private long nextSequence = 1L;
+    private final Map<String, SubscriptionState<E>> subscriptions = new LinkedHashMap<>();
+    private final FlowableProcessor<Runnable> commands =
+        PublishProcessor.<Runnable>create().toSerialized();
+
+    private CompletionStage<EventSubscription<SequencedEvent<E>>> subscribe() {
+      return submit(this::createSubscription);
     }
 
-    @Override
-    public CompletionStage<Long> publish(final Scope scope, final Event event) {
-        return channel(scope).publish(event);
+    private CompletionStage<Long> publish(final E event) {
+      return submit(() -> doPublish(event));
     }
 
-    private ScopeState<Event> channel(final Scope scope) {
-        return scopes.computeIfAbsent(scope, ignored -> new ScopeState<>());
+    private CompletionStage<Void> cancel(final String subscriptionId) {
+      return submit(
+          () -> {
+            doCancel(subscriptionId);
+            return null;
+          });
     }
 
-    private static final class ScopeState<E> {
-        private long nextSequence = 1L;
-        private final Map<String, SubscriptionState<E>> subscriptions = new LinkedHashMap<>();
-        private final FlowableProcessor<Runnable> commands =
-                PublishProcessor.<Runnable>create().toSerialized();
+    private EventSubscription<SequencedEvent<E>> createSubscription() {
+      final String subscriptionId = UUID.randomUUID().toString();
+      final FlowableProcessor<SequencedEvent<E>> processor =
+          PublishProcessor.<SequencedEvent<E>>create().toSerialized();
+      final Publisher<SequencedEvent<E>> publisher =
+          processor
+              .onBackpressureBuffer(
+                  SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
+              .doFinally(() -> cancel(subscriptionId));
 
-        private CompletionStage<EventSubscription<SequencedEvent<E>>> subscribe() {
-            return submit(this::createSubscription);
+      subscriptions.put(subscriptionId, new SubscriptionState<>(processor));
+      return new EventSubscription<>(subscriptionId, publisher);
+    }
+
+    private long doPublish(final E event) {
+      final long sequence = nextSequence++;
+      final SequencedEvent<E> sequencedEvent = new SequencedEvent<>(sequence, event);
+      final Iterator<Map.Entry<String, SubscriptionState<E>>> iterator =
+          subscriptions.entrySet().iterator();
+      while (iterator.hasNext()) {
+        final Map.Entry<String, SubscriptionState<E>> entry = iterator.next();
+        final SubscriptionState<E> subscriber = entry.getValue();
+        if (!subscriber.active()) {
+          iterator.remove();
+          continue;
         }
-
-        private CompletionStage<Long> publish(final E event) {
-            return submit(() -> doPublish(event));
+        try {
+          subscriber.emit(sequencedEvent);
+        } catch (final Throwable throwable) {
+          iterator.remove();
+          subscriber.fail(throwable);
         }
+      }
+      return sequence;
+    }
 
-        private CompletionStage<Void> cancel(final String subscriptionId) {
-            return submit(() -> {
-                doCancel(subscriptionId);
-                return null;
-            });
-        }
+    private void doCancel(final String subscriptionId) {
+      final SubscriptionState<E> removed = subscriptions.remove(subscriptionId);
+      if (removed != null) {
+        removed.complete();
+      }
+    }
 
-        private EventSubscription<SequencedEvent<E>> createSubscription() {
-            final String subscriptionId = UUID.randomUUID().toString();
-            final FlowableProcessor<SequencedEvent<E>> processor =
-                    PublishProcessor.<SequencedEvent<E>>create().toSerialized();
-            final Publisher<SequencedEvent<E>> publisher = processor
-                    .onBackpressureBuffer(SUBSCRIBER_BUFFER_SIZE, () -> {}, BackpressureOverflowStrategy.ERROR)
-                    .doFinally(() -> cancel(subscriptionId));
-
-            subscriptions.put(subscriptionId, new SubscriptionState<>(processor));
-            return new EventSubscription<>(subscriptionId, publisher);
-        }
-
-        private long doPublish(final E event) {
-            final long sequence = nextSequence++;
-            final SequencedEvent<E> sequencedEvent = new SequencedEvent<>(sequence, event);
-            final Iterator<Map.Entry<String, SubscriptionState<E>>> iterator =
-                    subscriptions.entrySet().iterator();
-            while (iterator.hasNext()) {
-                final Map.Entry<String, SubscriptionState<E>> entry = iterator.next();
-                final SubscriptionState<E> subscriber = entry.getValue();
-                if (!subscriber.active()) {
-                    iterator.remove();
-                    continue;
-                }
-                try {
-                    subscriber.emit(sequencedEvent);
-                } catch (final Throwable throwable) {
-                    iterator.remove();
-                    subscriber.fail(throwable);
-                }
+    private <T> CompletionStage<T> submit(final Supplier<T> action) {
+      final CompletableFuture<T> result = new CompletableFuture<>();
+      commands.onNext(
+          () -> {
+            try {
+              result.complete(action.get());
+            } catch (final Throwable throwable) {
+              result.completeExceptionally(throwable);
             }
-            return sequence;
-        }
+          });
+      return result;
+    }
+  }
 
-        private void doCancel(final String subscriptionId) {
-            final SubscriptionState<E> removed = subscriptions.remove(subscriptionId);
-            if (removed != null) {
-                removed.complete();
-            }
-        }
+  private record SubscriptionState<E>(FlowableProcessor<SequencedEvent<E>> processor) {
 
-        private <T> CompletionStage<T> submit(final Supplier<T> action) {
-            final CompletableFuture<T> result = new CompletableFuture<>();
-            commands.onNext(() -> {
-                try {
-                    result.complete(action.get());
-                } catch (final Throwable throwable) {
-                    result.completeExceptionally(throwable);
-                }
-            });
-            return result;
-        }
+    private boolean active() {
+      return !processor.hasComplete() && !processor.hasThrowable();
     }
 
-    private record SubscriptionState<E>(FlowableProcessor<SequencedEvent<E>> processor) {
-
-        private boolean active() {
-            return !processor.hasComplete() && !processor.hasThrowable();
-        }
-
-        private void emit(final SequencedEvent<E> event) {
-            processor.onNext(event);
-        }
-
-        private void complete() {
-            if (!processor.hasComplete() && !processor.hasThrowable()) {
-                processor.onComplete();
-            }
-        }
-
-        private void fail(final Throwable throwable) {
-            if (!processor.hasComplete() && !processor.hasThrowable()) {
-                processor.onError(throwable);
-            }
-        }
+    private void emit(final SequencedEvent<E> event) {
+      processor.onNext(event);
     }
+
+    private void complete() {
+      if (!processor.hasComplete() && !processor.hasThrowable()) {
+        processor.onComplete();
+      }
+    }
+
+    private void fail(final Throwable throwable) {
+      if (!processor.hasComplete() && !processor.hasThrowable()) {
+        processor.onError(throwable);
+      }
+    }
+  }
 }

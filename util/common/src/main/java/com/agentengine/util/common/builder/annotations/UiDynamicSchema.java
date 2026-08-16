@@ -15,18 +15,18 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiDynamicSchema {
-    /** The asset type passed to the schema resolver. */
-    String assetType();
+  /** The asset type passed to the schema resolver. */
+  String assetType();
 
-    /**
-     * JSONPath expression to resolve the asset ID from the current item context. Example: {@code
-     * "$item.toolName"} resolves to the {@code toolName} of the current list item.
-     */
-    String assetIdExpr() default "";
+  /**
+   * JSONPath expression to resolve the asset ID from the current item context. Example: {@code
+   * "$item.toolName"} resolves to the {@code toolName} of the current list item.
+   */
+  String assetIdExpr() default "";
 
-    /**
-     * JSONPath expression to resolve the context (parent entity) ID. Example: {@code "$.id"} resolves
-     * to the ID of the root entity being edited.
-     */
-    String contextIdExpr() default "";
+  /**
+   * JSONPath expression to resolve the context (parent entity) ID. Example: {@code "$.id"} resolves
+   * to the ID of the root entity being edited.
+   */
+  String contextIdExpr() default "";
 }

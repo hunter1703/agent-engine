@@ -20,42 +20,43 @@ import jakarta.ws.rs.core.Response;
 @Consumes(MediaType.APPLICATION_JSON)
 public class SchedulerRestAPI {
 
-    private final SchedulerService schedulerService;
+  private final SchedulerService schedulerService;
 
-    @Inject
-    public SchedulerRestAPI(final SchedulerService schedulerService) {
-        this.schedulerService = schedulerService;
-    }
+  @Inject
+  public SchedulerRestAPI(final SchedulerService schedulerService) {
+    this.schedulerService = schedulerService;
+  }
 
-    @POST
-    @Path("/jobs")
-    public Response schedule(final JobDefinition jobDefinition) {
-        schedulerService.schedule(jobDefinition);
-        return Response.status(Response.Status.CREATED).entity(jobDefinition).build();
-    }
+  @POST
+  @Path("/jobs")
+  public Response schedule(final JobDefinition jobDefinition) {
+    schedulerService.schedule(jobDefinition);
+    return Response.status(Response.Status.CREATED).entity(jobDefinition).build();
+  }
 
-    @PUT
-    @Path("/jobs/{jobId}")
-    public Response updateJob(@NotBlank @PathParam("jobId") final String jobId, final JobDefinition jobDefinition) {
-        jobDefinition.setId(jobId);
-        schedulerService.schedule(jobDefinition);
-        return Response.ok(jobDefinition).build();
-    }
+  @PUT
+  @Path("/jobs/{jobId}")
+  public Response updateJob(
+      @NotBlank @PathParam("jobId") final String jobId, final JobDefinition jobDefinition) {
+    jobDefinition.setId(jobId);
+    schedulerService.schedule(jobDefinition);
+    return Response.ok(jobDefinition).build();
+  }
 
-    @GET
-    @Path("/jobs/{jobId}")
-    public Response getJob(@PathParam("jobId") final String jobId) {
-        final JobDefinition jobDefinition = schedulerService.getJob(jobId);
-        if (jobDefinition == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        return Response.ok(jobDefinition).build();
+  @GET
+  @Path("/jobs/{jobId}")
+  public Response getJob(@PathParam("jobId") final String jobId) {
+    final JobDefinition jobDefinition = schedulerService.getJob(jobId);
+    if (jobDefinition == null) {
+      return Response.status(Response.Status.NOT_FOUND).build();
     }
+    return Response.ok(jobDefinition).build();
+  }
 
-    @DELETE
-    @Path("/jobs/{jobId}")
-    public Response cancelJob(@PathParam("jobId") final String jobId) {
-        schedulerService.cancelJob(jobId);
-        return Response.noContent().build();
-    }
+  @DELETE
+  @Path("/jobs/{jobId}")
+  public Response cancelJob(@PathParam("jobId") final String jobId) {
+    schedulerService.cancelJob(jobId);
+    return Response.noContent().build();
+  }
 }

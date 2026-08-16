@@ -20,47 +20,49 @@ import java.util.concurrent.CompletionStage;
  */
 public final class PekkoFaultInjector implements FaultInjector {
 
-    private final ChaosMailboxRegistry registry;
+  private final ChaosMailboxRegistry registry;
 
-    public PekkoFaultInjector(final ChaosMailboxRegistry registry) {
-        this.registry = registry;
-    }
+  public PekkoFaultInjector(final ChaosMailboxRegistry registry) {
+    this.registry = registry;
+  }
 
-    @Override
-    public CompletionStage<String> injectFault(
-            final FaultType faultType,
-            final TargetSelector target,
-            final FaultParameters parameters,
-            final BlastRadius blastRadius) {
-        final String entityId = target.entityId().orElse(ChaosMailboxRegistry.wildcardEntityId());
-        final ChaosMailboxConfig config = toMailboxConfig(faultType, parameters);
-        registry.register(entityId, config);
-        return CompletableFuture.completedFuture(entityId);
-    }
+  @Override
+  public CompletionStage<String> injectFault(
+      final FaultType faultType,
+      final TargetSelector target,
+      final FaultParameters parameters,
+      final BlastRadius blastRadius) {
+    final String entityId = target.entityId().orElse(ChaosMailboxRegistry.wildcardEntityId());
+    final ChaosMailboxConfig config = toMailboxConfig(faultType, parameters);
+    registry.register(entityId, config);
+    return CompletableFuture.completedFuture(entityId);
+  }
 
-    @Override
-    public CompletionStage<Void> removeFault(final String faultId) {
-        registry.remove(faultId);
-        return CompletableFuture.completedFuture(null);
-    }
+  @Override
+  public CompletionStage<Void> removeFault(final String faultId) {
+    registry.remove(faultId);
+    return CompletableFuture.completedFuture(null);
+  }
 
-    @Override
-    public boolean supports(final FaultType faultType) {
-        return faultType == FaultType.MESSAGE_DELAY || faultType == FaultType.MESSAGE_DROP;
-    }
+  @Override
+  public boolean supports(final FaultType faultType) {
+    return faultType == FaultType.MESSAGE_DELAY || faultType == FaultType.MESSAGE_DROP;
+  }
 
-    private static ChaosMailboxConfig toMailboxConfig(final FaultType faultType, final FaultParameters parameters) {
-        return switch (faultType) {
-            case MESSAGE_DELAY -> {
-                final MessageDelayParameters delayParameters = (MessageDelayParameters) parameters;
-                yield new ChaosMailboxConfig(
-                        0.0, Optional.of(delayParameters.delay()), delayParameters.percentage(), true);
-            }
-            case MESSAGE_DROP -> {
-                final MessageDropParameters dropParameters = (MessageDropParameters) parameters;
-                yield new ChaosMailboxConfig(dropParameters.dropPercentage(), Optional.empty(), 0.0, true);
-            }
-            default -> throw new IllegalArgumentException("PekkoFaultInjector does not support " + faultType);
-        };
-    }
+  private static ChaosMailboxConfig toMailboxConfig(
+      final FaultType faultType, final FaultParameters parameters) {
+    return switch (faultType) {
+      case MESSAGE_DELAY -> {
+        final MessageDelayParameters delayParameters = (MessageDelayParameters) parameters;
+        yield new ChaosMailboxConfig(
+            0.0, Optional.of(delayParameters.delay()), delayParameters.percentage(), true);
+      }
+      case MESSAGE_DROP -> {
+        final MessageDropParameters dropParameters = (MessageDropParameters) parameters;
+        yield new ChaosMailboxConfig(dropParameters.dropPercentage(), Optional.empty(), 0.0, true);
+      }
+      default ->
+          throw new IllegalArgumentException("PekkoFaultInjector does not support " + faultType);
+    };
+  }
 }

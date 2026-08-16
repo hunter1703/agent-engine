@@ -16,28 +16,29 @@ import java.util.List;
  */
 public final class EmbeddingStage extends ChunkingStage {
 
-    private final String embeddingModelId;
-    private final EmbeddingModelFactory embeddingModelFactory;
+  private final String embeddingModelId;
+  private final EmbeddingModelFactory embeddingModelFactory;
 
-    public EmbeddingStage(final String embeddingModelId, final EmbeddingModelFactory embeddingModelFactory) {
-        this.embeddingModelId = embeddingModelId;
-        this.embeddingModelFactory = embeddingModelFactory;
-    }
+  public EmbeddingStage(
+      final String embeddingModelId, final EmbeddingModelFactory embeddingModelFactory) {
+    this.embeddingModelId = embeddingModelId;
+    this.embeddingModelFactory = embeddingModelFactory;
+  }
 
-    @Override
-    public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
-        final EmbeddingModel model = embeddingModelFactory.get(embeddingModelId);
-        try {
-            for (final KnowledgeChunk chunk : chunks) {
-                final String text = chunk.getText();
-                if (text != null && !text.isBlank()) {
-                    final float[] vector = model.embed(text).content().vector();
-                    chunk.setVector(KnowledgeChunk.FIELD_TEXT_VECTOR, vector);
-                }
-            }
-            return chunks;
-        } finally {
-            embeddingModelFactory.release(embeddingModelId);
+  @Override
+  public List<KnowledgeChunk> apply(final List<KnowledgeChunk> chunks) {
+    final EmbeddingModel model = embeddingModelFactory.get(embeddingModelId);
+    try {
+      for (final KnowledgeChunk chunk : chunks) {
+        final String text = chunk.getText();
+        if (text != null && !text.isBlank()) {
+          final float[] vector = model.embed(text).content().vector();
+          chunk.setVector(KnowledgeChunk.FIELD_TEXT_VECTOR, vector);
         }
+      }
+      return chunks;
+    } finally {
+      embeddingModelFactory.release(embeddingModelId);
     }
+  }
 }

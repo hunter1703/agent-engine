@@ -5,8 +5,8 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class OpenAIModelFactory extends LangchainModelFactory {
-    @Override
-    public String type() {
-        return ModelConfig.Provider.OPEN_AI_COMPATIBLE.name();
-    }
+  @Override
+  public String type() {
+    return ModelConfig.Provider.OPEN_AI_COMPATIBLE.name();
+  }
 }

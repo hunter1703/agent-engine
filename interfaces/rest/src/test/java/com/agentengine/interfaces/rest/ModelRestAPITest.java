@@ -17,133 +17,134 @@ import org.junit.jupiter.api.Test;
 
 class ModelRestAPITest {
 
-    @Test
-    void shouldThrowBadRequestWhenGetModelCalledWithBlankId() {
-        final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
+  @Test
+  void shouldThrowBadRequestWhenGetModelCalledWithBlankId() {
+    final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-        assertThatThrownBy(() -> api.getModel(" "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Model ID is required");
-    }
+    assertThatThrownBy(() -> api.getModel(" "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Model ID is required");
+  }
 
-    @Test
-    void shouldThrowNotFoundWhenModelMissing() {
-        final ModelService modelService = mock(ModelService.class);
-        when(modelService.getModel("model-1")).thenReturn(null);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
+  @Test
+  void shouldThrowNotFoundWhenModelMissing() {
+    final ModelService modelService = mock(ModelService.class);
+    when(modelService.getModel("model-1")).thenReturn(null);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
 
-        assertThatThrownBy(() -> api.getModel("model-1")).hasMessageContaining("model-1");
-    }
+    assertThatThrownBy(() -> api.getModel("model-1")).hasMessageContaining("model-1");
+  }
 
-    @Test
-    void shouldDelegateCreateModelWhenCreateModelCalled() {
-        final ModelService modelService = mock(ModelService.class);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
-        final ModelConfig model = new ModelConfig();
-        model.setType("OLLAMA");
-        model.setModel("qwen2.5");
-        when(modelService.createModel(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
+  @Test
+  void shouldDelegateCreateModelWhenCreateModelCalled() {
+    final ModelService modelService = mock(ModelService.class);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
+    final ModelConfig model = new ModelConfig();
+    model.setType("OLLAMA");
+    model.setModel("qwen2.5");
+    when(modelService.createModel(any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        final Response created = api.createModel(model);
+    final Response created = api.createModel(model);
 
-        assertThat(created.getStatus()).isEqualTo(201);
-        assertThat(created.getEntity()).isInstanceOf(ModelConfig.class);
-        verify(modelService).createModel(any(ModelConfig.class));
-    }
+    assertThat(created.getStatus()).isEqualTo(201);
+    assertThat(created.getEntity()).isInstanceOf(ModelConfig.class);
+    verify(modelService).createModel(any(ModelConfig.class));
+  }
 
-    @Test
-    void shouldDelegateCreateModelValidationToService() {
-        final ModelService modelService = mock(ModelService.class);
-        when(modelService.createModel(any(ModelConfig.class)))
-                .thenThrow(new IllegalArgumentException("Config validation failed"));
-        final ModelRestAPI api = new ModelRestAPI(modelService);
-        final ModelConfig model = new ModelConfig();
+  @Test
+  void shouldDelegateCreateModelValidationToService() {
+    final ModelService modelService = mock(ModelService.class);
+    when(modelService.createModel(any(ModelConfig.class)))
+        .thenThrow(new IllegalArgumentException("Config validation failed"));
+    final ModelRestAPI api = new ModelRestAPI(modelService);
+    final ModelConfig model = new ModelConfig();
 
-        assertThatThrownBy(() -> api.createModel(model))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Config validation failed");
-        verify(modelService).createModel(any(ModelConfig.class));
-    }
+    assertThatThrownBy(() -> api.createModel(model))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Config validation failed");
+    verify(modelService).createModel(any(ModelConfig.class));
+  }
 
-    @Test
-    void shouldThrowBadRequestWhenUpdateModelCalledWithNullConfig() {
-        final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
+  @Test
+  void shouldThrowBadRequestWhenUpdateModelCalledWithNullConfig() {
+    final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-        assertThatThrownBy(() -> api.updateModel("model-1", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Model config is required");
-    }
+    assertThatThrownBy(() -> api.updateModel("model-1", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Model config is required");
+  }
 
-    @Test
-    void shouldThrowBadRequestWhenUpdateModelIdMismatch() {
-        final ModelService modelService = mock(ModelService.class);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
-        final ModelConfig model = new ModelConfig();
-        model.setId("model-2");
-        model.setType("OLLAMA");
-        model.setModel("qwen2.5");
+  @Test
+  void shouldThrowBadRequestWhenUpdateModelIdMismatch() {
+    final ModelService modelService = mock(ModelService.class);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
+    final ModelConfig model = new ModelConfig();
+    model.setId("model-2");
+    model.setType("OLLAMA");
+    model.setModel("qwen2.5");
 
-        assertThatThrownBy(() -> api.updateModel("model-1", model))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must match");
-    }
+    assertThatThrownBy(() -> api.updateModel("model-1", model))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("must match");
+  }
 
-    @Test
-    void shouldDelegateUpdateModelWhenUpdateModelCalled() {
-        final ModelService modelService = mock(ModelService.class);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
-        final ModelConfig model = new ModelConfig();
-        model.setType("OLLAMA");
-        model.setModel("qwen2.5");
-        when(modelService.updateModel(eq("model-1"), any(ModelConfig.class))).thenAnswer(inv -> inv.getArgument(1));
+  @Test
+  void shouldDelegateUpdateModelWhenUpdateModelCalled() {
+    final ModelService modelService = mock(ModelService.class);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
+    final ModelConfig model = new ModelConfig();
+    model.setType("OLLAMA");
+    model.setModel("qwen2.5");
+    when(modelService.updateModel(eq("model-1"), any(ModelConfig.class)))
+        .thenAnswer(inv -> inv.getArgument(1));
 
-        final ModelConfig updated = api.updateModel("model-1", model);
+    final ModelConfig updated = api.updateModel("model-1", model);
 
-        assertThat(updated).isNotNull();
-        assertThat(updated.getId()).isNull();
-        verify(modelService).updateModel(eq("model-1"), any(ModelConfig.class));
-    }
+    assertThat(updated).isNotNull();
+    assertThat(updated.getId()).isNull();
+    verify(modelService).updateModel(eq("model-1"), any(ModelConfig.class));
+  }
 
-    @Test
-    void shouldNotCallGetModelBeforeCreateModel() {
-        final ModelService svc = mock(ModelService.class);
-        final ModelConfig config = new ModelConfig();
-        config.setType("OLLAMA");
-        config.setModel("qwen2.5");
-        when(svc.createModel(any())).thenReturn(config);
+  @Test
+  void shouldNotCallGetModelBeforeCreateModel() {
+    final ModelService svc = mock(ModelService.class);
+    final ModelConfig config = new ModelConfig();
+    config.setType("OLLAMA");
+    config.setModel("qwen2.5");
+    when(svc.createModel(any())).thenReturn(config);
 
-        new ModelRestAPI(svc).createModel(config);
+    new ModelRestAPI(svc).createModel(config);
 
-        verify(svc, never()).getModel(any());
-    }
+    verify(svc, never()).getModel(any());
+  }
 
-    @Test
-    void shouldDelegateDeleteModelWhenDeleteModelCalled() {
-        final ModelService modelService = mock(ModelService.class);
-        when(modelService.deleteModel("model-1")).thenReturn(true);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
+  @Test
+  void shouldDelegateDeleteModelWhenDeleteModelCalled() {
+    final ModelService modelService = mock(ModelService.class);
+    when(modelService.deleteModel("model-1")).thenReturn(true);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
 
-        api.deleteModel("model-1");
+    api.deleteModel("model-1");
 
-        verify(modelService).deleteModel("model-1");
-    }
+    verify(modelService).deleteModel("model-1");
+  }
 
-    @Test
-    void shouldThrowBadRequestWhenDeleteModelCalledWithBlankId() {
-        final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
+  @Test
+  void shouldThrowBadRequestWhenDeleteModelCalledWithBlankId() {
+    final ModelRestAPI api = new ModelRestAPI(mock(ModelService.class));
 
-        assertThatThrownBy(() -> api.deleteModel(" "))
-                .isInstanceOf(WebApplicationException.class)
-                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
-                .isEqualTo(400);
-    }
+    assertThatThrownBy(() -> api.deleteModel(" "))
+        .isInstanceOf(WebApplicationException.class)
+        .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+        .isEqualTo(400);
+  }
 
-    @Test
-    void shouldThrowNotFoundWhenDeleteModelCalledForMissingId() {
-        final ModelService modelService = mock(ModelService.class);
-        when(modelService.deleteModel("model-1")).thenReturn(false);
-        final ModelRestAPI api = new ModelRestAPI(modelService);
+  @Test
+  void shouldThrowNotFoundWhenDeleteModelCalledForMissingId() {
+    final ModelService modelService = mock(ModelService.class);
+    when(modelService.deleteModel("model-1")).thenReturn(false);
+    final ModelRestAPI api = new ModelRestAPI(modelService);
 
-        assertThatThrownBy(() -> api.deleteModel("model-1")).hasMessageContaining("model-1");
-    }
+    assertThatThrownBy(() -> api.deleteModel("model-1")).hasMessageContaining("model-1");
+  }
 }

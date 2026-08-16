@@ -17,17 +17,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiExpression {
-    /**
-     * Builder effect to apply when the expression evaluates to true.
-     *
-     * @return rule effect
-     */
-    UiRuleEffect effect();
+  /**
+   * Builder effect to apply when the expression evaluates to true.
+   *
+   * @return rule effect
+   */
+  UiRuleEffect effect();
 
-    /**
-     * JSONLogic expression as a JSON string.
-     *
-     * @return JSONLogic JSON
-     */
-    String value();
+  /**
+   * JSONLogic expression as a JSON string.
+   *
+   * @return JSONLogic JSON
+   */
+  String value();
 }

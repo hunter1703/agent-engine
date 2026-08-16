@@ -5,7 +5,7 @@ import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 
 public interface ConnectorExecutorBuilder<Spec extends ConnectorSpec, I, O> {
 
-    ConnectorExecutor<I, O> build(Spec spec);
+  ConnectorExecutor<I, O> build(Spec spec);
 
-    ConnectorSpec.Type getType();
+  ConnectorSpec.Type getType();
 }

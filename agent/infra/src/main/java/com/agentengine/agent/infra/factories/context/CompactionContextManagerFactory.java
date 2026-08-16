@@ -16,52 +16,55 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class CompactionContextManagerFactory
-        implements ContextManagerFactory<CompactionContextStrategyConfig, ContextManager> {
+    implements ContextManagerFactory<CompactionContextStrategyConfig, ContextManager> {
 
-    private final ModelProvider modelProvider;
-    private final SessionService sessionService;
-    private final InfraConfigService infraConfigService;
+  private final ModelProvider modelProvider;
+  private final SessionService sessionService;
+  private final InfraConfigService infraConfigService;
 
-    @Inject
-    public CompactionContextManagerFactory(
-            final ModelProvider modelProvider,
-            final SessionService sessionService,
-            final InfraConfigService infraConfigService) {
-        this.modelProvider = modelProvider;
-        this.sessionService = sessionService;
-        this.infraConfigService = infraConfigService;
+  @Inject
+  public CompactionContextManagerFactory(
+      final ModelProvider modelProvider,
+      final SessionService sessionService,
+      final InfraConfigService infraConfigService) {
+    this.modelProvider = modelProvider;
+    this.sessionService = sessionService;
+    this.infraConfigService = infraConfigService;
+  }
+
+  @Override
+  public ContextManager build(
+      final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
+    return new CompactionContextManager(
+        config.getTokenThreshold(),
+        config.getRecencyThreshold(),
+        resolveModelId(config, agentConfig),
+        config.getPromptTemplate(),
+        modelProvider,
+        sessionService);
+  }
+
+  @Override
+  public ContextManager build(final CompactionContextStrategyConfig config) {
+    return build(config, new DefaultAgentConfig());
+  }
+
+  private String resolveModelId(
+      final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
+    if (StringUtils.isNotBlank(config.getModelId())) {
+      return config.getModelId();
     }
-
-    @Override
-    public ContextManager build(final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
-        return new CompactionContextManager(
-                config.getTokenThreshold(),
-                config.getRecencyThreshold(),
-                resolveModelId(config, agentConfig),
-                config.getPromptTemplate(),
-                modelProvider,
-                sessionService);
+    final DefaultModelsConfig defaults =
+        infraConfigService.findById(
+            DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
+    if (defaults != null && StringUtils.isNotBlank(defaults.getCompactionModelId())) {
+      return defaults.getCompactionModelId();
     }
+    return agentConfig.getModelId();
+  }
 
-    @Override
-    public ContextManager build(final CompactionContextStrategyConfig config) {
-        return build(config, new DefaultAgentConfig());
-    }
-
-    private String resolveModelId(final CompactionContextStrategyConfig config, final BaseAgentConfig agentConfig) {
-        if (StringUtils.isNotBlank(config.getModelId())) {
-            return config.getModelId();
-        }
-        final DefaultModelsConfig defaults = infraConfigService.findById(
-                DefaultModelsConfig.CATEGORY, DefaultModelsConfig.TYPE, DefaultModelsConfig.CONFIG_ID);
-        if (defaults != null && StringUtils.isNotBlank(defaults.getCompactionModelId())) {
-            return defaults.getCompactionModelId();
-        }
-        return agentConfig.getModelId();
-    }
-
-    @Override
-    public String type() {
-        return ContextStrategyConfig.ContextStrategyType.COMPACTION.type();
-    }
+  @Override
+  public String type() {
+    return ContextStrategyConfig.ContextStrategyType.COMPACTION.type();
+  }
 }

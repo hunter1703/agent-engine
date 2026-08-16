@@ -6,18 +6,19 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "@type")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = SessionRole.Root.class, name = "Root"),
-    @JsonSubTypes.Type(value = SessionRole.Child.class, name = "Child")
+  @JsonSubTypes.Type(value = SessionRole.Root.class, name = "Root"),
+  @JsonSubTypes.Type(value = SessionRole.Child.class, name = "Child")
 })
 public interface SessionRole extends PekkoSerializable {
 
-    record Root() implements SessionRole {}
+  record Root() implements SessionRole {}
 
-    record Child(String rootSessionId, String parentSessionId, String parentAgentId) implements SessionRole {
-        public Child {
-            if (rootSessionId == null || parentSessionId == null || parentAgentId == null) {
-                throw new IllegalArgumentException("Child topology fields must not be null");
-            }
-        }
+  record Child(String rootSessionId, String parentSessionId, String parentAgentId)
+      implements SessionRole {
+    public Child {
+      if (rootSessionId == null || parentSessionId == null || parentAgentId == null) {
+        throw new IllegalArgumentException("Child topology fields must not be null");
+      }
     }
+  }
 }

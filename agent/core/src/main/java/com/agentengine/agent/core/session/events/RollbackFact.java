@@ -8,19 +8,19 @@ package com.agentengine.agent.core.session.events;
  */
 public final class RollbackFact extends SessionFact {
 
-    private String runId;
+  private String runId;
 
-    public RollbackFact() {}
+  public RollbackFact() {}
 
-    public RollbackFact(final String runId) {
-        this.runId = runId;
-    }
+  public RollbackFact(final String runId) {
+    this.runId = runId;
+  }
 
-    public String getRunId() {
-        return runId;
-    }
+  public String getRunId() {
+    return runId;
+  }
 
-    public void setRunId(final String runId) {
-        this.runId = runId;
-    }
+  public void setRunId(final String runId) {
+    this.runId = runId;
+  }
 }

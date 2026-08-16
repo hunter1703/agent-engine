@@ -25,43 +25,46 @@ import java.util.stream.Collectors;
 @RunOnVirtualThread
 public class SchemaRestAPI {
 
-    private final BuilderDefinitionService definitionService;
-    private final Map<String, SchemaRequestHandler> handlers;
+  private final BuilderDefinitionService definitionService;
+  private final Map<String, SchemaRequestHandler> handlers;
 
-    @Inject
-    public SchemaRestAPI(
-            final BuilderDefinitionService definitionService, final Instance<SchemaRequestHandler> handlers) {
-        this.definitionService = definitionService;
-        this.handlers =
-                handlers.stream().collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
-    }
+  @Inject
+  public SchemaRestAPI(
+      final BuilderDefinitionService definitionService,
+      final Instance<SchemaRequestHandler> handlers) {
+    this.definitionService = definitionService;
+    this.handlers =
+        handlers.stream()
+            .collect(Collectors.toMap(SchemaRequestHandler::getAssetType, Function.identity()));
+  }
 
-    @GET
-    @Path("/{assetType}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getSchema(@PathParam("assetType") final String assetType, @QueryParam("mode") final String mode) {
-        final BuilderMode requestedMode = BuilderMode.fromString(mode);
-        if (mode != null && requestedMode == null) {
-            throw new IllegalArgumentException("Unsupported mode '" + mode + "'. Expected one of: create, edit, view");
-        }
-        try {
-            return Response.ok(definitionService.getDefinition(assetType).resolve(requestedMode))
-                    .build();
-        } catch (IllegalArgumentException exception) {
-            throw new AssetNotFoundException("Schema", assetType);
-        }
+  @GET
+  @Path("/{assetType}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getSchema(
+      @PathParam("assetType") final String assetType, @QueryParam("mode") final String mode) {
+    final BuilderMode requestedMode = BuilderMode.fromString(mode);
+    if (mode != null && requestedMode == null) {
+      throw new IllegalArgumentException(
+          "Unsupported mode '" + mode + "'. Expected one of: create, edit, view");
     }
+    try {
+      return Response.ok(definitionService.getDefinition(assetType).resolve(requestedMode)).build();
+    } catch (IllegalArgumentException exception) {
+      throw new AssetNotFoundException("Schema", assetType);
+    }
+  }
 
-    @POST
-    @Path("/")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Object resolveSchema(SchemaLookupRequest request) {
-        final String assetType = request.assetType();
-        SchemaRequestHandler handler = handlers.get(assetType);
-        if (handler != null) {
-            return handler.handle(request);
-        }
-        throw new AssetNotFoundException("Schema", assetType);
+  @POST
+  @Path("/")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object resolveSchema(SchemaLookupRequest request) {
+    final String assetType = request.assetType();
+    SchemaRequestHandler handler = handlers.get(assetType);
+    if (handler != null) {
+      return handler.handle(request);
     }
+    throw new AssetNotFoundException("Schema", assetType);
+  }
 }

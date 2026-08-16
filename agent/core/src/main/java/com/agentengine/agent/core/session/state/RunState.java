@@ -7,11 +7,11 @@ import java.util.List;
 
 public record RunState(List<Event> lastCommittedTurn, UniqueRecord<UserMessage> message) {
 
-    public RunState withEvents(final List<Event> events) {
-        return new RunState(events, message);
-    }
+  public RunState withEvents(final List<Event> events) {
+    return new RunState(events, message);
+  }
 
-    public RunState withMessage(final UniqueRecord<UserMessage> message) {
-        return new RunState(lastCommittedTurn, message);
-    }
+  public RunState withMessage(final UniqueRecord<UserMessage> message) {
+    return new RunState(lastCommittedTurn, message);
+  }
 }

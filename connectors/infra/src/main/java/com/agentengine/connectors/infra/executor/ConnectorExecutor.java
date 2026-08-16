@@ -4,5 +4,5 @@ import com.agentengine.connectors.api.beans.ConnectorResult;
 
 public interface ConnectorExecutor<I, O> {
 
-    ConnectorResult<O> execute(I input);
+  ConnectorResult<O> execute(I input);
 }

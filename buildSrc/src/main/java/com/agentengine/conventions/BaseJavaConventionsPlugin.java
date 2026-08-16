@@ -48,7 +48,7 @@ public abstract class BaseJavaConventionsPlugin {
                 "src/main/java/**/*.java",
                 "src/test/java/**/*.java",
                 "src/integrationTest/java/**/*.java");
-            java.palantirJavaFormat("2.90.0");
+            java.googleJavaFormat();
           });
 
       spotless.format(

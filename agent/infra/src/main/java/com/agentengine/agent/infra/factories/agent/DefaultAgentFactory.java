@@ -13,18 +13,18 @@ import jakarta.inject.Singleton;
 @Named("defaultAgentFactory")
 public class DefaultAgentFactory extends AbstractAgentFactory<BaseAgentConfig, Agent> {
 
-    @Inject
-    public DefaultAgentFactory(final ModelProvider modelProvider, final ToolFactory toolFactory) {
-        super(modelProvider, toolFactory);
-    }
+  @Inject
+  public DefaultAgentFactory(final ModelProvider modelProvider, final ToolFactory toolFactory) {
+    super(modelProvider, toolFactory);
+  }
 
-    @Override
-    public DelegatedAgent build(final BaseAgentConfig config) {
-        return createLlmAgentBuilder(config).build();
-    }
+  @Override
+  public DelegatedAgent build(final BaseAgentConfig config) {
+    return createLlmAgentBuilder(config).build();
+  }
 
-    @Override
-    public String type() {
-        return BaseAgentConfig.AgentType.DEFAULT.type();
-    }
+  @Override
+  public String type() {
+    return BaseAgentConfig.AgentType.DEFAULT.type();
+  }
 }

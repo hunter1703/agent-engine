@@ -16,6 +16,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface MicroService {
 
-    /** The server ID that hosts this service (e.g. {@code "agent"}). */
-    String value();
+  /** The server ID that hosts this service (e.g. {@code "agent"}). */
+  String value();
 }

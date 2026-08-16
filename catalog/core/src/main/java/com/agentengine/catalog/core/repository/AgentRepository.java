@@ -10,8 +10,9 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class AgentRepository extends AbstractMongoRepository<BaseAgentConfig> {
-    @Inject
-    public AgentRepository(final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
-        super(mongoClientFactory, AssetClass.AGENT, BaseAgentConfig.class, validationService);
-    }
+  @Inject
+  public AgentRepository(
+      final MongoClientFactory mongoClientFactory, final ValidationService validationService) {
+    super(mongoClientFactory, AssetClass.AGENT, BaseAgentConfig.class, validationService);
+  }
 }

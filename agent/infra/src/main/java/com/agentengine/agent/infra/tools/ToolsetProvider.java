@@ -6,7 +6,7 @@ import java.util.Map;
 
 /** Describes a user-facing toolset backed by an ADK {@link BaseToolset}. */
 public interface ToolsetProvider {
-    ToolDescriptor descriptor();
+  ToolDescriptor descriptor();
 
-    BaseToolset create(Map<String, Object> toolConfig);
+  BaseToolset create(Map<String, Object> toolConfig);
 }

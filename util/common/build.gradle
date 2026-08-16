@@ -7,6 +7,9 @@ dependencies {
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
     compileOnly libs.jakarta.validation.api
+    testCompileOnly libs.jakarta.inject.api
+    testCompileOnly libs.jakarta.enterprise.cdi.api
+    testCompileOnly libs.jakarta.validation.api
 
     // Exposed in public API (TypeReference/JsonNode in JsonUtils, SchemaBuilder in SchemaUtils)
     api libs.jackson.databind

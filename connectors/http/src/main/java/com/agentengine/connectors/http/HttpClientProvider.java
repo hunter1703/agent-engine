@@ -9,10 +9,11 @@ import okhttp3.OkHttpClient;
 
 @Singleton
 public class HttpClientProvider implements ClientProvider<HttpClientOptions, OkHttpClient> {
-    private final ConcurrentMap<HttpClientOptions, OkHttpClient> clientCache = new ConcurrentHashMap<>();
+  private final ConcurrentMap<HttpClientOptions, OkHttpClient> clientCache =
+      new ConcurrentHashMap<>();
 
-    @Override
-    public OkHttpClient getClient(HttpClientOptions options) {
-        return clientCache.computeIfAbsent(options, _ -> new OkHttpClient());
-    }
+  @Override
+  public OkHttpClient getClient(HttpClientOptions options) {
+    return clientCache.computeIfAbsent(options, _ -> new OkHttpClient());
+  }
 }

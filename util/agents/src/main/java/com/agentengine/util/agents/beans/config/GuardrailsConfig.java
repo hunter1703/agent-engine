@@ -7,44 +7,45 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GuardrailsConfig {
-    private static final String DEFAULT_ON_ERROR = GuardrailErrorMode.FAIL_OPEN.name();
+  private static final String DEFAULT_ON_ERROR = GuardrailErrorMode.FAIL_OPEN.name();
 
-    @UiField(label = "Enabled", step = "guardrails", order = 10)
-    @UiBoolean
-    private boolean enabled = true;
+  @UiField(label = "Enabled", step = "guardrails", order = 10)
+  @UiBoolean
+  private boolean enabled = true;
 
-    @UiField(label = "Default On Error", step = "guardrails", order = 20)
-    @UiSelect(enumType = GuardrailErrorMode.class)
-    private String defaultOnError = DEFAULT_ON_ERROR;
+  @UiField(label = "Default On Error", step = "guardrails", order = 20)
+  @UiSelect(enumType = GuardrailErrorMode.class)
+  private String defaultOnError = DEFAULT_ON_ERROR;
 
-    @UiField(label = "Rules", step = "guardrails", order = 30)
-    private List<GuardrailRule> rules = new ArrayList<>();
+  @UiField(label = "Rules", step = "guardrails", order = 30)
+  private List<GuardrailRule> rules = new ArrayList<>();
 
-    public boolean isEnabled() {
-        return enabled;
-    }
+  public boolean isEnabled() {
+    return enabled;
+  }
 
-    public void setEnabled(final boolean enabled) {
-        this.enabled = enabled;
-    }
+  public void setEnabled(final boolean enabled) {
+    this.enabled = enabled;
+  }
 
-    public String getDefaultOnError() {
-        return defaultOnError;
-    }
+  public String getDefaultOnError() {
+    return defaultOnError;
+  }
 
-    public void setDefaultOnError(final String defaultOnError) {
-        this.defaultOnError = defaultOnError == null || defaultOnError.isBlank() ? DEFAULT_ON_ERROR : defaultOnError;
-    }
+  public void setDefaultOnError(final String defaultOnError) {
+    this.defaultOnError =
+        defaultOnError == null || defaultOnError.isBlank() ? DEFAULT_ON_ERROR : defaultOnError;
+  }
 
-    public GuardrailErrorMode defaultOnErrorEnum() {
-        return GuardrailErrorMode.valueOfOrDefault(defaultOnError);
-    }
+  public GuardrailErrorMode defaultOnErrorEnum() {
+    return GuardrailErrorMode.valueOfOrDefault(defaultOnError);
+  }
 
-    public List<GuardrailRule> getRules() {
-        return rules;
-    }
+  public List<GuardrailRule> getRules() {
+    return rules;
+  }
 
-    public void setRules(final List<GuardrailRule> rules) {
-        this.rules = rules == null ? new ArrayList<>() : new ArrayList<>(rules);
-    }
+  public void setRules(final List<GuardrailRule> rules) {
+    this.rules = rules == null ? new ArrayList<>() : new ArrayList<>(rules);
+  }
 }

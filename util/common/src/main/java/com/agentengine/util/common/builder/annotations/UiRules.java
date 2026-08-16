@@ -11,10 +11,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 public @interface UiRules {
-    /**
-     * Rules declared for the annotated field.
-     *
-     * @return builder rules
-     */
-    UiRule[] value();
+  /**
+   * Rules declared for the annotated field.
+   *
+   * @return builder rules
+   */
+  UiRule[] value();
 }

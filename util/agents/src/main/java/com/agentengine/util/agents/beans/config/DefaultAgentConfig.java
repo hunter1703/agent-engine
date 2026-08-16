@@ -6,7 +6,7 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 @JsonTypeName("DEFAULT")
 @BsonDiscriminator("com.agentengine.util.agents.beans.config.DefaultAgentConfig")
 public class DefaultAgentConfig extends BaseAgentConfig {
-    public DefaultAgentConfig() {
-        super(AgentType.DEFAULT);
-    }
+  public DefaultAgentConfig() {
+    super(AgentType.DEFAULT);
+  }
 }

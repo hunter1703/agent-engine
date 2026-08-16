@@ -15,23 +15,25 @@ import java.util.Map;
 @Singleton
 @Unremovable
 public class ConnectorServiceImpl implements ConnectorService {
-    private final ConnectorRegistry registry;
-    private final ConnectorExecutorFactory executorFactory;
+  private final ConnectorRegistry registry;
+  private final ConnectorExecutorFactory executorFactory;
 
-    @Inject
-    public ConnectorServiceImpl(ConnectorRegistry registry, ConnectorExecutorFactory executorFactory) {
-        this.registry = registry;
-        this.executorFactory = executorFactory;
+  @Inject
+  public ConnectorServiceImpl(
+      ConnectorRegistry registry, ConnectorExecutorFactory executorFactory) {
+    this.registry = registry;
+    this.executorFactory = executorFactory;
+  }
+
+  @Override
+  public <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException {
+    final Connector connector = registry.get(request.name());
+    if (connector == null) {
+      throw new ConnectorException("Connector not found: " + request.name());
     }
 
-    @Override
-    public <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException {
-        final Connector connector = registry.get(request.name());
-        if (connector == null) {
-            throw new ConnectorException("Connector not found: " + request.name());
-        }
-
-        final ConnectorExecutor<Map<String, Object>, T> executor = executorFactory.build(connector.spec());
-        return executor.execute(request.input());
-    }
+    final ConnectorExecutor<Map<String, Object>, T> executor =
+        executorFactory.build(connector.spec());
+    return executor.execute(request.input());
+  }
 }

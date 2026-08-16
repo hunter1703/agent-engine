@@ -5,5 +5,6 @@ import java.util.List;
 
 public interface ContextManager {
 
-    List<Content> buildPrompt(final String agentId, final String sessionId, final List<Content> contents);
+  List<Content> buildPrompt(
+      final String agentId, final String sessionId, final List<Content> contents);
 }

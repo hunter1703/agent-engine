@@ -19,43 +19,44 @@ import java.util.stream.Collectors;
 @Singleton
 public class StandardToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
 
-    private final ToolCatalog toolCatalog;
+  private final ToolCatalog toolCatalog;
 
-    @Inject
-    public StandardToolAssetHandler(ToolCatalog toolCatalog) {
-        this.toolCatalog = toolCatalog;
-    }
+  @Inject
+  public StandardToolAssetHandler(ToolCatalog toolCatalog) {
+    this.toolCatalog = toolCatalog;
+  }
 
-    @Override
-    public String getAssetType() {
-        return AssetClass.STANDARD_TOOL;
-    }
+  @Override
+  public String getAssetType() {
+    return AssetClass.STANDARD_TOOL;
+  }
 
-    @Override
-    public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
-        final Query query = request.getQuery();
-        final Page page = query == null ? null : query.getPage();
-        final List<ToolDescriptor> standardTools = toolCatalog.getStandardTools();
-        return PaginatedResult.create(standardTools, page, (long) standardTools.size());
-    }
+  @Override
+  public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
+    final Query query = request.getQuery();
+    final Page page = query == null ? null : query.getPage();
+    final List<ToolDescriptor> standardTools = toolCatalog.getStandardTools();
+    return PaginatedResult.create(standardTools, page, (long) standardTools.size());
+  }
 
-    @Override
-    public Map<String, ToolDescriptor> getAssetsByIds(AssetRequest request) {
-        final Map<String, ToolDescriptor> standardToolsMap = CollectionUtils.transformToMap(
-                toolCatalog.getStandardTools(), ToolDescriptor::name, Function.identity());
-        return request.getKeys().stream()
-                .map(standardToolsMap::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
-    }
+  @Override
+  public Map<String, ToolDescriptor> getAssetsByIds(AssetRequest request) {
+    final Map<String, ToolDescriptor> standardToolsMap =
+        CollectionUtils.transformToMap(
+            toolCatalog.getStandardTools(), ToolDescriptor::name, Function.identity());
+    return request.getKeys().stream()
+        .map(standardToolsMap::get)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(ToolDescriptor::name, Function.identity()));
+  }
 
-    @Override
-    protected String getId(ToolDescriptor asset) {
-        return asset.name();
-    }
+  @Override
+  protected String getId(ToolDescriptor asset) {
+    return asset.name();
+  }
 
-    @Override
-    protected String getName(ToolDescriptor asset) {
-        return asset.name();
-    }
+  @Override
+  protected String getName(ToolDescriptor asset) {
+    return asset.name();
+  }
 }

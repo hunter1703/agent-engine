@@ -5,22 +5,22 @@ import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
 @BsonDiscriminator
 public abstract class InfraConfig extends BaseEntity {
-    private String category;
-    private String type;
+  private String category;
+  private String type;
 
-    public String getCategory() {
-        return category;
-    }
+  public String getCategory() {
+    return category;
+  }
 
-    public void setCategory(final String category) {
-        this.category = category;
-    }
+  public void setCategory(final String category) {
+    this.category = category;
+  }
 
-    public String getType() {
-        return type;
-    }
+  public String getType() {
+    return type;
+  }
 
-    public void setType(final String type) {
-        this.type = type;
-    }
+  public void setType(final String type) {
+    this.type = type;
+  }
 }

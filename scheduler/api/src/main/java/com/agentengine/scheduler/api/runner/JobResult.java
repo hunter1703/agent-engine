@@ -12,15 +12,15 @@ import java.util.Map;
  */
 public record JobResult(Map<String, Object> data) {
 
-    public JobResult {
-        data = data == null ? Map.of() : Map.copyOf(data);
-    }
+  public JobResult {
+    data = data == null ? Map.of() : Map.copyOf(data);
+  }
 
-    public static JobResult empty() {
-        return new JobResult(Map.of());
-    }
+  public static JobResult empty() {
+    return new JobResult(Map.of());
+  }
 
-    public static JobResult of(final Map<String, Object> data) {
-        return new JobResult(data);
-    }
+  public static JobResult of(final Map<String, Object> data) {
+    return new JobResult(data);
+  }
 }

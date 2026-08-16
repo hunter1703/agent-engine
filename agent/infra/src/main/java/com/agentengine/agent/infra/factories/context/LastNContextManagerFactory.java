@@ -7,15 +7,15 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class LastNContextManagerFactory
-        implements ContextManagerFactory<LastNContextStrategyConfig, LastNContextManager> {
+    implements ContextManagerFactory<LastNContextStrategyConfig, LastNContextManager> {
 
-    @Override
-    public LastNContextManager build(final LastNContextStrategyConfig contextConfig) {
-        return new LastNContextManager(contextConfig.getKeepLastTokens());
-    }
+  @Override
+  public LastNContextManager build(final LastNContextStrategyConfig contextConfig) {
+    return new LastNContextManager(contextConfig.getKeepLastTokens());
+  }
 
-    @Override
-    public String type() {
-        return ContextStrategyConfig.ContextStrategyType.LAST_N.type();
-    }
+  @Override
+  public String type() {
+    return ContextStrategyConfig.ContextStrategyType.LAST_N.type();
+  }
 }

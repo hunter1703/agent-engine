@@ -31,17 +31,17 @@ import com.agentengine.util.agents.beans.config.GuardrailStage;
  * </ul>
  */
 public interface Guardrail {
-    /** Unique identifier for this guardrail. */
-    String id();
+  /** Unique identifier for this guardrail. */
+  String id();
 
-    /** Stage at which this guardrail evaluates: input processing or output generation. */
-    GuardrailStage stage();
+  /** Stage at which this guardrail evaluates: input processing or output generation. */
+  GuardrailStage stage();
 
-    /**
-     * Evaluates the given context and returns a decision.
-     *
-     * @param context the context to evaluate (text, tool descriptor, tool args, invocation context)
-     * @return a {@link GuardrailDecision} indicating allow, warn, block, or escalate
-     */
-    GuardrailDecision evaluate(GuardrailContext context);
+  /**
+   * Evaluates the given context and returns a decision.
+   *
+   * @param context the context to evaluate (text, tool descriptor, tool args, invocation context)
+   * @return a {@link GuardrailDecision} indicating allow, warn, block, or escalate
+   */
+  GuardrailDecision evaluate(GuardrailContext context);
 }

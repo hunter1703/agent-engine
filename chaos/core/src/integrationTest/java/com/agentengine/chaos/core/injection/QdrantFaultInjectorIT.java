@@ -37,97 +37,114 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class QdrantFaultInjectorIT {
 
-    private static final Network NETWORK = Network.newNetwork();
+  private static final Network NETWORK = Network.newNetwork();
 
-    private static final GenericContainer<?> QDRANT_STAND_IN = new GenericContainer<>(
-                    DockerImageName.parse("nginx:alpine"))
-            .withNetwork(NETWORK)
-            .withNetworkAliases("qdrant-stand-in")
-            .withExposedPorts(80)
-            .waitingFor(Wait.forHttp("/").forStatusCode(200));
+  private static final GenericContainer<?> QDRANT_STAND_IN =
+      new GenericContainer<>(DockerImageName.parse("nginx:alpine"))
+          .withNetwork(NETWORK)
+          .withNetworkAliases("qdrant-stand-in")
+          .withExposedPorts(80)
+          .waitingFor(Wait.forHttp("/").forStatusCode(200));
 
-    private static final ToxiproxyContainer TOXIPROXY =
-            new ToxiproxyContainer(DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.9.0")).withNetwork(NETWORK);
+  private static final ToxiproxyContainer TOXIPROXY =
+      new ToxiproxyContainer(DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.9.0"))
+          .withNetwork(NETWORK);
 
-    private static ToxiproxyContainer.ContainerProxy qdrantProxy;
-    private static DatabaseFaultInjector injector;
-    private static HttpClient httpClient;
+  private static ToxiproxyContainer.ContainerProxy qdrantProxy;
+  private static DatabaseFaultInjector injector;
+  private static HttpClient httpClient;
 
-    @BeforeAll
-    static void startContainers() throws IOException {
-        QDRANT_STAND_IN.start();
-        TOXIPROXY.start();
+  @BeforeAll
+  static void startContainers() throws IOException {
+    QDRANT_STAND_IN.start();
+    TOXIPROXY.start();
 
-        qdrantProxy = TOXIPROXY.getProxy(QDRANT_STAND_IN, 80);
-        final ToxiproxyClient toxiproxyClient = new ToxiproxyClient(TOXIPROXY.getHost(), TOXIPROXY.getControlPort());
-        final Proxy qdrant = toxiproxyClient.getProxy(qdrantProxy.getName());
+    qdrantProxy = TOXIPROXY.getProxy(QDRANT_STAND_IN, 80);
+    final ToxiproxyClient toxiproxyClient =
+        new ToxiproxyClient(TOXIPROXY.getHost(), TOXIPROXY.getControlPort());
+    final Proxy qdrant = toxiproxyClient.getProxy(qdrantProxy.getName());
 
-        injector = new DatabaseFaultInjector(Map.of("postgresql", qdrant, "mongodb", qdrant, "qdrant", qdrant));
-        httpClient =
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+    injector =
+        new DatabaseFaultInjector(
+            Map.of("postgresql", qdrant, "mongodb", qdrant, "qdrant", qdrant));
+    httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+  }
+
+  @AfterAll
+  static void stopContainers() {
+    TOXIPROXY.stop();
+    QDRANT_STAND_IN.stop();
+    NETWORK.close();
+  }
+
+  @Test
+  void shouldFullyBlockAndThenRestoreRequestsWhenLatencyAbsent()
+      throws ExecutionException, InterruptedException {
+    assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isTrue();
+
+    final String faultId =
+        injector
+            .injectFault(
+                FaultType.QDRANT_FAILURE,
+                new TargetSelector("agent-engine", "runtime", Map.of(), Optional.empty()),
+                new QdrantFailureParameters(Optional.empty()),
+                new BlastRadius(BlastRadiusScope.SINGLE_POD, 1, 100.0))
+            .toCompletableFuture()
+            .get();
+
+    assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isFalse();
+
+    injector.removeFault(faultId).toCompletableFuture().get();
+
+    final boolean reconnected =
+        DatabaseReconnectionValidator.verifyReconnection(
+            () -> requestSucceedsWithin(Duration.ofSeconds(2)), Duration.ofSeconds(30));
+    assertThat(reconnected).isTrue();
+  }
+
+  @Test
+  void shouldApplyAndRemoveLatencyToxicWithoutBlockingRequests()
+      throws ExecutionException, InterruptedException {
+    final String faultId =
+        injector
+            .injectFault(
+                FaultType.QDRANT_FAILURE,
+                new TargetSelector("agent-engine", "runtime", Map.of(), Optional.empty()),
+                new QdrantFailureParameters(Optional.of(Duration.ofMillis(500))),
+                new BlastRadius(BlastRadiusScope.SINGLE_POD, 1, 100.0))
+            .toCompletableFuture()
+            .get();
+
+    // A generous timeout confirms the request still completes — latency degrades, it doesn't block.
+    assertThat(requestSucceedsWithin(Duration.ofSeconds(5))).isTrue();
+
+    injector.removeFault(faultId).toCompletableFuture().get();
+
+    assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isTrue();
+  }
+
+  private static boolean requestSucceedsWithin(final Duration timeout) {
+    final HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    "http://"
+                        + qdrantProxy.getContainerIpAddress()
+                        + ":"
+                        + qdrantProxy.getProxyPort()
+                        + "/"))
+            .timeout(timeout)
+            .GET()
+            .build();
+    try {
+      final HttpResponse<Void> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+      return response.statusCode() == 200;
+    } catch (final IOException ex) {
+      return false;
+    } catch (final InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      return false;
     }
-
-    @AfterAll
-    static void stopContainers() {
-        TOXIPROXY.stop();
-        QDRANT_STAND_IN.stop();
-        NETWORK.close();
-    }
-
-    @Test
-    void shouldFullyBlockAndThenRestoreRequestsWhenLatencyAbsent() throws ExecutionException, InterruptedException {
-        assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isTrue();
-
-        final String faultId = injector.injectFault(
-                        FaultType.QDRANT_FAILURE,
-                        new TargetSelector("agent-engine", "runtime", Map.of(), Optional.empty()),
-                        new QdrantFailureParameters(Optional.empty()),
-                        new BlastRadius(BlastRadiusScope.SINGLE_POD, 1, 100.0))
-                .toCompletableFuture()
-                .get();
-
-        assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isFalse();
-
-        injector.removeFault(faultId).toCompletableFuture().get();
-
-        final boolean reconnected = DatabaseReconnectionValidator.verifyReconnection(
-                () -> requestSucceedsWithin(Duration.ofSeconds(2)), Duration.ofSeconds(30));
-        assertThat(reconnected).isTrue();
-    }
-
-    @Test
-    void shouldApplyAndRemoveLatencyToxicWithoutBlockingRequests() throws ExecutionException, InterruptedException {
-        final String faultId = injector.injectFault(
-                        FaultType.QDRANT_FAILURE,
-                        new TargetSelector("agent-engine", "runtime", Map.of(), Optional.empty()),
-                        new QdrantFailureParameters(Optional.of(Duration.ofMillis(500))),
-                        new BlastRadius(BlastRadiusScope.SINGLE_POD, 1, 100.0))
-                .toCompletableFuture()
-                .get();
-
-        // A generous timeout confirms the request still completes — latency degrades, it doesn't block.
-        assertThat(requestSucceedsWithin(Duration.ofSeconds(5))).isTrue();
-
-        injector.removeFault(faultId).toCompletableFuture().get();
-
-        assertThat(requestSucceedsWithin(Duration.ofSeconds(2))).isTrue();
-    }
-
-    private static boolean requestSucceedsWithin(final Duration timeout) {
-        final HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(
-                        "http://" + qdrantProxy.getContainerIpAddress() + ":" + qdrantProxy.getProxyPort() + "/"))
-                .timeout(timeout)
-                .GET()
-                .build();
-        try {
-            final HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-            return response.statusCode() == 200;
-        } catch (final IOException ex) {
-            return false;
-        } catch (final InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
-    }
+  }
 }
