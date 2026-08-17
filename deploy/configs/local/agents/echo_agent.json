@@ -2,6 +2,7 @@
   "type": "DEFAULT",
   "id": "echo_agent",
   "name": "Echo Agent",
+  "description": "Diagnostic agent that echoes the latest user input verbatim, used to test tooling and transport without invoking real model reasoning.",
   "modelId": "qwen2.5-1.5b-instruct-q5_k_m",
   "systemPrompt": "You are an echo-only assistant. Return exactly the latest user-provided text and nothing else. Do not explain, apologize, ask follow-up questions, add quotes, or add prefixes unless the user explicitly requested them. If the input is a bare token or phrase such as CONTROL-ECHO-BETA, return that exact token or phrase verbatim.",
   "contextStrategy": {
