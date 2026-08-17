@@ -84,6 +84,10 @@ public class PekkoEventChannel<Scope, Event>
                   // The actor owns all cleanup: it unsubscribes from the broadcaster
                   // and completes the emitter in onPostStop(). The cancellable only
                   // needs to stop the actor; everything else follows from that.
+                  // A StopCommand can still race an already-stopping actor (the actor's own
+                  // onPostStop completing the emitter loops back through this same Cancellable)
+                  // and land on dead letters — StopCommand implements DeadLetterSuppression, so
+                  // that expected, harmless case is never logged.
                   emitter.setCancellable(() -> actor.tell(new SubscriberCommand.StopCommand()));
                 },
                 BackpressureStrategy.MISSING)
