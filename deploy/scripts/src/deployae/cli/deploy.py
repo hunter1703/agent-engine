@@ -149,6 +149,16 @@ async def _deploy(
         return_when=asyncio.FIRST_COMPLETED,
     )
     if interrupted.is_set():
+        # Cancelling here (rather than leaving deploy_task for asyncio.run()'s own
+        # implicit cleanup) is what stops a stage still waiting on its dependencies —
+        # without it, the signal handler stays registered with nothing consuming its
+        # events, so every subsequent Ctrl+C just re-fires it and reprints the warning
+        # while the deploy keeps running underneath. A stage already inside a blocking
+        # `asyncio.to_thread` helm/kubectl subprocess call can't be interrupted this way
+        # regardless — cancellation only takes effect once that call returns.
+        deploy_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await deploy_task
         return
     await deploy_task
 

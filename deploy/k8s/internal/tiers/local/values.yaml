@@ -12,11 +12,11 @@ app-base:
   # links every other service's beans purely so one call can apply every collection's indexes.
   resources:
     requests:
-      cpu: "50m"
-      memory: "384Mi"
+      cpu: "100m"
+      memory: "768Mi"
     limits:
-      cpu: "50m"
-      memory: "384Mi"
+      cpu: "100m"
+      memory: "768Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-internal
