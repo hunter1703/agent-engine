@@ -285,16 +285,15 @@ def build_stages(
     }
     stages.extend(infra_deploy_by_name.values())
 
-    stages.append(
-        SeedInfraConfigStage(
-            name="seed-infra-config",
-            depends_on=(infra_deploy_by_name["mongodb"],),
-            tier=ctx.tier,
-            environment=ctx.environment,
-            namespace_override=ctx.namespace,
-            enabled=infra_enabled,
-        )
+    seed_infra_config_stage = SeedInfraConfigStage(
+        name="seed-infra-config",
+        depends_on=(infra_deploy_by_name["mongodb"],),
+        tier=ctx.tier,
+        environment=ctx.environment,
+        namespace_override=ctx.namespace,
+        enabled=infra_enabled,
     )
+    stages.append(seed_infra_config_stage)
     stages.append(
         InitPostgresSchemaStage(
             name="init-postgres-schema",
@@ -324,8 +323,17 @@ def build_stages(
     # --- App charts ---
     def deploy_app_chart(name: str, *extra_deps: Stage) -> DeployChartStage:
         chart = Chart(name)
+        # Every app service reads Mongo-backed infra config at startup somewhere (encryption,
+        # microservice client wiring, Pekko cluster config, vector DB, cloud storage, ...) via
+        # InfraConfigService.findById(), which returns null — not an error — for a document
+        # that hasn't been seeded yet. Without this dependency, app charts and seed-infra-config
+        # race, and whichever finishes startup first decides whether that config exists.
+        # global-properties is the one exception: it doesn't read infra config, so keeping it
+        # off this dependency keeps it off the critical path.
+        infra_config_dep = () if name == "global-properties" else (seed_infra_config_stage,)
         depends_on = (
             *_chart_prerequisites(chart, ctx, namespace_stages, ingress_stage),
+            *infra_config_dep,
             *extra_deps,
         )
         stage = DeployChartStage(
