@@ -10,7 +10,7 @@ spec:
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   minReadySeconds: {{ .Values.minReadySeconds }}
   strategy:
-    {{- toYaml .Values.deploymentStrategy | nindent 4 }}
+    {{- include "agent-engine.app-base.deploymentStrategy" . | nindent 4 }}
   selector:
     matchLabels:
       {{- include "agent-engine.app-base.selectorLabels" . | nindent 6 }}

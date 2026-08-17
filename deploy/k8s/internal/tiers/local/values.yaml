@@ -3,6 +3,10 @@ app-base:
   minReadySeconds: 0
   preStopSleepSeconds: 0
   terminationGracePeriodSeconds: 10
+  # No zero-downtime need locally — Recreate avoids the base default's surge pod, which
+  # doubles CPU/memory demand during rollout on this resource-constrained node.
+  deploymentStrategy:
+    type: Recreate
   replicas: 1
   # Idle except during a deploy, so CPU is minimal. Memory is the only real floor: this service
   # links every other service's beans purely so one call can apply every collection's indexes.

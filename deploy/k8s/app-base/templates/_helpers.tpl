@@ -20,6 +20,21 @@ app.kubernetes.io/name: {{ .Values.service.name }}
 app.kubernetes.io/instance: {{ include "agent-engine.app-base.instance" . }}
 {{- end -}}
 
+{{/*
+rollingUpdate is only valid alongside type: RollingUpdate — Kubernetes rejects it set
+together with Recreate. A tier overriding just the type (e.g. deploymentStrategy: {type:
+Recreate}) would otherwise still carry rollingUpdate through from the base default, since
+Helm's values merge is per-key, not a replace. Dropping it here means a tier override
+never has to know that or null it out itself.
+*/}}
+{{- define "agent-engine.app-base.deploymentStrategy" -}}
+type: {{ .Values.deploymentStrategy.type }}
+{{- if eq .Values.deploymentStrategy.type "RollingUpdate" }}
+rollingUpdate:
+  {{- toYaml .Values.deploymentStrategy.rollingUpdate | nindent 2 }}
+{{- end }}
+{{- end -}}
+
 {{- define "agent-engine.app-base.applicationPropertiesConfigMapName" -}}
 {{- printf "%s-application-properties-configmap" (include "agent-engine.app-base.instance" .) -}}
 {{- end -}}
