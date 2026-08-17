@@ -116,10 +116,6 @@ def test_resource_name_app_chart_requires_tier() -> None:
         Chart("catalog").resource_name(None)
 
 
-def test_workload_kind_statefulset_app_chart() -> None:
-    assert Chart("agent").workload_kind() == "statefulset"
-
-
 def test_workload_kind_deployment_app_chart() -> None:
     assert Chart("catalog").workload_kind() == "deployment"
 

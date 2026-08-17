@@ -23,7 +23,7 @@ def test_environment_configs_reads_every_json_file_in_the_env_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("deployae.charts.CONFIGS_DIR", tmp_path)
-    infra_dir = tmp_path / "env" / "local" / "infra"
+    infra_dir = tmp_path / "local" / "infra"
     infra_dir.mkdir(parents=True)
     (infra_dir / "SQL.json").write_text(json.dumps([{"id": "SQL:default"}]))
     (infra_dir / "VECTOR.json").write_text(json.dumps([{"id": "QDRANT:default"}]))
@@ -36,7 +36,7 @@ def test_environment_configs_ignores_non_json_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("deployae.charts.CONFIGS_DIR", tmp_path)
-    infra_dir = tmp_path / "env" / "local" / "infra"
+    infra_dir = tmp_path / "local" / "infra"
     infra_dir.mkdir(parents=True)
     (infra_dir / "SQL.json").write_text(json.dumps([{"id": "SQL:default"}]))
     (infra_dir / "README.md").write_text("not a config")

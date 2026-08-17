@@ -1,5 +1,5 @@
 """Seeding stages: MongoDB infra config, and REST's model/agent catalog. Config content
-under deploy/configs/env/<environment>/ is the source of truth — these stages read files
+under deploy/configs/<environment>/ is the source of truth — these stages read files
 and insert as-is, with zero override/computation."""
 
 from __future__ import annotations
