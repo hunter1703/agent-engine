@@ -3,7 +3,7 @@ app-base:
   minReadySeconds: 0
   preStopSleepSeconds: 0
   terminationGracePeriodSeconds: 10
-  replicas: 2
+  replicas: 1
   resources:
     requests:
       cpu: "150m"
@@ -13,7 +13,6 @@ app-base:
       memory: "512Mi"
   config:
     applicationProperties:
-      pekko.cluster.roles: scheduler
       quarkus.otel.service.name: agent-engine-scheduler
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"

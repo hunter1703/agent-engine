@@ -12,11 +12,13 @@ tmpVolume:
 service:
   httpPort: 8080
   grpcPort: 9000
-  # Turns on Pekko clustering for this service: the runtime property, pod-discovery RBAC,
-  # the service account token, and the two ports below. Nothing else needs setting.
-  pekkoEnabled: false
   pekkoPort: 2552
   managementPort: 8558
+
+# Setting pekko.cluster turns on Pekko clustering for this service: the runtime property,
+# pod-discovery RBAC, the service account token, the two ports above, and the pod label peers
+# use to find each other. Nothing else needs setting. Leave unset (cluster empty) to disable.
+pekko: {}
 
 # Same for every service today; an app chart can override app-base.java.* if it ever differs.
 java:

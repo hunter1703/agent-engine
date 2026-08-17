@@ -1,4 +1,5 @@
 app-base:
   service:
     name: agent
-    pekkoEnabled: true
+  pekko:
+    cluster: agent

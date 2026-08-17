@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.config.ApplicationConfig;
@@ -35,7 +36,7 @@ public class ActorSystemProvider {
   private static final int PEKKO_PORT = 2552;
   private static final String PEKKO_CLUSTER_ROLES_KEY = "pekko.cluster.roles";
   private static final String JACKSON_MODULES_KEY = "pekko.serialization.jackson.jackson-modules";
-  private static final String PEKKO_ENABLED_KEY = "agent-engine.pekko.enabled";
+  private static final String PEKKO_CLUSTER_LABEL_KEY = "agent-engine.io/pekko-cluster";
 
   /** Observers that spawn actors must order themselves after this. */
   public static final int ACTOR_SYSTEM_STARTUP_PRIORITY = 100;
@@ -65,15 +66,17 @@ public class ActorSystemProvider {
    * <p>Not initializing in constructor as some ShardedEntityDefinitions require ActorSystemProvider
    * and hence would result into circular dependency.
    *
-   * <p>Disabled unless {@code agent-engine.pekko.enabled} is set, so that a service which merely
-   * links a module containing sharded entities does not join the cluster. Only services that
-   * actually host actors — agent and scheduler — enable it.
+   * <p>Disabled unless {@code pekko.cluster.roles} is set, so that a service which merely links a
+   * module containing sharded entities does not join a cluster. Only services that actually host
+   * actors — agent and scheduler — set a role.
    */
   public void onStart(@Observes @Priority(ACTOR_SYSTEM_STARTUP_PRIORITY) final StartupEvent event) {
-    this.enabled = applicationConfig.getBoolean(PEKKO_ENABLED_KEY, false);
+    final List<String> clusterRoles = applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY);
+    this.enabled = CollectionUtils.isNotEmpty(clusterRoles);
     if (!enabled) {
       LOG.info(
-          "Pekko is disabled ({} is not set); no ActorSystem will be created", PEKKO_ENABLED_KEY);
+          "Pekko is disabled ({} is not set); no ActorSystem will be created",
+          PEKKO_CLUSTER_ROLES_KEY);
       return;
     }
     this.pekkoConfig =
@@ -82,7 +85,7 @@ public class ActorSystemProvider {
         infraConfigService.findById(
             SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
     LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
-    final Config config = buildConfig(pekkoConfig, sqlConfig);
+    final Config config = buildConfig(sqlConfig, clusterRoles);
     this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);
     PekkoManagement.get(system).start();
     ClusterBootstrap.get(system).start();
@@ -123,7 +126,7 @@ public class ActorSystemProvider {
     return sharding.entityRefFor(key, id);
   }
 
-  private Config buildConfig(final PekkoConfig config, final SQLInfraConfig sqlConfig) {
+  private Config buildConfig(final SQLInfraConfig sqlConfig, final List<String> clusterRoles) {
     final String podIp = EnvUtils.getPodIp();
     final String canonicalHostname = StringUtils.isNotBlank(podIp) ? podIp : EnvUtils.getHostname();
     final String jdbcUrl = sqlConfig.getJdbcUrl();
@@ -152,10 +155,12 @@ public class ActorSystemProvider {
         .withValue(
             "pekko.management.http.hostname", ConfigValueFactory.fromAnyRef(canonicalHostname))
         .withValue("pekko.management.http.bind-hostname", ConfigValueFactory.fromAnyRef("0.0.0.0"))
+        .withValue("pekko.cluster.roles", ConfigValueFactory.fromIterable(clusterRoles))
         .withValue(
-            "pekko.cluster.roles",
-            ConfigValueFactory.fromIterable(
-                applicationConfig.getListOfString(PEKKO_CLUSTER_ROLES_KEY)))
+            "pekko.discovery.kubernetes-api.pod-label-selector",
+            // A node's roles are its Pekko cluster identity (pekko.cluster in the chart), so the
+            // first role scopes bootstrap discovery to peers of that same cluster.
+            ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + clusterRoles.getFirst()))
         .withValue(JACKSON_MODULES_KEY, ConfigValueFactory.fromIterable(allJacksonModules))
         .withValue(
             "pekko-persistence-jdbc.shared-databases.slick.db.url",

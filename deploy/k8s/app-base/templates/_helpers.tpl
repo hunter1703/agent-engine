@@ -63,18 +63,20 @@ startupProbe:
 {{- end -}}
 
 {{/*
-Pekko clustering is a single switch: `service.pekkoEnabled` turns on the runtime property, the
+Pekko clustering is a single switch: setting pekko.cluster turns on the runtime property, the
 pod-discovery RBAC that cluster bootstrap needs, the service account token it reads the API with,
-and the remoting and management ports. Keeping these together stops a service from being half
-configured — enabled but unable to discover peers, or granted pod read access it never uses.
+the remoting and management ports, and the pod label peers use to find each other. Keeping these
+together stops a service from being half configured — enabled but unable to discover peers, or
+granted pod read access it never uses. Every other template gates on this, not on pekko.cluster
+directly, so the enablement check reads the same way everywhere.
 */}}
 {{- define "agent-engine.app-base.pekkoEnabled" -}}
-{{- if .Values.service.pekkoEnabled }}true{{ end -}}
+{{- if .Values.pekko.cluster }}true{{ end -}}
 {{- end -}}
 
 {{- define "agent-engine.app-base.rbacRules" -}}
 {{- $rules := .Values.rbac.rules | default list -}}
-{{- if .Values.service.pekkoEnabled -}}
+{{- if include "agent-engine.app-base.pekkoEnabled" . -}}
 {{- $discovery := dict "apiGroups" (list "") "resources" (list "pods") "verbs" (list "get" "watch" "list") -}}
 {{- $rules = concat $rules (list $discovery) -}}
 {{- end -}}
@@ -82,9 +84,21 @@ configured — enabled but unable to discover peers, or granted pod read access 
 {{- end -}}
 
 {{- define "agent-engine.app-base.needsRbac" -}}
-{{- if or .Values.rbac.rules .Values.service.pekkoEnabled }}true{{ end -}}
+{{- if or .Values.rbac.rules (include "agent-engine.app-base.pekkoEnabled" .) }}true{{ end -}}
 {{- end -}}
 
 {{- define "agent-engine.app-base.automountToken" -}}
-{{- or .Values.serviceAccount.automountToken .Values.service.pekkoEnabled -}}
+{{- if or .Values.serviceAccount.automountToken (include "agent-engine.app-base.pekkoEnabled" .) }}true{{ else }}false{{ end -}}
+{{- end -}}
+
+{{/*
+Which Pekko cluster this deployment joins. Distinct from service.name — that identifies the
+Kubernetes Deployment/Service, this identifies cluster membership, so pod discovery only ever
+finds peers meant to be in the same cluster instead of every pekko-enabled service in the
+namespace.
+*/}}
+{{- define "agent-engine.app-base.pekkoClusterLabel" -}}
+{{- if include "agent-engine.app-base.pekkoEnabled" . -}}
+agent-engine.io/pekko-cluster: {{ .Values.pekko.cluster | quote }}
+{{- end -}}
 {{- end -}}

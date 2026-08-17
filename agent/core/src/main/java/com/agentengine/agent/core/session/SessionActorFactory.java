@@ -4,6 +4,7 @@ import com.agentengine.agent.core.factories.RunnerFactory;
 import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ChaosMailboxRegistry;
 import com.agentengine.util.pekko.actor.MessageFaultInterceptor;
@@ -22,7 +23,9 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
 
   public static final Duration ASK_TIMEOUT = Duration.ofSeconds(10);
 
-  private static final Duration PASSIVATION_TIMEOUT = Duration.ofHours(1);
+  private static final String PASSIVATION_TIMEOUT_KEY =
+      "agent-engine.session-actor.passivation.idle-timeout-seconds";
+  private static final long DEFAULT_PASSIVATION_TIMEOUT_SECONDS = Duration.ofHours(1).toSeconds();
   private static final String AGENT_ROLE = "agent";
 
   private final ActorSystemProvider actorSystemProvider;
@@ -41,8 +44,15 @@ public class SessionActorFactory extends ShardedEntityFactory<SessionCommand> {
       final SessionService sessionService,
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
-      final ChaosMailboxRegistry chaosMailboxRegistry) {
-    super(actorSystemProvider, SessionActor.TYPE_KEY, PASSIVATION_TIMEOUT, AGENT_ROLE);
+      final ChaosMailboxRegistry chaosMailboxRegistry,
+      final ApplicationConfig applicationConfig) {
+    super(
+        actorSystemProvider,
+        SessionActor.TYPE_KEY,
+        Duration.ofSeconds(
+            applicationConfig.getLong(
+                PASSIVATION_TIMEOUT_KEY, DEFAULT_PASSIVATION_TIMEOUT_SECONDS)),
+        AGENT_ROLE);
     this.actorSystemProvider = actorSystemProvider;
     this.sessionEventChannel = sessionEventChannel;
     this.runnerFactory = runnerFactory;

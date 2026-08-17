@@ -1,4 +1,5 @@
 app-base:
   service:
     name: scheduler
-    pekkoEnabled: true
+  pekko:
+    cluster: scheduler

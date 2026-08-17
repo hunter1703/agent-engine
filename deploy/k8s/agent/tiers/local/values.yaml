@@ -13,12 +13,11 @@ app-base:
       memory: "750Mi"
   config:
     applicationProperties:
-      pekko.cluster.roles: agent
       quarkus.otel.service.name: agent-engine-agent
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"
       quarkus.grpc.server.use-separate-server: "false"
-      agent-engine.session-actor.passivation.idle-timeout: PT1H
+      agent-engine.session-actor.passivation.idle-timeout-seconds: "3600"
       # gRPC server configuration - increase message size limit to 100MB
       quarkus.grpc.server.max-inbound-message-size: "104857600"
       quarkus.shutdown.timeout: 5S

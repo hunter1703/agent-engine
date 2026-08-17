@@ -18,6 +18,7 @@ spec:
     metadata:
       labels:
         {{- include "agent-engine.app-base.selectorLabels" . | nindent 8 }}
+        {{- include "agent-engine.app-base.pekkoClusterLabel" . | nindent 8 }}
       annotations:
         checksum/application-properties: {{ (.Values.config | default dict).applicationProperties | toYaml | sha256sum }}
         {{- with (.Values.global | default dict).rolloutRevision }}
@@ -70,7 +71,7 @@ spec:
               containerPort: {{ .Values.service.httpPort }}
             - name: grpc
               containerPort: {{ .Values.service.grpcPort }}
-            {{- if .Values.service.pekkoEnabled }}
+            {{- if include "agent-engine.app-base.pekkoEnabled" . }}
             - name: pekko
               containerPort: {{ .Values.service.pekkoPort }}
             - name: management
