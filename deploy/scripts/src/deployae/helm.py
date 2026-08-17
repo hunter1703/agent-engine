@@ -8,7 +8,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from deployae.charts import Chart
+from deployae.charts import Chart, pekko_actor_conf
 
 DEFAULT_TIMEOUT = "10m"
 
@@ -79,6 +79,13 @@ def value_flags(chart: Chart, ctx: DeployContext) -> list[str]:
     overlay = chart.values_overlay_file(chart.effective_tier(ctx.tier, ctx.environment))
     if overlay:
         flags += ["-f", str(overlay)]
+
+    cluster = chart.pekko_cluster()
+    if cluster and ctx.environment:
+        base_conf = pekko_actor_conf(ctx.environment, cluster, ctx.tier)
+        if base_conf:
+            flags += ["--set-file", f"app-base.pekko.baseConf={base_conf}"]
+
     for values_file in ctx.extra_values_files:
         flags += ["-f", str(values_file)]
     for set_arg in ctx.set_arguments:

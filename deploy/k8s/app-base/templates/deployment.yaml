@@ -51,6 +51,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: ENVIRONMENT
+              value: {{ (.Values.global | default dict).env | quote }}
+            - name: TIER
+              value: {{ .Values.tier | quote }}
+            {{- if include "agent-engine.app-base.pekkoEnabled" . }}
+            - name: PEKKO_CLUSTER
+              value: {{ .Values.pekko.cluster | quote }}
+            {{- end }}
             {{- $java := .Values.java | default dict }}
             {{- if $java.opts }}
             - name: JAVA_OPTS
@@ -89,6 +97,12 @@ spec:
               mountPath: /config/global.properties
               subPath: global.properties
               readOnly: true
+            {{- if include "agent-engine.app-base.pekkoEnabled" . }}
+            - name: pekko-base
+              mountPath: /config/pekko-base.conf
+              subPath: pekko-base.conf
+              readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
       volumes:
@@ -98,6 +112,11 @@ spec:
         - name: global-properties
           configMap:
             name: {{ include "agent-engine.app-base.globalPropertiesConfigMapName" . }}
+        {{- if include "agent-engine.app-base.pekkoEnabled" . }}
+        - name: pekko-base
+          configMap:
+            name: {{ include "agent-engine.app-base.instance" . }}-pekko-configmap
+        {{- end }}
         - name: tmp
           emptyDir:
             sizeLimit: {{ .Values.tmpVolume.sizeLimit }}

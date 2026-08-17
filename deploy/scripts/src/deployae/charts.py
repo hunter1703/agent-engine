@@ -189,6 +189,14 @@ class Chart:
             return own_app_base.get("type", "deployment")
         return "statefulset" if self.name in ("mongodb", "postgres") else "deployment"
 
+    def pekko_cluster(self) -> str | None:
+        """Which Pekko cluster this chart's pods join, if any. None for non-app charts and
+        for app charts that don't set app-base.pekko.cluster (they don't host actors)."""
+        if not self.is_app_chart:
+            return None
+        own_app_base = load_yaml(self.path / "values.yaml").get("app-base", {})
+        return own_app_base.get("pekko", {}).get("cluster")
+
 
 ALL_CHARTS = [Chart(name) for name in ALL_CHART_NAMES]
 DEFAULT_CHARTS = [Chart(name) for name in DEFAULT_CHART_NAMES]
@@ -215,3 +223,18 @@ def env_config_dir(environment: str, subdir: str) -> Path:
     -> deploy/configs/env/local/infra. Seed data is inserted as-is, one file per config
     type — no base/overlay merge, since each environment has exactly one copy."""
     return CONFIGS_DIR / "env" / environment / subdir
+
+
+def pekko_actor_conf(environment: str, cluster: str, tier: str | None) -> Path | None:
+    """Resolves one Pekko cluster's base config file for an environment, most specific
+    first: actor/<cluster>/<tier>.conf, then actor/<cluster>/default.conf, then the
+    environment-wide actor/default.conf. None if nothing at any level exists — the
+    deployment then gets no base config mounted at all (ActorSystemProvider requires it,
+    so this is a deploy-time gap to fix, not something silently worked around here)."""
+    actor_dir = env_config_dir(environment, "actor")
+    candidates = []
+    if tier:
+        candidates.append(actor_dir / cluster / f"{tier}.conf")
+    candidates.append(actor_dir / cluster / "default.conf")
+    candidates.append(actor_dir / "default.conf")
+    return next((candidate for candidate in candidates if candidate.is_file()), None)

@@ -1,0 +1,12 @@
+{{- if include "agent-engine.app-base.pekkoEnabled" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-engine.app-base.instance" . }}-pekko-configmap
+  namespace: {{ include "agent-engine.app-base.namespace" . }}
+  labels:
+    {{- include "agent-engine.app-base.labels" . | nindent 4 }}
+data:
+  pekko-base.conf: |-
+    {{- required "app-base.pekko.baseConf must be set (via deployae) when pekko.cluster is set" .Values.pekko.baseConf | nindent 4 }}
+{{- end }}
