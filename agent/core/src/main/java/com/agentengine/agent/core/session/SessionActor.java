@@ -427,11 +427,17 @@ public final class SessionActor
     if (interruptId == null) {
       return Effect().none();
     }
+    final String author =
+        state
+            .child(command.childSessionId())
+            .map(ChildSession::agentId)
+            .orElse(Constants.AUTHOR_USER);
     final ResumeRequest resumeRequest =
         new ResumeRequest(
             interruptId,
             true,
-            AwaitAgentTool.buildCompletedResponseMap(command.childSessionId(), command.result()));
+            AwaitAgentTool.buildCompletedResponseMap(command.childSessionId(), command.result()),
+            author);
     return resumed(null, resumeRequest, true);
   }
 
@@ -793,9 +799,11 @@ public final class SessionActor
           if (state.runState().message() != null) {
             // Initial user message
             final UniqueRecord<UserMessage> userMessage = state.runState().message();
+            final String author =
+                topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
             final Event userEvent =
                 EventUtils.buildUserEvent(
-                    userMessage.getRecord(), invocationId, events.getFirst().timestamp());
+                    userMessage.getRecord(), invocationId, events.getFirst().timestamp(), author);
             events.addFirst(userEvent);
             LOG.info(
                 "[USER_MESSAGE_TRACE][{}] First turn - prepended user message event: '{}' with invocationId: {}",
@@ -805,9 +813,17 @@ public final class SessionActor
           }
         } else if (!state.getAllReceivedResumes().isEmpty()) {
           // Continue the run with the resume answers
+          final String author =
+              state.getAllReceivedResumes().stream()
+                  .findFirst()
+                  .map(ResumeRequest::getAuthor)
+                  .orElse(topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId());
           final Event resumeEvent =
               EventUtils.buildResumeEvent(
-                  state.getAllReceivedResumes(), invocationId, events.getFirst().timestamp());
+                  state.getAllReceivedResumes(),
+                  invocationId,
+                  events.getFirst().timestamp(),
+                  author);
           events.addFirst(resumeEvent);
           LOG.info(
               "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} resume answer(s) with invocationId: {}",

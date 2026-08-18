@@ -132,12 +132,16 @@ public final class EventUtils {
   }
 
   public static Event buildUserEvent(
-      final UserMessage userMessage, final String invocationId, final long timestamp) {
+      final UserMessage userMessage,
+      final String invocationId,
+      final long timestamp,
+      final String author) {
     final Event event =
         _buildUserEvent(
             invocationId,
             com.agentengine.agent.infra.utils.ContentUtils.buildUserContent(userMessage),
-            timestamp);
+            timestamp,
+            author);
     final List<FileDetails> attachments =
         userMessage.parts().stream()
             .filter(part -> part instanceof MessagePart.FilePart)
@@ -152,17 +156,18 @@ public final class EventUtils {
   public static Event buildResumeEvent(
       final Collection<ResumeRequest> resumeRequests,
       final String invocationId,
-      final long timestamp) {
+      final long timestamp,
+      final String author) {
     final Content resumeContent = ContentUtils.buildResumeContent(resumeRequests);
-    return _buildUserEvent(invocationId, resumeContent, timestamp);
+    return _buildUserEvent(invocationId, resumeContent, timestamp, author);
   }
 
   private static Event _buildUserEvent(
-      final String invocationId, final Content content, final long timestamp) {
+      final String invocationId, final Content content, final long timestamp, final String author) {
     return Event.builder()
         .id(Event.generateEventId())
         .invocationId(invocationId)
-        .author(Constants.AUTHOR_USER)
+        .author(author)
         .content(content)
         .timestamp(timestamp)
         .build();
