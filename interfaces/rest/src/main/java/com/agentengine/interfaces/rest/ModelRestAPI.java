@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.catalog.api.services.ModelService;
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
@@ -29,6 +30,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Model", description = "Model Management APIs")
 @RunOnVirtualThread
+@ContextAware
 public class ModelRestAPI {
 
   private final ModelService modelService;

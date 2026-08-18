@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest;
 
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import jakarta.inject.Inject;
@@ -18,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 @Path("/v1/scheduler")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@ContextAware
 public class SchedulerRestAPI {
 
   private final SchedulerService schedulerService;

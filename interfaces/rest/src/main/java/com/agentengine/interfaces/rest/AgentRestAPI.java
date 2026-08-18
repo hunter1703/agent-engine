@@ -7,6 +7,7 @@ import com.agentengine.agent.api.model.MessagePart;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
@@ -41,6 +42,7 @@ import org.reactivestreams.Publisher;
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Agent", description = "Agent Management APIs")
 @RunOnVirtualThread
+@ContextAware
 public class AgentRestAPI {
   private final AgentService agentService;
   private final RuntimeService runtimeService;

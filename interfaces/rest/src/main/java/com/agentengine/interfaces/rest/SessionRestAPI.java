@@ -5,6 +5,7 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -32,6 +33,7 @@ import org.reactivestreams.Publisher;
 @Path("/v1/session")
 @Tag(name = "Session Stream", description = "Session event stream and resume APIs")
 @RunOnVirtualThread
+@ContextAware
 public class SessionRestAPI {
 
   private final RuntimeService runtimeService;

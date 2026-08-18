@@ -59,7 +59,8 @@ docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 - Unit tests: `src/test/java`, class `<ClassName>Test`, method `should<Behavior>When<Condition>`
 - Integration tests: `src/integrationTest/java`, class `<Feature>IT`; use `@QuarkusTest` with container-backed resources
 - Use mocks/fakes for pure logic; use real containers (Testcontainers) when runtime wiring matters
-- **Bug fix workflow**: When fixing a bug, first write a test that fails (demonstrating the bug), then fix the code, then verify the test passes
+- **The test suite is currently broken.** Do not add tests, modify tests, or run tests unless the
+  user explicitly asks you to.
 
 ## Key Gotchas
 
@@ -95,30 +96,27 @@ the reader and the runtime equally.
 
 ## Development Guidelines
 
-1. **Write tests for all features**: Add or update tests for any new feature, bug fix, or behavior change.
-2. Favor small, focused changes; avoid unnecessary refactors.
-3. Update relevant documentation when behavior changes.
-4. Add abstractions only when they clarify ownership and reduce duplication.
-5. Use `final` wherever possible to emphasize immutability.
-6. Prefer `static` methods for utility semantics.
-7. Make an explicit choice to treat classes as singleton services or utility classes.
-8. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
-9. **Bug fix protocol**: When fixing a bug, first write a test that fails (demonstrating the bug exists), then fix the code, then verify the test passes. This ensures the bug is captured and won't regress.
-10. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
-11. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
-12. Avoid redundant or low-value tests that do not exercise functional behavior.
-13. Document REST endpoints with MicroProfile OpenAPI annotations.
-14. Avoid qualified class names; add explicit imports instead.
-15. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
-16. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-17. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never
+1. Favor small, focused changes; avoid unnecessary refactors.
+2. Update relevant documentation when behavior changes.
+3. Add abstractions only when they clarify ownership and reduce duplication.
+4. Use `final` wherever possible to emphasize immutability.
+5. Prefer `static` methods for utility semantics.
+6. Make an explicit choice to treat classes as singleton services or utility classes.
+7. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
+8. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
+9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
+10. Document REST endpoints with MicroProfile OpenAPI annotations.
+11. Avoid qualified class names; add explicit imports instead.
+12. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
+13. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
+14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never
     write changelog-style comments that explain what changed or why code was removed/simplified
     (e.g. "X is now unconditional, so the old check isn't needed") — that narrates the diff, not
     the resulting code; a reader with no session context gets no value from it once the change is
     old. State that reasoning in chat instead.
-18. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
-19. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
-20. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
+15. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+16. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
+17. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
     `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
-21. Order class members with all `public` methods first, then all `private` methods after —
+18. Order class members with all `public` methods first, then all `private` methods after —
     never interleave them, even when a private helper is only used by one nearby public method.

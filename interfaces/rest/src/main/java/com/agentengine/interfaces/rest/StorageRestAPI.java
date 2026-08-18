@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.service.CloudStorageService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -18,6 +19,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/v1/storage")
 @Tag(name = "Storage", description = "Object storage upload API")
+@ContextAware
 public class StorageRestAPI {
 
   private final CloudStorageService cloudStorageService;

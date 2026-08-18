@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.interfaces.rest.dto.SchemaLookupRequest;
+import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.interfaces.rest.handlers.SchemaRequestHandler;
 import com.agentengine.interfaces.rest.services.BuilderDefinitionService;
 import com.agentengine.util.common.builder.BuilderMode;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 @Path("/v1/schemas")
 @RunOnVirtualThread
+@ContextAware
 public class SchemaRestAPI {
 
   private final BuilderDefinitionService definitionService;

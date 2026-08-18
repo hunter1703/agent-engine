@@ -1,6 +1,7 @@
 package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
@@ -94,7 +95,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   @Override
   public void execute(final Request request, final StreamObserver<Response> responseObserver) {
     try {
-      EXECUTOR_SERVICE.execute(() -> executeInternal(request, responseObserver));
+      EXECUTOR_SERVICE.execute(() -> dispatch(request, responseObserver));
     } catch (final RejectedExecutionException exception) {
       responseObserver.onError(
           Status.RESOURCE_EXHAUSTED
@@ -102,6 +103,15 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
               .withCause(exception)
               .asRuntimeException());
     }
+  }
+
+  private void dispatch(final Request request, final StreamObserver<Response> responseObserver) {
+    if (request.getContext().isEmpty()) {
+      executeInternal(request, responseObserver);
+      return;
+    }
+    final Context context = JsonUtils.fromJson(request.getContext().toStringUtf8(), Context.class);
+    context.run(() -> executeInternal(request, responseObserver));
   }
 
   private void executeInternal(

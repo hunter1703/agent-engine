@@ -1,6 +1,7 @@
 package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
@@ -24,7 +25,6 @@ import java.util.stream.Collectors;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /**
  * A JDK dynamic proxy {@link InvocationHandler} that transparently forwards method calls to a
@@ -55,7 +55,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    final String requestId = MDC.get("requestId");
+    final String requestId = currentRequestId();
     LOG.info(
         "[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
 
@@ -70,11 +70,14 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   }
 
   private Request buildRequest(Method method, Object[] args) {
+    final String requestId = currentRequestId();
     Request.Builder builder =
         Request.newBuilder().setService(serviceClass.getSimpleName()).setMethod(methodKey(method));
+    Context.current()
+        .ifPresent(
+            context -> builder.setContext(ByteString.copyFromUtf8(JsonUtils.toJson(context))));
 
     if (args != null && args.length > 0) {
-      final String requestId = MDC.get("requestId");
       LOG.info(
           "[{}] Serializing args for {}.{}",
           requestId,
@@ -90,7 +93,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   }
 
   private Object blockingCall(Request request, Method method) {
-    final String requestId = MDC.get("requestId");
+    final String requestId = currentRequestId();
     LOG.info(
         "[{}] Initiating gRPC blocking call for {}.{}",
         requestId,
@@ -130,6 +133,10 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         // gRPC's blocking response iterator must never be consumed on a Vert.x event-loop thread.
         .subscribeOn(Schedulers.from(STREAM_EXECUTOR))
         .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType, true));
+  }
+
+  private static String currentRequestId() {
+    return Context.current().map(Context::requestId).orElse(null);
   }
 
   private static String methodKey(final Method method) {

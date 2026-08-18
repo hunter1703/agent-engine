@@ -10,6 +10,7 @@ message Request {
   string service = 1;
   string method = 2;
   bytes payload = 3; // JSON Array of arguments
+  bytes context = 4; // JSON-encoded com.agentengine.util.common.context.Context, if known
 }
 
 message Response {
