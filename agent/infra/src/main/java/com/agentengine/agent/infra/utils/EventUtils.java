@@ -156,10 +156,14 @@ public final class EventUtils {
   public static Event buildResumeEvent(
       final Collection<ResumeRequest> resumeRequests,
       final String invocationId,
-      final long timestamp,
       final String author) {
     final Content resumeContent = ContentUtils.buildResumeContent(resumeRequests);
-    return _buildUserEvent(invocationId, resumeContent, timestamp, author);
+    final long resumeTimestamp =
+        resumeRequests.stream()
+            .mapToLong(ResumeRequest::getTimestamp)
+            .max()
+            .orElse(System.currentTimeMillis());
+    return _buildUserEvent(invocationId, resumeContent, resumeTimestamp, author);
   }
 
   private static Event _buildUserEvent(

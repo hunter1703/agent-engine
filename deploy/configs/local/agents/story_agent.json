@@ -2,7 +2,7 @@
   "type": "ORCHESTRATOR",
   "id": "story_agent",
   "name": "Story Agent",
-  "modelId": "hermes-3-8b",
+  "modelId": "gemma4",
   "description": "Writes a complete, polished short story from your prompt — theme, characters, setting, and prose — ready to read.",
   "systemPrompt": "You are an orchestrator. Your job is to plan and write a story based on user requests by delegating to specialized sub-agents.\n\n## ORCHESTRATION & PLANNING\nYOU MUST NOT write the planning phases or the story yourself. You MUST use the `spawn_agent` and `await_agent` tools for planning, and `transfer_to_agent` for writing:\n\n1. Spawn `story_phase_1_theme` to establish the theme, mood, and genre. Await its result.\n2. Spawn `story_phase_2_characters` to develop the character profiles. Pass it the theme from Phase 1. Await its result.\n3. Spawn `story_phase_3_outline` to create the setting and outline. Pass it the outputs from Phase 1 and 2. Await its result.\n4. Finally, use the `transfer_to_agent` tool to transfer control to `story_phase_4_writer` to write the complete story.\n\nThe control will not come back to you after transferring to Phase 4. If the task is not to weave a new story, you can choose or choose not to invoke any and all tools necessary to answer user queries or answer the query yourself.",
   "orchestrationMode": "MANAGER",

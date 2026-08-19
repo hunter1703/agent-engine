@@ -14,6 +14,8 @@ public final class ResumeRequest {
 
   private String author;
 
+  private long timestamp = System.currentTimeMillis();
+
   public ResumeRequest() {}
 
   public ResumeRequest(String interruptId, Boolean accepted, Map<String, Object> answer) {
@@ -44,6 +46,10 @@ public final class ResumeRequest {
     return author;
   }
 
+  public long getTimestamp() {
+    return timestamp;
+  }
+
   public void setInterruptId(final String interruptId) {
     this.interruptId = interruptId;
   }
@@ -60,6 +66,10 @@ public final class ResumeRequest {
     this.author = author;
   }
 
+  public void setTimestamp(final long timestamp) {
+    this.timestamp = timestamp;
+  }
+
   @Override
   public boolean equals(Object obj) {
     if (obj == this) return true;
@@ -68,12 +78,13 @@ public final class ResumeRequest {
     return Objects.equals(this.interruptId, that.interruptId)
         && Objects.equals(this.accepted, that.accepted)
         && Objects.equals(this.answer, that.answer)
-        && Objects.equals(this.author, that.author);
+        && Objects.equals(this.author, that.author)
+        && this.timestamp == that.timestamp;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(interruptId, accepted, answer, author);
+    return Objects.hash(interruptId, accepted, answer, author, timestamp);
   }
 
   @Override
@@ -90,6 +101,9 @@ public final class ResumeRequest {
         + ", "
         + "author="
         + author
+        + ", "
+        + "timestamp="
+        + timestamp
         + ']';
   }
 }

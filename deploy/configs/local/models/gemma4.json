@@ -1,8 +1,8 @@
 {
-  "id": "gemma4:e4b",
-  "model": "gemma4:e4b",
-  "name": "Gemma 4 E4B (Ollama)",
-  "baseUrl": "http://host.docker.internal:11434",
+  "id": "gemma4",
+  "model": "gemma4:latest",
+  "name": "Gemma 4(Ollama)",
+  "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,
   "topK": 40,
   "topP": 0.9,
@@ -10,6 +10,6 @@
   "maxContextLength": 32768,
   "toolCallingEnabled": true,
   "thoughtsEnabled": true,
-  "provider": "OLLAMA",
+  "provider": "OPEN_AI_COMPATIBLE",
   "type": "CHAT"
 }

@@ -822,9 +822,9 @@ public final class SessionActor
                   .findFirst()
                   .map(ResumeRequest::getAuthor)
                   .orElse(topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId());
+
           events.add(
-              EventUtils.buildResumeEvent(
-                  state.getAllReceivedResumes(), invocationId, timestamp, author));
+              EventUtils.buildResumeEvent(state.getAllReceivedResumes(), invocationId, author));
           LOG.info(
               "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with invocationId: {}",
               topology.sessionId(),
