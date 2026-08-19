@@ -9,6 +9,7 @@ import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
@@ -138,11 +139,14 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                   + "'. Must be one of: "
                   + String.join(", ", subAgentIds)));
     }
+    final String completeMessage =
+        StringUtils.isNotBlank(goal) ? "Goal: " + goal + "\n\n" + message : message;
     final StartChildResult startChildResult =
         actorRef(toolContext)
             .<StartChildResult>ask(
                 replyTo ->
-                    new StartChildCommand(childAgentId, new UniqueRecord<>(message), replyTo),
+                    new StartChildCommand(
+                        childAgentId, new UniqueRecord<>(completeMessage), replyTo),
                 SessionActorFactory.ASK_TIMEOUT)
             .toCompletableFuture()
             .join();
