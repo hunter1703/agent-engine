@@ -75,14 +75,13 @@ public final class SessionActor
   private final ActorRef<SessionCommand> self;
   private final int snapshotThreshold;
   private final SessionEventChannel eventChannel;
-  private final Queue<Event> turnEvents = new ArrayDeque<>();
+  private final Deque<Event> turnEvents = new ArrayDeque<>();
   private final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier;
   private final RunnerFactory runnerFactory;
   private final SessionService sessionService;
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private SessionRunner runner;
-  private boolean runStarted = false;
 
   public SessionActor(
       final ActorContext<SessionCommand> context,
@@ -181,7 +180,6 @@ public final class SessionActor
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> {
-        runStarted = true;
         final List<Event> lastCommitedEvents =
             CollectionUtils.nullSafeList(state.runState().lastCommittedTurn());
         final int num = lastCommitedEvents.size();
@@ -578,9 +576,7 @@ public final class SessionActor
     final SessionState sessionState = state.sessionState();
     if (sessionState == SessionState.RUNNING
         || ((sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.CONTINUING)
-            && runStarted)) {
-      // (sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.CONTINUING) &&
-      // runStarted
+            && !turnEvents.isEmpty())) {
       // when the spawn child is invoked in first run or first run when the state is still in
       // TRIGGERED_RUN
       // after the run continues; state moves to RUNNING only when the first turn is committed
@@ -748,7 +744,6 @@ public final class SessionActor
     }
 
     LOG.info("Publishing event : {}", JsonUtils.toJson(event));
-    runStarted = true;
     turnEvents.add(event);
     LOG.info(
         "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
@@ -780,57 +775,53 @@ public final class SessionActor
                     });
       }
     } else {
-      final ArrayList<Event> events = new ArrayList<>(turnEvents);
       LOG.info(
           "[USER_MESSAGE_TRACE][{}] Turn COMPLETE! Committing {} events to TurnCommittedFact",
           topology.sessionId(),
-          events.size());
-      LOG.info("committing on turn completion : {}", JsonUtils.toJson(events));
-      turnEvents.clear();
+          turnEvents.size());
+      LOG.info("committing on turn completion : {}", JsonUtils.toJson(turnEvents));
 
-      if (state.isDuplicateTurn(events)) {
+      if (state.isDuplicateTurn(turnEvents.peekLast())) {
         LOG.warn("Duplicate turn detected for session {}, skipping commit", topology.sessionId());
         effectBuilder = Effect().none();
+        turnEvents.clear();
       } else {
-        // Prepend user message/resume answers on first turn
+        final ArrayList<Event> events = new ArrayList<>();
         final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
-        final String invocationId = events.getFirst().invocationId();
-        if (isFirstTurn) {
-          if (state.runState().message() != null) {
-            // Initial user message
-            final UniqueRecord<UserMessage> userMessage = state.runState().message();
-            final String author =
-                topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
-            final Event userEvent =
-                EventUtils.buildUserEvent(
-                    userMessage.getRecord(), invocationId, events.getFirst().timestamp(), author);
-            events.addFirst(userEvent);
-            LOG.info(
-                "[USER_MESSAGE_TRACE][{}] First turn - prepended user message event: '{}' with invocationId: {}",
-                topology.sessionId(),
-                userMessage.getRecord(),
-                invocationId);
-          }
-        } else if (!state.getAllReceivedResumes().isEmpty()) {
-          // Continue the run with the resume answers
+        final String invocationId = state.runState().runId();
+        final long timestamp = state.runState().messageTimestamp();
+
+        if (isFirstTurn && state.runState().message() != null) {
+          final UniqueRecord<UserMessage> userMessage = state.runState().message();
+          final String author =
+              topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
+          events.add(
+              EventUtils.buildUserEvent(userMessage.getRecord(), invocationId, timestamp, author));
+          LOG.info(
+              "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with invocationId: {}",
+              topology.sessionId(),
+              userMessage.getRecord(),
+              invocationId);
+        }
+
+        if (!state.getAllReceivedResumes().isEmpty()) {
           final String author =
               state.getAllReceivedResumes().stream()
                   .findFirst()
                   .map(ResumeRequest::getAuthor)
                   .orElse(topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId());
-          final Event resumeEvent =
+          events.add(
               EventUtils.buildResumeEvent(
-                  state.getAllReceivedResumes(),
-                  invocationId,
-                  events.getFirst().timestamp(),
-                  author);
-          events.addFirst(resumeEvent);
+                  state.getAllReceivedResumes(), invocationId, timestamp, author));
           LOG.info(
-              "[USER_MESSAGE_TRACE][{}] First turn after resume - prepended {} resume answer(s) with invocationId: {}",
+              "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with invocationId: {}",
               topology.sessionId(),
               state.getAllReceivedResumes().size(),
               invocationId);
         }
+
+        events.addAll(turnEvents);
+        turnEvents.clear();
 
         final TurnCommittedFact turnFact = new TurnCommittedFact(events);
         LOG.info(
@@ -1029,7 +1020,7 @@ public final class SessionActor
                 state
                     .dequeue()
                     .withSessionState(SessionState.TRIGGERED_RUN)
-                    .withCurrentMessage(fact.getMessage()))
+                    .withNewRun(fact.getMessage(), fact.getTimestamp().toEpochMilli()))
         .onEvent(
             ResumedFact.class,
             (state, fact) -> {
@@ -1057,7 +1048,6 @@ public final class SessionActor
               if (childSessionId != null) {
                 return state.childPaused(childSessionId, interruptId);
               }
-              runStarted = false;
               if (fact.isInternal()) {
                 String correlationId = fact.getCorrelationId();
                 correlationId = correlationId == null ? interruptId : correlationId;
@@ -1069,7 +1059,6 @@ public final class SessionActor
         .onEvent(
             CompletedFact.class,
             (state, fact) -> {
-              runStarted = false;
               final RunResult result =
                   fact.getError() != null
                       ? RunResult.failure(fact.getError())

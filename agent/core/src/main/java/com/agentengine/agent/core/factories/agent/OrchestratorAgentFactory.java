@@ -52,13 +52,15 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     if (mode == OrchestrationMode.UNKNOWN) {
       mode = OrchestrationMode.MANAGER;
     }
-    return switch (mode) {
-      case MANAGER -> buildManager(config);
-      case PARALLEL -> buildParallel(config);
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported orchestration mode: " + mode + " for agent_id=" + config.getId());
-    };
+    switch (mode) {
+      case MANAGER:
+        return buildManager(config);
+      case PARALLEL:
+        return buildParallel(config);
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported orchestration mode: " + mode + " for agent_id=" + config.getId());
+    }
   }
 
   private List<? extends Agent> buildSubAgents(final List<String> subAgentIds) {

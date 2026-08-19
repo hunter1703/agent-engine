@@ -17,10 +17,13 @@ public record SessionActorState(
     Set<StartingChild> startingChildren,
     long nextSequence,
     SessionTopology topology,
-    RunResult lastResult,
     PauseState pauseState,
     RunState runState)
     implements PekkoSerializable {
+
+  public RunResult lastResult() {
+    return runState.result();
+  }
 
   public static SessionActorState initial() {
     return new SessionActorState(
@@ -30,9 +33,8 @@ public record SessionActorState(
         new HashSet<>(),
         0L,
         null,
-        null,
         new PauseState(),
-        new RunState(null, null));
+        new RunState(null, null, 0L, null, null));
   }
 
   public SessionActorState withSessionState(final SessionState sessionState) {
@@ -43,7 +45,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState,
         runState);
   }
@@ -56,7 +57,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         updatedTopology,
-        lastResult,
         pauseState,
         runState);
   }
@@ -69,13 +69,11 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        result,
         pauseState,
-        runState);
+        runState.withResult(result));
   }
 
-  public SessionActorState withCurrentMessage(
-      final UniqueRecord<UserMessage> updatedCurrentMessage) {
+  public SessionActorState resetMessage() {
     return new SessionActorState(
         sessionState,
         queue,
@@ -83,13 +81,26 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState,
-        runState.withMessage(updatedCurrentMessage));
+        runState.resetMessage());
+  }
+
+  public SessionActorState withNewRun(
+      final UniqueRecord<UserMessage> updatedCurrentMessage, final long messageTimestamp) {
+    final String runId = updatedCurrentMessage != null ? updatedCurrentMessage.getId() : null;
+    return new SessionActorState(
+        sessionState,
+        queue,
+        childRegistry,
+        startingChildren,
+        nextSequence,
+        topology,
+        pauseState,
+        new RunState(runId, updatedCurrentMessage, messageTimestamp, null, null));
   }
 
   public SessionActorState completeRun(RunResult result) {
-    return withRunResult(result).withSessionState(SessionState.IDLE).withCurrentMessage(null);
+    return withRunResult(result).withSessionState(SessionState.IDLE).resetMessage();
   }
 
   public SessionActorState enqueue(final UniqueRecord<UserMessage> message) {
@@ -110,7 +121,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence() + events.size(),
         topology,
-        lastResult,
         pauseState,
         runState.withEvents(events));
   }
@@ -143,7 +153,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState.withChildPaused(childSessionId, interruptId),
         runState);
   }
@@ -156,7 +165,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState.withSelfPaused(interruptId),
         runState);
   }
@@ -196,7 +204,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState.withInternalSelfPause(correlationId, interruptId),
         runState);
   }
@@ -219,7 +226,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState.withSelfResumed(resumeRequest),
         runState);
   }
@@ -232,17 +238,16 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         pauseState.withChildResumed(resumeRequest.getInterruptId()),
         runState);
   }
 
-  public boolean isDuplicateTurn(final List<Event> turnEvents) {
-    if (runState == null) {
+  public boolean isDuplicateTurn(final Event lastTurnEvent) {
+    if (runState == null || lastTurnEvent == null) {
       return false;
     }
     final Event last = CollectionUtils.getLast(runState.lastCommittedTurn());
-    return Objects.equals(last == null ? null : last.id(), turnEvents.getLast().id());
+    return Objects.equals(last == null ? null : last.id(), lastTurnEvent.id());
   }
 
   public SessionActorState clearSelfInterruptStates() {
@@ -253,7 +258,6 @@ public record SessionActorState(
         startingChildren,
         nextSequence,
         topology,
-        lastResult,
         new PauseState(
             new HashSet<>(),
             new HashMap<>(),
@@ -282,7 +286,6 @@ public record SessionActorState(
         new HashSet<>(startingChildren),
         nextSequence,
         topology,
-        lastResult,
         pauseState,
         runState);
   }
