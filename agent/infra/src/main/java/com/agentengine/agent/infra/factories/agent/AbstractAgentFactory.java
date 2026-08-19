@@ -49,7 +49,7 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
       tools.add(toolFactory.getSearchKnowledgeTool());
     }
 
-    if (config.getRuntime() == null || config.getRuntime().isResumable()) {
+    if (config.getRuntime().isResumable()) {
       tools.add(toolFactory.getHITLTool());
     }
     final BaseLlmAgentBuilder baseLlmAgentBuilder = new BaseLlmAgentBuilder(builder);

@@ -5,12 +5,19 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
+import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Content;
+import com.google.genai.types.GenerateContentConfig;
+import com.google.genai.types.LiveConnectConfig;
 import com.google.genai.types.Part;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Normalizes model content and tool-call payloads for the engine.
@@ -23,6 +30,8 @@ import java.util.regex.Pattern;
  * <p>Ownership: content normalization, parsing, and protocol hygiene.
  */
 public final class Parser {
+  private static final Logger LOG = LoggerFactory.getLogger(Parser.class);
+
   private static final Pattern THOUGHT_TAG_PATTERN =
       Pattern.compile("<thought>(.*?)</thought>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
@@ -40,7 +49,46 @@ public final class Parser {
     if (StringUtils.isNotBlank(protocol)) {
       builder.appendInstructions(List.of(protocol));
     }
-    return builder.build();
+    final LlmRequest sanitizedRequest = builder.build();
+    // adding check on areToolsEnabled as a hard stop on passing tools to model which don't support
+    // tool calling because certain standard tools like HITL are automatically added based on
+    // agent's config and not model's config (see AbstractAgentFactory)
+    if (!areToolsEnabled) {
+      // implementing like this because builder's set tool method is package private and hence we
+      // can't use it to remove tools from the builder and hence from the llm request directly
+      return new LlmRequest() {
+        @Override
+        public Optional<String> model() {
+          return sanitizedRequest.model();
+        }
+
+        @Override
+        public List<Content> contents() {
+          return sanitizedRequest.contents();
+        }
+
+        @Override
+        public Optional<GenerateContentConfig> config() {
+          return sanitizedRequest.config();
+        }
+
+        @Override
+        public LiveConnectConfig liveConnectConfig() {
+          return sanitizedRequest.liveConnectConfig();
+        }
+
+        @Override
+        public Map<String, BaseTool> tools() {
+          return Map.of();
+        }
+
+        @Override
+        public Builder toBuilder() {
+          return builder;
+        }
+      };
+    }
+    return sanitizedRequest;
   }
 
   private static List<Content> sanitizeRequestContents(
@@ -78,6 +126,7 @@ public final class Parser {
 
   private Content parseTextContent(final Content content) {
     String processedText = content.text();
+    LOG.info("Parser.parseTextContent - initial text: '{}'", processedText);
     final List<Part> thoughtParts =
         new ArrayList<>(
             content.parts().orElse(List.of()).stream()
@@ -89,14 +138,17 @@ public final class Parser {
       final Matcher thoughtMatcher = THOUGHT_TAG_PATTERN.matcher(processedText);
       while (thoughtMatcher.find()) {
         final String thoughtText = thoughtMatcher.group(1).trim();
+        LOG.info("Parser.parseTextContent - extracted thought: '{}'", thoughtText);
         if (StringUtils.isNotBlank(thoughtText)) {
           thoughtParts.add(Part.builder().text(thoughtText).thought(true).build());
         }
       }
       processedText = thoughtMatcher.replaceAll("").trim();
+      LOG.info("Parser.parseTextContent - text after stripping thoughts: '{}'", processedText);
     }
 
     final String finalAnswer = StringUtils.isBlank(processedText) ? "" : processedText.trim();
+    LOG.info("Parser.parseTextContent - finalAnswer: '{}'", finalAnswer);
     final List<Part> allParts = new ArrayList<>(thoughtParts);
     if (StringUtils.isNotBlank(finalAnswer)) {
       allParts.add(

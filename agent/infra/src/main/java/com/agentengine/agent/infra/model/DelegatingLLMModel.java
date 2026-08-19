@@ -24,7 +24,11 @@ public final class DelegatingLLMModel extends AbstractLLM {
     final LlmRequest requestForModel = parser.preProcess(llmRequest);
     LOG.debug(
         "Delegating LLM generateContent using {} mode", stream ? "streaming" : "non-streaming");
-    return delegate.generateContent(requestForModel, stream).map(parser::postProcess);
+    return delegate
+        .generateContent(requestForModel, stream)
+        .doOnNext(response -> LOG.info("RAW LLM OUTPUT: {}", response))
+        .map(parser::postProcess)
+        .doOnNext(response -> LOG.info("POST-PROCESSED LLM OUTPUT: {}", response));
   }
 
   @Override
