@@ -106,7 +106,7 @@ the reader and the runtime equally.
 8. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
 9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
 10. Document REST endpoints with MicroProfile OpenAPI annotations.
-11. Avoid qualified class names; add explicit imports instead.
+11. Avoid qualified class names (FQNs); add explicit imports instead. NEVER use FQNs unless there is a clash of names.
 12. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
 13. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
 14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never

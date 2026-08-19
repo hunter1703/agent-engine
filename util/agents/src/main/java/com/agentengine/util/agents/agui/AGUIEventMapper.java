@@ -48,7 +48,8 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
   public Flowable<Event> onError(final Throwable throwable) {
     LOG.debug("Processing error mapping - throwable={}", ExceptionUtils.getErrorMessage(throwable));
     final RunErrorEvent errorEvent =
-        new RunErrorEvent(ExceptionUtils.getErrorMessage(throwable), null, state.timestamp(), null);
+        new RunErrorEvent(
+            ExceptionUtils.getFullStackTrace(throwable), null, state.timestamp(), null);
     LOG.debug("Generated output event in onError - eventType=RunErrorEvent");
     return Flowable.just(errorEvent);
   }
