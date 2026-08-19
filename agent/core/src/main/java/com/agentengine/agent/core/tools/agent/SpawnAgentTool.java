@@ -15,6 +15,7 @@ import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
+import com.google.genai.types.Type.Known;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,25 +61,32 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     properties.put(
         "agent_id",
         Schema.builder()
-            .type("STRING")
+            .type(Known.STRING)
             .enum_(subAgentIds)
             .description("ID of the agent to spawn. Available agents: " + agentList + ". Required.")
             .build());
     properties.put(
         "message",
         Schema.builder()
-            .type("STRING")
+            .type(Known.STRING)
             .description("Initial message to send to the spawned agent. Required.")
             .build());
     properties.put(
         "goal",
         Schema.builder()
-            .type("STRING")
+            .type(Known.STRING)
             .description("The outcome this child agent is expected to deliver. Required.")
+            .build());
+    properties.put(
+        "await_completion",
+        Schema.builder()
+            .type(Known.BOOLEAN)
+            .description(
+                "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
             .build());
     final Schema params =
         Schema.builder()
-            .type("OBJECT")
+            .type(Known.OBJECT)
             .properties(properties)
             .required(List.of("agent_id", "message", "goal"))
             .build();
@@ -108,7 +116,19 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolSchema(
               name = "goal",
               description = "The outcome this child agent is expected to deliver.")
-          final String goal) {
+          final String goal,
+      @ToolSchema(
+              name = "await_completion",
+              description =
+                  "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.",
+              optional = true)
+          Boolean awaitCompletion) {
+
+    final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
+    if (completedResult != null) {
+      return completedResult;
+    }
+
     if (!subAgentIds.contains(childAgentId)) {
       return ToolOutput.direct(
           Map.of(
@@ -131,22 +151,27 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     final StartSessionResult result = startChildResult.result();
     return switch (result) {
       case StartSessionResult.Accepted ignored -> {
-        final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-        runState.addReminder(
-            new Reminder(
-                Reminder.GROUP_SPAWNED_AGENTS,
-                childSessionId,
-                "agent='"
-                    + childAgentId
-                    + "' goal='"
-                    + goal
-                    + "' — running asynchronously, not yet awaited. "
-                    + "Use "
-                    + AwaitAgentTool.DESCRIPTOR.name()
-                    + " with child_session_id='"
-                    + childSessionId
-                    + "' when you need its result."));
-        yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
+        awaitCompletion = awaitCompletion == null || awaitCompletion;
+        if (awaitCompletion) {
+          yield awaitChild(toolContext, childSessionId);
+        } else {
+          final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
+          runState.addReminder(
+              new Reminder(
+                  Reminder.GROUP_SPAWNED_AGENTS,
+                  childSessionId,
+                  "agent='"
+                      + childAgentId
+                      + "' goal='"
+                      + goal
+                      + "' — running asynchronously, not yet awaited. "
+                      + "Use "
+                      + AwaitAgentTool.DESCRIPTOR.name()
+                      + " with child_session_id='"
+                      + childSessionId
+                      + "' when you need its result."));
+          yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
+        }
       }
       case StartSessionResult.Rejected(String r) ->
           ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + r));

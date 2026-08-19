@@ -108,6 +108,10 @@ public final class BaseFlow extends SingleFlow {
                 event = event.toBuilder().id(Event.generateEventId()).build();
               }
               interruptRequested.addAll(event.actions().requestedToolConfirmations().keySet());
+              LOG.info(
+                  "baseflow : event : {} , interruptRequested : {}",
+                  JsonUtils.toJson(event),
+                  JsonUtils.toJson(interruptRequested));
               final Content content = event.content().orElse(Content.builder().build());
 
               // every tool needs to return something, even if it raises an interrupt; tools that

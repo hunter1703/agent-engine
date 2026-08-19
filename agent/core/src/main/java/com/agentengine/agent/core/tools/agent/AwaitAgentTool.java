@@ -1,18 +1,14 @@
 package com.agentengine.agent.core.tools.agent;
 
-import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.events.RunResult;
-import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.pekko.ActorSystemProvider;
-import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Awaits a previously spawned child agent run.
@@ -23,7 +19,6 @@ import java.util.Optional;
 @SuppressWarnings("ALL")
 public final class AwaitAgentTool extends AbstractAgentTool {
 
-  public static final String CHILD_SESSION_ID = "child_session_id";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.AWAIT_AGENT_TOOL_NAME,
@@ -40,7 +35,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
   private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(30);
 
   public AwaitAgentTool(final ActorSystemProvider actorSystemProvider) {
-    super(DESCRIPTOR, actorSystemProvider, true);
+    super(DESCRIPTOR, actorSystemProvider);
   }
 
   public ToolOutput<Map<String, Object>> execute(
@@ -52,27 +47,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
                   "The opaque identifier of the child agent session to wait for, as returned when the "
                       + "session was created or last messaged.")
           final String childSessionId) {
-    final Optional<ToolConfirmation> toolConfirmationOptional = toolContext.toolConfirmation();
-    if (toolConfirmationOptional.isPresent()) {
-      final ToolConfirmation toolConfirmation = toolConfirmationOptional.get();
-      if (toolConfirmation.confirmed()) {
-        return ToolOutput.direct((Map<String, Object>) toolConfirmation.payload());
-      }
-    }
-    final RunResult result =
-        actorRef(toolContext)
-            .<RunResult>ask(
-                replyTo -> new AwaitChildCommand(childSessionId, replyTo), AWAIT_TIMEOUT)
-            .toCompletableFuture()
-            .join();
-
-    if (!result.completedRun()) {
-      toolContext.requestConfirmation(
-          "Waiting for child agent run to complete.", Map.of("child_session_id", childSessionId));
-      return ToolOutput.empty();
-    }
-    RunUtils.getOrInitState(toolContext.invocationContext()).removeReminder(childSessionId);
-    return ToolOutput.direct(buildCompletedResponseMap(childSessionId, result));
+    return awaitChild(toolContext, childSessionId);
   }
 
   public static Map<String, Object> buildCompletedResponseMap(

@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 public final class AGUIToolCallMapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(AGUIToolCallMapper.class);
-  private static final String ARG_TOOL_CONFIRMATION = "toolConfirmation";
 
   private final AGUIMapperState state;
 
@@ -97,14 +96,17 @@ public final class AGUIToolCallMapper {
 
     final FunctionCall originalFunctionCall =
         Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+    final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
+    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)
+        || Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
+        || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)) {
       // Only a *confirmed* pause means the child run actually completed and carries a real
-      // result; an unconfirmed round-trip just means await_agent is still waiting, so the
+      // result; an unconfirmed round-trip just means the internal tool is still waiting, so the
       // tool call started in mapToolCall() must stay open rather than being resolved here.
       return toolConfirmation != null && toolConfirmation.confirmed()
-          ? mapAwaitAgentResult(originalFunctionCall, toolConfirmation)
+          ? mapInternalAgentResult(originalFunctionCall, toolConfirmation)
           : Flowable.empty();
     }
     final boolean accepted = toolConfirmation != null && toolConfirmation.confirmed();
@@ -129,15 +131,19 @@ public final class AGUIToolCallMapper {
 
     final FunctionCall originalFunctionCall =
         Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+    final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
+    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)
+        || Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
+        || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)) {
       return Flowable.empty();
     }
     final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
     final ToolConfirmation toolConfirmation =
-        Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_TOOL_CONFIRMATION));
+        Objects.requireNonNull(
+            CollectionUtils.getValueFromMap(args, Constants.ARG_TOOL_CONFIRMATION));
     final String prompt = toolConfirmation.hint();
     @SuppressWarnings("unchecked")
     final List<String> options =
@@ -158,12 +164,12 @@ public final class AGUIToolCallMapper {
   }
 
   /**
-   * Resolves the tool call opened for {@code await_agent} in {@link #mapToolCall} with the child
-   * run's actual result, instead of letting it dangle forever: the outer confirmation machinery
-   * that carries this result is otherwise entirely suppressed from the client (see above), so
-   * without this the client never learns the awaited tool call finished.
+   * Resolves the tool call opened for internal pause tools (like {@code await_agent}) in {@link
+   * #mapToolCall} with the child run's actual result, instead of letting it dangle forever: the
+   * outer confirmation machinery that carries this result is otherwise entirely suppressed from the
+   * client (see above), so without this the client never learns the awaited tool call finished.
    */
-  private Flowable<Event> mapAwaitAgentResult(
+  private Flowable<Event> mapInternalAgentResult(
       final FunctionCall originalAwaitAgentCall, final ToolConfirmation toolConfirmation) {
     final String callId = originalAwaitAgentCall.id().orElseThrow();
     final String contentResult = JsonUtils.toJson(toolConfirmation.payload());

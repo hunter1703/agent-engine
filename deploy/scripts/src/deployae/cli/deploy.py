@@ -136,6 +136,7 @@ async def _deploy(
     timeout: str,
     local_port: int,
 ) -> None:
+    start_time = time.time()
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
     interrupted = asyncio.Event()
     _install_shutdown_handler(interrupted)
@@ -170,7 +171,8 @@ async def _deploy(
                 print(stage.header())
                 print(stage.rendered)
 
-    output.phase("Deployment complete — application is ready")
+    elapsed = time.time() - start_time
+    output.phase(f"Deployment complete in {int(elapsed // 60)}m {int(elapsed % 60)}s — application is ready")
     if not dry_run:
         rest = Chart("rest")
         await _port_forward_rest(

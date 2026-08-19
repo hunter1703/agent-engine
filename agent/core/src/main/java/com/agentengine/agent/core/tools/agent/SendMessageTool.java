@@ -3,6 +3,9 @@ package com.agentengine.agent.core.tools.agent;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
+import com.agentengine.agent.infra.utils.Reminder;
+import com.agentengine.agent.infra.utils.RunState;
+import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
@@ -43,6 +46,7 @@ public final class SendMessageTool extends AbstractAgentTool {
     super(DESCRIPTOR, actorSystemProvider);
   }
 
+  @SuppressWarnings("unchecked")
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
@@ -55,7 +59,19 @@ public final class SendMessageTool extends AbstractAgentTool {
               name = "message",
               description =
                   "The message content to deliver as the next conversation turn to the child session.")
-          final String message) {
+          final String message,
+      @ToolSchema(
+              name = "await_completion",
+              description =
+                  "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been sent the message.",
+              optional = true)
+          Boolean awaitCompletion) {
+
+    final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
+    if (completedResult != null) {
+      return completedResult;
+    }
+
     final StartSessionResult result =
         actorRef(toolContext)
             .<StartSessionResult>ask(
@@ -65,8 +81,27 @@ public final class SendMessageTool extends AbstractAgentTool {
             .toCompletableFuture()
             .join();
     return switch (result) {
-      case StartSessionResult.Accepted ignored ->
-          ToolOutput.direct(Map.of("child_session_id", childSessionId));
+      case StartSessionResult.Accepted ignored -> {
+        awaitCompletion = awaitCompletion == null || awaitCompletion;
+        if (awaitCompletion) {
+          yield awaitChild(toolContext, childSessionId);
+        } else {
+          final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
+          runState.addReminder(
+              new Reminder(
+                  Reminder.GROUP_SPAWNED_AGENTS,
+                  childSessionId,
+                  "agent_session='"
+                      + childSessionId
+                      + "' — processing a follow-up message asynchronously, not yet awaited. "
+                      + "Use "
+                      + AwaitAgentTool.DESCRIPTOR.name()
+                      + " with child_session_id='"
+                      + childSessionId
+                      + "' when you need its result."));
+          yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
+        }
+      }
       case StartSessionResult.Rejected(String reason) ->
           ToolOutput.direct(Map.of("error", "Failed to send message: " + reason));
       case StartSessionResult.Queued(int position) ->

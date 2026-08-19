@@ -2,6 +2,7 @@ package com.agentengine.agent.core.session;
 
 import static com.agentengine.agent.core.session.SessionActorFactory.ASK_TIMEOUT;
 import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
+import static com.agentengine.util.common.CollectionUtils.getValueFromMap;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.factories.RunnerFactory;
@@ -13,6 +14,7 @@ import com.agentengine.agent.core.session.commands.SelfCommand.*;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.*;
 import com.agentengine.agent.core.session.state.*;
+import com.agentengine.agent.core.tools.agent.AbstractAgentTool;
 import com.agentengine.agent.core.tools.agent.AwaitAgentTool;
 import com.agentengine.agent.infra.utils.EventUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
@@ -30,6 +32,7 @@ import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.pekko.actor.ShardedEntity;
 import com.google.adk.events.Event;
+import com.google.adk.events.ToolConfirmation;
 import com.google.adk.flows.llmflows.Functions;
 import com.google.adk.sessions.Session;
 import com.google.genai.types.Content;
@@ -657,7 +660,7 @@ public final class SessionActor
       return replyTo != null ? effect.thenReply(replyTo, _ -> result) : effect;
     }
 
-    final var effect =
+    final EffectBuilder<SessionFact, SessionActorState> effect =
         Effect().persist(new ChildStartedFact(command.sessionId(), command.agentId()));
     return replyTo != null
         ? effect.thenReply(
@@ -719,7 +722,7 @@ public final class SessionActor
         state.topology().sessionId(),
         event.author(),
         event.turnComplete().orElse(false),
-        event.content().map(Content::text).orElse("<no-content>"));
+        event.toJson());
 
     // Detect self-pause: the adk_request_confirmation call ID is the interruptId the client
     // echoes back, so it is used directly as the pause key.
@@ -730,13 +733,22 @@ public final class SessionActor
       final String interruptId = call.id().orElse(null);
       final Map<String, Object> args = call.args().orElse(Map.of());
       final FunctionCall originalFunctionCall =
-          Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
-      if (Objects.equals(
-          Constants.AWAIT_AGENT_TOOL_NAME, originalFunctionCall.name().orElse(null))) {
-        final String childSessionId =
-            CollectionUtils.getValueFromMap(
-                originalFunctionCall.args().orElse(Map.of()), AwaitAgentTool.CHILD_SESSION_ID);
-        pauseFacts.add(PausedFact.internalSelfPause(childSessionId, interruptId));
+          Objects.requireNonNull(getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+
+      final String functionName = originalFunctionCall.name().orElse(null);
+      if (Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
+          || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)
+          || Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)) {
+        final ToolConfirmation toolConfirmation =
+            getValueFromMap(args, Constants.ARG_TOOL_CONFIRMATION);
+        if (toolConfirmation != null) {
+          //noinspection unchecked
+          final String childSessionId =
+              getValueFromMap(
+                  (Map<String, Object>) toolConfirmation.payload(),
+                  AbstractAgentTool.CHILD_SESSION_ID);
+          pauseFacts.add(PausedFact.internalSelfPause(childSessionId, interruptId));
+        }
       } else {
         pauseFacts.add(PausedFact.externalSelfPaused(interruptId));
         externalInterruptIds.add(interruptId);
