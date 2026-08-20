@@ -1,14 +1,18 @@
 {{- $probes := include "agent-engine.infra-base.probes" . | fromYaml -}}
+{{- $instance := include "agent-engine.infra-base.instance" . -}}
+{{- $namespace := include "agent-engine.infra-base.namespace" . -}}
+{{- $replicaCount := int (.Values.replicaCount | default 1) -}}
+{{- $replicaSetName := .Values.replicaSetName | default "rs0" -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "agent-engine.infra-base.instance" . }}
-  namespace: {{ include "agent-engine.infra-base.namespace" . }}
+  name: {{ $instance }}
+  namespace: {{ $namespace }}
   labels:
     {{- include "agent-engine.infra-base.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "agent-engine.infra-base.instance" . }}-headless
-  replicas: 1
+  serviceName: {{ $instance }}-headless
+  replicas: {{ $replicaCount }}
   selector:
     matchLabels:
       {{- include "agent-engine.infra-base.selectorLabels" . | nindent 6 }}
@@ -24,6 +28,10 @@ spec:
         - name: mongodb
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --replSet
+            - {{ $replicaSetName }}
+            - --bind_ip_all
           securityContext:
             {{- include "agent-engine.infra-base.containerSecurityContext" . | nindent 12 }}
           ports:

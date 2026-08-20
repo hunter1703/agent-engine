@@ -61,3 +61,60 @@ than the tcpSocket/exec checks mongodb/postgres use. */}}
 {{- $merged := mergeOverwrite (deepCopy (index .Subcharts "infra-base").Values.containerSecurityContext) (.Values.containerSecurityContext | default dict) -}}
 {{- toYaml $merged -}}
 {{- end -}}
+
+{{/*
+Renders one post-install/post-upgrade Job per entry in .Values.postDeploymentScripts — a list of
+{name, image, command} maps — for one-shot bootstrap logic (schema init, replica-set initiate,
+seed data) that needs to run after a chart's pods exist. Each script gets its own Job, hook
+weight following list order, so a chart with several scripts gets them run in the order declared
+without hand-writing Job boilerplate per script. `image` and `command` are passed through `tpl`,
+so values.yaml entries may use Helm template syntax against the calling chart's own context, e.g.
+{{ .Values.replicaCount }} or {{ include "agent-engine.infra-base.instance" . }}. Call from a
+chart's own templates/ file:
+  {{- include "agent-engine.infra-base.postDeploymentScriptJobs" . }}
+*/}}
+{{- define "agent-engine.infra-base.postDeploymentScriptJobs" -}}
+{{- $instance := include "agent-engine.infra-base.instance" . -}}
+{{- $namespace := include "agent-engine.infra-base.namespace" . -}}
+{{- range $index, $script := .Values.postDeploymentScripts }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $instance }}-{{ $script.name }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "agent-engine.infra-base.labels" $ | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": {{ $index | quote }}
+    # A Job's spec is immutable, so a name collision with the previous release's Job (still
+    # around under ttlSecondsAfterFinished) would fail the upgrade outright without this.
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ $script.backoffLimit | default 6 }}
+  activeDeadlineSeconds: {{ $script.activeDeadlineSeconds | default 600 }}
+  ttlSecondsAfterFinished: 172800
+  template:
+    metadata:
+      labels:
+        {{- include "agent-engine.infra-base.selectorLabels" $ | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        {{- include "agent-engine.infra-base.podSecurityContext" $ | nindent 8 }}
+      containers:
+        - name: script-runner
+          image: {{ tpl (required (printf "postDeploymentScripts[%d].image is required" $index) $script.image) $ }}
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            {{- include "agent-engine.infra-base.containerSecurityContext" $ | nindent 12 }}
+          resources:
+            {{- toYaml ($script.resources | default (dict "requests" (dict "cpu" "100m" "memory" "128Mi") "limits" (dict "cpu" "100m" "memory" "128Mi"))) | nindent 12 }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              {{- tpl (required (printf "postDeploymentScripts[%d].command is required" $index) $script.command) $ | nindent 14 }}
+{{- end }}
+{{- end }}

@@ -1,4 +1,6 @@
 globalProperties:
-  infra.mongodb.uri: mongodb://mongodb-local.infra.svc.cluster.local:27017/?authSource=admin
+  # Single-member replica set (mongod always runs with --replSet, even at replicaCount 1 - see
+  # mongodb chart) - host + replicaSet param must match the chart's actual replicaCount/replicaSetName.
+  infra.mongodb.uri: mongodb://mongodb-local-0.mongodb-local-headless.infra.svc.cluster.local:27017/?replicaSet=rs0&authSource=admin
   infra.mongodb.database: INFRA
   app.mongodb.database: AGENT_ENGINE

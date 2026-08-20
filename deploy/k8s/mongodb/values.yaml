@@ -5,3 +5,68 @@ image:
   repository: mongo
   tag: "7.0"
   pullPolicy: IfNotPresent
+
+replicaCount: 1
+# Replica set name. Always enabled (even at replicaCount 1) so scaling later only
+# requires bumping replicaCount and the app connection string - no image or mode change.
+replicaSetName: rs0
+
+# Rendered by infra-base's postDeploymentScriptJobs template (image/command go through `tpl`,
+# so Helm syntax below resolves against this chart's own values/helpers at render time).
+postDeploymentScripts:
+  - name: rs-init
+    image: "mongo:7.0" # keep in sync with image.repository/image.tag above
+    command: |
+      REPLICAS={{ int (.Values.replicaCount | default 1) }}
+      NAME="{{ include "agent-engine.infra-base.instance" . }}"
+      NS="{{ include "agent-engine.infra-base.namespace" . }}"
+      RS_NAME="{{ .Values.replicaSetName | default "rs0" }}"
+      PRIMARY="$NAME-0.$NAME-headless.$NS.svc.cluster.local:27017"
+
+      echo "Waiting for all MongoDB members to be reachable..."
+      i=0
+      while [ $i -lt $REPLICAS ]; do
+        HOST="$NAME-$i.$NAME-headless.$NS.svc.cluster.local:27017"
+        echo "Checking $HOST ..."
+        until mongosh --quiet --host "$HOST" --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
+          sleep 5
+        done
+        echo "$HOST reachable."
+        i=$((i+1))
+      done
+
+      echo "Checking replica set state..."
+      RS_STATUS=$(mongosh --quiet --host "$PRIMARY" --eval "try { rs.status().ok } catch(e) { print('0') }")
+      if [ "$RS_STATUS" = "1" ]; then
+        echo "Replica set already healthy."
+        exit 0
+      fi
+
+      RS_CONF_ID=$(mongosh --quiet --host "$PRIMARY" --eval "try { rs.conf()._id } catch(e) { print('none') }")
+      if [ "$RS_CONF_ID" != "none" ]; then
+        echo "Replica set configuration exists (name: $RS_CONF_ID) but not healthy."
+        echo "Skipping rs.initiate(). Manual intervention may be required."
+        exit 0
+      fi
+
+      echo "Replica set not configured. Building configuration for $REPLICAS member(s)..."
+      MEMBERS_JSON=""
+      i=0
+      while [ $i -lt $REPLICAS ]; do
+        HOST="$NAME-$i.$NAME-headless.$NS.svc.cluster.local:27017"
+        if [ $i -gt 0 ]; then MEMBERS_JSON="$MEMBERS_JSON,"; fi
+        MEMBERS_JSON="$MEMBERS_JSON{ _id: $i, host: \"$HOST\" }"
+        i=$((i+1))
+      done
+      RS_CONFIG="{ _id: \"$RS_NAME\", members: [ $MEMBERS_JSON ] }"
+
+      echo "Replica set configuration: $RS_CONFIG"
+      echo "Executing rs.initiate()..."
+      mongosh --quiet --host "$PRIMARY" --eval "rs.initiate($RS_CONFIG)"
+
+      echo "Waiting for replica set to become healthy..."
+      until mongosh --quiet --host "$PRIMARY" --eval "rs.status().ok" | grep -q 1; do
+        sleep 5
+      done
+
+      echo "Replica set successfully initialized."

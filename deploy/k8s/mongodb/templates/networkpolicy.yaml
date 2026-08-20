@@ -19,3 +19,11 @@ spec:
       ports:
         - protocol: TCP
           port: 27017
+    # Replica set members must reach each other for replication and heartbeats.
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "agent-engine.infra-base.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 27017
