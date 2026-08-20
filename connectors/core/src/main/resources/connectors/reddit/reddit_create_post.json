@@ -35,7 +35,8 @@
       "path": "/submit",
       "method": "POST",
       "headers": {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "script:agent-engine-connector:v1.0"
       },
       "body": {
         "sr": "{{ input.subreddit }}",
