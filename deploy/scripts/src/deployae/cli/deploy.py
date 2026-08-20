@@ -347,7 +347,7 @@ def build_stages(
             timeout=timeout,
             dry_run=dry_run,
             needs_env_secret=name in ENV_SECRET_CHARTS,
-            env_file=REPO_ROOT / ".env",
+            env_file= "/Users/rahul/Pictures/.env",
         )
         stages.append(stage)
         return stage

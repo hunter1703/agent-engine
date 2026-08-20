@@ -7,6 +7,8 @@
   "topK": 50,
   "topP": 0.9,
   "repeatPenalty": 1.1,
+  "numPredict": 2048,
+  "maxContextLength": 16384,
   "toolCallingEnabled": true,
   "thoughtsEnabled": false,
   "provider": "OPEN_AI_COMPATIBLE",

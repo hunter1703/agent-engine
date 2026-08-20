@@ -1,5 +1,7 @@
 package com.agentengine.util.common;
 
+import java.util.Map;
+
 /** Utilities for reading runtime environment context. */
 public final class EnvUtils {
 
@@ -51,5 +53,9 @@ public final class EnvUtils {
    */
   public static String getTier() {
     return System.getenv(TIER_ENV);
+  }
+
+  public static Map<String, String> getAll() {
+    return System.getenv();
   }
 }

@@ -1,5 +1,6 @@
 package com.agentengine.util.scripts.templated;
 
+import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.scripts.exception.TemplateException;
 import groovy.lang.Binding;
 import groovy.lang.Script;
@@ -53,7 +54,7 @@ public class GroovyTemplate<T> implements Template<T> {
   private T evaluate(Map<String, Object> parameters) throws Exception {
     final Map<String, Object> bindingVariables = new HashMap<>();
     bindingVariables.put("input", parameters);
-    bindingVariables.put("env", System.getenv());
+    bindingVariables.put("env", EnvUtils.getAll());
 
     final Script script = constructor.newInstance();
     script.setBinding(new Binding(bindingVariables));

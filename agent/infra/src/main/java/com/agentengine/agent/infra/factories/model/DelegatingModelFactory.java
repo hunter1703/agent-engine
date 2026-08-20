@@ -4,6 +4,7 @@ import com.agentengine.agent.infra.agents.processors.Parser;
 import com.agentengine.agent.infra.model.DelegatingLLMModel;
 import com.agentengine.util.agents.beans.config.ChatModelConfig;
 import com.agentengine.util.agents.beans.config.ModelConfig;
+import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.ResourceUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.scripts.TemplateUtils;
@@ -67,7 +68,7 @@ public abstract class DelegatingModelFactory<T extends BaseLlm>
   private static void resolveConfig(final ModelConfig modelConfig) {
     final Template<String> template = TemplateUtils.buildTemplate(modelConfig.getApiKey());
     if (template != null) {
-      modelConfig.setApiKey(template.getValue(Map.of("env", System.getenv())));
+      modelConfig.setApiKey(template.getValue(Map.of("env", EnvUtils.getAll())));
     }
   }
 }

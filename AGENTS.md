@@ -70,6 +70,12 @@ docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 - **Deferred work**: record follow-ups in `TODO.md`, not inline comments.
 - **Enum rule**: all enums must include `UNKNOWN` and a `valueOfOrDefault` parser.
 - **Commits and branches**: Never commit unless explicitly asked. Never create a separate branch unless explicitly asked. Always make changes directly on `main` and leave them unstaged so the user can review before staging or committing.
+- **Uncapped local models can loop forever**: a `ChatModelConfig` with no `numPredict` set has no
+  generation length limit, and `repeatPenalty` alone doesn't reliably stop a weaker local model
+  from degenerating into repeating the same section (with a plausible-looking Markdown/frontmatter
+  boundary in between) until it fills the context window — symptom: a single response that never
+  terminates. Always set `numPredict` (and `maxContextLength` matching the model's `num_ctx`) for
+  local Ollama-backed models in `deploy/configs/local/models/`.
 
 ## Code Quality Philosophy
 
@@ -152,3 +158,6 @@ instructions, under `configs/`.
     `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
 18. Order class members with all `public` methods first, then all `private` methods after —
     never interleave them, even when a private helper is only used by one nearby public method.
+
+
+NEVER Read `.env` file as it is extremely sensitive
