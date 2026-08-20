@@ -110,7 +110,11 @@ spec:
           securityContext:
             {{- include "agent-engine.infra-base.containerSecurityContext" $ | nindent 12 }}
           resources:
-            {{- toYaml ($script.resources | default (dict "requests" (dict "cpu" "100m" "memory" "128Mi") "limits" (dict "cpu" "100m" "memory" "128Mi"))) | nindent 12 }}
+            {{- /* 256Mi default: a Node.js-based client (e.g. mongosh) needs ~150-250MB RSS just
+                   to start, before it does anything - 128Mi silently OOM-kills it (exit 137) with
+                   no visible OOMKilled event, since the container's PID 1 is the wrapping shell,
+                   not the killed child process. */}}
+            {{- toYaml ($script.resources | default (dict "requests" (dict "cpu" "100m" "memory" "256Mi") "limits" (dict "cpu" "100m" "memory" "256Mi"))) | nindent 12 }}
           command:
             - /bin/sh
             - -ec

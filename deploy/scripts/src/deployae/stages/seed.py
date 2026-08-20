@@ -51,7 +51,13 @@ class SeedInfraConfigStage(Stage):
         docs = self._environment_configs()
 
         with kube.port_forward(mongodb_ns, mongodb_name, self.mongodb_port) as local_port:
-            client: MongoClient[dict[str, Any]] = MongoClient(f"mongodb://127.0.0.1:{local_port}")
+            # directConnection: mongod always runs with --replSet (even at a single member), so
+            # without this the driver discovers replica set topology from the server's advertised
+            # member hostnames (cluster-internal DNS) and reconnects there instead of continuing
+            # to use this port-forward tunnel - which then fails to resolve outside the cluster.
+            client: MongoClient[dict[str, Any]] = MongoClient(
+                f"mongodb://127.0.0.1:{local_port}/?directConnection=true"
+            )
             try:
                 collection = client["INFRA"]["InfraConfig"]
                 for doc in docs:

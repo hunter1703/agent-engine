@@ -1,6 +1,6 @@
 {
   "id": "gemma4",
-  "model": "gemma4:latest",
+  "model": "hf.co/TrevorJS/gemma-4-E4B-it-uncensored-GGUF:Q8_0",
   "name": "Gemma 4(Ollama)",
   "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,
