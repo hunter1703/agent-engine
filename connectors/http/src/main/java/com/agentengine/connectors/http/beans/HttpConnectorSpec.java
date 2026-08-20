@@ -3,27 +3,33 @@ package com.agentengine.connectors.http.beans;
 import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.util.Map;
 
 @JsonTypeName("HTTP")
 public class HttpConnectorSpec extends ConnectorSpec {
   private String baseUrl;
   private String path;
-  private Map<String, Object> queryParams;
-  private Map<String, String> headers;
+
+  /**
+   * queryParams, headers, and body are each either a map (each entry independently templatized) or
+   * a string containing a single Groovy expression evaluating to the whole value at once - e.g. for
+   * building it programmatically.
+   */
+  private Object queryParams;
+
+  private Object headers;
   private String method;
-  private Map<String, Object> body;
+  private Object body;
   private AuthDecoratorSpec auth;
 
   public HttpConnectorSpec() {
     super(Type.HTTP);
   }
 
-  public Map<String, Object> getBody() {
+  public Object getBody() {
     return body;
   }
 
-  public void setBody(Map<String, Object> body) {
+  public void setBody(Object body) {
     this.body = body;
   }
 
@@ -35,19 +41,19 @@ public class HttpConnectorSpec extends ConnectorSpec {
     this.method = method;
   }
 
-  public Map<String, String> getHeaders() {
+  public Object getHeaders() {
     return headers;
   }
 
-  public void setHeaders(Map<String, String> headers) {
+  public void setHeaders(Object headers) {
     this.headers = headers;
   }
 
-  public Map<String, Object> getQueryParams() {
+  public Object getQueryParams() {
     return queryParams;
   }
 
-  public void setQueryParams(Map<String, Object> queryParams) {
+  public void setQueryParams(Object queryParams) {
     this.queryParams = queryParams;
   }
 

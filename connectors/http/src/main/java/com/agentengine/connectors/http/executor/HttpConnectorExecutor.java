@@ -34,6 +34,7 @@ public class HttpConnectorExecutor
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public ConnectorResult<Map<String, Object>> execute(Map<String, Object> input) {
     final HttpConnectorSpec evaluated = templatedSpec.evaluate(input);
     final OkHttpClient client = clientProvider.getClient(new HttpClientOptions());
@@ -42,13 +43,13 @@ public class HttpConnectorExecutor
     final HttpRequest request =
         new HttpRequest(
             evaluated.getUrl(),
-            evaluated.getQueryParams(),
+            (Map<String, Object>) evaluated.getQueryParams(),
             method,
-            evaluated.getBody(),
-            evaluated.getHeaders());
+            (Map<String, Object>) evaluated.getBody(),
+            (Map<String, String>) evaluated.getHeaders());
     authDecorator.decorate(request);
 
-    Map<String, String> headers = evaluated.getHeaders();
+    Map<String, String> headers = (Map<String, String>) evaluated.getHeaders();
     final RequestBody requestBody =
         createRequestBody(method, headers.get("Content-Type"), request.getBody());
     final Request.Builder requestBuilder =
