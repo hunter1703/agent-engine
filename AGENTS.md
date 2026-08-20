@@ -94,6 +94,38 @@ the reader and the runtime equally.
   avoid unnecessary allocations, redundant iterations, and blocking in hot paths. Use virtual threads and
   async patterns where latency or throughput matters.
 
+## Agent Prompt Authoring Guidelines
+
+These apply when writing or editing an agent's `systemPrompt`, or any other agent-facing
+instructions, under `configs/`.
+
+1. **Describe responsibility, not procedure.** An instruction should orient the agent toward its
+   role and the outcome it owns — the judgment calls it needs to make across different user
+   requests — not a step-by-step script for one scenario. Only get procedural where the domain
+   genuinely is a fixed procedure (e.g. an orchestrator with a mandated phase order); even then,
+   describe the *shape* of the workflow rather than the exact tool calls that implement it.
+2. **Don't hardcode tool or sub-agent names into instructions unless there's no reasonable
+   alternative.** Tool names, tool schemas, and available sub-agent lists live in the runtime and
+   are already surfaced to the model at call time — through tool descriptions, parameter enums,
+   and, for orchestrators, the framework's own auto-injected transfer instructions. An instruction
+   that restates that mechanic duplicates a source of truth it doesn't own: it drifts out of sync
+   as tools are renamed, added, or removed, and a stale or wrong name is worse than no name at all
+   — it actively misleads the model into believing a capability exists that doesn't. Prefer
+   describing *when* and *why* to reach for a category of capability ("hand off ownership of the
+   final output" vs. "delegate a sub-task and review the result") over naming the specific tool or
+   agent that does it. Reserve naming one concretely for cases where the domain gives no other way
+   to disambiguate and a weaker model has demonstrably needed the extra anchor.
+3. **Explain the "why" behind a constraint, not just the "what."** A bare prohibition ("do not do
+   X") is more likely to be dropped by a smaller model under pressure than one paired with its
+   reason ("X is owned by a later step, so doing it here creates a conflict"). The reason also lets
+   the model generalize the constraint to situations the instruction didn't spell out.
+4. **Hand-hold only as much as the model needs, and prefer the least specific instruction that
+   reliably works.** Some local or smaller models genuinely need more concrete anchoring than a
+   frontier model would; adding it is fine, but treat it as a targeted fix for a demonstrated
+   failure mode, not a default. Whenever a prompt does need to be concrete about a tool name,
+   parameter, or format, re-verify periodically that the detail still matches the current
+   implementation — stale specifics are a common source of silent, hard-to-diagnose failures.
+
 ## Development Guidelines
 
 1. Favor small, focused changes; avoid unnecessary refactors.
