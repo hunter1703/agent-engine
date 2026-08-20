@@ -31,6 +31,7 @@
       "method": "POST",
       "headers": {
         "accept": "application/json",
+        "Content-Type": "application/json",
         "x-subscription-token": "{{ env.BRAVE_API_KEY }}"
       },
       "body": {

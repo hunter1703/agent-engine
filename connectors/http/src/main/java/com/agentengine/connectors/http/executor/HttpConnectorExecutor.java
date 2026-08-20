@@ -96,7 +96,7 @@ public class HttpConnectorExecutor
       return null;
     }
 
-    final MediaType mediaType = MediaType.parse(mimeType);
+    final MediaType mediaType = mimeType == null ? null : MediaType.parse(mimeType);
     final String subType = mediaType == null ? "" : mediaType.subtype();
     return switch (subType) {
       case "x-www-form-urlencoded" -> createFormBody(body);
