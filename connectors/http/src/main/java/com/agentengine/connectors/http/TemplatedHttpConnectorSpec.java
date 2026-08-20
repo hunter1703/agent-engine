@@ -12,7 +12,7 @@ public class TemplatedHttpConnectorSpec
   private final Template<String> path;
   private final Template<String> method;
   private final Template<Map<String, Object>> body;
-  private final Template<Map<String, String>> queryParams;
+  private final Template<Map<String, Object>> queryParams;
   private final Template<Map<String, String>> headers;
 
   public TemplatedHttpConnectorSpec(HttpConnectorSpec connectorSpec) {

@@ -1,6 +1,8 @@
 package com.agentengine.connectors.core.services;
 
+import com.agentengine.connectors.http.auth.HeaderAuthDecoratorSpec;
 import com.agentengine.connectors.http.beans.HttpConnectorSpec;
+import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.agentengine.util.common.JsonUtils;
@@ -19,6 +21,8 @@ public final class ConnectorRegistry {
   private static ObjectMapper buildConnectorMapper() {
     final ObjectMapper mapper = JsonUtils.copyMapper();
     mapper.registerSubtypes(new NamedType(HttpConnectorSpec.class, ConnectorSpec.Type.HTTP.name()));
+    mapper.registerSubtypes(
+        new NamedType(HeaderAuthDecoratorSpec.class, AuthDecoratorSpec.Type.HEADER.name()));
     return mapper;
   }
 

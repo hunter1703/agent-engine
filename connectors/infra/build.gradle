@@ -8,4 +8,6 @@ dependencies {
     implementation project(':connectors:api')
     implementation libs.jackson.databind
     implementation libs.slf4j.api
+    implementation libs.jakarta.inject.api
+    implementation libs.jakarta.enterprise.cdi.api
 }

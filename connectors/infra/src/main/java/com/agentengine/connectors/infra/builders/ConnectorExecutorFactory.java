@@ -1,7 +1,6 @@
-package com.agentengine.connectors.core.factories;
+package com.agentengine.connectors.infra.builders;
 
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
-import com.agentengine.connectors.infra.builders.ConnectorExecutorBuilder;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;

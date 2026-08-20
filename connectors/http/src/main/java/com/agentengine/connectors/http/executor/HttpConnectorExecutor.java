@@ -5,14 +5,15 @@ import com.agentengine.connectors.api.exceptions.ConnectorException;
 import com.agentengine.connectors.http.TemplatedHttpConnectorSpec;
 import com.agentengine.connectors.http.beans.HttpClientOptions;
 import com.agentengine.connectors.http.beans.HttpConnectorSpec;
+import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.infra.ClientProvider;
+import com.agentengine.connectors.infra.auth.AuthDecorator;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import okhttp3.*;
 import okhttp3.internal.http.HttpMethod;
 
@@ -21,28 +22,37 @@ public class HttpConnectorExecutor
 
   private final TemplatedHttpConnectorSpec templatedSpec;
   private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
+  private final AuthDecorator<HttpRequest> authDecorator;
 
   public HttpConnectorExecutor(
       TemplatedHttpConnectorSpec templatedSpec,
-      ClientProvider<HttpClientOptions, OkHttpClient> clientProvider) {
+      ClientProvider<HttpClientOptions, OkHttpClient> clientProvider,
+      AuthDecorator<HttpRequest> authDecorator) {
     this.templatedSpec = templatedSpec;
     this.clientProvider = clientProvider;
+    this.authDecorator = authDecorator;
   }
 
   @Override
   public ConnectorResult<Map<String, Object>> execute(Map<String, Object> input) {
     final HttpConnectorSpec evaluated = templatedSpec.evaluate(input);
     final OkHttpClient client = clientProvider.getClient(new HttpClientOptions());
-    final HttpUrl url =
-        buildUrl(evaluated.getBaseUrl(), evaluated.getPath(), evaluated.getQueryParams());
     final String method = evaluated.getMethod();
+
+    final HttpRequest request =
+        new HttpRequest(
+            evaluated.getUrl(),
+            evaluated.getQueryParams(),
+            method,
+            evaluated.getBody(),
+            evaluated.getHeaders());
+    authDecorator.decorate(request);
 
     Map<String, String> headers = evaluated.getHeaders();
     final RequestBody requestBody =
-        createRequestBody(method, headers.get("Content-Type"), evaluated.getBody());
-
+        createRequestBody(method, headers.get("Content-Type"), request.getBody());
     final Request.Builder requestBuilder =
-        new Request.Builder().url(url).method(method, requestBody);
+        new Request.Builder().url(request.getFullUrl()).method(method, requestBody);
     headers.forEach(requestBuilder::addHeader);
 
     try (Response response = client.newCall(requestBuilder.build()).execute()) {
@@ -65,22 +75,6 @@ public class HttpConnectorExecutor
     } catch (IOException ex) {
       throw new ConnectorException("HTTP request failed", ex);
     }
-  }
-
-  private static HttpUrl buildUrl(String baseUrl, String path, Map<String, String> queryParams) {
-    if (!baseUrl.endsWith("/")) {
-      baseUrl = baseUrl + "/";
-    }
-    if (path.startsWith("/")) {
-      path = path.substring(1);
-    }
-
-    final HttpUrl parsed = HttpUrl.parse(baseUrl + path);
-
-    final HttpUrl.Builder builder = Objects.requireNonNull(parsed).newBuilder();
-    queryParams = CollectionUtils.nullSafeMap(queryParams);
-    queryParams.forEach(builder::addQueryParameter);
-    return builder.build();
   }
 
   private static RequestBody createRequestBody(
