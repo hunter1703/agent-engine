@@ -18,6 +18,7 @@ import com.google.adk.tools.BaseTool;
 import com.google.adk.tools.ToolContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.genai.types.FunctionDeclaration;
+import com.google.genai.types.Schema;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import java.io.InputStream;
@@ -45,16 +46,36 @@ public abstract class Tool extends BaseTool {
   private final FunctionDeclaration declaration;
   private final List<ParameterBinding> parameterBindings;
   private final ToolDescriptor toolDescriptor;
+  private final boolean passRawInput;
 
   protected Tool(final ToolDescriptor toolDescriptor) {
-    this(toolDescriptor, false);
+    this(toolDescriptor, false, null);
   }
 
   protected Tool(final ToolDescriptor toolDescriptor, final boolean isLongRunning) {
+    this(toolDescriptor, isLongRunning, null);
+  }
+
+  /**
+   * @param argsSchema when non-null, used verbatim as the function's parameters schema instead of
+   *     reflecting the {@code execute} method's parameters - for tools whose schema is only known
+   *     at runtime (e.g. built from external config). Since that schema has no parameter-name
+   *     wrapper for the model to nest arguments under, a non-null argsSchema also makes {@code
+   *     execute}'s sole non-context/non-stream parameter receive the model's entire args map
+   *     verbatim, bypassing name-based lookup.
+   */
+  protected Tool(final ToolDescriptor toolDescriptor, final Schema argsSchema) {
+    this(toolDescriptor, false, argsSchema);
+  }
+
+  private Tool(
+      final ToolDescriptor toolDescriptor, final boolean isLongRunning, final Schema argsSchema) {
     super(toolDescriptor.name(), toolDescriptor.description(), isLongRunning);
     this.toolDescriptor = toolDescriptor;
+    this.passRawInput = argsSchema != null;
     this.executeMethod = getExecuteMethod();
-    this.declaration = ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor);
+    this.declaration =
+        ToolUtils.buildFunctionDeclaration(executeMethod, toolDescriptor, argsSchema);
     LOG.debug(
         "descriptor : {}, declaration : {}",
         JsonUtils.toJson(toolDescriptor),
@@ -140,6 +161,10 @@ public abstract class Tool extends BaseTool {
       }
       if (binding.isInputStream()) {
         arguments[binding.index()] = null;
+        continue;
+      }
+      if (passRawInput) {
+        arguments[binding.index()] = convertMapValue(args, binding.javaType());
         continue;
       }
       if (!args.containsKey(binding.name())) {

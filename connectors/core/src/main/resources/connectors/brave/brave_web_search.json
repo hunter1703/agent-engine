@@ -1,0 +1,44 @@
+{
+  "name": "brave_web_search",
+  "description": "Query a live web search service and return a synthesised summary of results for a given query.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Search query string"
+      },
+      "country": {
+        "type": "string",
+        "description": "Two-letter country code"
+      },
+      "search_lang": {
+        "type": "string",
+        "description": "Search language code"
+      },
+      "maximum_number_of_tokens": {
+        "type": "integer",
+        "description": "Maximum number of tokens in the summarised response"
+      }
+    },
+    "required": ["query"]
+  },
+  "spec": {
+    "executor": {
+      "type": "HTTP",
+      "baseUrl": "https://api.search.brave.com",
+      "path": "/res/v1/llm/context",
+      "method": "POST",
+      "headers": {
+        "accept": "application/json",
+        "x-subscription-token": "{{ env.BRAVE_API_KEY }}"
+      },
+      "body": {
+        "q": "{{ input.query }}",
+        "country": "{{ input.country }}",
+        "search_lang": "{{ input.search_lang }}",
+        "maximum_number_of_tokens": "{{ input.maximum_number_of_tokens }}"
+      }
+    }
+  }
+}

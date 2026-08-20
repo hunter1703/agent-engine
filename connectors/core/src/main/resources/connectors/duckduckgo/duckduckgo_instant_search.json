@@ -1,0 +1,26 @@
+{
+  "name": "duckduckgo_instant_search",
+  "description": "Query DuckDuckGo's Instant Answer API for a quick factual answer to a query.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Search query string"
+      }
+    },
+    "required": ["query"]
+  },
+  "spec": {
+    "executor": {
+      "type": "HTTP",
+      "baseUrl": "https://api.duckduckgo.com",
+      "path": "/",
+      "method": "GET",
+      "queryParams": {
+        "q": "{{ input.query }}",
+        "format": "json"
+      }
+    }
+  }
+}

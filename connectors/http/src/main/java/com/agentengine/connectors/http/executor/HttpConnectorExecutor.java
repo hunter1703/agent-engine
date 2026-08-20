@@ -2,9 +2,9 @@ package com.agentengine.connectors.http.executor;
 
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
-import com.agentengine.connectors.http.TemplatedHttpConnectorSpec;
+import com.agentengine.connectors.http.TemplatedHttpExecutorSpec;
 import com.agentengine.connectors.http.beans.HttpClientOptions;
-import com.agentengine.connectors.http.beans.HttpConnectorSpec;
+import com.agentengine.connectors.http.beans.HttpExecutorSpec;
 import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.infra.ClientProvider;
 import com.agentengine.connectors.infra.auth.AuthDecorator;
@@ -20,12 +20,12 @@ import okhttp3.internal.http.HttpMethod;
 public class HttpConnectorExecutor
     implements ConnectorExecutor<Map<String, Object>, Map<String, Object>> {
 
-  private final TemplatedHttpConnectorSpec templatedSpec;
+  private final TemplatedHttpExecutorSpec templatedSpec;
   private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
   private final AuthDecorator<HttpRequest> authDecorator;
 
   public HttpConnectorExecutor(
-      TemplatedHttpConnectorSpec templatedSpec,
+      TemplatedHttpExecutorSpec templatedSpec,
       ClientProvider<HttpClientOptions, OkHttpClient> clientProvider,
       AuthDecorator<HttpRequest> authDecorator) {
     this.templatedSpec = templatedSpec;
@@ -36,7 +36,7 @@ public class HttpConnectorExecutor
   @Override
   @SuppressWarnings("unchecked")
   public ConnectorResult<Map<String, Object>> execute(Map<String, Object> input) {
-    final HttpConnectorSpec evaluated = templatedSpec.evaluate(input);
+    final HttpExecutorSpec evaluated = templatedSpec.evaluate(input);
     final OkHttpClient client = clientProvider.getClient(new HttpClientOptions());
     final String method = evaluated.getMethod();
 
@@ -84,12 +84,24 @@ public class HttpConnectorExecutor
       return null;
     }
 
-    MediaType mediaType = MediaType.parse(mimeType);
+    final MediaType mediaType = MediaType.parse(mimeType);
     final String subType = mediaType == null ? "" : mediaType.subtype();
     return switch (subType) {
-      case "json" -> RequestBody.create(JsonUtils.toJson(body), mediaType);
+      case "x-www-form-urlencoded" -> createFormBody(body);
       default -> RequestBody.create(JsonUtils.toJson(body), mediaType);
     };
+  }
+
+  private static RequestBody createFormBody(final Map<String, Object> body) {
+    final FormBody.Builder builder = new FormBody.Builder();
+    CollectionUtils.nullSafeMap(body)
+        .forEach(
+            (key, value) -> {
+              if (value != null) {
+                builder.add(key, String.valueOf(value));
+              }
+            });
+    return builder.build();
   }
 
   private static List<Map<String, Object>> buildResult(

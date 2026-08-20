@@ -1,4 +1,4 @@
-package com.agentengine.agent.infra.tools.web;
+package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.tools.ToolProvider;
 import com.agentengine.connectors.api.services.ConnectorService;

@@ -1,39 +1,42 @@
 package com.agentengine.connectors.infra.beans;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
 
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "type",
-    visible = true)
-public abstract class ConnectorSpec {
-  public enum Type {
-    HTTP,
-    UNKNOWN;
+public final class ConnectorSpec {
+  private AuthDecoratorSpec auth;
+  private ExecutorSpec executor;
 
-    public static Type valueOfOrUnknown(final String type) {
-      try {
-        return Type.valueOf(type);
-      } catch (final IllegalArgumentException e) {
-        return UNKNOWN;
-      }
+  public AuthDecoratorSpec getAuth() {
+    return auth;
+  }
+
+  public void setAuth(AuthDecoratorSpec auth) {
+    this.auth = auth;
+  }
+
+  public ExecutorSpec getExecutor() {
+    return executor;
+  }
+
+  public void setExecutor(ExecutorSpec executor) {
+    this.executor = executor;
+  }
+
+  /**
+   * Overlays {@code appSpec} onto whichever of this instance's own fields are unset. Merging
+   * happens only at this level - {@code auth} and {@code executor} are each taken wholesale from
+   * one side or the other, with no merging of fields within an {@link ExecutorSpec} itself.
+   */
+  public ConnectorSpec mergeWith(final ConnectorSpec appSpec) {
+    if (appSpec == null) {
+      return this;
     }
-  }
-
-  private String type;
-
-  public ConnectorSpec() {}
-
-  public ConnectorSpec(ConnectorSpec.Type type) {
-    this.type = type.name();
-  }
-
-  public String getType() {
-    return type;
-  }
-
-  public void setType(String type) {
-    this.type = type;
+    if (auth == null) {
+      auth = appSpec.getAuth();
+    }
+    if (executor == null) {
+      executor = appSpec.getExecutor();
+    }
+    return this;
   }
 }

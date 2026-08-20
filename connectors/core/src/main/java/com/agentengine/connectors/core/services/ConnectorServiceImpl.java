@@ -1,5 +1,6 @@
 package com.agentengine.connectors.core.services;
 
+import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
@@ -27,13 +28,27 @@ public class ConnectorServiceImpl implements ConnectorService {
 
   @Override
   public <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException {
-    final Connector connector = registry.get(request.name());
-    if (connector == null) {
-      throw new ConnectorException("Connector not found: " + request.name());
-    }
-
+    final Connector connector = getConnector(request.appName(), request.connectorName());
     final ConnectorExecutor<Map<String, Object>, T> executor =
         executorFactory.build(connector.spec());
     return executor.execute(request.input());
+  }
+
+  @Override
+  public ConnectorMetadata describe(final String appName, final String connectorName)
+      throws ConnectorException {
+    final Connector connector = getConnector(appName, connectorName);
+    return new ConnectorMetadata(
+        appName, connectorName, connector.description(), connector.inputSchema());
+  }
+
+  private Connector getConnector(final String appName, final String connectorName)
+      throws ConnectorException {
+    final Connector connector = registry.get(appName, connectorName);
+    if (connector == null) {
+      throw new ConnectorException(
+          "Connector not found for app: " + appName + ", connector: " + connectorName);
+    }
+    return connector;
   }
 }

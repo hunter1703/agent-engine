@@ -40,12 +40,25 @@ public final class ToolUtils {
 
   public static FunctionDeclaration buildFunctionDeclaration(
       final Method method, final ToolDescriptor toolDescriptor) {
+    return buildFunctionDeclaration(method, toolDescriptor, null);
+  }
+
+  /**
+   * @param argsSchema when non-null, used verbatim as the function's parameters schema instead of
+   *     reflecting {@code method}'s parameters - for tools whose schema is only known at runtime
+   *     (e.g. built from external config), not from a Java parameter type.
+   */
+  public static FunctionDeclaration buildFunctionDeclaration(
+      final Method method, final ToolDescriptor toolDescriptor, final Schema argsSchema) {
     final FunctionDeclaration.Builder builder =
         FunctionDeclaration.builder()
             .name(toolDescriptor.name())
             .description(toolDescriptor.description());
 
-    builder.parameters(buildParameterObjectSchema(method.getParameters(), false));
+    builder.parameters(
+        argsSchema == null
+            ? buildParameterObjectSchema(method.getParameters(), false)
+            : argsSchema);
     builder.response(buildResponseSchema(method));
     return builder.build();
   }

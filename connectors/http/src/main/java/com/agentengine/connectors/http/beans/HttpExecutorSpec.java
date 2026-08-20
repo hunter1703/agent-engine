@@ -1,11 +1,10 @@
 package com.agentengine.connectors.http.beans;
 
-import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
-import com.agentengine.connectors.infra.beans.ConnectorSpec;
+import com.agentengine.connectors.infra.beans.ExecutorSpec;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 @JsonTypeName("HTTP")
-public class HttpConnectorSpec extends ConnectorSpec {
+public class HttpExecutorSpec extends ExecutorSpec {
   private String baseUrl;
   private String path;
 
@@ -19,9 +18,8 @@ public class HttpConnectorSpec extends ConnectorSpec {
   private Object headers;
   private String method;
   private Object body;
-  private AuthDecoratorSpec auth;
 
-  public HttpConnectorSpec() {
+  public HttpExecutorSpec() {
     super(Type.HTTP);
   }
 
@@ -71,14 +69,6 @@ public class HttpConnectorSpec extends ConnectorSpec {
 
   public void setBaseUrl(String baseUrl) {
     this.baseUrl = baseUrl;
-  }
-
-  public AuthDecoratorSpec getAuth() {
-    return auth;
-  }
-
-  public void setAuth(AuthDecoratorSpec auth) {
-    this.auth = auth;
   }
 
   public String getUrl() {

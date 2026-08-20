@@ -1,4 +1,4 @@
-package com.agentengine.agent.infra.tools.web;
+package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;

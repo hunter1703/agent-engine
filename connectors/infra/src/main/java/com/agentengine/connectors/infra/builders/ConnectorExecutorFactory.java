@@ -1,6 +1,7 @@
 package com.agentengine.connectors.infra.builders;
 
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
+import com.agentengine.connectors.infra.beans.ExecutorSpec;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -10,7 +11,7 @@ import java.util.concurrent.ConcurrentMap;
 
 @Singleton
 public class ConnectorExecutorFactory {
-  private final ConcurrentMap<ConnectorSpec.Type, ConnectorExecutorBuilder<?, ?, ?>> typeVsBuilder =
+  private final ConcurrentMap<ExecutorSpec.Type, ConnectorExecutorBuilder<?, ?, ?>> typeVsBuilder =
       new ConcurrentHashMap<>();
 
   public ConnectorExecutorFactory(@Any Instance<ConnectorExecutorBuilder<?, ?, ?>> builders) {
@@ -22,13 +23,14 @@ public class ConnectorExecutorFactory {
   }
 
   @SuppressWarnings("unchecked")
-  public <I, O> ConnectorExecutor<I, O> build(ConnectorSpec spec) {
-    final ConnectorExecutorBuilder<ConnectorSpec, I, O> builder =
-        (ConnectorExecutorBuilder<ConnectorSpec, I, O>)
-            typeVsBuilder.get(ConnectorSpec.Type.valueOfOrUnknown(spec.getType()));
+  public <I, O> ConnectorExecutor<I, O> build(final ConnectorSpec spec) {
+    final ExecutorSpec executorSpec = spec.getExecutor();
+    final ConnectorExecutorBuilder<ExecutorSpec, I, O> builder =
+        (ConnectorExecutorBuilder<ExecutorSpec, I, O>)
+            typeVsBuilder.get(ExecutorSpec.Type.valueOfOrUnknown(executorSpec.getType()));
     if (builder == null) {
-      throw new IllegalStateException("No ConnectorExecutorBuilder: " + spec.getType());
+      throw new IllegalStateException("No ConnectorExecutorBuilder: " + executorSpec.getType());
     }
-    return builder.build(spec);
+    return builder.build(executorSpec, spec);
   }
 }

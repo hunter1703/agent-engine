@@ -1,0 +1,49 @@
+{
+  "name": "reddit_create_post",
+  "description": "Create a new post (text or link) in a subreddit.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "subreddit": {
+        "type": "string",
+        "description": "Subreddit to post to, without the r/ prefix"
+      },
+      "kind": {
+        "type": "string",
+        "description": "Post kind: 'self' for a text post, 'link' for a link post",
+        "enum": ["self", "link"]
+      },
+      "title": {
+        "type": "string",
+        "description": "Post title"
+      },
+      "text": {
+        "type": "string",
+        "description": "Post body text, required when kind is 'self'"
+      },
+      "url": {
+        "type": "string",
+        "description": "Link URL, required when kind is 'link'"
+      }
+    },
+    "required": ["subreddit", "kind", "title"]
+  },
+  "spec": {
+    "executor": {
+      "type": "HTTP",
+      "baseUrl": "https://oauth.reddit.com/api",
+      "path": "/submit",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": {
+        "sr": "{{ input.subreddit }}",
+        "kind": "{{ input.kind }}",
+        "title": "{{ input.title }}",
+        "text": "{{ input.kind == 'self' ? input.text : null }}",
+        "url": "{{ input.kind == 'link' ? input.url : null }}"
+      }
+    }
+  }
+}

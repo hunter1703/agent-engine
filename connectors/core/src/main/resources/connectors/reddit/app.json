@@ -1,0 +1,10 @@
+{
+  "spec": {
+    "auth": {
+      "type": "HEADER",
+      "headers": {
+        "Authorization": "Bearer {{ env.REDDIT_API_TOKEN }}"
+      }
+    }
+  }
+}
