@@ -39,6 +39,7 @@
         "User-Agent": "script:agent-engine-connector:v1.0"
       },
       "body": {
+        "api_type": "json",
         "sr": "{{ input.subreddit }}",
         "kind": "{{ input.kind }}",
         "title": "{{ input.title }}",

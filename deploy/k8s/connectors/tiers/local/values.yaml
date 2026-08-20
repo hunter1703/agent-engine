@@ -10,11 +10,11 @@ app-base:
   replicas: 1
   resources:
     requests:
-      cpu: "100m"
-      memory: "256Mi"
+      cpu: "300m"
+      memory: "768Mi"
     limits:
-      cpu: "100m"
-      memory: "256Mi"
+      cpu: "300m"
+      memory: "768Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-connectors
