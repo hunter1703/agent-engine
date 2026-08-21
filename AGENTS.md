@@ -1,6 +1,11 @@
 # Agent Guidelines
 
 > [!IMPORTANT]
+> `CLAUDE.md`, `GEMINI.md`, `QWEN.md`, and any other per-agent instruction file at the repo root are
+> symlinks to this file. Make all edits here, in `AGENTS.md`, never in one of the symlinks — editing
+> a symlink target directly will fail, and even if it didn't, it wouldn't propagate to the others.
+
+> [!IMPORTANT]
 > This project is in an active development phase. Backward compatibility is not guaranteed, and breaking changes may occur frequently as we refine the core APIs and integration protocols.
 
 ## Project Summary
@@ -158,6 +163,10 @@ instructions, under `configs/`.
     `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
 18. Order class members with all `public` methods first, then all `private` methods after —
     never interleave them, even when a private helper is only used by one nearby public method.
+19. Prefer plain, ordinary words over fancier-sounding ones for every kind of name — classes,
+    methods, variables, fields. Simple isn't vague: keep the name precise, just don't reach for a
+    more formal word when a plain one already says it exactly as well (e.g. `idleTimeoutCommand`,
+    not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
 
 
 NEVER Read `.env` file as it is extremely sensitive
