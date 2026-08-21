@@ -11,22 +11,16 @@ import org.apache.pekko.actor.typed.javadsl.Behaviors;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
 
 /**
- * Wraps a cluster-sharded entity's behavior with self-managed idle passivation: starts an idle
- * timer the moment the actor starts, resets it on every message, and on expiry sends {@link
- * ClusterSharding.Passivate} to the shard instead of letting the timeout reach the wrapped
- * behavior.
+ * Wraps an entity's behavior with self-managed idle passivation: starts a timer on start, resets it
+ * on every message, and on expiry sends {@link ClusterSharding.Passivate} to the shard instead of
+ * forwarding the timeout to the wrapped behavior.
  *
- * <p>Its main use case is a {@code rememberEntities=true} entity type: enabling remember-entities
- * silently disables the built-in auto passivation entirely (Pekko Cluster Sharding's docs,
- * "Automatic Passivation" section — "Enabling remembered entities disables Automatic Passivation"),
- * so for an entity type with an unbounded id space that also needs remember-entities (to resume a
- * genuinely in-progress entity after a crash), every id ever used would otherwise stay in the
- * remembered set forever, and get recreated — including long-idle ones — on every shard rebalance
- * or crash recovery. Manually sending {@code Passivate} is a separate code path in Pekko's {@code
- * Shard}, unaffected by that restriction: it explicitly removes the entity from the durable
- * remembered-entities store once it terminates this way (as opposed to just dying, which leaves it
- * remembered so it restarts) — so only entities still genuinely active, never passivated, remain
- * remembered.
+ * <p>Built for {@code rememberEntities=true} entity types, where Pekko's built-in idle-passivation
+ * strategy is silently disabled (Pekko Cluster Sharding's docs, "Automatic Passivation" section:
+ * "Enabling remembered entities disables Automatic Passivation"). Manually sending {@code
+ * Passivate} is unaffected by that restriction and is what actually drops an idle entity out of the
+ * remembered set — dying any other way leaves it remembered, so it gets recreated on the next
+ * rebalance or recovery.
  *
  * @param <Command> the entity's command type
  */

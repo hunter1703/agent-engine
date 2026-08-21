@@ -10,14 +10,13 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 /**
  * A {@link ShardedEntityFactory} whose entities passivate after a period of inactivity, via Pekko's
  * own built-in idle-passivation strategy. That strategy only works when entities aren't remembered
- * — see {@link RememberingPassivableShardedEntityFactory} for the other case — so {@link
- * #rememberEntities()} is fixed to {@code false} here, closing off the combination that would
- * otherwise silently disable it (Pekko Cluster Sharding's docs, "Automatic Passivation" section:
- * "Enabling remembered entities disables Automatic Passivation").
+ * — see {@link RememberedPassivableShardedEntityFactory} for the other case — so remember-entities
+ * is fixed to {@code false} here, closing off the combination that would otherwise silently disable
+ * it (Pekko Cluster Sharding's docs, "Automatic Passivation" section: "Enabling remembered entities
+ * disables Automatic Passivation").
  *
- * <p>Subclasses supply {@link #domainBehavior(EntityContext)} instead of {@link
- * #behavior(EntityContext)}; there's nothing to add here since Pekko's strategy is applied to the
- * sharding settings rather than the behavior.
+ * <p>Subclasses implement {@link #behavior(EntityContext)} directly, same as the base class — this
+ * only adds the passivation strategy to the sharding settings.
  *
  * @param <Command> the entity's command type
  */
@@ -37,14 +36,10 @@ public abstract class AutoPassivableShardedEntityFactory<Command>
 
   @Override
   protected final ClusterShardingSettings shardingSettings(final ActorSystem<?> system) {
-    ClusterShardingSettings shardingSettings = super.shardingSettings(system);
-    if (!rememberEntities) {
-      shardingSettings =
-          shardingSettings.withPassivationStrategy(
-              ClusterShardingSettings.PassivationStrategySettings$.MODULE$
-                  .defaults()
-                  .withIdleEntityPassivation(passivationTimeout));
-    }
-    return shardingSettings;
+    return super.shardingSettings(system)
+        .withPassivationStrategy(
+            ClusterShardingSettings.PassivationStrategySettings$.MODULE$
+                .defaults()
+                .withIdleEntityPassivation(passivationTimeout));
   }
 }

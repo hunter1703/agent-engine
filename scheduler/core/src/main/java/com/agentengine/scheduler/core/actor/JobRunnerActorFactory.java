@@ -4,7 +4,7 @@ import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerConfigs;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.pekko.ActorSystemProvider;
-import com.agentengine.util.pekko.actor.ShardedEntityFactory;
+import com.agentengine.util.pekko.actor.AutoPassivableShardedEntityFactory;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -18,7 +18,8 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityContext;
 /** Registers {@link JobRunnerActor} for sharding and hands out refs to individual runners. */
 @Singleton
 @Unremovable
-public class JobRunnerActorFactory extends ShardedEntityFactory<JobRunnerActor.Command> {
+public class JobRunnerActorFactory
+    extends AutoPassivableShardedEntityFactory<JobRunnerActor.Command> {
 
   /**
    * A safety net only: an entity stops itself once its run finishes, so one still alive after this
@@ -71,14 +72,5 @@ public class JobRunnerActorFactory extends ShardedEntityFactory<JobRunnerActor.C
                         nodeLimiter,
                         jobExecutor,
                         heartbeatInterval)));
-  }
-
-  /**
-   * An entity exists only for the run it was created for, and its id is a trigger id, so the set of
-   * ids is unbounded. Remembering them would have the shard recreate every trigger ever dispatched.
-   */
-  @Override
-  protected boolean rememberEntities() {
-    return false;
   }
 }
