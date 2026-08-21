@@ -9,4 +9,7 @@ dependencies {
     implementation project(':util:ms:client')
     implementation libs.mongodb.bson
     implementation libs.jakarta.validation.api
+
+    implementation platform(libs.quarkus.bom)
+    implementation libs.quarkus.arc
 }

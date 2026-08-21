@@ -12,6 +12,7 @@ include 'interfaces:rest'
 include 'agent:api'
 include 'agent:infra'
 include 'agent:core'
+include 'agent:jobs'
 
 include 'connectors:api'
 include 'connectors:infra'

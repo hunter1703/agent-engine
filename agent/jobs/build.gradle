@@ -1,0 +1,11 @@
+plugins {
+    id 'com.agentengine.java-library-conventions'
+}
+
+group = 'com.agentengine.agent'
+
+dependencies {
+    implementation project(':scheduler:api')
+    implementation project(':agent:api')
+    implementation project(':util:common')
+}

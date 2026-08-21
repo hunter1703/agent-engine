@@ -6,6 +6,8 @@ import java.util.Map;
 
 public class JobDefinition extends BaseEntity {
 
+  public static final String FIELD_JOB_CLASS_NAME = "jobClassName";
+
   private String jobClassName;
   private List<String> jobTags;
   private String cronSchedule;

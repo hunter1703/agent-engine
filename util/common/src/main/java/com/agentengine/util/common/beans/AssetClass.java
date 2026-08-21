@@ -13,4 +13,5 @@ public interface AssetClass {
   String MEMORY = "Memory";
   String JOB_DEFINITION = "JobDefinition";
   String TRIGGER_DEFINITION = "TriggerDefinition";
+  String INVOKE_AGENT_JOB = "InvokeAgentJob";
 }

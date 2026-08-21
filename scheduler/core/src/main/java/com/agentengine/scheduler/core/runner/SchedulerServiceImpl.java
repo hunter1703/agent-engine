@@ -10,6 +10,8 @@ import com.agentengine.scheduler.api.store.JobDefinitionRepository;
 import com.agentengine.scheduler.api.store.TriggerDefinitionRepository;
 import com.agentengine.scheduler.core.SchedulerUtils;
 import com.agentengine.util.common.CronUtils;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.common.query.Query;
 import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -32,13 +34,19 @@ public class SchedulerServiceImpl implements SchedulerService {
   }
 
   @Override
-  public void schedule(final JobDefinition jobDefinition) {
+  public String schedule(final JobDefinition jobDefinition) {
     createTrigger(jobDefinitionRepository.save(jobDefinition));
+    return jobDefinition.getId();
   }
 
   @Override
   public JobDefinition getJob(final String jobId) {
     return jobDefinitionRepository.findById(jobId);
+  }
+
+  @Override
+  public PaginatedResult<JobDefinition> findJobs(final Query query) {
+    return jobDefinitionRepository.findByQuery(query);
   }
 
   @Override

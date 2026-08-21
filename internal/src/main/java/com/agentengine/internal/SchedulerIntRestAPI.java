@@ -1,6 +1,5 @@
-package com.agentengine.interfaces.rest;
+package com.agentengine.internal;
 
-import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import jakarta.inject.Inject;
@@ -16,16 +15,22 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-@Path("/v1/scheduler")
+/**
+ * Operational job-scheduling endpoints. Served under {@code /internal}, which comes from {@code
+ * quarkus.http.root-path} rather than being repeated here. Direct job submission is an operational
+ * concern (any job class on the scheduler's classpath, addressed by raw {@code jobClassName}),
+ * unlike the agent-scoped {@code /v1/agent/{agentId}/schedule} endpoint, which only ever creates
+ * {@code InvokeAgentJob} definitions on the caller's behalf.
+ */
+@Path("/scheduler")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@ContextAware
-public class SchedulerRestAPI {
+public class SchedulerIntRestAPI {
 
   private final SchedulerService schedulerService;
 
   @Inject
-  public SchedulerRestAPI(final SchedulerService schedulerService) {
+  public SchedulerIntRestAPI(final SchedulerService schedulerService) {
     this.schedulerService = schedulerService;
   }
 

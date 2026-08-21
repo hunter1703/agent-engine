@@ -69,17 +69,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public Publisher<SessionEvent> startSession(
       final String agentId, final String sessionId, final UserMessage message) {
-    final String resolvedSessionId =
-        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
-    LOG.info("Starting session {}:{}", agentId, resolvedSessionId);
-
-    final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(resolvedSessionId);
-    ref.<Done>ask(
-            replyTo ->
-                new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
-            SessionActorFactory.ASK_TIMEOUT)
-        .toCompletableFuture()
-        .join(); // block until the session is persisted — safe to subscribe after this
+    final String resolvedSessionId = initializeSession(agentId, sessionId);
     final AgentSession session = sessionService.getSession(resolvedSessionId);
     final String rootSessionId =
         session != null && StringUtils.isNotBlank(session.getRootSessionId())
@@ -89,20 +79,46 @@ public class RuntimeServiceImpl implements RuntimeService {
     // may have left the persisted session status as COMPLETED, so subscribe directly to the
     // live root-session channel before starting the run.
     final Publisher<SessionEvent> liveEvents = subscribeToLiveEvents(rootSessionId);
+    startTurn(agentId, resolvedSessionId, message);
+    return liveEvents;
+  }
 
-    ref.<StartSessionResult>ask(
+  @Override
+  public String invoke(final String agentId, final String sessionId, final UserMessage message) {
+    final String initializedSessionId = initializeSession(agentId, sessionId);
+    startTurn(agentId, initializedSessionId, message);
+    return initializedSessionId;
+  }
+
+  private String initializeSession(final String agentId, final String sessionId) {
+    final String resolvedSessionId =
+        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+    sessionActorFactory
+        .entityRef(resolvedSessionId)
+        .<Done>ask(
+            replyTo ->
+                new InitializeCommand(SessionTopology.root(agentId, resolvedSessionId), replyTo),
+            SessionActorFactory.ASK_TIMEOUT)
+        .toCompletableFuture()
+        .join(); // block until the session is persisted
+    return resolvedSessionId;
+  }
+
+  private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
+    LOG.info("Starting session {}:{}", agentId, sessionId);
+    sessionActorFactory
+        .entityRef(sessionId)
+        .<StartSessionResult>ask(
             replyTo -> new StartCommand(new UniqueRecord<>(message), replyTo),
             SessionActorFactory.ASK_TIMEOUT)
         .whenComplete(
             (result, ex) -> {
               if (ex != null) {
-                LOG.error("Failed to start session {}:{}", agentId, resolvedSessionId, ex);
+                LOG.error("Failed to start session {}:{}", agentId, sessionId, ex);
               } else {
-                LOG.info("Session {}:{} start result: {}", agentId, resolvedSessionId, result);
+                LOG.info("Session {}:{} start result: {}", agentId, sessionId, result);
               }
             });
-
-    return liveEvents;
   }
 
   @Override

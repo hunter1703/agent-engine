@@ -12,6 +12,7 @@ dependencies {
     implementation project(':catalog:core')
     implementation project(':connectors:core')
     implementation project(':knowledge:core')
+    implementation project(':scheduler:api')
     implementation project(':scheduler:core')
     implementation project(':util:common')
     implementation project(':util:mongodb')
@@ -23,6 +24,7 @@ dependencies {
     implementation libs.quarkus.rest.jackson
     implementation libs.quarkus.smallrye.health
     implementation libs.slf4j.api
+    implementation libs.jakarta.validation.api
 
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core

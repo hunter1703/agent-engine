@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -81,18 +82,27 @@ class InitPostgresSchemaStage(_BootstrapStage):
         namespace, service_name = self._resolve_target(
             "postgres", self.namespace_override, self.tier
         )
-        with (
-            kube.port_forward(namespace, service_name, self.port) as local_port,
-            psycopg.connect(
-                host="127.0.0.1",
-                port=local_port,
-                user=self.user,
-                dbname=self.database,
-                autocommit=True,
-            ) as conn,
-        ):
-            conn.execute(_POSTGRES_SCHEMA)
+        with kube.port_forward(namespace, service_name, self.port) as local_port:
+            with self._connect(local_port) as conn:
+                conn.execute(_POSTGRES_SCHEMA)
         print("PostgreSQL Pekko schema initialized")
+
+    def _connect(self, local_port: int) -> psycopg.Connection:
+        for attempt in (1, 2):
+            try:
+                return psycopg.connect(
+                    host="127.0.0.1",
+                    port=local_port,
+                    user=self.user,
+                    dbname=self.database,
+                    autocommit=True,
+                )
+            except psycopg.OperationalError:
+                if attempt == 2:
+                    raise
+                # kubectl port-forward can drop the very next connection right after the
+                # readiness probe's own throwaway connection closes; one retry clears it.
+                time.sleep(2)
 
 
 @dataclass(eq=False, kw_only=True)

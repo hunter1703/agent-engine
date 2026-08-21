@@ -11,9 +11,13 @@ public interface RuntimeService {
 
   /**
    * Initialises the session actor and enqueues the message. Returns immediately with the resolved
-   * session ID; the agent runs in the background.
+   * session ID; the agent runs in the background. Prefer {@link #invoke} if the event stream is not
+   * needed.
    */
   Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
+
+  /** Like {@link #startSession}, for a caller with no interest in the event stream. */
+  String invoke(String agentId, String sessionId, UserMessage userMessage);
 
   /**
    * Answers a pending interrupt on the session actor. Returns immediately; the run's continuation

@@ -1,5 +1,6 @@
 package com.agentengine.interfaces.rest;
 
+import static com.agentengine.interfaces.rest.handlers.catalog.InvokeAgentJobAssetHandler.INVOKE_AGENT_JOB_CLASS_NAME;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
@@ -8,6 +9,8 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
+import com.agentengine.scheduler.api.models.JobDefinition;
+import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
@@ -27,8 +30,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -44,13 +49,19 @@ import org.reactivestreams.Publisher;
 @RunOnVirtualThread
 @ContextAware
 public class AgentRestAPI {
+
   private final AgentService agentService;
   private final RuntimeService runtimeService;
+  private final SchedulerService schedulerService;
 
   @Inject
-  public AgentRestAPI(final AgentService agentService, final RuntimeService runtimeService) {
+  public AgentRestAPI(
+      final AgentService agentService,
+      final RuntimeService runtimeService,
+      final SchedulerService schedulerService) {
     this.agentService = agentService;
     this.runtimeService = runtimeService;
+    this.schedulerService = schedulerService;
   }
 
   @POST
@@ -160,6 +171,49 @@ public class AgentRestAPI {
                                 .map(Flowable.concat(Flowable.just(first), shared))));
   }
 
+  @POST
+  @Path("/{agentId}/schedule")
+  @Operation(summary = "Schedule a recurring invocation of an agent")
+  @APIResponse(
+      responseCode = "201",
+      description = "Job created",
+      content = @Content(schema = @Schema(implementation = JobDefinition.class)))
+  @APIResponse(responseCode = "400", description = "Invalid request parameters")
+  @APIResponse(responseCode = "404", description = "Agent not found")
+  public Response schedule(
+      @NotBlank @PathParam("agentId") final String agentId,
+      @Valid final ScheduleAgentRequest request) {
+    if (agentService.getAgent(agentId) == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT, agentId);
+    }
+
+    final JobDefinition jobDefinition = new JobDefinition();
+    jobDefinition.setJobClassName(INVOKE_AGENT_JOB_CLASS_NAME);
+    jobDefinition.setCronSchedule(request.cron());
+    jobDefinition.setPayload(
+        Map.of(
+            "agentId", agentId,
+            "message", request.message(),
+            "singletonSession", request.singletonSession()));
+    String jobId = schedulerService.schedule(jobDefinition);
+    jobDefinition.setId(jobId);
+    return Response.status(Response.Status.CREATED).entity(jobDefinition).build();
+  }
+
+  @DELETE
+  @Path("/schedule/{jobId}")
+  @Operation(summary = "Cancel a scheduled job")
+  @APIResponse(responseCode = "204", description = "Job cancelled")
+  @APIResponse(responseCode = "404", description = "Job not found")
+  public void cancelSchedule(@NotBlank @PathParam("jobId") final String jobId) {
+    final JobDefinition jobDefinition = schedulerService.getJob(jobId);
+    if (jobDefinition == null
+        || !INVOKE_AGENT_JOB_CLASS_NAME.equals(jobDefinition.getJobClassName())) {
+      throw new AssetNotFoundException(AssetClass.JOB_DEFINITION, jobId);
+    }
+    schedulerService.cancelJob(jobId);
+  }
+
   private static UserMessage extractUserMessage(final RunAgentInput request) {
     final List<Message> msgs = request.messages();
     final List<MessagePart> parts = new ArrayList<>();
@@ -177,4 +231,11 @@ public class AgentRestAPI {
     }
     throw new WebApplicationException("No user message found in messages array", 400);
   }
+
+  /**
+   * {@code singletonSession}: when true, every firing after the first continues the session the
+   * first firing started, instead of each firing getting its own fresh one.
+   */
+  public record ScheduleAgentRequest(
+      @NotBlank String cron, @NotBlank String message, boolean singletonSession) {}
 }
