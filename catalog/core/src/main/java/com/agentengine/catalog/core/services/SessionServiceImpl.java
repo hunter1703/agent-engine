@@ -82,6 +82,11 @@ public class SessionServiceImpl implements SessionService {
   }
 
   @Override
+  public long updateSessions(final Query query, final Update update) {
+    return sessionRepository.updateMany(query.getFilter(), update);
+  }
+
+  @Override
   public AgentSession create(final AgentSession session) {
     return sessionRepository.insert(session);
   }

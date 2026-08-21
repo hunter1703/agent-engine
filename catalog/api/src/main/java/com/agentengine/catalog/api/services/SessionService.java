@@ -24,5 +24,7 @@ public interface SessionService {
 
   AgentSession updateSession(String id, Update update);
 
+  long updateSessions(Query query, Update update);
+
   AgentSession create(AgentSession session);
 }

@@ -27,7 +27,10 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
+import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.UniqueRecord;
+import com.agentengine.util.common.query.Filters;
+import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.pekko.actor.ShardedEntity;
@@ -1147,7 +1150,7 @@ public final class SessionActor
     }
     if (topology.isRoot()) {
       generateSessionTitle(rootSessionId, isRecovery);
-      updateSessionMemory(rootSessionId);
+      updateSessionMemory(rootSessionId, isRecovery);
       eventChannel.publish(rootSessionId, SessionEvent.terminal(sessionId));
       if (!state.queue().isEmpty()) {
         self.tell(new StartNextQueuedMessageCommand());
@@ -1163,9 +1166,13 @@ public final class SessionActor
   /**
    * Extracts and persists memories from the completed session asynchronously, so it does not block
    * the actor's message-processing loop. Memory extraction involves an LLM call and multiple
-   * vector-store writes.
+   * vector-store writes. Skipped on recovery — same reasoning as {@link
+   * #generateSessionTitle(String, boolean)}.
    */
-  private void updateSessionMemory(final String rootSessionId) {
+  private void updateSessionMemory(final String rootSessionId, final boolean isRecovery) {
+    if (isRecovery) {
+      return;
+    }
     UPDATE_MEMORY_EXECUTOR.execute(
         () -> {
           try {
@@ -1188,18 +1195,17 @@ public final class SessionActor
   /**
    * Generates and persists a session title asynchronously so it does not block the actor's
    * message-processing loop. Title generation involves an LLM call followed by a MongoDB write,
-   * both of which are unsuitable for the actor thread.
+   * both of which are unsuitable for the actor thread. Skipped on recovery: an actor only recovers
+   * into a completed session via {@code IDLE} state, which is only reached after the session's one
+   * genuine completion already ran this.
    */
   private void generateSessionTitle(final String rootSessionId, final boolean isRecovery) {
+    if (isRecovery) {
+      return;
+    }
     UPDATE_TITLE_EXECUTOR.execute(
         () -> {
           try {
-            if (isRecovery) {
-              final AgentSession session = sessionService.getSession(rootSessionId);
-              if (session != null && StringUtils.isNotBlank(session.getName())) {
-                return;
-              }
-            }
             final String title = sessionTitleGenerator.generateTitle(rootSessionId);
             if (StringUtils.isNotBlank(title)) {
               sessionService.updateSession(
@@ -1232,8 +1238,14 @@ public final class SessionActor
   private void updateSessionStatus(final SessionActorState state, final SessionStatus status) {
     final SessionTopology topology = state.topology();
     try {
-      sessionService.updateSession(
-          topology.sessionId(), Update.of(Operation.set(AgentSession.FIELD_STATUS, status.name())));
+      final Query query =
+          new Query()
+              .withFilter(
+                  Filters.and(
+                      Filters.eq(BaseEntity.FIELD_ID, topology.sessionId()),
+                      Filters.ne(AgentSession.FIELD_STATUS, status.name())));
+      sessionService.updateSessions(
+          query, Update.of(Operation.set(AgentSession.FIELD_STATUS, status.name())));
     } catch (final Exception e) {
       LOG.warn(
           "Failed to update session status to {} for session {}", status, topology.sessionId(), e);
