@@ -37,7 +37,7 @@ public final class CompactionContextManager implements ContextManager {
       """
               Summarize the following conversation history concisely, preserving all key facts, decisions, tool calls, and outcomes:
 
-              {context}
+              {{ context }}
       """;
 
   private final int tokenThreshold;

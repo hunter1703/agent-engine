@@ -115,16 +115,36 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     }
 
     final String payload = responseIterator.next().getPayload().toStringUtf8();
-    final Type deserializationType =
+    final Type baseType =
         CompletionStage.class.isAssignableFrom(method.getReturnType())
             ? firstTypeArgument(method.getGenericReturnType())
             : method.getGenericReturnType();
+    final Type deserializationType = getDeserializationType(baseType);
     Object result = JsonUtils.fromJson(payload, deserializationType, true);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
     }
     return result;
+  }
+
+  /**
+   * The server always serializes results at static type {@code Object} (see {@link
+   * com.agentengine.util.ms.server.GRPCServerImpl#sendPayload}), so Jackson's default typing wraps
+   * scalar values as a type/value array (e.g. {@code ["java.lang.Long", 5]}) even though types like
+   * {@code Long} are final. Targeting the primitive/wrapper type directly fails to parse that
+   * wrapper, so we target {@code Object} instead and let the JDK proxy unbox the result.
+   */
+  private static Type getDeserializationType(Type type) {
+    if (type instanceof Class<?> clazz) {
+      if (clazz.isPrimitive()
+          || Number.class.isAssignableFrom(clazz)
+          || clazz == Boolean.class
+          || clazz == Character.class) {
+        return Object.class;
+      }
+    }
+    return type;
   }
 
   private Flowable<?> streamingCall(Request request, Method method) {
