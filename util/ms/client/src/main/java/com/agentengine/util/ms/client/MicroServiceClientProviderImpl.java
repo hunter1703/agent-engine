@@ -7,6 +7,7 @@ import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InjectableBean;
 import io.quarkus.arc.InstanceHandle;
+import io.quarkus.arc.Unremovable;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.spi.Bean;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
  * down gracefully on application shutdown via {@link PreDestroy}.
  */
 @Singleton
+@Unremovable
 public class MicroServiceClientProviderImpl implements MicroServiceClientProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceClientProviderImpl.class);
