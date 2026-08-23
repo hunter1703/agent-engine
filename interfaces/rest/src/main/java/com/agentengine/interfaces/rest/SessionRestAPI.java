@@ -100,7 +100,7 @@ public class SessionRestAPI {
   }
 
   @DELETE
-  @Path("/session/{sessionId}")
+  @Path("/{sessionId}")
   @Operation(summary = "Delete a session")
   @APIResponse(responseCode = "204", description = "Session deleted")
   @APIResponse(responseCode = "404", description = "Session not found")
@@ -112,7 +112,7 @@ public class SessionRestAPI {
   }
 
   @POST
-  @Path("/session/{sessionId}/rollback")
+  @Path("/{sessionId}/rollback")
   @Operation(summary = "Roll back a session to before the given run")
   @APIResponse(responseCode = "204", description = "Rollback applied")
   @APIResponse(responseCode = "400", description = "runId is required")
