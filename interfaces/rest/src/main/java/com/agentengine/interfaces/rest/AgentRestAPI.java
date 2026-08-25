@@ -5,6 +5,7 @@ import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 
 import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
@@ -217,9 +218,10 @@ public class AgentRestAPI {
   private static UserMessage extractUserMessage(final RunAgentInput request) {
     final List<Message> msgs = request.messages();
     final List<MessagePart> parts = new ArrayList<>();
+    final List<String> fileSources = new ArrayList<>();
     for (final Context context : CollectionUtils.nullSafeList(request.context())) {
       final FileDetails fileDetails = JsonUtils.fromJson(context.value(), FileDetails.class);
-      parts.add(new MessagePart.FilePart(fileDetails));
+      fileSources.add(fileDetails.source());
     }
     for (final Message msg : CollectionUtils.nullSafeList(msgs)) {
       if (msg instanceof com.agui.community.core.message.UserMessage aguiUserMessage) {
@@ -227,7 +229,7 @@ public class AgentRestAPI {
       }
     }
     if (CollectionUtils.isNotEmpty(parts)) {
-      return new UserMessage(parts);
+      return new UserMessage(parts, new ResourceGrants(null, fileSources, null));
     }
     throw new WebApplicationException("No user message found in messages array", 400);
   }

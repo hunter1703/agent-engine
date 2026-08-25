@@ -15,6 +15,7 @@ import com.agentengine.agent.core.session.commands.ExternalCommand.StartCommand;
 import com.agentengine.agent.core.session.commands.ParentCommand.InitializeCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
@@ -92,7 +93,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private String initializeSession(final String agentId, final String sessionId) {
     final String resolvedSessionId =
-        StringUtils.isBlank(sessionId) ? UUID.randomUUID().toString() : sessionId;
+        StringUtils.isBlank(sessionId) ? SessionUtils.newSessionId(agentId) : sessionId;
     sessionActorFactory
         .entityRef(resolvedSessionId)
         .<Done>ask(
@@ -147,8 +148,8 @@ public class RuntimeServiceImpl implements RuntimeService {
                 replyTo -> new RollbackCommand(runId, replyTo), SessionActorFactory.ASK_TIMEOUT)
             .toCompletableFuture()
             .join();
-    if (result instanceof RollbackResult.Rejected rejected) {
-      throw new IllegalStateException("Rollback rejected: " + rejected.reason());
+    if (result instanceof RollbackResult.Rejected(String reason)) {
+      throw new IllegalStateException("Rollback rejected: " + reason);
     }
   }
 

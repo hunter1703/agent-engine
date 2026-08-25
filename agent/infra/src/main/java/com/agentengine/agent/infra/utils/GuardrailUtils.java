@@ -131,7 +131,7 @@ public final class GuardrailUtils {
     final String latestUserMessage = EventUtils.recentUser(context.session().events(), 1);
 
     String planAnchor = "";
-    final Plan plan = RunUtils.getOrInitState(context).plan();
+    final Plan plan = SessionUtils.getSessionState(context).plan();
     if (plan != null) {
       final String summary = PlanningUtils.buildPlanSummary(plan);
       final String taskFocus = PlanningUtils.buildTaskFocusPrompt(plan);

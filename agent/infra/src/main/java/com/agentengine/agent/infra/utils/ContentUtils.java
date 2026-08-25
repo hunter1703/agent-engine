@@ -1,13 +1,10 @@
 package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.api.model.MessagePart;
-import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
-import com.google.adk.models.LlmRequest;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
 import java.util.*;
@@ -16,13 +13,6 @@ import java.util.*;
 public final class ContentUtils {
 
   private ContentUtils() {}
-
-  public static String extractLatestUserText(final LlmRequest request) {
-    if (request == null) {
-      return "";
-    }
-    return extractLatestUserText(request.contents());
-  }
 
   public static String extractLatestUserText(final List<Content> contents) {
     final List<Content> safeContents = CollectionUtils.nullSafeList(contents);
@@ -33,6 +23,28 @@ public final class ContentUtils {
       }
       final Optional<String> role = content.role();
       if (role.isPresent() && !Constants.AUTHOR_USER.equalsIgnoreCase(role.get())) {
+        continue;
+      }
+      final String text = content.text();
+      if (StringUtils.isNotBlank(text)) {
+        return text.trim();
+      }
+    }
+    return "";
+  }
+
+  public static String getLatestModelText(final List<Content> contents) {
+    final List<Content> safeContents = CollectionUtils.nullSafeList(contents);
+    for (int i = safeContents.size() - 1; i >= 0; i--) {
+      final Content content = safeContents.get(i);
+      if (content == null) {
+        continue;
+      }
+      final Optional<String> role = content.role();
+      if (role.isPresent() && Constants.AUTHOR_USER.equalsIgnoreCase(role.get())) {
+        continue;
+      }
+      if (!hasVisibleText(content)) {
         continue;
       }
       final String text = content.text();
@@ -62,7 +74,7 @@ public final class ContentUtils {
     if (content == null) {
       return 0;
     }
-    return StringUtils.estimateTextContent(content.text());
+    return StringUtils.estimateTokens(content.text());
   }
 
   public static boolean isEmptyPart(final Content content) {
@@ -84,6 +96,16 @@ public final class ContentUtils {
             && part.videoMetadata().isEmpty()
             && part.thoughtSignature().isEmpty()
             && StringUtils.isBlank(part.text().orElse(null)));
+  }
+
+  public static boolean isFunctionCall(final Part part, final String toolName) {
+    return part.functionCall().map(call -> toolName.equals(call.name().orElse(null))).orElse(false);
+  }
+
+  public static boolean isFunctionResponse(final Part part, final String toolName) {
+    return part.functionResponse()
+        .map(response -> toolName.equals(response.name().orElse(null)))
+        .orElse(false);
   }
 
   public static List<Part> getToolCallParts(final Content content) {
@@ -136,29 +158,21 @@ public final class ContentUtils {
         .build();
   }
 
-  public static Content buildUserContent(final UserMessage userMessage) {
+  /** {@link MessagePart} has only one variant, {@link MessagePart.TextPart}. */
+  public static List<MessagePart.TextPart> textParts(final List<MessagePart> parts) {
+    return CollectionUtils.nullSafeList(parts).stream()
+        .map(MessagePart.TextPart.class::cast)
+        .toList();
+  }
+
+  public static Content buildUserContent(final List<MessagePart.TextPart> textParts) {
     final StringBuilder text = new StringBuilder();
-    final List<String> artifactNames = new ArrayList<>();
-    for (final MessagePart part : userMessage.parts()) {
-      switch (part) {
-        case MessagePart.TextPart textPart -> {
-          if (!text.isEmpty()) {
-            text.append("\n");
-          }
-          text.append(textPart.text());
-        }
-        case MessagePart.FilePart filePart -> artifactNames.add(filePart.fileDetails().name());
-        default -> throw new IllegalStateException("Unexpected value: " + part);
-      }
-    }
-
-    if (CollectionUtils.isNotEmpty(artifactNames)) {
+    for (final MessagePart.TextPart textPart : textParts) {
       if (!text.isEmpty()) {
-        text.append("\n\n");
+        text.append("\n");
       }
-      text.append("Here are the artifact names: ").append(JsonUtils.toJson(artifactNames));
+      text.append(textPart.text());
     }
-
     return Content.builder()
         .role(Constants.AUTHOR_USER)
         .parts(List.of(Part.fromText(text.toString())))

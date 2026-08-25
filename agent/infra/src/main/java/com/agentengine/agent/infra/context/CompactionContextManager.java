@@ -77,7 +77,7 @@ public final class CompactionContextManager implements ContextManager {
     }
     final String existingSummary = summaryCache.get(sessionId + ":" + agentId);
     final int totalTokens =
-        estimateTotalTokens(contents) + StringUtils.estimateTextContent(existingSummary);
+        estimateTotalTokens(contents) + StringUtils.estimateTokens(existingSummary);
 
     if (totalTokens <= tokenThreshold) {
       return withSummaryPrefix(existingSummary, contents);

@@ -1,61 +1,42 @@
 package com.agentengine.agent.infra.utils;
 
-import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
-import com.google.adk.agents.BaseAgentState;
 import com.google.adk.events.Event;
-import com.google.adk.events.EventActions;
-import com.google.adk.sessions.State;
-import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionCall;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
-public final class RunState extends BaseAgentState {
-  public static final String PLAN_KEY = State.APP_PREFIX + "run.plan";
+public final class RunState {
 
-  private Plan plan;
   private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
+  // Set and consumed within the same BaseFlow.runLoop iteration, always before that turn's
+  // events are committed — buildFrom can never observe this as true, so resetting it isn't
+  // just low-risk like the other transient fields, it's a genuine no-op.
   private boolean continuationRequested;
   private int offTopicRetries;
   private int turnsUsed;
   private final List<Violation> violations = new ArrayList<>();
-  private final List<Reminder> reminders = new ArrayList<>();
+  private PendingAnswer pendingAnswer;
+  private PendingNote pendingNote;
 
   public RunState() {}
 
   /**
-   * Reconstructs persisted RunState fields from the session event log.
-   *
-   * <p>Persisted fields (plan, lastToolCalls) are rebuilt from event history. Transient fields
-   * (violations, offTopicRetries, turnsUsed, continuationRequested) always start fresh, scoped to
-   * the current invocation only.
+   * Reconstructs only essential fields (lastToolCalls) from the session event log, not everything
+   * (violations, offTopicRetries, turnsUsed, continuationRequested, etc.)
    */
   public static RunState buildFrom(final List<Event> events) {
     if (CollectionUtils.isEmpty(events)) {
       return new RunState();
     }
     final RunState state = new RunState();
-    state.updatePlan(readLatestPlanSnapshot(events));
     state.updateLastToolCalls(readLastToolCalls(events));
     return state;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Plan readLatestPlanSnapshot(final List<Event> events) {
-    final Object value = EventUtils.latestDeltaValue(events, PLAN_KEY);
-    if (!(value instanceof Map<?, ?>)) {
-      return null;
-    }
-    return JsonUtils.fromMap((Map<String, Object>) value, Plan.class);
   }
 
   private static List<ToolCallSignature> readLastToolCalls(final List<Event> events) {
@@ -73,34 +54,12 @@ public final class RunState extends BaseAgentState {
     return List.of();
   }
 
-  public Plan plan() {
-    return plan;
-  }
-
-  public boolean hasActivePlan() {
-    return plan != null && !plan.getStatus().isTerminal();
-  }
-
   public List<ToolCallSignature> lastToolCalls() {
     return List.copyOf(lastToolCalls);
   }
 
   public List<Violation> violations() {
     return List.copyOf(violations);
-  }
-
-  public void updatePlan(final Plan plan) {
-    this.plan = plan;
-  }
-
-  public void updatePlan(final Plan plan, final ToolContext toolContext) {
-    this.plan = plan;
-    if (toolContext == null || plan == null) {
-      return;
-    }
-    final ConcurrentMap<String, Object> delta = new ConcurrentHashMap<>();
-    delta.put(PLAN_KEY, JsonUtils.toMap(plan));
-    toolContext.setActions(EventActions.builder().stateDelta(delta).build());
   }
 
   public void updateLastToolCalls(final List<ToolCallSignature> toolCalls) {
@@ -131,21 +90,6 @@ public final class RunState extends BaseAgentState {
     violations.clear();
   }
 
-  public List<Reminder> reminders() {
-    return List.copyOf(reminders);
-  }
-
-  public void addReminder(final Reminder reminder) {
-    if (reminder == null) {
-      return;
-    }
-    reminders.add(reminder);
-  }
-
-  public void removeReminder(final String id) {
-    reminders.removeIf(reminder -> Objects.equals(id, reminder.id()));
-  }
-
   public int incrementOffTopicRetries() {
     offTopicRetries += 1;
     return offTopicRetries;
@@ -169,6 +113,39 @@ public final class RunState extends BaseAgentState {
     continuationRequested = false;
     return was;
   }
+
+  public void enterAnswerMode(final String saveMessage, final long minSaveTokens) {
+    this.pendingAnswer = new PendingAnswer(saveMessage, minSaveTokens);
+  }
+
+  public boolean isInAnswerMode() {
+    return pendingAnswer != null;
+  }
+
+  public PendingAnswer consumeAnswerMode() {
+    final PendingAnswer result = pendingAnswer;
+    pendingAnswer = null;
+    return result;
+  }
+
+  public void startNote(
+      final String notebookId, final String noteTitle, final boolean continuation) {
+    this.pendingNote = new PendingNote(notebookId, noteTitle, continuation);
+  }
+
+  public boolean isNoteStarted() {
+    return pendingNote != null;
+  }
+
+  public PendingNote finishNote() {
+    final PendingNote result = pendingNote;
+    pendingNote = null;
+    return result;
+  }
+
+  public record PendingAnswer(String saveMessage, long minSaveTokens) {}
+
+  public record PendingNote(String notebookId, String noteTitle, boolean continuation) {}
 
   public record ToolCallSignature(String name, Map<String, Object> args) {
     public ToolCallSignature {

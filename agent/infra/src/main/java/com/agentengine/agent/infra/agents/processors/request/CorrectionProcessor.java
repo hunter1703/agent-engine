@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  * <h3>Expectations from upstream</h3>
  *
  * <ul>
- *   <li>Session violation state must be initialized in {@code RunUtils.getOrInitState(context)}.
+ *   <li>Session state must be initialized in {@code SessionUtils.initSessionState(context)}.
  *   <li>Prior response processors have recorded any violations that need correction.
  * </ul>
  */
@@ -51,7 +51,7 @@ public final class CorrectionProcessor implements RequestProcessor {
   @Override
   public Single<RequestProcessingResult> processRequest(
       final InvocationContext context, final LlmRequest request) {
-    final RunState runState = RunUtils.getOrInitState(context);
+    final RunState runState = RunUtils.getRunState(context);
     final List<Violation> violations = runState.violations();
 
     if (CollectionUtils.isEmpty(violations)) {

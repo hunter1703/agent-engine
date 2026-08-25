@@ -1,5 +1,8 @@
 package com.agentengine.agent.infra.utils;
 
+import java.util.Locale;
+import java.util.Objects;
+
 /**
  * A persistent, addressable reminder that forms part of the agent's working-memory brief.
  *
@@ -11,9 +14,11 @@ package com.agentengine.agent.infra.utils;
  *
  * <ul>
  *   <li>{@code spawned_agents} — child sessions spawned but not yet awaited; id = child session ID
- *   <li>{@code indexed_knowledge} — knowledge IDs auto-indexed and ready to search; id = knowledge
- *       ID
- *   <li>{@code active_plan} — current plan state; id = {@code active_plan}
+ *   <li>{@code knowledge_ids} — ids of searchable {@code Knowledge} items, each read with {@code
+ *       search_knowledge}; id = the knowledge id itself
+ *   <li>{@code knowledge_sources} — raw file sources with no search capability, each read whole
+ *       with {@code read_knowledge_source}; id = the source string itself
+ *   <li>{@code active_plan} — current plan state; id = {@link #ID_ACTIVE_PLAN}
  * </ul>
  *
  * @param group snake_case category; controls which section this appears under in the brief
@@ -23,6 +28,30 @@ package com.agentengine.agent.infra.utils;
 public record Reminder(String group, String id, String message) {
 
   public static final String GROUP_SPAWNED_AGENTS = "spawned_agents";
-  public static final String GROUP_INDEXED_KNOWLEDGE = "indexed_knowledge";
   public static final String GROUP_ACTIVE_PLAN = "active_plan";
+  public static final String GROUP_KNOWLEDGE_IDS = "knowledge_ids";
+  public static final String GROUP_KNOWLEDGE_SOURCES = "knowledge_sources";
+
+  public static final String ID_ACTIVE_PLAN = "plan";
+
+  /** The section title a group renders as in the brief (see {@code ReminderRequestProcessor}). */
+  public static String title(final String group) {
+    return group.replace('_', ' ').toUpperCase(Locale.ROOT);
+  }
+
+  @Override
+  public boolean equals(final Object other) {
+    if (this == other) {
+      return true;
+    }
+    if (!(other instanceof Reminder reminder)) {
+      return false;
+    }
+    return Objects.equals(group, reminder.group) && Objects.equals(id, reminder.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(group, id);
+  }
 }

@@ -4,6 +4,7 @@ import com.agentengine.util.common.beans.FileDetails;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface CloudStorageService {
@@ -11,8 +12,18 @@ public interface CloudStorageService {
   /**
    * Uploads a stream to a caller-supplied storage key; the returned source is {@code bucket/key}.
    */
+  default FileDetails upload(
+      String key, String name, InputStream inputStream, long contentLength, String mediaType) {
+    return upload(key, name, inputStream, contentLength, mediaType, null);
+  }
+
   FileDetails upload(
-      String key, String name, InputStream inputStream, long contentLength, String mediaType);
+      String key,
+      String name,
+      InputStream inputStream,
+      long contentLength,
+      String mediaType,
+      Map<String, String> metadata);
 
   /** Uploads a stream to a randomly generated key. */
   default FileDetails upload(
@@ -44,7 +55,7 @@ public interface CloudStorageService {
    */
   List<String> list(String keyPrefix);
 
-  void copy(String sourceKey, String destinationKey);
+  FileDetails copy(FileDetails source, String name, String destinationKey);
 
   record Content(InputStream stream, String mimeType) {}
 }

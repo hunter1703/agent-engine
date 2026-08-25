@@ -1,8 +1,8 @@
 package com.agentengine.agent.infra.agents.processors.request;
 
 import com.agentengine.agent.infra.utils.Reminder;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
@@ -18,15 +18,15 @@ import java.util.function.Function;
  * Injects the agent's reminder map into the LLM request as a working-memory brief.
  *
  * <p>This processor is entirely generic — it knows nothing about plans, agents, or knowledge. It
- * simply reads whatever reminders are currently registered in {@link RunState}, groups them by
+ * simply reads whatever reminders are currently registered in {@link SessionState}, groups them by
  * group, and renders each group as a titled section inside a structured brief.
  *
  * <p>Key formatting: snake_case keys (e.g. {@code spawned_agents}) are converted to human-readable
  * section titles (e.g. {@code SPAWNED AGENTS}).
  *
- * <p>Reminders persist across turns until explicitly removed via {@link
- * RunState#removeReminder(String)}. The processor never clears them — callers are responsible for
- * removing reminders when the condition they describe is resolved.
+ * <p>Reminders persist across runs until explicitly removed via {@link
+ * SessionState#removeReminder(String)}. The processor never clears them — callers are responsible
+ * for removing reminders when the condition they describe is resolved.
  */
 public final class ReminderRequestProcessor implements RequestProcessor {
   public static final ReminderRequestProcessor INSTANCE = new ReminderRequestProcessor();
@@ -36,8 +36,8 @@ public final class ReminderRequestProcessor implements RequestProcessor {
   @Override
   public Single<RequestProcessingResult> processRequest(
       final InvocationContext context, final LlmRequest request) {
-    final RunState runState = RunUtils.getOrInitState(context);
-    final List<Reminder> reminders = runState.reminders();
+    final SessionState sessionState = SessionUtils.getSessionState(context);
+    final List<Reminder> reminders = sessionState.reminders();
 
     if (reminders.isEmpty()) {
       return Single.just(RequestProcessingResult.create(request, List.of()));
@@ -56,21 +56,19 @@ public final class ReminderRequestProcessor implements RequestProcessor {
     final StringBuilder sb = new StringBuilder();
     sb.append(
         """
-                ╔══════════════════════════════════════════════════════════════╗
-                  REMINDERS — orient yourself before acting
-                  Read this, reason through it, then decide your next step.
-                ╚══════════════════════════════════════════════════════════════╝
+                ## Reminders — orient yourself before acting
+                Read this, reason through it, then decide your next step.
                 """);
 
     boolean hasContent = false;
     final Map<String, List<Reminder>> reminderGroups =
         CollectionUtils.transformToMultiValuedMap(reminders, Reminder::group, Function.identity());
     for (final Entry<String, List<Reminder>> entry : reminderGroups.entrySet()) {
-      final String title = entry.getKey().replace('_', ' ').toUpperCase();
-      sb.append("\n▸ ").append(title).append(":\n");
+      final String title = Reminder.title(entry.getKey());
+      sb.append("\n### ").append(title).append("\n");
       for (final Reminder reminder : entry.getValue()) {
         if (StringUtils.isNotBlank(reminder.message())) {
-          sb.append("  • ").append(reminder.message()).append("\n");
+          sb.append("- ").append(reminder.message()).append("\n");
         }
       }
       hasContent = true;
@@ -83,9 +81,8 @@ public final class ReminderRequestProcessor implements RequestProcessor {
     sb.append(
         """
 
-                ──────────────────────────────────────────────────────────────
+                ---
                 Before acting: account for all items above in your next step.
-                ──────────────────────────────────────────────────────────────
                 """);
 
     return sb.toString().trim();

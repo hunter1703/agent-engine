@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.session.commands;
 
+import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
@@ -34,7 +35,7 @@ public interface SelfCommand extends SessionCommand {
   }
 
   record StartChildCommand(
-      String agentId, UniqueRecord<String> message, ActorRef<StartChildResult> replyTo)
+      String agentId, UniqueRecord<UserMessage> message, ActorRef<StartChildResult> replyTo)
       implements SelfCommand {}
 
   record AwaitChildCommand(String childSessionId, ActorRef<RunResult> replyTo)
@@ -74,6 +75,6 @@ public interface SelfCommand extends SessionCommand {
 
   /** Delivers a follow-up message to this session, preserving its existing context. */
   record SendMessageCommand(
-      String sessionId, UniqueRecord<String> message, ActorRef<StartSessionResult> replyTo)
+      String sessionId, UniqueRecord<UserMessage> message, ActorRef<StartSessionResult> replyTo)
       implements ParentCommand {}
 }

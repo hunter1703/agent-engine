@@ -137,17 +137,9 @@ public abstract class Tool extends BaseTool {
       return Maybe.empty();
     }
     if (result instanceof ToolOutput.Knowledge knowledge) {
-      final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-      runState.addReminder(
-          new Reminder(
-              Reminder.GROUP_INDEXED_KNOWLEDGE,
-              knowledge.getKnowledgeId(),
-              "knowledgeId='"
-                  + knowledge.getKnowledgeId()
-                  + "' (tool: "
-                  + name()
-                  + ") — "
-                  + knowledge.getHint()));
+      final SessionState sessionState =
+          SessionUtils.getSessionState(toolContext.invocationContext());
+      sessionState.addKnowledgeIdReminder(knowledge.getKnowledgeId(), knowledge.getHint());
     }
     return Maybe.just(Utils.convertValue(result.toResult(), new TypeReference<>() {}));
   }

@@ -12,7 +12,6 @@ import com.agentengine.util.common.PromptUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.BaseTool;
-import com.google.adk.tools.LoadArtifactsTool;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,9 +41,6 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .model(model);
     final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
     List<String> standardTools = CollectionUtils.nullSafeList(config.getStandardTools());
-    if (standardTools.contains(LoadArtifactsTool.INSTANCE.name())) {
-      tools.add(LoadArtifactsTool.INSTANCE);
-    }
     if (standardTools.contains(SearchKnowledgeTool.DESCRIPTOR.name())) {
       tools.add(toolFactory.getSearchKnowledgeTool());
     }

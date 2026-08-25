@@ -1,5 +1,6 @@
 package com.agentengine.util.agents.beans.tools;
 
+import com.agentengine.util.agents.Constants;
 import java.util.Map;
 
 public abstract class ToolOutput<T> {
@@ -68,7 +69,7 @@ public abstract class ToolOutput<T> {
 
     @Override
     public Map<String, Object> toResult() {
-      return Map.of("knowledgeId", knowledgeId, "hint", hint);
+      return Map.of(Constants.ARG_KNOWLEDGE_ID, knowledgeId, "hint", hint);
     }
   }
 }

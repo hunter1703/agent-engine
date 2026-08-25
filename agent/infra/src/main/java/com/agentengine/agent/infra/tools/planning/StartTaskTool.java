@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.tools.planning;
 
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
@@ -8,10 +9,9 @@ import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
 public final class StartTaskTool extends UpdateTaskStatusTool {
-  private static final String TOOL_NAME = "start_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
+          Constants.START_TASK_TOOL_NAME,
           "Transitions a task's status from pending (TODO) to active (IN_PROGRESS), signalling that work has begun. "
               + "Three preconditions are enforced: (1) an active plan must exist; (2) all ancestor tasks of the "
               + "target task must already be IN_PROGRESS; (3) the target task must be the next task in "

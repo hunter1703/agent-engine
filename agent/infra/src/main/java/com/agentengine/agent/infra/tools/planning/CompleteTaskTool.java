@@ -3,7 +3,8 @@ package com.agentengine.agent.infra.tools.planning;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
@@ -12,10 +13,9 @@ import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
 public final class CompleteTaskTool extends UpdateTaskStatusTool {
-  private static final String TOOL_NAME = "complete_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
+          Constants.COMPLETE_TASK_TOOL_NAME,
           "Closes a task by transitioning it to a terminal status — either 'done' (completed successfully) or "
               + "'abandoned' (intentionally skipped or cancelled). Terminal status is permanent and cannot be "
               + "reversed. Call once the work for a task is done and you are ready to record the outcome and "
@@ -65,7 +65,7 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
     final Map<String, Object> response =
         CollectionUtils.nullSafeMutableMap(
             _execute(toolContext, taskId, null, null, null, newStatus, result));
-    final Plan currentPlan = RunUtils.getOrInitState(toolContext.invocationContext()).plan();
+    final Plan currentPlan = SessionUtils.getSessionState(toolContext.invocationContext()).plan();
     final Task nextTask = PlanningUtils.findNextTodoTask(currentPlan);
     if (nextTask != null) {
       response.put(

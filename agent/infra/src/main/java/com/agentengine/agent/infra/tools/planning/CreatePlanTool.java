@@ -4,8 +4,9 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.PlanStatus;
 import com.agentengine.agent.infra.tools.beans.Task;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
@@ -18,10 +19,9 @@ import org.slf4j.LoggerFactory;
 
 public final class CreatePlanTool extends Tool {
   private static final Logger LOG = LoggerFactory.getLogger(CreatePlanTool.class);
-  private static final String TOOL_NAME = "create_plan";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
+          Constants.CREATE_PLAN_TOOL_NAME,
           "Initialises a new structured plan with a title, goal, and initial list of tasks. Use at the start of "
               + "any multi-step task where tracking completion state across distinct phases has value — if the "
               + "work can be done in a single step without meaningful state to track, a plan is not needed. "
@@ -61,8 +61,8 @@ public final class CreatePlanTool extends Tool {
                       + "task and reference that same value in the child's 'parent_id' — IDs are otherwise "
                       + "assigned automatically and not predictable. May be empty.")
           List<Task> tasks) {
-    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-    final Plan existingPlan = runState.plan();
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final Plan existingPlan = sessionState.plan();
     if (existingPlan != null) {
       final PlanStatus status = existingPlan.getStatus();
       if (!status.isTerminal()) {
@@ -80,7 +80,7 @@ public final class CreatePlanTool extends Tool {
       return ToolOutput.direct(Map.of("error", validationError));
     }
 
-    runState.updatePlan(currentPlan, toolContext);
+    sessionState.updatePlan(currentPlan);
 
     LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return ToolOutput.direct(

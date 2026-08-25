@@ -12,6 +12,11 @@ public class UniqueRecord<T> extends BaseEntity {
     this.record = record;
   }
 
+  public UniqueRecord(final String id, final T record) {
+    super(id);
+    this.record = record;
+  }
+
   public T getRecord() {
     return record;
   }

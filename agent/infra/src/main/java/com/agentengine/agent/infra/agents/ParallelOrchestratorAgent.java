@@ -82,7 +82,7 @@ public final class ParallelOrchestratorAgent extends Agent {
   protected Flowable<Event> runAsyncImpl(final InvocationContext invocationContext) {
     final Result result = executeBranches(invocationContext);
     if (result.fallbackUsed()) {
-      RunUtils.getOrInitState(invocationContext)
+      RunUtils.getRunState(invocationContext)
           .addViolation(
               Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
                   .message(ParallelOrchestrationConstants.Message.FALLBACK)

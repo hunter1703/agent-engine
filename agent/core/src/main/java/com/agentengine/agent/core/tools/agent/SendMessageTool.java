@@ -1,17 +1,20 @@
 package com.agentengine.agent.core.tools.agent;
 
+import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.ResourceGrants;
+import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.SendMessageCommand;
-import com.agentengine.agent.infra.utils.Reminder;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,11 +30,9 @@ import java.util.Map;
  */
 public final class SendMessageTool extends AbstractAgentTool {
 
-  public static final String TOOL_NAME = "send_message";
-
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
+          Constants.SEND_MESSAGE_TOOL_NAME,
           "Sends a follow-up message to an existing child agent session, preserving its full conversation history. "
               + "Use when the child has completed its previous task but its accumulated context is still "
               + "relevant — for example, to give corrections, additional instructions, or a new related "
@@ -46,12 +47,11 @@ public final class SendMessageTool extends AbstractAgentTool {
     super(DESCRIPTOR, actorSystemProvider);
   }
 
-  @SuppressWarnings("unchecked")
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolSchema(
-              name = "child_session_id",
+              name = Constants.ARG_CHILD_SESSION_ID,
               description =
                   "The opaque identifier of an existing child agent session to deliver the message to.")
           final String childSessionId,
@@ -59,46 +59,80 @@ public final class SendMessageTool extends AbstractAgentTool {
               name = "message",
               description =
                   "The message content to deliver as the next conversation turn to the child session.")
-          final String message,
+          String message,
+      @ToolSchema(name = Constants.ARG_GOAL, description = GOAL_SCHEMA_DESCRIPTION)
+          final String goal,
       @ToolSchema(
-              name = "await_completion",
+              name = Constants.ARG_AWAIT_COMPLETION,
               description =
                   "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been sent the message.",
               optional = true)
-          Boolean awaitCompletion) {
+          Boolean awaitCompletion,
+      @ToolSchema(
+              name = Constants.ARG_KNOWLEDGE_IDS,
+              description =
+                  "Ids of knowledge you have access to. Grants the child the same ability to "
+                      + "search them with "
+                      + Constants.SEARCH_KNOWLEDGE_TOOL_NAME
+                      + ". Not knowledge sources — those go in "
+                      + Constants.ARG_KNOWLEDGE_SOURCES
+                      + " instead. Optional.",
+              optional = true)
+          final List<String> knowledgeIds,
+      @ToolSchema(
+              name = Constants.ARG_KNOWLEDGE_SOURCES,
+              description =
+                  "Knowledge sources you have access to. Grants the child the same ability to "
+                      + "read them in full with "
+                      + Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME
+                      + ". Not knowledge ids — those go in "
+                      + Constants.ARG_KNOWLEDGE_IDS
+                      + " instead. Optional.",
+              optional = true)
+          final List<String> knowledgeSources,
+      @ToolSchema(
+              name = Constants.ARG_NOTEBOOK_GRANTS,
+              description =
+                  "Notebook/note access to grant the child, as entries of the form "
+                      + "\"<notebook_id>/CREATE\" (may freely create new notes in that notebook) "
+                      + "or \"<notebook_id>:<note_title>/READ\" or "
+                      + "\"<notebook_id>:<note_title>/WRITE\" (access to one specific note). "
+                      + "Optional.",
+              optional = true)
+          final List<String> notebookGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {
       return completedResult;
     }
 
+    message = buildFullMessage(goal, message);
+    final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
+    ResourceGrants resourceGrants;
+    try {
+      resourceGrants = buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
+    } catch (IllegalArgumentException ex) {
+      return ToolOutput.direct(Map.of("error", "Failed to send message: " + ex.getMessage()));
+    }
+    final UserMessage userMessage = new UserMessage(parts, resourceGrants);
+
     final StartSessionResult result =
         actorRef(toolContext)
             .<StartSessionResult>ask(
                 replyTo ->
-                    new SendMessageCommand(childSessionId, new UniqueRecord<>(message), replyTo),
+                    new SendMessageCommand(
+                        childSessionId, new UniqueRecord<>(userMessage), replyTo),
                 SessionActorFactory.ASK_TIMEOUT)
             .toCompletableFuture()
             .join();
     return switch (result) {
       case StartSessionResult.Accepted ignored -> {
         awaitCompletion = awaitCompletion == null || awaitCompletion;
+        SessionUtils.getSessionState(toolContext.invocationContext())
+            .addSpawnedAgentReminder(childSessionId, goal, awaitCompletion);
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {
-          final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-          runState.addReminder(
-              new Reminder(
-                  Reminder.GROUP_SPAWNED_AGENTS,
-                  childSessionId,
-                  "agent_session='"
-                      + childSessionId
-                      + "' — processing a follow-up message asynchronously, not yet awaited. "
-                      + "Use "
-                      + AwaitAgentTool.DESCRIPTOR.name()
-                      + " with child_session_id='"
-                      + childSessionId
-                      + "' when you need its result."));
           yield ToolOutput.direct(Map.of("child_session_id", childSessionId));
         }
       }

@@ -67,7 +67,7 @@ public final class ResponseFormatValidationProcessor implements ResponseProcesso
     if (violationMessage != null) {
       LOG.info(
           "Response format violation for agent {}: {}", context.agent().name(), violationMessage);
-      RunUtils.getOrInitState(context)
+      RunUtils.getRunState(context)
           .requestContinuation(
               Violation.builder("response_format_validation").message(violationMessage).build());
     }

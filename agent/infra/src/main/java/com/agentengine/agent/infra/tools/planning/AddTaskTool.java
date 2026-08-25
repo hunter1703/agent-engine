@@ -3,21 +3,22 @@ package com.agentengine.agent.infra.tools.planning;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.Task;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public final class AddTaskTool extends Tool {
-  private static final String TOOL_NAME = "add_task";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          TOOL_NAME,
+          Constants.ADD_TASK_TOOL_NAME,
           "Appends a new task to the current active plan. Use when work in progress reveals steps not captured "
               + "in the original plan. The new task starts in pending (TODO) status. An active plan must "
               + "already exist. Optionally places the task under an existing parent task; the parent must not "
@@ -59,8 +60,8 @@ public final class AddTaskTool extends Tool {
                   "Extended context, notes, or instructions for performing the task. Optional.",
               optional = true)
           String description) {
-    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-    final Plan currentPlan = runState.plan();
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final Plan currentPlan = sessionState.plan();
     if (currentPlan == null) {
       return ToolOutput.direct(Map.of("error", "No active plan found"));
     }
@@ -72,6 +73,27 @@ public final class AddTaskTool extends Tool {
       return ToolOutput.direct(Map.of("error", "Task goal is required"));
     }
 
+    final Task newTask = new Task(name, goal);
+    if (StringUtils.isNotBlank(parentId)) {
+      newTask.setParentId(parentId);
+    }
+    final String validationError = currentPlan.canAddTask(newTask);
+    if (StringUtils.isNotBlank(validationError)) {
+      return ToolOutput.direct(Map.of("error", validationError));
+    }
+
+    final Plan updatedPlan = applyAddTask(currentPlan, parentId, name, goal, description);
+    sessionState.updatePlan(updatedPlan);
+    final Task addedTask = updatedPlan.getTasks().getLast();
+    return ToolOutput.direct(Map.of("status", "success", "task_id", addedTask.getTaskId()));
+  }
+
+  public static Plan applyAddTask(
+      final Plan plan,
+      final String parentId,
+      final String name,
+      final String goal,
+      final String description) {
     final Task task = new Task(name, goal);
     if (StringUtils.isNotBlank(parentId)) {
       task.setParentId(parentId);
@@ -79,18 +101,10 @@ public final class AddTaskTool extends Tool {
     if (StringUtils.isNotBlank(description)) {
       task.setDescription(description);
     }
-
-    final String validationError = currentPlan.canAddTask(task);
-    if (StringUtils.isNotBlank(validationError)) {
-      return ToolOutput.direct(Map.of("error", validationError));
-    }
-
-    if (currentPlan.getTasks() == null) {
-      currentPlan.setTasks(new ArrayList<>());
-    }
-    currentPlan.getTasks().add(task);
-
-    runState.updatePlan(currentPlan, toolContext);
-    return ToolOutput.direct(Map.of("status", "success", "task_id", task.getTaskId()));
+    final List<Task> updatedTasks = CollectionUtils.nullSafeMutableList(plan.getTasks());
+    updatedTasks.add(task);
+    final Plan updatedPlan = new Plan(plan);
+    updatedPlan.setTasks(updatedTasks);
+    return updatedPlan;
   }
 }

@@ -1,6 +1,7 @@
 package com.agentengine.util.cloudstorage.localstack;
 
 import com.agentengine.util.cloudstorage.CloudStorageInfraConfig;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
@@ -12,6 +13,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -115,7 +117,8 @@ public class LocalStackCloudStorageService implements CloudStorageService {
       final String name,
       final InputStream inputStream,
       final long contentLength,
-      String mediaType) {
+      String mediaType,
+      final Map<String, String> metadata) {
     mediaType = StringUtils.isBlank(mediaType) ? DEFAULT_MEDIA_TYPE : mediaType;
     final RequestBody body =
         contentLength >= 0
@@ -127,6 +130,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                 .bucket(defaultBucket.get())
                 .key(key)
                 .contentType(mediaType)
+                .metadata(CollectionUtils.nullSafeMap(metadata))
                 .build(),
             body);
     return new FileDetails(
@@ -138,17 +142,18 @@ public class LocalStackCloudStorageService implements CloudStorageService {
   }
 
   @Override
-  public Content download(final String key) {
+  public Content download(final String source) {
+    final int index = source.indexOf("/");
+    final String key = index >= 0 ? source.substring(index + 1) : source;
+    final String bucket = index >= 0 ? source.substring(0, index) : defaultBucket.get();
     final ResponseInputStream<GetObjectResponse> response =
-        s3.get().getObject(GetObjectRequest.builder().bucket(defaultBucket.get()).key(key).build());
+        s3.get().getObject(GetObjectRequest.builder().bucket(bucket).key(source).build());
     return new Content(response, response.response().contentType());
   }
 
   @Override
   public Content download(final FileDetails fileDetails) {
-    final String source = fileDetails.source();
-    final int index = source.indexOf("/");
-    return download(source.substring(index + 1));
+    return download(fileDetails.source());
   }
 
   @Override
@@ -186,14 +191,20 @@ public class LocalStackCloudStorageService implements CloudStorageService {
   }
 
   @Override
-  public void copy(final String sourceKey, final String destinationKey) {
-    s3.get()
-        .copyObject(
-            CopyObjectRequest.builder()
-                .sourceBucket(defaultBucket.get())
-                .sourceKey(sourceKey)
-                .destinationBucket(defaultBucket.get())
-                .destinationKey(destinationKey)
-                .build());
+  public FileDetails copy(FileDetails source, String name, String destinationKey) {
+    final CopyObjectRequest request =
+        CopyObjectRequest.builder()
+            .sourceBucket(defaultBucket.get())
+            .sourceKey(source.source())
+            .destinationBucket(defaultBucket.get())
+            .destinationKey(destinationKey)
+            .build();
+    s3.get().copyObject(request);
+    return new FileDetails(
+        name,
+        destinationKey,
+        FileDetails.StorageType.CLOUDSTORAGE,
+        source.mimeType(),
+        source.size());
   }
 }

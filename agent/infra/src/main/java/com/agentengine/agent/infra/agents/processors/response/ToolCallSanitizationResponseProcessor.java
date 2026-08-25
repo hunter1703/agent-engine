@@ -68,7 +68,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
       }
     }
 
-    RunUtils.getOrInitState(context)
+    RunUtils.getRunState(context)
         .addViolation(
             Violation.builder("invalid_tool_calls")
                 .detail("invalidToolNames", invalidToolsCalls)

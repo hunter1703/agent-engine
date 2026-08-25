@@ -4,8 +4,8 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionState;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
@@ -23,10 +23,10 @@ public abstract class UpdateTaskStatusTool extends Tool {
       final String name,
       final String goal,
       final String description,
-      TaskStatus newStatus,
-      String result) {
-    final RunState runState = RunUtils.getOrInitState(toolContext.invocationContext());
-    final Plan currentPlan = runState.plan();
+      final TaskStatus newStatus,
+      final String result) {
+    final SessionState sessionState = SessionUtils.getSessionState(toolContext.invocationContext());
+    final Plan currentPlan = sessionState.plan();
     if (currentPlan == null) {
       return Map.of("error", "No active plan found");
     }
@@ -35,14 +35,34 @@ public abstract class UpdateTaskStatusTool extends Tool {
     if (task == null) {
       return Map.of("error", "Task not found with ID: " + taskId);
     }
-
-    newStatus = newStatus != null ? newStatus : task.getStatus();
-    result = StringUtils.isNotBlank(result) ? result : task.getResult();
-    final String validationError = currentPlan.canUpdateTask(task, newStatus, result);
+    final TaskStatus resolvedStatus = newStatus != null ? newStatus : task.getStatus();
+    final String resolvedResult = StringUtils.isNotBlank(result) ? result : task.getResult();
+    final String validationError = currentPlan.canUpdateTask(task, resolvedStatus, resolvedResult);
     if (validationError != null) {
       return Map.of("error", validationError);
     }
 
+    final Plan updatedPlan =
+        applyTaskUpdate(currentPlan, taskId, name, goal, description, newStatus, result);
+    sessionState.updatePlan(updatedPlan);
+    return Map.of("status", "success", "task_id", taskId, "new_status", resolvedStatus.getValue());
+  }
+
+  public static Plan applyTaskUpdate(
+      final Plan plan,
+      final String taskId,
+      final String name,
+      final String goal,
+      final String description,
+      TaskStatus newStatus,
+      String result) {
+    final Plan updatedPlan = new Plan(plan);
+    final Task task = PlanningUtils.findTaskById(updatedPlan, taskId);
+    if (task == null) {
+      return updatedPlan;
+    }
+    newStatus = newStatus != null ? newStatus : task.getStatus();
+    result = StringUtils.isNotBlank(result) ? result : task.getResult();
     if (StringUtils.isNotBlank(name)) {
       task.setName(name);
     }
@@ -54,7 +74,6 @@ public abstract class UpdateTaskStatusTool extends Tool {
     }
     task.setStatus(newStatus);
     task.setResult(result);
-    runState.updatePlan(currentPlan, toolContext);
-    return Map.of("status", "success", "task_id", taskId, "new_status", newStatus.getValue());
+    return updatedPlan;
   }
 }

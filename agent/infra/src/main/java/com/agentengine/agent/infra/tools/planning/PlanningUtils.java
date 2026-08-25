@@ -4,9 +4,17 @@ import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.beans.PlanStatus;
 import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
+import com.google.adk.events.Event;
+import com.google.genai.types.Content;
+import com.google.genai.types.FunctionCall;
+import com.google.genai.types.FunctionResponse;
+import com.google.genai.types.Part;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -135,6 +143,33 @@ public final class PlanningUtils {
 
   public static Task getOpenTask(final Plan plan) {
     return CollectionUtils.getFirst(collectOpenTasks(plan));
+  }
+
+  public static String activePlanBrief(final Plan plan) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(buildPlanSummary(plan));
+
+    final Task openTask = getOpenTask(plan);
+    if (openTask != null) {
+      sb.append("\n\nActive task — stay focused on this:\n");
+      sb.append(buildTaskFocusPrompt(plan));
+      sb.append(
+          "\n **Do not start a new task until this one is complete or explicitly abandoned.**");
+    } else {
+      final Task nextTask = findNextTodoTask(plan);
+      if (nextTask != null) {
+        sb.append("\n\nNo active task — pick up the next one:\n");
+        sb.append("Task [")
+            .append(getTaskIdValue(nextTask))
+            .append("] — ")
+            .append(nextTask.getName());
+        if (StringUtils.isNotBlank(nextTask.getGoal())) {
+          sb.append("\nGoal: ").append(nextTask.getGoal());
+        }
+        sb.append("\n→ **Mark it in_progress before starting work.**");
+      }
+    }
+    return sb.toString().trim();
   }
 
   private static void appendProgressSummary(final StringBuilder builder, final List<Task> tasks) {
@@ -620,5 +655,137 @@ public final class PlanningUtils {
 
   public static String getTaskIdValue(final Task task) {
     return task == null ? null : task.getTaskId();
+  }
+
+  public static Plan buildFrom(final List<Event> events) {
+    final Map<String, FunctionCall> pendingCallsByCallId = new HashMap<>();
+    for (final Event event : CollectionUtils.nullSafeList(events)) {
+      final Content content = event.content().orElse(null);
+      if (content == null) {
+        continue;
+      }
+      for (final Part part : content.parts().orElse(List.of())) {
+        final FunctionCall call = part.functionCall().orElse(null);
+        if (call == null) {
+          continue;
+        }
+        final String toolName = call.name().orElse(null);
+        if (!isPlanningTool(toolName)) {
+          continue;
+        }
+        final String callId = call.id().orElse(null);
+        if (callId == null) {
+          continue;
+        }
+        pendingCallsByCallId.put(callId, call);
+      }
+    }
+
+    Plan plan = null;
+    for (final Event event : CollectionUtils.nullSafeList(events)) {
+      final Content content = event.content().orElse(null);
+      if (content == null) {
+        continue;
+      }
+      for (final Part part : content.parts().orElse(List.of())) {
+        final FunctionResponse response = part.functionResponse().orElse(null);
+        if (response == null) {
+          continue;
+        }
+        final String callId = response.id().orElse(null);
+        final FunctionCall pendingCall = callId == null ? null : pendingCallsByCallId.get(callId);
+        if (pendingCall == null) {
+          continue;
+        }
+        final Map<String, Object> responseMap = response.response().orElse(Map.of());
+        if (responseMap.containsKey("error")) {
+          continue;
+        }
+        plan =
+            applyReplayedEvent(
+                plan,
+                pendingCall.name().orElse(""),
+                pendingCall.args().orElse(Map.of()),
+                responseMap);
+      }
+    }
+    return plan;
+  }
+
+  private static boolean isPlanningTool(final String toolName) {
+    return Constants.CREATE_PLAN_TOOL_NAME.equals(toolName)
+        || Constants.ADD_TASK_TOOL_NAME.equals(toolName)
+        || Constants.UPDATE_TASK_INFO_TOOL_NAME.equals(toolName)
+        || Constants.START_TASK_TOOL_NAME.equals(toolName)
+        || Constants.COMPLETE_TASK_TOOL_NAME.equals(toolName)
+        || Constants.FINISH_PLAN_TOOL_NAME.equals(toolName)
+        || Constants.UPDATE_PLAN_TOOL_NAME.equals(toolName);
+  }
+
+  private static Plan applyReplayedEvent(
+      Plan currentPlan,
+      final String toolName,
+      final Map<String, Object> args,
+      final Map<String, Object> responseMap) {
+    if (Constants.CREATE_PLAN_TOOL_NAME.equals(toolName)) {
+      return JsonUtils.fromMap(
+          CollectionUtils.getMapFromMap(responseMap, "createdPlan"), Plan.class);
+    }
+    if (Constants.ADD_TASK_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          AddTaskTool.applyAddTask(
+              currentPlan,
+              CollectionUtils.getStringValueFromMap(args, "parent_id"),
+              CollectionUtils.getStringValueFromMap(args, "name"),
+              CollectionUtils.getStringValueFromMap(args, "goal"),
+              CollectionUtils.getStringValueFromMap(args, "description"));
+      currentPlan
+          .getTasks()
+          .getLast()
+          .setTaskId(CollectionUtils.getStringValueFromMap(responseMap, "task_id"));
+    } else if (Constants.UPDATE_TASK_INFO_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          UpdateTaskStatusTool.applyTaskUpdate(
+              currentPlan,
+              CollectionUtils.getStringValueFromMap(args, "task_id"),
+              CollectionUtils.getStringValueFromMap(args, "name"),
+              CollectionUtils.getStringValueFromMap(args, "goal"),
+              CollectionUtils.getStringValueFromMap(args, "description"),
+              null,
+              null);
+    } else if (Constants.START_TASK_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          UpdateTaskStatusTool.applyTaskUpdate(
+              currentPlan,
+              CollectionUtils.getStringValueFromMap(args, "task_id"),
+              null,
+              null,
+              null,
+              TaskStatus.IN_PROGRESS,
+              null);
+    } else if (Constants.COMPLETE_TASK_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          UpdateTaskStatusTool.applyTaskUpdate(
+              currentPlan,
+              CollectionUtils.getStringValueFromMap(args, "task_id"),
+              null,
+              null,
+              null,
+              TaskStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
+              CollectionUtils.getStringValueFromMap(args, "result"));
+    } else if (Constants.FINISH_PLAN_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          FinishPlanTool.applyFinish(
+              currentPlan,
+              PlanStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
+              CollectionUtils.getStringValueFromMap(args, "result"));
+    } else if (Constants.UPDATE_PLAN_TOOL_NAME.equals(toolName)) {
+      currentPlan =
+          UpdatePlanTool.applyPlanUpdate(
+              currentPlan,
+              CollectionUtils.getStringValueFromMap(args, "title"),
+              CollectionUtils.getStringValueFromMap(args, "goal"));
+    }
+    return currentPlan;
   }
 }

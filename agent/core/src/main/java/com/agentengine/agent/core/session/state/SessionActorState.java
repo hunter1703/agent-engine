@@ -1,5 +1,6 @@
 package com.agentengine.agent.core.session.state;
 
+import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.beans.ResumeRequest;
@@ -9,7 +10,14 @@ import com.agentengine.util.pekko.PekkoSerializable;
 import com.google.adk.events.Event;
 import java.util.*;
 
-/** Durable actor state reconstructed from journal facts. */
+/**
+ * Durable actor state reconstructed from journal facts.
+ *
+ * <p>{@code grants} accumulates additively across every run of the session: {@link
+ * #withNewRun(UniqueRecord, long)} merges each new message's {@link ResourceGrants} on top of
+ * whatever was already granted (see {@link ResourceGrants#merge}), so knowledge/notebook access
+ * granted in an earlier run is never lost in a later one.
+ */
 public record SessionActorState(
     SessionState sessionState,
     Queue<UniqueRecord<UserMessage>> queue,
@@ -18,7 +26,8 @@ public record SessionActorState(
     long nextSequence,
     SessionTopology topology,
     PauseState pauseState,
-    RunState runState)
+    RunState runState,
+    ResourceGrants grants)
     implements PekkoSerializable {
 
   public RunResult lastResult() {
@@ -34,7 +43,8 @@ public record SessionActorState(
         0L,
         null,
         new PauseState(),
-        new RunState(null, null, 0L, null, null));
+        new RunState(null, null, 0L, null, null),
+        ResourceGrants.EMPTY);
   }
 
   public SessionActorState withSessionState(final SessionState sessionState) {
@@ -46,7 +56,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState,
-        runState);
+        runState,
+        grants);
   }
 
   public SessionActorState withTopology(final SessionTopology updatedTopology) {
@@ -58,7 +69,8 @@ public record SessionActorState(
         nextSequence,
         updatedTopology,
         pauseState,
-        runState);
+        runState,
+        grants);
   }
 
   public SessionActorState withRunResult(final RunResult result) {
@@ -70,7 +82,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState,
-        runState.withResult(result));
+        runState.withResult(result),
+        grants);
   }
 
   public SessionActorState resetMessage() {
@@ -82,12 +95,15 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState,
-        runState.resetMessage());
+        runState.resetMessage(),
+        grants);
   }
 
   public SessionActorState withNewRun(
       final UniqueRecord<UserMessage> updatedCurrentMessage, final long messageTimestamp) {
     final String runId = updatedCurrentMessage != null ? updatedCurrentMessage.getId() : null;
+    final ResourceGrants incomingGrants =
+        updatedCurrentMessage != null ? updatedCurrentMessage.getRecord().grants() : null;
     return new SessionActorState(
         sessionState,
         queue,
@@ -96,7 +112,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState,
-        new RunState(runId, updatedCurrentMessage, messageTimestamp, null, null));
+        new RunState(runId, updatedCurrentMessage, messageTimestamp, null, null),
+        grants.merge(incomingGrants));
   }
 
   public SessionActorState completeRun(RunResult result) {
@@ -122,7 +139,8 @@ public record SessionActorState(
         nextSequence() + events.size(),
         topology,
         pauseState,
-        runState.withEvents(events));
+        runState.withEvents(events),
+        grants);
   }
 
   public Optional<ChildSession> child(final String childSessionId) {
@@ -154,7 +172,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState.withChildPaused(childSessionId, interruptId),
-        runState);
+        runState,
+        grants);
   }
 
   public SessionActorState selfPaused(final String interruptId) {
@@ -166,7 +185,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState.withSelfPaused(interruptId),
-        runState);
+        runState,
+        grants);
   }
 
   public String getPausedChild(final ResumeRequest resumeRequest) {
@@ -205,7 +225,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState.withInternalSelfPause(correlationId, interruptId),
-        runState);
+        runState,
+        grants);
   }
 
   public boolean isPausedOnExternalInterrupts() {
@@ -227,7 +248,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState.withSelfResumed(resumeRequest),
-        runState);
+        runState,
+        grants);
   }
 
   public SessionActorState childResume(final ResumeRequest resumeRequest) {
@@ -239,7 +261,8 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState.withChildResumed(resumeRequest.getInterruptId()),
-        runState);
+        runState,
+        grants);
   }
 
   public boolean isDuplicateTurn(final Event lastTurnEvent) {
@@ -263,7 +286,8 @@ public record SessionActorState(
             new HashMap<>(),
             pauseState.pendingInterruptIdVsChildSessionId(),
             new HashMap<>()),
-        runState);
+        runState,
+        grants);
   }
 
   /**
@@ -287,6 +311,7 @@ public record SessionActorState(
         nextSequence,
         topology,
         pauseState,
-        runState);
+        runState,
+        grants);
   }
 }

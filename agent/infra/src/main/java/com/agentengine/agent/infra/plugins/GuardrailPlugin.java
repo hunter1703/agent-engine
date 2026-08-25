@@ -91,12 +91,12 @@ public final class GuardrailPlugin extends BasePlugin {
       return Maybe.empty();
     }
     if (decision.action() == GuardrailAction.WARN) {
-      RunUtils.getOrInitState(invocationContext)
+      RunUtils.getRunState(invocationContext)
           .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
       return Maybe.empty();
     }
 
-    RunUtils.getOrInitState(invocationContext)
+    RunUtils.getRunState(invocationContext)
         .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
     if (decision.action() == GuardrailAction.ESCALATE) {
       return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
@@ -115,13 +115,13 @@ public final class GuardrailPlugin extends BasePlugin {
     final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.WARN) {
       if (!requiresRegeneration(decision)) {
-        RunUtils.getOrInitState(invocationContext).addViolation(violation);
+        RunUtils.getRunState(invocationContext).addViolation(violation);
         return Maybe.empty();
       }
-      RunUtils.getOrInitState(invocationContext).requestContinuation(violation);
+      RunUtils.getRunState(invocationContext).requestContinuation(violation);
       return Maybe.empty();
     } else if (violation != null) {
-      RunUtils.getOrInitState(invocationContext).addViolation(violation);
+      RunUtils.getRunState(invocationContext).addViolation(violation);
     }
 
     if (decision.action() == GuardrailAction.ESCALATE) {

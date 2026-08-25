@@ -26,6 +26,25 @@ public class Plan {
     this.tasks = tasks;
   }
 
+  public Plan(Plan plan) {
+    this(plan.planId, plan.title, plan.goal, plan.tasks, plan.status, plan.result);
+  }
+
+  public Plan(
+      String planId,
+      String title,
+      String goal,
+      List<Task> tasks,
+      PlanStatus status,
+      String result) {
+    this.planId = planId;
+    this.title = title;
+    this.goal = goal;
+    this.tasks = tasks;
+    this.status = status;
+    this.result = result;
+  }
+
   public String getPlanId() {
     return planId;
   }

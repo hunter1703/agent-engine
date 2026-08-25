@@ -3,7 +3,6 @@ package com.agentengine.agent.infra.tools.connector;
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.knowledge.api.beans.IndexRequest;
 import com.agentengine.knowledge.api.beans.Knowledge;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -69,14 +68,6 @@ public final class GetWebpageTool extends Tool {
     request.setGrants(List.of("S/" + sessionId));
     request.setWaitForCompletion(true);
     final Knowledge knowledge = knowledgeService.create(request);
-    return ToolOutput.knowledge(
-        knowledge.getId(),
-        "Webpage : "
-            + url
-            + " indexed. Use"
-            + SearchKnowledgeTool.DESCRIPTOR.name()
-            + " with knowledgeId='"
-            + knowledge.getId()
-            + "' to search for information.");
+    return ToolOutput.knowledge(knowledge.getId(), "Webpage '%s' indexed.".formatted(url));
   }
 }

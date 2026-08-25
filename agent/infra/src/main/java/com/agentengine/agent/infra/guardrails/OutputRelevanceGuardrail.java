@@ -67,7 +67,7 @@ public final class OutputRelevanceGuardrail implements Guardrail {
         GuardrailUtils.buildRelevanceAnchorPrompt(context.invocationContext(), config);
     final double score = relevanceScorer.score(anchor, context.text());
     final double threshold = config.getRelevanceThreshold();
-    final RunState runState = RunUtils.getOrInitState(context.invocationContext());
+    final RunState runState = RunUtils.getRunState(context.invocationContext());
 
     if (score >= threshold) {
       runState.resetOffTopicRetries();

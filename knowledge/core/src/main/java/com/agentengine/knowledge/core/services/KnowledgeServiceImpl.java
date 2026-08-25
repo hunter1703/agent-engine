@@ -12,9 +12,7 @@ import com.agentengine.util.common.update.Update;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +56,11 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   @Override
   public Knowledge findById(final String id) {
     return knowledgeRepo.findById(id);
+  }
+
+  @Override
+  public Map<String, Knowledge> findByIds(Collection<String> id) {
+    return knowledgeRepo.findByIds(id);
   }
 
   @Override

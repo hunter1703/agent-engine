@@ -6,6 +6,7 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.knowledge.api.beans.KnowledgeChunk;
 import com.agentengine.knowledge.api.services.KnowledgeService;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -37,10 +38,12 @@ public final class SearchKnowledgeTool extends Tool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          "search_knowledge",
-          "Searches indexed knowledge for content semantically relevant to the query. "
-              + "Scope the search to a specific document by providing its knowledgeId, "
-              + "or search all knowledge for the current agent when knowledgeId is omitted. "
+          Constants.SEARCH_KNOWLEDGE_TOOL_NAME,
+          "Semantically searches indexed knowledge by query, optionally scoped to one knowledgeId. "
+              + "Not for a knowledge source (a raw file with no search capability) — read that "
+              + "whole with "
+              + Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME
+              + " instead. "
               + "Returns: { chunks: [...], total, offset, limit }.");
 
   private final KnowledgeService knowledgeService;
@@ -70,9 +73,9 @@ public final class SearchKnowledgeTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "query", description = "Natural-language search query") String query,
       @ToolSchema(
-              name = "knowledgeIds",
+              name = Constants.ARG_KNOWLEDGE_ID,
               description =
-                  "Limit search to this knowledge items. Omit to search all agent knowledge.",
+                  "Limit search to this knowledge id. Omit to search all agent knowledge.",
               optional = true)
           String knowledgeId,
       @ToolSchema(name = "offset", description = "Pagination offset (default: 0).", optional = true)

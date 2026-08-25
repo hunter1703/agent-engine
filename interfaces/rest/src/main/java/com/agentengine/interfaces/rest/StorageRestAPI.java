@@ -56,9 +56,7 @@ public class StorageRestAPI {
   @APIResponse(responseCode = "200", description = "Object downloaded successfully")
   public Response download(final FileDetails fileDetails) {
     final String source = fileDetails.source();
-    final int sep = source.indexOf('/');
-    final String key = sep >= 0 ? source.substring(sep + 1) : source;
-    final CloudStorageService.Content content = cloudStorageService.download(key);
+    final CloudStorageService.Content content = cloudStorageService.download(source);
     return Response.ok(content.stream()).type(content.mimeType()).build();
   }
 }

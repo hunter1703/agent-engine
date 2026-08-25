@@ -87,7 +87,7 @@ public final class BaseFlow extends SingleFlow {
   }
 
   private Flowable<Event> runLoop(final InvocationContext invocationContext) {
-    final RunState runState = RunUtils.getOrInitState(invocationContext);
+    final RunState runState = RunUtils.getRunState(invocationContext);
     final boolean mayContinue = runState.consumeTurn(maxSteps);
     if (!mayContinue) {
       return Flowable.empty();

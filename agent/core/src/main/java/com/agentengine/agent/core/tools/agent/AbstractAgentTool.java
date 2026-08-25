@@ -1,18 +1,27 @@
 package com.agentengine.agent.core.tools.agent;
 
+import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.core.session.SessionActor;
 import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
+import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.beans.NotebookGrants;
+import com.agentengine.util.agents.beans.NotebookGrants.Permission;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -22,6 +31,13 @@ import org.slf4j.LoggerFactory;
 public class AbstractAgentTool extends Tool {
 
   public static final String CHILD_SESSION_ID = "child_session_id";
+
+  public static final String GOAL_SCHEMA_DESCRIPTION =
+      "A concise, one-sentence summary of what this exchange with the child is for — specific "
+          + "enough that you (or a later, unrelated turn) can tell its purpose at a glance without "
+          + "rereading the message. Do not restate or paraphrase the message itself here — that "
+          + "belongs in 'message'. Do not leave it vague either (e.g. 'chat', 'follow-up', 'task') "
+          + "— name the concrete objective or question. Required.";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAgentTool.class);
   protected final ActorSystemProvider actorSystemProvider;
@@ -35,6 +51,54 @@ public class AbstractAgentTool extends Tool {
   protected EntityRef<SessionCommand> actorRef(final ToolContext toolContext) {
     return actorSystemProvider.entityRefFor(
         SessionActor.TYPE_KEY, ToolUtils.sessionId(toolContext));
+  }
+
+  protected static String buildFullMessage(final String goal, final String message) {
+    return StringUtils.isNotBlank(goal) ? "Goal: " + goal + "\n\nMessage: " + message : message;
+  }
+
+  protected static ResourceGrants buildResourceGrants(
+      final List<String> knowledgeIds,
+      final List<String> knowledgeSources,
+      final List<String> notebookGrants)
+      throws IllegalArgumentException {
+    final Map<String, Permission> resolved = new HashMap<>();
+    for (final String entry : CollectionUtils.nullSafeList(notebookGrants)) {
+      final int separator = entry.lastIndexOf('/');
+      if (separator < 0) {
+        continue;
+      }
+      final String key = entry.substring(0, separator);
+      final String permissionStr = entry.substring(separator + 1);
+      Permission permission = Permission.valueOfOrUnknown(permissionStr);
+      if (permission == Permission.UNKNOWN) {
+        throw new IllegalArgumentException(
+            "Grant : " + entry + " has invalid permission : " + permissionStr);
+      }
+
+      if (key.contains(Constants.ID_SEPARATOR) && permission == Permission.CREATE) {
+        throw new IllegalArgumentException(
+            "Grant : "
+                + entry
+                + " assigns "
+                + Permission.CREATE
+                + " permission to note which is invalid. It can only be assigned to a notebook");
+      } else if (permission == Permission.READ || permission == Permission.WRITE) {
+        throw new IllegalArgumentException(
+            "Grant : "
+                + entry
+                + " assigns "
+                + permissionStr.toUpperCase(Locale.ROOT)
+                + " permission to notebook which is invalid. It can only be assigned to a note");
+      }
+      resolved.put(key, permission);
+    }
+    if (CollectionUtils.isEmpty(knowledgeIds)
+        && CollectionUtils.isEmpty(knowledgeSources)
+        && resolved.isEmpty()) {
+      return null;
+    }
+    return new ResourceGrants(knowledgeIds, knowledgeSources, new NotebookGrants(resolved));
   }
 
   protected ToolOutput<Map<String, Object>> awaitChild(
@@ -60,7 +124,8 @@ public class AbstractAgentTool extends Tool {
     } else {
       LOGGER.info("Child session {} completed with result: {}", childSessionId, result);
     }
-    RunUtils.getOrInitState(toolContext.invocationContext()).removeReminder(childSessionId);
+    SessionUtils.getSessionState(toolContext.invocationContext())
+        .markSpawnedAgentAwaited(childSessionId);
     return ToolOutput.direct(AwaitAgentTool.buildCompletedResponseMap(childSessionId, result));
   }
 

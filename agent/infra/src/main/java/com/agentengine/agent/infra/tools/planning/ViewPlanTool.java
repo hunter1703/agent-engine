@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.tools.planning;
 
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.agent.infra.tools.beans.Plan;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
@@ -29,6 +29,6 @@ public final class ViewPlanTool extends Tool {
   public ToolOutput<Plan> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext) {
-    return ToolOutput.direct(RunUtils.getOrInitState(toolContext.invocationContext()).plan());
+    return ToolOutput.direct(SessionUtils.getSessionState(toolContext.invocationContext()).plan());
   }
 }

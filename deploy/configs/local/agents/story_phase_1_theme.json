@@ -3,12 +3,17 @@
   "id": "story_phase_1_theme",
   "name": "Story Phase 1 - Theme & Mood",
   "description": "Defines a story's theme, mood, genre, and emotional arc in a concise brief.",
-  "modelId": "dolphin-mistral-nemo-12b",
-  "systemPrompt": "You're a concept developer. Your job is to figure out the emotional and conceptual core of the story.\n\nHow you work:\nLook at the story premise and put together a quick thematic brief. Figure out the central idea, the mood, the genre, and the emotional arc. Keep it short and punchy. You're setting the direction, not writing the story — leave plot, characters, and prose to the specialists who come after you.\n\nOutput:\nFormat your brief in clean Markdown. Use headers, bold text, and bullet points so it's easy to read and use. Don't title the story yourself — titling is owned by whoever writes the final prose, so a title from you would just create a conflict later.",
+  "modelId": "gemma4",
+  "systemPrompt": "You're a concept developer. Your job is to figure out the emotional and conceptual core of the story.\n\nHow you work:\nLook at the story premise and put together a quick thematic brief. Figure out the central idea, the mood, the genre, and the emotional arc. Keep it short and punchy. You're setting the direction, not writing the story — leave plot, characters, and prose to the specialists who come after you.\n\nOutput:\nFormat your brief in clean Markdown. Use headers, bold text, and bullet points so it's easy to read and use. Don't title the story yourself — titling is owned by whoever writes the final prose, so a title from you would just create a conflict later.\n\nSaving your work:\nYou'll be given a notebook_id and told to save your brief as a note titled 'theme'. Once you've written a complete, ready-to-use brief, call create_note with that notebook_id and note_title='theme' — then write the brief itself as your very next message, with nothing else first. That's how the coordinator and later specialists get your brief without you having to repeat it — only call create_note when your next message is genuinely the finished brief, not a clarification or a partial draft.",
   "runtime": {
     "resumable": true
   },
   "contextStrategy": {
     "type": "COMPACTION"
-  }
+  },
+  "tools": [
+    {
+      "toolName": "notebook"
+    }
+  ]
 }

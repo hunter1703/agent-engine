@@ -178,11 +178,11 @@ public final class SessionActor
     switch (sessionState) {
       case TRIGGERED_RUN -> {
         // re-start with message; as the recovery state was mid first turn
-        runner.start(state.runState().message().getRecord());
+        runner.start(state.runState().message().getRecord(), state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
-        runner.resume(state.getAllReceivedResumes());
+        runner.resume(state.getAllReceivedResumes(), state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> {
@@ -204,7 +204,7 @@ public final class SessionActor
         for (final StartingChild child : state.startingChildren()) {
           self.tell(new StartChildCommand(child.agentId(), child.message(), null));
         }
-        runner.start(UserMessage.ofText("continue"));
+        runner.start(UserMessage.ofText("continue"), state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case PAUSED -> {
@@ -431,11 +431,8 @@ public final class SessionActor
     if (interruptId == null) {
       return Effect().none();
     }
-    final String author =
-        state
-            .child(command.childSessionId())
-            .map(ChildSession::agentId)
-            .orElse(Constants.AUTHOR_USER);
+    final String childAgentId = SessionUtils.agentIdFromSessionId(command.childSessionId());
+    final String author = childAgentId != null ? childAgentId : Constants.AUTHOR_USER;
     final ResumeRequest resumeRequest =
         new ResumeRequest(
             interruptId,
@@ -485,7 +482,7 @@ public final class SessionActor
         .persist(new ContinuingFact())
         .thenRun(
             newState -> {
-              runner.resume(resumeRequests);
+              runner.resume(resumeRequests, newState.grants());
               LOG.info(
                   "Continued run with resumes : {} for topology : {}",
                   JsonUtils.toJson(resumeRequests),
@@ -569,9 +566,9 @@ public final class SessionActor
   private Effect<SessionFact, SessionActorState> startChild(
       final SessionActorState state, final StartChildCommand command) {
     final String childAgentId = command.agentId();
-    final UniqueRecord<String> commandMessage = command.message();
+    final UniqueRecord<UserMessage> commandMessage = command.message();
     final String childSessionId = commandMessage.getId();
-    final String message = commandMessage.getRecord();
+    final UserMessage message = commandMessage.getRecord();
     final ActorRef<StartChildResult> replyTo = command.replyTo();
     if (state.child(childSessionId).isPresent()) {
       // a child has already started; it is a duplicate request
@@ -618,7 +615,7 @@ public final class SessionActor
       final SessionActorState state,
       final String childAgentId,
       final String childSessionId,
-      final String message) {
+      final UserMessage message) {
     final EntityRef<SessionCommand> childRef = refSupplier.apply(childSessionId);
     final SessionTopology topology = state.topology();
     final SessionTopology childTopology =
@@ -635,8 +632,7 @@ public final class SessionActor
             ASK_TIMEOUT)
         .thenCompose(
             _ -> {
-              final UniqueRecord<UserMessage> uniqueMessage =
-                  new UniqueRecord<>(UserMessage.ofText(message));
+              final UniqueRecord<UserMessage> uniqueMessage = new UniqueRecord<>(message);
               return childRef.ask(
                   (Function<ActorRef<StartSessionResult>, SessionCommand>)
                       startReplyTo -> new StartCommand(uniqueMessage, startReplyTo),
@@ -693,9 +689,7 @@ public final class SessionActor
                         (Function<ActorRef<StartSessionResult>, SessionCommand>)
                             replyTo ->
                                 new StartCommand(
-                                    new UniqueRecord<>(
-                                        UserMessage.ofText(command.message().getRecord())),
-                                    replyTo),
+                                    new UniqueRecord<>(command.message().getRecord()), replyTo),
                         ASK_TIMEOUT)
                     .whenComplete(
                         (result, error) -> {
@@ -1018,7 +1012,7 @@ public final class SessionActor
                   newState.topology().sessionId(),
                   nextMessage.getRecord());
               updateSessionStatus(newState, SessionStatus.RUNNING);
-              runner.start(nextMessage.getRecord());
+              runner.start(nextMessage.getRecord(), newState.grants());
             });
   }
 

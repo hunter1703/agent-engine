@@ -150,7 +150,15 @@ instructions, under `configs/`.
 9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
 10. Document REST endpoints with MicroProfile OpenAPI annotations.
 11. Avoid qualified class names (FQNs); add explicit imports instead. NEVER use FQNs unless there is a clash of names.
-12. Avoid methods with long argument lists; avoid side-effect methods unless the abstraction calls for them.
+12. Avoid methods with long argument lists; avoid side-effect-only methods unless necessary. A
+    method that only mutates a collection/object passed in by the caller (e.g. `void
+    appendFooParts(List<Part> parts, ...)`) should, when nothing about the abstraction truly
+    requires the side effect, instead be a pure function that returns the new/changed value (e.g.
+    `List<Part> fooParts(...)`) for the caller to assign or add — this is easier to read, test, and
+    reason about than a method whose effect is only visible by inspecting a parameter after the
+    call. Only reach for a side-effect method when the mutation is the point of the abstraction
+    (e.g. a builder, a `Map` accumulator threaded through a loop where allocating a fresh
+    collection per call would be wasteful).
 13. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
 14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never
     write changelog-style comments that explain what changed or why code was removed/simplified
@@ -158,6 +166,11 @@ instructions, under `configs/`.
     the resulting code; a reader with no session context gets no value from it once the change is
     old. State that reasoning in chat instead.
 15. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+    Before introducing any hack — overloading one mechanism to serve a different purpose (e.g. a
+    reserved/magic key, a sentinel value, special-casing that leaks into every caller) because the
+    clean abstraction doesn't exist yet — stop and confirm the approach with the user first rather
+    than implementing it unilaterally. Present the tradeoff and let them choose, even if that means
+    a bigger change than the hack would have been.
 16. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
 17. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
     `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).

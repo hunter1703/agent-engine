@@ -48,7 +48,7 @@ public final class StringUtils {
     return str.substring(start, end);
   }
 
-  public static int estimateTextContent(final String text) {
+  public static int estimateTokens(final String text) {
     if (isBlank(text)) {
       return 1;
     }
