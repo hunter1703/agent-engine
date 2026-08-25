@@ -17,9 +17,15 @@ public final class AgentUtils {
   }
 
   static String getAgentIdFromContext(final InvocationContext context) {
-    if (context == null || context.agent() == null || StringUtils.isBlank(context.agent().name())) {
+    if (context == null) {
       return "unknown";
     }
-    return context.agent().name();
+    if (context.agent() != null && StringUtils.isNotBlank(context.agent().name())) {
+      return context.agent().name();
+    }
+    if (context.session() != null && StringUtils.isNotBlank(context.session().appName())) {
+      return context.session().appName();
+    }
+    return "unknown";
   }
 }

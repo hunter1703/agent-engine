@@ -7,7 +7,6 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.google.adk.agents.BaseAgentState;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.Session;
@@ -40,14 +39,18 @@ public final class SessionUtils {
     }
     final SessionState created =
         SessionState.buildFrom(context.session().events(), knowledgeService);
-    final Map<String, BaseAgentState> agentStates = context.agentStates();
     final String agentId = getAgentIdFromContext(context);
-    LOG.info(
-        "[DIAG] getOrInitSessionState WRITE ctx={} agentStatesMap={} agentId={}",
-        System.identityHashCode(context),
-        System.identityHashCode(agentStates),
-        agentId);
-    agentStates.put(agentId, created);
+    final ConcurrentMap<String, Object> state = state(context);
+    if (state != null) {
+      // a session can have multiple agent states because a session can be shared by multiple agents
+      // (like when AgentTransfer happens)
+      @SuppressWarnings("unchecked")
+      ConcurrentMap<String, SessionState> sessionStates =
+          (ConcurrentMap<String, SessionState>)
+              state.computeIfAbsent(
+                  "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
+      sessionStates.put(agentId, created);
+    }
     return created;
   }
 
@@ -87,16 +90,16 @@ public final class SessionUtils {
 
   private static SessionState getSessionState(
       final InvocationContext context, boolean throwOnAbsent) {
-    final Map<String, BaseAgentState> agentStates = context.agentStates();
     final String agentId = getAgentIdFromContext(context);
-    LOG.info(
-        "[DIAG] getSessionState READ ctx={} agent={} agentStatesMap={} agentId={} keys={}",
-        System.identityHashCode(context),
-        context.agent() == null ? "null" : context.agent().name(),
-        System.identityHashCode(agentStates),
-        agentId,
-        agentStates.keySet());
-    final SessionState sessionState = CollectionUtils.getValueFromMap(agentStates, agentId);
+    final ConcurrentMap<String, Object> state = state(context);
+
+    SessionState sessionState = null;
+    if (state != null) {
+      Map<String, SessionState> sessionStates =
+          CollectionUtils.getMapFromMap(state, "SESSION_STATES");
+      sessionState = CollectionUtils.getValueFromMap(sessionStates, agentId);
+    }
+
     if (sessionState != null) {
       return sessionState;
     }
