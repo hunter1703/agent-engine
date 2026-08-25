@@ -18,7 +18,7 @@ import java.util.Map;
 public final class AddTaskTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.ADD_TASK_TOOL_NAME,
+          Constants.ToolNames.ADD_TASK,
           "Appends a new task to the current active plan. Use when work in progress reveals steps not captured "
               + "in the original plan. The new task starts in pending (TODO) status. An active plan must "
               + "already exist. Optionally places the task under an existing parent task; the parent must not "

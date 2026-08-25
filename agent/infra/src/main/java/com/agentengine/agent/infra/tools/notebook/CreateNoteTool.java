@@ -13,7 +13,7 @@ import java.util.Map;
 public final class CreateNoteTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.CREATE_NOTE_TOOL_NAME,
+          Constants.ToolNames.CREATE_NOTE,
           "Stages a new note to be saved into a notebook, so other agents granted access to it "
               + "can read it instead of you having to relay its full text yourself. Call this "
               + "immediately before writing the note's content — not before a clarification or a "
@@ -33,15 +33,15 @@ public final class CreateNoteTool extends Tool {
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolSchema(
-              name = Constants.ARG_NOTEBOOK_ID,
+              name = Constants.ToolArgs.NOTEBOOK_ID,
               description = "The notebook to add this note to.")
           final String notebookId,
       @ToolSchema(
-              name = Constants.ARG_NOTE_TITLE,
+              name = Constants.ToolArgs.NOTE_TITLE,
               description = "Short title identifying this note within the notebook.")
           final String noteTitle,
       @ToolSchema(
-              name = Constants.ARG_CONTINUATION,
+              name = Constants.ToolArgs.CONTINUATION,
               description =
                   "If true, you'll get another turn (with tools available) after this note is "
                       + "saved. If false (default), this note's content is your final output for "

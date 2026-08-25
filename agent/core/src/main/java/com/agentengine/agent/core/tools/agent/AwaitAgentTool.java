@@ -21,7 +21,7 @@ public final class AwaitAgentTool extends AbstractAgentTool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.AWAIT_AGENT_TOOL_NAME,
+          Constants.ToolNames.AWAIT_AGENT,
           "Blocks until a child agent session finishes processing its current message and returns the result. "
               + "Call when you need the child's output before you can proceed — either to use it as input to "
               + "the next step, or to confirm successful completion before taking a dependent action. "

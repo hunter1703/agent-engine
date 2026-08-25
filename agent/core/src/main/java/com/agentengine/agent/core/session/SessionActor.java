@@ -1,7 +1,7 @@
 package com.agentengine.agent.core.session;
 
 import static com.agentengine.agent.core.session.SessionActorFactory.ASK_TIMEOUT;
-import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
+import static com.agentengine.util.agents.Constants.ToolArgs.ORIGINAL_FUNCTION_CALL;
 import static com.agentengine.util.common.CollectionUtils.getValueFromMap;
 
 import com.agentengine.agent.api.model.UserMessage;
@@ -730,14 +730,14 @@ public final class SessionActor
       final String interruptId = call.id().orElse(null);
       final Map<String, Object> args = call.args().orElse(Map.of());
       final FunctionCall originalFunctionCall =
-          Objects.requireNonNull(getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+          Objects.requireNonNull(getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
 
       final String functionName = originalFunctionCall.name().orElse(null);
-      if (Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
-          || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)
-          || Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)) {
+      if (Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
+          || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)
+          || Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)) {
         final ToolConfirmation toolConfirmation =
-            getValueFromMap(args, Constants.ARG_TOOL_CONFIRMATION);
+            getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION);
         if (toolConfirmation != null) {
           //noinspection unchecked
           final String childSessionId =

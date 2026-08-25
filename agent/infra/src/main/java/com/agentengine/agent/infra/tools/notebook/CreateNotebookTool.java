@@ -15,11 +15,11 @@ import java.util.Map;
 public final class CreateNotebookTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.CREATE_NOTEBOOK_TOOL_NAME,
+          Constants.ToolNames.CREATE_NOTEBOOK,
           "Creates a new, empty notebook — a shared space for titled notes that other agent "
               + "sessions can be granted access to. You always have full read/write/delete access "
               + "to a notebook you create; grant access to it for other sessions via the "
-              + Constants.ARG_NOTEBOOK_GRANTS
+              + Constants.ToolArgs.NOTEBOOK_GRANTS
               + " field on spawn_agent or send_message. "
               + "Returns: { status: \"success\", notebook_id }, or { error } if that name is "
               + "already in use.",
@@ -43,7 +43,7 @@ public final class CreateNotebookTool extends Tool {
                       + "it.")
           final String name,
       @ToolSchema(
-              name = Constants.ARG_NOTEBOOK_DESCRIPTION,
+              name = Constants.ToolArgs.NOTEBOOK_DESCRIPTION,
               description =
                   "What this notebook is for, to it understand its purpose without having to explain it again.",
               optional = true)

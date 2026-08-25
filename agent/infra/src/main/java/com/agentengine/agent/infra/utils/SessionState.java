@@ -53,7 +53,7 @@ public final class SessionState extends BaseAgentState {
                   .formatted(
                       source,
                       ReadKnowledgeSourceTool.DESCRIPTOR.name(),
-                      Constants.ARG_SOURCE,
+                      Constants.ToolArgs.SOURCE,
                       source)));
     }
   }
@@ -104,7 +104,7 @@ public final class SessionState extends BaseAgentState {
                 .formatted(
                     hint,
                     SearchKnowledgeTool.DESCRIPTOR.name(),
-                    Constants.ARG_KNOWLEDGE_ID,
+                    Constants.ToolArgs.KNOWLEDGE_ID,
                     knowledgeId));
     addReminder(reminder);
   }
@@ -169,41 +169,41 @@ public final class SessionState extends BaseAgentState {
       final FunctionCall functionCall = part.functionCall().orElse(null);
       if (functionCall != null) {
         final String functionName = functionCall.name().orElse("");
-        if (functionName.equals(Constants.SPAWN_AGENT_TOOL_NAME)
-            || functionName.equals(Constants.SEND_MESSAGE_TOOL_NAME)
-            || functionName.equals(Constants.AWAIT_AGENT_TOOL_NAME)) {
+        if (functionName.equals(Constants.ToolNames.SPAWN_AGENT)
+            || functionName.equals(Constants.ToolNames.SEND_MESSAGE)
+            || functionName.equals(Constants.ToolNames.AWAIT_AGENT)) {
           functionCall.id().ifPresent(id -> idVsFunctionCalls.put(id, functionCall));
         }
       }
       final FunctionResponse response = part.functionResponse().orElse(null);
       if (response != null) {
         final Map<String, Object> result = response.response().orElse(Map.of());
-        if (response.name().orElse("").equals(Constants.SPAWN_AGENT_TOOL_NAME)) {
+        if (response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT)) {
           final FunctionCall spawnAgentCall = idVsFunctionCalls.get(response.id().orElse(""));
           final Map<String, Object> callArgs = spawnAgentCall.args().orElse(Map.of());
           final Boolean await =
-              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ARG_AWAIT_COMPLETION);
+              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
           final String spawnedSession =
-              CollectionUtils.getStringValueFromMap(result, Constants.ARG_CHILD_SESSION_ID);
+              CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
           sessionIdVsAwaited.put(spawnedSession, await == null || await);
           sessionIdVsGoal.put(
               spawnedSession, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
         }
-        if (response.name().orElse("").equals(Constants.SEND_MESSAGE_TOOL_NAME)) {
+        if (response.name().orElse("").equals(Constants.ToolNames.SEND_MESSAGE)) {
           final FunctionCall sendMessageCall = idVsFunctionCalls.get(response.id().orElse(""));
           final Map<String, Object> callArgs = sendMessageCall.args().orElse(Map.of());
           final Boolean await =
-              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ARG_AWAIT_COMPLETION);
+              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
           final String sessionId =
-              CollectionUtils.getStringValueFromMap(result, Constants.ARG_CHILD_SESSION_ID);
+              CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
           sessionIdVsAwaited.put(sessionId, await == null || await);
           sessionIdVsGoal.put(sessionId, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
         }
-        if (response.name().orElse("").equals(Constants.AWAIT_AGENT_TOOL_NAME)) {
+        if (response.name().orElse("").equals(Constants.ToolNames.AWAIT_AGENT)) {
           final FunctionCall spawnAgentCall = idVsFunctionCalls.get(response.id().orElse(""));
           final Map<String, Object> callArgs = spawnAgentCall.args().orElse(Map.of());
           final String awaitedSession =
-              CollectionUtils.getStringValueFromMap(callArgs, Constants.ARG_CHILD_SESSION_ID);
+              CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
           sessionIdVsAwaited.put(awaitedSession, true);
         }
       }
@@ -232,8 +232,8 @@ public final class SessionState extends BaseAgentState {
         .formatted(
             childSessionId,
             goalClause,
-            Constants.AWAIT_AGENT_TOOL_NAME,
-            Constants.ARG_CHILD_SESSION_ID,
+            Constants.ToolNames.AWAIT_AGENT,
+            Constants.ToolArgs.CHILD_SESSION_ID,
             childSessionId);
   }
 }

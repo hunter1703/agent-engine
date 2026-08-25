@@ -32,7 +32,7 @@ public final class ToolCallSanitizationResponseProcessor implements ResponseProc
   public ToolCallSanitizationResponseProcessor(final Collection<String> availableTools) {
     final Set<String> availableToolsSet = CollectionUtils.nullSafeMutableSet(availableTools);
     // ADK implicitly adds this via request processor
-    availableToolsSet.add(Constants.AGENT_TRANSFER_TOOL_NAME);
+    availableToolsSet.add(Constants.ToolNames.AGENT_TRANSFER);
     this.availableTools = availableToolsSet;
   }
 

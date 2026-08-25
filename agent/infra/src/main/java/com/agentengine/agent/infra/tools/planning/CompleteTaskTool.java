@@ -15,7 +15,7 @@ import java.util.Map;
 public final class CompleteTaskTool extends UpdateTaskStatusTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.COMPLETE_TASK_TOOL_NAME,
+          Constants.ToolNames.COMPLETE_TASK,
           "Closes a task by transitioning it to a terminal status — either 'done' (completed successfully) or "
               + "'abandoned' (intentionally skipped or cancelled). Terminal status is permanent and cannot be "
               + "reversed. Call once the work for a task is done and you are ready to record the outcome and "

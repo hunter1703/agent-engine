@@ -13,7 +13,7 @@ import java.util.Map;
 public final class DeleteNoteTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.DELETE_NOTE_TOOL_NAME,
+          Constants.ToolNames.DELETE_NOTE,
           "Permanently deletes a note from a notebook you have write access to (or one you "
               + "created). "
               + "Returns: { status: \"success\" } or { error }.",
@@ -29,9 +29,13 @@ public final class DeleteNoteTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = Constants.ARG_NOTEBOOK_ID, description = "The notebook the note is in.")
+      @ToolSchema(
+              name = Constants.ToolArgs.NOTEBOOK_ID,
+              description = "The notebook the note is in.")
           final String notebookId,
-      @ToolSchema(name = Constants.ARG_NOTE_TITLE, description = "The title of the note to delete.")
+      @ToolSchema(
+              name = Constants.ToolArgs.NOTE_TITLE,
+              description = "The title of the note to delete.")
           final String noteTitle) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
     final NotebookGrants grants = NotebookUtils.grantsOf(toolContext);

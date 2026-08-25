@@ -713,13 +713,13 @@ public final class PlanningUtils {
   }
 
   private static boolean isPlanningTool(final String toolName) {
-    return Constants.CREATE_PLAN_TOOL_NAME.equals(toolName)
-        || Constants.ADD_TASK_TOOL_NAME.equals(toolName)
-        || Constants.UPDATE_TASK_INFO_TOOL_NAME.equals(toolName)
-        || Constants.START_TASK_TOOL_NAME.equals(toolName)
-        || Constants.COMPLETE_TASK_TOOL_NAME.equals(toolName)
-        || Constants.FINISH_PLAN_TOOL_NAME.equals(toolName)
-        || Constants.UPDATE_PLAN_TOOL_NAME.equals(toolName);
+    return Constants.ToolNames.CREATE_PLAN.equals(toolName)
+        || Constants.ToolNames.ADD_TASK.equals(toolName)
+        || Constants.ToolNames.UPDATE_TASK_INFO.equals(toolName)
+        || Constants.ToolNames.START_TASK.equals(toolName)
+        || Constants.ToolNames.COMPLETE_TASK.equals(toolName)
+        || Constants.ToolNames.FINISH_PLAN.equals(toolName)
+        || Constants.ToolNames.UPDATE_PLAN.equals(toolName);
   }
 
   private static Plan applyReplayedEvent(
@@ -727,11 +727,11 @@ public final class PlanningUtils {
       final String toolName,
       final Map<String, Object> args,
       final Map<String, Object> responseMap) {
-    if (Constants.CREATE_PLAN_TOOL_NAME.equals(toolName)) {
+    if (Constants.ToolNames.CREATE_PLAN.equals(toolName)) {
       return JsonUtils.fromMap(
           CollectionUtils.getMapFromMap(responseMap, "createdPlan"), Plan.class);
     }
-    if (Constants.ADD_TASK_TOOL_NAME.equals(toolName)) {
+    if (Constants.ToolNames.ADD_TASK.equals(toolName)) {
       currentPlan =
           AddTaskTool.applyAddTask(
               currentPlan,
@@ -743,7 +743,7 @@ public final class PlanningUtils {
           .getTasks()
           .getLast()
           .setTaskId(CollectionUtils.getStringValueFromMap(responseMap, "task_id"));
-    } else if (Constants.UPDATE_TASK_INFO_TOOL_NAME.equals(toolName)) {
+    } else if (Constants.ToolNames.UPDATE_TASK_INFO.equals(toolName)) {
       currentPlan =
           UpdateTaskStatusTool.applyTaskUpdate(
               currentPlan,
@@ -753,7 +753,7 @@ public final class PlanningUtils {
               CollectionUtils.getStringValueFromMap(args, "description"),
               null,
               null);
-    } else if (Constants.START_TASK_TOOL_NAME.equals(toolName)) {
+    } else if (Constants.ToolNames.START_TASK.equals(toolName)) {
       currentPlan =
           UpdateTaskStatusTool.applyTaskUpdate(
               currentPlan,
@@ -763,7 +763,7 @@ public final class PlanningUtils {
               null,
               TaskStatus.IN_PROGRESS,
               null);
-    } else if (Constants.COMPLETE_TASK_TOOL_NAME.equals(toolName)) {
+    } else if (Constants.ToolNames.COMPLETE_TASK.equals(toolName)) {
       currentPlan =
           UpdateTaskStatusTool.applyTaskUpdate(
               currentPlan,
@@ -773,13 +773,13 @@ public final class PlanningUtils {
               null,
               TaskStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
               CollectionUtils.getStringValueFromMap(args, "result"));
-    } else if (Constants.FINISH_PLAN_TOOL_NAME.equals(toolName)) {
+    } else if (Constants.ToolNames.FINISH_PLAN.equals(toolName)) {
       currentPlan =
           FinishPlanTool.applyFinish(
               currentPlan,
               PlanStatus.valueOfOrDefault(CollectionUtils.getStringValueFromMap(args, "status")),
               CollectionUtils.getStringValueFromMap(args, "result"));
-    } else if (Constants.UPDATE_PLAN_TOOL_NAME.equals(toolName)) {
+    } else if (Constants.ToolNames.UPDATE_PLAN.equals(toolName)) {
       currentPlan =
           UpdatePlanTool.applyPlanUpdate(
               currentPlan,

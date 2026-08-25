@@ -15,7 +15,7 @@ public final class NotebookToolsetProvider extends AbstractToolsetProvider {
 
   private static final ToolDescriptor TOOLSET_DESCRIPTOR =
       new ToolDescriptor(
-          Constants.NOTEBOOK_TOOLSET_NAME,
+          Constants.Toolsets.NOTEBOOK,
           "Tools for creating notebooks and titled notes shared across agent sessions.",
           Map.of());
 

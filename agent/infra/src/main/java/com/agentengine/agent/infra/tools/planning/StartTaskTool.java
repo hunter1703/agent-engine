@@ -11,7 +11,7 @@ import java.util.Map;
 public final class StartTaskTool extends UpdateTaskStatusTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.START_TASK_TOOL_NAME,
+          Constants.ToolNames.START_TASK,
           "Transitions a task's status from pending (TODO) to active (IN_PROGRESS), signalling that work has begun. "
               + "Three preconditions are enforced: (1) an active plan must exist; (2) all ancestor tasks of the "
               + "target task must already be IN_PROGRESS; (3) the target task must be the next task in "

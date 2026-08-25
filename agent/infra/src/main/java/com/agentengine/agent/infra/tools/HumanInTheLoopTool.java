@@ -24,7 +24,7 @@ public final class HumanInTheLoopTool extends Tool {
   public static final String CONTEXT = "context";
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.HITL_TOOL_NAME,
+          Constants.ToolNames.HITL,
           "Pauses execution to request input from a human operator. Use ONLY when execution is genuinely blocked "
               + "by information that cannot be inferred, defaulted, or derived from context: (1) a required "
               + "input is absent and no reasonable default exists; (2) the operator must choose between "

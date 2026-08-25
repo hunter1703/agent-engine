@@ -15,7 +15,7 @@ import java.util.Map;
 public final class UpdatePlanTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.UPDATE_PLAN_TOOL_NAME,
+          Constants.ToolNames.UPDATE_PLAN,
           "Revises the title and/or goal of the active plan. Use when the overall objective shifts direction or "
               + "the original framing needs correction. At least one of 'title' or 'goal' must be provided; "
               + "blank values are ignored. The plan must exist. "

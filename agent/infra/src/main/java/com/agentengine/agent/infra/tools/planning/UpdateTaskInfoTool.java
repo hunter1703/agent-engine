@@ -10,7 +10,7 @@ import java.util.Map;
 public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.UPDATE_TASK_INFO_TOOL_NAME,
+          Constants.ToolNames.UPDATE_TASK_INFO,
           "Updates the descriptive metadata of an existing task: its name, goal, or extended description. Use "
               + "when the scope or approach for a task becomes clearer during execution and the existing "
               + "metadata no longer accurately describes what needs to be done. At least one of the optional "

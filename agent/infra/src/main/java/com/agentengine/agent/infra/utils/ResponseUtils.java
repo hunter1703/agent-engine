@@ -60,7 +60,7 @@ public final class ResponseUtils {
     final FunctionCall functionCall =
         FunctionCall.builder()
             .id(Functions.generateClientFunctionCallId())
-            .name(Constants.HITL_TOOL_NAME)
+            .name(Constants.ToolNames.HITL)
             .args(
                 Map.of(
                     HumanInTheLoopTool.PROMPT,

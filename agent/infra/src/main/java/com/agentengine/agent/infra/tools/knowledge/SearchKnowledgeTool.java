@@ -38,11 +38,11 @@ public final class SearchKnowledgeTool extends Tool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.SEARCH_KNOWLEDGE_TOOL_NAME,
+          Constants.ToolNames.SEARCH_KNOWLEDGE,
           "Semantically searches indexed knowledge by query, optionally scoped to one knowledgeId. "
               + "Not for a knowledge source (a raw file with no search capability) — read that "
               + "whole with "
-              + Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME
+              + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
               + " instead. "
               + "Returns: { chunks: [...], total, offset, limit }.");
 
@@ -73,7 +73,7 @@ public final class SearchKnowledgeTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "query", description = "Natural-language search query") String query,
       @ToolSchema(
-              name = Constants.ARG_KNOWLEDGE_ID,
+              name = Constants.ToolArgs.KNOWLEDGE_ID,
               description =
                   "Limit search to this knowledge id. Omit to search all agent knowledge.",
               optional = true)

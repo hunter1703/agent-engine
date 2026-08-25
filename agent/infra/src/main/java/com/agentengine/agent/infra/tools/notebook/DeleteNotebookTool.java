@@ -16,7 +16,7 @@ import java.util.Map;
 public final class DeleteNotebookTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.DELETE_NOTEBOOK_TOOL_NAME,
+          Constants.ToolNames.DELETE_NOTEBOOK,
           "Permanently deletes an entire notebook and every note in it. Only the session that "
               + "created the notebook may delete it — no grant covers this, since it destroys the "
               + "whole shared space, not just what you were given access to. "
@@ -36,7 +36,7 @@ public final class DeleteNotebookTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = Constants.ARG_NOTEBOOK_ID, description = "The notebook to delete.")
+      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to delete.")
           final String notebookId) {
     if (!NotebookUtils.isOwner(notebookId, toolContext.sessionId())) {
       return ToolOutput.direct(

@@ -166,7 +166,7 @@ public final class SaveAnswerPlugin extends BasePlugin {
   }
 
   @Schema(
-      name = Constants.SAVE_ANSWER_TOOL_NAME,
+      name = Constants.ToolNames.SAVE_ANSWER,
       description =
           "Stages your answer to be saved as a versioned artifact, so other agents can reference it "
               + "instead of you having to relay its full text yourself. There is only one such "
@@ -205,9 +205,9 @@ public final class SaveAnswerPlugin extends BasePlugin {
           parts.stream()
               .filter(
                   part ->
-                      !ContentUtils.isFunctionCall(part, Constants.SAVE_ANSWER_TOOL_NAME)
+                      !ContentUtils.isFunctionCall(part, Constants.ToolNames.SAVE_ANSWER)
                           && !ContentUtils.isFunctionResponse(
-                              part, Constants.SAVE_ANSWER_TOOL_NAME))
+                              part, Constants.ToolNames.SAVE_ANSWER))
               .toList();
       if (!kept.isEmpty()) {
         filtered.add(content.toBuilder().parts(kept).build());

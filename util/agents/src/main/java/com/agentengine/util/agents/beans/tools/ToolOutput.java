@@ -69,7 +69,7 @@ public abstract class ToolOutput<T> {
 
     @Override
     public Map<String, Object> toResult() {
-      return Map.of(Constants.ARG_KNOWLEDGE_ID, knowledgeId, "hint", hint);
+      return Map.of(Constants.ToolArgs.KNOWLEDGE_ID, knowledgeId, "hint", hint);
     }
   }
 }

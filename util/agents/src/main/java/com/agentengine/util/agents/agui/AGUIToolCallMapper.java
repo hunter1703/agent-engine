@@ -1,6 +1,6 @@
 package com.agentengine.util.agents.agui;
 
-import static com.agentengine.util.agents.Constants.ARG_ORIGINAL_FUNCTION_CALL;
+import static com.agentengine.util.agents.Constants.ToolArgs.ORIGINAL_FUNCTION_CALL;
 import static com.google.adk.flows.llmflows.Functions.REQUEST_CONFIRMATION_FUNCTION_CALL_NAME;
 
 import com.agentengine.util.agents.Constants;
@@ -38,7 +38,7 @@ public final class AGUIToolCallMapper {
     final String callName = call.name().orElse("");
     if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(callName)) {
       return mapInterruptCall(call);
-    } else if (Constants.HITL_TOOL_NAME.equals(callName)) {
+    } else if (Constants.ToolNames.HITL.equals(callName)) {
       return Flowable.empty();
     }
     final String callId = call.id().orElseThrow();
@@ -60,7 +60,7 @@ public final class AGUIToolCallMapper {
     final String responseName = response.name().orElse("");
     if (REQUEST_CONFIRMATION_FUNCTION_CALL_NAME.equals(responseName)) {
       return mapResumedResponse(response);
-    } else if (Constants.HITL_TOOL_NAME.equals(responseName)) {
+    } else if (Constants.ToolNames.HITL.equals(responseName)) {
       return Flowable.empty();
     }
     final String callId = response.id().orElseGet(() -> UUID.randomUUID().toString());
@@ -95,13 +95,13 @@ public final class AGUIToolCallMapper {
         CollectionUtils.nullSafeMap(interruptRequestedCall.args().orElse(Map.of()));
 
     final FunctionCall originalFunctionCall =
-        Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+        Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
     final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)
-        || Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
-        || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)) {
+    if (Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)
+        || Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
+        || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)) {
       // Only a *confirmed* pause means the child run actually completed and carries a real
       // result; an unconfirmed round-trip just means the internal tool is still waiting, so the
       // tool call started in mapToolCall() must stay open rather than being resolved here.
@@ -130,27 +130,27 @@ public final class AGUIToolCallMapper {
     final Map<String, Object> args = CollectionUtils.nullSafeMap(call.args().orElse(Map.of()));
 
     final FunctionCall originalFunctionCall =
-        Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ARG_ORIGINAL_FUNCTION_CALL));
+        Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
     final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.AWAIT_AGENT_TOOL_NAME, functionName)
-        || Objects.equals(Constants.SPAWN_AGENT_TOOL_NAME, functionName)
-        || Objects.equals(Constants.SEND_MESSAGE_TOOL_NAME, functionName)) {
+    if (Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)
+        || Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
+        || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)) {
       return Flowable.empty();
     }
     final String originalToolCallId = originalFunctionCall.id().orElseThrow();
 
     final ToolConfirmation toolConfirmation =
         Objects.requireNonNull(
-            CollectionUtils.getValueFromMap(args, Constants.ARG_TOOL_CONFIRMATION));
+            CollectionUtils.getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION));
     final String prompt = toolConfirmation.hint();
     @SuppressWarnings("unchecked")
     final List<String> options =
         CollectionUtils.getListFromMap((Map<String, Object>) toolConfirmation.payload(), "options");
 
     final InterruptKind kind =
-        Objects.equals(Constants.HITL_TOOL_NAME, originalFunctionCall.name().orElse(null))
+        Objects.equals(Constants.ToolNames.HITL, originalFunctionCall.name().orElse(null))
             ? InterruptKind.TEXT
             : InterruptKind.DECISION;
     final CustomEvent event =

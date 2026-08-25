@@ -21,10 +21,10 @@ import java.util.Map;
 public final class ReadKnowledgeSourceTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME,
+          Constants.ToolNames.READ_KNOWLEDGE_SOURCE,
           "Reads the full content of a knowledge source you have access to. Not for a knowledgeId "
               + "(a searchable item) — search that with "
-              + Constants.SEARCH_KNOWLEDGE_TOOL_NAME
+              + Constants.ToolNames.SEARCH_KNOWLEDGE
               + " instead. "
               + "Returns: { status: \"success\", content } or { error } if you weren't granted it.",
           Map.of());
@@ -41,7 +41,7 @@ public final class ReadKnowledgeSourceTool extends Tool {
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolSchema(
-              name = Constants.ARG_SOURCE,
+              name = Constants.ToolArgs.SOURCE,
               description = "The exact knowledge source string you have access to.")
           final String source) {
     final boolean granted =

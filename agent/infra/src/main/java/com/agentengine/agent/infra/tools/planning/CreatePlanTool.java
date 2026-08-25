@@ -21,7 +21,7 @@ public final class CreatePlanTool extends Tool {
   private static final Logger LOG = LoggerFactory.getLogger(CreatePlanTool.class);
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.CREATE_PLAN_TOOL_NAME,
+          Constants.ToolNames.CREATE_PLAN,
           "Initialises a new structured plan with a title, goal, and initial list of tasks. Use at the start of "
               + "any multi-step task where tracking completion state across distinct phases has value — if the "
               + "work can be done in a single step without meaningful state to track, a plan is not needed. "

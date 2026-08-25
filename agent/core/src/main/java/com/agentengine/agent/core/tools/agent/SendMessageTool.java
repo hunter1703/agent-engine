@@ -32,7 +32,7 @@ public final class SendMessageTool extends AbstractAgentTool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.SEND_MESSAGE_TOOL_NAME,
+          Constants.ToolNames.SEND_MESSAGE,
           "Sends a follow-up message to an existing child agent session, preserving its full conversation history. "
               + "Use when the child has completed its previous task but its accumulated context is still "
               + "relevant — for example, to give corrections, additional instructions, or a new related "
@@ -51,7 +51,7 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
       @ToolSchema(
-              name = Constants.ARG_CHILD_SESSION_ID,
+              name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
                   "The opaque identifier of an existing child agent session to deliver the message to.")
           final String childSessionId,
@@ -60,38 +60,38 @@ public final class SendMessageTool extends AbstractAgentTool {
               description =
                   "The message content to deliver as the next conversation turn to the child session.")
           String message,
-      @ToolSchema(name = Constants.ARG_GOAL, description = GOAL_SCHEMA_DESCRIPTION)
+      @ToolSchema(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
           final String goal,
       @ToolSchema(
-              name = Constants.ARG_AWAIT_COMPLETION,
+              name = Constants.ToolArgs.AWAIT_COMPLETION,
               description =
                   "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been sent the message.",
               optional = true)
           Boolean awaitCompletion,
       @ToolSchema(
-              name = Constants.ARG_KNOWLEDGE_IDS,
+              name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
                   "Ids of knowledge you have access to. Grants the child the same ability to "
                       + "search them with "
-                      + Constants.SEARCH_KNOWLEDGE_TOOL_NAME
+                      + Constants.ToolNames.SEARCH_KNOWLEDGE
                       + ". Not knowledge sources — those go in "
-                      + Constants.ARG_KNOWLEDGE_SOURCES
+                      + Constants.ToolArgs.KNOWLEDGE_SOURCES
                       + " instead. Optional.",
               optional = true)
           final List<String> knowledgeIds,
       @ToolSchema(
-              name = Constants.ARG_KNOWLEDGE_SOURCES,
+              name = Constants.ToolArgs.KNOWLEDGE_SOURCES,
               description =
                   "Knowledge sources you have access to. Grants the child the same ability to "
                       + "read them in full with "
-                      + Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME
+                      + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
                       + ". Not knowledge ids — those go in "
-                      + Constants.ARG_KNOWLEDGE_IDS
+                      + Constants.ToolArgs.KNOWLEDGE_IDS
                       + " instead. Optional.",
               optional = true)
           final List<String> knowledgeSources,
       @ToolSchema(
-              name = Constants.ARG_NOTEBOOK_GRANTS,
+              name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
                   "Notebook/note access to grant the child, as entries of the form "
                       + "\"<notebook_id>/CREATE\" (may freely create new notes in that notebook) "

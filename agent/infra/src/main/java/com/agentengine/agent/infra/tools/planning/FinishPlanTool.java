@@ -15,7 +15,7 @@ import java.util.Map;
 public final class FinishPlanTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.FINISH_PLAN_TOOL_NAME,
+          Constants.ToolNames.FINISH_PLAN,
           "Closes the entire plan by setting it to a terminal state — either 'done' (goal achieved) or 'abandoned' "
               + "(work stopped before completion). Call once all tasks are in a terminal state and the work "
               + "the plan represents is complete or definitively stopped. A summary result is required. All "

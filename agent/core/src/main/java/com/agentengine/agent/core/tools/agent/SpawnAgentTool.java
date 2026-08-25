@@ -34,7 +34,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
 
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.SPAWN_AGENT_TOOL_NAME,
+          Constants.ToolNames.SPAWN_AGENT,
           "Creates a new subordinate agent session and starts it immediately with an initial message. "
               + "Use to delegate a self-contained task to a specialised agent, or to run multiple tasks "
               + "concurrently across independent child sessions. Returns a session identifier before the child "
@@ -72,43 +72,43 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .description("Initial message to send to the spawned agent. Required.")
             .build());
     properties.put(
-        Constants.ARG_GOAL,
+        Constants.ToolArgs.GOAL,
         Schema.builder().type(Known.STRING).description(GOAL_SCHEMA_DESCRIPTION).build());
     properties.put(
-        Constants.ARG_AWAIT_COMPLETION,
+        Constants.ToolArgs.AWAIT_COMPLETION,
         Schema.builder()
             .type(Known.BOOLEAN)
             .description(
                 "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been spawned.")
             .build());
     properties.put(
-        Constants.ARG_KNOWLEDGE_IDS,
+        Constants.ToolArgs.KNOWLEDGE_IDS,
         Schema.builder()
             .type(Known.ARRAY)
             .items(Schema.builder().type(Known.STRING).build())
             .description(
                 "Ids of knowledge you have access to. Grants the spawned agent the same ability "
                     + "to search them with "
-                    + Constants.SEARCH_KNOWLEDGE_TOOL_NAME
+                    + Constants.ToolNames.SEARCH_KNOWLEDGE
                     + ". Not knowledge sources — those go in "
-                    + Constants.ARG_KNOWLEDGE_SOURCES
+                    + Constants.ToolArgs.KNOWLEDGE_SOURCES
                     + " instead. Optional.")
             .build());
     properties.put(
-        Constants.ARG_KNOWLEDGE_SOURCES,
+        Constants.ToolArgs.KNOWLEDGE_SOURCES,
         Schema.builder()
             .type(Known.ARRAY)
             .items(Schema.builder().type(Known.STRING).build())
             .description(
                 "Knowledge sources you have access to. Grants the spawned agent the same ability "
                     + "to read them in full with "
-                    + Constants.READ_KNOWLEDGE_SOURCE_TOOL_NAME
+                    + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
                     + ". Not knowledge ids — those go in "
-                    + Constants.ARG_KNOWLEDGE_IDS
+                    + Constants.ToolArgs.KNOWLEDGE_IDS
                     + " instead. Optional.")
             .build());
     properties.put(
-        Constants.ARG_NOTEBOOK_GRANTS,
+        Constants.ToolArgs.NOTEBOOK_GRANTS,
         Schema.builder()
             .type(Known.ARRAY)
             .items(Schema.builder().type(Known.STRING).build())
@@ -126,7 +126,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .build();
     return Optional.of(
         FunctionDeclaration.builder()
-            .name(Constants.SPAWN_AGENT_TOOL_NAME)
+            .name(Constants.ToolNames.SPAWN_AGENT)
             .description(DESCRIPTOR.description() + " Available agents: " + agentList + ".")
             .parameters(params)
             .build());
@@ -139,11 +139,11 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolSchema(name = "message") String message,
       @ToolSchema(name = "goal") final String goal,
       @ToolSchema(name = "await_completion", optional = true) Boolean awaitCompletion,
-      @ToolSchema(name = Constants.ARG_KNOWLEDGE_IDS, optional = true)
+      @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
           final List<String> knowledgeIds,
-      @ToolSchema(name = Constants.ARG_KNOWLEDGE_SOURCES, optional = true)
+      @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
           final List<String> knowledgeSources,
-      @ToolSchema(name = Constants.ARG_NOTEBOOK_GRANTS, optional = true)
+      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
           final List<String> notebookGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
@@ -193,7 +193,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         if (awaitCompletion) {
           yield awaitChild(toolContext, childSessionId);
         } else {
-          yield ToolOutput.direct(Map.of(Constants.ARG_CHILD_SESSION_ID, childSessionId));
+          yield ToolOutput.direct(Map.of(Constants.ToolArgs.CHILD_SESSION_ID, childSessionId));
         }
       }
       case StartSessionResult.Rejected(String r) ->

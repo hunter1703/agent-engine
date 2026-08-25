@@ -14,7 +14,7 @@ import java.util.Map;
 public final class ReadNoteTool extends Tool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.READ_NOTE_TOOL_NAME,
+          Constants.ToolNames.READ_NOTE,
           "Reads the current content of a note in a notebook you were granted read or write "
               + "access to (or one you created). "
               + "Returns: { status: \"success\", content } or { error }.",
@@ -30,9 +30,11 @@ public final class ReadNoteTool extends Tool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = Constants.ARG_NOTEBOOK_ID, description = "The notebook to read from.")
+      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to read from.")
           final String notebookId,
-      @ToolSchema(name = Constants.ARG_NOTE_TITLE, description = "The title of the note to read.")
+      @ToolSchema(
+              name = Constants.ToolArgs.NOTE_TITLE,
+              description = "The title of the note to read.")
           final String noteTitle) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
     final NotebookGrants grants = NotebookUtils.grantsOf(toolContext);

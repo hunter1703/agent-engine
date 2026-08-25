@@ -135,7 +135,7 @@ public class RunnerFactory {
         policies.put(agent.name(), policy);
       }
       if (CollectionUtils.nullSafeList(agent.getAgentConfig().getTools()).stream()
-          .anyMatch(tool -> Constants.NOTEBOOK_TOOLSET_NAME.equals(tool.getToolName()))) {
+          .anyMatch(tool -> Constants.Toolsets.NOTEBOOK.equals(tool.getToolName()))) {
         agentsWithNotebook.add(agent.name());
       }
       for (final BaseAgent subAgent : CollectionUtils.nullSafeList(agent.subAgents())) {
