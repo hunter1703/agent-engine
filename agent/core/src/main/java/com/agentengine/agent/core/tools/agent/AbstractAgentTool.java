@@ -6,9 +6,9 @@ import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.agent.infra.tools.notebook.NotebookUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.NotebookGrants;
 import com.agentengine.util.agents.beans.NotebookGrants.Permission;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -76,14 +76,15 @@ public class AbstractAgentTool extends Tool {
             "Grant : " + entry + " has invalid permission : " + permissionStr);
       }
 
-      if (key.contains(Constants.ID_SEPARATOR) && permission == Permission.CREATE) {
+      if (NotebookUtils.isNoteId(key) && permission == Permission.CREATE) {
         throw new IllegalArgumentException(
             "Grant : "
                 + entry
                 + " assigns "
                 + Permission.CREATE
                 + " permission to note which is invalid. It can only be assigned to a notebook");
-      } else if (permission == Permission.READ || permission == Permission.WRITE) {
+      } else if (NotebookUtils.isNotebookId(key)
+          && (permission == Permission.READ || permission == Permission.WRITE)) {
         throw new IllegalArgumentException(
             "Grant : "
                 + entry

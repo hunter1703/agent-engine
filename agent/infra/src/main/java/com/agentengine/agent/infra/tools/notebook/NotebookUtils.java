@@ -9,12 +9,36 @@ public final class NotebookUtils {
 
   private NotebookUtils() {}
 
-  public static String notebookId(final String author, final String name) {
-    return author + Constants.ID_SEPARATOR + name;
+  public static String sanitize(final String input) {
+    if (input == null) {
+      return null;
+    }
+    return input.replace(Constants.ID_SEPARATOR, "-");
+  }
+
+  public static String notebookId(final String authorSession, final String name) {
+    // authorSession (2 segments: agentId:uuid)
+    return authorSession + Constants.ID_SEPARATOR + sanitize(name);
   }
 
   public static String noteId(final String notebookId, final String noteTitle) {
-    return notebookId + Constants.ID_SEPARATOR + noteTitle;
+    return notebookId + Constants.ID_SEPARATOR + sanitize(noteTitle);
+  }
+
+  public static boolean isNotebookId(final String id) {
+    if (id == null) {
+      return false;
+    }
+    // sessionId (2 segments: agentId:uuid) + name (1 segment) = 3
+    return id.split(Constants.ID_SEPARATOR).length == 3;
+  }
+
+  public static boolean isNoteId(final String id) {
+    if (id == null) {
+      return false;
+    }
+    // notebookId (3 segments) + noteTitle (1 segment) = 4
+    return id.split(Constants.ID_SEPARATOR).length == 4;
   }
 
   public static boolean isOwner(final String notebookId, final String sessionId) {
