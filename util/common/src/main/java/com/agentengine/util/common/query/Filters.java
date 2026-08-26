@@ -1,6 +1,7 @@
 package com.agentengine.util.common.query;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class Filters {
@@ -33,7 +34,7 @@ public class Filters {
     return new Filter().withField(field).addValue(value).withOp(Operator.LTE);
   }
 
-  public static Filter in(String field, List<Object> values) {
+  public static Filter in(String field, Collection<?> values) {
     Filter filter = new Filter().withField(field).withOp(Operator.IN);
     if (values != null) {
       filter.setValues(values);

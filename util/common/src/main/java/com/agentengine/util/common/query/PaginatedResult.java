@@ -13,7 +13,7 @@ public class PaginatedResult<T> {
   private boolean hasMore;
 
   public List<T> getItems() {
-    return items;
+    return CollectionUtils.nullSafeList(items);
   }
 
   public void setItems(final List<T> items) {

@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.notebook;
 
-import com.agentengine.agent.infra.tools.notebook.NotebookUtils;
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 
 public class Note extends BaseEntity {

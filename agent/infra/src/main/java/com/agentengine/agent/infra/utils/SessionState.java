@@ -1,5 +1,10 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.agent.api.model.NotebookGrants;
+import com.agentengine.agent.api.utils.NotebookUtils;
+import com.agentengine.agent.infra.notebook.Note;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
@@ -9,12 +14,14 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.query.*;
 import com.google.adk.agents.BaseAgentState;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -26,17 +33,28 @@ import java.util.Set;
 public final class SessionState extends BaseAgentState {
 
   private final KnowledgeService knowledgeService;
+  private final NotebookRepository notebookRepository;
+  private final NotesRepository notesRepository;
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
   private Plan plan;
 
-  public SessionState(KnowledgeService knowledgeService) {
+  public SessionState(
+      KnowledgeService knowledgeService,
+      NotebookRepository notebookRepository,
+      NotesRepository notesRepository) {
     this.knowledgeService = knowledgeService;
+    this.notebookRepository = notebookRepository;
+    this.notesRepository = notesRepository;
   }
 
   public static SessionState buildFrom(
-      final List<Event> events, final KnowledgeService knowledgeService) {
-    final SessionState state = new SessionState(knowledgeService);
+      final List<Event> events,
+      final KnowledgeService knowledgeService,
+      final NotebookRepository notebookRepository,
+      final NotesRepository notesRepository) {
+    final SessionState state =
+        new SessionState(knowledgeService, notebookRepository, notesRepository);
     state.setRunState(RunState.buildFrom(events));
     state.updatePlan(PlanningUtils.buildFrom(events));
     state.addRemindersFrom(events);
@@ -56,6 +74,91 @@ public final class SessionState extends BaseAgentState {
                       Constants.ToolArgs.SOURCE,
                       source)));
     }
+  }
+
+  public void addNotebookReminders(final NotebookGrants notebookGrants) {
+    if (notebookGrants == null || CollectionUtils.isEmpty(notebookGrants.grants())) {
+      return;
+    }
+
+    final Map<String, NotebookSummary> summaries = new HashMap<>();
+
+    for (final Map.Entry<String, NotebookGrants.Permission> entry :
+        CollectionUtils.nullSafeMap(notebookGrants.grants()).entrySet()) {
+      final String key = entry.getKey();
+      final NotebookGrants.Permission permission = entry.getValue();
+
+      if (NotebookUtils.isNoteId(key)) {
+        int lastColon = key.lastIndexOf(Constants.ID_SEPARATOR);
+        String notebookId = key.substring(0, lastColon);
+        String noteTitle = key.substring(lastColon + 1);
+
+        NotebookSummary summary = summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
+        if (permission == NotebookGrants.Permission.WRITE) {
+          summary.writePermissionedNotes.add(noteTitle);
+        } else if (permission == NotebookGrants.Permission.READ) {
+          summary.readPermissionedNotes.add(noteTitle);
+        }
+      } else {
+        NotebookSummary summary = summaries.computeIfAbsent(key, k -> new NotebookSummary());
+        if (permission == NotebookGrants.Permission.CREATE) {
+          summary.canCreate = true;
+        } else if (permission == NotebookGrants.Permission.READ) {
+          summary.canReadNotebook = true;
+        }
+      }
+    }
+
+    final List<String> createPermissionedNotebookIds = new ArrayList<>();
+    for (Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
+      if (entry.getValue().canCreate) {
+        createPermissionedNotebookIds.add(entry.getKey());
+      }
+    }
+
+    if (CollectionUtils.isNotEmpty(createPermissionedNotebookIds)) {
+      final Filter filter = Filters.in(Note.FIELD_NOTEBOOK_ID, createPermissionedNotebookIds);
+      final Query query = new Query().withFilter(filter).withPage(new Page(0, 1000));
+      final PaginatedResult<Note> notesResult = notesRepository.findByQuery(query);
+      for (Note note : notesResult.getItems()) {
+        summaries
+            .computeIfAbsent(note.getNotebookId(), _ -> new NotebookSummary())
+            .writePermissionedNotes
+            .add(note.getNoteTitle());
+      }
+    }
+
+    final StringBuilder sb = new StringBuilder("Notebook Permissions:");
+    for (Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
+      String nb = entry.getKey();
+      NotebookSummary summary = entry.getValue();
+      sb.append("\n- Notebook '").append(nb).append("': ");
+
+      if (summary.canCreate) {
+        sb.append("You have permission to CREATE new notes.");
+      } else {
+        sb.append("You CANNOT CREATE new notes.");
+      }
+
+      if (summary.canReadNotebook) {
+        sb.append(" You have general READ access to the notebook.");
+      }
+
+      if (!summary.writePermissionedNotes.isEmpty() || !summary.readPermissionedNotes.isEmpty()) {
+        if (!summary.writePermissionedNotes.isEmpty()) {
+          sb.append("\n  - READ/WRITE notes: ")
+              .append(String.join(", ", summary.writePermissionedNotes));
+        }
+        if (!summary.readPermissionedNotes.isEmpty()) {
+          sb.append("\n  - READ ONLY notes: ")
+              .append(String.join(", ", summary.readPermissionedNotes));
+        }
+      }
+    }
+
+    addReminder(
+        new Reminder(
+            Reminder.GROUP_NOTEBOOK_GRANTS, Reminder.GROUP_NOTEBOOK_GRANTS, sb.toString()));
   }
 
   public void addSpawnedAgentReminder(
@@ -169,9 +272,7 @@ public final class SessionState extends BaseAgentState {
       final FunctionCall functionCall = part.functionCall().orElse(null);
       if (functionCall != null) {
         final String functionName = functionCall.name().orElse("");
-        if (functionName.equals(Constants.ToolNames.SPAWN_AGENT)
-            || functionName.equals(Constants.ToolNames.SEND_MESSAGE)
-            || functionName.equals(Constants.ToolNames.AWAIT_AGENT)) {
+        if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
           functionCall.id().ifPresent(id -> idVsFunctionCalls.put(id, functionCall));
         }
       }
@@ -235,5 +336,12 @@ public final class SessionState extends BaseAgentState {
             Constants.ToolNames.AWAIT_AGENT,
             Constants.ToolArgs.CHILD_SESSION_ID,
             childSessionId);
+  }
+
+  private static class NotebookSummary {
+    boolean canCreate = false;
+    boolean canReadNotebook = false;
+    final Set<String> readPermissionedNotes = new LinkedHashSet<>();
+    final Set<String> writePermissionedNotes = new LinkedHashSet<>();
   }
 }

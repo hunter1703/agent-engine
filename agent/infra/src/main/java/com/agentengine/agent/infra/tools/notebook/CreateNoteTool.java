@@ -1,16 +1,16 @@
 package com.agentengine.agent.infra.tools.notebook;
 
-import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.agent.api.model.NotebookGrants;
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.NotebookGrants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
-public final class CreateNoteTool extends Tool {
+public final class CreateNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTE,
@@ -49,7 +49,7 @@ public final class CreateNoteTool extends Tool {
               optional = true)
           final Boolean continuation) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
-    final NotebookGrants grants = NotebookUtils.grantsOf(toolContext);
+    final NotebookGrants grants = grantsOf(toolContext);
     if (!owner && !NotebookUtils.canCreate(grants, notebookId)) {
       return ToolOutput.direct(Map.of("error", "Not granted create access to this notebook."));
     }

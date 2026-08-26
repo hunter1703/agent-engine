@@ -1,14 +1,15 @@
-package com.agentengine.agent.infra.agents.processors.request;
+package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.infra.utils.Reminder;
 import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.google.adk.agents.InvocationContext;
-import com.google.adk.flows.llmflows.RequestProcessor;
+import com.google.adk.agents.CallbackContext;
 import com.google.adk.models.LlmRequest;
-import io.reactivex.rxjava3.core.Single;
+import com.google.adk.models.LlmResponse;
+import com.google.adk.plugins.BasePlugin;
+import io.reactivex.rxjava3.core.Maybe;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -17,39 +18,34 @@ import java.util.function.Function;
 /**
  * Injects the agent's reminder map into the LLM request as a working-memory brief.
  *
- * <p>This processor is entirely generic — it knows nothing about plans, agents, or knowledge. It
- * simply reads whatever reminders are currently registered in {@link SessionState}, groups them by
- * group, and renders each group as a titled section inside a structured brief.
- *
- * <p>Key formatting: snake_case keys (e.g. {@code spawned_agents}) are converted to human-readable
- * section titles (e.g. {@code SPAWNED AGENTS}).
- *
- * <p>Reminders persist across runs until explicitly removed via {@link
- * SessionState#removeReminder(String)}. The processor never clears them — callers are responsible
- * for removing reminders when the condition they describe is resolved.
+ * <p>This plugin reads whatever reminders are currently registered in {@link SessionState}, groups
+ * them by group, and renders each group as a titled section inside a structured brief.
  */
-public final class ReminderRequestProcessor implements RequestProcessor {
-  public static final ReminderRequestProcessor INSTANCE = new ReminderRequestProcessor();
+public final class ReminderPlugin extends BasePlugin {
 
-  private ReminderRequestProcessor() {}
+  public ReminderPlugin() {
+    super("reminder_plugin");
+  }
 
   @Override
-  public Single<RequestProcessingResult> processRequest(
-      final InvocationContext context, final LlmRequest request) {
-    final SessionState sessionState = SessionUtils.getSessionState(context);
+  public Maybe<LlmResponse> beforeModelCallback(
+      final CallbackContext callbackContext, final LlmRequest.Builder llmRequestBuilder) {
+
+    final SessionState sessionState =
+        SessionUtils.getSessionState(callbackContext.invocationContext());
     final List<Reminder> reminders = sessionState.reminders();
 
     if (reminders.isEmpty()) {
-      return Single.just(RequestProcessingResult.create(request, List.of()));
+      return Maybe.empty();
     }
 
     final String brief = buildBrief(reminders);
     if (StringUtils.isBlank(brief)) {
-      return Single.just(RequestProcessingResult.create(request, List.of()));
+      return Maybe.empty();
     }
 
-    final LlmRequest updated = request.toBuilder().appendInstructions(List.of(brief)).build();
-    return Single.just(RequestProcessingResult.create(updated, List.of()));
+    llmRequestBuilder.appendInstructions(List.of(brief));
+    return Maybe.empty();
   }
 
   private static String buildBrief(final List<Reminder> reminders) {

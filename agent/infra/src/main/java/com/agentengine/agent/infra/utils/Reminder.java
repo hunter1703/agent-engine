@@ -31,6 +31,7 @@ public record Reminder(String group, String id, String message) {
   public static final String GROUP_ACTIVE_PLAN = "active_plan";
   public static final String GROUP_KNOWLEDGE_IDS = "knowledge_ids";
   public static final String GROUP_KNOWLEDGE_SOURCES = "knowledge_sources";
+  public static final String GROUP_NOTEBOOK_GRANTS = "notebook_grants";
 
   public static final String ID_ACTIVE_PLAN = "plan";
 

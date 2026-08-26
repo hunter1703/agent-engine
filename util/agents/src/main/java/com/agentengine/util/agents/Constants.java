@@ -23,6 +23,12 @@ public interface Constants {
     String DELETE_NOTEBOOK = "delete_notebook";
     String READ_KNOWLEDGE_SOURCE = "read_knowledge_source";
     String SEARCH_KNOWLEDGE = "search_knowledge";
+
+    static boolean isAgentRoutingTool(String toolName) {
+      return SPAWN_AGENT.equals(toolName)
+          || SEND_MESSAGE.equals(toolName)
+          || AWAIT_AGENT.equals(toolName);
+    }
   }
 
   interface ToolArgs {

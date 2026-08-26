@@ -2,6 +2,8 @@ package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
 
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -32,13 +34,17 @@ public final class SessionUtils {
   }
 
   public static SessionState getOrInitSessionState(
-      final InvocationContext context, final KnowledgeService knowledgeService) {
+      final InvocationContext context,
+      final KnowledgeService knowledgeService,
+      final NotebookRepository notebookRepository,
+      final NotesRepository notesRepository) {
     final SessionState existing = getSessionState(context, false);
     if (existing != null) {
       return existing;
     }
     final SessionState created =
-        SessionState.buildFrom(context.session().events(), knowledgeService);
+        SessionState.buildFrom(
+            context.session().events(), knowledgeService, notebookRepository, notesRepository);
     final String agentId = getAgentIdFromContext(context);
     final ConcurrentMap<String, Object> state = state(context);
     if (state != null) {

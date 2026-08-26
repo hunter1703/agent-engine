@@ -1,13 +1,14 @@
 package com.agentengine.util.common.query;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 public class Filter {
   private String field;
   private Operator op;
-  private List<Object> values;
+  private Collection<Object> values;
   private Map<String, Object> additional;
 
   public String getField() {
@@ -32,11 +33,10 @@ public class Filter {
   }
 
   @SuppressWarnings("unchecked")
-  public <T> void setValues(final List<T> values) {
-    this.values = (List<Object>) values;
+  public <T> void setValues(final Collection<T> values) {
+    this.values = (Collection<Object>) values;
   }
 
-  @SuppressWarnings("unchecked")
   public <T> Filter withValues(final List<T> values) {
     setValues(values);
     return this;

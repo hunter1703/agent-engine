@@ -1,9 +1,9 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
-import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -13,7 +13,7 @@ import com.agentengine.util.common.query.Query;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
-public final class DeleteNotebookTool extends Tool {
+public final class DeleteNotebookTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTEBOOK,

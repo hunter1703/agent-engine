@@ -1,9 +1,7 @@
-package com.agentengine.agent.infra.tools.notebook;
+package com.agentengine.agent.api.utils;
 
-import com.agentengine.agent.infra.utils.ExtendedRunConfig;
+import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.NotebookGrants;
-import com.google.adk.tools.ToolContext;
 
 public final class NotebookUtils {
 
@@ -43,12 +41,6 @@ public final class NotebookUtils {
 
   public static boolean isOwner(final String notebookId, final String sessionId) {
     return notebookId.startsWith(sessionId + Constants.ID_SEPARATOR);
-  }
-
-  public static NotebookGrants grantsOf(final ToolContext toolContext) {
-    return toolContext.invocationContext().runConfig() instanceof ExtendedRunConfig extended
-        ? extended.grants().notebookGrants()
-        : null;
   }
 
   public static boolean canRead(

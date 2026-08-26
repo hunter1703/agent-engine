@@ -1,4 +1,4 @@
-package com.agentengine.util.agents.beans;
+package com.agentengine.agent.api.model;
 
 import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;

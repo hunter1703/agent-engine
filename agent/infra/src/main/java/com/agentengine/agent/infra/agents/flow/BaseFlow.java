@@ -1,10 +1,6 @@
 package com.agentengine.agent.infra.agents.flow;
 
 import com.agentengine.agent.infra.agents.processors.request.CorrectionProcessor;
-import com.agentengine.agent.infra.agents.processors.request.ReminderRequestProcessor;
-import com.agentengine.agent.infra.agents.processors.response.PlanLoopResponseProcessor;
-import com.agentengine.agent.infra.agents.processors.response.ResponseFormatValidationProcessor;
-import com.agentengine.agent.infra.agents.processors.response.ToolCallSanitizationResponseProcessor;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
@@ -15,7 +11,6 @@ import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
 import com.google.adk.flows.llmflows.AgentTransfer;
 import com.google.adk.flows.llmflows.RequestProcessor;
-import com.google.adk.flows.llmflows.ResponseProcessor;
 import com.google.adk.flows.llmflows.SingleFlow;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
@@ -60,24 +55,12 @@ public final class BaseFlow extends SingleFlow {
           .addAll(SingleFlow.REQUEST_PROCESSORS)
           .add(new AgentTransfer())
           .add(CorrectionProcessor.INSTANCE)
-          .add(ReminderRequestProcessor.INSTANCE)
-          .build();
-
-  private static final ImmutableList<ResponseProcessor> RESPONSE_PROCESSORS =
-      ImmutableList.<ResponseProcessor>builder()
-          .add(ResponseFormatValidationProcessor.INSTANCE)
-          .add(PlanLoopResponseProcessor.INSTANCE)
-          .addAll(SingleFlow.RESPONSE_PROCESSORS)
           .build();
 
   private final int maxSteps;
 
   public BaseFlow(final Integer maxSteps, final Collection<String> availableTools) {
-    super(
-        REQUEST_PROCESSORS,
-        CollectionUtils.append(
-            new ToolCallSanitizationResponseProcessor(availableTools), RESPONSE_PROCESSORS),
-        Optional.of(1));
+    super(REQUEST_PROCESSORS, RESPONSE_PROCESSORS, Optional.of(1));
     this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
   }
 

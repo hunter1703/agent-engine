@@ -9,6 +9,7 @@ import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.context.ContextManagerProvider;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.plugins.*;
 import com.agentengine.agent.infra.utils.SessionUtils;
@@ -44,6 +45,7 @@ public class RunnerFactory {
 
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
+  private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
 
   public RunnerFactory(
@@ -55,6 +57,7 @@ public class RunnerFactory {
       final SessionHistoryServiceImpl historyService,
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
+      final NotebookRepository notebookRepository,
       final NotesRepository notesRepository) {
     this.agentService = agentService;
     this.agentProvider = agentProvider;
@@ -64,6 +67,7 @@ public class RunnerFactory {
     this.historyService = historyService;
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
+    this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
   }
 
@@ -147,10 +151,13 @@ public class RunnerFactory {
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(knowledgeService),
+            new InitPlugin(knowledgeService, notebookRepository, notesRepository),
             new GuardrailPlugin(policies),
-            new NotebookPlugin(notesRepository, agentsWithNotebook),
             new ContextManagementPlugin(contextManagers),
+            new NotebookPlugin(notesRepository, agentsWithNotebook),
+            new ReminderPlugin(),
+            new PlanningPlugin(),
+            new ResponseValidationPlugin(),
             new LoggingPlugin());
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }

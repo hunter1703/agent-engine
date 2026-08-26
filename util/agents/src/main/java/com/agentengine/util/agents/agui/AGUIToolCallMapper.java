@@ -99,9 +99,7 @@ public final class AGUIToolCallMapper {
     final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)
-        || Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
-        || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)) {
+    if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
       // Only a *confirmed* pause means the child run actually completed and carries a real
       // result; an unconfirmed round-trip just means the internal tool is still waiting, so the
       // tool call started in mapToolCall() must stay open rather than being resolved here.
@@ -134,9 +132,7 @@ public final class AGUIToolCallMapper {
     final String functionName = originalFunctionCall.name().orElse(null);
     // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
     // event
-    if (Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)
-        || Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
-        || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)) {
+    if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
       return Flowable.empty();
     }
     final String originalToolCallId = originalFunctionCall.id().orElseThrow();

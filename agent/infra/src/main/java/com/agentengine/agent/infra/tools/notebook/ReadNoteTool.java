@@ -1,17 +1,17 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.model.NotebookGrants;
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotesRepository;
-import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.Constants;
-import com.agentengine.util.agents.beans.NotebookGrants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
-public final class ReadNoteTool extends Tool {
+public final class ReadNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.READ_NOTE,
@@ -37,7 +37,7 @@ public final class ReadNoteTool extends Tool {
               description = "The title of the note to read.")
           final String noteTitle) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
-    final NotebookGrants grants = NotebookUtils.grantsOf(toolContext);
+    final NotebookGrants grants = grantsOf(toolContext);
     if (!owner && !NotebookUtils.canRead(grants, notebookId, noteTitle)) {
       return ToolOutput.direct(
           Map.of("error", "Not granted read access to note '" + noteTitle + "' in this notebook."));

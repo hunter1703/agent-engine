@@ -1,5 +1,8 @@
 package com.agentengine.agent.infra.plugins;
 
+import com.agentengine.agent.api.model.ResourceGrants;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
@@ -16,10 +19,17 @@ public final class InitPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(InitPlugin.class);
 
   private final KnowledgeService knowledgeService;
+  private final NotebookRepository notebookRepository;
+  private final NotesRepository notesRepository;
 
-  public InitPlugin(KnowledgeService knowledgeService) {
+  public InitPlugin(
+      KnowledgeService knowledgeService,
+      NotebookRepository notebookRepository,
+      NotesRepository notesRepository) {
     super("init_plugin");
     this.knowledgeService = knowledgeService;
+    this.notebookRepository = notebookRepository;
+    this.notesRepository = notesRepository;
   }
 
   @Override
@@ -32,14 +42,17 @@ public final class InitPlugin extends BasePlugin {
         System.identityHashCode(invocationContext.agentStates()),
         invocationContext.session().id());
     final SessionState sessionState =
-        SessionUtils.getOrInitSessionState(invocationContext, knowledgeService);
+        SessionUtils.getOrInitSessionState(
+            invocationContext, knowledgeService, notebookRepository, notesRepository);
     LOG.info(
         "[DIAG] InitPlugin after getOrInitSessionState agentStatesMap={} keys={}",
         System.identityHashCode(invocationContext.agentStates()),
         invocationContext.agentStates().keySet());
     if (invocationContext.runConfig() instanceof ExtendedRunConfig extended) {
-      sessionState.addKnowledgeIdReminders(extended.grants().knowledgeIds());
-      sessionState.addKnowledgeSourceReminders(extended.grants().knowledgeSources());
+      final ResourceGrants grants = extended.grants();
+      sessionState.addKnowledgeIdReminders(grants.knowledgeIds());
+      sessionState.addKnowledgeSourceReminders(grants.knowledgeSources());
+      sessionState.addNotebookReminders(grants.notebookGrants());
     }
     return Maybe.empty();
   }

@@ -733,9 +733,7 @@ public final class SessionActor
           Objects.requireNonNull(getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
 
       final String functionName = originalFunctionCall.name().orElse(null);
-      if (Objects.equals(Constants.ToolNames.SPAWN_AGENT, functionName)
-          || Objects.equals(Constants.ToolNames.SEND_MESSAGE, functionName)
-          || Objects.equals(Constants.ToolNames.AWAIT_AGENT, functionName)) {
+      if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
         final ToolConfirmation toolConfirmation =
             getValueFromMap(args, Constants.ToolArgs.TOOL_CONFIRMATION);
         if (toolConfirmation != null) {
