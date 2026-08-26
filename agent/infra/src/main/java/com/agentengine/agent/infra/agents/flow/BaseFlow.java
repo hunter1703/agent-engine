@@ -9,9 +9,7 @@ import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.events.Event;
-import com.google.adk.flows.llmflows.AgentTransfer;
-import com.google.adk.flows.llmflows.RequestProcessor;
-import com.google.adk.flows.llmflows.SingleFlow;
+import com.google.adk.flows.llmflows.*;
 import com.google.common.collect.ImmutableList;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
@@ -52,14 +50,18 @@ public final class BaseFlow extends SingleFlow {
   private static final Logger LOG = LoggerFactory.getLogger(BaseFlow.class);
   private static final ImmutableList<RequestProcessor> REQUEST_PROCESSORS =
       ImmutableList.<RequestProcessor>builder()
-          .addAll(SingleFlow.REQUEST_PROCESSORS)
-          .add(new AgentTransfer())
-          .add(CorrectionProcessor.INSTANCE)
+          .add(
+              new Basic(),
+              new RequestConfirmationLlmRequestProcessor(),
+              new Instructions(),
+              new Contents(),
+              new AgentTransfer(),
+              CorrectionProcessor.INSTANCE)
           .build();
 
   private final int maxSteps;
 
-  public BaseFlow(final Integer maxSteps, final Collection<String> availableTools) {
+  public BaseFlow(final Integer maxSteps) {
     super(REQUEST_PROCESSORS, RESPONSE_PROCESSORS, Optional.of(1));
     this.maxSteps = maxSteps == null ? Integer.MAX_VALUE : maxSteps;
   }
