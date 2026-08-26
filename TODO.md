@@ -1,6 +1,8 @@
 # TODO
 
-
+1. remove standard tools concept
+2. Do we need 0.5.1 snapshot libs now since agentState is no longer used?
+3. Difference between adk's Langchain4j impl and ours
 
 ## AuthFilter: Authentication Not Yet Implemented
 
