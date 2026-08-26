@@ -14,9 +14,6 @@ import java.util.Objects;
 public final class RunState {
 
   private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
-  // Set and consumed within the same BaseFlow.runLoop iteration, always before that turn's
-  // events are committed — buildFrom can never observe this as true, so resetting it isn't
-  // just low-risk like the other transient fields, it's a genuine no-op.
   private boolean continuationRequested;
   private int offTopicRetries;
   private int turnsUsed;
@@ -128,9 +125,8 @@ public final class RunState {
     return result;
   }
 
-  public void startNote(
-      final String notebookId, final String noteTitle, final boolean continuation) {
-    this.pendingNote = new PendingNote(notebookId, noteTitle, continuation);
+  public void startNote(final String notebookId, final String noteTitle) {
+    this.pendingNote = new PendingNote(notebookId, noteTitle);
   }
 
   public boolean isNoteStarted() {
@@ -145,7 +141,7 @@ public final class RunState {
 
   public record PendingAnswer(String saveMessage, long minSaveTokens) {}
 
-  public record PendingNote(String notebookId, String noteTitle, boolean continuation) {}
+  public record PendingNote(String notebookId, String noteTitle) {}
 
   public record ToolCallSignature(String name, Map<String, Object> args) {
     public ToolCallSignature {

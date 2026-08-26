@@ -39,22 +39,13 @@ public final class CreateNoteTool extends AbstractNotebookTool {
       @ToolSchema(
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "Short title identifying this note within the notebook.")
-          final String noteTitle,
-      @ToolSchema(
-              name = Constants.ToolArgs.CONTINUATION,
-              description =
-                  "If true, you'll get another turn (with tools available) after this note is "
-                      + "saved. If false (default), this note's content is your final output for "
-                      + "this turn.",
-              optional = true)
-          final Boolean continuation) {
+          final String noteTitle) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
     final NotebookGrants grants = grantsOf(toolContext);
     if (!owner && !NotebookUtils.canCreate(grants, notebookId)) {
       return ToolOutput.direct(Map.of("error", "Not granted create access to this notebook."));
     }
-    RunUtils.getRunState(toolContext.invocationContext())
-        .startNote(notebookId, noteTitle, continuation != null && continuation);
+    RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
     return ToolOutput.direct(
         Map.of(
             "status",

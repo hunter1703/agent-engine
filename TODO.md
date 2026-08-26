@@ -3,6 +3,7 @@
 1. remove standard tools concept
 2. Do we need 0.5.1 snapshot libs now since agentState is no longer used?
 3. Difference between adk's Langchain4j impl and ours
+4. Do we need separate continuationrequested flag in runstate? can't we just rely on empty/non-empty violations?
 
 ## AuthFilter: Authentication Not Yet Implemented
 

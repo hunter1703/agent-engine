@@ -96,12 +96,14 @@ public final class NotebookPlugin extends BasePlugin {
     notesRepository.save(new Note(pending.notebookId(), pending.noteTitle(), text));
     LOG.info("Saved note notebook={} title={}", pending.notebookId(), pending.noteTitle());
 
-    if (pending.continuation()) {
-      runState.requestContinuation(
-          Violation.builder("note_continuation")
-              .message("Note '" + pending.noteTitle() + "' saved. Continue with your task.")
-              .build());
-    }
+    final Violation violation =
+        Violation.builder("note_continuation")
+            .message(
+                "Note '"
+                    + pending.noteTitle()
+                    + "' saved. Note content will not be directly visible to the user (unless the user reads the note). Continue with your task by calling tools (if needed) or giving final text answer that will be directly delivered and visible to the user. If you want to give the final answer, DO NOT copy the note content directly in the answer : the user has access to tools to read notes")
+            .build();
+    runState.requestContinuation(violation);
     return Maybe.empty();
   }
 }
