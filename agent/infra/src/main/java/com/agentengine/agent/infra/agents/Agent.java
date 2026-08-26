@@ -52,9 +52,9 @@ public abstract class Agent extends BaseAgent {
           : "Agent with id: " + agentConfig.getId();
     }
 
+    @SuppressWarnings("unchecked")
     public B subAgents(List<? extends Agent> subAgents) {
       this.subAgents = subAgents;
-      // noinspection unchecked
       return (B) this;
     }
 
@@ -62,9 +62,9 @@ public abstract class Agent extends BaseAgent {
       return subAgents;
     }
 
+    @SuppressWarnings("unchecked")
     public B closeHook(Runnable closeHook) {
       this.closeHook = closeHook;
-      // noinspection unchecked
       return (B) this;
     }
 
@@ -72,9 +72,9 @@ public abstract class Agent extends BaseAgent {
       return closeHook;
     }
 
+    @SuppressWarnings("unchecked")
     public B agentConfig(BaseAgentConfig agentConfig) {
       this.agentConfig = agentConfig;
-      // noinspection unchecked
       return (B) this;
     }
 
@@ -82,9 +82,9 @@ public abstract class Agent extends BaseAgent {
       return agentConfig;
     }
 
+    @SuppressWarnings("unchecked")
     public B beforeAgentCallback(
         List<? extends Callbacks.BeforeAgentCallback> beforeAgentCallback) {
-      // noinspection unchecked
       return (B) this;
     }
 
@@ -92,8 +92,8 @@ public abstract class Agent extends BaseAgent {
       return Collections.emptyList();
     }
 
+    @SuppressWarnings("unchecked")
     public B afterAgentCallback(List<? extends Callbacks.AfterAgentCallback> afterAgentCallback) {
-      // noinspection unchecked
       return (B) this;
     }
 

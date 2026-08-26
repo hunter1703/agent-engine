@@ -100,6 +100,7 @@ public final class LangChain4jModel extends BaseLlm {
 
   @Override
   public Flowable<LlmResponse> generateContent(final LlmRequest llmRequest, final boolean stream) {
+    final ChatRequest chatRequest = toChatRequest(llmRequest);
     if (stream) {
       if (streamingChatModel == null) {
         return Flowable.error(new IllegalStateException("StreamingChatModel is not configured"));
@@ -107,7 +108,7 @@ public final class LangChain4jModel extends BaseLlm {
       return Flowable.create(
           emitter ->
               streamingChatModel.chat(
-                  toChatRequest(llmRequest),
+                  chatRequest,
                   new StreamingChatResponseHandler() {
                     @Override
                     public void onPartialResponse(final String token) {
@@ -142,7 +143,7 @@ public final class LangChain4jModel extends BaseLlm {
                     @Override
                     public void onCompleteResponse(final ChatResponse chatResponse) {
                       LOGGER.info("Raw ChatResponse (onComplete): {}", chatResponse);
-                      final List<Part> parts = toParts(chatResponse.aiMessage());
+                      final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
                       if (CollectionUtils.isNotEmpty(parts)) {
                         emitter.onNext(finalResponse(parts));
                       }
@@ -161,7 +162,7 @@ public final class LangChain4jModel extends BaseLlm {
         return Flowable.error(new IllegalStateException("ChatModel is not configured"));
       }
       return Flowable.just(
-          finalResponse(toParts(chatModel.chat(toChatRequest(llmRequest)).aiMessage())));
+          finalResponse(toParts(chatModel.chat(chatRequest).aiMessage(), chatRequest)));
     }
   }
 
@@ -392,7 +393,7 @@ public final class LangChain4jModel extends BaseLlm {
   }
 
   // Ordered: thinking → text → tool calls, matching natural model output order.
-  private static List<Part> toParts(final AiMessage aiMessage) {
+  private static List<Part> toParts(final AiMessage aiMessage, final ChatRequest chatRequest) {
     final List<Part> parts = new ArrayList<>();
     final String thinking = aiMessage.thinking();
     if (StringUtils.isNotBlank(thinking)) {
@@ -403,7 +404,16 @@ public final class LangChain4jModel extends BaseLlm {
       parts.add(Part.fromText(text));
     }
     if (aiMessage.hasToolExecutionRequests()) {
+      final List<String> allowedTools =
+          chatRequest.toolSpecifications() == null
+              ? List.of()
+              : chatRequest.toolSpecifications().stream().map(ToolSpecification::name).toList();
+
       for (final ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+        if (!allowedTools.contains(request.name())) {
+          LOGGER.warn("Stripping hallucinated tool call for absent tool: {}", request.name());
+          continue;
+        }
         parts.add(
             Part.builder()
                 .functionCall(

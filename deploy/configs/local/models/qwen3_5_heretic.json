@@ -1,6 +1,6 @@
 {
   "id": "qwen3.5-heretic",
-  "model": "sinbad/qwen3.5-heretic",
+  "model": "sinbad/qwen3.5-heretic:q4",
   "name": "Qwen3.5 Heretic (Ollama)",
   "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.6,
