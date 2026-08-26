@@ -68,7 +68,7 @@ public class AbstractAgentTool extends Tool {
       if (separator < 0) {
         continue;
       }
-      final String key = entry.substring(0, separator);
+      final String rawKey = entry.substring(0, separator);
       final String permissionStr = entry.substring(separator + 1);
       Permission permission = Permission.valueOfOrUnknown(permissionStr);
       if (permission == Permission.UNKNOWN) {
@@ -76,14 +76,14 @@ public class AbstractAgentTool extends Tool {
             "Grant : " + entry + " has invalid permission : " + permissionStr);
       }
 
-      if (NotebookUtils.isNoteId(key) && permission == Permission.CREATE) {
+      if (NotebookUtils.isNoteId(rawKey) && permission == Permission.CREATE) {
         throw new IllegalArgumentException(
             "Grant : "
                 + entry
                 + " assigns "
                 + Permission.CREATE
                 + " permission to note which is invalid. It can only be assigned to a notebook");
-      } else if (NotebookUtils.isNotebookId(key)
+      } else if (NotebookUtils.isNotebookId(rawKey)
           && (permission == Permission.READ || permission == Permission.WRITE)) {
         throw new IllegalArgumentException(
             "Grant : "
@@ -92,7 +92,7 @@ public class AbstractAgentTool extends Tool {
                 + permissionStr.toUpperCase(Locale.ROOT)
                 + " permission to notebook which is invalid. It can only be assigned to a note");
       }
-      resolved.put(key, permission);
+      resolved.put(NotebookUtils.normalizeGrantKey(rawKey), permission);
     }
     if (CollectionUtils.isEmpty(knowledgeIds)
         && CollectionUtils.isEmpty(knowledgeSources)

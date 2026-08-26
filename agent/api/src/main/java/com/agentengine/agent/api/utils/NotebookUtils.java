@@ -2,6 +2,7 @@ package com.agentengine.agent.api.utils;
 
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.util.agents.Constants;
+import java.util.Locale;
 
 public final class NotebookUtils {
 
@@ -11,7 +12,7 @@ public final class NotebookUtils {
     if (input == null) {
       return null;
     }
-    return input.replace(Constants.ID_SEPARATOR, "-");
+    return input.replace(Constants.ID_SEPARATOR, "-").toLowerCase(Locale.ROOT);
   }
 
   public static String notebookId(final String authorSession, final String name) {
@@ -55,5 +56,30 @@ public final class NotebookUtils {
 
   public static boolean canCreate(final NotebookGrants grants, final String notebookId) {
     return grants != null && grants.canCreate(notebookId);
+  }
+
+  public static String normalizeGrantKey(final String key) {
+    if (key == null) {
+      return null;
+    }
+    String[] parts = key.split(Constants.ID_SEPARATOR);
+    if (parts.length == 3) {
+      // notebookId: authorSession is parts[0]:parts[1]
+      return parts[0]
+          + Constants.ID_SEPARATOR
+          + parts[1]
+          + Constants.ID_SEPARATOR
+          + sanitize(parts[2]);
+    } else if (parts.length == 4) {
+      // noteId: authorSession:name:noteTitle
+      return parts[0]
+          + Constants.ID_SEPARATOR
+          + parts[1]
+          + Constants.ID_SEPARATOR
+          + sanitize(parts[2])
+          + Constants.ID_SEPARATOR
+          + sanitize(parts[3]);
+    }
+    return key;
   }
 }

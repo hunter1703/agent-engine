@@ -1,5 +1,6 @@
 package com.agentengine.agent.api.model;
 
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.CollectionUtils;
 import java.util.Map;
 
@@ -25,7 +26,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
   }
 
   public static String noteGrantKey(final String notebookId, final String noteTitle) {
-    return notebookId + ":" + noteTitle;
+    return notebookId + ":" + NotebookUtils.sanitize(noteTitle);
   }
 
   public boolean canRead(final String notebookId, final String noteTitle) {
