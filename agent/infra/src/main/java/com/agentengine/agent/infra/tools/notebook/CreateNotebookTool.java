@@ -58,6 +58,13 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
     } catch (final DuplicateAssetException exception) {
       return ToolOutput.direct(Map.of("error", "Notebook '" + name + "' already exists."));
     }
-    return ToolOutput.direct(Map.of("status", "success", "notebook_id", notebook.getId()));
+    return ToolOutput.direct(
+        Map.of(
+            "status",
+            "success",
+            "notebook_id",
+            notebook.getId(),
+            "message",
+            "Notebook '%s' successfully created".formatted(notebook.getId())));
   }
 }

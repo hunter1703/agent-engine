@@ -61,7 +61,7 @@ public final class SessionUtils {
   }
 
   public static String newSessionId(final String agentId) {
-    return agentId + Constants.ID_SEPARATOR + UUID.randomUUID();
+    return agentId + Constants.ID_SEPARATOR + UUID.randomUUID().toString().replace("-", "");
   }
 
   public static String agentIdFromSessionId(final String sessionId) {
