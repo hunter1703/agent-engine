@@ -325,14 +325,16 @@ public final class SessionState extends BaseAgentState {
 
   private static String spawnedAgentReminderMessage(
       final String childSessionId, final String goal, final boolean awaited) {
-    final String goalClause = StringUtils.isNotBlank(goal) ? " goal='" + goal + "'" : "";
+    final String agentId = SessionUtils.agentIdFromSessionId(childSessionId);
     if (awaited) {
-      return "[READ] agent_session='%s'%s — already awaited.".formatted(childSessionId, goalClause);
+      return "[AWAITED] agent : '%s', session_id : '%s', goal : '%s'"
+          .formatted(agentId, childSessionId, goal);
     }
-    return "[UNREAD] agent_session='%s'%s — not yet awaited. Use %s with %s='%s' when you need its result."
+    return "[NOT AWAITED] agent : '%s', session_id : '%s', goal : '%s'. Use %s with %s='%s' when you need its result."
         .formatted(
+            agentId,
             childSessionId,
-            goalClause,
+            goal,
             Constants.ToolNames.AWAIT_AGENT,
             Constants.ToolArgs.CHILD_SESSION_ID,
             childSessionId);
