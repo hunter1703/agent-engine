@@ -5,9 +5,7 @@ import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.agent.infra.model.AbstractLLM;
 import com.agentengine.agent.infra.tools.ToolFactory;
-import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.PromptUtils;
 import com.google.adk.agents.LlmAgent;
 import com.google.adk.models.BaseLlm;
@@ -40,11 +38,6 @@ public abstract class AbstractAgentFactory<C extends BaseAgentConfig, A extends 
         .maxSteps(config.getRuntime().getMaxSteps())
         .model(model);
     final List<BaseTool> tools = new ArrayList<>(toolFactory.buildTools(config.getTools()));
-    List<String> standardTools = CollectionUtils.nullSafeList(config.getStandardTools());
-    if (standardTools.contains(SearchKnowledgeTool.DESCRIPTOR.name())) {
-      tools.add(toolFactory.getSearchKnowledgeTool());
-    }
-
     if (config.getRuntime().isResumable()) {
       tools.add(toolFactory.getHITLTool());
     }

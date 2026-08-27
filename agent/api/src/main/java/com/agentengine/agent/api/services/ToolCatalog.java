@@ -9,6 +9,4 @@ public interface ToolCatalog {
   List<ToolDescriptor> getTools();
 
   ToolDescriptor getToolByName(String toolName);
-
-  List<ToolDescriptor> getStandardTools();
 }

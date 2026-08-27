@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.ServiceUtils;
-import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -16,8 +15,6 @@ import java.util.stream.Collectors;
 
 @Singleton
 public final class ToolServiceImpl implements ToolService {
-  private static final List<ToolDescriptor> STANDARD_TOOLS =
-      List.of(SearchKnowledgeTool.DESCRIPTOR);
   private final Map<String, ToolEntry> toolNameVsEntry;
   private final Map<String, ToolsetEntry> toolsetNameVsEntry;
   private final List<ToolDescriptor> allTools;
@@ -70,11 +67,6 @@ public final class ToolServiceImpl implements ToolService {
     }
     final ToolsetEntry toolsetEntry = toolsetNameVsEntry.get(toolName);
     return toolsetEntry == null ? null : toolsetEntry.descriptor();
-  }
-
-  @Override
-  public List<ToolDescriptor> getStandardTools() {
-    return STANDARD_TOOLS;
   }
 
   @Override
