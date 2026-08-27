@@ -8,9 +8,7 @@ quarkus = "3.34.0"
 langchain4j = "1.10.0"
 langchain4j-plugin = "1.10.0"
 qdrant-client = "1.13.0"
-# Vendored as flat JARs in libs/ — switch back to a catalog entry once
-# ResumabilityConfig and InvocationContext.agentStates() are reinstated upstream.
-# google-adk = "0.5.1-SNAPSHOT"
+google-adk = "1.4.0"
 google-genai = "1.44.0"
 pekko = "1.2.1"
 pekko-persistence-jdbc = "1.2.0"
@@ -105,6 +103,8 @@ postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" 
 
 # Google AI
 google-genai = { group = "com.google.genai", name = "google-genai", version.ref = "google-genai" }
+google-adk = { group = "com.google.adk", name = "google-adk", version.ref = "google-adk" }
+google-adk-langchain4j = { group = "com.google.adk", name = "google-adk-langchain4j", version.ref = "google-adk" }
 
 # Quarkus & LangChain4j Core
 langchain4j-core = { group = "dev.langchain4j", name = "langchain4j" }

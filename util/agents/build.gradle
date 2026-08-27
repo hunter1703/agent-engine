@@ -18,7 +18,7 @@ dependencies {
     // @BsonDiscriminator is annotation-only; no bson types in public method signatures
     compileOnly libs.mongodb.bson
 
-    implementation files(rootProject.file('libs/google-adk-0.5.1-SNAPSHOT.jar'))
-    implementation files(rootProject.file('libs/google-adk-langchain4j-0.5.1-SNAPSHOT.jar'))
+    implementation libs.google.adk
+    implementation libs.google.adk.langchain4j
     implementation libs.slf4j.api
 }

@@ -8,7 +8,6 @@ import com.google.genai.types.Part;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -46,7 +45,7 @@ public abstract class ImageEditingTool extends Tool {
       final Function<File, File> adjustment,
       final ToolContext toolContext) {
     try {
-      final Part input = toolContext.loadArtifact(artifactName, Optional.empty()).blockingGet();
+      final Part input = toolContext.loadArtifact(artifactName).blockingGet();
       if (input == null) {
         return ToolOutput.direct(Map.of("error", "Artifact not found: " + artifactName));
       }

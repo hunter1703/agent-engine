@@ -18,7 +18,7 @@ dependencies {
     implementation project(':connectors:api')
     implementation project(':util:cloudstorage')
 
-    implementation files(rootProject.file('libs/google-adk-0.5.1-SNAPSHOT.jar'))
+    implementation libs.google.adk
 
     implementation platform(libs.pekko.bom)
     implementation libs.pekko.actor.typed

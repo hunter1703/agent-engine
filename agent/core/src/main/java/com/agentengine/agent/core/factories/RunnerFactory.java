@@ -22,7 +22,6 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
-import com.google.adk.apps.ResumabilityConfig;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
@@ -76,12 +75,7 @@ public class RunnerFactory {
     final BaseAgentConfig config = agentService.getAgent(agentId);
     final Agent agent = agentProvider.create(config);
     final App app =
-        App.builder()
-            .plugins(buildPlugins(agent))
-            .rootAgent(agent)
-            .name(agentId)
-            .resumabilityConfig(new ResumabilityConfig(config.getRuntime().isResumable()))
-            .build();
+        App.builder().plugins(buildPlugins(agent)).rootAgent(agent).name(agentId).build();
     final InMemorySessionService inMemorySessionService =
         buildInMemorySessionService(agentId, sessionId);
     final Runner runner =

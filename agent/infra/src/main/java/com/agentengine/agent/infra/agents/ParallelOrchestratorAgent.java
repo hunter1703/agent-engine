@@ -112,7 +112,7 @@ public final class ParallelOrchestratorAgent extends Agent {
             .id(Event.generateEventId())
             .invocationId(invocationContext.invocationId())
             .author(name())
-            .branch(invocationContext.branch())
+            .branch(invocationContext.branch().orElse(null))
             .content(content)
             .build();
     return Flowable.just(event);

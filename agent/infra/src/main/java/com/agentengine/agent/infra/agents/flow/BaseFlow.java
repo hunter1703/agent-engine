@@ -126,8 +126,8 @@ public final class BaseFlow extends SingleFlow {
               // sole authoritative commit point for the turn.
               return event.toBuilder()
                   .content(content.toBuilder().parts(filteredParts).build())
-                  .turnComplete(Optional.empty())
-                  .finishReason(Optional.empty())
+                  .turnComplete(null)
+                  .finishReason(null)
                   .build();
             })
         .concatWith(

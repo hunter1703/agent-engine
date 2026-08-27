@@ -51,8 +51,8 @@ public final class Parser {
     }
     final LlmRequest sanitizedRequest = builder.build();
     // adding check on areToolsEnabled as a hard stop on passing tools to model which don't support
-    // tool calling because certain standard tools like HITL are automatically added based on
-    // agent's config and not model's config (see AbstractAgentFactory)
+    // tool calling because a tool like HITL is automatically added based on agent's config and not
+    // model's config (see AbstractAgentFactory)
     if (!areToolsEnabled) {
       // implementing like this because builder's set tool method is package private and hence we
       // can't use it to remove tools from the builder and hence from the llm request directly

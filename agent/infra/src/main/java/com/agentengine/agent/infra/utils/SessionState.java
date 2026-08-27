@@ -15,7 +15,6 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.*;
-import com.google.adk.agents.BaseAgentState;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -30,21 +29,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public final class SessionState extends BaseAgentState {
+public final class SessionState {
 
   private final KnowledgeService knowledgeService;
-  private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
   private Plan plan;
 
-  public SessionState(
-      KnowledgeService knowledgeService,
-      NotebookRepository notebookRepository,
-      NotesRepository notesRepository) {
+  public SessionState(KnowledgeService knowledgeService, NotesRepository notesRepository) {
     this.knowledgeService = knowledgeService;
-    this.notebookRepository = notebookRepository;
     this.notesRepository = notesRepository;
   }
 
@@ -53,8 +47,7 @@ public final class SessionState extends BaseAgentState {
       final KnowledgeService knowledgeService,
       final NotebookRepository notebookRepository,
       final NotesRepository notesRepository) {
-    final SessionState state =
-        new SessionState(knowledgeService, notebookRepository, notesRepository);
+    final SessionState state = new SessionState(knowledgeService, notesRepository);
     state.setRunState(RunState.buildFrom(events));
     state.updatePlan(PlanningUtils.buildFrom(events));
     state.addRemindersFrom(events);

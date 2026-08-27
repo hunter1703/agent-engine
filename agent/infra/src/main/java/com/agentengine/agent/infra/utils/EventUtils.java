@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /** Utilities for working with runtime {@link Event} objects. */
 public final class EventUtils {
@@ -60,7 +59,7 @@ public final class EventUtils {
     if (actions == null) {
       actions = new EventActions();
     }
-    ConcurrentMap<String, Object> delta = actions.stateDelta();
+    Map<String, Object> delta = actions.stateDelta();
     if (delta == null) {
       delta = new ConcurrentHashMap<>();
     }
@@ -190,9 +189,24 @@ public final class EventUtils {
         .id(Event.generateEventId())
         .invocationId(context.invocationId())
         .author(correctiveContent.role().orElseThrow())
-        .branch(context.branch())
+        .branch(context.branch().orElse(null))
         .actions(actions)
         .content(correctiveContent)
+        .build();
+  }
+
+  public static Event buildUpdateEvent(final InvocationContext context, final String message) {
+    final Content updateContent =
+        Content.builder()
+            .role(Constants.AUTHOR_USER)
+            .parts(List.of(Part.fromText(message)))
+            .build();
+    return Event.builder()
+        .id(Event.generateEventId())
+        .invocationId(context.invocationId())
+        .author(updateContent.role().orElseThrow())
+        .branch(context.branch().orElse(null))
+        .content(updateContent)
         .build();
   }
 }
