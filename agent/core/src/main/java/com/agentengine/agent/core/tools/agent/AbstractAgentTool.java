@@ -1,9 +1,7 @@
 package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.model.NotebookGrants.Permission;
 import com.agentengine.agent.api.model.ResourceGrants;
-import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.core.session.SessionActor;
 import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
@@ -19,9 +17,7 @@ import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.pekko.cluster.sharding.typed.javadsl.EntityRef;
@@ -60,47 +56,15 @@ public class AbstractAgentTool extends Tool {
   protected static ResourceGrants buildResourceGrants(
       final List<String> knowledgeIds,
       final List<String> knowledgeSources,
-      final List<String> notebookGrants)
+      final List<NotebookGrants.Entry> notebookGrantEntries)
       throws IllegalArgumentException {
-    final Map<String, Permission> resolved = new HashMap<>();
-    for (final String entry : CollectionUtils.nullSafeList(notebookGrants)) {
-      final int separator = entry.lastIndexOf('/');
-      if (separator < 0) {
-        throw new IllegalArgumentException(
-            "Grant : " + entry + " is missing the '/permission' suffix, e.g. 'notebookId/READ'");
-      }
-      final String rawKey = entry.substring(0, separator);
-      final String permissionStr = entry.substring(separator + 1);
-      Permission permission = Permission.valueOfOrUnknown(permissionStr);
-      if (permission == Permission.UNKNOWN) {
-        throw new IllegalArgumentException(
-            "Grant : " + entry + " has invalid permission : " + permissionStr);
-      }
-
-      if (NotebookUtils.isNoteId(rawKey) && permission == Permission.CREATE) {
-        throw new IllegalArgumentException(
-            "Grant : "
-                + entry
-                + " assigns "
-                + Permission.CREATE
-                + " permission to note which is invalid. It can only be assigned to a notebook");
-      } else if (NotebookUtils.isNotebookId(rawKey)
-          && (permission == Permission.READ || permission == Permission.WRITE)) {
-        throw new IllegalArgumentException(
-            "Grant : "
-                + entry
-                + " assigns "
-                + permissionStr.toUpperCase(Locale.ROOT)
-                + " permission to notebook which is invalid. It can only be assigned to a note");
-      }
-      resolved.put(NotebookUtils.normalizeGrantKey(rawKey), permission);
-    }
+    final NotebookGrants notebookGrants = new NotebookGrants(notebookGrantEntries);
     if (CollectionUtils.isEmpty(knowledgeIds)
         && CollectionUtils.isEmpty(knowledgeSources)
-        && resolved.isEmpty()) {
+        && notebookGrants.grants().isEmpty()) {
       return null;
     }
-    return new ResourceGrants(knowledgeIds, knowledgeSources, new NotebookGrants(resolved));
+    return new ResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
   }
 
   protected ToolOutput<Map<String, Object>> awaitChild(

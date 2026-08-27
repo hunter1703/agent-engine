@@ -1,6 +1,7 @@
 package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
@@ -8,12 +9,14 @@ import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
 import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
@@ -109,14 +112,9 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .build());
     properties.put(
         Constants.ToolArgs.NOTEBOOK_GRANTS,
-        Schema.builder()
-            .type(Known.ARRAY)
-            .items(Schema.builder().type(Known.STRING).build())
-            .description(
-                "Notebook/note access to grant the spawned agent, as entries of the form "
-                    + "\"<notebook_id>/CREATE\" (may freely create new notes in that notebook) or "
-                    + "\"<notebook_id>:<note_title>/READ\" or \"<notebook_id>:<note_title>/WRITE\" "
-                    + "(access to one specific note). Optional.")
+        ToolUtils.buildSchemaFromType(new TypeReference<List<NotebookGrants.Entry>>() {}.getType())
+            .toBuilder()
+            .description("Notebook/note access to grant the spawned agent. Optional.")
             .build());
     final Schema params =
         Schema.builder()
@@ -144,7 +142,7 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
           final List<String> knowledgeSources,
       @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
-          final List<String> notebookGrants) {
+          final List<NotebookGrants.Entry> notebookGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {

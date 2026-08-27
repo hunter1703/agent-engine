@@ -1,6 +1,7 @@
 package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.api.model.MessagePart;
+import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.core.session.SessionActorFactory;
@@ -71,8 +72,9 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
-                  "Ids of knowledge you have access to. Grants the child the same ability to "
-                      + "search them with "
+                  "Ids of knowledge to grant the child, on top of whatever it already has from "
+                      + "earlier calls — grants accumulate, so omit ids it can already search and "
+                      + "list only new ones. Grants the same ability to search them with "
                       + Constants.ToolNames.SEARCH_KNOWLEDGE
                       + ". Not knowledge sources — those go in "
                       + Constants.ToolArgs.KNOWLEDGE_SOURCES
@@ -82,8 +84,9 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.KNOWLEDGE_SOURCES,
               description =
-                  "Knowledge sources you have access to. Grants the child the same ability to "
-                      + "read them in full with "
+                  "Knowledge sources to grant the child, on top of whatever it already has from "
+                      + "earlier calls — grants accumulate, so omit sources it can already read "
+                      + "and list only new ones. Grants the same ability to read them in full with "
                       + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
                       + ". Not knowledge ids — those go in "
                       + Constants.ToolArgs.KNOWLEDGE_IDS
@@ -93,13 +96,12 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
-                  "Notebook/note access to grant the child, as entries of the form "
-                      + "\"<notebook_id>/CREATE\" (may freely create new notes in that notebook) "
-                      + "or \"<notebook_id>:<note_title>/READ\" or "
-                      + "\"<notebook_id>:<note_title>/WRITE\" (access to one specific note). "
-                      + "Optional.",
+                  "Notebook/note access to grant the child, on top of whatever it already has "
+                      + "from earlier calls. Omit anything already granted that isn't changing; "
+                      + "repeat an entry only to change its permission (e.g. upgrade a note from "
+                      + "READ to WRITE). Optional.",
               optional = true)
-          final List<String> notebookGrants) {
+          final List<NotebookGrants.Entry> notebookGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {

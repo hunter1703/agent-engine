@@ -1,7 +1,7 @@
 package com.agentengine.agent.api.model;
 
-import com.agentengine.agent.api.model.NotebookGrants.Permission;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.beans.Permission;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

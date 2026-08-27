@@ -4,6 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
@@ -140,7 +141,7 @@ public final class ApplyPatchTool extends BaseFileTool {
         return ToolOutput.direct(
             Map.of(
                 "error",
-                "Invalid unified diff format: " + exception.getMessage(),
+                "Invalid unified diff format: " + ExceptionUtils.getErrorMessage(exception),
                 "success",
                 false));
       }
@@ -190,14 +191,18 @@ public final class ApplyPatchTool extends BaseFileTool {
         Files.deleteIfExists(backupFile);
         return ToolOutput.direct(
             Map.of(
-                "error", "Failed to write patched file: " + exception.getMessage(),
-                "rolled_back", true,
-                "success", false));
+                "error",
+                "Failed to write patched file: " + ExceptionUtils.getErrorMessage(exception),
+                "rolled_back",
+                true,
+                "success",
+                false));
       }
 
     } catch (IOException exception) {
       LOG.error("Failed to apply patch to {}", filePath, exception);
-      return ToolOutput.direct(Map.of("error", "Failed to apply patch: " + exception.getMessage()));
+      return ToolOutput.direct(
+          Map.of("error", "Failed to apply patch: " + ExceptionUtils.getErrorMessage(exception)));
     }
   }
 

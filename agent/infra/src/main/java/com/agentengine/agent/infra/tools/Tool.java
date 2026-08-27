@@ -5,6 +5,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
@@ -124,8 +125,7 @@ public abstract class Tool extends BaseTool {
     } catch (Exception exception) {
       LOG.error(
           "Exception occurred while calling function tool: {}", executeMethod.getName(), exception);
-      final Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-      return Single.just(ImmutableMap.of("status", "error", "message", cause.getMessage()));
+      return Single.just(ImmutableMap.of("error", ExceptionUtils.getErrorMessage(exception)));
     }
   }
 

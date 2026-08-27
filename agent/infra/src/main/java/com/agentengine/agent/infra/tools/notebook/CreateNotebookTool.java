@@ -19,7 +19,11 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
               + "sessions can be granted access to. You always have full read/write/delete access "
               + "to a notebook you create; grant access to it for other sessions via the "
               + Constants.ToolArgs.NOTEBOOK_GRANTS
-              + " field on spawn_agent or send_message. "
+              + " field on "
+              + Constants.ToolNames.SPAWN_AGENT
+              + " or "
+              + Constants.ToolNames.SEND_MESSAGE
+              + ". "
               + "Returns: { status: \"success\", notebook_id }, or { error } if that name is "
               + "already in use.",
           Map.of());
@@ -44,11 +48,12 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
       @ToolSchema(
               name = Constants.ToolArgs.NOTEBOOK_DESCRIPTION,
               description =
-                  "What this notebook is for, to it understand its purpose without having to explain it again.",
+                  "What this notebook is for, so other agents granted access can understand its "
+                      + "purpose without you having to explain it again.",
               optional = true)
           final String description) {
     if (StringUtils.isBlank(name)) {
-      return ToolOutput.direct(Map.of("error", "name is required"));
+      return ToolOutput.direct(Map.of("error", "Notebook name is required."));
     }
     final String sessionId = toolContext.sessionId();
     Notebook notebook =

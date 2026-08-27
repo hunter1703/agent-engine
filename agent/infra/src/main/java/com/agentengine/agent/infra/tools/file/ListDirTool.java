@@ -4,6 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -153,7 +154,8 @@ public final class ListDirTool extends BaseFileTool {
     } catch (IOException exception) {
       LOG.error("Failed to list directory: {}", dirPath, exception);
       return ToolOutput.direct(
-          Map.of("error", "Failed to list directory: " + exception.getMessage()));
+          Map.of(
+              "error", "Failed to list directory: " + ExceptionUtils.getErrorMessage(exception)));
     }
   }
 

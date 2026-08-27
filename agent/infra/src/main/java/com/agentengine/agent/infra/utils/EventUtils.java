@@ -6,7 +6,6 @@ import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.MarkdownUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
 import com.google.adk.agents.InvocationContext;
@@ -165,25 +164,31 @@ public final class EventUtils {
   }
 
   public static Event buildCorrectiveEvent(
-      final InvocationContext context, final Violation violation) {
+      final InvocationContext context, final List<Violation> violations) {
+    final StringBuilder body = new StringBuilder();
+    for (final Violation violation : violations) {
+      body.append("\n- ").append(violation.message());
+      for (final Map.Entry<String, Object> detail :
+          CollectionUtils.nullSafeMap(violation.details()).entrySet()) {
+        body.append("\n  - ").append(detail.getKey()).append(": ").append(detail.getValue());
+      }
+    }
     final String prompt =
         """
                 Violations were detected in your previous response. Please resolve or correct them.
 
                 > Some of your replies may have been stripped from the history because they caused \
-                violations that must not be persisted. Use the violation details and corrective steps \
-                below as a guide.
+                violations that must not be persisted.
 
                 ## Violations
-
                 """
-            + MarkdownUtils.fromObject(violation);
+            + body;
 
     final Content correctiveContent =
         Content.builder().role(Constants.AUTHOR_USER).parts(List.of(Part.fromText(prompt))).build();
 
     final ConcurrentHashMap<String, Object> stateDelta = new ConcurrentHashMap<>();
-    stateDelta.put(VIOLATION_KEY, violation);
+    stateDelta.put(VIOLATION_KEY, violations);
     final EventActions actions = EventActions.builder().stateDelta(stateDelta).build();
     return Event.builder()
         .id(Event.generateEventId())

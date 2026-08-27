@@ -9,8 +9,8 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
 import com.google.genai.types.Schema;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +21,6 @@ import java.util.Map;
  * inheriting the connector-driven schema and call/error handling.
  */
 public class ConnectorTool extends Tool {
-  private static final String DEFAULT_ERROR = "Unknown error";
 
   private final ConnectorService connectorService;
   private final ConnectorMetadata connectorMetadata;
@@ -67,8 +66,7 @@ public class ConnectorTool extends Tool {
               "result",
               CollectionUtils.nullSafeList(results).stream().findFirst().orElseGet(Map::of)));
     } catch (ConnectorException e) {
-      return ToolOutput.direct(
-          Map.of("error", StringUtils.isBlank(e.getMessage()) ? DEFAULT_ERROR : e.getMessage()));
+      return ToolOutput.direct(Map.of("error", ExceptionUtils.getErrorMessage(e)));
     }
   }
 }

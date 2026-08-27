@@ -4,6 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import java.io.BufferedReader;
@@ -159,7 +160,7 @@ public final class GrepFilesTool extends BaseFileTool {
     } catch (IOException exception) {
       LOG.error("Failed to search files: {}", basePath, exception);
       return ToolOutput.direct(
-          Map.of("error", "Failed to search files: " + exception.getMessage()));
+          Map.of("error", "Failed to search files: " + ExceptionUtils.getErrorMessage(exception)));
     }
   }
 

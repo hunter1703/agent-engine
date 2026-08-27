@@ -61,9 +61,11 @@ public final class AGUIUtils {
     return new CustomEvent("resumed", fields, timestamp, null);
   }
 
-  /** Emitted when a guardrail violation is detected and corrected. */
-  public static CustomEvent buildCorrectionEvent(final Violation violation, final long timestamp) {
-    return new CustomEvent("correction", Map.of("message", violation.message()), timestamp, null);
+  /** Emitted when one or more violations are detected and corrected in the same turn. */
+  public static CustomEvent buildCorrectionEvent(
+      final List<Violation> violations, final long timestamp) {
+    final List<String> messages = violations.stream().map(Violation::message).toList();
+    return new CustomEvent("correction", Map.of("messages", messages), timestamp, null);
   }
 
   private static Map<String, Object> fileDetailsJson(final FileDetails fileDetails) {

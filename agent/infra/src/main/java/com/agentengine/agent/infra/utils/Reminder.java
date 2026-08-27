@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.utils;
 
-import java.util.Locale;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -35,9 +36,30 @@ public record Reminder(String group, String id, String message) {
 
   public static final String ID_ACTIVE_PLAN = "plan";
 
-  /** The section title a group renders as in the brief (see {@code ReminderRequestProcessor}). */
+  /**
+   * Display order for known groups in the brief, most action-critical first: unfinished plan work
+   * before pending child sessions before what's merely available to use. A group not listed here
+   * (future addition) sorts after all of these.
+   */
+  public static final List<String> GROUP_ORDER =
+      List.of(
+          GROUP_ACTIVE_PLAN,
+          GROUP_SPAWNED_AGENTS,
+          GROUP_NOTEBOOK_GRANTS,
+          GROUP_KNOWLEDGE_IDS,
+          GROUP_KNOWLEDGE_SOURCES);
+
+  private static final Map<String, String> TITLES =
+      Map.of(
+          GROUP_ACTIVE_PLAN, "Active Plan",
+          GROUP_SPAWNED_AGENTS, "Pending Child Sessions",
+          GROUP_NOTEBOOK_GRANTS, "Notebook Access",
+          GROUP_KNOWLEDGE_IDS, "Searchable Knowledge",
+          GROUP_KNOWLEDGE_SOURCES, "Full-Text Knowledge Sources");
+
+  /** The section title a group renders as in the brief (see {@code ReminderPlugin}). */
   public static String title(final String group) {
-    return group.replace('_', ' ').toUpperCase(Locale.ROOT);
+    return TITLES.getOrDefault(group, group.replace('_', ' '));
   }
 
   @Override

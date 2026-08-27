@@ -14,6 +14,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.Permission;
 import com.agentengine.util.common.query.*;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
@@ -76,26 +77,26 @@ public final class SessionState {
 
     final Map<String, NotebookSummary> summaries = new HashMap<>();
 
-    for (final Map.Entry<String, NotebookGrants.Permission> entry :
+    for (final Map.Entry<String, Permission> entry :
         CollectionUtils.nullSafeMap(notebookGrants.grants()).entrySet()) {
       final String key = entry.getKey();
-      final NotebookGrants.Permission permission = entry.getValue();
+      final Permission permission = entry.getValue();
 
       if (NotebookUtils.isNoteId(key)) {
         String notebookId = NotebookUtils.notebookIdOf(key);
         String noteTitle = NotebookUtils.noteTitleOf(key);
 
         NotebookSummary summary = summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
-        if (permission == NotebookGrants.Permission.WRITE) {
+        if (permission == Permission.WRITE) {
           summary.writePermissionedNotes.add(noteTitle);
-        } else if (permission == NotebookGrants.Permission.READ) {
+        } else if (permission == Permission.READ) {
           summary.readPermissionedNotes.add(noteTitle);
         }
       } else {
         NotebookSummary summary = summaries.computeIfAbsent(key, k -> new NotebookSummary());
-        if (permission == NotebookGrants.Permission.CREATE) {
+        if (permission == Permission.CREATE) {
           summary.canCreate = true;
-        } else if (permission == NotebookGrants.Permission.READ) {
+        } else if (permission == Permission.READ) {
           summary.canReadNotebook = true;
         }
       }

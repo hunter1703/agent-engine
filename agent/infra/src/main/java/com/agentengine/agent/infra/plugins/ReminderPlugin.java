@@ -10,6 +10,7 @@ import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
 import com.google.adk.plugins.BasePlugin;
 import io.reactivex.rxjava3.core.Maybe;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -53,13 +54,16 @@ public final class ReminderPlugin extends BasePlugin {
     sb.append(
         """
                 ## Reminders — orient yourself before acting
-                Read this, reason through it, then decide your next step.
                 """);
 
     boolean hasContent = false;
     final Map<String, List<Reminder>> reminderGroups =
         CollectionUtils.transformToMultiValuedMap(reminders, Reminder::group, Function.identity());
-    for (final Entry<String, List<Reminder>> entry : reminderGroups.entrySet()) {
+    final List<Entry<String, List<Reminder>>> orderedGroups =
+        reminderGroups.entrySet().stream()
+            .sorted(Comparator.comparingInt(entry -> groupRank(entry.getKey())))
+            .toList();
+    for (final Entry<String, List<Reminder>> entry : orderedGroups) {
       final String title = Reminder.title(entry.getKey());
       sb.append("\n### ").append(title).append("\n");
       for (final Reminder reminder : entry.getValue()) {
@@ -82,5 +86,10 @@ public final class ReminderPlugin extends BasePlugin {
                 """);
 
     return sb.toString().trim();
+  }
+
+  private static int groupRank(final String group) {
+    final int index = Reminder.GROUP_ORDER.indexOf(group);
+    return index < 0 ? Reminder.GROUP_ORDER.size() : index;
   }
 }

@@ -206,11 +206,11 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
   }
 
   private Flowable<Event> mapCorrectionEvent(final SessionEvent event) {
-    final Violation violation =
+    final List<Violation> violations =
         Objects.requireNonNull(
-            CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.VIOLATION));
+            CollectionUtils.getListFromMap(event.getMetadata(), SessionEventUtils.VIOLATION));
     LOG.debug("Generated correction event - correctionMetadataPresent=true");
-    return Flowable.just(AGUIUtils.buildCorrectionEvent(violation, state.timestamp()));
+    return Flowable.just(AGUIUtils.buildCorrectionEvent(violations, state.timestamp()));
   }
 
   /**

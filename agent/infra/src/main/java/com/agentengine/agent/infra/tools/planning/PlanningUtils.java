@@ -145,20 +145,41 @@ public final class PlanningUtils {
     return CollectionUtils.getFirst(collectOpenTasks(plan));
   }
 
+  /**
+   * Lean, persistent per-turn reminder of the active plan: title, progress, and the single next
+   * actionable task. Deliberately omits {@link #buildPlanSummary}'s full task list and tree —
+   * that's a lot of text to repeat on every turn for the plan's whole duration when only the next
+   * action actually drives the next decision. The full picture (every task, hierarchy, results) is
+   * always one {@link ViewPlanTool} call away, not force-fed every turn.
+   */
   public static String activePlanBrief(final Plan plan) {
     final StringBuilder sb = new StringBuilder();
-    sb.append(buildPlanSummary(plan));
+    sb.append("Plan '")
+        .append(planTitle(plan))
+        .append("' (")
+        .append(getPlanStatus(plan))
+        .append(")");
+    if (StringUtils.isNotBlank(plan.getGoal())) {
+      sb.append(" — ").append(plan.getGoal());
+    }
+    sb.append("\n");
+
+    final Map<String, List<Task>> taskVsChildren = groupTasksByParent(plan);
+    appendProgressSummary(sb, collectOrderedTasks(taskVsChildren));
+    sb.append("Full task list and hierarchy: ")
+        .append(ViewPlanTool.DESCRIPTOR.name())
+        .append(".\n");
 
     final Task openTask = getOpenTask(plan);
     if (openTask != null) {
-      sb.append("\n\nActive task — stay focused on this:\n");
+      sb.append("\nActive task — stay focused on this:\n");
       sb.append(buildTaskFocusPrompt(plan));
       sb.append(
           "\n **Do not start a new task until this one is complete or explicitly abandoned.**");
     } else {
       final Task nextTask = findNextTodoTask(plan);
       if (nextTask != null) {
-        sb.append("\n\nNo active task — pick up the next one:\n");
+        sb.append("\nNo active task — pick up the next one:\n");
         sb.append("Task [")
             .append(getTaskIdValue(nextTask))
             .append("] — ")

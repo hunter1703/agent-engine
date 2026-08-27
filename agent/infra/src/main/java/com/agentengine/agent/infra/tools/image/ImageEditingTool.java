@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.tools.image;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.ExceptionUtils;
 import com.google.adk.tools.ToolContext;
 import com.google.genai.types.Part;
 import java.io.File;
@@ -77,8 +78,7 @@ public abstract class ImageEditingTool extends Tool {
       }
     } catch (Exception e) {
       LOG.error("{} failed for artifact={}", descriptor().name(), artifactName, e);
-      return ToolOutput.direct(
-          Map.of("error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+      return ToolOutput.direct(Map.of("error", ExceptionUtils.getErrorMessage(e)));
     }
   }
 }

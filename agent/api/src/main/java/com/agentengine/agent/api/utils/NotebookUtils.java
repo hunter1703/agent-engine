@@ -34,14 +34,6 @@ public final class NotebookUtils {
     return lastSeparator < 0 ? null : noteId.substring(lastSeparator + 1);
   }
 
-  public static boolean isNotebookId(final String id) {
-    if (id == null) {
-      return false;
-    }
-    // sessionId (2 segments: agentId:uuid) + name (1 segment) = 3
-    return id.split(Constants.ID_SEPARATOR).length == 3;
-  }
-
   public static boolean isNoteId(final String id) {
     if (id == null) {
       return false;
@@ -66,19 +58,5 @@ public final class NotebookUtils {
 
   public static boolean canCreate(final NotebookGrants grants, final String notebookId) {
     return grants != null && grants.canCreate(notebookId);
-  }
-
-  public static String normalizeGrantKey(final String key) {
-    if (key == null) {
-      return null;
-    }
-    final String[] parts = key.split(Constants.ID_SEPARATOR);
-    if (parts.length != 3 && parts.length != 4) {
-      return key;
-    }
-    // authorSession is always the first 2 segments (agentId:uuid).
-    final String authorSession = parts[0] + Constants.ID_SEPARATOR + parts[1];
-    final String notebookId = notebookId(authorSession, parts[2]);
-    return parts.length == 3 ? notebookId : noteId(notebookId, parts[3]);
   }
 }

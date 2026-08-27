@@ -30,7 +30,7 @@ public final class CreatePlanTool extends Tool {
               + "non-terminal plan is active will fail. Tasks are provided as a flat list; parent_id "
               + "establishes both hierarchy and execution ordering (parent must be started before children; "
               + "children must be terminal before parent can complete). "
-              + "Returns: { status, createdPlan } on success, where createdPlan contains the full plan "
+              + "Returns: { status: \"success\", createdPlan } on success, where createdPlan contains the full plan "
               + "including the assigned task_id for every task — these IDs are required for all subsequent "
               + "task operations; or { error } on failure.",
           Map.of());
@@ -69,8 +69,12 @@ public final class CreatePlanTool extends Tool {
         return ToolOutput.direct(
             Map.of(
                 "error",
-                "Active plan already exists; finish it before creating a new plan.\n"
-                    + PlanningUtils.buildPlanSummary(existingPlan)));
+                "Active plan '"
+                    + existingPlan.getTitle()
+                    + "' already exists — see the Active Plan reminder above for its current "
+                    + "state. Finish it with "
+                    + Constants.ToolNames.FINISH_PLAN
+                    + " before creating a new one."));
       }
     }
     final Plan currentPlan = new Plan(title, goal, tasks);
@@ -86,11 +90,9 @@ public final class CreatePlanTool extends Tool {
     return ToolOutput.direct(
         Map.of(
             "status",
-            "Success. Plan '"
-                + title
-                + "' has been created and saved with "
-                + tasks.size()
-                + " tasks. ",
+            "success",
+            "message",
+            "Plan '" + title + "' created with " + tasks.size() + " tasks.",
             "createdPlan",
             currentPlan));
   }

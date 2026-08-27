@@ -18,9 +18,8 @@ public final class CreateNoteTool extends AbstractNotebookTool {
               + "can read it instead of you having to relay its full text yourself. Call this "
               + "immediately before writing the note's content — not before a clarification or a "
               + "partial draft — then write that content as your very next message with nothing "
-              + "else in between; it is saved automatically once you do. Set continuation=true if "
-              + "you plan to write more notes or do more work afterward; leave it false (default) "
-              + "if this note is your final output for this turn. "
+              + "else in between; it is saved automatically once you do, and you can then "
+              + "continue your task or give a final answer. "
               + "Returns: { status: \"pending\", message } — write the note's content next, or "
               + "{ error } if you don't have create access to this notebook.",
           Map.of());
