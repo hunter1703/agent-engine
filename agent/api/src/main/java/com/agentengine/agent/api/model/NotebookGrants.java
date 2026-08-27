@@ -26,7 +26,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
   }
 
   public static String noteGrantKey(final String notebookId, final String noteTitle) {
-    return notebookId + ":" + NotebookUtils.sanitize(noteTitle);
+    return NotebookUtils.noteId(notebookId, noteTitle);
   }
 
   public boolean canRead(final String notebookId, final String noteTitle) {

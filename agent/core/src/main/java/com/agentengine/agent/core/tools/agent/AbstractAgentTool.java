@@ -66,7 +66,8 @@ public class AbstractAgentTool extends Tool {
     for (final String entry : CollectionUtils.nullSafeList(notebookGrants)) {
       final int separator = entry.lastIndexOf('/');
       if (separator < 0) {
-        continue;
+        throw new IllegalArgumentException(
+            "Grant : " + entry + " is missing the '/permission' suffix, e.g. 'notebookId/READ'");
       }
       final String rawKey = entry.substring(0, separator);
       final String permissionStr = entry.substring(separator + 1);

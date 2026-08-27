@@ -2,6 +2,7 @@ package com.agentengine.agent.infra.utils;
 
 import static com.agentengine.agent.infra.utils.AgentUtils.getAgentIdFromContext;
 
+import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -37,27 +38,45 @@ public final class SessionUtils {
       final InvocationContext context,
       final KnowledgeService knowledgeService,
       final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
+      final NotesRepository notesRepository,
+      ExtendedRunConfig runConfig) {
     final SessionState existing = getSessionState(context, false);
+    final boolean firstTimeForThisAgent = existing == null;
+    final SessionState sessionState;
     if (existing != null) {
-      return existing;
+      sessionState = existing;
+    } else {
+      sessionState =
+          SessionState.buildFrom(
+              context.session().events(), knowledgeService, notebookRepository, notesRepository);
+      final String agentId = getAgentIdFromContext(context);
+      final ConcurrentMap<String, Object> state = state(context);
+      if (state != null) {
+        // a session can have multiple agent states because a session can be shared by multiple
+        // agents (like when AgentTransfer happens)
+        @SuppressWarnings("unchecked")
+        ConcurrentMap<String, SessionState> sessionStates =
+            (ConcurrentMap<String, SessionState>)
+                state.computeIfAbsent(
+                    "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
+        sessionStates.put(agentId, sessionState);
+      }
     }
-    final SessionState created =
-        SessionState.buildFrom(
-            context.session().events(), knowledgeService, notebookRepository, notesRepository);
-    final String agentId = getAgentIdFromContext(context);
-    final ConcurrentMap<String, Object> state = state(context);
-    if (state != null) {
-      // a session can have multiple agent states because a session can be shared by multiple agents
-      // (like when AgentTransfer happens)
-      @SuppressWarnings("unchecked")
-      ConcurrentMap<String, SessionState> sessionStates =
-          (ConcurrentMap<String, SessionState>)
-              state.computeIfAbsent(
-                  "SESSION_STATES", _ -> new ConcurrentHashMap<String, SessionState>());
-      sessionStates.put(agentId, created);
+
+    final ResourceGrants grants = runConfig == null ? null : runConfig.grants();
+    final boolean newRun = runConfig != null && runConfig.isNewRun();
+    if (grants != null && (firstTimeForThisAgent || newRun)) {
+      // Recomputed on every genuinely new run (not on a resume after a pause, and not more than
+      // once for the same run): a later send_message/spawn_agent trigger can grant additional
+      // knowledge/notebook access, and notebook contents can change between runs (notes
+      // added/removed by another session) even when the grant set itself is unchanged. A resume
+      // re-enters this same agent's runAsync without starting a new run, so it must reuse what
+      // was already computed rather than repeat the (Mongo-backed) notebook lookup.
+      sessionState.addKnowledgeIdReminders(grants.knowledgeIds());
+      sessionState.addKnowledgeSourceReminders(grants.knowledgeSources());
+      sessionState.addNotebookReminders(grants.notebookGrants());
     }
-    return created;
+    return sessionState;
   }
 
   public static String newSessionId(final String agentId) {

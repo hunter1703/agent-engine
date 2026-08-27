@@ -7,6 +7,7 @@ import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
+import com.agentengine.util.common.FileUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.tools.ToolContext;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 
 /** Fetches a granted knowledge source's content on demand; grants are never delivered eagerly. */
@@ -26,7 +28,9 @@ public final class ReadKnowledgeSourceTool extends Tool {
               + "(a searchable item) — search that with "
               + Constants.ToolNames.SEARCH_KNOWLEDGE
               + " instead. "
-              + "Returns: { status: \"success\", content } or { error } if you weren't granted it.",
+              + "Returns: { status: \"success\", content, encoding, mime_type } — encoding is "
+              + "\"utf-8\" for text sources or \"base64\" otherwise — or { error } if you weren't "
+              + "granted it.",
           Map.of());
 
   private final CloudStorageService cloudStorageService;
@@ -51,9 +55,23 @@ public final class ReadKnowledgeSourceTool extends Tool {
       return ToolOutput.direct(Map.of("error", "Not granted access to this knowledge source."));
     }
     final CloudStorageService.Content content = cloudStorageService.download(source);
+    final boolean isText = FileUtils.isTextFile(content.mimeType(), source);
     try (InputStream stream = content.stream()) {
-      final String text = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-      return ToolOutput.direct(Map.of("status", "success", "content", text));
+      final byte[] bytes = stream.readAllBytes();
+      final String value =
+          isText
+              ? new String(bytes, StandardCharsets.UTF_8)
+              : Base64.getEncoder().encodeToString(bytes);
+      return ToolOutput.direct(
+          Map.of(
+              "status",
+              "success",
+              "content",
+              value,
+              "encoding",
+              isText ? "utf-8" : "base64",
+              "mime_type",
+              content.mimeType() == null ? "" : content.mimeType()));
     } catch (final IOException exception) {
       throw new UncheckedIOException(exception);
     }

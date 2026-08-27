@@ -10,14 +10,27 @@ import com.google.genai.types.SpeechConfig;
 public final class ExtendedRunConfig extends RunConfig {
   private final RunConfig delegate;
   private final ResourceGrants grants;
+  private final boolean newRun;
 
-  public ExtendedRunConfig(final RunConfig delegate, final ResourceGrants grants) {
+  public ExtendedRunConfig(
+      final RunConfig delegate, final ResourceGrants grants, final boolean newRun) {
     this.delegate = delegate;
     this.grants = grants;
+    this.newRun = newRun;
   }
 
   public ResourceGrants grants() {
     return grants;
+  }
+
+  /**
+   * True for the {@code runAsync} call that starts a genuinely new run ; false for one that only
+   * resumes an already-started run after a pause. Grants themselves must stay available on every
+   * call — this only gates work that should happen once per run rather than once per resume, such
+   * as recomputing knowledge/notebook reminders.
+   */
+  public boolean isNewRun() {
+    return newRun;
   }
 
   @Override
@@ -69,6 +82,7 @@ public final class ExtendedRunConfig extends RunConfig {
   public Builder toBuilder() {
     throw new UnsupportedOperationException(
         "ExtendedRunConfig.toBuilder().build() would silently lose its ResourceGrants — build a "
-            + "new ExtendedRunConfig(delegateConfig.toBuilder()...build(), grants()) instead.");
+            + "new ExtendedRunConfig(delegateConfig.toBuilder()...build(), grants(), isNewRun()) "
+            + "instead.");
   }
 }

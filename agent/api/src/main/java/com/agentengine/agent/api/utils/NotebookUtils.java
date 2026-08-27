@@ -24,6 +24,16 @@ public final class NotebookUtils {
     return notebookId + Constants.ID_SEPARATOR + sanitize(noteTitle);
   }
 
+  public static String notebookIdOf(final String noteId) {
+    final int lastSeparator = noteId.lastIndexOf(Constants.ID_SEPARATOR);
+    return lastSeparator < 0 ? null : noteId.substring(0, lastSeparator);
+  }
+
+  public static String noteTitleOf(final String noteId) {
+    final int lastSeparator = noteId.lastIndexOf(Constants.ID_SEPARATOR);
+    return lastSeparator < 0 ? null : noteId.substring(lastSeparator + 1);
+  }
+
   public static boolean isNotebookId(final String id) {
     if (id == null) {
       return false;
@@ -62,24 +72,13 @@ public final class NotebookUtils {
     if (key == null) {
       return null;
     }
-    String[] parts = key.split(Constants.ID_SEPARATOR);
-    if (parts.length == 3) {
-      // notebookId: authorSession is parts[0]:parts[1]
-      return parts[0]
-          + Constants.ID_SEPARATOR
-          + parts[1]
-          + Constants.ID_SEPARATOR
-          + sanitize(parts[2]);
-    } else if (parts.length == 4) {
-      // noteId: authorSession:name:noteTitle
-      return parts[0]
-          + Constants.ID_SEPARATOR
-          + parts[1]
-          + Constants.ID_SEPARATOR
-          + sanitize(parts[2])
-          + Constants.ID_SEPARATOR
-          + sanitize(parts[3]);
+    final String[] parts = key.split(Constants.ID_SEPARATOR);
+    if (parts.length != 3 && parts.length != 4) {
+      return key;
     }
-    return key;
+    // authorSession is always the first 2 segments (agentId:uuid).
+    final String authorSession = parts[0] + Constants.ID_SEPARATOR + parts[1];
+    final String notebookId = notebookId(authorSession, parts[2]);
+    return parts.length == 3 ? notebookId : noteId(notebookId, parts[3]);
   }
 }

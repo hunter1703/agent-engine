@@ -93,15 +93,30 @@ public final class NotebookPlugin extends BasePlugin {
       return Maybe.empty();
     }
 
-    notesRepository.save(new Note(pending.notebookId(), pending.noteTitle(), text));
-    LOG.info("Saved note notebook={} title={}", pending.notebookId(), pending.noteTitle());
+    final Note note = new Note(pending.notebookId(), pending.noteTitle(), text);
+    final Note existing = notesRepository.findById(note.getId());
+    note.setVersion(existing == null ? 0 : existing.getVersion());
+    notesRepository.save(note);
+    final boolean overwritten = existing != null;
+    LOG.info(
+        "{} note notebook={} title={}",
+        overwritten ? "Overwrote" : "Saved",
+        pending.notebookId(),
+        pending.noteTitle());
 
+    final String overwriteWarning =
+        overwritten
+            ? " A note with this title already existed in this notebook — its previous content"
+                + " was replaced."
+            : "";
     final Violation violation =
         Violation.builder("note_continuation")
             .message(
                 "Note '"
                     + pending.noteTitle()
-                    + "' saved. Note content will not be directly visible to the user (unless the user reads the note). Continue with your task by calling tools (if needed) or giving final text answer that will be directly delivered and visible to the user. If you want to give the final answer, DO NOT copy the note content directly in the answer : the user has access to tools to read notes")
+                    + "' saved."
+                    + overwriteWarning
+                    + " Note content will not be directly visible to the user (unless the user reads the note). Continue with your task by calling tools (if needed) or giving final text answer that will be directly delivered and visible to the user. If you want to give the final answer, DO NOT copy the note content directly in the answer : the user has access to tools to read notes")
             .build();
     runState.requestContinuation(violation);
     return Maybe.empty();

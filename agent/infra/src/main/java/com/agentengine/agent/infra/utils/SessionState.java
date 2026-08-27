@@ -89,9 +89,8 @@ public final class SessionState extends BaseAgentState {
       final NotebookGrants.Permission permission = entry.getValue();
 
       if (NotebookUtils.isNoteId(key)) {
-        int lastColon = key.lastIndexOf(Constants.ID_SEPARATOR);
-        String notebookId = key.substring(0, lastColon);
-        String noteTitle = key.substring(lastColon + 1);
+        String notebookId = NotebookUtils.notebookIdOf(key);
+        String noteTitle = NotebookUtils.noteTitleOf(key);
 
         NotebookSummary summary = summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
         if (permission == NotebookGrants.Permission.WRITE) {
@@ -254,17 +253,20 @@ public final class SessionState extends BaseAgentState {
   }
 
   private void addRemindersFrom(final List<Event> events) {
+    // A FunctionCall and its FunctionResponse always land in separate Events, so the id lookup
+    // must accumulate across the whole history, not reset per event.
+    final Map<String, FunctionCall> idVsFunctionCall = new HashMap<>();
     for (final Event event : CollectionUtils.nullSafeList(events)) {
       final Content content = event.content().orElse(null);
       if (content == null) {
         continue;
       }
-      addSpawnedAgentsReminders(content);
+      addSpawnedAgentsReminders(content, idVsFunctionCall);
     }
   }
 
-  private void addSpawnedAgentsReminders(final Content content) {
-    final Map<String, FunctionCall> idVsFunctionCalls = new HashMap<>();
+  private void addSpawnedAgentsReminders(
+      final Content content, final Map<String, FunctionCall> idVsFunctionCall) {
     final Map<String, Boolean> sessionIdVsAwaited = new HashMap<>();
     final Map<String, String> sessionIdVsGoal = new HashMap<>();
 
@@ -273,40 +275,32 @@ public final class SessionState extends BaseAgentState {
       if (functionCall != null) {
         final String functionName = functionCall.name().orElse("");
         if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
-          functionCall.id().ifPresent(id -> idVsFunctionCalls.put(id, functionCall));
+          functionCall.id().ifPresent(id -> idVsFunctionCall.put(id, functionCall));
         }
       }
       final FunctionResponse response = part.functionResponse().orElse(null);
-      if (response != null) {
-        final Map<String, Object> result = response.response().orElse(Map.of());
-        if (response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT)) {
-          final FunctionCall spawnAgentCall = idVsFunctionCalls.get(response.id().orElse(""));
-          final Map<String, Object> callArgs = spawnAgentCall.args().orElse(Map.of());
-          final Boolean await =
-              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
-          final String spawnedSession =
-              CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
-          sessionIdVsAwaited.put(spawnedSession, await == null || await);
-          sessionIdVsGoal.put(
-              spawnedSession, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
-        }
-        if (response.name().orElse("").equals(Constants.ToolNames.SEND_MESSAGE)) {
-          final FunctionCall sendMessageCall = idVsFunctionCalls.get(response.id().orElse(""));
-          final Map<String, Object> callArgs = sendMessageCall.args().orElse(Map.of());
-          final Boolean await =
-              CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
-          final String sessionId =
-              CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
-          sessionIdVsAwaited.put(sessionId, await == null || await);
-          sessionIdVsGoal.put(sessionId, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
-        }
-        if (response.name().orElse("").equals(Constants.ToolNames.AWAIT_AGENT)) {
-          final FunctionCall spawnAgentCall = idVsFunctionCalls.get(response.id().orElse(""));
-          final Map<String, Object> callArgs = spawnAgentCall.args().orElse(Map.of());
-          final String awaitedSession =
-              CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
-          sessionIdVsAwaited.put(awaitedSession, true);
-        }
+      if (response == null) {
+        continue;
+      }
+      final FunctionCall matchedCall = idVsFunctionCall.get(response.id().orElse(""));
+      if (matchedCall == null) {
+        continue;
+      }
+      final Map<String, Object> result = response.response().orElse(Map.of());
+      final Map<String, Object> callArgs = matchedCall.args().orElse(Map.of());
+      if (response.name().orElse("").equals(Constants.ToolNames.SPAWN_AGENT)
+          || response.name().orElse("").equals(Constants.ToolNames.SEND_MESSAGE)) {
+        final Boolean await =
+            CollectionUtils.getBooleanValueFromMap(callArgs, Constants.ToolArgs.AWAIT_COMPLETION);
+        final String sessionId =
+            CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
+        sessionIdVsAwaited.put(sessionId, await == null || await);
+        sessionIdVsGoal.put(sessionId, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
+      }
+      if (response.name().orElse("").equals(Constants.ToolNames.AWAIT_AGENT)) {
+        final String awaitedSession =
+            CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
+        sessionIdVsAwaited.put(awaitedSession, true);
       }
     }
 

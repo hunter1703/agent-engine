@@ -69,7 +69,7 @@ public final class SessionRunner {
 
     disposable =
         runner
-            .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, userContent, runConfig(grants))
+            .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, userContent, runConfig(grants, true))
             .subscribeOn(SCHEDULER)
             .doOnNext(
                 event -> {
@@ -118,7 +118,7 @@ public final class SessionRunner {
                 AgentSession.DEFAULT_USER_ID,
                 sessionId,
                 ContentUtils.buildResumeContent(resumeRequests),
-                runConfig(grants))
+                runConfig(grants, false))
             .subscribeOn(SCHEDULER)
             .doOnNext(
                 event ->
@@ -152,12 +152,12 @@ public final class SessionRunner {
     agent.close().blockingAwait();
   }
 
-  private static RunConfig runConfig(final ResourceGrants grants) {
+  private static RunConfig runConfig(final ResourceGrants grants, final boolean newRun) {
     final RunConfig base =
         RunConfig.builder()
             .setToolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
             .setStreamingMode(RunConfig.StreamingMode.SSE)
             .build();
-    return grants.isEmpty() ? base : new ExtendedRunConfig(base, grants);
+    return grants.isEmpty() ? base : new ExtendedRunConfig(base, grants, newRun);
   }
 }

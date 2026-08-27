@@ -13,14 +13,16 @@ public final class FileUtils {
   private FileUtils() {}
 
   public static boolean isTextFile(final FileDetails fileDetails) {
-    final String mimeType = fileDetails.mimeType();
+    return isTextFile(fileDetails.mimeType(), fileDetails.name());
+  }
+
+  public static boolean isTextFile(final String mimeType, final String name) {
     if (mimeType != null) {
       final String lower = mimeType.toLowerCase();
       if (lower.startsWith("text/") || TEXT_MIME_TYPES.contains(lower)) {
         return true;
       }
     }
-    final String name = fileDetails.name();
     if (name != null) {
       final int dot = name.lastIndexOf('.');
       if (dot >= 0) {
