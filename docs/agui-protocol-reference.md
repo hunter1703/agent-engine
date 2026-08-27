@@ -554,7 +554,7 @@ event flow. Used for adding application-specific metadata to the stream.
   "name": "correction",
   "value": {
     "correctionType": "OUTPUT_RELEVANCE",
-    "code": "IRRELEVANT_RESPONSE",
+    "id": "IRRELEVANT_RESPONSE",
     "message": "Response does not address the user's question"
   }
 }
@@ -1059,7 +1059,7 @@ compat but producers must not emit them.
 | `THINKING_TEXT_MESSAGE_END` | `ReasoningMessageEnd` | Same semantics, new name |
 
 Our codebase has fully migrated to the `Reasoning*` naming. No deprecated event names remain
-in server or client code.
+in server or client id.
 
 ---
 

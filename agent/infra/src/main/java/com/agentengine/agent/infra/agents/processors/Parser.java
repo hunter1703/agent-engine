@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.agents.processors;
 
 import com.agentengine.agent.infra.utils.ContentUtils;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.models.LlmRequest;
 import com.google.adk.models.LlmResponse;
@@ -151,11 +150,7 @@ public final class Parser {
     LOG.info("Parser.parseTextContent - finalAnswer: '{}'", finalAnswer);
     final List<Part> allParts = new ArrayList<>(thoughtParts);
     if (StringUtils.isNotBlank(finalAnswer)) {
-      allParts.add(
-          Part.builder()
-              .text(finalAnswer)
-              .thought(CollectionUtils.isNotEmpty(toolCallParts))
-              .build());
+      allParts.add(Part.builder().text(finalAnswer).thought(false).build());
     }
     allParts.addAll(toolCallParts);
     return content.toBuilder().parts(allParts).build();

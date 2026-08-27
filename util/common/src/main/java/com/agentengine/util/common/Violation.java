@@ -13,16 +13,16 @@ import java.util.List;
 import java.util.Map;
 
 public record Violation(
-    String code, Map<String, Object> details, List<Violation> subViolations, String message)
+    String id, Map<String, Object> details, List<Violation> subViolations, String message)
     implements Serializable {
 
   @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
   public Violation(
-      @JsonProperty("code") final String code,
+      @JsonProperty("id") final String id,
       @JsonProperty("details") final Map<String, Object> details,
       @JsonProperty("subViolations") final List<Violation> subViolations,
       @JsonProperty("message") final String message) {
-    this.code = code;
+    this.id = id;
     this.message = message;
     this.details = details == null ? Map.of() : Map.copyOf(details);
     this.subViolations = subViolations == null ? List.of() : List.copyOf(subViolations);
@@ -55,7 +55,7 @@ public record Violation(
 
     private Builder(String code) {
       if (code == null || code.trim().isEmpty()) {
-        throw new IllegalArgumentException("Violation code cannot be null or empty");
+        throw new IllegalArgumentException("Violation id cannot be null or empty");
       }
       this.code = code;
     }

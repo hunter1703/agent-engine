@@ -31,7 +31,7 @@ public final class ResponseUtils {
   }
 
   public static Single<ResponseProcessingResult> single(final LlmResponse response) {
-    return Single.just(ResponseProcessingResult.create(response, List.of(), Optional.empty()));
+    return Single.just(ResponseProcessingResult.create(response, List.of()));
   }
 
   private static boolean hasVisibleText(final LlmResponse response) {

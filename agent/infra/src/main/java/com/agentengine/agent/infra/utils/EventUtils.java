@@ -195,7 +195,7 @@ public final class EventUtils {
         .build();
   }
 
-  public static Event buildUpdateEvent(final InvocationContext context, final String message) {
+  public static Event buildUserTextEvent(final InvocationContext context, final String message) {
     final Content updateContent =
         Content.builder()
             .role(Constants.AUTHOR_USER)

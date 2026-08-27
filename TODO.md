@@ -1,9 +1,6 @@
 # TODO
 
-1. remove standard tools concept
-2. Do we need 0.5.1 snapshot libs now since agentState is no longer used?
-3. Difference between adk's Langchain4j impl and ours
-4. Do we need separate continuationrequested flag in runstate? can't we just rely on empty/non-empty violations?
+1. Difference between adk's Langchain4j impl and ours
 
 ## AuthFilter: Authentication Not Yet Implemented
 
@@ -79,7 +76,7 @@ Tracked while implementing `.kiro/specs/chaos-testing/` (see the plan's Phase 1-
   guessed `pekko_persistence_journal_write_duration_seconds`). These need validating against
   whatever exporters actually run in the cluster (mongodb-exporter naming, Pekko persistence
   metrics naming) — queries are configurable via the `MetricsQueries` record specifically so this
-  doesn't require a code change, just a config update.
+  doesn't require a id change, just a config update.
 - **`EventJournalValidator` replay hook**: the round-trip idempotence check (Task 12.3) needs a
   `SessionActorState.applyEvent()`-equivalent entry point to replay an event stream outside the
   actor. Confirm this method exists or add it when implementing Phase 3 validation.

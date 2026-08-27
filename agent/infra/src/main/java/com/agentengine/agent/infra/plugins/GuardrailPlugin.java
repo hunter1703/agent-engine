@@ -5,10 +5,7 @@ import com.agentengine.agent.infra.guardrails.GuardrailConstants;
 import com.agentengine.agent.infra.guardrails.GuardrailContext;
 import com.agentengine.agent.infra.guardrails.GuardrailDecision;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
-import com.agentengine.agent.infra.utils.ContentUtils;
-import com.agentengine.agent.infra.utils.GuardrailUtils;
-import com.agentengine.agent.infra.utils.ResponseUtils;
-import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.common.CollectionUtils;
@@ -90,14 +87,15 @@ public final class GuardrailPlugin extends BasePlugin {
     if (decision.action() == GuardrailAction.ALLOW) {
       return Maybe.empty();
     }
+    final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.WARN) {
       RunUtils.getRunState(invocationContext)
-          .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
+          .addSignal(new Signal<>(violation.id(), violation, false));
       return Maybe.empty();
     }
 
     RunUtils.getRunState(invocationContext)
-        .addViolation(GuardrailUtils.buildViolation(invocationContext, decision));
+        .addSignal(new Signal<>(violation.id(), violation, false));
     if (decision.action() == GuardrailAction.ESCALATE) {
       return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
     }
@@ -114,14 +112,14 @@ public final class GuardrailPlugin extends BasePlugin {
     }
     final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.WARN) {
-      if (!requiresRegeneration(decision)) {
-        RunUtils.getRunState(invocationContext).addViolation(violation);
-        return Maybe.empty();
+      if (violation != null) {
+        RunUtils.getRunState(invocationContext)
+            .addSignal(new Signal<>(violation.id(), violation, requiresRegeneration(decision)));
       }
-      RunUtils.getRunState(invocationContext).requestContinuation(violation);
       return Maybe.empty();
     } else if (violation != null) {
-      RunUtils.getRunState(invocationContext).addViolation(violation);
+      RunUtils.getRunState(invocationContext)
+          .addSignal(new Signal<>(violation.id(), violation, false));
     }
 
     if (decision.action() == GuardrailAction.ESCALATE) {

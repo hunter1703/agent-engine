@@ -36,7 +36,7 @@ the tracked `toolCallParentSteps` map.
 
 The protocol defines `Custom` events as requiring `name` and `value` fields. Our `CorrectionEvent`
 extends `BaseCustomEvent` (which carries `name`) but exposes individual fields (`correctionType`,
-`code`, `message`) rather than a single `value` object. The client adapter reads these individual
+`id`, `message`) rather than a single `value` object. The client adapter reads these individual
 fields from `rawEvent` and it works in practice, but it deviates from the protocol shape.
 
 **Quirk to be aware of**: If a strict AGUI-compliant consumer processes our `CUSTOM` correction
@@ -196,7 +196,7 @@ Not currently used or needed, but relevant if we ever support ZTR deployments.
 ### 4.5 `MetaEvent`
 
 Draft side-band annotation that can appear anywhere in the stream. Could be used for:
-- Correction signals (`correctionType`, `code`) — without polluting the main event flow
+- Correction signals (`correctionType`, `id`) — without polluting the main event flow
 - Attribution metadata (which agent produced a message)
 - Diagnostic annotations
 
@@ -257,4 +257,4 @@ when events are processed synchronously via `concatWith`. ✓
 | `THINKING_TEXT_MESSAGE_CONTENT` | `REASONING_MESSAGE_CONTENT` | Replaced ✓ |
 | `THINKING_TEXT_MESSAGE_END` | `REASONING_MESSAGE_END` | Replaced ✓ |
 
-All deprecated event names have been purged from server and client code.
+All deprecated event names have been purged from server and client id.

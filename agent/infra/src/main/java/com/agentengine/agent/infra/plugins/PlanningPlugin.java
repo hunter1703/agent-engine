@@ -2,10 +2,7 @@ package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.planning.PlanningValidator;
-import com.agentengine.agent.infra.utils.ResponseUtils;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.SessionState;
-import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
 import com.google.adk.agents.CallbackContext;
@@ -51,8 +48,11 @@ public final class PlanningPlugin extends BasePlugin {
     if (StringUtils.isBlank(planViolation)) {
       return Maybe.empty();
     }
-    runState.requestContinuation(
-        Violation.builder("final_answer_validation").message(planViolation).build());
+    runState.addSignal(
+        new Signal<>(
+            "final_answer_validation",
+            Violation.builder("final_answer_validation").message(planViolation).build(),
+            true));
     return Maybe.empty();
   }
 }

@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.agents.flow;
 
-import com.agentengine.agent.infra.agents.processors.request.CorrectionProcessor;
+import com.agentengine.agent.infra.agents.processors.request.SignalProcessor;
 import com.agentengine.agent.infra.utils.RunState;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.util.agents.Constants;
@@ -56,7 +56,7 @@ public final class BaseFlow extends SingleFlow {
               new Instructions(),
               new Contents(),
               new AgentTransfer(),
-              CorrectionProcessor.INSTANCE)
+              SignalProcessor.INSTANCE)
           .build();
 
   private final int maxSteps;
@@ -117,8 +117,8 @@ public final class BaseFlow extends SingleFlow {
               if (event.actions().endInvocation().orElse(false)) {
                 endInvocation.set(true);
               }
-              // Only model/agent events count as a final answer — user events (e.g. corrective
-              // messages injected by CorrectionProcessor) must not set this flag
+              // Only model/agent events count as a final answer — user events (e.g. signal
+              // messages injected by SignalProcessor) must not set this flag
               if (!Constants.AUTHOR_USER.equals(event.author()) && event.finalResponse()) {
                 foundFinalAnswer.set(true);
               }
@@ -138,7 +138,7 @@ public final class BaseFlow extends SingleFlow {
                           endInvocation.get(),
                           CollectionUtils.isNotEmpty(interruptRequested),
                           foundFinalAnswer.get(),
-                          runState.consumeContinuation());
+                          runState.continuationRequested());
                   final Flowable<Event> turnCompletedEvent =
                       Flowable.just(getTurnCompletedEvent(invocationContext, outcome));
                   return outcome == TurnOutcome.CONTINUE

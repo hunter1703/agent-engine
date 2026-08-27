@@ -180,6 +180,8 @@ instructions, under `configs/`.
     methods, variables, fields. Simple isn't vague: keep the name precise, just don't reach for a
     more formal word when a plain one already says it exactly as well (e.g. `idleTimeoutCommand`,
     not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
+20. NEVER use `var`. Always declare the actual type, including for local variables, loop
+    variables, and record deconstruction patterns.
 
 
 NEVER Read `.env` file as it is extremely sensitive

@@ -2,6 +2,7 @@ package com.agentengine.agent.infra.agents;
 
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
 import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.Signal;
 import com.agentengine.util.agents.beans.config.ParallelAggregationPolicy;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
 import com.agentengine.util.common.CollectionUtils;
@@ -83,22 +84,25 @@ public final class ParallelOrchestratorAgent extends Agent {
     final Result result = executeBranches(invocationContext);
     if (result.fallbackUsed()) {
       RunUtils.getRunState(invocationContext)
-          .addViolation(
-              Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
-                  .message(ParallelOrchestrationConstants.Message.FALLBACK)
-                  .details(
-                      Map.of(
-                          ParallelOrchestrationConstants.DetailKey.STOPPING_POLICY,
-                          stoppingPolicy.name(),
-                          ParallelOrchestrationConstants.DetailKey.AGGREGATION_POLICY,
-                          aggregationPolicy.name(),
-                          ParallelOrchestrationConstants.DetailKey.REQUIRED_SUCCESSES,
-                          result.requiredSuccesses(),
-                          ParallelOrchestrationConstants.DetailKey.SUCCESS_COUNT,
-                          result.successful(),
-                          ParallelOrchestrationConstants.DetailKey.COMPLETED_COUNT,
-                          result.completed()))
-                  .build());
+          .addSignal(
+              new Signal<>(
+                  ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK,
+                  Violation.builder(ParallelOrchestrationConstants.ViolationCode.POLICY_FALLBACK)
+                      .message(ParallelOrchestrationConstants.Message.FALLBACK)
+                      .details(
+                          Map.of(
+                              ParallelOrchestrationConstants.DetailKey.STOPPING_POLICY,
+                              stoppingPolicy.name(),
+                              ParallelOrchestrationConstants.DetailKey.AGGREGATION_POLICY,
+                              aggregationPolicy.name(),
+                              ParallelOrchestrationConstants.DetailKey.REQUIRED_SUCCESSES,
+                              result.requiredSuccesses(),
+                              ParallelOrchestrationConstants.DetailKey.SUCCESS_COUNT,
+                              result.successful(),
+                              ParallelOrchestrationConstants.DetailKey.COMPLETED_COUNT,
+                              result.completed()))
+                      .build(),
+                  false));
     }
 
     final String text =

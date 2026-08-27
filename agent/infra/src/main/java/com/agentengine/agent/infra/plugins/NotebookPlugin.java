@@ -1,13 +1,10 @@
 package com.agentengine.agent.infra.plugins;
 
+import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotesRepository;
-import com.agentengine.agent.infra.utils.ResponseUtils;
-import com.agentengine.agent.infra.utils.RunState;
-import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.Violation;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;
 import com.google.adk.models.LlmRequest;
@@ -25,10 +22,9 @@ import org.slf4j.LoggerFactory;
  * com.agentengine.agent.infra.tools.notebook.CreateNoteTool}) has staged a note, so its only option
  * is to write the note's content as plain text; {@link #afterModelCallback} then persists it.
  *
- * <p>{@code continuation} decides what happens next: {@code false} ends the run the same way a
- * normal final answer would; {@code true} calls {@link RunState#requestContinuation} so the run
- * loop issues another request with tools re-enabled, letting the model write further notes or keep
- * working.
+ * <p>Once the note is persisted, {@link #afterModelCallback} always queues a signal that requires
+ * continuation, so the run loop issues another request with tools re-enabled, letting the model
+ * write further notes or keep working.
  */
 public final class NotebookPlugin extends BasePlugin {
   private static final Logger LOG = LoggerFactory.getLogger(NotebookPlugin.class);
@@ -88,37 +84,30 @@ public final class NotebookPlugin extends BasePlugin {
 
     final RunState.PendingNote pending = runState.finishNote();
     final String text = response.content().map(Content::text).map(String::trim).orElse("");
+    final String noteTitle = pending.noteTitle();
     if (StringUtils.isBlank(text)) {
-      LOG.info("Skipping create_note: no content produced for '{}'", pending.noteTitle());
+      LOG.info("Skipping create_note: no content produced for '{}'", noteTitle);
       return Maybe.empty();
     }
 
-    final Note note = new Note(pending.notebookId(), pending.noteTitle(), text);
+    final String notebookId = pending.notebookId();
+    final Note note = new Note(notebookId, noteTitle, text);
     final Note existing = notesRepository.findById(note.getId());
     note.setVersion(existing == null ? 0 : existing.getVersion());
     notesRepository.save(note);
     final boolean overwritten = existing != null;
     LOG.info(
-        "{} note notebook={} title={}",
-        overwritten ? "Overwrote" : "Saved",
-        pending.notebookId(),
-        pending.noteTitle());
-
-    final String overwriteWarning =
-        overwritten
-            ? " A note with this title already existed in this notebook — its previous content"
-                + " was replaced."
-            : "";
-    final Violation violation =
-        Violation.builder("note_continuation")
-            .message(
-                "Note '"
-                    + pending.noteTitle()
-                    + "' saved."
-                    + overwriteWarning
-                    + " Note content will not be directly visible to the user (unless the user reads the note). Continue with your task by calling tools (if needed) or giving final text answer that will be directly delivered and visible to the user. If you want to give the final answer, DO NOT copy the note content directly in the answer : the user has access to tools to read notes")
-            .build();
-    runState.requestContinuation(violation);
+        "{} note notebook={} title={}", overwritten ? "Overwrote" : "Saved", notebookId, noteTitle);
+    final String message =
+        """
+            Note '%s' saved.
+            Since a note with this title already existed in this notebook, its previous content was replaced. The content of the note isn't shown to whoever you're working for directly, they can read it, if needed, using appropriate tools.
+            Continue your task, or give a final answer; don't paste the note's content into that answer.
+            """
+            .formatted(noteTitle);
+    runState.addSignal(
+        new Signal<>(
+            "note_" + NotebookUtils.noteId(notebookId, noteTitle) + "_saved", message, true));
     return Maybe.empty();
   }
 }

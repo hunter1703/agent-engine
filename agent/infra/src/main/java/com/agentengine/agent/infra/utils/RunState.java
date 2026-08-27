@@ -2,22 +2,16 @@ package com.agentengine.agent.infra.utils;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.Violation;
 import com.google.adk.events.Event;
 import com.google.genai.types.FunctionCall;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class RunState {
 
   private final List<ToolCallSignature> lastToolCalls = new ArrayList<>();
-  private boolean continuationRequested;
   private int offTopicRetries;
   private int turnsUsed;
-  private final List<Violation> violations = new ArrayList<>();
+  private final Set<Signal<?>> signals = new HashSet<>();
   private PendingAnswer pendingAnswer;
   private PendingNote pendingNote;
 
@@ -25,7 +19,7 @@ public final class RunState {
 
   /**
    * Reconstructs only essential fields (lastToolCalls) from the session event log, not everything
-   * (violations, offTopicRetries, turnsUsed, continuationRequested, etc.)
+   * (signals, offTopicRetries, turnsUsed, etc.)
    */
   public static RunState buildFrom(final List<Event> events) {
     if (CollectionUtils.isEmpty(events)) {
@@ -55,8 +49,8 @@ public final class RunState {
     return List.copyOf(lastToolCalls);
   }
 
-  public List<Violation> violations() {
-    return List.copyOf(violations);
+  public Set<Signal<?>> signals() {
+    return Set.copyOf(signals);
   }
 
   public void updateLastToolCalls(final List<ToolCallSignature> toolCalls) {
@@ -66,25 +60,15 @@ public final class RunState {
     }
   }
 
-  public void addViolation(final Violation violation) {
-    if (violation == null) {
+  public void addSignal(final Signal<?> signal) {
+    if (signal == null) {
       return;
     }
-    violations.removeIf(existing -> Objects.equals(existing.code(), violation.code()));
-    violations.add(violation);
+    signals.add(signal);
   }
 
-  public void addViolations(final List<Violation> violations) {
-    if (violations == null) {
-      return;
-    }
-    for (final Violation violation : violations) {
-      addViolation(violation);
-    }
-  }
-
-  public void clearViolations() {
-    violations.clear();
+  public void clearSignals() {
+    signals.clear();
   }
 
   public int incrementOffTopicRetries() {
@@ -100,15 +84,12 @@ public final class RunState {
     return ++turnsUsed <= limit;
   }
 
-  public void requestContinuation(Violation violation) {
-    addViolation(violation);
-    this.continuationRequested = true;
-  }
-
-  public boolean consumeContinuation() {
-    final boolean was = continuationRequested;
-    continuationRequested = false;
-    return was;
+  /**
+   * Whether any currently-queued signal wants one more run loop iteration even if the model's
+   * response otherwise looked final.
+   */
+  public boolean continuationRequested() {
+    return signals.stream().anyMatch(Signal::requiresContinuation);
   }
 
   public void enterAnswerMode(final String saveMessage, final long minSaveTokens) {

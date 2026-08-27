@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.plugins;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.agent.infra.utils.SchemaUtils;
+import com.agentengine.agent.infra.utils.Signal;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -67,8 +68,11 @@ public final class ResponseValidationPlugin extends BasePlugin {
           callbackContext.invocationContext().agent().name(),
           violationMessage);
       RunUtils.getRunState(callbackContext.invocationContext())
-          .requestContinuation(
-              Violation.builder("response_format_validation").message(violationMessage).build());
+          .addSignal(
+              new Signal<>(
+                  "response_format_validation",
+                  Violation.builder("response_format_validation").message(violationMessage).build(),
+                  true));
     }
 
     return Maybe.empty();

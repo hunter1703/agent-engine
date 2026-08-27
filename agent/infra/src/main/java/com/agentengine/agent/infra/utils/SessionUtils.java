@@ -50,7 +50,7 @@ public final class SessionUtils {
           SessionState.buildFrom(
               context.session().events(), knowledgeService, notebookRepository, notesRepository);
       final String agentId = getAgentIdFromContext(context);
-      final ConcurrentMap<String, Object> state = state(context);
+      final Map<String, Object> state = state(context);
       if (state != null) {
         // a session can have multiple agent states because a session can be shared by multiple
         // agents (like when AgentTransfer happens)
@@ -91,7 +91,7 @@ public final class SessionUtils {
     return separatorIndex < 0 ? null : sessionId.substring(0, separatorIndex);
   }
 
-  public static ConcurrentMap<String, Object> state(final InvocationContext context) {
+  public static Map<String, Object> state(final InvocationContext context) {
     if (context == null || context.session() == null || context.session().state() == null) {
       return null;
     }
@@ -116,7 +116,7 @@ public final class SessionUtils {
   private static SessionState getSessionState(
       final InvocationContext context, boolean throwOnAbsent) {
     final String agentId = getAgentIdFromContext(context);
-    final ConcurrentMap<String, Object> state = state(context);
+    final Map<String, Object> state = state(context);
 
     SessionState sessionState = null;
     if (state != null) {
