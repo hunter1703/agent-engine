@@ -69,6 +69,7 @@ public final class ResponseValidationPlugin extends BasePlugin {
           violationMessage);
       RunUtils.getRunState(callbackContext.invocationContext())
           .addSignal(
+              callbackContext,
               new Signal<>(
                   "response_format_validation",
                   Violation.builder("response_format_validation").message(violationMessage).build(),

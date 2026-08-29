@@ -95,17 +95,16 @@ public final class NotebookPlugin extends BasePlugin {
     final Note existing = notesRepository.findById(note.getId());
     note.setVersion(existing == null ? 0 : existing.getVersion());
     notesRepository.save(note);
-    final boolean overwritten = existing != null;
-    LOG.info(
-        "{} note notebook={} title={}", overwritten ? "Overwrote" : "Saved", notebookId, noteTitle);
+    LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """
-            Note '%s' saved.
-            Since a note with this title already existed in this notebook, its previous content was replaced. The content of the note isn't shown to whoever you're working for directly, they can read it, if needed, using appropriate tools.
+            Note '%s' created or updated.
+            The content of the note isn't shown to whoever you're working for directly, they can read it, if needed, using appropriate tools.
             Continue your task, or give a final answer; don't paste the note's content into that answer.
             """
             .formatted(noteTitle);
     runState.addSignal(
+        callbackContext,
         new Signal<>(
             "note_" + NotebookUtils.noteId(notebookId, noteTitle) + "_saved", message, true));
     return Maybe.empty();

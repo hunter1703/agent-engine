@@ -49,6 +49,7 @@ public final class PlanningPlugin extends BasePlugin {
       return Maybe.empty();
     }
     runState.addSignal(
+        callbackContext,
         new Signal<>(
             "final_answer_validation",
             Violation.builder("final_answer_validation").message(planViolation).build(),

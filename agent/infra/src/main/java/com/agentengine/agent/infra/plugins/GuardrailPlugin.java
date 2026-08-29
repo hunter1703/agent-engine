@@ -54,7 +54,7 @@ public final class GuardrailPlugin extends BasePlugin {
     final GuardrailDecision decision =
         GuardrailUtils.evaluate(
             new GuardrailContext(text, invocationContext), guardrails, policy.errorMode());
-    return handleInputDecision(invocationContext, decision);
+    return handleInputDecision(callbackContext, decision);
   }
 
   @Override
@@ -79,23 +79,24 @@ public final class GuardrailPlugin extends BasePlugin {
             new GuardrailContext(content.text(), invocationContext),
             guardrails,
             policy.errorMode());
-    return handleOutputDecision(invocationContext, llmResponse, content, decision);
+    return handleOutputDecision(callbackContext, llmResponse, content, decision);
   }
 
   private static Maybe<LlmResponse> handleInputDecision(
-      final InvocationContext invocationContext, final GuardrailDecision decision) {
+      final CallbackContext callbackContext, final GuardrailDecision decision) {
     if (decision.action() == GuardrailAction.ALLOW) {
       return Maybe.empty();
     }
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.WARN) {
       RunUtils.getRunState(invocationContext)
-          .addSignal(new Signal<>(violation.id(), violation, false));
+          .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
       return Maybe.empty();
     }
 
     RunUtils.getRunState(invocationContext)
-        .addSignal(new Signal<>(violation.id(), violation, false));
+        .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
     if (decision.action() == GuardrailAction.ESCALATE) {
       return Maybe.just(ResponseUtils.requestHumanToDecide(decision.message()));
     }
@@ -103,23 +104,26 @@ public final class GuardrailPlugin extends BasePlugin {
   }
 
   private static Maybe<LlmResponse> handleOutputDecision(
-      final InvocationContext invocationContext,
+      final CallbackContext callbackContext,
       final LlmResponse response,
       final Content content,
       final GuardrailDecision decision) {
     if (decision.action() == GuardrailAction.ALLOW) {
       return Maybe.empty();
     }
+    final InvocationContext invocationContext = callbackContext.invocationContext();
     final Violation violation = GuardrailUtils.buildViolation(invocationContext, decision);
     if (decision.action() == GuardrailAction.WARN) {
       if (violation != null) {
         RunUtils.getRunState(invocationContext)
-            .addSignal(new Signal<>(violation.id(), violation, requiresRegeneration(decision)));
+            .addSignal(
+                callbackContext,
+                new Signal<>(violation.id(), violation, requiresRegeneration(decision)));
       }
       return Maybe.empty();
     } else if (violation != null) {
       RunUtils.getRunState(invocationContext)
-          .addSignal(new Signal<>(violation.id(), violation, false));
+          .addSignal(callbackContext, new Signal<>(violation.id(), violation, false));
     }
 
     if (decision.action() == GuardrailAction.ESCALATE) {

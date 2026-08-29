@@ -28,6 +28,22 @@ public final class EventUtils {
 
   public static final String VIOLATION_KEY = State.TEMP_PREFIX + SessionEventUtils.VIOLATION;
 
+  /**
+   * Marks the event carrying this stateDelta key as the one a {@link Signal} was raised against —
+   * written by {@code RunState.addSignal(CallbackContext, Signal)} onto whatever event the
+   * triggering callback's context is tied to. Paired with {@link #SIGNAL_DELIVERED_KEY} so {@code
+   * RunState.buildFrom} can tell, purely from persisted history, which raised signals never made it
+   * into a request and need to be re-queued.
+   */
+  public static final String SIGNAL_RAISED_KEY = State.TEMP_PREFIX + "raised_signals";
+
+  /**
+   * Marks the event carrying this stateDelta key as the actual delivery of one or more signals —
+   * written by {@code RunState.clearSignals(List)} onto the event(s) {@code SignalProcessor} just
+   * built to carry them. See {@link #SIGNAL_RAISED_KEY}.
+   */
+  public static final String SIGNAL_DELIVERED_KEY = State.TEMP_PREFIX + "delivered_signal_ids";
+
   private EventUtils() {}
 
   // not adding condition on event.finishReason() as ADK agentic loop ignores this

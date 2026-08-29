@@ -97,15 +97,11 @@ public final class AGUIToolCallMapper {
     final FunctionCall originalFunctionCall =
         Objects.requireNonNull(CollectionUtils.getValueFromMap(args, ORIGINAL_FUNCTION_CALL));
     final String functionName = originalFunctionCall.name().orElse(null);
-    // paused by a tool whose interrupt is not supposed to be answered by the user, so suppress that
-    // event
+    // The tool's own re-invocation on resume already returns the confirmed payload as its
+    // genuine FunctionResponse (AbstractAgentTool.getResultIfCompleted), which mapToolResponse
+    // delivers normally — synthesizing a result here too would just duplicate it.
     if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
-      // Only a *confirmed* pause means the child run actually completed and carries a real
-      // result; an unconfirmed round-trip just means the internal tool is still waiting, so the
-      // tool call started in mapToolCall() must stay open rather than being resolved here.
-      return toolConfirmation != null && toolConfirmation.confirmed()
-          ? mapInternalAgentResult(originalFunctionCall, toolConfirmation)
-          : Flowable.empty();
+      return Flowable.empty();
     }
     final boolean accepted = toolConfirmation != null && toolConfirmation.confirmed();
     @SuppressWarnings("unchecked")
@@ -157,28 +153,5 @@ public final class AGUIToolCallMapper {
         interruptId,
         originalToolCallId);
     return Flowable.just(event);
-  }
-
-  /**
-   * Resolves the tool call opened for internal pause tools (like {@code await_agent}) in {@link
-   * #mapToolCall} with the child run's actual result, instead of letting it dangle forever: the
-   * outer confirmation machinery that carries this result is otherwise entirely suppressed from the
-   * client (see above), so without this the client never learns the awaited tool call finished.
-   */
-  private Flowable<Event> mapInternalAgentResult(
-      final FunctionCall originalAwaitAgentCall, final ToolConfirmation toolConfirmation) {
-    final String callId = originalAwaitAgentCall.id().orElseThrow();
-    final String contentResult = JsonUtils.toJson(toolConfirmation.payload());
-    final ToolCallResultEvent result =
-        new ToolCallResultEvent(
-            state.nextToolResultMessageId(),
-            callId,
-            contentResult,
-            Role.TOOL,
-            state.timestamp(),
-            null);
-    LOG.debug(
-        "Generated output event - eventType=ToolCallResultEvent (await_agent), callId={}", callId);
-    return Flowable.just(result);
   }
 }
