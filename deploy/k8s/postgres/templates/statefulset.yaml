@@ -36,13 +36,13 @@ spec:
               containerPort: 5432
           startupProbe:
             exec:
-              command: ["pg_isready"]
+              command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres"]
             periodSeconds: {{ $probes.startup.periodSeconds }}
             failureThreshold: {{ $probes.startup.failureThreshold }}
             timeoutSeconds: {{ $probes.startup.timeoutSeconds }}
           readinessProbe:
             exec:
-              command: ["pg_isready"]
+              command: ["pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "postgres"]
             periodSeconds: {{ $probes.readiness.periodSeconds }}
             failureThreshold: {{ $probes.readiness.failureThreshold }}
             timeoutSeconds: {{ $probes.readiness.timeoutSeconds }}
