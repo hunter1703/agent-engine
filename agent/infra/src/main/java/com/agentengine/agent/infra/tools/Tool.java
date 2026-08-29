@@ -209,6 +209,12 @@ public abstract class Tool extends BaseTool {
           continue;
         }
       } else if (argValue instanceof Map<?, ?>) {
+        if (Utils.isSimpleType(binding.rawType())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "The parameter '%s' must be a plain %s, but a JSON object was given.",
+                  binding.name(), binding.rawType().getSimpleName()));
+        }
         arguments[binding.index()] = convertMapValue(argValue, binding.javaType());
         continue;
       }

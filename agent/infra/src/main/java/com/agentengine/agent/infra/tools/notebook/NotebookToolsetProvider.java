@@ -27,7 +27,8 @@ public final class NotebookToolsetProvider extends AbstractToolsetProvider {
         List.of(
             new ToolDefinition(
                 CreateNotebookTool.DESCRIPTOR, () -> new CreateNotebookTool(notebookRepository)),
-            new ToolDefinition(CreateNoteTool.DESCRIPTOR, CreateNoteTool::new),
+            new ToolDefinition(
+                CreateNoteTool.DESCRIPTOR, () -> new CreateNoteTool(notesRepository)),
             new ToolDefinition(ReadNoteTool.DESCRIPTOR, () -> new ReadNoteTool(notesRepository)),
             new ToolDefinition(
                 DeleteNoteTool.DESCRIPTOR, () -> new DeleteNoteTool(notesRepository)),

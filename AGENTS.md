@@ -160,11 +160,19 @@ instructions, under `configs/`.
     (e.g. a builder, a `Map` accumulator threaded through a loop where allocating a fresh
     collection per call would be wasteful).
 13. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. Never
-    write changelog-style comments that explain what changed or why code was removed/simplified
-    (e.g. "X is now unconditional, so the old check isn't needed") — that narrates the diff, not
-    the resulting code; a reader with no session context gets no value from it once the change is
-    old. State that reasoning in chat instead.
+14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. NEVER
+    treat a comment as a log of development — it must document the code's current, standalone
+    behavior for a reader who has no idea what changed, not narrate the change itself. This rules
+    out changelog-style comments about what changed or why code was removed/simplified (e.g. "X is
+    now unconditional, so the old check isn't needed"), and it equally rules out a comment that
+    justifies an absence by contrasting it with history the reader never saw (e.g. "Pure
+    construction, no validation — a caller must run validate() itself" reads as answering "didn't
+    this used to validate?", a question only someone who watched it change would think to ask). A
+    reader meeting the code for the first time isn't surprised by what it doesn't do unless the
+    comment itself plants that expectation — describe what the method does and, if genuinely
+    non-obvious, what its caller is responsible for, without referencing a prior state. Development
+    reasoning belongs in chat or the PR description, never in the comment, and stops being relevant
+    to anyone the moment the change is no longer new.
 15. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
     Before introducing any hack — overloading one mechanism to serve a different purpose (e.g. a
     reserved/magic key, a sentinel value, special-casing that leaks into every caller) because the

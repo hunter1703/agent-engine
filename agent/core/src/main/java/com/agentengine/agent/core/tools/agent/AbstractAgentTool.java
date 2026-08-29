@@ -1,18 +1,20 @@
 package com.agentengine.agent.core.tools.agent;
 
 import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.model.ResourceGrants;
 import com.agentengine.agent.core.session.SessionActor;
 import com.agentengine.agent.core.session.commands.SelfCommand.AwaitChildCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.events.RunResult;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.Violation;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
@@ -53,18 +55,17 @@ public class AbstractAgentTool extends Tool {
     return StringUtils.isNotBlank(goal) ? "Goal: " + goal + "\n\nMessage: " + message : message;
   }
 
-  protected static ResourceGrants buildResourceGrants(
-      final List<String> knowledgeIds,
-      final List<String> knowledgeSources,
-      final List<NotebookGrants.Entry> notebookGrantEntries)
-      throws IllegalArgumentException {
-    final NotebookGrants notebookGrants = new NotebookGrants(notebookGrantEntries);
-    if (CollectionUtils.isEmpty(knowledgeIds)
-        && CollectionUtils.isEmpty(knowledgeSources)
-        && notebookGrants.grants().isEmpty()) {
+  protected static ToolOutput<Map<String, Object>> validateGrants(
+      final List<NotebookGrants.Entry> notebookGrantEntries,
+      final NotebookRepository notebookRepository,
+      final NotesRepository notesRepository) {
+    final List<Violation> violations =
+        AgentUtils.validate(notebookGrantEntries, notebookRepository, notesRepository);
+    if (violations.isEmpty()) {
       return null;
     }
-    return new ResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
+    return ToolOutput.direct(
+        Map.of("error", String.join(" ", violations.stream().map(Violation::message).toList())));
   }
 
   protected ToolOutput<Map<String, Object>> awaitChild(

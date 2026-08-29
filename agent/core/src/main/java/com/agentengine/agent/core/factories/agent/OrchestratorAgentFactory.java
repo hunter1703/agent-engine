@@ -11,6 +11,8 @@ import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.agent.infra.factories.agent.builders.BaseLlmAgentBuilder;
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
 import com.agentengine.agent.infra.factories.model.ModelProvider;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.tools.ToolFactory;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
@@ -32,6 +34,8 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
   private final AgentService agentService;
   protected final Instance<AgentProvider> agentProviderInstance;
   private final ActorSystemProvider actorSystemProvider;
+  private final NotebookRepository notebookRepository;
+  private final NotesRepository notesRepository;
 
   @Inject
   public OrchestratorAgentFactory(
@@ -39,11 +43,15 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
       final ToolFactory toolFactory,
       @WithCaching final Instance<AgentProvider> agentProviderInstance,
       final AgentService agentService,
-      final ActorSystemProvider actorSystemProvider) {
+      final ActorSystemProvider actorSystemProvider,
+      final NotebookRepository notebookRepository,
+      final NotesRepository notesRepository) {
     super(modelProvider, toolFactory);
     this.agentService = agentService;
     this.agentProviderInstance = agentProviderInstance;
     this.actorSystemProvider = actorSystemProvider;
+    this.notebookRepository = notebookRepository;
+    this.notesRepository = notesRepository;
   }
 
   @Override
@@ -103,8 +111,9 @@ public class OrchestratorAgentFactory extends AbstractAgentFactory<OrchestratorA
     final BaseLlmAgentBuilder builder = createLlmAgentBuilder(config);
     builder.appendTools(
         List.of(
-            new SpawnAgentTool(actorSystemProvider, subAgentIds),
-            new SendMessageTool(actorSystemProvider),
+            new SpawnAgentTool(
+                actorSystemProvider, subAgentIds, notebookRepository, notesRepository),
+            new SendMessageTool(actorSystemProvider, notebookRepository, notesRepository),
             new AwaitAgentTool(actorSystemProvider)));
 
     final List<? extends Agent> transferableSubAgents =

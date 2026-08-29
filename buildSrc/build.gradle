@@ -23,6 +23,11 @@ dependencies {
     // can resolve it when running palantir-java-format (declared 'runtime' scope in its POM,
     // so Spotless's dependency resolver does not pull it in automatically).
     implementation 'org.functionaljava:functionaljava:5.0'
+    // Same issue as functionaljava above, for google-java-format instead of palantir-java-format:
+    // it depends on guava at 'runtime' scope in its own POM, which Spotless's FeatureClassLoader
+    // does not resolve automatically, so google-java-format fails with NoClassDefFoundError on
+    // Guava classes unless guava is added here explicitly.
+    implementation libs.guava
 }
 
 gradlePlugin {

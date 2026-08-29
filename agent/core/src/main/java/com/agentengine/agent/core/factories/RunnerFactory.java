@@ -145,7 +145,7 @@ public class RunnerFactory {
 
     final List<BasePlugin> plugins =
         List.of(
-            new InitPlugin(knowledgeService, notebookRepository, notesRepository),
+            new InitPlugin(knowledgeService, notebookRepository),
             new GuardrailPlugin(policies),
             new ContextManagementPlugin(contextManagers),
             new NotebookPlugin(notesRepository, agentsWithNotebook),

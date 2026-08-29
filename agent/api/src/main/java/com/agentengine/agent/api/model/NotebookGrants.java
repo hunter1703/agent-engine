@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public record NotebookGrants(Map<String, Permission> grants) {
@@ -41,32 +42,9 @@ public record NotebookGrants(Map<String, Permission> grants) {
   private static Map<String, Permission> resolve(final List<Entry> entries) {
     final Map<String, Permission> resolved = new HashMap<>();
     for (final Entry entry : CollectionUtils.nullSafeList(entries)) {
-      final Permission permission = Permission.valueOfOrDefault(entry.getPermission());
-      if (permission == Permission.UNKNOWN) {
-        throw new IllegalArgumentException(
-            "Grant for notebook '"
-                + entry.getNotebookId()
-                + "' has invalid permission: "
-                + entry.getPermission());
-      }
-      final boolean hasNoteTitle = StringUtils.isNotBlank(entry.getNoteTitle());
-      if (permission == Permission.CREATE && hasNoteTitle) {
-        throw new IllegalArgumentException(
-            "Grant for notebook '"
-                + entry.getNotebookId()
-                + "' assigns CREATE with note_title set — CREATE applies to the whole "
-                + "notebook, omit note_title.");
-      }
-      if (permission != Permission.CREATE && !hasNoteTitle) {
-        throw new IllegalArgumentException(
-            "Grant for notebook '"
-                + entry.getNotebookId()
-                + "' assigns "
-                + permission
-                + " without a note_title — READ/WRITE require naming the note.");
-      }
+      final Permission permission = Entry.parsePermission(entry.getPermission());
       final String key =
-          hasNoteTitle
+          StringUtils.isNotBlank(entry.getNoteTitle())
               ? noteGrantKey(entry.getNotebookId(), entry.getNoteTitle())
               : entry.getNotebookId();
       resolved.put(key, permission);
@@ -84,17 +62,37 @@ public record NotebookGrants(Map<String, Permission> grants) {
 
     @JsonProperty("note_title")
     @ToolSchema(
-        description = "Required when permission is READ or WRITE. Omit when permission is CREATE.",
+        description =
+            "Required when permission is read_note or edit_note. Omit when permission is "
+                + "create_note.",
         optional = true)
     private String noteTitle;
 
     @ToolSchema(
         description =
-            "CREATE grants the ability to add new notes anywhere in the notebook. READ/WRITE "
-                + "grant access to the one note named by note_title.")
+            "A permission always targets an existing asset. create_note targets the notebook "
+                + "itself (which must already exist) and grants the ability to add a note under a "
+                + "title that doesn't exist there yet — omit note_title, since create_note never "
+                + "targets a specific note. read_note and edit_note each target one specific, "
+                + "already-existing note named by note_title — read_note lets the grantee read it, "
+                + "edit_note lets the grantee overwrite or delete it; neither can act on a title "
+                + "that doesn't exist yet, that always needs create_note on the notebook instead.",
+        enums = {"create_note", "read_note", "edit_note"})
     private String permission;
 
     public Entry() {}
+
+    public static Permission parsePermission(final String value) {
+      if (value == null) {
+        return Permission.UNKNOWN;
+      }
+      return switch (value.trim().toLowerCase(Locale.ROOT)) {
+        case "create_note" -> Permission.CREATE;
+        case "read_note" -> Permission.READ;
+        case "edit_note" -> Permission.WRITE;
+        default -> Permission.UNKNOWN;
+      };
+    }
 
     public String getNotebookId() {
       return notebookId;

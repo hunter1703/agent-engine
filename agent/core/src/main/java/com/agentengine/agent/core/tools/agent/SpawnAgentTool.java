@@ -8,6 +8,9 @@ import com.agentengine.agent.core.session.SessionActorFactory;
 import com.agentengine.agent.core.session.StartChildResult;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.SelfCommand.StartChildCommand;
+import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.utils.AgentUtils;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.Constants;
@@ -47,11 +50,18 @@ public final class SpawnAgentTool extends AbstractAgentTool {
           Map.of());
 
   private final List<String> subAgentIds;
+  private final NotebookRepository notebookRepository;
+  private final NotesRepository notesRepository;
 
   public SpawnAgentTool(
-      final ActorSystemProvider actorSystemProvider, final List<String> subAgentIds) {
+      final ActorSystemProvider actorSystemProvider,
+      final List<String> subAgentIds,
+      final NotebookRepository notebookRepository,
+      final NotesRepository notesRepository) {
     super(DESCRIPTOR, actorSystemProvider);
     this.subAgentIds = List.copyOf(subAgentIds);
+    this.notebookRepository = notebookRepository;
+    this.notesRepository = notesRepository;
   }
 
   @Override
@@ -164,11 +174,12 @@ public final class SpawnAgentTool extends AbstractAgentTool {
     message = buildFullMessage(goal, message);
 
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
-    ResourceGrants resourceGrants;
-    try {
-      resourceGrants = buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
-    } catch (IllegalArgumentException ex) {
-      return ToolOutput.direct(Map.of("error", "Failed to spawn agent: " + ex.getMessage()));
+    final ResourceGrants resourceGrants =
+        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
+    final ToolOutput<Map<String, Object>> violationOutput =
+        validateGrants(notebookGrants, notebookRepository, notesRepository);
+    if (violationOutput != null) {
+      return violationOutput;
     }
     final UserMessage userMessage = new UserMessage(parts, resourceGrants);
 

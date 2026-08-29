@@ -2,9 +2,7 @@ package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.utils.NotebookUtils;
-import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
 import com.agentengine.agent.infra.tools.knowledge.SearchKnowledgeTool;
@@ -15,13 +13,11 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.Permission;
-import com.agentengine.util.common.query.*;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
 import com.google.genai.types.FunctionResponse;
 import com.google.genai.types.Part;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -33,22 +29,19 @@ import java.util.Set;
 public final class SessionState {
 
   private final KnowledgeService knowledgeService;
-  private final NotesRepository notesRepository;
   private RunState runState;
   private final Set<Reminder> reminders = new LinkedHashSet<>();
   private Plan plan;
 
-  public SessionState(KnowledgeService knowledgeService, NotesRepository notesRepository) {
+  public SessionState(KnowledgeService knowledgeService) {
     this.knowledgeService = knowledgeService;
-    this.notesRepository = notesRepository;
   }
 
   public static SessionState buildFrom(
       final List<Event> events,
       final KnowledgeService knowledgeService,
-      final NotebookRepository notebookRepository,
-      final NotesRepository notesRepository) {
-    final SessionState state = new SessionState(knowledgeService, notesRepository);
+      final NotebookRepository notebookRepository) {
+    final SessionState state = new SessionState(knowledgeService);
     state.setRunState(RunState.buildFrom(events));
     state.updatePlan(PlanningUtils.buildFrom(events));
     state.addRemindersFrom(events);
@@ -83,69 +76,38 @@ public final class SessionState {
       final Permission permission = entry.getValue();
 
       if (NotebookUtils.isNoteId(key)) {
-        String notebookId = NotebookUtils.notebookIdOf(key);
-        String noteTitle = NotebookUtils.noteTitleOf(key);
-
-        NotebookSummary summary = summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
+        final String notebookId = NotebookUtils.notebookIdOf(key);
+        final String noteTitle = NotebookUtils.noteTitleOf(key);
+        final NotebookSummary summary =
+            summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
         if (permission == Permission.WRITE) {
-          summary.writePermissionedNotes.add(noteTitle);
+          summary.editPermissionedNotes.add(noteTitle);
         } else if (permission == Permission.READ) {
           summary.readPermissionedNotes.add(noteTitle);
         }
-      } else {
-        NotebookSummary summary = summaries.computeIfAbsent(key, k -> new NotebookSummary());
-        if (permission == Permission.CREATE) {
-          summary.canCreate = true;
-        } else if (permission == Permission.READ) {
-          summary.canReadNotebook = true;
-        }
-      }
-    }
-
-    final List<String> createPermissionedNotebookIds = new ArrayList<>();
-    for (Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
-      if (entry.getValue().canCreate) {
-        createPermissionedNotebookIds.add(entry.getKey());
-      }
-    }
-
-    if (CollectionUtils.isNotEmpty(createPermissionedNotebookIds)) {
-      final Filter filter = Filters.in(Note.FIELD_NOTEBOOK_ID, createPermissionedNotebookIds);
-      final Query query = new Query().withFilter(filter).withPage(new Page(0, 1000));
-      final PaginatedResult<Note> notesResult = notesRepository.findByQuery(query);
-      for (Note note : notesResult.getItems()) {
-        summaries
-            .computeIfAbsent(note.getNotebookId(), _ -> new NotebookSummary())
-            .writePermissionedNotes
-            .add(note.getNoteTitle());
+      } else if (permission == Permission.CREATE) {
+        summaries.computeIfAbsent(key, k -> new NotebookSummary()).canCreate = true;
       }
     }
 
     final StringBuilder sb = new StringBuilder("Notebook Permissions:");
-    for (Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
-      String nb = entry.getKey();
-      NotebookSummary summary = entry.getValue();
-      sb.append("\n- Notebook '").append(nb).append("': ");
+    for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
+      final String notebookId = entry.getKey();
+      final NotebookSummary summary = entry.getValue();
+      sb.append("\n- Notebook '").append(notebookId).append("': ");
+      sb.append(
+          summary.canCreate
+              ? "you have create_note access (may add a note under any title that doesn't "
+                  + "exist there yet)."
+              : "you do not have create_note access.");
 
-      if (summary.canCreate) {
-        sb.append("You have permission to CREATE new notes.");
-      } else {
-        sb.append("You CANNOT CREATE new notes.");
+      if (!summary.editPermissionedNotes.isEmpty()) {
+        sb.append("\n  - edit_note access: ")
+            .append(String.join(", ", summary.editPermissionedNotes));
       }
-
-      if (summary.canReadNotebook) {
-        sb.append(" You have general READ access to the notebook.");
-      }
-
-      if (!summary.writePermissionedNotes.isEmpty() || !summary.readPermissionedNotes.isEmpty()) {
-        if (!summary.writePermissionedNotes.isEmpty()) {
-          sb.append("\n  - READ/WRITE notes: ")
-              .append(String.join(", ", summary.writePermissionedNotes));
-        }
-        if (!summary.readPermissionedNotes.isEmpty()) {
-          sb.append("\n  - READ ONLY notes: ")
-              .append(String.join(", ", summary.readPermissionedNotes));
-        }
+      if (!summary.readPermissionedNotes.isEmpty()) {
+        sb.append("\n  - read_note access: ")
+            .append(String.join(", ", summary.readPermissionedNotes));
       }
     }
 
@@ -330,8 +292,7 @@ public final class SessionState {
 
   private static class NotebookSummary {
     boolean canCreate = false;
-    boolean canReadNotebook = false;
     final Set<String> readPermissionedNotes = new LinkedHashSet<>();
-    final Set<String> writePermissionedNotes = new LinkedHashSet<>();
+    final Set<String> editPermissionedNotes = new LinkedHashSet<>();
   }
 }

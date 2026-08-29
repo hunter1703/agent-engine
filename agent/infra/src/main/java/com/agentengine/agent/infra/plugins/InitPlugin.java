@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.plugins;
 
 import com.agentengine.agent.infra.notebook.NotebookRepository;
-import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.ExtendedRunConfig;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.knowledge.api.services.KnowledgeService;
@@ -16,16 +15,11 @@ public final class InitPlugin extends BasePlugin {
 
   private final KnowledgeService knowledgeService;
   private final NotebookRepository notebookRepository;
-  private final NotesRepository notesRepository;
 
-  public InitPlugin(
-      KnowledgeService knowledgeService,
-      NotebookRepository notebookRepository,
-      NotesRepository notesRepository) {
+  public InitPlugin(KnowledgeService knowledgeService, NotebookRepository notebookRepository) {
     super("init_plugin");
     this.knowledgeService = knowledgeService;
     this.notebookRepository = notebookRepository;
-    this.notesRepository = notesRepository;
   }
 
   @Override
@@ -40,7 +34,7 @@ public final class InitPlugin extends BasePlugin {
             ? extendedRunConfig
             : null;
     SessionUtils.getOrInitSessionState(
-        invocationContext, knowledgeService, notebookRepository, notesRepository, runConfig);
+        invocationContext, knowledgeService, notebookRepository, runConfig);
     return Maybe.empty();
   }
 }

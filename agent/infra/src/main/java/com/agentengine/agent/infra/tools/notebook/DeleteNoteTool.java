@@ -14,8 +14,8 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTE,
-          "Permanently deletes a note from a notebook you have write access to (or one you "
-              + "created). "
+          "Permanently deletes a note you were granted edit_note access to, or one in a notebook "
+              + "you created. "
               + "Returns: { status: \"success\" } or { error }.",
           Map.of());
 
@@ -42,7 +42,8 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
     if (!owner && !NotebookUtils.canWrite(grants, notebookId, noteTitle)) {
       return ToolOutput.direct(
           Map.of(
-              "error", "Not granted write access to note '" + noteTitle + "' in this notebook."));
+              "error",
+              "Not granted edit_note access to note '" + noteTitle + "' in this notebook."));
     }
     notesRepository.deleteById(NotebookUtils.noteId(notebookId, noteTitle));
     return ToolOutput.direct(Map.of("status", "success"));
