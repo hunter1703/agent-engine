@@ -1,6 +1,5 @@
 package com.agentengine.util.agents.agui;
 
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.FileDetails;
@@ -80,8 +79,11 @@ public final class AGUITextMapper {
     return endReasoningMessageIfNeeded().concatWith(endReasoningIfNeeded());
   }
 
-  private Role currentRole() {
-    return Constants.AUTHOR_USER.equals(state.currentAuthor()) ? Role.USER : Role.ASSISTANT;
+  // The current event's own content role, not who sent it — content one agent addresses to
+  // another (e.g. a spawn/send_message turn) carries content role "user" while its author is the
+  // sending agent's id, not the literal string "user".
+  private Role resolveRole() {
+    return Role.USER.value().equals(state.currentRole()) ? Role.USER : Role.ASSISTANT;
   }
 
   private Flowable<Event> startReasoningIfNeeded() {
@@ -166,7 +168,7 @@ public final class AGUITextMapper {
     }
     final TextMessageStartEvent start =
         new TextMessageStartEvent(
-            state.startNextTextMessage(), currentRole(), state.timestamp(), null);
+            state.startNextTextMessage(), resolveRole(), state.timestamp(), null);
     LOG.debug(
         "Generated output event - eventType=TextMessageStartEvent, msgId={}", start.messageId());
     return Flowable.just(start);
@@ -195,7 +197,7 @@ public final class AGUITextMapper {
     }
     final TextMessageChunkEvent chunk =
         new TextMessageChunkEvent(
-            state.currentTextMessageId(), currentRole(), text, state.timestamp(), null);
+            state.currentTextMessageId(), resolveRole(), text, state.timestamp(), null);
     LOG.debug(
         "Generated output event - eventType=TextMessageChunkEvent, msgId={}", chunk.messageId());
     return Flowable.just(chunk);
@@ -223,7 +225,7 @@ public final class AGUITextMapper {
 
     final String messageId = state.currentTextMessageId();
     final String finalAnswer = state.completeTextMessage();
-    final Role role = currentRole();
+    final Role role = resolveRole();
     state.resetTextMessage();
 
     Flowable<Event> flowable = Flowable.empty();

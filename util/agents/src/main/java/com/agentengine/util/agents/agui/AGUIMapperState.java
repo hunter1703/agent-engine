@@ -29,6 +29,7 @@ public final class AGUIMapperState {
   private long currentSourceTimestamp;
   private String currentSourceEventId;
   private String currentAuthor;
+  private String currentRole;
 
   public AGUIMapperState(final String sessionId, final String agentId) {
     this.sessionId = sessionId;
@@ -44,6 +45,7 @@ public final class AGUIMapperState {
     currentSourceEventId = event.getId();
     currentAuthor = event.getAuthor();
     final Content content = event.getContent();
+    currentRole = content != null ? content.role().orElse(null) : null;
     if (content != null) {
       content
           .parts()
@@ -200,6 +202,10 @@ public final class AGUIMapperState {
 
   public String currentAuthor() {
     return currentAuthor != null ? currentAuthor : agentId;
+  }
+
+  public String currentRole() {
+    return currentRole;
   }
 
   public FunctionCall getFunctionCall(final String callId) {

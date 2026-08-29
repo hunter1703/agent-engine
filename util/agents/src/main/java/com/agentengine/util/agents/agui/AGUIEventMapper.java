@@ -1,6 +1,5 @@
 package com.agentengine.util.agents.agui;
 
-import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.*;
@@ -107,15 +106,13 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
       }
     }
 
-    // Emit attachment events for user messages that carried file metadata.
-    // Attachments are stored in event metadata (keyed by SessionEventUtils.ATTACHMENTS)
-    // rather than as fileData Parts, so they survive the single-text LLM message constraint.
-    if (Constants.AUTHOR_USER.equals(event.getAuthor())) {
-      final List<FileDetails> attachments =
-          CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
-      for (final FileDetails fileDetails : CollectionUtils.nullSafeList(attachments)) {
-        flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
-      }
+    // Emit attachment events for any event that carried file metadata, regardless of author.
+    // Attachments are stored in event metadata (keyed by SessionEventUtils.ATTACHMENTS) rather
+    // than as fileData Parts, so they survive the single-text LLM message constraint.
+    final List<FileDetails> attachments =
+        CollectionUtils.getValueFromMap(event.getMetadata(), SessionEventUtils.ATTACHMENTS);
+    for (final FileDetails fileDetails : CollectionUtils.nullSafeList(attachments)) {
+      flowable = flowable.concatWith(textMapper.mapAttachment(fileDetails));
     }
 
     return flowable.concatWith(finishStepIfNeeded(event));
