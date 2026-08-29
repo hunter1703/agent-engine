@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.plugins;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.utils.RunUtils;
 import com.agentengine.agent.infra.utils.SchemaUtils;
-import com.agentengine.agent.infra.utils.Signal;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;

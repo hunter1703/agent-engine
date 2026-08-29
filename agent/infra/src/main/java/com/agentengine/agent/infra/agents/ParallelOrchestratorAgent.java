@@ -2,7 +2,7 @@ package com.agentengine.agent.infra.agents;
 
 import com.agentengine.agent.infra.factories.agent.builders.ParallelOrchestratorAgentBuilder;
 import com.agentengine.agent.infra.utils.RunUtils;
-import com.agentengine.agent.infra.utils.Signal;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.config.ParallelAggregationPolicy;
 import com.agentengine.util.agents.beans.config.ParallelStoppingPolicy;
 import com.agentengine.util.common.CollectionUtils;

@@ -33,7 +33,7 @@ public class AbstractAgentTool extends Tool {
           + "enough that you (or a later, unrelated turn) can tell its purpose at a glance without "
           + "rereading the message. Do not restate or paraphrase the message itself here — that "
           + "belongs in 'message'. Do not leave it vague either (e.g. 'chat', 'follow-up', 'task') "
-          + "— name the concrete objective or question. Required.";
+          + "— name the concrete objective or question.";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAgentTool.class);
   protected final ActorSystemProvider actorSystemProvider;

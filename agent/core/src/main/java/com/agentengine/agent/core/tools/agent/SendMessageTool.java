@@ -78,7 +78,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                       + Constants.ToolNames.SEARCH_KNOWLEDGE
                       + ". Not knowledge sources — those go in "
                       + Constants.ToolArgs.KNOWLEDGE_SOURCES
-                      + " instead. Optional.",
+                      + " instead.",
               optional = true)
           final List<String> knowledgeIds,
       @ToolSchema(
@@ -90,7 +90,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                       + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
                       + ". Not knowledge ids — those go in "
                       + Constants.ToolArgs.KNOWLEDGE_IDS
-                      + " instead. Optional.",
+                      + " instead.",
               optional = true)
           final List<String> knowledgeSources,
       @ToolSchema(
@@ -99,7 +99,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                   "Notebook/note access to grant the child, on top of whatever it already has "
                       + "from earlier calls. Omit anything already granted that isn't changing; "
                       + "repeat an entry only to change its permission (e.g. upgrade a note from "
-                      + "READ to WRITE). Optional.",
+                      + "READ to WRITE).",
               optional = true)
           final List<NotebookGrants.Entry> notebookGrants) {
 

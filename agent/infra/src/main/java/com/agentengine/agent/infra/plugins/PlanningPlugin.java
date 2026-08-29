@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.plugins;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.planning.PlanningValidator;
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Violation;
 import com.google.adk.agents.CallbackContext;

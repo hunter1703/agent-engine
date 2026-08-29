@@ -1,4 +1,4 @@
-package com.agentengine.agent.infra.utils;
+package com.agentengine.util.agents.beans;
 
 import java.util.Objects;
 

@@ -4,6 +4,7 @@ import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.agents.CallbackContext;
 import com.google.adk.agents.InvocationContext;

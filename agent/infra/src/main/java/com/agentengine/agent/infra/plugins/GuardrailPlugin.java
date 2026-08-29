@@ -6,6 +6,7 @@ import com.agentengine.agent.infra.guardrails.GuardrailContext;
 import com.agentengine.agent.infra.guardrails.GuardrailDecision;
 import com.agentengine.agent.infra.guardrails.GuardrailPolicyFactory;
 import com.agentengine.agent.infra.utils.*;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.agents.beans.config.GuardrailAction;
 import com.agentengine.util.agents.beans.config.GuardrailStage;
 import com.agentengine.util.common.CollectionUtils;

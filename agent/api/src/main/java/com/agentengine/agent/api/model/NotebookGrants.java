@@ -6,6 +6,7 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.annotations.ToolSchema;
 import com.agentengine.util.common.beans.Permission;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,9 +78,11 @@ public record NotebookGrants(Map<String, Permission> grants) {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Entry {
 
+    @JsonProperty("notebook_id")
     @ToolSchema(description = "The notebook to grant access to.")
     private String notebookId;
 
+    @JsonProperty("note_title")
     @ToolSchema(
         description = "Required when permission is READ or WRITE. Omit when permission is CREATE.",
         optional = true)

@@ -4,6 +4,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
+import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
