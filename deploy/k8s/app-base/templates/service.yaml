@@ -6,6 +6,7 @@ metadata:
   labels:
     {{- include "agent-engine.app-base.labels" . | nindent 4 }}
 spec:
+  clusterIP: None
   selector:
     {{- include "agent-engine.app-base.selectorLabels" . | nindent 4 }}
   ports:

@@ -82,9 +82,21 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
                   final String host = config != null ? config.getHost() : DEFAULT_HOST;
                   final int port = config != null ? config.getPort() : DEFAULT_PORT;
                   LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
-                  return ManagedChannelBuilder.forAddress(host, port)
+                  // dns:/// + round_robin: the Service is headless (see
+                  // app-base/templates/service.yaml),
+                  // so DNS resolves to every backing pod's own IP rather than one virtual
+                  // ClusterIP,
+                  // letting the channel hold a connection per pod and spread calls across all of
+                  // them
+                  // instead of pinning to whichever single pod kube-proxy would have NAT'd a plain
+                  // ClusterIP connection to.
+                  return ManagedChannelBuilder.forTarget("dns:///" + host + ":" + port)
                       .usePlaintext()
+                      .defaultLoadBalancingPolicy("round_robin")
                       .maxInboundMessageSize(MicroServiceInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
+                      .keepAliveTime(30, TimeUnit.SECONDS)
+                      .keepAliveTimeout(10, TimeUnit.SECONDS)
+                      .keepAliveWithoutCalls(true)
                       .build();
                 });
 
