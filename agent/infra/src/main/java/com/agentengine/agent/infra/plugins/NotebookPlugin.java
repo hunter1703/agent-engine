@@ -99,9 +99,9 @@ public final class NotebookPlugin extends BasePlugin {
     LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """
-            Note '%s' created or updated.
-            The content of the note isn't shown to whoever you're working for directly, they can read it, if needed, using appropriate tools.
-            Continue your task, or give a final answer; don't paste the note's content into that answer.
+            Note '%s' saved. Your caller doesn't see its content automatically — they can read \
+            it themselves if they need to, so don't paste it into your reply. \
+            Continue your task, or give your final answer now.
             """
             .formatted(noteTitle);
     runState.addSignal(
