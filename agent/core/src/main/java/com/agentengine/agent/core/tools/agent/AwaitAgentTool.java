@@ -22,14 +22,10 @@ public final class AwaitAgentTool extends AbstractAgentTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.AWAIT_AGENT,
-          "Blocks until a child agent session finishes processing its current message and returns the result. "
-              + "Call when you need the child's output before you can proceed — either to use it as input to "
-              + "the next step, or to confirm successful completion before taking a dependent action. "
-              + "If the child has already finished, the result is returned immediately; otherwise this tool waits for it to finish. "
-              + "Times out after 30 minutes. "
-              + "Returns: { child_session_id, result } on success with output; "
-              + "{ child_session_id, status: \"completed\" } on success without output; "
-              + "{ child_session_id, status: \"failed\", error } on failure.",
+          """
+          Blocks until a child agent session finishes processing its current message and returns the result. Call when you need the child's output before you can proceed — either to use it as input to the next step, or to confirm successful completion before taking a dependent action. If the child has already finished, the result is returned immediately; otherwise this tool waits for it to finish. Times out after 30 minutes.
+
+          Returns: { child_session_id, result } on success with output; { child_session_id, status: "completed" } on success without output; { child_session_id, status: "failed", error } on failure.""",
           Map.of());
 
   private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(30);
@@ -44,8 +40,8 @@ public final class AwaitAgentTool extends AbstractAgentTool {
       @ToolSchema(
               name = CHILD_SESSION_ID,
               description =
-                  "The opaque identifier of the child agent session to wait for, as returned when the "
-                      + "session was created or last messaged.")
+                  """
+                  The opaque identifier of the child agent session to wait for, as returned when the session was created or last messaged.""")
           final String childSessionId) {
     return awaitChild(toolContext, childSessionId);
   }

@@ -82,6 +82,16 @@ public final class SessionActor
   private final int snapshotThreshold;
   private final SessionEventChannel eventChannel;
   private final Deque<Event> turnEvents = new ArrayDeque<>();
+
+  /**
+   * Interrupt IDs already fed to {@link #runner}'s current instance via {@code runner.resume}, so a
+   * later {@link #continueRun} within the same still-open turn does not hand it the same {@link
+   * ResumeRequest} twice. Deliberately actor-local rather than persisted state: on recovery, {@code
+   * runner} is rebuilt from scratch and has seen nothing yet, so this must also start empty then,
+   * not be replayed as already-populated.
+   */
+  private final Set<String> resumedInterruptIds = new HashSet<>();
+
   private final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier;
   private final RunnerFactory runnerFactory;
   private final SessionService sessionService;
@@ -182,7 +192,10 @@ public final class SessionActor
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
-        runner.resume(state.getAllReceivedResumes(), state.grants());
+        final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
+        resumeRequests.forEach(
+            resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
+        runner.resume(resumeRequests, state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> {
@@ -473,7 +486,10 @@ public final class SessionActor
           JsonUtils.toJson(state.topology()));
       return Effect().none();
     }
-    final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
+    final List<ResumeRequest> resumeRequests =
+        state.getAllReceivedResumes().stream()
+            .filter(resumeRequest -> !resumedInterruptIds.contains(resumeRequest.getInterruptId()))
+            .toList();
     LOG.info(
         "Continuing run with resumes : {} for topology : {}",
         JsonUtils.toJson(resumeRequests),
@@ -482,6 +498,8 @@ public final class SessionActor
         .persist(new ContinuingFact())
         .thenRun(
             newState -> {
+              resumeRequests.forEach(
+                  resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
               runner.resume(resumeRequests, newState.grants());
               LOG.info(
                   "Continued run with resumes : {} for topology : {}",
@@ -829,6 +847,7 @@ public final class SessionActor
 
         events.addAll(turnEvents);
         turnEvents.clear();
+        resumedInterruptIds.clear();
 
         final TurnCommittedFact turnFact = new TurnCommittedFact(events);
         LOG.info(

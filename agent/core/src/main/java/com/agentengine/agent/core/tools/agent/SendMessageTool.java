@@ -37,14 +37,10 @@ public final class SendMessageTool extends AbstractAgentTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.SEND_MESSAGE,
-          "Sends a follow-up message to an existing child agent session, preserving its full conversation history. "
-              + "Use when the child has completed its previous task but its accumulated context is still "
-              + "relevant — for example, to give corrections, additional instructions, or a new related "
-              + "request without starting a fresh session. The child session must have already finished "
-              + "processing its previous message before a new one is accepted; sending to an active session "
-              + "will be rejected. A successful response confirms the message was accepted and the child "
-              + "has begun processing — it does not mean the child has finished. "
-              + "Returns: { child_session_id } on success, or { error } on failure.",
+          """
+          Sends a follow-up message to an existing child agent session, preserving its full conversation history. Use when the child has completed its previous task but its accumulated context is still relevant — for example, to give corrections, additional instructions, or a new related request without starting a fresh session. The child session must have already finished processing its previous message before a new one is accepted; sending to an active session will be rejected. A successful response confirms the message was accepted and the child has begun processing — it does not mean the child has finished.
+
+          Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
   private final NotebookRepository notebookRepository;
@@ -83,11 +79,11 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
-                  "Ids of knowledge to grant the child, on top of whatever it already has from "
-                      + "earlier calls — grants accumulate, so omit ids it can already search and "
-                      + "list only new ones. Grants the same ability to search them with "
+                  """
+                  Ids of knowledge to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit ids it can already search and list only new ones. Grants the same ability to search them with """
                       + Constants.ToolNames.SEARCH_KNOWLEDGE
-                      + ". Not knowledge sources — those go in "
+                      + """
+                      . Not knowledge sources — those go in """
                       + Constants.ToolArgs.KNOWLEDGE_SOURCES
                       + " instead.",
               optional = true)
@@ -95,11 +91,11 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.KNOWLEDGE_SOURCES,
               description =
-                  "Knowledge sources to grant the child, on top of whatever it already has from "
-                      + "earlier calls — grants accumulate, so omit sources it can already read "
-                      + "and list only new ones. Grants the same ability to read them in full with "
+                  """
+                  Knowledge sources to grant the child, on top of whatever it already has from earlier calls — grants accumulate, so omit sources it can already read and list only new ones. Grants the same ability to read them in full with """
                       + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
-                      + ". Not knowledge ids — those go in "
+                      + """
+                      . Not knowledge ids — those go in """
                       + Constants.ToolArgs.KNOWLEDGE_IDS
                       + " instead.",
               optional = true)
@@ -107,10 +103,8 @@ public final class SendMessageTool extends AbstractAgentTool {
       @ToolSchema(
               name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
-                  "Notebook/note access to grant the child, on top of whatever it already has "
-                      + "from earlier calls. Omit anything already granted that isn't changing; "
-                      + "repeat an entry only to change its permission (e.g. upgrade a note from "
-                      + "READ to WRITE).",
+                  """
+                  Notebook/note access to grant the child, on top of whatever it already has from earlier calls. Omit anything already granted that isn't changing; repeat an entry only to change its permission (e.g. upgrade a note from read_note to edit_note).""",
               optional = true)
           final List<NotebookGrants.Entry> notebookGrants) {
 

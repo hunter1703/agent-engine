@@ -41,12 +41,10 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.SPAWN_AGENT,
-          "Creates a new subordinate agent session and starts it immediately with an initial message. "
-              + "Use to delegate a self-contained task to a specialised agent, or to run multiple tasks "
-              + "concurrently across independent child sessions. Returns a session identifier before the child "
-              + "has produced any output — the child runs asynchronously. The returned identifier can be used "
-              + "in subsequent calls to deliver follow-up messages or to wait for the result. "
-              + "Returns: { child_session_id } on success, or { error } on failure.",
+          """
+          Creates a new subordinate agent session and starts it immediately with an initial message. Use to delegate a self-contained task to a specialised agent, or to run multiple tasks concurrently across independent child sessions. Returns a session identifier before the child has produced any output — the child runs asynchronously. The returned identifier can be used in subsequent calls to deliver follow-up messages or to wait for the result.
+
+          Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
   private final List<String> subAgentIds;
@@ -76,7 +74,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
         Schema.builder()
             .type(Known.STRING)
             .enum_(subAgentIds)
-            .description("ID of the agent to spawn. Available agents: " + agentList + ". Required.")
+            .description(
+                "ID of the agent to spawn. Available agents: %s. Required.".formatted(agentList))
             .build());
     properties.put(
         "message",
@@ -103,12 +102,11 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .type(Known.ARRAY)
             .items(Schema.builder().type(Known.STRING).build())
             .description(
-                "Ids of knowledge you have access to. Grants the spawned agent the same ability "
-                    + "to search them with "
-                    + Constants.ToolNames.SEARCH_KNOWLEDGE
-                    + ". Not knowledge sources — those go in "
-                    + Constants.ToolArgs.KNOWLEDGE_SOURCES
-                    + " instead. Optional.")
+                """
+                Ids of knowledge you have access to. Grants the spawned agent the same ability to search them with %s. Not knowledge sources — those go in %s instead. Optional.\
+                """
+                    .formatted(
+                        Constants.ToolNames.SEARCH_KNOWLEDGE, Constants.ToolArgs.KNOWLEDGE_SOURCES))
             .build());
     properties.put(
         Constants.ToolArgs.KNOWLEDGE_SOURCES,
@@ -116,12 +114,12 @@ public final class SpawnAgentTool extends AbstractAgentTool {
             .type(Known.ARRAY)
             .items(Schema.builder().type(Known.STRING).build())
             .description(
-                "Knowledge sources you have access to. Grants the spawned agent the same ability "
-                    + "to read them in full with "
-                    + Constants.ToolNames.READ_KNOWLEDGE_SOURCE
-                    + ". Not knowledge ids — those go in "
-                    + Constants.ToolArgs.KNOWLEDGE_IDS
-                    + " instead. Optional.")
+                """
+                Knowledge sources you have access to. Grants the spawned agent the same ability to read them in full with %s. Not knowledge ids — those go in %s instead. Optional.\
+                """
+                    .formatted(
+                        Constants.ToolNames.READ_KNOWLEDGE_SOURCE,
+                        Constants.ToolArgs.KNOWLEDGE_IDS))
             .build());
     properties.put(
         Constants.ToolArgs.NOTEBOOK_GRANTS,

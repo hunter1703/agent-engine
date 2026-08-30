@@ -14,9 +14,10 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTE,
-          "Permanently deletes a note you were granted edit_note access to, or one in a notebook "
-              + "you created. "
-              + "Returns: { status: \"success\" } or { error }.",
+          """
+          Permanently deletes a note you were granted edit_note access to, or one in a notebook you created.
+
+          Returns: { status: "success" } or { error }.""",
           Map.of());
 
   private final NotesRepository notesRepository;

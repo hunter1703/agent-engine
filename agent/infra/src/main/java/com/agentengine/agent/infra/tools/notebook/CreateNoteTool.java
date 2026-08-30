@@ -15,18 +15,10 @@ public final class CreateNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTE,
-          "Stages a note to be saved into a notebook, so other agents granted access to it can "
-              + "read it instead of you having to relay its full text yourself — a title that "
-              + "doesn't exist yet in the notebook is created fresh, one that already exists is "
-              + "overwritten with the new content. Call this immediately before writing the "
-              + "note's content — not before a clarification or a partial draft — then write "
-              + "that content as your very next message with nothing else in between; it is "
-              + "saved automatically once you do, and you can then continue your task or give a "
-              + "final answer. "
-              + "Returns: { status: \"pending\", message } — write the note's content next, or "
-              + "{ error } if you're missing the access this call needs: create_note access to "
-              + "this notebook for a title that doesn't exist yet, or edit_note access to the "
-              + "note if that title already exists.",
+          """
+          Stages a note to be saved into a notebook, so other agents granted access to it can read it instead of you having to relay its full text yourself — a title that doesn't exist yet in the notebook is created fresh, one that already exists is overwritten with the new content. Call this immediately before writing the note's content — not before a clarification or a partial draft — then write that content as your very next message with nothing else in between; it is saved automatically once you do, and you can then continue your task or give a final answer.
+
+          Returns: { status: "pending", message } — write the note's content next, or { error } if you're missing the access this call needs: create_note access to this notebook for a title that doesn't exist yet, or edit_note access to the note if that title already exists.""",
           Map.of());
 
   private final NotesRepository notesRepository;
@@ -69,7 +61,7 @@ public final class CreateNoteTool extends AbstractNotebookTool {
             "status",
             "pending",
             "message",
-            "Saving started — write this note's content as your very next message, with nothing "
-                + "else first."));
+            """
+            Saving started — write this note's content as your very next message, with nothing else first."""));
   }
 }

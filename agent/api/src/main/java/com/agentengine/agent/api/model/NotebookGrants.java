@@ -57,26 +57,39 @@ public record NotebookGrants(Map<String, Permission> grants) {
   public static class Entry {
 
     @JsonProperty("notebook_id")
-    @ToolSchema(description = "The notebook to grant access to.")
+    @ToolSchema(
+        description =
+            """
+            The notebook to grant access to.
+
+            Must already exist — granting access to a notebook that doesn't exist yet will fail.
+            """)
     private String notebookId;
 
     @JsonProperty("note_title")
     @ToolSchema(
         description =
-            "Required when permission is read_note or edit_note. Omit when permission is "
-                + "create_note.",
+            """
+            The note within the notebook to grant access to.
+
+            Must already exist — granting access to a note that doesn't exist yet will fail.
+
+            Required when permission is read_note or edit_note; omit when permission is create_note.
+            """,
         optional = true)
     private String noteTitle;
 
     @ToolSchema(
         description =
-            "A permission always targets an existing asset. create_note targets the notebook "
-                + "itself (which must already exist) and grants the ability to add a note under a "
-                + "title that doesn't exist there yet — omit note_title, since create_note never "
-                + "targets a specific note. read_note and edit_note each target one specific, "
-                + "already-existing note named by note_title — read_note lets the grantee read it, "
-                + "edit_note lets the grantee overwrite or delete it; neither can act on a title "
-                + "that doesn't exist yet, that always needs create_note on the notebook instead.",
+            """
+            What access to grant. A permission always targets something that already exists — create_note targets the notebook itself, read_note and edit_note each target one specific note within it.
+
+            - create_note: lets the grantee add a new note anywhere in the notebook. Targets the notebook only — provide notebook_id, and omit note_title.
+
+            - read_note: lets the grantee read one existing note's content. Targets that note — provide both notebook_id and note_title.
+
+            - edit_note: lets the grantee overwrite or delete one existing note. Targets that note — provide both notebook_id and note_title. Also grants read access to that same note, so there's no need to separately grant read_note for it.
+            """,
         enums = {"create_note", "read_note", "edit_note"})
     private String permission;
 

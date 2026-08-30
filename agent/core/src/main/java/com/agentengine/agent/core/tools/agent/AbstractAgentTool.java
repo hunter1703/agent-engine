@@ -31,11 +31,8 @@ public class AbstractAgentTool extends Tool {
   public static final String CHILD_SESSION_ID = "child_session_id";
 
   public static final String GOAL_SCHEMA_DESCRIPTION =
-      "A concise, one-sentence summary of what this exchange with the child is for — specific "
-          + "enough that you (or a later, unrelated turn) can tell its purpose at a glance without "
-          + "rereading the message. Do not restate or paraphrase the message itself here — that "
-          + "belongs in 'message'. Do not leave it vague either (e.g. 'chat', 'follow-up', 'task') "
-          + "— name the concrete objective or question.";
+      """
+      A concise, one-sentence summary of what this exchange with the child is for — specific enough that you (or a later, unrelated turn) can tell its purpose at a glance without rereading the message. Do not restate or paraphrase the message itself here — that belongs in 'message'. Do not leave it vague either (e.g. 'chat', 'follow-up', 'task') — name the concrete objective or question.""";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAgentTool.class);
   protected final ActorSystemProvider actorSystemProvider;

@@ -15,9 +15,10 @@ public final class ReadNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
           Constants.ToolNames.READ_NOTE,
-          "Reads the current content of a note you were granted read_note or edit_note access "
-              + "to, or one in a notebook you created. "
-              + "Returns: { status: \"success\", content } or { error }.",
+          """
+          Reads the current content of a note you were granted read_note or edit_note access to, or one in a notebook you created.
+
+          Returns: { status: "success", content } or { error }.""",
           Map.of());
 
   private final NotesRepository notesRepository;
