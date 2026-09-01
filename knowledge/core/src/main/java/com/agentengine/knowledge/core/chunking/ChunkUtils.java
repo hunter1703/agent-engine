@@ -31,7 +31,6 @@ public final class ChunkUtils {
         child.setAgentId(parent.getAgentId());
         child.setChunkIndex(globalIndex++);
         child.setText(part);
-        // Locate offsets within the parent text
         final int start = parentText.indexOf(part, Math.max(0, searchFrom - part.length()));
         if (start >= 0) {
           child.setChunkStart(parent.getChunkStart() + start);

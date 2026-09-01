@@ -13,10 +13,6 @@ public final class EnvUtils {
 
   private EnvUtils() {}
 
-  /**
-   * Returns the hostname of the current process, read from the {@code HOSTNAME} environment
-   * variable. Returns {@code null} if the variable is not set.
-   */
   public static String getHostname() {
     return System.getenv(HOSTNAME_ENV);
   }
@@ -24,7 +20,7 @@ public final class EnvUtils {
   /**
    * Returns the IP address of the current pod, read from the {@code POD_IP} environment variable
    * (usually injected via the Kubernetes Downward API). Returns {@code null} if the variable is not
-   * set or is empty.
+   * set.
    */
   public static String getPodIp() {
     return System.getenv(POD_IP_ENV);

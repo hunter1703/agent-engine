@@ -14,9 +14,9 @@ import java.util.Optional;
  * experiment is {@code PASSED} only when every criterion passes.
  *
  * <p>{@code ZERO_DATA_LOSS} delegates to a caller-supplied {@code dataLossDetected} flag rather
- * than querying the event journal itself — the actual gap detection lives in {@code
- * EventJournalValidator} (chaos/core/validation), which the orchestrating {@code ChaosEngine} runs
- * before calling this evaluator.
+ * than querying the event journal itself — the actual gap detection is the responsibility of the
+ * {@code DataLossChecker} implementation the orchestrating {@code ChaosEngine} runs before calling
+ * this evaluator.
  */
 public final class SuccessCriteriaEvaluator {
 

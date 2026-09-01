@@ -2,7 +2,6 @@ package com.agentengine.interfaces.rest.dto.responses;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Usage statistics. */
 public record CompletionUsage(
     @JsonProperty("prompt_tokens") int promptTokens,
     @JsonProperty("completion_tokens") int completionTokens,

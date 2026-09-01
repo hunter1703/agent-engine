@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.dto.responses;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-/** Chat completion response. */
 public record ChatCompletionResponse(
     String id,
     String object,

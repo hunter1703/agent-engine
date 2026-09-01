@@ -80,15 +80,13 @@ public final class MetricsCollector {
             Instant.now()));
   }
 
-  /** Task 4.2 — steady-state baseline, polled across {@code observationWindow} before injection. */
+  /** Steady-state baseline, polled across {@code observationWindow} before injection. */
   public Optional<SteadyStateMetrics> collectBaseline(
       final TargetSelector target, final Duration observationWindow, final Duration pollInterval) {
     return average(pollWindow(target, observationWindow, pollInterval));
   }
 
-  /**
-   * Task 4.3 — post-recovery snapshot, polled across {@code recoveryWindow} after fault removal.
-   */
+  /** Post-recovery snapshot, polled across {@code recoveryWindow} after fault removal. */
   public Optional<SteadyStateMetrics> collectPostRecovery(
       final TargetSelector target, final Duration recoveryWindow, final Duration pollInterval) {
     return average(pollWindow(target, recoveryWindow, pollInterval));

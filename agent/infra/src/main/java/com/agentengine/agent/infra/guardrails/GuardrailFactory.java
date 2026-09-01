@@ -31,7 +31,6 @@ import com.agentengine.util.agents.beans.config.GuardrailRuleType;
  * @param <T> the guardrail rule configuration type this provider accepts
  */
 public interface GuardrailFactory<T extends GuardrailRule> {
-  /** Returns the rule type this provider handles. */
   GuardrailRuleType type();
 
   /**

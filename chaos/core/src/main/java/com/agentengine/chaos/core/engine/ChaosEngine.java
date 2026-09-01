@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
  * Orchestrates a single experiment's full lifecycle: validate, check blast radius, collect
  * baseline, inject the fault, poll metrics, remove the fault, collect post-recovery metrics,
  * evaluate success criteria. Scheduling, history persistence, and REST wiring live in the {@code
- * ChaosService} implementation that composes this engine (chaos-testing spec Tasks 16, 24) — this
- * class only knows how to run one experiment from start to finish.
+ * ChaosService} implementation that composes this engine — this class only knows how to run one
+ * experiment from start to finish.
  */
 public final class ChaosEngine {
 

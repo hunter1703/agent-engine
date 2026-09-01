@@ -36,11 +36,11 @@ public final class GetWebpageTool extends Tool {
   }
 
   /**
-   * Fetches a web page and either converts it to Markdown or indexes it as knowledge.
+   * Fetches a web page and indexes it as knowledge, returning a reference to the indexed content.
    *
    * @param url the URL of the web page to fetch
    * @param toolContext the tool execution context; provides the agent and session IDs
-   * @return a knowledgeId reference when {@code indexAsKnowledge} is true
+   * @return a knowledgeId reference to the indexed page
    */
   public ToolOutput<?> execute(
       @ToolSchema(

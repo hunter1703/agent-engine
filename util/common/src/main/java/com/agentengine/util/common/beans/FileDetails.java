@@ -52,13 +52,11 @@ public record FileDetails(
     return name;
   }
 
-  /** Storage-specific source to the file. */
   @Override
   public String source() {
     return source;
   }
 
-  /** Storage backend type. */
   @Override
   public StorageType type() {
     return type;

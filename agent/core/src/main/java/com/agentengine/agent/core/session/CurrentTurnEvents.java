@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Reply to {@link
- * com.agentengine.runtime.session.commands.ExternalCommand.GetCurrentTurnEventsCommand}.
+ * com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand}.
  *
  * <p>Wraps the event list in a {@link PekkoSerializable} record so that Pekko Artery can serialize
  * the reply via Jackson-CBOR when the session actor is on a remote cluster node. A plain {@code

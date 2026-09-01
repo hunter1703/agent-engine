@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
 
-/** Responses API request. */
 public record ResponsesRequest(
     String model,
     String input,

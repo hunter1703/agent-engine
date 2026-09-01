@@ -32,32 +32,41 @@ and REST) for interacting with agents.
 # Integration tests (opt-in, requires Docker)
 ./gradlew integrationTest
 
-# Deploy the standard Kubernetes stack
-./k8s/scripts/deploy.sh
+# Deploy the standard Kubernetes stack (run from deploy/scripts/, a uv-managed Python CLI)
+uv run deployae deploy
 
-# Tear down the standard Kubernetes stack
-./k8s/scripts/cleanup.sh
+# Tear down the standard Kubernetes stack (run from deploy/scripts/)
+uv run deployae cleanup
 
-# Build a service image
-docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
+# Build a service image (module: agent/core, catalog/core, interfaces/rest, knowledge/core,
+# connectors/core, scheduler/core, or internal)
+docker build --build-arg SERVICE_MODULE=agent/core -f deploy/docker/Dockerfile .
 ```
 
 ## Module Structure
 
-| Module              | Purpose                                                         |
-|---------------------|-----------------------------------------------------------------|
-| `engine/`           | Core LLM execution: config, state, context, LangChain4j wiring |
-| `engine/api/`       | Shared API beans, service interfaces, and event model           |
-| `interfaces/rest/`  | REST gateway (port 8080); user-facing HTTP endpoints            |
-| `interfaces/local/` | CLI interface for local agent interaction                       |
-| `util/common/`      | Cross-module utility classes                                    |
-| `util/mongodb/`     | MongoDB client factory, codec registry, encryption              |
-| `util/ms/`          | Microservice transport utilities                                |
-| `connectors/core/`  | Outbound HTTP transport and auth strategies                     |
-| `configs/`          | Agent and model registry JSON/YAML definitions                  |
-| `docker/`           | Shared container image build artifacts                          |
-| `k8s/`              | Helm charts and Kubernetes deployment scripts                   |
-| `scripts/`          | Operational helper scripts                                      |
+| Module                                                     | Purpose                                                                                                     |
+|--------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| `agent:api`, `agent:core`, `agent:infra`, `agent:jobs`      | **Agent service** — agent construction, model providers, tools, guardrails, orchestration, sessions, memory. `agent:jobs` holds scheduled-job definitions fired by the scheduler service |
+| `catalog:api`, `catalog:core`                                | **Catalog service** — config CRUD/validation, asset catalog, schema contracts, AG-UI event mapping        |
+| `knowledge:api`, `knowledge:core`                             | **Knowledge service** — document indexing and semantic search over Qdrant                                  |
+| `interfaces:rest`                                             | **REST service** — user-facing HTTP/SSE gateway (port 8080)                                                |
+| `connectors:api`, `connectors:core`, `connectors:http`, `connectors:infra` | **Connectors service** — config-driven HTTP connector framework (templating, auth, pagination, retry) backing tools such as `web_research` |
+| `scheduler:api`, `scheduler:core`                             | **Scheduler service** — cron-style job scheduling; fires jobs such as `agent:jobs`' `InvokeAgentJob`       |
+| `internal`                                                    | **Internal service** — internal/ops REST endpoints (Mongo, scheduler introspection)                        |
+| `chaos:api`, `chaos:core`                                     | Fault-injection / chaos-experiment framework. Not a deployed service — run standalone against the stack   |
+| `util:common`                                                 | Cross-module utility classes (queries, updates, exceptions, collections)                                    |
+| `util:mongodb`                                                | MongoDB client factory, codec registry, encryption                                                          |
+| `util:vectordb`                                               | Qdrant-backed vector store abstraction                                                                      |
+| `util:cloudstorage`                                           | Cloud object storage client                                                                                 |
+| `util:ms:client`, `util:ms:server`                            | gRPC microservice transport (client dispatch, server wiring)                                                |
+| `util:agents`                                                 | Agent/session domain beans and repositories shared across services                                          |
+| `util:pekko`                                                  | Pekko actor-system, cluster-sharding, and persistence support                                               |
+| `util:scripts`                                                | Templating utilities used by connectors and scripted config                                                 |
+| `configs/`                                                    | Agent and model registry JSON/YAML definitions                                                              |
+| `deploy/docker/`                                              | Shared container image build artifacts                                                                      |
+| `deploy/k8s/`                                                 | Helm charts for the Kubernetes deployment                                                                   |
+| `deploy/scripts/`                                             | `deployae` — the Python CLI that drives the Kubernetes deploy/cleanup workflow                              |
 
 ## Testing Conventions
 
@@ -71,10 +80,12 @@ docker build --build-arg SERVICE_MODULE=runtime -f docker/Dockerfile .
 
 - **llama.cpp chat template bug**: Some `.gguf` models (e.g. `qwen3-coder-30b`) cause `500` errors on nested JSON schemas. Fix: pass `--chat-template-file` pointing to the safe template in `configs/models/templates/`.
 - **Compaction model resolution order**: `contextStrategy.modelId` → infra `default_model.compactionModelId` → agent `modelId`.
-- **Session history source**: committed session events are reconstructed from the session actor's replay state rather than an embedded event blob on `AgentSession`.
-- **Deferred work**: record follow-ups in `TODO.md`, not inline comments.
-- **Enum rule**: all enums must include `UNKNOWN` and a `valueOfOrDefault` parser.
-- **Commits and branches**: Never commit unless explicitly asked. Never create a separate branch unless explicitly asked. Always make changes directly on `main` and leave them unstaged so the user can review before staging or committing.
+- **Session history source**: committed session events live in a dedicated Mongo collection
+  (`SessionEventsRepository`), written once per turn at commit time and read back from there by
+  most history paths (memory, title generation, the REST history API). Postgres is still the
+  backing store for the Pekko actor journal itself (event-sourcing facts, via JDBC) — the ADK
+  runner's in-memory session rebuild (`RunnerFactory`) is the one path that reads that journal
+  directly, to fold in turn/rollback bookkeeping before fetching event bodies from Mongo.
 - **Uncapped local models can loop forever**: a `ChatModelConfig` with no `numPredict` set has no
   generation length limit, and `repeatPenalty` alone doesn't reliably stop a weaker local model
   from degenerating into repeating the same section (with a plausible-looking Markdown/frontmatter
@@ -91,8 +102,8 @@ the reader and the runtime equally.
 - **Clarity over cleverness**: code should reveal its intent immediately; a reader unfamiliar with the method
   should understand what it does and why.
 - **Earn every abstraction**: introduce an abstraction only when it has a clear name, a single responsibility,
-  and removes genuine duplication or hides genuine complexity. An abstraction that requires explanation is not
-  yet the right abstraction.
+  and clarifies ownership — and only when it removes genuine duplication or hides genuine complexity. An
+  abstraction that requires explanation is not yet the right abstraction.
 - **Minimal surface, maximum cohesion**: each class and method should do one thing well. If you cannot describe
   a class's responsibility in one sentence, split it.
 - **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used
@@ -104,6 +115,89 @@ the reader and the runtime equally.
 - **Performance is a first-class concern**: prefer efficient data structures and algorithms from the start;
   avoid unnecessary allocations, redundant iterations, and blocking in hot paths. Use virtual threads and
   async patterns where latency or throughput matters.
+
+## Development Guidelines
+
+### Process & Workflow
+
+1. Favor small, focused changes; avoid unnecessary refactors.
+2. Update relevant documentation when behavior changes.
+3. Record future improvements, deferred issues, or follow-up features in `TODO.md`, not inline comments.
+4. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
+   Before introducing any hack — overloading one mechanism to serve a different purpose (e.g. a
+   reserved/magic key, a sentinel value, special-casing that leaks into every caller) because the
+   clean abstraction doesn't exist yet — stop and confirm the approach with the user first rather
+   than implementing it unilaterally. Present the tradeoff and let them choose, even if that means
+   a bigger change than the hack would have been.
+5. **Commits and branches**: Never commit unless explicitly asked. Never create a separate branch
+   unless explicitly asked. Always make changes directly on `main` and leave them unstaged so the
+   user can review before staging or committing.
+6. NEVER read the `.env` file — it is extremely sensitive.
+
+### Naming Conventions
+
+1. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
+   `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
+2. Prefer plain, ordinary words over fancier-sounding ones for every kind of name — classes,
+   methods, variables, fields. Simple isn't vague: keep the name precise, just don't reach for a
+   more formal word when a plain one already says it exactly as well (e.g. `idleTimeoutCommand`,
+   not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
+
+### Code Structure Conventions
+
+1. Avoid methods with long argument lists; avoid side-effect-only methods unless necessary. A
+   method that only mutates a collection/object passed in by the caller (e.g. `void
+   appendFooParts(List<Part> parts, ...)`) should, when nothing about the abstraction truly
+   requires the side effect, instead be a pure function that returns the new/changed value (e.g.
+   `List<Part> fooParts(...)`) for the caller to assign or add — this is easier to read, test, and
+   reason about than a method whose effect is only visible by inspecting a parameter after the
+   call. Only reach for a side-effect method when the mutation is the point of the abstraction
+   (e.g. a builder, a `Map` accumulator threaded through a loop where allocating a fresh
+   collection per call would be wasteful).
+2. Order class members with all `public` methods first, then all `private` methods after —
+   never interleave them, even when a private helper is only used by one nearby public method.
+3. Order instance fields (and matching constructor parameters/getters/setters) by conceptual
+   importance or ownership, most fundamental first — not alphabetically or by whenever they were
+   added. A field that another field belongs to or depends on comes before it (e.g. on
+   `TurnCommittedFact`, `runId` before `turnId`, since a turn belongs to a run). When adding a new
+   field to an existing class, insert it at its rightful position in that hierarchy rather than
+   appending it at the end.
+
+### Java Style & Idioms
+
+1. Use `final` wherever possible to emphasize immutability.
+2. Prefer `static` methods for utility semantics.
+3. Make an explicit choice to treat classes as singleton services or utility classes.
+4. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
+5. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
+6. Avoid qualified class names (FQNs); add explicit imports instead. NEVER use FQNs unless there is a clash of names.
+7. NEVER use `var`. Always declare the actual type, including for local variables, loop
+   variables, and record deconstruction patterns.
+8. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
+9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
+10. Document REST endpoints with MicroProfile OpenAPI annotations.
+
+### Comment Philosophy
+
+Avoid needless, simple, or tautological comments; keep comments for non-obvious context. NEVER
+treat a comment as a log of development — it must document the code's current, standalone
+behavior for a reader who has no idea what changed, not narrate the change itself. This rules
+out changelog-style comments about what changed or why code was removed/simplified (e.g. "X is
+now unconditional, so the old check isn't needed"), and it equally rules out a comment that
+justifies an absence by contrasting it with history the reader never saw (e.g. "Pure
+construction, no validation — a caller must run validate() itself" reads as answering "didn't
+this used to validate?", a question only someone who watched it change would think to ask). A
+reader meeting the code for the first time isn't surprised by what it doesn't do unless the
+comment itself plants that expectation — describe what the method does and, if genuinely
+non-obvious, what its caller is responsible for, without referencing a prior state. Development
+reasoning belongs in chat or the PR description, never in the comment, and stops being relevant
+to anyone the moment the change is no longer new. A comment must also never give the reader a
+usage tip or recommendation (e.g. "use this for reads that must never be silently truncated") —
+that is advice about when to reach for the code, not a description of what the code is or does,
+and it's the wrong direction: the shared utility shouldn't be prescribing to its callers when a
+caller hasn't been written yet. State the fact instead (e.g. "Represents an unbounded read —
+offset 0, limit <= 0") and let each call site's own comment, if one is even needed, explain why
+that call site chose it.
 
 ## Agent Prompt Authoring Guidelines
 
@@ -136,72 +230,3 @@ instructions, under `configs/`.
    failure mode, not a default. Whenever a prompt does need to be concrete about a tool name,
    parameter, or format, re-verify periodically that the detail still matches the current
    implementation — stale specifics are a common source of silent, hard-to-diagnose failures.
-
-## Development Guidelines
-
-1. Favor small, focused changes; avoid unnecessary refactors.
-2. Update relevant documentation when behavior changes.
-3. Add abstractions only when they clarify ownership and reduce duplication.
-4. Use `final` wherever possible to emphasize immutability.
-5. Prefer `static` methods for utility semantics.
-6. Make an explicit choice to treat classes as singleton services or utility classes.
-7. Reuse existing utility methods; extend utility classes rather than duplicating logic in private methods.
-8. Leverage Java 25 features (virtual threads, string templates, records) where they improve clarity or performance.
-9. Place shared Gradle configuration (toolchains, Spotless, preview flags) in the conventions plugin.
-10. Document REST endpoints with MicroProfile OpenAPI annotations.
-11. Avoid qualified class names (FQNs); add explicit imports instead. NEVER use FQNs unless there is a clash of names.
-12. Avoid methods with long argument lists; avoid side-effect-only methods unless necessary. A
-    method that only mutates a collection/object passed in by the caller (e.g. `void
-    appendFooParts(List<Part> parts, ...)`) should, when nothing about the abstraction truly
-    requires the side effect, instead be a pure function that returns the new/changed value (e.g.
-    `List<Part> fooParts(...)`) for the caller to assign or add — this is easier to read, test, and
-    reason about than a method whose effect is only visible by inspecting a parameter after the
-    call. Only reach for a side-effect method when the mutation is the point of the abstraction
-    (e.g. a builder, a `Map` accumulator threaded through a loop where allocating a fresh
-    collection per call would be wasteful).
-13. Record future improvements, deferred issues, or follow-up features in `TODO.md`.
-14. Avoid needless, simple, or tautological comments; keep comments for non-obvious context. NEVER
-    treat a comment as a log of development — it must document the code's current, standalone
-    behavior for a reader who has no idea what changed, not narrate the change itself. This rules
-    out changelog-style comments about what changed or why code was removed/simplified (e.g. "X is
-    now unconditional, so the old check isn't needed"), and it equally rules out a comment that
-    justifies an absence by contrasting it with history the reader never saw (e.g. "Pure
-    construction, no validation — a caller must run validate() itself" reads as answering "didn't
-    this used to validate?", a question only someone who watched it change would think to ask). A
-    reader meeting the code for the first time isn't surprised by what it doesn't do unless the
-    comment itself plants that expectation — describe what the method does and, if genuinely
-    non-obvious, what its caller is responsible for, without referencing a prior state. Development
-    reasoning belongs in chat or the PR description, never in the comment, and stops being relevant
-    to anyone the moment the change is no longer new. A comment must also never give the reader a
-    usage tip or recommendation (e.g. "use this for reads that must never be silently truncated") —
-    that is advice about when to reach for the code, not a description of what the code is or does,
-    and it's the wrong direction: the shared utility shouldn't be prescribing to its callers when a
-    caller hasn't been written yet. State the fact instead (e.g. "Represents an unbounded read —
-    offset 0, limit <= 0") and let each call site's own comment, if one is even needed, explain why
-    that call site chose it.
-15. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
-    Before introducing any hack — overloading one mechanism to serve a different purpose (e.g. a
-    reserved/magic key, a sentinel value, special-casing that leaks into every caller) because the
-    clean abstraction doesn't exist yet — stop and confirm the approach with the user first rather
-    than implementing it unilaterally. Present the tradeoff and let them choose, even if that means
-    a bigger change than the hack would have been.
-16. Include `UNKNOWN` enum values and a `valueOfOrDefault` parser for all enums.
-17. Name `Map` fields/variables `keyVsValue`, not `valuesByKey` (e.g. `sessionVsScope` for a
-    `Map<String, RunScope>` keyed by session id, `idVsFunctionCall` for a `Map<String, FunctionCall>`).
-18. Order class members with all `public` methods first, then all `private` methods after —
-    never interleave them, even when a private helper is only used by one nearby public method.
-19. Prefer plain, ordinary words over fancier-sounding ones for every kind of name — classes,
-    methods, variables, fields. Simple isn't vague: keep the name precise, just don't reach for a
-    more formal word when a plain one already says it exactly as well (e.g. `idleTimeoutCommand`,
-    not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
-20. NEVER use `var`. Always declare the actual type, including for local variables, loop
-    variables, and record deconstruction patterns.
-21. Order instance fields (and matching constructor parameters/getters/setters) by conceptual
-    importance or ownership, most fundamental first — not alphabetically or by whenever they were
-    added. A field that another field belongs to or depends on comes before it (e.g. on
-    `TurnCommittedFact`, `runId` before `turnId`, since a turn belongs to a run). When adding a new
-    field to an existing class, insert it at its rightful position in that hierarchy rather than
-    appending it at the end.
-
-
-NEVER Read `.env` file as it is extremely sensitive

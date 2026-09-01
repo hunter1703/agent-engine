@@ -487,7 +487,6 @@ public final class SessionActor
 
   private EffectBuilder<SessionFact, SessionActorState> continueRun(
       final SessionActorState state, final ContinueRunCommand command) {
-    // Only continue if the session is actually paused;
     if (state.sessionState() != SessionState.PAUSED) {
       LOG.info(
           "Ignoring ContinueRunCommand for session in state {} for topology : {}",
@@ -779,7 +778,6 @@ public final class SessionActor
 
     LOG.info("Publishing event : {}", JsonUtils.toJson(event));
     if (turnEvents.isEmpty()) {
-      // first event of the turn
       turnId = UUID.randomUUID().toString();
     }
     turnEvents.add(event);
@@ -927,7 +925,6 @@ public final class SessionActor
       final SessionActorState state, final PauseChildCommand command) {
     EffectBuilder<SessionFact, SessionActorState> effect;
     if (state.pauseState().getPausedChild(command.interruptId()) != null) {
-      // already received the pause command
       effect = Effect().none();
     } else {
       effect =
@@ -1147,7 +1144,6 @@ public final class SessionActor
     }
 
     if (state.allInterruptsAnswered()) {
-      // clear all states as they have been consumed
       LOG.info(
           "Applying committed turn for topology : {} and clearing interrupt state : {}",
           JsonUtils.toJson(newState.topology()),

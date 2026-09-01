@@ -41,7 +41,6 @@ public class VectorDbClientFactory {
             });
   }
 
-  /** Returns the shared {@link QdrantHttpClient}. */
   public QdrantHttpClient getClient() {
     return client.get();
   }

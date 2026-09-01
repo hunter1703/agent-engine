@@ -77,8 +77,7 @@ public class TriggerDefinition extends BaseEntity {
   /**
    * The exact cron occurrence this run belongs to, unaffected by jitter. Anchoring the next
    * computation here rather than on {@link #getDueAt()} is what stops a run that jitter moved early
-   * from resolving to the same occurrence again. It is also the stable idempotency key a job sees
-   * as {@code scheduledTime}.
+   * from resolving to the same occurrence again.
    */
   public long getScheduledFor() {
     return scheduledFor;

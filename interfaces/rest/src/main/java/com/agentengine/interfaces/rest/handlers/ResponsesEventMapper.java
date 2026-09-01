@@ -33,16 +33,12 @@ public final class ResponsesEventMapper {
     this.outputIndex = 0;
   }
 
-  /**
-   * Map an AG-UI event to a Flowable of ResponseOutputEvent objects. RESTEasy Reactive will handle
-   * JSON serialization and SSE formatting.
-   */
+  /** RESTEasy Reactive handles JSON serialization and SSE formatting for the returned events. */
   public Flowable<ResponseOutputEvent> mapEvent(Event event) {
     if (event == null) {
       return Flowable.empty();
     }
 
-    // Text message events
     if (event instanceof TextMessageChunkEvent chunk) {
       String delta = chunk.delta();
       if (delta == null || delta.isEmpty()) {
@@ -67,7 +63,6 @@ public final class ResponsesEventMapper {
       return outputItemDone("message");
     }
 
-    // Reasoning/thinking events
     if (event instanceof ReasoningMessageContentEvent thinking) {
       String delta = thinking.delta();
       if (delta.isEmpty()) {
@@ -92,7 +87,6 @@ public final class ResponsesEventMapper {
       return Flowable.just(new ResponseOutputEvent("response.reasoning.done", null, null, null));
     }
 
-    // Tool call events
     if (event instanceof ToolCallStartEvent toolStart) {
       return toolCallAdded(toolStart.toolCallId(), toolStart.toolCallName());
     }
@@ -109,7 +103,6 @@ public final class ResponsesEventMapper {
       return toolResultAdded(toolResult.toolCallId(), toolResult.content());
     }
 
-    // Run lifecycle events
     if (event instanceof RunFinishedEvent) {
       return complete();
     }
@@ -121,31 +114,26 @@ public final class ResponsesEventMapper {
     return Flowable.empty();
   }
 
-  /** Emit a content delta event. */
   private Flowable<ResponseOutputEvent> contentDelta(String delta) {
     return Flowable.just(new ResponseOutputEvent("response.output_text.delta", delta, null, null));
   }
 
-  /** Emit a reasoning delta event. */
   private Flowable<ResponseOutputEvent> reasoningDelta(String delta) {
     return Flowable.just(new ResponseOutputEvent("response.reasoning.delta", delta, null, null));
   }
 
-  /** Emit output_item.added event. */
   private Flowable<ResponseOutputEvent> outputItemAdded(String itemType) {
     int index = outputIndex++;
     return Flowable.just(
         new ResponseOutputEvent("response.output_item.added", null, null, null, index, itemType));
   }
 
-  /** Emit output_item.done event. */
   private Flowable<ResponseOutputEvent> outputItemDone(String itemType) {
     return Flowable.just(
         new ResponseOutputEvent(
             "response.output_item.done", null, null, null, outputIndex - 1, itemType));
   }
 
-  /** Emit function_call.output_item.added event. */
   private Flowable<ResponseOutputEvent> toolCallAdded(String toolCallId, String toolName) {
     int index = outputIndex++;
     return Flowable.just(
@@ -160,7 +148,6 @@ public final class ResponsesEventMapper {
             toolName));
   }
 
-  /** Emit function_call.arguments.delta event. */
   private Flowable<ResponseOutputEvent> toolCallArgumentsDelta(
       String toolCallId, String arguments) {
     return Flowable.just(
@@ -175,12 +162,10 @@ public final class ResponsesEventMapper {
             null));
   }
 
-  /** Emit function_call.done event. */
   private Flowable<ResponseOutputEvent> toolCallDone() {
     return Flowable.just(new ResponseOutputEvent("response.function_call.done", null, null, null));
   }
 
-  /** Emit tool_call.output_item.added event. */
   private Flowable<ResponseOutputEvent> toolResultAdded(String toolCallId, String result) {
     int index = outputIndex++;
     return Flowable.just(
@@ -195,13 +180,11 @@ public final class ResponsesEventMapper {
             null));
   }
 
-  /** Emit completion event with usage. */
   private Flowable<ResponseOutputEvent> complete() {
     Usage usage = new Usage(0, 0, 0);
     return Flowable.just(new ResponseOutputEvent("response.completed", null, "stop", usage));
   }
 
-  /** Emit error event. */
   private Flowable<ResponseOutputEvent> error(String message) {
     return Flowable.error(new RuntimeException(message));
   }
@@ -245,6 +228,5 @@ public final class ResponsesEventMapper {
     }
   }
 
-  /** Token usage information. */
   public record Usage(int promptTokens, int completionTokens, int totalTokens) {}
 }

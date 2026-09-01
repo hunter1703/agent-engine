@@ -104,7 +104,6 @@ public class KnowledgeServiceImpl implements KnowledgeService {
   private void runIndexing(final Knowledge knowledge) {
     final String id = knowledge.getId();
     try {
-      // Delete old vectors before re-indexing
       deleteChunks(id);
       markStatus(id, IndexingStatus.IN_PROGRESS, null);
 

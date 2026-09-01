@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.dto.responses;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-/** A message in a chat conversation. */
 public record Message(
     String role,
     Object content,

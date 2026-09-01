@@ -24,7 +24,6 @@ public class SessionActorJournal extends AbstractJournalReadRepository<SessionFa
     return readEvents(persistenceId, predicate);
   }
 
-  /** Returns the turn IDs of every {@code TurnCommittedFact} persisted for {@code sessionId}. */
   public List<String> getCommittedTurnIds(final String sessionId) {
     return readSessionEvents(sessionId, fact -> fact instanceof TurnCommittedFact).stream()
         .map(fact -> ((TurnCommittedFact) fact).getTurnId())

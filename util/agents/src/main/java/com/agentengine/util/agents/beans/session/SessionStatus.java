@@ -3,7 +3,7 @@ package com.agentengine.util.agents.beans.session;
 /** Lifecycle status of an agent session as visible in the catalog. */
 public enum SessionStatus {
   UNKNOWN,
-  /** The session is actively processing a turn. */
+  /** The session has been created but has not yet started processing its first turn. */
   INIT,
   RUNNING,
   /** The session is paused, awaiting human input to resume. */

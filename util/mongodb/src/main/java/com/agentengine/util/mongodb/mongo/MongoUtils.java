@@ -72,13 +72,11 @@ public final class MongoUtils {
     }
   }
 
-  /** Converts an object to a Filter using JsonUtils.fromMap for proper deserialization. */
   private static Filter convertToFilter(Object value) {
     if (value instanceof Filter) {
       return (Filter) value;
     }
     if (value instanceof Map<?, ?> map) {
-      // Use JsonUtils.fromMap to convert LinkedHashMap to Filter
       return JsonUtils.fromMap((Map<String, Object>) map, Filter.class);
     }
     throw new IllegalArgumentException("Cannot convert value to Filter: " + value.getClass());

@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 public final class ApplyPatchTool extends BaseFileTool {
   private static final Logger LOG = LoggerFactory.getLogger(ApplyPatchTool.class);
   private static final String TOOL_NAME = "apply_patch";
-  private static final int MAX_PATCH_SIZE = 100000; // 100KB max patch
+  private static final int MAX_PATCH_SIZE = 100000;
   private static final String CONTEXT_ANCHOR_PREFIX = "@@ context:";
 
   public static final ToolDescriptor DESCRIPTOR =
@@ -249,7 +249,6 @@ public final class ApplyPatchTool extends BaseFileTool {
         return NormalizedPatch.error("Ambiguous anchor — multiple matches for: \"" + anchor + "\"");
       }
 
-      // Collect hunk body until the next @@ header or end of patch
       final List<String> body = new ArrayList<>();
       i++;
       while (i < patchLines.size() && !patchLines.get(i).startsWith("@@")) {

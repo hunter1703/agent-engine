@@ -37,10 +37,8 @@ public interface CloudStorageService {
 
   Content download(FileDetails fileDetails);
 
-  /** Deletes the object at {@code key}. */
   void delete(String key);
 
-  /** Deletes the object referenced by {@code fileDetails}. */
   default void delete(FileDetails fileDetails) {
     final String source = fileDetails.source();
     final int sep = source.indexOf('/');

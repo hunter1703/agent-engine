@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * <p>Example:
  *
  * <pre>
- * &#64;UiLayout(
+ * &#64;UiSteps(
  *     steps = {
  *         &#64;UiStep(id = "identity", label = "Identity", order = 0),
  *         &#64;UiStep(id = "model", label = "Model Configuration", order = 1,
@@ -35,10 +35,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface UiSteps {
-  /**
-   * Ordered array of steps that define the multi-step wizard structure.
-   *
-   * @return array of step definitions
-   */
+  /** Ordered array of steps that define the multi-step wizard structure. */
   UiStep[] steps();
 }

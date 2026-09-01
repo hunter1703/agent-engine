@@ -62,7 +62,7 @@ public final class SearchKnowledgeTool extends Tool {
   }
 
   /**
-   * q Executes a semantic search over indexed knowledge.
+   * Executes a semantic search over indexed knowledge.
    *
    * @param query natural-language search query
    * @param knowledgeId optional — limit search to a specific knowledge item

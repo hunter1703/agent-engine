@@ -5,7 +5,7 @@ import com.agentengine.util.vectordb.VectorEntity;
 /**
  * A single persistent memory entry stored in the vector store.
  *
- * <p>Scoped to a user within an agen). The {@code text} field is embedded as the searchable vector,
+ * <p>Scoped to a user within an agent. The {@code text} field is embedded as the searchable vector,
  * allowing semantic retrieval across sessions.
  */
 public class Memory extends VectorEntity {

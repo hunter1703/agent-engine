@@ -48,7 +48,6 @@ public final class MarkdownUtils {
    * </ul>
    *
    * @param object the object to render; {@code null} returns an empty string
-   * @return Markdown string
    */
   public static String fromObject(final Object object) {
     if (object == null) {
@@ -64,7 +63,6 @@ public final class MarkdownUtils {
    * Converts HTML to Markdown using flexmark's {@link FlexmarkHtmlConverter}.
    *
    * @param html the HTML string to convert; blank input returns an empty string
-   * @return Markdown string
    */
   public static String fromHtml(final String html) {
     if (StringUtils.isBlank(html)) {
@@ -184,7 +182,6 @@ public final class MarkdownUtils {
       heading.appendChild(new Text(title));
       return heading;
     }
-    // Beyond h6: bold label + value in one paragraph
     final Paragraph paragraph = new Paragraph();
     final StrongEmphasis strong = new StrongEmphasis();
     strong.appendChild(new Text(title));

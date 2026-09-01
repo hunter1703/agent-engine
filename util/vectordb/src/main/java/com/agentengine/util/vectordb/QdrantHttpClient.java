@@ -72,7 +72,6 @@ public final class QdrantHttpClient {
         request.points(),
         request.filter());
 
-    // Build the request body based on what's provided
     Object requestBody;
     final List<String> points = request.points();
     if (CollectionUtils.isNotEmpty(points)) {

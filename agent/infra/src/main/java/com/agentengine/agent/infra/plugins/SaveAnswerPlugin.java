@@ -99,9 +99,6 @@ public final class SaveAnswerPlugin extends BasePlugin {
               .orElseGet(() -> GenerateContentConfig.builder().build())
               .toBuilder()
               .toolConfig(
-                  // Fully qualified: BaseTool declares its own unrelated nested ToolConfig type,
-                  // which would otherwise shadow this import for any class in that hierarchy —
-                  // not applicable here (BasePlugin doesn't extend BaseTool), but kept explicit.
                   ToolConfig.builder()
                       .functionCallingConfig(
                           FunctionCallingConfig.builder()

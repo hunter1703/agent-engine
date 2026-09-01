@@ -887,7 +887,6 @@ public final class ImageUtils {
     }
   }
 
-  /** XYZ → CAT02 LMS. */
   private static double[] xyzToLmsCat02(final double X, final double Y, final double Z) {
     return new double[] {
       0.7328 * X + 0.4296 * Y - 0.1624 * Z,

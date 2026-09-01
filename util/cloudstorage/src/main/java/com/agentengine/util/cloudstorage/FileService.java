@@ -46,7 +46,6 @@ public class FileService {
     }
   }
 
-  // TODO: optimize
   private static InputStream fetchUrl(final String url) {
     try (final HttpClient http = HttpClient.newHttpClient()) {
       return http.send(

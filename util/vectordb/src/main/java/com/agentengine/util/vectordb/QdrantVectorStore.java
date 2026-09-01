@@ -33,10 +33,8 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
     return clientFactory.getClient();
   }
 
-  /** Serializes {@code entity} into a Qdrant payload map. */
   protected abstract Map<String, Object> toPayload(T entity);
 
-  /** Deserializes a Qdrant payload map into a domain entity. */
   protected abstract T fromPayload(Map<String, Object> payload);
 
   // ── VectorStore-specific ──────────────────────────────────────────────────
@@ -244,11 +242,9 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   private static Object buildVectorData(final VectorEntity entity) {
     final Map<String, float[]> vectors = entity.getVectors();
     if (vectors.size() == 1) {
-      // Single unnamed vector: return flat array
       final float[] vec = vectors.values().iterator().next();
       return toFloatList(vec);
     } else {
-      // Multiple named vectors: return map
       return buildNamedVectors(entity);
     }
   }

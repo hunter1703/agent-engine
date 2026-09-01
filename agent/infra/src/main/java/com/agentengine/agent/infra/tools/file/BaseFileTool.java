@@ -65,12 +65,10 @@ public abstract class BaseFileTool extends Tool {
   protected Path resolvePath(String filePath) {
     Path path = Paths.get(filePath);
 
-    // If absolute path, use as-is
     if (path.isAbsolute()) {
       return path;
     }
 
-    // Use current working directory for relative paths
     String cwd = System.getProperty("user.dir", ".");
     return Paths.get(cwd).resolve(filePath).normalize();
   }

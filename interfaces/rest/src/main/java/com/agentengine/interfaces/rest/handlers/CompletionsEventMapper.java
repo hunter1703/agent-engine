@@ -28,24 +28,20 @@ public final class CompletionsEventMapper {
     this.responsesMapper = new ResponsesEventMapper(completionId, modelId, created);
   }
 
-  /**
-   * Map an AG-UI event to a Flowable of ChatCompletionChunk objects. RESTEasy Reactive will handle
-   * JSON serialization and SSE formatting.
-   */
+  /** RESTEasy Reactive handles JSON serialization and SSE formatting for the returned chunks. */
   public Flowable<ChatCompletionChunk> mapEvent(Event event) {
     return responsesMapper.mapEvent(event).map(this::toChatCompletionChunk);
   }
 
   /**
-   * Convert ResponseOutputEvent to ChatCompletionChunk format. Only emits chunks for
-   * content/reasoning deltas, ignores structural events.
+   * Converts every event to a chunk; content and reasoning are populated only for their respective
+   * delta events, and structural events map to a chunk with an empty delta.
    */
   private ChatCompletionChunk toChatCompletionChunk(ResponseOutputEvent outputEvent) {
     String content = null;
     String reasoning = null;
     String finishReason = outputEvent.finishReason();
 
-    // Map Responses API event types to Chat Completions delta format
     if ("response.output_text.delta".equals(outputEvent.type())) {
       content = outputEvent.delta();
     } else if ("response.reasoning.delta".equals(outputEvent.type())) {

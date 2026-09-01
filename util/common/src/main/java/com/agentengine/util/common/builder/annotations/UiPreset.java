@@ -18,32 +18,15 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 @Repeatable(UiPresets.class)
 public @interface UiPreset {
-  /**
-   * Stable preset identifier used by the UI and API contract.
-   *
-   * @return preset id
-   */
+  /** Stable preset identifier used by the UI and API contract. */
   String id();
 
-  /**
-   * Human-readable preset label.
-   *
-   * @return preset label
-   */
   String label();
 
-  /**
-   * Optional description that explains when the preset should be used.
-   *
-   * @return preset description
-   */
+  /** Optional description that explains when the preset should be used. */
   String description() default "";
 
-  /**
-   * Whether this preset should be treated as the default suggestion.
-   *
-   * @return {@code true} when the preset is the default
-   */
+  /** Whether this preset should be treated as the default suggestion. */
   boolean isDefault() default false;
 
   /**

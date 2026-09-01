@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.dto.responses;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-/** Output item in a response. */
 public record OutputItem(
     String type,
     String id,

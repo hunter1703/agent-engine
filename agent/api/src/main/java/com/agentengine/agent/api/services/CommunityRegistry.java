@@ -8,11 +8,7 @@ public interface CommunityRegistry {
 
   String MEMORY_AGENT = "memory-agent";
 
-  /**
-   * Returns all registered experts in the community.
-   *
-   * @return list of all expert agent configs
-   */
+  /** Returns all registered experts in the community. */
   List<BaseAgentConfig> findExperts(String query);
 
   /**

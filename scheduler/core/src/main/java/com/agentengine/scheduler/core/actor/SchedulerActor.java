@@ -35,9 +35,9 @@ import org.apache.pekko.actor.typed.javadsl.TimerScheduler;
  * read-back closes that gap: should a partition ever leave two singletons running, each dispatches
  * only the subset it actually won rather than both dispatching everything.
  *
- * <p>There is deliberately no recovery sweep for triggers stuck in QUEUED or RUNNING: without a
- * lease heartbeat a sweep cannot tell a long-running job from a dead node, and would re-dispatch
- * live work. See TODO.md.
+ * <p>Recovering triggers stuck in QUEUED or RUNNING after a dead node is handled separately, by
+ * {@link TriggerReconcilerActor}, which uses each trigger's heartbeat lease to tell a long-running
+ * job from an abandoned one.
  */
 public final class SchedulerActor extends AbstractBehavior<SchedulerActor.Command> {
 

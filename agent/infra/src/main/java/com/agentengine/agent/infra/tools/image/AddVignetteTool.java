@@ -8,7 +8,6 @@ import com.agentengine.util.common.annotations.ToolSchema;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
-/** Agent tool that adds a vignette effect to an image. */
 @DiscoverableTool
 public final class AddVignetteTool extends ImageEditingTool {
 

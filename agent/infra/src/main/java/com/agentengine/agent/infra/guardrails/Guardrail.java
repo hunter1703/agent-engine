@@ -40,7 +40,7 @@ public interface Guardrail {
   /**
    * Evaluates the given context and returns a decision.
    *
-   * @param context the context to evaluate (text, tool descriptor, tool args, invocation context)
+   * @param context the context to evaluate (text and invocation context)
    * @return a {@link GuardrailDecision} indicating allow, warn, block, or escalate
    */
   GuardrailDecision evaluate(GuardrailContext context);

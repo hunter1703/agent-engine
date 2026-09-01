@@ -7,11 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Generic read-only repository interface.
- *
- * @param <T> the entity type
- */
 public interface ReadRepository<T extends BaseEntity> {
 
   T findById(String id);

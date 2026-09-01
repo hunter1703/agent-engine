@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.dto.responses;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
-/** Streaming chunk for chat completions. */
 public record ChatCompletionChunk(
     String id,
     String object,

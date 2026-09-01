@@ -11,8 +11,9 @@ public interface SessionEventsRepository extends Repository<SessionEvent> {
   List<Event> findTurnEvents(String sessionId, String turnId);
 
   /**
-   * Returns every stored event for {@code sessionId} — or, when {@code includeChildSessions} is
-   * true, for the whole session tree rooted at it (root and every child session).
+   * Returns stored events for {@code sessionId} whose turn is in {@code committedTurnIds} (or has
+   * no turn at all) — or, when {@code includeChildSessions} is true, the same for the whole session
+   * tree rooted at it (root and every child session).
    */
   List<SessionEvent> getCommittedSessionEvents(
       String sessionId, List<String> committedTurnIds, boolean includeChildSessions);

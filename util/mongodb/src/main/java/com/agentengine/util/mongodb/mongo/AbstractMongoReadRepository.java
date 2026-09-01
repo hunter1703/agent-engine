@@ -24,11 +24,6 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Abstract MongoDB repository implementation providing generic read operations.
- *
- * @param <T> the entity type
- */
 public abstract class AbstractMongoReadRepository<T extends BaseEntity>
     implements ReadRepository<T> {
 

@@ -11,6 +11,9 @@ import org.apache.pekko.persistence.query.EventEnvelope;
 import org.apache.pekko.persistence.query.PersistenceQuery;
 import org.apache.pekko.stream.javadsl.Sink;
 
+/**
+ * Base support for read paths backed directly by the Pekko persistence journal of facts {@code T}.
+ */
 public abstract class AbstractJournalReadRepository<T extends PekkoSerializable> {
 
   private static final int QUERY_TIMEOUT_SECONDS = 30;

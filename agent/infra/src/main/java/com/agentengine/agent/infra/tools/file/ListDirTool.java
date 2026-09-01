@@ -178,7 +178,6 @@ public final class ListDirTool extends BaseFileTool {
             new DirectoryEntry(
                 path.getFileName().toString(), relativePath, isDirectory, size, currentDepth));
 
-        // Recurse into subdirectories if depth allows
         if (isDirectory && currentDepth < maxDepth) {
           entries.addAll(getEntries(rootDir, path, currentDepth + 1, maxDepth));
         }

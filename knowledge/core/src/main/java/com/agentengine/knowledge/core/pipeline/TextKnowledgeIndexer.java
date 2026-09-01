@@ -65,7 +65,6 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
 
       final List<KnowledgeChunk> chunks = pipeline.run(seed);
 
-      // Assign stable UUIDs before persisting
       // Qdrant requires point IDs to be either unsigned integers or UUIDs
       for (int i = 0; i < chunks.size(); i++) {
         final String deterministicId = generateChunkId(knowledge.getId(), i);
@@ -82,7 +81,7 @@ public class TextKnowledgeIndexer implements KnowledgeIndexer {
   }
 
   /**
-   * Generates a deterministic UUID for a knowledge chunk. Uses UUID v5 (name-based with SHA-1) to
+   * Generates a deterministic UUID for a knowledge chunk. Uses UUID v3 (name-based with MD5) to
    * create a stable, reproducible ID.
    */
   private static String generateChunkId(final String knowledgeId, final int chunkIndex) {

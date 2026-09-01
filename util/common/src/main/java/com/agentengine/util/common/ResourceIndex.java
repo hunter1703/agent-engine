@@ -19,7 +19,6 @@ public final class ResourceIndex {
     this.entries = new LazyLoader<>(this::loadEntries);
   }
 
-  /** Returns the list of filenames defined in the index. */
   public List<String> listEntries() {
     return entries.get();
   }

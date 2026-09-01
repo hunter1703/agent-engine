@@ -18,31 +18,15 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.RECORD_COMPONENT})
 @Repeatable(UiRules.class)
 public @interface UiRule {
-  /**
-   * Builder effect to apply when the condition matches.
-   *
-   * @return rule effect
-   */
+  /** Builder effect to apply when the condition matches. */
   UiRuleEffect effect();
 
-  /**
-   * Field path or sibling field name to evaluate.
-   *
-   * @return controlling field identifier
-   */
+  /** Field path or sibling field name to evaluate. */
   String field();
 
-  /**
-   * Comparison operator used for the rule condition.
-   *
-   * @return condition operator
-   */
+  /** Comparison operator used for the rule condition. */
   UiConditionOperator operator() default UiConditionOperator.EQ;
 
-  /**
-   * Values used by the condition operator.
-   *
-   * @return comparison values
-   */
+  /** Values used by the condition operator. */
   String[] values();
 }

@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Collections;
 
-/** Handler for tool configuration schemas. */
 @Singleton
 public class ToolConfigsSchemaRequestHandler implements SchemaRequestHandler {
 

@@ -27,11 +27,6 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Abstract MongoDB repository implementation providing generic CRUD operations.
- *
- * @param <T> the entity type
- */
 public abstract class AbstractMongoRepository<T extends BaseEntity>
     extends AbstractMongoReadRepository<T> implements Repository<T> {
 
