@@ -157,11 +157,6 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   @Override
-  public List<String> getCommittedTurnIds(final String sessionId) {
-    return sessionActorJournal.getCommittedTurnIds(sessionId);
-  }
-
-  @Override
   public Publisher<SessionEvent> subscribeToSession(
       final String sessionId, final boolean liveOnly) {
     final AgentSession session = sessionService.getSession(sessionId);
@@ -217,7 +212,9 @@ public class RuntimeServiceImpl implements RuntimeService {
         Flowable.fromSupplier(
                 () ->
                     sessionEventsRepository.getCommittedSessionEvents(
-                        rootSessionId, getCommittedTurnIds(rootSessionId), true))
+                        rootSessionId,
+                        sessionActorJournal.getCommittedTurnIds(rootSessionId),
+                        true))
             .flatMapIterable(list -> list)
             .filter(event -> seen.add(event.getId()))
             .map(RuntimeServiceImpl::stripBlobData);
@@ -265,7 +262,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
     return Flowable.fromIterable(
         sessionEventsRepository.getCommittedSessionEvents(
-            rootSessionId, getCommittedTurnIds(rootSessionId), true));
+            rootSessionId, sessionActorJournal.getCommittedTurnIds(rootSessionId), true));
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {

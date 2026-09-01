@@ -1,6 +1,6 @@
 package com.agentengine.catalog.core.services;
 
-import com.agentengine.agent.api.services.RuntimeService;
+import com.agentengine.agent.api.services.SessionJournalService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.catalog.core.repository.SessionRepository;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
@@ -30,16 +30,16 @@ public class SessionServiceImpl implements SessionService {
 
   private final SessionRepository sessionRepository;
   private final SessionEventsRepository sessionEventsRepository;
-  private final RuntimeService runtimeService;
+  private final SessionJournalService sessionJournalService;
 
   @Inject
   public SessionServiceImpl(
       final SessionRepository sessionRepository,
       final SessionEventsRepository sessionEventsRepository,
-      final RuntimeService runtimeService) {
+      final SessionJournalService sessionJournalService) {
     this.sessionRepository = sessionRepository;
     this.sessionEventsRepository = sessionEventsRepository;
-    this.runtimeService = runtimeService;
+    this.sessionJournalService = sessionJournalService;
   }
 
   @Override
@@ -110,7 +110,9 @@ public class SessionServiceImpl implements SessionService {
     final boolean isRootSession = session.getParentSessionId() == null;
     final List<SessionEvent> events =
         sessionEventsRepository.getCommittedSessionEvents(
-            session.getId(), runtimeService.getCommittedTurnIds(session.getId()), isRootSession);
+            session.getId(),
+            sessionJournalService.getCommittedTurnIds(session.getId()),
+            isRootSession);
 
     LOG.info(
         "Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());
