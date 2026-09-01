@@ -3,6 +3,7 @@ package com.agentengine.util.agents.beans;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
@@ -118,6 +119,7 @@ public final class SessionEvent extends BaseEntity {
     return sequence;
   }
 
+  @JsonProperty(access = JsonProperty.Access.READ_ONLY)
   public Map<String, Object> getMetadata() {
     return extractMetadata(rawEvent);
   }
@@ -306,7 +308,7 @@ public final class SessionEvent extends BaseEntity {
 
   private static Map<String, Object> extractMetadata(final Event event) {
     final Map<String, Object> metadata = new HashMap<>();
-    if (event.actions() != null && event.actions().stateDelta() != null) {
+    if (event != null && event.actions() != null && event.actions().stateDelta() != null) {
       for (final Map.Entry<String, Object> entry : event.actions().stateDelta().entrySet()) {
         // Strip the ADK State.TEMP_PREFIX ("temp:") so metadata keys are stored cleanly.
         String key = entry.getKey();

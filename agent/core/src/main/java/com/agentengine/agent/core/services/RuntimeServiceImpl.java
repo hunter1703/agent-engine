@@ -204,7 +204,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal());
 
     if (liveOnly) {
-      return liveEvents;
+      return liveEvents.doFinally(liveConnection::dispose);
     }
 
     // Fetch committed history and current turn events lazily.
@@ -226,10 +226,11 @@ public class RuntimeServiceImpl implements RuntimeService {
             .map(RuntimeServiceImpl::stripBlobData);
 
     return Flowable.concat(
-        commitedEvents,
-        nonCommitedEvents,
-        Flowable.just(SessionEvent.liveMarker(rootSessionId)),
-        liveEvents);
+            commitedEvents,
+            nonCommitedEvents,
+            Flowable.just(SessionEvent.liveMarker(rootSessionId)),
+            liveEvents)
+        .doFinally(liveConnection::dispose);
   }
 
   private static SessionEvent stripBlobData(final SessionEvent event) {
@@ -266,11 +267,15 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
-    return Flowable.fromPublisher(
-            eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
-        .map(SequencedEvent::payload)
-        .cast(SessionEvent.class)
-        .takeWhile(event -> !event.isTerminal());
+    final ConnectableFlowable<SessionEvent> liveSource =
+        Flowable.fromPublisher(
+                eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
+            .map(SequencedEvent::payload)
+            .cast(SessionEvent.class)
+            .takeWhile(event -> !event.isTerminal())
+            .replay();
+    final Disposable connection = liveSource.connect();
+    return liveSource.doFinally(connection::dispose);
   }
 
   private List<SessionEvent> getCurrentTurnEvents(final String sessionId) {

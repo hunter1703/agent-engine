@@ -17,7 +17,6 @@ import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InstanceHandle;
 import io.quarkus.grpc.GrpcService;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Any;
 import jakarta.inject.Singleton;
@@ -233,21 +232,19 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private void sendResult(final Object result, final StreamObserver<Response> observer) {
     if (result instanceof Flowable<?> flowable) {
       LOG.debug("Subscribing to Flowable result...");
-      flowable
-          .subscribeOn(Schedulers.from(EXECUTOR_SERVICE))
-          .subscribe(
-              item -> {
-                LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
-                sendPayload(observer, item);
-              },
-              err -> {
-                LOG.error("Flowable error", err);
-                observer.onError(rootCauseStatus(err).asRuntimeException());
-              },
-              () -> {
-                LOG.debug("Flowable complete");
-                observer.onCompleted();
-              });
+      flowable.subscribe(
+          item -> {
+            LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
+            sendPayload(observer, item);
+          },
+          err -> {
+            LOG.error("Flowable error", err);
+            observer.onError(rootCauseStatus(err).asRuntimeException());
+          },
+          () -> {
+            LOG.debug("Flowable complete");
+            observer.onCompleted();
+          });
       return;
     }
     if (result != null) {
