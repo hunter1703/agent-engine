@@ -7,10 +7,8 @@ import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
-import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
-import com.agentengine.util.common.query.Sort;
 import com.agentengine.util.common.update.Update;
 import com.agui.community.core.event.Event;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
@@ -97,14 +95,6 @@ public class SessionServiceImpl implements SessionService {
     return sessionRepository.insert(session);
   }
 
-  private List<SessionEvent> getSessionEvents(final String sessionId) {
-    final Query query =
-        new Query()
-            .withFilter(Filters.eq(SessionEvent.FIELD_SESSION_ID, sessionId))
-            .withSort(new Sort(SessionEvent.FIELD_SEQUENCE, Sort.Order.ASC));
-    return sessionEventsRepository.findByQuery(query).getItems();
-  }
-
   private AgentSession sanitizeSession(final AgentSession session, final boolean includeEvents) {
     if (!includeEvents || session == null) {
       return session;
@@ -119,10 +109,8 @@ public class SessionServiceImpl implements SessionService {
     final List<Event> aguiEvents = new ArrayList<>();
     final boolean isRootSession = session.getParentSessionId() == null;
     final List<SessionEvent> events =
-        isRootSession
-            ? sessionEventsRepository.getCommittedSessionEvents(
-                session.getId(), runtimeService.getCommittedTurnIds(session.getId()), true)
-            : getSessionEvents(session.getId());
+        sessionEventsRepository.getCommittedSessionEvents(
+            session.getId(), runtimeService.getCommittedTurnIds(session.getId()), isRootSession);
 
     LOG.info(
         "Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());

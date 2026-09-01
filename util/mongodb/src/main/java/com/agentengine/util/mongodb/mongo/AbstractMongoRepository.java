@@ -13,7 +13,9 @@ import com.agentengine.util.common.repository.Repository;
 import com.agentengine.util.common.update.Operation;
 import com.agentengine.util.common.update.Update;
 import com.agentengine.util.common.validation.ValidationService;
+import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoWriteException;
+import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReplaceOptions;
@@ -88,6 +90,8 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       }
       getCollection().insertMany(entities);
       return entities;
+    } catch (final MongoBulkWriteException exception) {
+      throw translateBulkWriteException(exception, entities);
     } catch (final Exception exception) {
       LOG.error("Error inserting entities: {}", entities, exception);
       throw ExceptionUtils.wrapInRuntimeException(exception, "Error inserting entities");
@@ -262,6 +266,18 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
     }
     LOG.error("Error writing entity: {}", id, exception);
     return new RuntimeException("Error writing entity: " + id, exception);
+  }
+
+  private RuntimeException translateBulkWriteException(
+      final MongoBulkWriteException exception, final List<T> entities) {
+    for (final BulkWriteError error : exception.getWriteErrors()) {
+      if (error.getCode() == DUPLICATE_KEY_ERROR) {
+        return new DuplicateAssetException(
+            entityClass.getSimpleName(), entities.get(error.getIndex()).getId());
+      }
+    }
+    LOG.error("Error writing entities: {}", entities, exception);
+    return new RuntimeException("Error writing entities", exception);
   }
 
   private void validateEntity(final T entity) {

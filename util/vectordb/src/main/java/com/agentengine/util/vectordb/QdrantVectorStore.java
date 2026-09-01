@@ -53,7 +53,7 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
   @Override
   protected PaginatedResult<T> findBySemanticQueryInternal(final Query query) {
     final Page page = query.getPage();
-    final int maxResults = page.getLimit() <= 0 ? Integer.MAX_VALUE : page.getLimit();
+    final int maxResults = page.getLimit() < 0 ? Integer.MAX_VALUE : page.getLimit();
     final QdrantHttpClient.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
     final List<Filter> semanticFilters = extractSemanticFilters(query.getFilter());

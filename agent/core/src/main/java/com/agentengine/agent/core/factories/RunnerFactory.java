@@ -4,9 +4,6 @@ import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
-import com.agentengine.agent.core.session.events.RollbackFact;
-import com.agentengine.agent.core.session.events.SessionFact;
-import com.agentengine.agent.core.session.events.TurnCommittedFact;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
@@ -122,32 +119,7 @@ public class RunnerFactory {
   }
 
   private List<Event> getEvents(final String sessionId) {
-    final List<SessionFact> facts =
-        sessionActorJournal.readSessionEvents(
-            sessionId, fact -> fact instanceof TurnCommittedFact || fact instanceof RollbackFact);
-
-    // Applies each RollbackFact against the turns committed so far, using only the lightweight
-    // journal facts, before any event content is fetched: a rolled-back turn's events never need
-    // to leave Mongo in the first place.
-    final List<TurnCommittedFact> survivingTurns = new LinkedList<>();
-    for (final SessionFact fact : facts) {
-      if (fact instanceof TurnCommittedFact committed) {
-        survivingTurns.add(committed);
-      } else if (fact instanceof RollbackFact rollback) {
-        final String runId = rollback.getRunId();
-        boolean foundRun = false;
-        while (true) {
-          if (!foundRun) {
-            foundRun = Objects.equals(survivingTurns.getLast().getRunId(), runId);
-          } else if (!Objects.equals(survivingTurns.getLast().getRunId(), runId)) {
-            break;
-          }
-          survivingTurns.removeLast();
-        }
-      }
-    }
-
-    final List<String> turnIds = survivingTurns.stream().map(TurnCommittedFact::getTurnId).toList();
+    final List<String> turnIds = sessionActorJournal.getCommittedTurnIds(sessionId);
     return sessionEventsRepository.getCommittedSessionEvents(sessionId, turnIds, false).stream()
         .filter(sessionEvent -> sessionEvent.getType() == SessionEvent.Type.NORMAL)
         .map(SessionEvent::getRawEvent)

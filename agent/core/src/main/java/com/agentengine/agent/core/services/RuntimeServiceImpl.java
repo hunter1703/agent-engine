@@ -23,7 +23,6 @@ import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
 import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
@@ -206,33 +205,34 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     // Dedup by stable ADK event ID — same event has the same ID across all three layers.
     final Set<String> seen = ConcurrentHashMap.newKeySet();
-    final Flowable<SessionEvent> filteredLiveSource =
+    final Flowable<SessionEvent> liveEvents =
         liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal());
 
     if (liveOnly) {
-      return filteredLiveSource;
+      return liveEvents;
     }
 
-    // Fetch committed history and current turn events in parallel on virtual threads.
-    final List<List<SessionEvent>> fetched =
-        StructuredConcurrencyUtils.runConcurrently(
-            List.of(
+    // Fetch committed history and current turn events lazily.
+    final Flowable<SessionEvent> commitedEvents =
+        Flowable.fromSupplier(
                 () ->
                     sessionEventsRepository.getCommittedSessionEvents(
-                        rootSessionId, getCommittedTurnIds(rootSessionId), true),
-                () -> getCurrentTurnEvents(sessionId)));
-    final List<SessionEvent> history = fetched.get(0);
-    final List<SessionEvent> turnEvents = fetched.get(1);
+                        rootSessionId, getCommittedTurnIds(rootSessionId), true))
+            .flatMapIterable(list -> list)
+            .filter(event -> seen.add(event.getId()))
+            .map(RuntimeServiceImpl::stripBlobData);
+
+    final Flowable<SessionEvent> nonCommitedEvents =
+        Flowable.fromSupplier(() -> getCurrentTurnEvents(sessionId))
+            .flatMapIterable(list -> list)
+            .filter(event -> seen.add(event.getId()))
+            .map(RuntimeServiceImpl::stripBlobData);
 
     return Flowable.concat(
-        Flowable.fromIterable(history)
-            .filter(event -> seen.add(event.getId()))
-            .map(RuntimeServiceImpl::stripBlobData),
-        Flowable.fromIterable(turnEvents)
-            .filter(event -> seen.add(event.getId()))
-            .map(RuntimeServiceImpl::stripBlobData),
+        commitedEvents,
+        nonCommitedEvents,
         Flowable.just(SessionEvent.liveMarker(rootSessionId)),
-        filteredLiveSource);
+        liveEvents);
   }
 
   private static SessionEvent stripBlobData(final SessionEvent event) {

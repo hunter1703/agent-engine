@@ -14,7 +14,7 @@ import org.apache.pekko.stream.javadsl.Sink;
 /**
  * Base support for read paths backed directly by the Pekko persistence journal of facts {@code T}.
  */
-public abstract class AbstractJournalReadRepository<T extends PekkoSerializable> {
+public abstract class AbstractReadJournal<T extends PekkoSerializable> {
 
   private static final int QUERY_TIMEOUT_SECONDS = 30;
 
@@ -22,7 +22,7 @@ public abstract class AbstractJournalReadRepository<T extends PekkoSerializable>
   private final Class<T> entityClass;
   private final LazyLoader<JdbcReadJournal> readJournal;
 
-  protected AbstractJournalReadRepository(
+  protected AbstractReadJournal(
       final ActorSystemProvider actorSystemProvider, final Class<T> entityClass) {
     this.actorSystemProvider = actorSystemProvider;
     this.entityClass = entityClass;

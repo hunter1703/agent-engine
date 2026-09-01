@@ -104,20 +104,25 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
       final List<T> entities = new ArrayList<>();
 
       final Bson bsonFilter = MongoUtils.toBson(query == null ? null : query.getFilter());
-      final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSorts());
-      final Bson projection = MongoUtils.toProjectionBson(query);
 
-      FindIterable<T> iterable = getCollection().find(bsonFilter, entityClass);
-      if (projection != null) {
-        iterable = iterable.projection(projection);
-      }
-      iterable = iterable.skip(page.getOffset()).limit(page.getLimit());
-      if (bsonSort != null) {
-        iterable = iterable.sort(bsonSort);
-      }
+      if (page.getLimit() != 0) {
+        final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSorts());
+        final Bson projection = MongoUtils.toProjectionBson(query);
+        FindIterable<T> iterable = getCollection().find(bsonFilter, entityClass);
+        if (projection != null) {
+          iterable = iterable.projection(projection);
+        }
+        iterable = iterable.skip(page.getOffset());
+        if (page.getLimit() > 0) {
+          iterable = iterable.limit(page.getLimit());
+        }
+        if (bsonSort != null) {
+          iterable = iterable.sort(bsonSort);
+        }
 
-      for (final T document : iterable) {
-        entities.add(document);
+        for (final T document : iterable) {
+          entities.add(document);
+        }
       }
 
       final Long total = query != null && query.isIncludeCount() ? count(bsonFilter) : null;

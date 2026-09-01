@@ -1,7 +1,7 @@
 package com.agentengine.util.common.query;
 
 public class Page {
-  public static final Page UNBOUNDED = new Page(0, 0);
+  public static final Page UNBOUNDED = new Page(0, -1);
 
   private int offset;
   private int limit;

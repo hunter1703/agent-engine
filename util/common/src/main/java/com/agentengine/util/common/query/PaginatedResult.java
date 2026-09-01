@@ -49,10 +49,12 @@ public class PaginatedResult<T> {
     result.setItems(items);
     result.setTotal(total);
     boolean hasMore = false;
-    if (total != null) {
-      hasMore = page.getOffset() + page.getLimit() < total;
-    } else {
-      hasMore = items.size() == page.getLimit();
+    if (page.getLimit() >= 0) {
+      if (total != null) {
+        hasMore = page.getOffset() + page.getLimit() < total;
+      } else {
+        hasMore = items.size() == page.getLimit();
+      }
     }
     result.setHasMore(hasMore);
     if (result.isHasMore()) {

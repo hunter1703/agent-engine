@@ -135,7 +135,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
             body);
     return new FileDetails(
         name,
-        defaultBucket + "/" + key,
+        defaultBucket.get() + "/" + key,
         FileDetails.StorageType.CLOUDSTORAGE,
         mediaType,
         contentLength);
@@ -147,7 +147,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
     final String key = index >= 0 ? source.substring(index + 1) : source;
     final String bucket = index >= 0 ? source.substring(0, index) : defaultBucket.get();
     final ResponseInputStream<GetObjectResponse> response =
-        s3.get().getObject(GetObjectRequest.builder().bucket(bucket).key(source).build());
+        s3.get().getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
     return new Content(response, response.response().contentType());
   }
 
