@@ -105,12 +105,11 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
   @Override
   public PaginatedResult<T> findByQuery(final Query query) {
     try {
-      final Page page =
-          query == null || query.getPage() == null ? new Page(0, 20) : query.getPage();
+      final Page page = query == null ? new Page(0, 20) : query.getPage();
       final List<T> entities = new ArrayList<>();
 
       final Bson bsonFilter = MongoUtils.toBson(query == null ? null : query.getFilter());
-      final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSort());
+      final Bson bsonSort = MongoUtils.toSortBson(query == null ? null : query.getSorts());
       final Bson projection = MongoUtils.toProjectionBson(query);
 
       FindIterable<T> iterable = getCollection().find(bsonFilter, entityClass);

@@ -6,8 +6,8 @@ import java.util.List;
 
 public class Query {
   private Filter filter;
-  private Page page;
-  private Sort sort;
+  private Page page = Page.UNBOUNDED;
+  private List<Sort> sorts;
   private List<String> includeFields = new ArrayList<>();
   private List<String> excludeFields = new ArrayList<>();
   private boolean includeCount = false;
@@ -20,7 +20,7 @@ public class Query {
     }
     this.filter = other.filter;
     this.page = other.page;
-    this.sort = other.sort;
+    this.sorts = other.sorts;
     this.includeFields = other.includeFields;
     this.excludeFields = other.excludeFields;
     this.includeCount = other.includeCount;
@@ -42,12 +42,12 @@ public class Query {
     this.page = page;
   }
 
-  public Sort getSort() {
-    return sort;
+  public List<Sort> getSorts() {
+    return sorts;
   }
 
-  public void setSort(Sort sort) {
-    this.sort = sort;
+  public void setSorts(List<Sort> sorts) {
+    this.sorts = sorts;
   }
 
   public Query withFilter(Filter filter) {
@@ -61,7 +61,23 @@ public class Query {
   }
 
   public Query withSort(Sort sort) {
-    this.sort = sort;
+    this.sorts = sort == null ? null : new ArrayList<>(List.of(sort));
+    return this;
+  }
+
+  public Query withSorts(List<Sort> sorts) {
+    this.sorts = sorts;
+    return this;
+  }
+
+  public Query addSort(Sort sort) {
+    if (sort == null) {
+      return this;
+    }
+    if (this.sorts == null) {
+      this.sorts = new ArrayList<>();
+    }
+    this.sorts.add(sort);
     return this;
   }
 

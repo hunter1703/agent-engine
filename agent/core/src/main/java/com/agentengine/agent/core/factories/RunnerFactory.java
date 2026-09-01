@@ -1,9 +1,12 @@
 package com.agentengine.agent.core.factories;
 
 import com.agentengine.agent.core.memory.MemoryService;
-import com.agentengine.agent.core.services.SessionHistoryServiceImpl;
+import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
+import com.agentengine.agent.core.session.events.RollbackFact;
+import com.agentengine.agent.core.session.events.SessionFact;
+import com.agentengine.agent.core.session.events.TurnCommittedFact;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.context.ContextManager;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
@@ -17,11 +20,14 @@ import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
+import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
+import com.google.adk.events.Event;
 import com.google.adk.plugins.BasePlugin;
 import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
@@ -40,7 +46,8 @@ public class RunnerFactory {
   private final ContextManagerProvider contextManagerProvider;
   private final GuardrailPolicyFactory guardrailPolicyFactory;
   private final SessionService sessionService;
-  private final SessionHistoryServiceImpl historyService;
+  private final SessionActorJournal sessionActorJournal;
+  private final SessionEventsRepository sessionEventsRepository;
 
   private final KnowledgeService knowledgeService;
   private final MemoryService memoryService;
@@ -53,7 +60,8 @@ public class RunnerFactory {
       ContextManagerProvider contextManagerProvider,
       GuardrailPolicyFactory guardrailPolicyFactory,
       SessionService sessionService,
-      final SessionHistoryServiceImpl historyService,
+      final SessionActorJournal sessionActorJournal,
+      final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
       final NotebookRepository notebookRepository,
@@ -63,7 +71,8 @@ public class RunnerFactory {
     this.contextManagerProvider = contextManagerProvider;
     this.guardrailPolicyFactory = guardrailPolicyFactory;
     this.sessionService = sessionService;
-    this.historyService = historyService;
+    this.sessionActorJournal = sessionActorJournal;
+    this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
     this.notebookRepository = notebookRepository;
@@ -91,8 +100,7 @@ public class RunnerFactory {
       final String agentId, final String sessionId) {
     final InMemorySessionService inMemorySessionService = new InMemorySessionService();
     final AgentSession agentSession = sessionService.getSession(sessionId, false);
-    final Session persistedSession =
-        SessionUtils.toSession(agentSession, historyService.getEvents(sessionId));
+    final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
 
     final ConcurrentHashMap<String, Object> initialState =
         persistedSession == null
@@ -111,6 +119,39 @@ public class RunnerFactory {
       }
     }
     return inMemorySessionService;
+  }
+
+  private List<Event> getEvents(final String sessionId) {
+    final List<SessionFact> facts =
+        sessionActorJournal.readSessionEvents(
+            sessionId, fact -> fact instanceof TurnCommittedFact || fact instanceof RollbackFact);
+
+    // Applies each RollbackFact against the turns committed so far, using only the lightweight
+    // journal facts, before any event content is fetched: a rolled-back turn's events never need
+    // to leave Mongo in the first place.
+    final List<TurnCommittedFact> survivingTurns = new LinkedList<>();
+    for (final SessionFact fact : facts) {
+      if (fact instanceof TurnCommittedFact committed) {
+        survivingTurns.add(committed);
+      } else if (fact instanceof RollbackFact rollback) {
+        final String runId = rollback.getRunId();
+        boolean foundRun = false;
+        while (true) {
+          if (!foundRun) {
+            foundRun = Objects.equals(survivingTurns.getLast().getRunId(), runId);
+          } else if (!Objects.equals(survivingTurns.getLast().getRunId(), runId)) {
+            break;
+          }
+          survivingTurns.removeLast();
+        }
+      }
+    }
+
+    final List<String> turnIds = survivingTurns.stream().map(TurnCommittedFact::getTurnId).toList();
+    return sessionEventsRepository.getCommittedSessionEvents(sessionId, turnIds, false).stream()
+        .filter(sessionEvent -> sessionEvent.getType() == SessionEvent.Type.NORMAL)
+        .map(SessionEvent::getRawEvent)
+        .toList();
   }
 
   private List<BasePlugin> buildPlugins(final Agent rootAgent) {

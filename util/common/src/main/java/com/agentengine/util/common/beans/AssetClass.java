@@ -14,4 +14,5 @@ public interface AssetClass {
   String INVOKE_AGENT_JOB = "InvokeAgentJob";
   String NOTEBOOK = "Notebook";
   String NOTE = "Note";
+  String SESSION_EVENT = "SessionEvent";
 }

@@ -34,10 +34,7 @@ public class ToolAssetHandler extends NamedAssetHandler<ToolDescriptor> {
   public PaginatedResult<ToolDescriptor> findAssets(AssetRequest request) {
     List<ToolDescriptor> tools = toolCatalog.getTools();
 
-    Page page =
-        request.getQuery() != null && request.getQuery().getPage() != null
-            ? request.getQuery().getPage()
-            : new Page(0, 100);
+    Page page = request.getQuery() != null ? request.getQuery().getPage() : new Page(0, 100);
 
     final long total = tools.size();
     final int start = (int) Math.min(page.getOffset(), total);

@@ -54,9 +54,8 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   @Override
   protected PaginatedResult<T> findBySemanticQueryInternal(final Query query) {
-    Page page = query.getPage();
-    page = page == null ? new Page(0, DEFAULT_MAX_RESULTS) : page;
-    final int maxResults = page.getLimit();
+    final Page page = query.getPage();
+    final int maxResults = page.getLimit() <= 0 ? Integer.MAX_VALUE : page.getLimit();
     final QdrantHttpClient.Filter qdrantFilter = buildQdrantFilter(query.getFilter());
 
     final List<Filter> semanticFilters = extractSemanticFilters(query.getFilter());
@@ -123,6 +122,20 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
         new QdrantHttpClient.UpsertRequest(List.of(point));
     client().upsert(collection, request);
     return entity;
+  }
+
+  @Override
+  public List<T> insertMany(final List<T> entities) {
+    if (CollectionUtils.isEmpty(entities)) {
+      return List.of();
+    }
+    final List<QdrantHttpClient.Point> points = new ArrayList<>(entities.size());
+    for (final T entity : entities) {
+      points.add(
+          new QdrantHttpClient.Point(entity.getId(), buildVectorData(entity), toPayload(entity)));
+    }
+    client().upsert(collection, new QdrantHttpClient.UpsertRequest(points));
+    return entities;
   }
 
   @Override

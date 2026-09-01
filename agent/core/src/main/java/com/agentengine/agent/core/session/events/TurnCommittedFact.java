@@ -1,25 +1,51 @@
 package com.agentengine.agent.core.session.events;
 
-import com.google.adk.events.Event;
-import java.util.List;
-
 public final class TurnCommittedFact extends SessionFact {
 
-  private List<Event> events;
+  private String runId;
+  private String turnId;
+  private String lastEventId;
+  private int eventCount;
 
-  public TurnCommittedFact() {
-    this(List.of());
+  public TurnCommittedFact() {}
+
+  public TurnCommittedFact(
+      final String runId, final String turnId, final String lastEventId, final int eventCount) {
+    this.runId = runId;
+    this.turnId = turnId;
+    this.lastEventId = lastEventId;
+    this.eventCount = eventCount;
   }
 
-  public TurnCommittedFact(final List<Event> events) {
-    setEvents(events);
+  public String getRunId() {
+    return runId;
   }
 
-  public List<Event> getEvents() {
-    return events;
+  public void setRunId(final String runId) {
+    this.runId = runId;
   }
 
-  public void setEvents(final List<Event> events) {
-    this.events = events == null ? List.of() : List.copyOf(events);
+  public String getTurnId() {
+    return turnId;
+  }
+
+  public void setTurnId(final String turnId) {
+    this.turnId = turnId;
+  }
+
+  public String getLastEventId() {
+    return lastEventId;
+  }
+
+  public void setLastEventId(final String lastEventId) {
+    this.lastEventId = lastEventId;
+  }
+
+  public int getEventCount() {
+    return eventCount;
+  }
+
+  public void setEventCount(final int eventCount) {
+    this.eventCount = eventCount;
   }
 }

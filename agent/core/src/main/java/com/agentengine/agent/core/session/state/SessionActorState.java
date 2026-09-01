@@ -130,16 +130,16 @@ public record SessionActorState(
     return this;
   }
 
-  public SessionActorState withCommitedEvents(final List<Event> events) {
+  public SessionActorState withCommittedTurn(final CommittedTurn committedTurn) {
     return new SessionActorState(
         sessionState,
         queue,
         childRegistry,
         startingChildren,
-        nextSequence() + events.size(),
+        nextSequence() + committedTurn.count(),
         topology,
         pauseState,
-        runState.withEvents(events),
+        runState.withCommittedTurn(committedTurn),
         grants);
   }
 
@@ -266,11 +266,10 @@ public record SessionActorState(
   }
 
   public boolean isDuplicateTurn(final Event lastTurnEvent) {
-    if (runState == null || lastTurnEvent == null) {
+    if (runState == null || lastTurnEvent == null || runState.lastCommittedTurn() == null) {
       return false;
     }
-    final Event last = CollectionUtils.getLast(runState.lastCommittedTurn());
-    return Objects.equals(last == null ? null : last.id(), lastTurnEvent.id());
+    return Objects.equals(runState.lastCommittedTurn().lastEventId(), lastTurnEvent.id());
   }
 
   public SessionActorState clearSelfInterruptStates() {

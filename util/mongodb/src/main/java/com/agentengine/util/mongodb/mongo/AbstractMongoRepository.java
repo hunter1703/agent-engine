@@ -1,5 +1,7 @@
 package com.agentengine.util.mongodb.mongo;
 
+import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -70,11 +72,30 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       } catch (final MongoWriteException exception) {
         throw translateWriteException(exception, entity.getId());
       }
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error inserting entity: {}", entity, exception);
-      throw new RuntimeException("Error inserting entity", exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error inserting entity");
+    }
+  }
+
+  @Override
+  public List<T> insertMany(final List<T> entities) {
+    if (CollectionUtils.isEmpty(entities)) {
+      return List.of();
+    }
+    try {
+      for (final T entity : entities) {
+        validateEntity(entity);
+        if (StringUtils.isBlank(entity.getId())) {
+          entity.setId(new ObjectId().toHexString());
+        }
+        sanitizeForWrite(entity);
+      }
+      getCollection().insertMany(entities);
+      return entities;
+    } catch (final Exception exception) {
+      LOG.error("Error inserting entities: {}", entities, exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error inserting entities");
     }
   }
 
@@ -98,11 +119,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
               Filters.eq(MongoUtils.FIELD_MONGO_ID, id),
               MongoUtils.toBsonUpdate(sanitizeForWrite(update)),
               options);
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error updating entity: {}", id, exception);
-      throw new RuntimeException("Error updating entity: " + id, exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error updating entity: " + id);
     }
   }
 
@@ -111,7 +130,7 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
     try {
       final FindOneAndUpdateOptions options =
           new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER);
-      final Bson sort = MongoUtils.toSortBson(query.getSort());
+      final Bson sort = MongoUtils.toSortBson(query.getSorts());
       if (sort != null) {
         options.sort(sort);
       }
@@ -120,11 +139,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
               MongoUtils.toBson(query.getFilter()),
               MongoUtils.toBsonUpdate(sanitizeForWrite(update)),
               options);
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error in findOneAndUpdate for query: {}", query, exception);
-      throw new RuntimeException("Error in findOneAndUpdate", exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error in findOneAndUpdate");
     }
   }
 
@@ -134,11 +151,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       return getCollection()
           .updateOne(MongoUtils.toBson(filter), MongoUtils.toBsonUpdate(sanitizeForWrite(update)))
           .getModifiedCount();
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error in updateOne for filter: {}", filter, exception);
-      throw new RuntimeException("Error in updateOne", exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error in updateOne");
     }
   }
 
@@ -148,11 +163,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
       return getCollection()
           .updateMany(MongoUtils.toBson(filter), MongoUtils.toBsonUpdate(sanitizeForWrite(update)))
           .getModifiedCount();
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error in updateMany for filter: {}", filter, exception);
-      throw new RuntimeException("Error in updateMany", exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error in updateMany");
     }
   }
 
@@ -208,11 +221,9 @@ public abstract class AbstractMongoRepository<T extends BaseEntity>
     } catch (final MongoWriteException exception) {
       entity.setVersion(currentVersion);
       throw translateWriteException(exception, id);
-    } catch (final RuntimeException exception) {
-      throw exception;
     } catch (final Exception exception) {
       LOG.error("Error replacing entity: {}", entity, exception);
-      throw new RuntimeException("Error replacing entity", exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error replacing entity");
     }
   }
 

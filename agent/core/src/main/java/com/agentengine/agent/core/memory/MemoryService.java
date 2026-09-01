@@ -1,13 +1,14 @@
 package com.agentengine.agent.core.memory;
 
 import com.agentengine.agent.api.services.CommunityRegistry;
-import com.agentengine.agent.api.services.SessionHistoryService;
+import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.agents.beans.session.AgentSession;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
@@ -57,19 +58,22 @@ public class MemoryService implements BaseMemoryService {
   private static final String EMBEDDING_MODEL_ID_KEY = "embeddingModelId";
 
   private final CommunityRegistry communityRegistry;
-  private final SessionHistoryService sessionHistoryService;
+  private final SessionEventsRepository sessionEventsRepository;
+  private final SessionActorJournal sessionActorJournal;
   private final AgentProvider agentProvider;
   private final MemoryStore memoryStore;
   private final InfraConfigService infraConfigService;
 
   public MemoryService(
       final CommunityRegistry communityRegistry,
-      final SessionHistoryService sessionHistoryService,
+      final SessionEventsRepository sessionEventsRepository,
+      final SessionActorJournal sessionActorJournal,
       final AgentProvider agentProvider,
       final MemoryStore memoryStore,
       final InfraConfigService infraConfigService) {
     this.communityRegistry = communityRegistry;
-    this.sessionHistoryService = sessionHistoryService;
+    this.sessionEventsRepository = sessionEventsRepository;
+    this.sessionActorJournal = sessionActorJournal;
     this.agentProvider = agentProvider;
     this.memoryStore = memoryStore;
     this.infraConfigService = infraConfigService;
@@ -80,7 +84,8 @@ public class MemoryService implements BaseMemoryService {
     return Completable.fromAction(
         () -> {
           final List<SessionEvent> events =
-              CollectionUtils.nullSafeList(sessionHistoryService.getSessionEvents(session.id()));
+              sessionEventsRepository.getCommittedSessionEvents(
+                  session.id(), sessionActorJournal.getCommittedTurnIds(session.id()), false);
           final String conversation = buildConversationText(events);
           if (StringUtils.isBlank(conversation)) {
             return;

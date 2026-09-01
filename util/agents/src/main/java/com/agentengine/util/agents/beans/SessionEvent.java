@@ -1,21 +1,29 @@
 package com.agentengine.util.agents.beans;
 
+import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.adk.events.Event;
+import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 /**
  * Event emitted by a session actor during execution.
  *
- * <p>The {@code sequence} field provides per-session ordering guarantees: events from the same
- * {@code sessionId} are totally ordered by sequence number. Events across different sessions have
- * no ordering guarantee.
+ * <p>{@code sequence} orders events within one session; not comparable across sessions.
  */
+@Index(name = "session_events_turn_idx", def = "{'sessionId': 1, 'turnId': 1, 'sequence': 1}")
 public final class SessionEvent extends BaseEntity {
   public static final String FIELD_SESSION_ID = "sessionId";
+  public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
+  public static final String FIELD_TURN_ID = "turnId";
+  public static final String FIELD_SEQUENCE = "sequence";
 
   public enum Type {
     UNKNOWN,
@@ -39,49 +47,31 @@ public final class SessionEvent extends BaseEntity {
   private String rootSessionId;
   private String parentSessionId;
   private String sessionId;
-  private String runId;
-  private String author;
-  private Content content;
-  private Boolean partial;
-  private Boolean turnComplete;
-  private FinishReason finishReason;
-  private long timestamp;
   private long sequence;
-  private Map<String, Object> metadata;
   private Type type = Type.NORMAL;
-  private String errorMessage;
+  private String turnId;
+  private String rawEventJson;
+  @BsonIgnore @JsonIgnore private Event rawEvent;
 
   public SessionEvent() {}
 
   public SessionEvent(
-      String id,
-      String rootSessionId,
-      String parentSessionId,
-      String sessionId,
-      String runId,
-      String author,
-      Content content,
-      Boolean partial,
-      Boolean turnComplete,
-      FinishReason finishReason,
-      long timestamp,
-      long sequence,
-      Map<String, Object> metadata,
-      final Type type) {
+      final String id,
+      final String rootSessionId,
+      final String parentSessionId,
+      final String sessionId,
+      final long sequence,
+      final Type type,
+      final String turnId,
+      final Event rawEvent) {
     setId(id);
     this.rootSessionId = rootSessionId;
     this.parentSessionId = parentSessionId;
     this.sessionId = sessionId;
-    this.runId = runId;
-    this.author = author;
-    this.content = content;
-    this.partial = partial;
-    this.turnComplete = turnComplete;
-    this.finishReason = finishReason;
-    this.timestamp = timestamp;
     this.sequence = sequence;
-    this.metadata = metadata;
     this.type = type;
+    this.turnId = turnId;
+    this.rawEvent = rawEvent;
   }
 
   public String getRootSessionId() {
@@ -97,31 +87,31 @@ public final class SessionEvent extends BaseEntity {
   }
 
   public String getRunId() {
-    return runId;
+    return rawEvent.invocationId();
   }
 
   public String getAuthor() {
-    return author;
+    return rawEvent.author();
   }
 
   public Content getContent() {
-    return content;
+    return rawEvent.content().orElse(null);
   }
 
   public Boolean isPartial() {
-    return partial;
+    return rawEvent.partial().orElse(false);
   }
 
   public Boolean isTurnComplete() {
-    return turnComplete;
+    return rawEvent.turnComplete().orElse(false);
   }
 
   public FinishReason getFinishReason() {
-    return finishReason;
+    return rawEvent.finishReason().orElse(null);
   }
 
   public long getTimestamp() {
-    return timestamp;
+    return rawEvent.timestamp();
   }
 
   public long getSequence() {
@@ -129,7 +119,7 @@ public final class SessionEvent extends BaseEntity {
   }
 
   public Map<String, Object> getMetadata() {
-    return metadata;
+    return extractMetadata(rawEvent);
   }
 
   public Type getType() {
@@ -149,19 +139,46 @@ public final class SessionEvent extends BaseEntity {
   }
 
   public String getErrorMessage() {
-    return errorMessage;
+    return rawEvent.errorMessage().orElse(null);
   }
 
-  public void setErrorMessage(final String errorMessage) {
-    this.errorMessage = errorMessage;
+  public String getTurnId() {
+    return turnId;
+  }
+
+  public void setTurnId(final String turnId) {
+    this.turnId = turnId;
+  }
+
+  @JsonIgnore
+  public String getRawEventJson() {
+    if (rawEventJson == null) {
+      rawEventJson = rawEvent.toJson();
+    }
+    return rawEventJson;
+  }
+
+  public void setRawEventJson(final String rawEventJson) {
+    this.rawEventJson = rawEventJson;
+    this.rawEvent = Event.fromJson(rawEventJson);
+  }
+
+  @JsonIgnore
+  public Event getRawEvent() {
+    return rawEvent;
+  }
+
+  public void setRawEvent(final Event rawEvent) {
+    this.rawEvent = rawEvent;
+    this.rawEventJson = null; // stale cache; getRawEventJson() will recompute it on next call
   }
 
   public Boolean getTurnComplete() {
-    return turnComplete;
+    return isTurnComplete();
   }
 
   public Boolean getPartial() {
-    return partial;
+    return isPartial();
   }
 
   @Override
@@ -173,15 +190,10 @@ public final class SessionEvent extends BaseEntity {
         && Objects.equals(this.rootSessionId, that.rootSessionId)
         && Objects.equals(this.parentSessionId, that.parentSessionId)
         && Objects.equals(this.sessionId, that.sessionId)
-        && Objects.equals(this.runId, that.runId)
-        && Objects.equals(this.author, that.author)
-        && Objects.equals(this.content, that.content)
-        && Objects.equals(this.partial, that.partial)
-        && Objects.equals(this.turnComplete, that.turnComplete)
-        && Objects.equals(this.finishReason, that.finishReason)
-        && this.timestamp == that.timestamp
         && this.sequence == that.sequence
-        && Objects.equals(this.metadata, that.metadata);
+        && Objects.equals(this.type, that.type)
+        && Objects.equals(this.turnId, that.turnId)
+        && Objects.equals(this.getRawEventJson(), that.getRawEventJson());
   }
 
   @Override
@@ -191,15 +203,10 @@ public final class SessionEvent extends BaseEntity {
         rootSessionId,
         parentSessionId,
         sessionId,
-        runId,
-        author,
-        content,
-        partial,
-        turnComplete,
-        finishReason,
-        timestamp,
         sequence,
-        metadata);
+        type,
+        turnId,
+        getRawEventJson());
   }
 
   @Override
@@ -214,27 +221,29 @@ public final class SessionEvent extends BaseEntity {
         + ", sessionId="
         + sessionId
         + ", runId="
-        + runId
+        + getRunId()
         + ", author="
-        + author
+        + getAuthor()
         + ", content="
-        + content
+        + getContent()
         + ", partial="
-        + partial
+        + isPartial()
         + ", turnComplete="
-        + turnComplete
+        + isTurnComplete()
         + ", finishReason="
-        + finishReason
+        + getFinishReason()
         + ", timestamp="
-        + timestamp
+        + getTimestamp()
         + ", type="
         + type
         + ", errorMessage="
-        + errorMessage
+        + getErrorMessage()
         + ", sequence="
         + sequence
         + ", metadata="
-        + metadata
+        + getMetadata()
+        + ", turnId="
+        + turnId
         + ']';
   }
 
@@ -250,65 +259,21 @@ public final class SessionEvent extends BaseEntity {
     this.sessionId = sessionId;
   }
 
-  public void setRunId(final String runId) {
-    this.runId = runId;
-  }
-
-  public void setAuthor(final String author) {
-    this.author = author;
-  }
-
-  public void setContent(final Content content) {
-    this.content = content;
-  }
-
-  public void setPartial(final Boolean partial) {
-    this.partial = partial;
-  }
-
-  public void setTurnComplete(final Boolean turnComplete) {
-    this.turnComplete = turnComplete;
-  }
-
-  public void setFinishReason(final FinishReason finishReason) {
-    this.finishReason = finishReason;
-  }
-
-  public void setTimestamp(final long timestamp) {
-    this.timestamp = timestamp;
-  }
-
   public void setSequence(final long sequence) {
     this.sequence = sequence;
   }
 
-  public void setMetadata(final Map<String, Object> metadata) {
-    this.metadata = metadata;
-  }
-
   public static SessionEvent liveMarker(final String sessionId) {
-    final SessionEvent event = new SessionEvent();
-    event.setSessionId(sessionId);
-    event.type = Type.LIVE_MARKER;
-    return event;
+    final String id = UUID.randomUUID().toString();
+    final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
+    return new SessionEvent(id, null, null, sessionId, 0L, Type.LIVE_MARKER, null, rawEvent);
   }
 
   public static SessionEvent terminal(final String sessionId) {
+    final String id = UUID.randomUUID().toString();
+    final Event rawEvent = Event.builder().id(id).timestamp(System.currentTimeMillis()).build();
     return new SessionEvent(
-        UUID.randomUUID().toString(),
-        null,
-        null,
-        sessionId,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        System.currentTimeMillis(),
-        Long.MAX_VALUE,
-        null,
-        Type.TERMINAL);
+        id, null, null, sessionId, Long.MAX_VALUE, Type.TERMINAL, null, rawEvent);
   }
 
   /**
@@ -326,24 +291,29 @@ public final class SessionEvent extends BaseEntity {
       final String rootSessionId,
       final String sessionId,
       final String errorMessage,
-      final long sequence) {
-    final SessionEvent event =
-        new SessionEvent(
-            UUID.randomUUID().toString(),
-            rootSessionId,
-            null,
-            sessionId,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            System.currentTimeMillis(),
-            sequence,
-            null,
-            Type.ERROR);
-    event.errorMessage = errorMessage;
-    return event;
+      final long sequence,
+      final String turnId) {
+    final String id = UUID.randomUUID().toString();
+    final Event rawEvent =
+        Event.builder()
+            .id(id)
+            .timestamp(System.currentTimeMillis())
+            .errorMessage(errorMessage)
+            .build();
+    return new SessionEvent(
+        id, rootSessionId, null, sessionId, sequence, Type.ERROR, turnId, rawEvent);
+  }
+
+  private static Map<String, Object> extractMetadata(final Event event) {
+    final Map<String, Object> metadata = new HashMap<>();
+    if (event.actions() != null && event.actions().stateDelta() != null) {
+      for (final Map.Entry<String, Object> entry : event.actions().stateDelta().entrySet()) {
+        // Strip the ADK State.TEMP_PREFIX ("temp:") so metadata keys are stored cleanly.
+        String key = entry.getKey();
+        key = key.startsWith(State.TEMP_PREFIX) ? key.substring(State.TEMP_PREFIX.length()) : key;
+        metadata.put(key, entry.getValue());
+      }
+    }
+    return metadata;
   }
 }

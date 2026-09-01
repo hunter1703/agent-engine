@@ -4,6 +4,7 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.update.Update;
+import java.util.List;
 
 /**
  * Generic repository interface providing basic CRUD operations
@@ -13,6 +14,14 @@ import com.agentengine.util.common.update.Update;
 public interface Repository<T extends BaseEntity> extends ReadRepository<T> {
 
   T insert(T entity);
+
+  /**
+   * Insert multiple entities in a single batch write.
+   *
+   * @param entities the entities to insert
+   * @return the inserted entities
+   */
+  List<T> insertMany(List<T> entities);
 
   /**
    * Replace an entity, regardless of the version currently stored.

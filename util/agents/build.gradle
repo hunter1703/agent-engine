@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':util:common')
+    implementation project(':util:mongodb')
 
     api libs.ag.ui.core
     implementation libs.kotlinx.serialization.json

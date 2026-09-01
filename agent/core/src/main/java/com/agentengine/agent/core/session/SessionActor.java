@@ -25,6 +25,7 @@ import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
@@ -81,7 +82,8 @@ public final class SessionActor
   private final ActorRef<SessionCommand> self;
   private final int snapshotThreshold;
   private final SessionEventChannel eventChannel;
-  private final Deque<Event> turnEvents = new ArrayDeque<>();
+  private final List<Event> turnEvents = new LinkedList<>();
+  private String turnId;
 
   /**
    * Interrupt IDs already fed to {@link #runner}'s current instance via {@code runner.resume}, so a
@@ -97,6 +99,7 @@ public final class SessionActor
   private final SessionService sessionService;
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
+  private final SessionEventsRepository sessionEventsRepository;
   private SessionRunner runner;
 
   public SessionActor(
@@ -108,7 +111,8 @@ public final class SessionActor
       final RunnerFactory runnerFactory,
       final SessionService sessionService,
       final SessionTitleGenerator sessionTitleGenerator,
-      final MemoryService memoryService) {
+      final MemoryService memoryService,
+      final SessionEventsRepository sessionEventsRepository) {
     super(TYPE_KEY.name(), entityId);
     this.context = context;
     this.self = context.getSelf();
@@ -119,6 +123,7 @@ public final class SessionActor
     this.sessionService = sessionService;
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.memoryService = memoryService;
+    this.sessionEventsRepository = sessionEventsRepository;
   }
 
   @Override
@@ -199,8 +204,11 @@ public final class SessionActor
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> {
+        final CommittedTurn lastCommittedTurn = state.runState().lastCommittedTurn();
         final List<Event> lastCommitedEvents =
-            CollectionUtils.nullSafeList(state.runState().lastCommittedTurn());
+            lastCommittedTurn == null
+                ? List.of()
+                : sessionEventsRepository.findTurnEvents(sessionId, lastCommittedTurn.id());
         final int num = lastCommitedEvents.size();
 
         for (int i = 0; i < num; i++) {
@@ -209,6 +217,7 @@ public final class SessionActor
                   rootSessionId,
                   topology.parentSessionId(),
                   sessionId,
+                  lastCommittedTurn.id(),
                   lastCommitedEvents.get(i),
                   state.nextSequence() - num + i);
           eventChannel.publish(rootSessionId, sessionEvent);
@@ -769,6 +778,10 @@ public final class SessionActor
     }
 
     LOG.info("Publishing event : {}", JsonUtils.toJson(event));
+    if (turnEvents.isEmpty()) {
+      // first event of the turn
+      turnId = UUID.randomUUID().toString();
+    }
     turnEvents.add(event);
     LOG.info(
         "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
@@ -778,6 +791,14 @@ public final class SessionActor
 
     final SessionTopology topology = state.topology();
     final String rootSessionId = topology.rootSessionId();
+    final SessionEvent toPublish =
+        SessionEventUtils.toSessionEvent(
+            rootSessionId,
+            topology.parentSessionId(),
+            topology.sessionId(),
+            turnId,
+            event,
+            eventSequence);
     EffectBuilder<SessionFact, SessionActorState> effectBuilder;
     if (!event.turnComplete().orElse(false)) {
       LOG.info(
@@ -806,10 +827,11 @@ public final class SessionActor
           turnEvents.size());
       LOG.info("committing on turn completion : {}", JsonUtils.toJson(turnEvents));
 
-      if (state.isDuplicateTurn(turnEvents.peekLast())) {
+      if (state.isDuplicateTurn(turnEvents.getLast())) {
         LOG.warn("Duplicate turn detected for session {}, skipping commit", topology.sessionId());
         effectBuilder = Effect().none();
         turnEvents.clear();
+        turnId = null;
       } else {
         final ArrayList<Event> events = new ArrayList<>();
         final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
@@ -846,10 +868,21 @@ public final class SessionActor
         }
 
         events.addAll(turnEvents);
-        turnEvents.clear();
-        resumedInterruptIds.clear();
 
-        final TurnCommittedFact turnFact = new TurnCommittedFact(events);
+        final TurnCommittedFact turnFact =
+            commitTurn(
+                SessionEventUtils.toSessionEvents(
+                    rootSessionId,
+                    topology.parentSessionId(),
+                    topology.sessionId(),
+                    turnId,
+                    events,
+                    eventSequence),
+                invocationId);
+
+        turnEvents.clear();
+        turnId = null;
+        resumedInterruptIds.clear();
         LOG.info(
             "[USER_MESSAGE_TRACE][{}] Creating TurnCommittedFact with {} events. Event details:",
             topology.sessionId(),
@@ -882,18 +915,11 @@ public final class SessionActor
     }
     return effectBuilder.thenRun(
         _ -> {
-          final SessionEvent sessionEvent =
-              SessionEventUtils.toSessionEvent(
-                  rootSessionId,
-                  topology.parentSessionId(),
-                  topology.sessionId(),
-                  event,
-                  eventSequence);
           LOG.info(
               "Publishing adk event : {} as session event :{}",
               JsonUtils.toJson(event),
-              JsonUtils.toJson(sessionEvent));
-          eventChannel.publish(rootSessionId, sessionEvent);
+              JsonUtils.toJson(toPublish));
+          eventChannel.publish(rootSessionId, toPublish);
         });
   }
 
@@ -995,6 +1021,7 @@ public final class SessionActor
                       topology.rootSessionId(),
                       topology.parentSessionId(),
                       topology.sessionId(),
+                      turnId,
                       new ArrayList<>(turnEvents),
                       newState.nextSequence());
               return new CurrentTurnEvents(events);
@@ -1103,10 +1130,17 @@ public final class SessionActor
         .build();
   }
 
+  private TurnCommittedFact commitTurn(final List<SessionEvent> events, final String runId) {
+    sessionEventsRepository.insertMany(events);
+    final String lastEventId = events.isEmpty() ? null : events.getLast().getId();
+    return new TurnCommittedFact(runId, turnId, lastEventId, events.size());
+  }
+
   private static SessionActorState applyCommittedTurn(
       final SessionActorState state, final TurnCommittedFact fact) {
-    final List<Event> events = CollectionUtils.nullSafeList(fact.getEvents());
-    SessionActorState newState = state.withCommitedEvents(events);
+    SessionActorState newState =
+        state.withCommittedTurn(
+            new CommittedTurn(fact.getTurnId(), fact.getEventCount(), fact.getLastEventId()));
     final SessionState existingState = state.sessionState();
     if (existingState == SessionState.TRIGGERED_RUN || existingState == SessionState.CONTINUING) {
       newState = newState.withSessionState(SessionState.RUNNING);
@@ -1136,10 +1170,30 @@ public final class SessionActor
     final boolean isFailed = StringUtils.isNotEmpty(error);
     if (isFailed) {
       LOG.warn("Run failed for session {}: {}", state.topology().sessionId(), error);
+      final SessionTopology topology = state.topology();
+      final List<SessionEvent> sessionEvents = new ArrayList<>();
       if (CollectionUtils.isNotEmpty(turnEvents)) {
-        facts.add(new TurnCommittedFact(List.copyOf(turnEvents)));
-        turnEvents.clear();
+        sessionEvents.addAll(
+            SessionEventUtils.toSessionEvents(
+                topology.rootSessionId(),
+                topology.parentSessionId(),
+                topology.sessionId(),
+                turnId,
+                turnEvents,
+                state.nextSequence()));
       }
+
+      final SessionEvent errorEvent =
+          SessionEvent.error(
+              topology.rootSessionId(),
+              topology.sessionId(),
+              error,
+              state.nextSequence() + sessionEvents.size(),
+              turnId);
+      sessionEvents.add(errorEvent);
+      facts.add(commitTurn(sessionEvents, state.runState().runId()));
+      turnEvents.clear();
+      turnId = null;
     }
     facts.add(
         new CompletedFact(isFailed ? null : extractFinalAnswer(state), isFailed ? error : null));
@@ -1157,7 +1211,11 @@ public final class SessionActor
       eventChannel.publish(
           rootSessionId,
           SessionEvent.error(
-              rootSessionId, sessionId, runResult.failureMessage(), Long.MAX_VALUE - 1));
+              rootSessionId,
+              sessionId,
+              runResult.failureMessage(),
+              Long.MAX_VALUE - 1,
+              state.runState().lastCommittedTurn().id()));
     }
     if (topology.isRoot()) {
       generateSessionTitle(rootSessionId, isRecovery);
@@ -1228,12 +1286,14 @@ public final class SessionActor
         });
   }
 
-  private static String extractFinalAnswer(final SessionActorState state) {
-    final RunState runState = state.runState();
-    if (runState == null) {
+  private String extractFinalAnswer(final SessionActorState state) {
+    final CommittedTurn lastCommittedTurn = state.runState().lastCommittedTurn();
+    if (lastCommittedTurn == null) {
       return null;
     }
-    final List<Event> events = CollectionUtils.nullSafeList(runState.lastCommittedTurn());
+    final List<Event> events =
+        sessionEventsRepository.findTurnEvents(
+            state.topology().sessionId(), lastCommittedTurn.id());
     for (int i = events.size() - 1; i >= 0; i--) {
       final Optional<Content> content = events.get(i).content();
       if (content.isPresent()) {

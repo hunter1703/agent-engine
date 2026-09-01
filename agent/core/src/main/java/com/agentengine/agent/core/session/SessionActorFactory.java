@@ -5,6 +5,7 @@ import com.agentengine.agent.core.memory.MemoryService;
 import com.agentengine.agent.core.session.commands.IdleTimeoutCommand;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.agentengine.util.pekko.actor.ChaosMailboxRegistry;
@@ -36,6 +37,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
   private final SessionTitleGenerator sessionTitleGenerator;
   private final MemoryService memoryService;
   private final ChaosMailboxRegistry chaosMailboxRegistry;
+  private final SessionEventsRepository sessionEventsRepository;
 
   @Inject
   public SessionActorFactory(
@@ -46,6 +48,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
       final SessionTitleGenerator sessionTitleGenerator,
       final MemoryService memoryService,
       final ChaosMailboxRegistry chaosMailboxRegistry,
+      final SessionEventsRepository sessionEventsRepository,
       final ApplicationConfig applicationConfig) {
     super(
         actorSystemProvider,
@@ -62,6 +65,7 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
     this.sessionTitleGenerator = sessionTitleGenerator;
     this.memoryService = memoryService;
     this.chaosMailboxRegistry = chaosMailboxRegistry;
+    this.sessionEventsRepository = sessionEventsRepository;
   }
 
   @Override
@@ -82,7 +86,8 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
                     runnerFactory,
                     sessionService,
                     sessionTitleGenerator,
-                    memoryService)));
+                    memoryService,
+                    sessionEventsRepository)));
   }
 
   @Override

@@ -13,6 +13,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.Updates;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,16 +110,24 @@ public final class MongoUtils {
     };
   }
 
-  public static Bson toSortBson(Sort sort) {
-    if (sort == null || sort.getField() == null) {
+  public static Bson toSortBson(final List<Sort> sorts) {
+    if (CollectionUtils.isEmpty(sorts)) {
       return null;
     }
-    final String field = normalizeField(sort.getField());
-    return switch (sort.getOrder()) {
-      case ASC -> Sorts.ascending(field);
-      case DESC -> Sorts.descending(field);
-      case UNKNOWN -> Sorts.ascending(field); // Defaulting to ascending
-    };
+    final List<Bson> bsonSorts = new ArrayList<>();
+    for (final Sort sort : sorts) {
+      if (sort == null || sort.getField() == null) {
+        continue;
+      }
+      final String field = normalizeField(sort.getField());
+      bsonSorts.add(
+          switch (sort.getOrder()) {
+            case ASC -> Sorts.ascending(field);
+            case DESC -> Sorts.descending(field);
+            case UNKNOWN -> Sorts.ascending(field); // Defaulting to ascending
+          });
+    }
+    return bsonSorts.isEmpty() ? null : Sorts.orderBy(bsonSorts);
   }
 
   public static Bson toProjectionBson(final Query query) {

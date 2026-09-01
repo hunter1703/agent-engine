@@ -2,10 +2,10 @@ package com.agentengine.agent.core.services;
 
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
-import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
+import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
@@ -21,6 +21,7 @@ import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.agents.beans.session.SessionStatus;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.StructuredConcurrencyUtils;
 import com.agentengine.util.common.beans.AssetClass;
@@ -53,18 +54,21 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final SessionActorFactory sessionActorFactory;
   private final SessionEventChannel eventChannel;
   private final SessionService sessionService;
-  private final SessionHistoryService sessionHistoryService;
+  private final SessionActorJournal sessionActorJournal;
+  private final SessionEventsRepository sessionEventsRepository;
 
   @Inject
   public RuntimeServiceImpl(
       final SessionActorFactory sessionActorFactory,
       final SessionEventChannel eventChannel,
       final SessionService sessionService,
-      final SessionHistoryService sessionHistoryService) {
+      final SessionActorJournal sessionActorJournal,
+      final SessionEventsRepository sessionEventsRepository) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
-    this.sessionHistoryService = sessionHistoryService;
+    this.sessionActorJournal = sessionActorJournal;
+    this.sessionEventsRepository = sessionEventsRepository;
   }
 
   @Override
@@ -154,6 +158,11 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   @Override
+  public List<String> getCommittedTurnIds(final String sessionId) {
+    return sessionActorJournal.getCommittedTurnIds(sessionId);
+  }
+
+  @Override
   public Publisher<SessionEvent> subscribeToSession(
       final String sessionId, final boolean liveOnly) {
     final AgentSession session = sessionService.getSession(sessionId);
@@ -208,7 +217,9 @@ public class RuntimeServiceImpl implements RuntimeService {
     final List<List<SessionEvent>> fetched =
         StructuredConcurrencyUtils.runConcurrently(
             List.of(
-                () -> sessionHistoryService.getAllSessionEvents(rootSessionId),
+                () ->
+                    sessionEventsRepository.getCommittedSessionEvents(
+                        rootSessionId, getCommittedTurnIds(rootSessionId), true),
                 () -> getCurrentTurnEvents(sessionId)));
     final List<SessionEvent> history = fetched.get(0);
     final List<SessionEvent> turnEvents = fetched.get(1);
@@ -242,7 +253,8 @@ public class RuntimeServiceImpl implements RuntimeService {
         sanitizedParts.add(part);
       }
     }
-    event.setContent(content.toBuilder().parts(sanitizedParts).build());
+    final Content sanitizedContent = content.toBuilder().parts(sanitizedParts).build();
+    event.setRawEvent(event.getRawEvent().toBuilder().content(sanitizedContent).build());
     return event;
   }
 
@@ -251,7 +263,9 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
-    return Flowable.fromIterable(sessionHistoryService.getAllSessionEvents(rootSessionId));
+    return Flowable.fromIterable(
+        sessionEventsRepository.getCommittedSessionEvents(
+            rootSessionId, getCommittedTurnIds(rootSessionId), true));
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {

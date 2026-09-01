@@ -4,6 +4,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.client.MicroService;
+import java.util.List;
 import org.reactivestreams.Publisher;
 
 @MicroService("agent")
@@ -33,4 +34,6 @@ public interface RuntimeService {
   Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
 
   void rollbackSession(String sessionId, String runId);
+
+  List<String> getCommittedTurnIds(String sessionId);
 }

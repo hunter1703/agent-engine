@@ -23,6 +23,13 @@ public final class ExceptionUtils {
     return message;
   }
 
+  public static RuntimeException wrapInRuntimeException(
+      final Throwable throwable, final String message) {
+    return throwable instanceof RuntimeException runtimeException
+        ? runtimeException
+        : new RuntimeException(message, throwable);
+  }
+
   public static Throwable getRootCause(final Throwable throwable) {
     if (throwable == null) {
       return null;

@@ -172,7 +172,13 @@ instructions, under `configs/`.
     comment itself plants that expectation — describe what the method does and, if genuinely
     non-obvious, what its caller is responsible for, without referencing a prior state. Development
     reasoning belongs in chat or the PR description, never in the comment, and stops being relevant
-    to anyone the moment the change is no longer new.
+    to anyone the moment the change is no longer new. A comment must also never give the reader a
+    usage tip or recommendation (e.g. "use this for reads that must never be silently truncated") —
+    that is advice about when to reach for the code, not a description of what the code is or does,
+    and it's the wrong direction: the shared utility shouldn't be prescribing to its callers when a
+    caller hasn't been written yet. State the fact instead (e.g. "Represents an unbounded read —
+    offset 0, limit <= 0") and let each call site's own comment, if one is even needed, explain why
+    that call site chose it.
 15. Avoid narrow, example-specific hacks; fix root causes or document follow-ups in `TODO.md`.
     Before introducing any hack — overloading one mechanism to serve a different purpose (e.g. a
     reserved/magic key, a sentinel value, special-casing that leaks into every caller) because the
@@ -190,6 +196,12 @@ instructions, under `configs/`.
     not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
 20. NEVER use `var`. Always declare the actual type, including for local variables, loop
     variables, and record deconstruction patterns.
+21. Order instance fields (and matching constructor parameters/getters/setters) by conceptual
+    importance or ownership, most fundamental first — not alphabetically or by whenever they were
+    added. A field that another field belongs to or depends on comes before it (e.g. on
+    `TurnCommittedFact`, `runId` before `turnId`, since a turn belongs to a run). When adding a new
+    field to an existing class, insert it at its rightful position in that hierarchy rather than
+    appending it at the end.
 
 
 NEVER Read `.env` file as it is extremely sensitive

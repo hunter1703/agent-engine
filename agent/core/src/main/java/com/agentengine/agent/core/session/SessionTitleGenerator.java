@@ -1,9 +1,9 @@
 package com.agentengine.agent.core.session;
 
-import com.agentengine.agent.api.services.SessionHistoryService;
 import com.agentengine.agent.infra.factories.model.ModelProvider;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.agents.repository.SessionEventsRepository;
 import com.agentengine.util.common.Cache;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
@@ -26,15 +26,18 @@ public class SessionTitleGenerator {
           Part.fromText(
               "INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
   private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
-  private final SessionHistoryService sessionHistoryService;
+  private final SessionEventsRepository sessionEventsRepository;
+  private final SessionActorJournal sessionActorJournal;
   private final Cache<String, String> titleGeneratorModelCache;
   private final ModelProvider modelProvider;
 
   public SessionTitleGenerator(
-      final SessionHistoryService sessionHistoryService,
+      final SessionEventsRepository sessionEventsRepository,
+      final SessionActorJournal sessionActorJournal,
       final InfraConfigService infraConfigService,
       final ModelProvider modelProvider) {
-    this.sessionHistoryService = sessionHistoryService;
+    this.sessionEventsRepository = sessionEventsRepository;
+    this.sessionActorJournal = sessionActorJournal;
     this.titleGeneratorModelCache =
         new Cache<>(
             CacheBuilder.newBuilder().maximumSize(1000),
@@ -55,7 +58,8 @@ public class SessionTitleGenerator {
 
   public String generateTitle(final String sessionId) {
     final List<SessionEvent> sessionEvents =
-        CollectionUtils.nullSafeList(sessionHistoryService.getSessionEvents(sessionId));
+        sessionEventsRepository.getCommittedSessionEvents(
+            sessionId, sessionActorJournal.getCommittedTurnIds(sessionId), false);
     if (CollectionUtils.isEmpty(sessionEvents)) {
       return null;
     }
