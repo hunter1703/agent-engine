@@ -3,7 +3,6 @@ package com.agentengine.util.agents.beans;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
@@ -87,30 +86,44 @@ public final class SessionEvent extends BaseEntity {
     return sessionId;
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public String getRunId() {
     return rawEvent.invocationId();
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public String getAuthor() {
     return rawEvent.author();
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public Content getContent() {
     return rawEvent.content().orElse(null);
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public Boolean isPartial() {
     return rawEvent.partial().orElse(false);
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public Boolean isTurnComplete() {
     return rawEvent.turnComplete().orElse(false);
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public FinishReason getFinishReason() {
     return rawEvent.finishReason().orElse(null);
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public long getTimestamp() {
     return rawEvent.timestamp();
   }
@@ -119,7 +132,8 @@ public final class SessionEvent extends BaseEntity {
     return sequence;
   }
 
-  @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+  @BsonIgnore
+  @JsonIgnore
   public Map<String, Object> getMetadata() {
     return extractMetadata(rawEvent);
   }
@@ -128,18 +142,26 @@ public final class SessionEvent extends BaseEntity {
     return type != null ? type : Type.NORMAL;
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public boolean isTerminal() {
     return getType() == Type.TERMINAL;
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public boolean isLiveMarker() {
     return getType() == Type.LIVE_MARKER;
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public boolean isError() {
     return getType() == Type.ERROR;
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public String getErrorMessage() {
     return rawEvent.errorMessage().orElse(null);
   }
@@ -152,7 +174,6 @@ public final class SessionEvent extends BaseEntity {
     this.turnId = turnId;
   }
 
-  @JsonIgnore
   public String getRawEventJson() {
     if (rawEventJson == null) {
       rawEventJson = rawEvent.toJson();
@@ -175,10 +196,14 @@ public final class SessionEvent extends BaseEntity {
     this.rawEventJson = null; // stale cache; getRawEventJson() will recompute it on next call
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public Boolean getTurnComplete() {
     return isTurnComplete();
   }
 
+  @BsonIgnore
+  @JsonIgnore
   public Boolean getPartial() {
     return isPartial();
   }
