@@ -1,8 +1,13 @@
 package com.agentengine.util.agents.beans;
 
+import com.agentengine.util.agents.serializers.AdkJacksonModule;
+import com.agentengine.util.common.ExceptionUtils;
+import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
@@ -24,6 +29,8 @@ public final class SessionEvent extends BaseEntity {
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
   public static final String FIELD_TURN_ID = "turnId";
   public static final String FIELD_SEQUENCE = "sequence";
+  private static final ObjectMapper EVENT_MAPPER =
+      JsonUtils.copyMapper().registerModule(new AdkJacksonModule());
 
   public enum Type {
     UNKNOWN,
@@ -176,14 +183,22 @@ public final class SessionEvent extends BaseEntity {
 
   public String getRawEventJson() {
     if (rawEventJson == null) {
-      rawEventJson = rawEvent.toJson();
+      try {
+        rawEventJson = EVENT_MAPPER.writeValueAsString(rawEvent);
+      } catch (final JsonProcessingException exception) {
+        throw ExceptionUtils.wrapInRuntimeException(exception, "Error serializing raw event");
+      }
     }
     return rawEventJson;
   }
 
   public void setRawEventJson(final String rawEventJson) {
     this.rawEventJson = rawEventJson;
-    this.rawEvent = Event.fromJson(rawEventJson);
+    try {
+      this.rawEvent = EVENT_MAPPER.readValue(rawEventJson, Event.class);
+    } catch (final JsonProcessingException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception, "Error deserializing raw event");
+    }
   }
 
   @JsonIgnore

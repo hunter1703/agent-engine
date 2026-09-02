@@ -1304,25 +1304,19 @@ public final class SessionActor
 
   private void updateSessionStatus(final SessionActorState state, final SessionStatus status) {
     final SessionTopology topology = state.topology();
-    Thread.startVirtualThread(
-        () -> {
-          try {
-            final Query query =
-                new Query()
-                    .withFilter(
-                        Filters.and(
-                            Filters.eq(BaseEntity.FIELD_ID, topology.sessionId()),
-                            Filters.ne(AgentSession.FIELD_STATUS, status.name())));
-            sessionService.updateSessions(
-                query, Update.of(Operation.set(AgentSession.FIELD_STATUS, status.name())));
-          } catch (final Exception e) {
-            LOG.warn(
-                "Failed to update session status to {} for session {}",
-                status,
-                topology.sessionId(),
-                e);
-          }
-        });
+    try {
+      final Query query =
+          new Query()
+              .withFilter(
+                  Filters.and(
+                      Filters.eq(BaseEntity.FIELD_ID, topology.sessionId()),
+                      Filters.ne(AgentSession.FIELD_STATUS, status.name())));
+      sessionService.updateSessions(
+          query, Update.of(Operation.set(AgentSession.FIELD_STATUS, status.name())));
+    } catch (final Exception e) {
+      LOG.warn(
+          "Failed to update session status to {} for session {}", status, topology.sessionId(), e);
+    }
   }
 
   private static String resolveRootSessionId(final AgentSession parentSession) {

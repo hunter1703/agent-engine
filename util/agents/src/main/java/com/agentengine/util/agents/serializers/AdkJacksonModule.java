@@ -1,4 +1,4 @@
-package com.agentengine.agent.core.serializers;
+package com.agentengine.util.agents.serializers;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonSetter;
@@ -19,15 +19,22 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Jackson module for Pekko CBOR serialization compatibility. */
-public final class PekkoJacksonModule extends SimpleModule {
+/**
+ * Jackson module giving any {@link ObjectMapper} it registers with default typing for values held
+ * in {@code Object}-typed slots (e.g. a {@code Map<String, Object>} entry) — the shape ADK's own
+ * {@code FunctionCall.args()}/{@code ToolConfirmation.payload()} use — so a value stored there
+ * round-trips back as its original concrete type instead of degrading to a raw {@code Map}.
+ * Register it wherever this app's own types or ADK/genai types need to survive that kind of
+ * round-trip: Pekko's actor-journal codec and {@code SessionEvent}'s own JSON codec both do.
+ */
+public final class AdkJacksonModule extends SimpleModule {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PekkoJacksonModule.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AdkJacksonModule.class);
   private static final String AUTO_VALUE_TOOL_CONFIRMATION =
       "com.google.adk.events.AutoValue_ToolConfirmation";
 
-  public PekkoJacksonModule() {
-    super("PekkoJacksonModule");
+  public AdkJacksonModule() {
+    super("AdkJacksonModule");
   }
 
   @Override
@@ -37,12 +44,12 @@ public final class PekkoJacksonModule extends SimpleModule {
         BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
     final ObjectMapper mapper = context.getOwner();
 
-    // We still need default typing for Pekko because some command payloads are typed as Object.
-    // But we only want to EMIT @class for our own payload types (and select ADK events), not for
-    // arbitrary values inside Object-typed maps (e.g., java.util collections, genai AutoValue
-    // impls).
-    // Otherwise Jackson will embed @class for java.util.ArrayList / com.google.genai.* and either
-    // fail validation or attempt to instantiate AutoValue classes directly.
+    // Default typing is needed because some payloads (Pekko commands, ADK tool args/payloads) are
+    // typed as Object. But we only want to EMIT @class for our own payload types (and select ADK
+    // events), not for arbitrary values inside Object-typed maps (e.g., java.util collections,
+    // genai AutoValue impls). Otherwise Jackson will embed @class for java.util.ArrayList /
+    // com.google.genai.* and either fail validation or attempt to instantiate AutoValue classes
+    // directly.
     final ObjectMapper.DefaultTypeResolverBuilder typer =
         new ObjectMapper.DefaultTypeResolverBuilder(
             ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT, ptv) {
@@ -70,12 +77,12 @@ public final class PekkoJacksonModule extends SimpleModule {
     // the scalar string value (e.g. "STOP") is passed directly to the constructor.
     mapper.addMixIn(FinishReason.class, FinishReasonMixin.class);
     // AutoValue builders wrap Optional fields via Optional.of(), which NPEs on null.
-    // Configuring Nulls.SKIP globally on this mapper causes Jackson to omit setter calls
-    // for null JSON values, leaving Optional fields at their builder default of
-    // Optional.empty(). This is safe on the dedicated Pekko CBOR mapper: null JSON values
-    // are equivalent to absent fields for the immutable value types it serializes.
+    // Configuring Nulls.SKIP globally on any mapper this module registers with causes Jackson to
+    // omit setter calls for null JSON values, leaving Optional fields at their builder default of
+    // Optional.empty(). This is safe here: null JSON values are equivalent to absent fields for
+    // the immutable ADK/genai value types this module targets.
     mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
-    // When ToolConfirmation is stored in an Object-typed field, CBOR default typing embeds
+    // When ToolConfirmation is stored in an Object-typed field, default typing embeds
     // "com.google.adk.events.AutoValue_ToolConfirmation" as the @class value. Jackson must
     // be able to deserialize that concrete class, but its constructor is private. Register
     // the same deserializer for the AutoValue implementation class so recovery works.
@@ -96,7 +103,8 @@ public final class PekkoJacksonModule extends SimpleModule {
           new SimpleModule().addDeserializer(autoValueClass, new ToolConfirmationDeserializer()));
     } catch (final ClassNotFoundException exception) {
       LOG.warn(
-          "AutoValue_ToolConfirmation not found on classpath; CBOR recovery may fail for paused sessions",
+          "AutoValue_ToolConfirmation not found on classpath; recovery may fail for paused"
+              + " sessions",
           exception);
     }
   }

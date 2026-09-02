@@ -117,9 +117,17 @@ class InitQdrantCollectionStage(_BootstrapStage):
         namespace, service_name = self._resolve_target("qdrant", self.namespace_override, self.tier)
         with (
             kube.port_forward(namespace, service_name, self.port) as local_port,
-            httpx.Client(base_url=f"http://127.0.0.1:{local_port}") as client,
+            httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30.0) as client,
         ):
-            existing = client.get("/collections/KnowledgeChunk")
+            for attempt in (1, 2):
+                try:
+                    existing = client.get("/collections/KnowledgeChunk")
+                    break
+                except (httpx.RequestError, httpx.TimeoutException):
+                    if attempt == 2:
+                        raise
+                    time.sleep(2)
+
             if existing.status_code == 200 and "result" in existing.json():
                 print("KnowledgeChunk collection already exists")
                 return
