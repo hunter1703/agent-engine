@@ -208,7 +208,7 @@ public final class SessionActor
     final String rootSessionId = topology.rootSessionId();
     switch (sessionState) {
       case TRIGGERED_RUN -> {
-        // re-start with message; as the recovery state was mid first turn
+        // The crash landed before the first turn committed, so restart from the original message.
         runner.start(
             Objects.requireNonNull(state.currentRun()).message().getRecord(), state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
@@ -291,9 +291,8 @@ public final class SessionActor
   private Effect<SessionFact, SessionActorState> initialize(
       final SessionActorState state, final InitializeCommand command) {
     final SessionTopology topology = command.topology();
-    // Only persist InitializedFact on the first initialization. Re-sending
-    // InitializeCommand for an existing session (e.g. a new turn on a root session)
-    // must not reset the actor state — doing so wipes any other accumulated state.
+    // Persist InitializedFact only on first initialization — re-sending InitializeCommand for an
+    // existing session (e.g. a new turn on a root session) must not wipe accumulated state.
     if (state.topology() != null) {
       return Effect().none().thenReply(command.replyTo(), _ -> Done.done());
     }
@@ -342,9 +341,8 @@ public final class SessionActor
     return switch (state.sessionState()) {
       case IDLE -> {
         if (isDuplicate) {
-          // if message present in queue but still in idle state, something went wrong on client
-          // side and
-          // start processing next message as current message has already been processed
+          // Idle with the message still queued means the client retried after a lost reply; the
+          // message was already processed, so just resume draining the queue.
           self.tell(new StartNextQueuedMessageCommand());
           yield Effect()
               .none()
@@ -402,18 +400,16 @@ public final class SessionActor
               (Function<ActorRef<ResumeResult>, SessionCommand>)
                   askReplyTo -> new ResumeCommand(resumeRequest, askReplyTo),
               ASK_TIMEOUT),
-          // processing result via command and not inline because completable future thread would be
-          // different
-          // then actor thread so cannot access actor-specific abstractions like "persist", etc.
+          // Piped back as a command rather than handled inline: the future completes on a thread
+          // other than the actor's, which cannot use actor-only abstractions like persist().
           (resumeResult, error) ->
               new ResumeChildCommand(
                   resumeRequest, replyTo, resumeResult, error == null ? null : error.getMessage()));
       return Effect().none();
     }
 
-    // checking whether it is either accepted or a pending interrupt id. if already accepted id is
-    // received, it is
-    // not a failure but we will silently ignore in event handler
+    // Covers both a pending and an already-answered interrupt id; the latter is silently ignored
+    // below rather than treated as a failure.
     if (!state.isExternalSelfInterrupt(resumeRequest)) {
       return Effect().none().thenReply(replyTo, _ -> new ResumeResult.UnknownInterruptId());
     }
@@ -421,9 +417,6 @@ public final class SessionActor
     return resumed(
         replyTo,
         resumeRequest,
-        // only checking whether PENDING interrupt id was received; if we did not have this check,
-        // everytime
-        // someone sends an already-answered interrupt id it would continue the run
         state
             .pauseState()
             .pendingExternalSelfInterruptIds()
@@ -450,9 +443,6 @@ public final class SessionActor
     return resumed(
         replyTo,
         command.resumeRequest(),
-        // only checking whether PENDING interrupt id was received; if we did not have this check,
-        // everytime
-        // someone sends an already-answered interrupt id it would continue the run
         state
             .pauseState()
             .pendingExternalSelfInterruptIds()
@@ -481,6 +471,10 @@ public final class SessionActor
     return resumed(null, resumeRequest, true);
   }
 
+  /**
+   * {@code pendingSelfInterrupt} must be whether the interrupt was still pending, not just known —
+   * otherwise re-resuming an already-answered interrupt would continue the run a second time.
+   */
   private Effect<SessionFact, SessionActorState> resumed(
       final ActorRef<ResumeResult> replyTo,
       final ResumeRequest resumeRequest,
@@ -614,7 +608,6 @@ public final class SessionActor
     final UserMessage message = commandMessage.getRecord();
     final ActorRef<StartChildResult> replyTo = command.replyTo();
     if (state.child(childSessionId).isPresent()) {
-      // a child has already started; it is a duplicate request
       final StartChildResult result =
           new StartChildResult(childSessionId, new StartSessionResult.Accepted());
       return replyTo != null ? Effect().none().thenReply(replyTo, _ -> result) : Effect().none();
@@ -623,9 +616,8 @@ public final class SessionActor
     if (sessionState == SessionState.RUNNING
         || ((sessionState == SessionState.TRIGGERED_RUN || sessionState == SessionState.CONTINUING)
             && !turnEvents.isEmpty())) {
-      // when the spawn child is invoked in first run or first run when the state is still in
-      // TRIGGERED_RUN
-      // after the run continues; state moves to RUNNING only when the first turn is committed
+      // TRIGGERED_RUN/CONTINUING with events already buffered means the run is actively producing
+      // its first turn — sessionState only flips to RUNNING once that turn commits.
       return Effect()
           .persist(
               new ChildStartingFact(

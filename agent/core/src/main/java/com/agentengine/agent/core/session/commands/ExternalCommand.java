@@ -22,9 +22,7 @@ public interface ExternalCommand extends SessionCommand {
       implements ExternalCommand {}
 
   /**
-   * Requests the current uncommitted turn events from the session actor.
-   *
-   * <p>The reply contains all events accumulated in {@code SessionActor.turnEvents} since the last
+   * The reply contains all events accumulated in {@code SessionActor.turnEvents} since the last
    * turn commit, mapped to {@link com.agentengine.util.agents.beans.SessionEvent} with correct
    * sequence numbers.
    */
