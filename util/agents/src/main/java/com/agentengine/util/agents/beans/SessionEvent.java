@@ -29,6 +29,7 @@ public final class SessionEvent extends BaseEntity {
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
   public static final String FIELD_TURN_ID = "turnId";
   public static final String FIELD_SEQUENCE = "sequence";
+  public static final String FIELD_ROLLBACK_ID = "rollbackId";
   private static final ObjectMapper EVENT_MAPPER =
       JsonUtils.copyMapper().registerModule(new AdkJacksonModule());
 
@@ -58,6 +59,7 @@ public final class SessionEvent extends BaseEntity {
   private Type type = Type.NORMAL;
   private String turnId;
   private String rawEventJson;
+  private String rollbackId;
   @BsonIgnore @JsonIgnore private Event rawEvent;
 
   public SessionEvent() {}
@@ -179,6 +181,18 @@ public final class SessionEvent extends BaseEntity {
 
   public void setTurnId(final String turnId) {
     this.turnId = turnId;
+  }
+
+  /**
+   * The id of the run a rollback targeted, if one has superseded this event's {@code sequence} —
+   * null if this event has never been rolled back.
+   */
+  public String getRollbackId() {
+    return rollbackId;
+  }
+
+  public void setRollbackId(final String rollbackId) {
+    this.rollbackId = rollbackId;
   }
 
   public String getRawEventJson() {

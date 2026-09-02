@@ -17,21 +17,27 @@ import java.util.*;
  * #withNewRun(UniqueRecord, long)} merges each new message's {@link ResourceGrants} on top of
  * whatever was already granted (see {@link ResourceGrants#merge}), so knowledge/notebook access
  * granted in an earlier run is never lost in a later one.
+ *
+ * <p>{@code runs} keeps every run the session has ever started, for its whole lifetime — {@link
+ * #findRunStartSequence(String)} needs the full history to locate any historical run's start, since
+ * a rollback can target any run, not only the most recent one. The session's currently active run,
+ * if any, is always {@link #currentRun}, its last element.
  */
 public record SessionActorState(
     SessionState sessionState,
     Queue<UniqueRecord<UserMessage>> queue,
     Map<String, ChildSession> childRegistry,
     Set<StartingChild> startingChildren,
-    long nextSequence,
     SessionTopology topology,
     PauseState pauseState,
-    RunState runState,
+    List<RunState> runs,
+    RolledBackRun lastRollback,
     ResourceGrants grants)
     implements PekkoSerializable {
 
   public RunResult lastResult() {
-    return runState.result();
+    final RunState current = currentRun();
+    return current == null ? null : current.result();
   }
 
   public static SessionActorState initial() {
@@ -40,11 +46,36 @@ public record SessionActorState(
         new LinkedList<>(),
         new HashMap<>(),
         new HashSet<>(),
-        0L,
         null,
         new PauseState(),
-        new RunState(null, null, 0L, null, null),
+        new ArrayList<>(),
+        null,
         ResourceGrants.EMPTY);
+  }
+
+  /** The session's currently active run, or null before its first run has ever started. */
+  public RunState currentRun() {
+    return runs.isEmpty() ? null : runs.getLast();
+  }
+
+  public UniqueRecord<UserMessage> currentMessage() {
+    final RunState current = currentRun();
+    return current == null ? null : current.message();
+  }
+
+  /**
+   * One past the last committed turn's final sequence number, or the current run's own start if it
+   * hasn't committed a turn yet, or 0 if no run has started yet. Derived rather than stored: it's
+   * always exactly that turn's start sequence plus its event count, so keeping a separate field
+   * would just be a second place for the same value to drift.
+   */
+  public long nextSequence() {
+    final RunState current = currentRun();
+    if (current == null) {
+      return 0L;
+    }
+    final CommittedTurn lastTurn = current.lastCommittedTurn();
+    return lastTurn != null ? lastTurn.startSequence() + lastTurn.count() : current.startSequence();
   }
 
   public SessionActorState withSessionState(final SessionState sessionState) {
@@ -53,10 +84,10 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState,
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -66,58 +97,45 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         updatedTopology,
         pauseState,
-        runState,
-        grants);
-  }
-
-  public SessionActorState withRunResult(final RunResult result) {
-    return new SessionActorState(
-        sessionState,
-        queue,
-        childRegistry,
-        startingChildren,
-        nextSequence,
-        topology,
-        pauseState,
-        runState.withResult(result),
-        grants);
-  }
-
-  public SessionActorState resetMessage() {
-    return new SessionActorState(
-        sessionState,
-        queue,
-        childRegistry,
-        startingChildren,
-        nextSequence,
-        topology,
-        pauseState,
-        runState.resetMessage(),
+        runs,
+        lastRollback,
         grants);
   }
 
   public SessionActorState withNewRun(
-      final UniqueRecord<UserMessage> updatedCurrentMessage, final long messageTimestamp) {
-    final String runId = updatedCurrentMessage != null ? updatedCurrentMessage.getId() : null;
-    final ResourceGrants incomingGrants =
-        updatedCurrentMessage != null ? updatedCurrentMessage.getRecord().grants() : null;
+      final UniqueRecord<UserMessage> message, final long messageTimestamp) {
+    final String runId = message != null ? message.getId() : null;
+    final ResourceGrants incomingGrants = message != null ? message.getRecord().grants() : null;
+    if (!runs.isEmpty()) {
+      runs.set(runs.size() - 1, runs.getLast().finished());
+    }
+    runs.add(new RunState(runId, message, messageTimestamp, nextSequence(), null, null));
     return new SessionActorState(
         sessionState,
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState,
-        new RunState(runId, updatedCurrentMessage, messageTimestamp, null, null),
+        runs,
+        lastRollback,
         grants.merge(incomingGrants));
   }
 
-  public SessionActorState completeRun(RunResult result) {
-    return withRunResult(result).withSessionState(SessionState.IDLE).resetMessage();
+  public SessionActorState completeRun(final RunResult result) {
+    runs.set(runs.size() - 1, runs.getLast().complete(result));
+    return new SessionActorState(
+        SessionState.IDLE,
+        queue,
+        childRegistry,
+        startingChildren,
+        topology,
+        pauseState,
+        runs,
+        lastRollback,
+        grants);
   }
 
   public SessionActorState enqueue(final UniqueRecord<UserMessage> message) {
@@ -130,16 +148,62 @@ public record SessionActorState(
     return this;
   }
 
-  public SessionActorState withCommittedTurn(final CommittedTurn committedTurn) {
+  /**
+   * Folds this turn onto the current run's tail, at the state's current {@link #nextSequence},
+   * since the caller is folding this turn's commit fact onto the state that existed right before
+   * the turn's events were assigned sequence numbers.
+   */
+  public SessionActorState withCommittedTurn(
+      final String turnId, final int count, final String lastEventId) {
+    final CommittedTurn newTurn = new CommittedTurn(turnId, nextSequence(), count, lastEventId);
+    runs.set(runs.size() - 1, runs.getLast().withCommittedTurn(newTurn));
     return new SessionActorState(
         sessionState,
         queue,
         childRegistry,
         startingChildren,
-        nextSequence() + committedTurn.count(),
         topology,
         pauseState,
-        runState.withCommittedTurn(committedTurn),
+        runs,
+        lastRollback,
+        grants);
+  }
+
+  /**
+   * The start sequence of {@code runId}, or null if no run with that id has ever started — the
+   * sequence a rollback of that run would need, both to know where to invalidate {@code
+   * SessionEvent} rows from and to fold into a {@link
+   * com.agentengine.agent.core.session.events.RollbackFact}.
+   */
+  public Long findRunStartSequence(final String runId) {
+    for (final RunState run : runs) {
+      if (Objects.equals(run.runId(), runId)) {
+        return run.startSequence();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Discards {@code runId} and every run started after it, which also resets {@link #nextSequence}
+   * back to where that run began, so a retried run's turns reclaim that exact sequence range. A
+   * {@code runId} that never started is a no-op.
+   */
+  public SessionActorState withRollback(final String runId) {
+    final Long rollbackSequence = findRunStartSequence(runId);
+    if (rollbackSequence == null) {
+      return this;
+    }
+    runs.removeIf(run -> run.startSequence() >= rollbackSequence);
+    return new SessionActorState(
+        sessionState,
+        queue,
+        childRegistry,
+        startingChildren,
+        topology,
+        pauseState,
+        runs,
+        new RolledBackRun(runId, rollbackSequence),
         grants);
   }
 
@@ -169,10 +233,10 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState.withChildPaused(childSessionId, interruptId),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -182,10 +246,10 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState.withSelfPaused(interruptId),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -222,10 +286,10 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState.withInternalSelfPause(correlationId, interruptId),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -245,10 +309,10 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState.withSelfResumed(resumeRequest),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -258,18 +322,30 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         pauseState.withChildResumed(resumeRequest.getInterruptId()),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
   public boolean isDuplicateTurn(final Event lastTurnEvent) {
-    if (runState == null || lastTurnEvent == null || runState.lastCommittedTurn() == null) {
+    final CommittedTurn lastTurn = lastCommittedTurn();
+    if (lastTurnEvent == null || lastTurn == null) {
       return false;
     }
-    return Objects.equals(runState.lastCommittedTurn().lastEventId(), lastTurnEvent.id());
+    return Objects.equals(lastTurn.lastEventId(), lastTurnEvent.id());
+  }
+
+  /** The current run's last committed turn, or null if it hasn't committed one yet. */
+  public CommittedTurn lastCommittedTurn() {
+    final RunState current = currentRun();
+    return current == null ? null : current.lastCommittedTurn();
+  }
+
+  /** Whether the current run has not committed any turn of its own yet. */
+  public boolean isFirstTurnOfCurrentRun() {
+    return lastCommittedTurn() == null;
   }
 
   public SessionActorState clearSelfInterruptStates() {
@@ -278,14 +354,14 @@ public record SessionActorState(
         queue,
         childRegistry,
         startingChildren,
-        nextSequence,
         topology,
         new PauseState(
             new HashSet<>(),
             new HashMap<>(),
             pauseState.pendingInterruptIdVsChildSessionId(),
             new HashMap<>()),
-        runState,
+        runs,
+        lastRollback,
         grants);
   }
 
@@ -293,13 +369,15 @@ public record SessionActorState(
    * Returns a new state with fresh copies of all mutable collections.
    *
    * <p>The per-event methods ({@code enqueue}, {@code dequeue}, {@code startingChild}, {@code
-   * startedChild}) mutate their backing collections in place and return {@code this} to keep
-   * event-replay O(1). As a consequence, states produced by copy-style factory methods ({@code
-   * withSessionState}, etc.) share the same {@link LinkedList}/{@link HashMap}/ {@link HashSet}
-   * instances until the next in-place mutation. This is safe during normal event sourcing because
-   * Pekko discards old state references after each event handler returns. At snapshot boundaries,
-   * however, the state leaves the actor's private domain, so fresh copies are taken here to ensure
-   * the snapshot is fully isolated from any subsequent mutations.
+   * startedChild}, {@code withNewRun}, {@code withCommittedTurn}, {@code withRollback}) mutate
+   * their backing collections in place and return {@code this} (or a record that still shares the
+   * same backing collection instances) to keep event-replay O(1). As a consequence, states produced
+   * by copy-style factory methods ({@code withSessionState}, etc.) share the same {@link
+   * LinkedList}/{@link HashMap}/{@link HashSet}/{@link ArrayList} instances until the next in-place
+   * mutation. This is safe during normal event sourcing because Pekko discards old state references
+   * after each event handler returns. At snapshot boundaries, however, the state leaves the actor's
+   * private domain, so fresh copies are taken here to ensure the snapshot is fully isolated from
+   * any subsequent mutations.
    */
   public SessionActorState copy() {
     return new SessionActorState(
@@ -307,10 +385,10 @@ public record SessionActorState(
         new LinkedList<>(queue),
         new HashMap<>(childRegistry),
         new HashSet<>(startingChildren),
-        nextSequence,
         topology,
         pauseState,
-        runState,
+        new ArrayList<>(runs),
+        lastRollback,
         grants);
   }
 }

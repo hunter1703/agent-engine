@@ -36,16 +36,15 @@ public class SessionEventsRepositoryImpl extends AbstractMongoRepository<Session
             .withFilter(
                 Filters.and(
                     Filters.eq(SessionEvent.FIELD_SESSION_ID, sessionId),
-                    Filters.eq(SessionEvent.FIELD_TURN_ID, turnId)))
+                    Filters.eq(SessionEvent.FIELD_TURN_ID, turnId),
+                    Filters.notExists(SessionEvent.FIELD_ROLLBACK_ID)))
             .withSort(new Sort(SessionEvent.FIELD_SEQUENCE, Sort.Order.ASC));
     return findByQuery(query).getItems().stream().map(SessionEvent::getRawEvent).toList();
   }
 
   @Override
   public List<SessionEvent> getCommittedSessionEvents(
-      final String sessionId,
-      final List<String> committedTurnIds,
-      final boolean includeChildSessions) {
+      final String sessionId, final boolean includeChildSessions) {
     final String scopeField =
         includeChildSessions ? SessionEvent.FIELD_ROOT_SESSION_ID : SessionEvent.FIELD_SESSION_ID;
     final Query query =
@@ -53,9 +52,7 @@ public class SessionEventsRepositoryImpl extends AbstractMongoRepository<Session
             .withFilter(
                 Filters.and(
                     Filters.eq(scopeField, sessionId),
-                    Filters.or(
-                        Filters.notExists(SessionEvent.FIELD_TURN_ID),
-                        Filters.in(SessionEvent.FIELD_TURN_ID, committedTurnIds))));
+                    Filters.notExists(SessionEvent.FIELD_ROLLBACK_ID)));
     final List<SessionEvent> events = new ArrayList<>(findByQuery(query).getItems());
 
     events.sort(

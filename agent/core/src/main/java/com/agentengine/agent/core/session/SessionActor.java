@@ -73,10 +73,8 @@ public final class SessionActor
 
   private static final int MAX_CHILD_POLL_ATTEMPTS = 10;
   private static final Duration SELF_PAUSE_RETRY_INTERVAL = Duration.ofMinutes(1);
-  private static final ExecutorService UPDATE_TITLE_EXECUTOR =
-      ThreadUtils.newVirtualThreadExecutor("update-title-task-");
-  private static final ExecutorService UPDATE_MEMORY_EXECUTOR =
-      ThreadUtils.newVirtualThreadExecutor("update-memory-task-");
+  private static final ExecutorService ASYNC_TASK_EXECUTOR =
+      ThreadUtils.newVirtualThreadExecutor("session-async-task-");
 
   private final ActorContext<SessionCommand> context;
   private final ActorRef<SessionCommand> self;
@@ -189,11 +187,30 @@ public final class SessionActor
       }
     }
     init(topology);
+    // Redone unconditionally: a crash could have landed between RollbackFact persisting and this
+    // Mongo write completing, and there's no record of whether it already succeeded. Safe to redo
+    // regardless, since setting the same rollbackId twice is a no-op.
+    final RolledBackRun lastRollback = state.lastRollback();
+    if (lastRollback != null) {
+      invalidateRolledBackEvents(state, lastRollback.runId(), lastRollback.sequence());
+    }
+    // Deletes any SessionEvent rows past nextSequence(): commitTurn's Mongo insert can outrun its
+    // TurnCommittedFact persisting, leaving orphaned rows a crash never rolled back. Left alone,
+    // the next legitimate commit would reuse that same sequence range and collide with them. Safe
+    // to run unconditionally — nothing committed ever has sequence >= nextSequence(), so a normal
+    // recovery matches zero rows.
+    sessionEventsRepository.deleteByQuery(
+        new Query()
+            .withFilter(
+                Filters.and(
+                    Filters.eq(SessionEvent.FIELD_SESSION_ID, sessionId),
+                    Filters.gte(SessionEvent.FIELD_SEQUENCE, state.nextSequence()))));
     final String rootSessionId = topology.rootSessionId();
     switch (sessionState) {
       case TRIGGERED_RUN -> {
         // re-start with message; as the recovery state was mid first turn
-        runner.start(state.runState().message().getRecord(), state.grants());
+        runner.start(
+            Objects.requireNonNull(state.currentRun()).message().getRecord(), state.grants());
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
@@ -204,11 +221,11 @@ public final class SessionActor
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case RUNNING -> {
-        final CommittedTurn lastCommittedTurn = state.runState().lastCommittedTurn();
+        final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
         final List<Event> lastCommitedEvents =
             lastCommittedTurn == null
                 ? List.of()
-                : sessionEventsRepository.findTurnEvents(sessionId, lastCommittedTurn.id());
+                : sessionEventsRepository.findTurnEvents(sessionId, lastCommittedTurn.turnId());
         final int num = lastCommitedEvents.size();
 
         for (int i = 0; i < num; i++) {
@@ -217,7 +234,7 @@ public final class SessionActor
                   rootSessionId,
                   topology.parentSessionId(),
                   sessionId,
-                  lastCommittedTurn.id(),
+                  lastCommittedTurn.turnId(),
                   lastCommitedEvents.get(i),
                   state.nextSequence() - num + i);
           eventChannel.publish(rootSessionId, sessionEvent);
@@ -319,7 +336,7 @@ public final class SessionActor
       final SessionActorState state, final StartCommand command) {
     final SessionTopology topology = state.topology();
     final UniqueRecord<UserMessage> message = command.message();
-    final UniqueRecord<UserMessage> currentMessage = state.runState().message();
+    final UniqueRecord<UserMessage> currentMessage = state.currentMessage();
     boolean isDuplicate =
         Objects.equals(currentMessage, message) || state.queue().contains(message);
     return switch (state.sessionState()) {
@@ -832,12 +849,13 @@ public final class SessionActor
         turnId = null;
       } else {
         final ArrayList<Event> events = new ArrayList<>();
-        final boolean isFirstTurn = state.runState().lastCommittedTurn() == null;
-        final String invocationId = state.runState().runId();
-        final long timestamp = state.runState().messageTimestamp();
+        final boolean isFirstTurn = state.isFirstTurnOfCurrentRun();
+        final RunState currentRun = Objects.requireNonNull(state.currentRun());
+        final String invocationId = currentRun.runId();
+        final long timestamp = currentRun.messageTimestamp();
 
-        if (isFirstTurn && state.runState().message() != null) {
-          final UniqueRecord<UserMessage> userMessage = state.runState().message();
+        if (isFirstTurn && currentRun.message() != null) {
+          final UniqueRecord<UserMessage> userMessage = currentRun.message();
           final String author =
               topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
           events.add(
@@ -1032,9 +1050,27 @@ public final class SessionActor
           .none()
           .thenReply(command.replyTo(), _ -> new RollbackResult.Rejected("A run is in progress"));
     }
+    final Long rollbackSequence = state.findRunStartSequence(command.runId());
+    if (rollbackSequence == null) {
+      // No run with this id ever started, so there is nothing to invalidate or reset back to.
+      return Effect().none().thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
+    }
+    // RollbackFact persists first: it's the source of truth, so a crash before it lands means the
+    // rollback simply never happened, and the caller's ask times out with nothing changed.
     return Effect()
         .persist(new RollbackFact(command.runId()))
+        .thenRun(
+            newState -> invalidateRolledBackEvents(newState, command.runId(), rollbackSequence))
         .thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
+  }
+
+  private void invalidateRolledBackEvents(
+      final SessionActorState state, final String runId, final long rollbackSequence) {
+    sessionEventsRepository.updateMany(
+        Filters.and(
+            Filters.eq(SessionEvent.FIELD_SESSION_ID, state.topology().sessionId()),
+            Filters.gte(SessionEvent.FIELD_SEQUENCE, rollbackSequence)),
+        Update.of(Operation.set(SessionEvent.FIELD_ROLLBACK_ID, runId)));
   }
 
   private Effect<SessionFact, SessionActorState> startNextQueuedMessage(
@@ -1106,6 +1142,7 @@ public final class SessionActor
               return state.selfPaused(interruptId);
             })
         .onEvent(TurnCommittedFact.class, SessionActor::applyCommittedTurn)
+        .onEvent(RollbackFact.class, (state, fact) -> state.withRollback(fact.getRunId()))
         .onEvent(
             CompletedFact.class,
             (state, fact) -> {
@@ -1127,6 +1164,18 @@ public final class SessionActor
         .build();
   }
 
+  /**
+   * Inserts before returning the fact the caller persists, deliberately: {@link TurnCommittedFact}
+   * carries only turn metadata, not the events themselves, so persisting it first and losing this
+   * write to a crash would make that turn's content unrecoverable — worse than the current
+   * ordering, where a crash between the two just orphans rows that {@code onRecoveryCompleted}
+   * sweeps up. The residual gap is a read landing in between: {@code
+   * getCommittedSessionEvents}/{@code findTurnEvents} only filter on {@code rollbackId}, so a
+   * caller querying in that window sees these rows before the fact confirms them — data that is
+   * correct if nothing crashes, and quietly disappears on the next recovery if something does.
+   * Accepted as a narrow, momentary risk rather than adding a pending/confirmed marker and
+   * filtering every reader by it.
+   */
   private TurnCommittedFact commitTurn(final List<SessionEvent> events, final String runId) {
     sessionEventsRepository.insertMany(events);
     final String lastEventId = events.isEmpty() ? null : events.getLast().getId();
@@ -1136,8 +1185,7 @@ public final class SessionActor
   private static SessionActorState applyCommittedTurn(
       final SessionActorState state, final TurnCommittedFact fact) {
     SessionActorState newState =
-        state.withCommittedTurn(
-            new CommittedTurn(fact.getTurnId(), fact.getEventCount(), fact.getLastEventId()));
+        state.withCommittedTurn(fact.getTurnId(), fact.getEventCount(), fact.getLastEventId());
     final SessionState existingState = state.sessionState();
     if (existingState == SessionState.TRIGGERED_RUN || existingState == SessionState.CONTINUING) {
       newState = newState.withSessionState(SessionState.RUNNING);
@@ -1187,7 +1235,7 @@ public final class SessionActor
               state.nextSequence() + sessionEvents.size(),
               turnId);
       sessionEvents.add(errorEvent);
-      facts.add(commitTurn(sessionEvents, state.runState().runId()));
+      facts.add(commitTurn(sessionEvents, Objects.requireNonNull(state.currentRun()).runId()));
       turnEvents.clear();
       turnId = null;
     }
@@ -1211,7 +1259,7 @@ public final class SessionActor
               sessionId,
               runResult.failureMessage(),
               Long.MAX_VALUE - 1,
-              state.runState().lastCommittedTurn().id()));
+              state.lastCommittedTurn().turnId()));
     }
     if (topology.isRoot()) {
       generateSessionTitle(rootSessionId, isRecovery);
@@ -1238,7 +1286,7 @@ public final class SessionActor
     if (isRecovery) {
       return;
     }
-    UPDATE_MEMORY_EXECUTOR.execute(
+    ASYNC_TASK_EXECUTOR.execute(
         () -> {
           try {
             final AgentSession session = sessionService.getSession(rootSessionId);
@@ -1268,7 +1316,7 @@ public final class SessionActor
     if (isRecovery) {
       return;
     }
-    UPDATE_TITLE_EXECUTOR.execute(
+    ASYNC_TASK_EXECUTOR.execute(
         () -> {
           try {
             final String title = sessionTitleGenerator.generateTitle(rootSessionId);
@@ -1283,13 +1331,13 @@ public final class SessionActor
   }
 
   private String extractFinalAnswer(final SessionActorState state) {
-    final CommittedTurn lastCommittedTurn = state.runState().lastCommittedTurn();
+    final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
     if (lastCommittedTurn == null) {
       return null;
     }
     final List<Event> events =
         sessionEventsRepository.findTurnEvents(
-            state.topology().sessionId(), lastCommittedTurn.id());
+            state.topology().sessionId(), lastCommittedTurn.turnId());
     for (int i = events.size() - 1; i >= 0; i--) {
       final Optional<Content> content = events.get(i).content();
       if (content.isPresent()) {

@@ -1,7 +1,6 @@
 package com.agentengine.agent.core.factories;
 
 import com.agentengine.agent.core.memory.MemoryService;
-import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.core.session.SessionRunner;
 import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.infra.agents.Agent;
@@ -43,7 +42,6 @@ public class RunnerFactory {
   private final ContextManagerProvider contextManagerProvider;
   private final GuardrailPolicyFactory guardrailPolicyFactory;
   private final SessionService sessionService;
-  private final SessionActorJournal sessionActorJournal;
   private final SessionEventsRepository sessionEventsRepository;
 
   private final KnowledgeService knowledgeService;
@@ -57,7 +55,6 @@ public class RunnerFactory {
       ContextManagerProvider contextManagerProvider,
       GuardrailPolicyFactory guardrailPolicyFactory,
       SessionService sessionService,
-      final SessionActorJournal sessionActorJournal,
       final SessionEventsRepository sessionEventsRepository,
       final KnowledgeService knowledgeService,
       final MemoryService memoryService,
@@ -68,7 +65,6 @@ public class RunnerFactory {
     this.contextManagerProvider = contextManagerProvider;
     this.guardrailPolicyFactory = guardrailPolicyFactory;
     this.sessionService = sessionService;
-    this.sessionActorJournal = sessionActorJournal;
     this.sessionEventsRepository = sessionEventsRepository;
     this.knowledgeService = knowledgeService;
     this.memoryService = memoryService;
@@ -119,8 +115,7 @@ public class RunnerFactory {
   }
 
   private List<Event> getEvents(final String sessionId) {
-    final List<String> turnIds = sessionActorJournal.getCommittedTurnIds(sessionId);
-    return sessionEventsRepository.getCommittedSessionEvents(sessionId, turnIds, false).stream()
+    return sessionEventsRepository.getCommittedSessionEvents(sessionId, false).stream()
         .filter(sessionEvent -> sessionEvent.getType() == SessionEvent.Type.NORMAL)
         .map(SessionEvent::getRawEvent)
         .toList();

@@ -8,18 +8,19 @@ public record RunState(
     String runId,
     UniqueRecord<UserMessage> message,
     long messageTimestamp,
+    long startSequence,
     CommittedTurn lastCommittedTurn,
     RunResult result) {
 
-  public RunState withCommittedTurn(final CommittedTurn committedTurn) {
-    return new RunState(runId, message, messageTimestamp, committedTurn, result);
+  public RunState withCommittedTurn(final CommittedTurn turn) {
+    return new RunState(runId, message, messageTimestamp, startSequence, turn, result);
   }
 
-  public RunState resetMessage() {
-    return new RunState(runId, null, -1L, lastCommittedTurn, result);
+  public RunState complete(final RunResult result) {
+    return new RunState(runId, message, messageTimestamp, startSequence, lastCommittedTurn, result);
   }
 
-  public RunState withResult(final RunResult result) {
-    return new RunState(runId, message, messageTimestamp, lastCommittedTurn, result);
+  public RunState finished() {
+    return new RunState(runId, null, -1L, startSequence, lastCommittedTurn, null);
   }
 }

@@ -27,17 +27,14 @@ public class SessionTitleGenerator {
               "INSTRUCTIONS : Generate a concise (maximum 10 words) title for the following conversation"));
   private static final int MAX_RUNS_TO_GENERATE_TITLE_ON = 10;
   private final SessionEventsRepository sessionEventsRepository;
-  private final SessionActorJournal sessionActorJournal;
   private final Cache<String, String> titleGeneratorModelCache;
   private final ModelProvider modelProvider;
 
   public SessionTitleGenerator(
       final SessionEventsRepository sessionEventsRepository,
-      final SessionActorJournal sessionActorJournal,
       final InfraConfigService infraConfigService,
       final ModelProvider modelProvider) {
     this.sessionEventsRepository = sessionEventsRepository;
-    this.sessionActorJournal = sessionActorJournal;
     this.titleGeneratorModelCache =
         new Cache<>(
             CacheBuilder.newBuilder().maximumSize(1000),
@@ -58,8 +55,7 @@ public class SessionTitleGenerator {
 
   public String generateTitle(final String sessionId) {
     final List<SessionEvent> sessionEvents =
-        sessionEventsRepository.getCommittedSessionEvents(
-            sessionId, sessionActorJournal.getCommittedTurnIds(sessionId), false);
+        sessionEventsRepository.getCommittedSessionEvents(sessionId, false);
     if (CollectionUtils.isEmpty(sessionEvents)) {
       return null;
     }

@@ -5,7 +5,6 @@ import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.session.ResumeResult;
 import com.agentengine.agent.core.session.RollbackResult;
 import com.agentengine.agent.core.session.SessionActorFactory;
-import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.core.session.SessionEventChannel;
 import com.agentengine.agent.core.session.StartSessionResult;
 import com.agentengine.agent.core.session.commands.ExternalCommand.GetCurrentTurnEventsCommand;
@@ -53,7 +52,6 @@ public class RuntimeServiceImpl implements RuntimeService {
   private final SessionActorFactory sessionActorFactory;
   private final SessionEventChannel eventChannel;
   private final SessionService sessionService;
-  private final SessionActorJournal sessionActorJournal;
   private final SessionEventsRepository sessionEventsRepository;
 
   @Inject
@@ -61,12 +59,10 @@ public class RuntimeServiceImpl implements RuntimeService {
       final SessionActorFactory sessionActorFactory,
       final SessionEventChannel eventChannel,
       final SessionService sessionService,
-      final SessionActorJournal sessionActorJournal,
       final SessionEventsRepository sessionEventsRepository) {
     this.sessionActorFactory = sessionActorFactory;
     this.eventChannel = eventChannel;
     this.sessionService = sessionService;
-    this.sessionActorJournal = sessionActorJournal;
     this.sessionEventsRepository = sessionEventsRepository;
   }
 
@@ -208,26 +204,22 @@ public class RuntimeServiceImpl implements RuntimeService {
     }
 
     // Fetch committed history and current turn events lazily.
-    final Flowable<SessionEvent> commitedEvents =
+    final Flowable<SessionEvent> committedEvents =
         Flowable.fromSupplier(
-                () ->
-                    sessionEventsRepository.getCommittedSessionEvents(
-                        rootSessionId,
-                        sessionActorJournal.getCommittedTurnIds(rootSessionId),
-                        true))
+                () -> sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true))
             .flatMapIterable(list -> list)
             .filter(event -> seen.add(event.getId()))
             .map(RuntimeServiceImpl::stripBlobData);
 
-    final Flowable<SessionEvent> nonCommitedEvents =
+    final Flowable<SessionEvent> uncommittedEvents =
         Flowable.fromSupplier(() -> getCurrentTurnEvents(sessionId))
             .flatMapIterable(list -> list)
             .filter(event -> seen.add(event.getId()))
             .map(RuntimeServiceImpl::stripBlobData);
 
     return Flowable.concat(
-            commitedEvents,
-            nonCommitedEvents,
+            committedEvents,
+            uncommittedEvents,
             Flowable.just(SessionEvent.liveMarker(rootSessionId)),
             liveEvents)
         .doFinally(liveConnection::dispose);
@@ -262,8 +254,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
     return Flowable.fromIterable(
-        sessionEventsRepository.getCommittedSessionEvents(
-            rootSessionId, sessionActorJournal.getCommittedTurnIds(rootSessionId), true));
+        sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true));
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {

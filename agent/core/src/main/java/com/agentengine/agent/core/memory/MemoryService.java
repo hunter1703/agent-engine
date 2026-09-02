@@ -1,7 +1,6 @@
 package com.agentengine.agent.core.memory;
 
 import com.agentengine.agent.api.services.CommunityRegistry;
-import com.agentengine.agent.core.session.SessionActorJournal;
 import com.agentengine.agent.infra.agents.Agent;
 import com.agentengine.agent.infra.factories.agent.AgentProvider;
 import com.agentengine.util.agents.Constants;
@@ -59,7 +58,6 @@ public class MemoryService implements BaseMemoryService {
 
   private final CommunityRegistry communityRegistry;
   private final SessionEventsRepository sessionEventsRepository;
-  private final SessionActorJournal sessionActorJournal;
   private final AgentProvider agentProvider;
   private final MemoryStore memoryStore;
   private final InfraConfigService infraConfigService;
@@ -67,13 +65,11 @@ public class MemoryService implements BaseMemoryService {
   public MemoryService(
       final CommunityRegistry communityRegistry,
       final SessionEventsRepository sessionEventsRepository,
-      final SessionActorJournal sessionActorJournal,
       final AgentProvider agentProvider,
       final MemoryStore memoryStore,
       final InfraConfigService infraConfigService) {
     this.communityRegistry = communityRegistry;
     this.sessionEventsRepository = sessionEventsRepository;
-    this.sessionActorJournal = sessionActorJournal;
     this.agentProvider = agentProvider;
     this.memoryStore = memoryStore;
     this.infraConfigService = infraConfigService;
@@ -84,8 +80,7 @@ public class MemoryService implements BaseMemoryService {
     return Completable.fromAction(
         () -> {
           final List<SessionEvent> events =
-              sessionEventsRepository.getCommittedSessionEvents(
-                  session.id(), sessionActorJournal.getCommittedTurnIds(session.id()), false);
+              sessionEventsRepository.getCommittedSessionEvents(session.id(), false);
           final String conversation = buildConversationText(events);
           if (StringUtils.isBlank(conversation)) {
             return;

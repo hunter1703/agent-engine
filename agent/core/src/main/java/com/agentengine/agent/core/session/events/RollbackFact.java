@@ -1,11 +1,6 @@
 package com.agentengine.agent.core.session.events;
 
-/**
- * Sentinel journal fact that records a rollback request.
- *
- * <p>All events whose {@code invocationId} matches {@code runId}, and all events after them, are
- * excluded from the effective session history on replay.
- */
+/** Sentinel journal fact recording that a rollback command was accepted for {@code runId}. */
 public final class RollbackFact extends SessionFact {
 
   private String runId;
