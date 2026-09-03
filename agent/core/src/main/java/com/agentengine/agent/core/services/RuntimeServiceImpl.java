@@ -16,6 +16,7 @@ import com.agentengine.agent.core.session.commands.SessionCommand;
 import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -49,6 +50,8 @@ public class RuntimeServiceImpl implements RuntimeService {
 
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeServiceImpl.class);
 
+  private static final long COMPACTION_WINDOW_MILLIS = 100;
+
   private final SessionActorFactory sessionActorFactory;
   private final SessionEventChannel eventChannel;
   private final SessionService sessionService;
@@ -78,7 +81,9 @@ public class RuntimeServiceImpl implements RuntimeService {
     // Reusing an existing session is a new turn, not a replay subscription. The previous turn
     // may have left the persisted session status as COMPLETED, so subscribe directly to the
     // live root-session channel before starting the run.
-    final Publisher<SessionEvent> liveEvents = subscribeToLiveEvents(rootSessionId);
+    final Publisher<SessionEvent> liveEvents =
+        SessionEventUtils.compactEventStream(
+            subscribeToLiveEvents(rootSessionId), COMPACTION_WINDOW_MILLIS);
     startTurn(agentId, resolvedSessionId, message);
     return liveEvents;
   }
@@ -200,7 +205,8 @@ public class RuntimeServiceImpl implements RuntimeService {
         liveSource.filter(event -> seen.add(event.getId())).takeWhile(event -> !event.isTerminal());
 
     if (liveOnly) {
-      return liveEvents.doFinally(liveConnection::dispose);
+      return SessionEventUtils.compactEventStream(liveEvents, COMPACTION_WINDOW_MILLIS)
+          .doFinally(liveConnection::dispose);
     }
 
     // Fetch committed history and current turn events lazily.
@@ -217,11 +223,20 @@ public class RuntimeServiceImpl implements RuntimeService {
             .filter(event -> seen.add(event.getId()))
             .map(RuntimeServiceImpl::stripBlobData);
 
-    return Flowable.concat(
+    // A session that's still running never has a fixed end to wait for, so it always gets the
+    // windowed compaction — including the committed-history portion: unlike terminalStream, this
+    // is one continuous stream a still-active session might keep appending to, and treating the
+    // history/live boundary as a hard compaction break would under-merge a message that's still
+    // streaming across it. Windowing this way costs little for the (already fully available,
+    // near-instantly-flowing) history part — nearly everything still lands in the first window
+    // or two — while correctly bounding the live tail's added latency.
+    final Flowable<SessionEvent> combined =
+        Flowable.concat(
             committedEvents,
             uncommittedEvents,
             Flowable.just(SessionEvent.liveMarker(rootSessionId)),
-            liveEvents)
+            liveEvents);
+    return SessionEventUtils.compactEventStream(combined, COMPACTION_WINDOW_MILLIS)
         .doFinally(liveConnection::dispose);
   }
 
@@ -253,8 +268,9 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
-    return Flowable.fromIterable(
-        sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true));
+    final List<SessionEvent> events =
+        sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true);
+    return Flowable.fromIterable(SessionEventUtils.compactEventStream(events));
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {

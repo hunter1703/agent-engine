@@ -42,6 +42,7 @@ grpc = "1.79.0"
 
 # Utilities
 guava = "33.5.0-jre"
+concurrency-limits = "0.5.3"
 groovy = "4.0.28"
 rxjava = "3.1.12"
 reactive-streams = "1.0.4"
@@ -75,6 +76,7 @@ cron-utils = "9.2.1"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+concurrency-limits-core = { group = "com.netflix.concurrency-limits", name = "concurrency-limits-core", version.ref = "concurrency-limits" }
 cron-utils = { group = "com.cronutils", name = "cron-utils", version.ref = "cron-utils" }
 
 # BOMs
@@ -119,6 +121,7 @@ quarkus-smallrye-openapi = { group = "io.quarkus", name = "quarkus-smallrye-open
 quarkus-grpc = { group = "io.quarkus", name = "quarkus-grpc" }
 quarkus-opentelemetry = { group = "io.quarkus", name = "quarkus-opentelemetry" }
 quarkus-smallrye-fault-tolerance = { group = "io.quarkus", name = "quarkus-smallrye-fault-tolerance" }
+opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api" }
 quarkus-jackson = { group = "io.quarkus", name = "quarkus-jackson" }
 quarkus-smallrye-health = { group = "io.quarkus", name = "quarkus-smallrye-health" }
 quarkus-micrometer-registry-prometheus = { group = "io.quarkus", name = "quarkus-micrometer-registry-prometheus" }

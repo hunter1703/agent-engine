@@ -10,6 +10,7 @@ dependencies {
     implementation libs.grpc.stub
     implementation libs.grpc.protobuf
     implementation libs.javax.annotation.api
+    implementation libs.opentelemetry.api
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

@@ -142,6 +142,8 @@ the reader and the runtime equally.
    methods, variables, fields. Simple isn't vague: keep the name precise, just don't reach for a
    more formal word when a plain one already says it exactly as well (e.g. `idleTimeoutCommand`,
    not `idleTimeoutSentinel` — it's the command scheduled for the idle timeout, not a "sentinel").
+   Applies to booleans too: `sameClass`, not `homogeneous` — it's a plain description of the check
+   ("do all these items share one class"), not a term of art the reader has to already know.
 
 ### Code Structure Conventions
 

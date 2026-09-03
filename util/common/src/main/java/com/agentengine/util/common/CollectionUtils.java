@@ -266,4 +266,17 @@ public final class CollectionUtils {
     }
     return transformedMap;
   }
+
+  public static boolean areSameType(final Collection<?> collection) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return true;
+    }
+    final Class<?> firstType = collection.iterator().next().getClass();
+    for (final Object item : collection) {
+      if (!firstType.equals(item.getClass())) {
+        return false;
+      }
+    }
+    return true;
+  }
 }

@@ -15,6 +15,7 @@ message Request {
 
 message Response {
   bytes payload = 1; // JSON result
+  string class_name = 2;
 }
 
 service Service {

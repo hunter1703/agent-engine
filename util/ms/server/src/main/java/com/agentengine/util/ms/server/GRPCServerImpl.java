@@ -1,24 +1,32 @@
 package com.agentengine.util.ms.server;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.agentengine.util.ms.client.MicroService;
+import com.agentengine.util.ms.client.MicroServiceMethod;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
+import com.google.common.base.Throwables;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.opentelemetry.api.trace.Span;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ArcContainer;
 import io.quarkus.arc.InstanceHandle;
 import io.quarkus.grpc.GrpcService;
 import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.disposables.SerialDisposable;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.inject.Any;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -27,11 +35,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,11 +45,14 @@ import org.slf4j.LoggerFactory;
 @GrpcService
 public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private static final String NAME_PREFIX = "agent-grpc-vt-";
-  private static final ExecutorService EXECUTOR_SERVICE = newVirtualThreadExecutor(NAME_PREFIX);
+  private static final ExecutorService EXECUTOR_SERVICE =
+      Executors.newThreadPerTaskExecutor(
+          Thread.ofVirtual().name(GRPCServerImpl.NAME_PREFIX, 0).factory());
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
 
   private Map<String, ServiceEntry> registry = new HashMap<>();
 
+  @Inject
   public GRPCServerImpl() {}
 
   public GRPCServerImpl(final List<Object> services) {
@@ -62,25 +70,32 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     final ArcContainer container = Arc.container();
     this.registry =
         container.beanManager().getBeans(Object.class, Any.Literal.INSTANCE).stream()
-            .filter(bean -> !bean.getBeanClass().equals(GRPCServerImpl.class))
             .filter(bean -> !bean.getBeanClass().getName().contains("GRPCServerImpl"))
             .flatMap(
                 bean ->
                     Optional.ofNullable(microServiceInterface(bean.getBeanClass()))
                         .map(
                             iface -> {
-                              final InstanceHandle<?> handle =
+                              // Every discovered MicroService bean is @Singleton, a
+                              // container-managed scope whose lifecycle close() doesn't affect —
+                              // it only matters for @Dependent, where it triggers destruction. Safe
+                              // to close here; the instance stays valid for as long as this
+                              // registry holds onto it.
+                              try (InstanceHandle<?> handle =
                                   container.instance(
                                       bean.getBeanClass(),
-                                      bean.getQualifiers().toArray(new Annotation[0]));
-                              if (!handle.isAvailable()) return null;
-                              final Object instance = handle.get();
-                              LOG.info(
-                                  "Discovered MicroService: {} implemented by {}",
-                                  iface.getSimpleName(),
-                                  instance.getClass().getName());
-                              return Map.entry(
-                                  iface.getSimpleName(), new ServiceEntry(instance, iface));
+                                      bean.getQualifiers().toArray(new Annotation[0]))) {
+                                if (!handle.isAvailable()) {
+                                  return null;
+                                }
+                                final Object instance = handle.get();
+                                LOG.info(
+                                    "Discovered MicroService: {} implemented by {}",
+                                    iface.getSimpleName(),
+                                    instance.getClass().getName());
+                                return Map.entry(
+                                    iface.getSimpleName(), new ServiceEntry(instance, iface));
+                              }
                             })
                         .stream())
             .collect(
@@ -94,31 +109,42 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
 
   @Override
   public void execute(final Request request, final StreamObserver<Response> responseObserver) {
-    try {
-      EXECUTOR_SERVICE.execute(() -> dispatch(request, responseObserver));
-    } catch (final RejectedExecutionException exception) {
-      responseObserver.onError(
-          Status.RESOURCE_EXHAUSTED
-              .withDescription("gRPC virtual thread executor rejected request")
-              .withCause(exception)
-              .asRuntimeException());
-    }
+    final SerialDisposable disposableProxy = new SerialDisposable();
+    ((ServerCallStreamObserver<Response>) responseObserver)
+        .setOnCancelHandler(disposableProxy::dispose);
+    dispatch(request, responseObserver, disposableProxy);
   }
 
-  private void dispatch(final Request request, final StreamObserver<Response> responseObserver) {
-    if (request.getContext().isEmpty()) {
-      executeInternal(request, responseObserver);
-      return;
-    }
-    final Context context = JsonUtils.fromJson(request.getContext().toStringUtf8(), Context.class);
-    context.run(() -> executeInternal(request, responseObserver));
+  private void dispatch(
+      final Request request,
+      final StreamObserver<Response> responseObserver,
+      final SerialDisposable disposableProxy) {
+    // Capture the current span/context before crossing the manual dispatch-to-virtual-thread
+    // boundary below — otherwise Span.current() inside dispatch() would see whatever (or
+    // nothing) is ambient on that fresh virtual thread, not the span this call arrived on.
+    final io.opentelemetry.context.Context otelContext = io.opentelemetry.context.Context.current();
+    EXECUTOR_SERVICE.execute(
+        otelContext.wrap(
+            () -> {
+              final Context context =
+                  JsonUtils.fromJson(request.getContext().toStringUtf8(), Context.class);
+              if (context != null) {
+                context.run(() -> executeInternal(request, responseObserver, disposableProxy));
+              } else {
+                executeInternal(request, responseObserver, disposableProxy);
+              }
+            }));
   }
 
   private void executeInternal(
-      final Request request, final StreamObserver<Response> responseObserver) {
+      final Request request,
+      final StreamObserver<Response> responseObserver,
+      final SerialDisposable disposableProxy) {
     final String serviceName = request.getService();
     final String methodName = request.getMethod();
     LOG.debug("GRPCServerImpl.execute called for {}/{}", serviceName, methodName);
+    final Span span = Span.current();
+    span.setAttribute("ms.service", serviceName).setAttribute("ms.method", methodName);
 
     final ServiceEntry entry = registry.get(serviceName);
     if (entry == null) {
@@ -130,8 +156,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       return;
     }
 
-    final Method method = entry.methods().get(methodName);
-    if (method == null) {
+    final ServiceMethod serviceMethod = entry.methods().get(methodName);
+    if (serviceMethod == null) {
       LOG.error(
           "Method not found: {}/{} (available: {})",
           serviceName,
@@ -142,51 +168,82 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       return;
     }
 
+    final Method method = serviceMethod.method();
     try {
       final Object[] args = deserializeArgs(request, method);
-      Object result = method.invoke(entry.bean(), args);
-      if (result instanceof Optional<?> optional) {
-        result = optional.orElse(null);
-      }
-      if (result instanceof CompletionStage<?> stage) {
-        stage.whenComplete(
-            (value, ex) -> {
-              if (ex != null) {
-                LOG.error("Error executing {}/{}", serviceName, methodName, ex);
-                responseObserver.onError(rootCauseStatus(ex).asRuntimeException());
-              } else {
-                sendResult(value, responseObserver);
-              }
-            });
+      final Object result = method.invoke(entry.bean(), args);
+      if (result instanceof Flowable<?> flowable) {
+        LOG.debug("Subscribing to Flowable result...");
+        final AtomicLong itemCount = new AtomicLong();
+        final AtomicLong batchCount = new AtomicLong();
+        // The cancel handler itself is already registered on disposable back in execute(); this
+        // just supplies the real subscription. set() disposes it
+        // immediately instead of leaking it if a cancel already landed in the meantime.
+        Disposable subscription =
+            flowable
+                .buffer(
+                    serviceMethod.streamingBatchFlushIntervalMs(),
+                    TimeUnit.MILLISECONDS,
+                    serviceMethod.streamingBatchSize())
+                .filter(batch -> !batch.isEmpty())
+                .subscribe(
+                    batch -> {
+                      itemCount.addAndGet(batch.size());
+                      batchCount.incrementAndGet();
+                      final boolean sameType = CollectionUtils.areSameType(batch);
+                      send(
+                          responseObserver,
+                          batch,
+                          sameType ? batch.getFirst().getClass().getName() : null);
+                    },
+                    err -> {
+                      LOG.error("Flowable error", err);
+                      span.setAttribute("ms.item_count", itemCount.get())
+                          .setAttribute("ms.batch_count", batchCount.get());
+                      responseObserver.onError(rootCauseStatus(err).asRuntimeException());
+                    },
+                    () -> {
+                      span.setAttribute("ms.item_count", itemCount.get())
+                          .setAttribute("ms.batch_count", batchCount.get());
+                      responseObserver.onCompleted();
+                    });
+        disposableProxy.set(subscription);
         return;
       }
-      sendResult(result, responseObserver);
+      if (result != null) {
+        send(responseObserver, result, result.getClass().getName());
+      }
+      responseObserver.onCompleted();
     } catch (final Exception exception) {
       LOG.error("Error executing {}/{}", serviceName, methodName, exception);
       responseObserver.onError(rootCauseStatus(exception).asRuntimeException());
     }
   }
 
-  private static Throwable rootCause(final Throwable throwable) {
-    Throwable current = throwable;
-    while (current.getCause() != null && current.getCause() != current) {
-      current = current.getCause();
+  private static void send(
+      final StreamObserver<Response> responseObserver,
+      final Object payload,
+      final String className) {
+    final Response.Builder response =
+        Response.newBuilder()
+            .setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(payload, className == null)));
+    if (className != null) {
+      response.setClassName(className);
     }
-    return current;
+    responseObserver.onNext(response.build());
   }
 
   private static Status rootCauseStatus(final Throwable throwable) {
-    final Throwable cause = rootCause(throwable);
-    if (cause instanceof AssetNotFoundException) {
-      return Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
-    }
-    if (cause instanceof DuplicateAssetException) {
-      return Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
-    }
-    if (cause instanceof IllegalArgumentException || cause instanceof ConfigurationException) {
-      return Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
-    }
-    return Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
+    final Throwable cause = Throwables.getRootCause(throwable);
+    return switch (cause) {
+      case AssetNotFoundException _ ->
+          Status.NOT_FOUND.withDescription(cause.getMessage()).withCause(cause);
+      case DuplicateAssetException _ ->
+          Status.ALREADY_EXISTS.withDescription(cause.getMessage()).withCause(cause);
+      case IllegalArgumentException _, ConfigurationException _ ->
+          Status.INVALID_ARGUMENT.withDescription(cause.getMessage()).withCause(cause);
+      default -> Status.INTERNAL.withDescription(cause.getMessage()).withCause(cause);
+    };
   }
 
   private static Class<?> microServiceInterface(final Class<?> clazz) {
@@ -221,48 +278,13 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     final Object[] typedArgs = new Object[paramCount];
     for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
       if (rawArgs[index] instanceof Map<?, ?> argumentMap) {
+        //noinspection unchecked
         typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) argumentMap, paramTypes[index]);
       } else {
         typedArgs[index] = rawArgs[index];
       }
     }
     return typedArgs;
-  }
-
-  private void sendResult(final Object result, final StreamObserver<Response> observer) {
-    if (result instanceof Flowable<?> flowable) {
-      LOG.debug("Subscribing to Flowable result...");
-      flowable.subscribe(
-          item -> {
-            LOG.debug("Sending Flowable item: {}", item.getClass().getSimpleName());
-            sendPayload(observer, item);
-          },
-          err -> {
-            LOG.error("Flowable error", err);
-            observer.onError(rootCauseStatus(err).asRuntimeException());
-          },
-          () -> {
-            LOG.debug("Flowable complete");
-            observer.onCompleted();
-          });
-      return;
-    }
-    if (result != null) {
-      sendPayload(observer, result);
-    }
-    observer.onCompleted();
-  }
-
-  private void sendPayload(final StreamObserver<Response> observer, final Object value) {
-    observer.onNext(
-        Response.newBuilder()
-            .setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(value, true)))
-            .build());
-  }
-
-  private static ExecutorService newVirtualThreadExecutor(final String namePrefix) {
-    final ThreadFactory factory = Thread.ofVirtual().name(namePrefix, 0).factory();
-    return Executors.newThreadPerTaskExecutor(factory);
   }
 
   private static String methodKey(final Method method) {
@@ -273,14 +295,30 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
             .collect(Collectors.joining(","));
   }
 
-  private record ServiceEntry(Object bean, Map<String, Method> methods) {
+  private static ServiceMethod serviceMethod(final Method method) {
+    final MicroServiceMethod override = method.getAnnotation(MicroServiceMethod.class);
+    return override != null
+        ? new ServiceMethod(
+            method, override.streamingBatchSize(), override.streamingBatchFlushIntervalMs())
+        : new ServiceMethod(
+            method,
+            MicroServiceMethod.DEFAULT_STREAMING_BATCH_SIZE,
+            MicroServiceMethod.DEFAULT_STREAMING_BATCH_FLUSH_INTERVAL_MS);
+  }
+
+  private record ServiceEntry(Object bean, Map<String, ServiceMethod> methods) {
     private ServiceEntry(final Object bean, final Class<?> iface) {
       this(
           bean,
           Arrays.stream(iface.getMethods())
               .collect(
                   Collectors.toUnmodifiableMap(
-                      GRPCServerImpl::methodKey, m -> m, (first, __) -> first)));
+                      GRPCServerImpl::methodKey,
+                      GRPCServerImpl::serviceMethod,
+                      (first, __) -> first)));
     }
   }
+
+  private record ServiceMethod(
+      Method method, int streamingBatchSize, long streamingBatchFlushIntervalMs) {}
 }

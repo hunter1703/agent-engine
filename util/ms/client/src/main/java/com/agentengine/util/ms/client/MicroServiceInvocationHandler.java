@@ -1,25 +1,30 @@
 package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
+import io.grpc.stub.ClientCallStreamObserver;
+import io.grpc.stub.ClientResponseObserver;
+import io.opentelemetry.api.trace.Span;
+import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.reactivestreams.Publisher;
@@ -37,8 +42,6 @@ import org.slf4j.LoggerFactory;
 public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MicroServiceInvocationHandler.class);
-  private static final ExecutorService STREAM_EXECUTOR =
-      Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("grpc-stream-", 0).factory());
 
   private final Class<?> serviceClass;
   private final Supplier<ManagedChannel> channelSupplier;
@@ -49,15 +52,14 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     this.channelSupplier = channelSupplier;
   }
 
-  private ServiceGrpc.ServiceBlockingStub stub() {
-    return ServiceGrpc.newBlockingStub(channelSupplier.get());
-  }
-
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
     final String requestId = currentRequestId();
     LOG.info(
         "[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
+    Span.current()
+        .setAttribute("ms.remote_service", serviceClass.getSimpleName())
+        .setAttribute("ms.remote_method", method.getName());
 
     Request request = buildRequest(method, args);
     if (Publisher.class.isAssignableFrom(method.getReturnType())) {
@@ -92,6 +94,10 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     return builder.build();
   }
 
+  // Stays on the blocking stub rather than the async one streamingCall() uses below: the
+  // per-message thread hand-off cost that dominates a many-item stream is a one-time cost here
+  // (a single response), and switching would mean this method — and every synchronous caller of
+  // it — returning a Future/reactive type instead of a plain value, not just an internal swap.
   private Object blockingCall(Request request, Method method) {
     final String requestId = currentRequestId();
     LOG.info(
@@ -99,7 +105,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         requestId,
         serviceClass.getSimpleName(),
         method.getName());
-    final Iterator<Response> responseIterator = stub().execute(request);
+    final Iterator<Response> responseIterator = blockingStub().execute(request);
     LOG.info(
         "[{}] gRPC call returned for {}.{}",
         requestId,
@@ -114,13 +120,14 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
       return null;
     }
 
-    final String payload = responseIterator.next().getPayload().toStringUtf8();
-    final Type baseType =
+    final Response response = responseIterator.next();
+    final Type declaredType =
         CompletionStage.class.isAssignableFrom(method.getReturnType())
             ? firstTypeArgument(method.getGenericReturnType())
             : method.getGenericReturnType();
-    final Type deserializationType = getDeserializationType(baseType);
-    Object result = JsonUtils.fromJson(payload, deserializationType, true);
+    final Type deserializationType = resolveType(response.getClassName(), declaredType);
+    Object result =
+        JsonUtils.fromJson(response.getPayload().toStringUtf8(), deserializationType, false);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
@@ -129,30 +136,115 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   }
 
   /**
-   * The server always serializes results at static type {@code Object} (see {@link
-   * com.agentengine.util.ms.server.GRPCServerImpl#sendPayload}), so Jackson's default typing wraps
-   * scalar values as a type/value array (e.g. {@code ["java.lang.Long", 5]}) even though types like
-   * {@code Long} are final. Targeting the primitive/wrapper type directly fails to parse that
-   * wrapper, so we target {@code Object} instead and let the JDK proxy unbox the result.
+   * The response carries the value's own concrete runtime class, so deserialization can target it
+   * directly with plain Jackson instead of needing type info embedded in the JSON itself. Falls
+   * back to the method's own declared type if a response is ever missing one.
    */
-  private static Type getDeserializationType(Type type) {
-    if (type instanceof Class<?> clazz) {
-      if (clazz.isPrimitive()
-          || Number.class.isAssignableFrom(clazz)
-          || clazz == Boolean.class
-          || clazz == Character.class) {
-        return Object.class;
-      }
+  private static Type resolveType(final String className, final Type declaredType) {
+    if (className == null || className.isBlank()) {
+      return declaredType;
     }
-    return type;
+    try {
+      return Class.forName(className);
+    } catch (final ClassNotFoundException exception) {
+      return declaredType;
+    }
   }
 
+  // Uses the async stub instead of the blocking stub's Iterator. Both deliver messages the same
+  // way up to a point: Netty's I/O thread parses the frame, then hands the decoded message to the
+  // channel's callback executor (a shared, unbounded platform-thread pool — grpc-java's
+  // GrpcUtil.SHARED_CHANNEL_EXECUTOR, not virtual threads) to actually invoke onMessage()/onNext().
+  // That hand-off exists so a slow callback can't stall Netty's read loop.
+  //
+  // Where they differ: the blocking stub's Iterator has a third party involved — its onMessage()
+  // just enqueues the item, and a separate application thread (parked in hasNext()/next()) has to
+  // be woken to consume it. That wake-up is a real cost paid once per item, which dominates total
+  // latency for a many-small-messages stream. Below, onNext() runs the consumption (deserializing
+  // into flatMapIterable) inline, on that same callback-executor thread — no second party to hand
+  // off to. It also means no application thread is reserved for the stream's duration: the calling
+  // thread returns as soon as this method sets the call up, and work only happens in short bursts
+  // on the callback executor as messages actually arrive.
+  //
+  // Each Response payload is a JSON-encoded batch, not a single item — flatMapIterable unpacks
+  // it back into the individual-item Flowable callers expect.
   private Flowable<?> streamingCall(Request request, Method method) {
-    final Class<?> itemType = firstTypeArgument(method.getGenericReturnType());
-    return Flowable.fromIterable(() -> stub().execute(request))
-        // gRPC's blocking response iterator must never be consumed on a Vert.x event-loop thread.
-        .subscribeOn(Schedulers.from(STREAM_EXECUTOR))
-        .map(response -> JsonUtils.fromJson(response.getPayload().toStringUtf8(), itemType, true));
+    final Class<?> declaredItemType = firstTypeArgument(method.getGenericReturnType());
+    final Span span = Span.current();
+    final AtomicLong itemCount = new AtomicLong();
+    final AtomicLong batchCount = new AtomicLong();
+    return Flowable.<Response>create(
+            emitter ->
+                nonBlockingStub()
+                    .execute(
+                        request,
+                        new ClientResponseObserver<Request, Response>() {
+                          @Override
+                          public void beforeStart(
+                              final ClientCallStreamObserver<Request> requestStream) {
+                            // Propagates a downstream cancel (e.g. the REST caller disconnecting)
+                            // to the gRPC call — otherwise it keeps streaming for nobody.
+                            emitter.setCancellable(() -> requestStream.cancel(null, null));
+                          }
+
+                          @Override
+                          public void onNext(final Response response) {
+                            emitter.onNext(response);
+                          }
+
+                          @Override
+                          public void onError(final Throwable throwable) {
+                            emitter.onError(throwable);
+                          }
+
+                          @Override
+                          public void onCompleted() {
+                            emitter.onComplete();
+                          }
+                        }),
+            BackpressureStrategy.BUFFER)
+        .flatMapIterable(
+            response -> {
+              batchCount.incrementAndGet();
+              // Empty className means the batch had no single shared class — the payload itself
+              // carries a type tag per element instead, so declaredItemType is only the base type
+              // Jackson resolves each element's real class against, not the class of every item.
+              final String className = response.getClassName();
+              final Type batchType =
+                  TypeFactory.defaultInstance()
+                      .constructCollectionType(
+                          List.class, resolveItemClass(className, declaredItemType));
+              final List<?> batch =
+                  JsonUtils.fromJson(
+                      response.getPayload().toStringUtf8(),
+                      batchType,
+                      StringUtils.isBlank(className));
+              itemCount.addAndGet(batch.size());
+              return batch;
+            })
+        .doFinally(
+            () ->
+                span.setAttribute("ms.item_count", itemCount.get())
+                    .setAttribute("ms.batch_count", batchCount.get()));
+  }
+
+  private ServiceGrpc.ServiceBlockingStub blockingStub() {
+    return ServiceGrpc.newBlockingStub(channelSupplier.get());
+  }
+
+  private ServiceGrpc.ServiceStub nonBlockingStub() {
+    return ServiceGrpc.newStub(channelSupplier.get());
+  }
+
+  private static Class<?> resolveItemClass(final String className, final Class<?> declaredType) {
+    if (StringUtils.isBlank(className)) {
+      return declaredType;
+    }
+    try {
+      return Class.forName(className);
+    } catch (final ClassNotFoundException exception) {
+      return declaredType;
+    }
   }
 
   private static String currentRequestId() {
