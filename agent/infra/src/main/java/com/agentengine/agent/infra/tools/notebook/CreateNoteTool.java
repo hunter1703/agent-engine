@@ -48,11 +48,17 @@ public final class CreateNoteTool extends AbstractNotebookTool {
         return ToolOutput.direct(
             Map.of(
                 "error",
-                "Note '" + noteTitle + "' already exists — not granted edit_note access to it."));
+                "Note '" + noteTitle + "' already exists — not granted edit_note access to it.",
+                "notebook_access",
+                grantsSummary(toolContext)));
       }
       if (!noteExists && !NotebookUtils.canCreate(grants, notebookId)) {
         return ToolOutput.direct(
-            Map.of("error", "Not granted create_note access to this notebook."));
+            Map.of(
+                "error",
+                "Not granted create_note access to this notebook.",
+                "notebook_access",
+                grantsSummary(toolContext)));
       }
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);

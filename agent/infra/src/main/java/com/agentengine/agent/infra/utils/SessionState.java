@@ -1,7 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
 import com.agentengine.agent.api.model.NotebookGrants;
-import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
 import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.tools.knowledge.ReadKnowledgeSourceTool;
@@ -12,7 +11,6 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.beans.Permission;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -67,53 +65,11 @@ public final class SessionState {
     if (notebookGrants == null || CollectionUtils.isEmpty(notebookGrants.grants())) {
       return;
     }
-
-    final Map<String, NotebookSummary> summaries = new HashMap<>();
-
-    for (final Map.Entry<String, Permission> entry :
-        CollectionUtils.nullSafeMap(notebookGrants.grants()).entrySet()) {
-      final String key = entry.getKey();
-      final Permission permission = entry.getValue();
-
-      if (NotebookUtils.isNoteId(key)) {
-        final String notebookId = NotebookUtils.notebookIdOf(key);
-        final String noteTitle = NotebookUtils.noteTitleOf(key);
-        final NotebookSummary summary =
-            summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
-        if (permission == Permission.WRITE) {
-          summary.editPermissionedNotes.add(noteTitle);
-        } else if (permission == Permission.READ) {
-          summary.readPermissionedNotes.add(noteTitle);
-        }
-      } else if (permission == Permission.CREATE) {
-        summaries.computeIfAbsent(key, k -> new NotebookSummary()).canCreate = true;
-      }
-    }
-
-    final StringBuilder sb = new StringBuilder("Notebook Permissions:");
-    for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
-      final String notebookId = entry.getKey();
-      final NotebookSummary summary = entry.getValue();
-      sb.append("\n- Notebook '").append(notebookId).append("': ");
-      sb.append(
-          summary.canCreate
-              ? "you have create_note access (may add a note under any title that doesn't "
-                  + "exist there yet)."
-              : "you do not have create_note access.");
-
-      if (!summary.editPermissionedNotes.isEmpty()) {
-        sb.append("\n  - edit_note access: ")
-            .append(String.join(", ", summary.editPermissionedNotes));
-      }
-      if (!summary.readPermissionedNotes.isEmpty()) {
-        sb.append("\n  - read_note access: ")
-            .append(String.join(", ", summary.readPermissionedNotes));
-      }
-    }
-
     addReminder(
         new Reminder(
-            Reminder.GROUP_NOTEBOOK_GRANTS, Reminder.GROUP_NOTEBOOK_GRANTS, sb.toString()));
+            Reminder.GROUP_NOTEBOOK_GRANTS,
+            Reminder.GROUP_NOTEBOOK_GRANTS,
+            "Notebook Permissions:\n" + notebookGrants.describe()));
   }
 
   public void addSpawnedAgentReminder(
@@ -288,11 +244,5 @@ public final class SessionState {
             Constants.ToolNames.AWAIT_AGENT,
             Constants.ToolArgs.CHILD_SESSION_ID,
             childSessionId);
-  }
-
-  private static class NotebookSummary {
-    boolean canCreate = false;
-    final Set<String> readPermissionedNotes = new LinkedHashSet<>();
-    final Set<String> editPermissionedNotes = new LinkedHashSet<>();
   }
 }

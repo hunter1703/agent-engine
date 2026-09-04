@@ -43,7 +43,9 @@ public final class ReadNoteTool extends AbstractNotebookTool {
       return ToolOutput.direct(
           Map.of(
               "error",
-              "Not granted read_note access to note '" + noteTitle + "' in this notebook."));
+              "Not granted read_note access to note '" + noteTitle + "' in this notebook.",
+              "notebook_access",
+              grantsSummary(toolContext)));
     }
     final Note note = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
     if (note == null) {

@@ -44,7 +44,9 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       return ToolOutput.direct(
           Map.of(
               "error",
-              "Not granted edit_note access to note '" + noteTitle + "' in this notebook."));
+              "Not granted edit_note access to note '" + noteTitle + "' in this notebook.",
+              "notebook_access",
+              grantsSummary(toolContext)));
     }
     notesRepository.deleteById(NotebookUtils.noteId(notebookId, noteTitle));
     return ToolOutput.direct(Map.of("status", "success"));

@@ -17,4 +17,14 @@ public abstract class AbstractNotebookTool extends Tool {
         ? extended.grants().notebookGrants()
         : null;
   }
+
+  /**
+   * Renders the caller's actual notebook grants, for including alongside an access-denied error so
+   * the model can see its real notebook/note ids and self-correct instead of repeating the same
+   * wrong id.
+   */
+  protected static String grantsSummary(final ToolContext toolContext) {
+    final NotebookGrants grants = grantsOf(toolContext);
+    return grants == null ? "You have no notebook access." : grants.describe();
+  }
 }

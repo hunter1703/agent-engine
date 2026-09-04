@@ -8,9 +8,12 @@ import com.agentengine.util.common.beans.Permission;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public record NotebookGrants(Map<String, Permission> grants) {
 
@@ -37,6 +40,64 @@ public record NotebookGrants(Map<String, Permission> grants) {
 
   public boolean canCreate(final String notebookId) {
     return grants.get(notebookId) == Permission.CREATE;
+  }
+
+  /**
+   * Renders every grant as a human/LLM-readable, per-notebook bullet list — the exact notebook and
+   * note ids to use, grouped by notebook. Shared by {@code ReminderPlugin}'s proactive brief and by
+   * notebook tools' access-denied errors, so a caller that used a wrong id (e.g. dropping a
+   * notebook's name suffix) sees its actual grants alongside the error and can self-correct.
+   */
+  public String describe() {
+    if (grants.isEmpty()) {
+      return "You have no notebook access.";
+    }
+    final Map<String, NotebookSummary> summaries = new LinkedHashMap<>();
+    for (final Map.Entry<String, Permission> entry : grants.entrySet()) {
+      final String key = entry.getKey();
+      final Permission permission = entry.getValue();
+      if (NotebookUtils.isNoteId(key)) {
+        final String notebookId = NotebookUtils.notebookIdOf(key);
+        final String noteTitle = NotebookUtils.noteTitleOf(key);
+        final NotebookSummary summary =
+            summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
+        if (permission == Permission.WRITE) {
+          summary.editPermissionedNotes.add(noteTitle);
+        } else if (permission == Permission.READ) {
+          summary.readPermissionedNotes.add(noteTitle);
+        }
+      } else if (permission == Permission.CREATE) {
+        summaries.computeIfAbsent(key, k -> new NotebookSummary()).canCreate = true;
+      }
+    }
+
+    final StringBuilder sb = new StringBuilder();
+    for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
+      final String notebookId = entry.getKey();
+      final NotebookSummary summary = entry.getValue();
+      sb.append("- Notebook '").append(notebookId).append("': ");
+      sb.append(
+          summary.canCreate
+              ? "you have create_note access (may add a note under any title that doesn't "
+                  + "exist there yet)."
+              : "you do not have create_note access.");
+      if (!summary.editPermissionedNotes.isEmpty()) {
+        sb.append("\n  - edit_note access: ")
+            .append(String.join(", ", summary.editPermissionedNotes));
+      }
+      if (!summary.readPermissionedNotes.isEmpty()) {
+        sb.append("\n  - read_note access: ")
+            .append(String.join(", ", summary.readPermissionedNotes));
+      }
+      sb.append("\n");
+    }
+    return sb.toString().trim();
+  }
+
+  private static final class NotebookSummary {
+    private boolean canCreate;
+    private final Set<String> readPermissionedNotes = new LinkedHashSet<>();
+    private final Set<String> editPermissionedNotes = new LinkedHashSet<>();
   }
 
   private static Map<String, Permission> resolve(final List<Entry> entries) {
