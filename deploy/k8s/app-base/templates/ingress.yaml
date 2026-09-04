@@ -25,4 +25,12 @@ spec:
                   number: {{ $.Values.service.httpPort }}
           {{- end }}
     {{- end }}
+  {{- if .Values.ingress.tlsEnabled }}
+  tls:
+    - hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ .host }}
+        {{- end }}
+      secretName: {{ include "agent-engine.app-base.instance" . }}-tls
+  {{- end }}
 {{- end }}

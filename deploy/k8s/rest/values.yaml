@@ -5,8 +5,9 @@ app-base:
   ingress:
     enabled: true
     className: nginx
+    tlsEnabled: true
     hosts:
-      - host: rest.agent-engine.local
+      - host: agents.com
         paths:
           - path: /
             pathType: Prefix
