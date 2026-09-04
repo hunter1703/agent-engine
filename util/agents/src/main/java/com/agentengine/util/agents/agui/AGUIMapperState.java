@@ -61,87 +61,105 @@ public final class AGUIMapperState {
   }
 
   public boolean hasNewRun(final String candidateRunId) {
-    return candidateRunId != null && !Objects.equals(scope().runId, candidateRunId);
+    return candidateRunId != null && !Objects.equals(runScope().runId, candidateRunId);
   }
 
   public void startRun(final String runId) {
-    scope().runId = runId;
+    runScope().runId = runId;
   }
 
   /**
    * Clears the tracked run for the current event's session and returns the runId that was active.
    */
   public String finishRun() {
-    final RunScope scope = scope();
+    final RunScope scope = runScope();
     final String finishedRunId = scope.runId;
     scope.runId = null;
     return finishedRunId;
   }
 
   public String currentRunId() {
-    return scope().runId;
+    return runScope().runId;
   }
 
   public boolean hasStartedStep() {
-    return StringUtils.isNotBlank(scope().currentStepName);
+    return StringUtils.isNotBlank(runScope().currentStepName);
   }
 
   public String startNextStep() {
-    return scope().startNextStep(currentSourceEventId);
+    return runScope().startNextStep(currentSourceEventId);
   }
 
   public String finishStep() {
-    return scope().finishStep();
+    return runScope().finishStep();
   }
 
   public boolean hasOpenTextMessage() {
-    return scope().currentTextMessageId != null;
+    return runScope().currentTextMessageId != null;
   }
 
   public String startNextTextMessage() {
-    return scope().startNextTextMessage(currentSourceEventId);
+    return runScope().startNextTextMessage(currentSourceEventId);
   }
 
   public String currentTextMessageId() {
-    return scope().currentTextMessageId;
+    return runScope().currentTextMessageId;
   }
 
   public String currentReasoningMessageId() {
-    return scope().currentReasoningMessageId;
+    return runScope().currentReasoningMessageId;
   }
 
   public void resetTextMessage() {
-    scope().currentTextMessageId = null;
+    runScope().currentTextMessageId = null;
   }
 
   public boolean hasOpenReasoning() {
-    return scope().reasoningOpen;
+    return runScope().reasoningOpen;
   }
 
   public String startReasoning() {
-    return scope().startReasoning(currentSourceEventId);
+    return runScope().startReasoning(currentSourceEventId);
   }
 
   public String currentReasoningId() {
-    return scope().currentReasoningId;
+    return runScope().currentReasoningId;
   }
 
   public boolean hasOpenReasoningMessage() {
-    return scope().reasoningMessageOpen;
+    return runScope().reasoningMessageOpen;
   }
 
   public String startReasoningMessage() {
-    return scope().startReasoningMessage(currentSourceEventId);
+    return runScope().startReasoningMessage(currentSourceEventId);
   }
 
   public void closeReasoningMessage() {
-    final RunScope scope = scope();
+    final RunScope scope = runScope();
     scope.reasoningMessageOpen = false;
     scope.currentReasoningMessageId = null;
   }
 
+  /**
+   * Distinguishes, for the currently open text or reasoning message, a genuinely new non-partial
+   * arrival (false: nothing streamed yet, so this is the message's first and only content) from the
+   * model's redundant full-response echo (true: partial deltas already streamed this message's
+   * content, so a later non-partial event repeats it rather than adding to it).
+   *
+   * <p>Text and reasoning messages are mutually exclusive within a scope — {@code mapText} closes
+   * any open reasoning message before opening a text one and vice versa — so one flag, reset
+   * whenever either kind of message opens, covers both without ambiguity.
+   */
+  public boolean hasStreamedPartialContent() {
+    return runScope().partialContentStreamed;
+  }
+
+  public void markPartialContentStreamed() {
+    runScope().partialContentStreamed = true;
+  }
+
   public void closeReasoning() {
-    final RunScope scope = scope();
+    final RunScope scope = runScope();
     scope.reasoningOpen = false;
     scope.currentReasoningId = null;
   }
@@ -152,7 +170,7 @@ public final class AGUIMapperState {
    * model), so this is never the id of the call's parent step or of any other message.
    */
   public String nextToolResultMessageId() {
-    return scope().nextToolResultMessageId(currentSourceEventId);
+    return runScope().nextToolResultMessageId(currentSourceEventId);
   }
 
   /** Returns the timestamp to stamp onto the current event, falling back to wall clock. */
@@ -180,7 +198,7 @@ public final class AGUIMapperState {
     return idVsFunctionCall.get(callId);
   }
 
-  private RunScope scope() {
+  private RunScope runScope() {
     return sessionVsScope.computeIfAbsent(currentEventSessionId, ignored -> new RunScope());
   }
 
@@ -200,6 +218,8 @@ public final class AGUIMapperState {
     private boolean reasoningOpen;
     private boolean reasoningMessageOpen;
     private int reasoningMessageSequence;
+
+    private boolean partialContentStreamed;
 
     private String startNextStep(final String sourceEventId) {
       final String prefix = runId != null ? "step-" + shortId(runId) + "-" : "step-";
@@ -223,6 +243,7 @@ public final class AGUIMapperState {
     private String startNextTextMessage(final String sourceEventId) {
       final String prefix = runId != null ? "msg-" + shortId(runId) + "-" : "msg-";
       currentTextMessageId = stableReplayId(prefix, sourceEventId, ++textMessageSequence);
+      partialContentStreamed = false;
       return currentTextMessageId;
     }
 
@@ -235,6 +256,7 @@ public final class AGUIMapperState {
       final String prefix = runId != null ? "think-" + shortId(runId) + "-" : "think-";
       reasoningMessageOpen = true;
       currentReasoningMessageId = stableReplayId(prefix, sourceEventId, ++reasoningMessageSequence);
+      partialContentStreamed = false;
       return currentReasoningMessageId;
     }
   }

@@ -32,7 +32,7 @@ public final class AGUITextMapper {
         flowable
             .concatWith(startReasoningIfNeeded())
             .concatWith(startReasoningMessageIfNeeded())
-            .concatWith(mapReasoningContent(thoughtText));
+            .concatWith(mapReasoningContent(thoughtText, partial));
     if (!partial) {
       flowable =
           flowable.concatWith(endReasoningMessageIfNeeded()).concatWith(endReasoningIfNeeded());
@@ -46,7 +46,7 @@ public final class AGUITextMapper {
     }
     return closeReasoningIfNeeded()
         .concatWith(startTextMessageIfNeeded())
-        .concatWith(mapTextMessageContent(text))
+        .concatWith(mapTextMessageContent(text, partial))
         .concatWith(endTextMessageIfNeeded(partial));
   }
 
@@ -104,10 +104,16 @@ public final class AGUITextMapper {
     return Flowable.just(event);
   }
 
-  private Flowable<Event> mapReasoningContent(final String text) {
+  private Flowable<Event> mapReasoningContent(final String text, final boolean partial) {
     if (StringUtils.isEmpty(text) || !state.hasOpenReasoningMessage()) {
       return Flowable.empty();
     }
+    // A non-partial arrival after content has already streamed for this reasoning message is the
+    // model's full-response echo of thinking already shown via earlier partial deltas.
+    if (!partial && state.hasStreamedPartialContent()) {
+      return Flowable.empty();
+    }
+    state.markPartialContentStreamed();
     final ReasoningMessageContentEvent event =
         new ReasoningMessageContentEvent(
             state.currentReasoningMessageId(), text, state.timestamp(), null);
@@ -152,10 +158,16 @@ public final class AGUITextMapper {
     return Flowable.just(start);
   }
 
-  private Flowable<Event> mapTextMessageContent(final String text) {
+  private Flowable<Event> mapTextMessageContent(final String text, final boolean partial) {
     if (StringUtils.isEmpty(text)) {
       return Flowable.empty();
     }
+    // A non-partial arrival after content has already streamed for this text message is the
+    // model's full-response echo of text already shown via earlier partial deltas.
+    if (!partial && state.hasStreamedPartialContent()) {
+      return Flowable.empty();
+    }
+    state.markPartialContentStreamed();
     final TextMessageChunkEvent chunk =
         new TextMessageChunkEvent(
             state.currentTextMessageId(), resolveRole(), text, state.timestamp(), null);
