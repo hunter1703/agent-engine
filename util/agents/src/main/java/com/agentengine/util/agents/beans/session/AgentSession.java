@@ -1,12 +1,14 @@
 package com.agentengine.util.agents.beans.session;
 
 import com.agentengine.util.common.Secure;
+import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agui.community.core.event.Event;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Index(name = "agent_session_updated_idx", def = "{'updatedTime': -1}")
 public class AgentSession extends NamedEntity {
   public static final String DEFAULT_USER_ID = "default";
   public static final String FIELD_STATE = "state";

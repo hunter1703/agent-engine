@@ -1,9 +1,11 @@
 package com.agentengine.scheduler.api.models;
 
+import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import java.util.List;
 import java.util.Map;
 
+@Index(name = "job_class_name_idx", def = "{'jobClassName': 1}")
 public class JobDefinition extends BaseEntity {
 
   public static final String FIELD_JOB_CLASS_NAME = "jobClassName";
