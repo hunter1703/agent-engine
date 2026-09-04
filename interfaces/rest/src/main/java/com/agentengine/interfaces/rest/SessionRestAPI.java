@@ -65,10 +65,7 @@ public class SessionRestAPI {
       throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
     }
     final AGUIEventMapper mapper =
-        new AGUIEventMapper(
-            session.getRootSessionId(),
-            session.getRootAgentId(),
-            liveOnly ? AGUIEventMapper.Mode.LIVE : AGUIEventMapper.Mode.REPLAY);
+        new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId());
     return mapper.map(
         Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly)));
   }

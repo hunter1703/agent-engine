@@ -110,25 +110,8 @@ public final class AGUIMapperState {
     return scope().currentReasoningMessageId;
   }
 
-  public boolean isTextBufferEmpty() {
-    return scope().textBuffer.isEmpty();
-  }
-
-  public void appendText(final String text) {
-    if (StringUtils.isNotEmpty(text)) {
-      scope().textBuffer.append(text);
-    }
-  }
-
-  public String completeTextMessage() {
-    final RunScope scope = scope();
-    return scope.textBuffer.toString();
-  }
-
   public void resetTextMessage() {
-    final RunScope scope = scope();
-    scope.currentTextMessageId = null;
-    scope.textBuffer.setLength(0);
+    scope().currentTextMessageId = null;
   }
 
   public boolean hasOpenReasoning() {
@@ -151,25 +134,10 @@ public final class AGUIMapperState {
     return scope().startReasoningMessage(currentSourceEventId);
   }
 
-  public void appendReasoning(final String text) {
-    if (StringUtils.isNotEmpty(text)) {
-      scope().reasoningBuffer.append(text);
-    }
-  }
-
-  /**
-   * Returns the accumulated reasoning text without clearing it; pair with {@link
-   * #closeReasoningMessage()}.
-   */
-  public String completeReasoningMessage() {
-    return scope().reasoningBuffer.toString();
-  }
-
   public void closeReasoningMessage() {
     final RunScope scope = scope();
     scope.reasoningMessageOpen = false;
     scope.currentReasoningMessageId = null;
-    scope.reasoningBuffer.setLength(0);
   }
 
   public void closeReasoning() {
@@ -223,14 +191,12 @@ public final class AGUIMapperState {
     private int stepSequence;
 
     private String currentTextMessageId;
-    private final StringBuilder textBuffer = new StringBuilder();
     private int textMessageSequence;
     private int toolResultMessageSequence;
 
     private String currentReasoningId;
     private int reasoningSequence;
     private String currentReasoningMessageId;
-    private final StringBuilder reasoningBuffer = new StringBuilder();
     private boolean reasoningOpen;
     private boolean reasoningMessageOpen;
     private int reasoningMessageSequence;

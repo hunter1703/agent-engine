@@ -2,6 +2,7 @@ package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.catalog.core.repository.SessionRepository;
+import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -46,7 +47,7 @@ public class SessionServiceImpl implements SessionService {
 
   @Override
   public AgentSession getSession(final String id, final boolean includeEvents) {
-    return sanitizeSession(sessionRepository.findById(id), includeEvents);
+    return hydrateSession(sessionRepository.findById(id), includeEvents);
   }
 
   @Override
@@ -58,7 +59,7 @@ public class SessionServiceImpl implements SessionService {
   public Map<String, AgentSession> getSessions(
       final Collection<String> ids, final boolean includeEvents) {
     final Map<String, AgentSession> idVsSession = sessionRepository.findByIds(ids);
-    idVsSession.values().forEach(session -> sanitizeSession(session, includeEvents));
+    idVsSession.values().forEach(session -> hydrateSession(session, includeEvents));
     return idVsSession;
   }
 
@@ -67,7 +68,7 @@ public class SessionServiceImpl implements SessionService {
   public PaginatedResult<AgentSession> findSessions(final Query query) {
     return sessionRepository
         .findByQuery(query)
-        .transform(session -> sanitizeSession(session, false));
+        .transform(session -> hydrateSession(session, false));
   }
 
   @Override
@@ -91,21 +92,21 @@ public class SessionServiceImpl implements SessionService {
     return sessionRepository.insert(session);
   }
 
-  private AgentSession sanitizeSession(final AgentSession session, final boolean includeEvents) {
+  private AgentSession hydrateSession(final AgentSession session, final boolean includeEvents) {
     if (!includeEvents || session == null) {
       return session;
     }
     LOG.debug(
-        "=== sanitizeSession START - sessionId={}, agentId={} ===",
+        "=== hydrateSession START - sessionId={}, agentId={} ===",
         session.getId(),
         session.getAgentId());
 
-    final AGUIEventMapper mapper =
-        new AGUIEventMapper(session.getId(), session.getAgentId(), AGUIEventMapper.Mode.REPLAY);
+    final AGUIEventMapper mapper = new AGUIEventMapper(session.getId(), session.getAgentId());
     final List<Event> aguiEvents = new ArrayList<>();
     final boolean isRootSession = session.getParentSessionId() == null;
     final List<SessionEvent> events =
-        sessionEventsRepository.getCommittedSessionEvents(session.getId(), isRootSession);
+        SessionEventUtils.compactEventStream(
+            sessionEventsRepository.getCommittedSessionEvents(session.getId(), isRootSession));
 
     LOG.debug(
         "Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());

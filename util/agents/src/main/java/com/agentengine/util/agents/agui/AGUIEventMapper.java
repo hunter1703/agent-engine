@@ -23,18 +23,13 @@ import org.slf4j.LoggerFactory;
 public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
   private static final Logger LOG = LoggerFactory.getLogger(AGUIEventMapper.class);
 
-  public enum Mode {
-    LIVE,
-    REPLAY
-  }
-
   private final AGUIMapperState state;
   private final AGUITextMapper textMapper;
   private final AGUIToolCallMapper toolCallMapper;
 
-  public AGUIEventMapper(final String sessionId, final String agentId, final Mode mode) {
+  public AGUIEventMapper(final String sessionId, final String agentId) {
     this.state = new AGUIMapperState(sessionId, agentId);
-    this.textMapper = new AGUITextMapper(state, mode);
+    this.textMapper = new AGUITextMapper(state);
     this.toolCallMapper = new AGUIToolCallMapper(state);
   }
 
@@ -68,7 +63,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
         event.getFinishReason());
 
     if (event.isLiveMarker()) {
-      textMapper.switchToLiveMode();
       return Flowable.empty();
     }
 

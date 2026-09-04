@@ -167,8 +167,7 @@ public class AgentRestAPI {
                     .firstElement()
                     .flatMapPublisher(
                         first ->
-                            new AGUIEventMapper(
-                                    first.getSessionId(), agentId, AGUIEventMapper.Mode.LIVE)
+                            new AGUIEventMapper(first.getSessionId(), agentId)
                                 .map(Flowable.concat(Flowable.just(first), shared))));
   }
 
