@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre-alpine
+FROM ibm-semeru-runtimes:open-25-jre-noble
 
 ARG SERVICE_MODULE
 
@@ -6,7 +6,7 @@ ARG SERVICE_MODULE
 ENV TZ=UTC
 
 # create non-root user
-RUN addgroup -S quarkus && adduser -S quarkus -G quarkus
+RUN groupadd -r quarkus && useradd -r -g quarkus -M quarkus
 
 # copy jars and make the non-root user owner
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/lib/ /deployments/lib/

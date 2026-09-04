@@ -24,6 +24,7 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
  * <p>{@code sequence} orders events within one session; not comparable across sessions.
  */
 @Index(name = "session_events_turn_idx", def = "{'sessionId': 1, 'turnId': 1, 'sequence': 1}")
+@Index(name = "session_events_root_session_idx", def = "{'rootSessionId': 1}")
 public final class SessionEvent extends BaseEntity {
   public static final String FIELD_SESSION_ID = "sessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
