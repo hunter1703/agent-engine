@@ -55,7 +55,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
     final String requestId = currentRequestId();
-    LOG.info(
+    LOG.debug(
         "[{}] Remote call: {}.{}()", requestId, serviceClass.getSimpleName(), method.getName());
     Span.current()
         .setAttribute("ms.remote_service", serviceClass.getSimpleName())
@@ -80,7 +80,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             context -> builder.setContext(ByteString.copyFromUtf8(JsonUtils.toJson(context))));
 
     if (args != null && args.length > 0) {
-      LOG.info(
+      LOG.debug(
           "[{}] Serializing args for {}.{}",
           requestId,
           serviceClass.getSimpleName(),
@@ -88,7 +88,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
       final long start = System.currentTimeMillis();
       final String json = JsonUtils.toJson(args);
       final long end = System.currentTimeMillis();
-      LOG.info("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
+      LOG.debug("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
       builder.setPayload(ByteString.copyFromUtf8(json));
     }
     return builder.build();
@@ -100,13 +100,13 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   // it — returning a Future/reactive type instead of a plain value, not just an internal swap.
   private Object blockingCall(Request request, Method method) {
     final String requestId = currentRequestId();
-    LOG.info(
+    LOG.debug(
         "[{}] Initiating gRPC blocking call for {}.{}",
         requestId,
         serviceClass.getSimpleName(),
         method.getName());
     final Iterator<Response> responseIterator = blockingStub().execute(request);
-    LOG.info(
+    LOG.debug(
         "[{}] gRPC call returned for {}.{}",
         requestId,
         serviceClass.getSimpleName(),
@@ -138,10 +138,13 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   /**
    * The response carries the value's own concrete runtime class, so deserialization can target it
    * directly with plain Jackson instead of needing type info embedded in the JSON itself. Falls
-   * back to the method's own declared type if a response is ever missing one.
+   * back to the method's own declared type if a response is ever missing one, or if the declared
+   * type is itself parameterized (e.g. {@code Map<String, AgentSession>}) — a bare {@link Class}
+   * can never carry that generic value-type info, so preferring it there would silently deserialize
+   * values as raw {@code LinkedHashMap}s instead of the declared type.
    */
   private static Type resolveType(final String className, final Type declaredType) {
-    if (className == null || className.isBlank()) {
+    if (className == null || className.isBlank() || declaredType instanceof ParameterizedType) {
       return declaredType;
     }
     try {

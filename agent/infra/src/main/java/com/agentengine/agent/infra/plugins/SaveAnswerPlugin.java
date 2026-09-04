@@ -132,7 +132,7 @@ public final class SaveAnswerPlugin extends BasePlugin {
     final RunState.PendingAnswer pending = runState.consumeAnswerMode();
     final String text = response.content().map(Content::text).map(String::trim).orElse("");
     if (StringUtils.isBlank(text) || StringUtils.estimateTokens(text) < pending.minSaveTokens()) {
-      LOG.info("Skipping save_answer: answer below the {}-token minimum", pending.minSaveTokens());
+      LOG.debug("Skipping save_answer: answer below the {}-token minimum", pending.minSaveTokens());
       return Maybe.empty();
     }
 

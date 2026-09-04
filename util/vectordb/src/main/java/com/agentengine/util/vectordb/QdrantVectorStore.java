@@ -41,10 +41,12 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
   @Override
   public long deleteByQuery(final Query query) {
-    LOG.info(
-        "QdrantVectorStore.deleteByQuery: collection={} filter={}", collection, query.getFilter());
     final QdrantHttpClient.Filter filter = toQdrantFilter(query.getFilter());
-    LOG.info("QdrantVectorStore.deleteByQuery: translated filter={}", filter);
+    LOG.debug(
+        "QdrantVectorStore.deleteByQuery: collection={} filter={} translatedFilter={}",
+        collection,
+        query.getFilter(),
+        filter);
     final QdrantHttpClient.DeleteRequest request = new QdrantHttpClient.DeleteRequest(null, filter);
     client().delete(collection, request);
     return 0L;
@@ -294,7 +296,6 @@ public abstract class QdrantVectorStore<T extends VectorEntity> extends VectorSt
 
     final QdrantHttpClient.Filter result =
         must.isEmpty() ? null : new QdrantHttpClient.Filter(must, null);
-    LOG.info("toQdrantFilter: result filter with {} conditions", must.size());
     return result;
   }
 

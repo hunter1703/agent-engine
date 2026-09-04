@@ -107,7 +107,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
       deleteChunks(id);
       markStatus(id, IndexingStatus.IN_PROGRESS, null);
 
-      LOG.info(
+      LOG.debug(
           "Looking for indexer for knowledge {} among {} available indexers", id, indexers.size());
       final KnowledgeIndexer indexer =
           indexers.stream()

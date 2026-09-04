@@ -60,7 +60,7 @@ public final class SignalProcessor implements RequestProcessor {
     if (CollectionUtils.isEmpty(signalEvents)) {
       return Single.just(RequestProcessingResult.create(request, List.of()));
     }
-    LOG.info("Delivering {} signal event(s)", signalEvents.size());
+    LOG.debug("Delivering {} signal event(s)", signalEvents.size());
 
     final List<Content> contents = CollectionUtils.nullSafeMutableList(request.contents());
     for (final Event signalEvent : signalEvents) {

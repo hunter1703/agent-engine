@@ -93,7 +93,7 @@ public final class BaseFlow extends SingleFlow {
                 event = event.toBuilder().id(Event.generateEventId()).build();
               }
               interruptRequested.addAll(event.actions().requestedToolConfirmations().keySet());
-              LOG.info(
+              LOG.debug(
                   "baseflow : event : {} , interruptRequested : {}",
                   JsonUtils.toJson(event),
                   JsonUtils.toJson(interruptRequested));
@@ -146,7 +146,7 @@ public final class BaseFlow extends SingleFlow {
                           Flowable.defer(() -> runLoop(invocationContext)))
                       : turnCompletedEvent;
                 }))
-        .doOnNext(event -> LOG.info("baseflow : {}", JsonUtils.toJson(event)));
+        .doOnNext(event -> LOG.debug("baseflow : {}", JsonUtils.toJson(event)));
   }
 
   private static TurnOutcome resolveOutcome(

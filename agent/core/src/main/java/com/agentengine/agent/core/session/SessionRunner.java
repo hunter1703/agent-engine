@@ -61,7 +61,7 @@ public final class SessionRunner {
   }
 
   public synchronized void start(final UserMessage userMessage, final ResourceGrants grants) {
-    LOG.info("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
+    LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
     cancel();
 
     final Content userContent =
@@ -73,28 +73,21 @@ public final class SessionRunner {
             .subscribeOn(SCHEDULER)
             .doOnNext(
                 event -> {
-                  LOG.info(
+                  LOG.debug(
                       "[USER_MESSAGE_TRACE][{}] ADK runAsync emitted event: author={} turnComplete={} finalResponse={} content={}",
                       sessionId,
                       event.author(),
                       event.turnComplete().orElse(false),
                       event.finalResponse(),
                       event.content().map(Content::text).orElse("<no-content>"));
-                  LOG.debug(
-                      "[{}] runAsync onNext: author={} turnComplete={} finalResponse={}",
-                      sessionId,
-                      event.author(),
-                      event.turnComplete().orElse(false),
-                      event.finalResponse());
                 })
             .doOnError(
-                error -> {
-                  LOG.error("[USER_MESSAGE_TRACE][{}] ADK runAsync stream error", sessionId, error);
-                  LOG.error("[{}] runAsync onError", sessionId, error);
-                })
+                error ->
+                    LOG.error(
+                        "[USER_MESSAGE_TRACE][{}] ADK runAsync stream error", sessionId, error))
             .subscribe(
                 event -> {
-                  LOG.info(
+                  LOG.debug(
                       "[USER_MESSAGE_TRACE][{}] Sending PublishEventCommand to SessionActor",
                       sessionId);
                   sessionActor.tell(new PublishEventCommand(event));
@@ -103,8 +96,7 @@ public final class SessionRunner {
                     sessionActor.tell(
                         new CompleteRunCommand(ExceptionUtils.getFullStackTrace(error))),
                 () -> {
-                  LOG.info("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
-                  LOG.debug("[{}] runAsync onComplete", sessionId);
+                  LOG.debug("[USER_MESSAGE_TRACE][{}] ADK runAsync stream completed", sessionId);
                   sessionActor.tell(new CompleteRunCommand());
                 });
   }

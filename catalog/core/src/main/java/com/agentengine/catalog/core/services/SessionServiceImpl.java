@@ -95,7 +95,7 @@ public class SessionServiceImpl implements SessionService {
     if (!includeEvents || session == null) {
       return session;
     }
-    LOG.info(
+    LOG.debug(
         "=== sanitizeSession START - sessionId={}, agentId={} ===",
         session.getId(),
         session.getAgentId());
@@ -107,12 +107,12 @@ public class SessionServiceImpl implements SessionService {
     final List<SessionEvent> events =
         sessionEventsRepository.getCommittedSessionEvents(session.getId(), isRootSession);
 
-    LOG.info(
+    LOG.debug(
         "Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());
 
     int eventIndex = 0;
     for (final SessionEvent event : events) {
-      LOG.info(
+      LOG.debug(
           "Processing SessionEvent #{} - id={}, runId={}, author={}, turnComplete={}, terminal={}",
           eventIndex++,
           event.getId(),
@@ -125,12 +125,12 @@ public class SessionServiceImpl implements SessionService {
           .map(event)
           .blockingForEach(
               aguiEvent -> {
-                LOG.info("  -> Generated AGUI event: {}", aguiEvent.getClass().getSimpleName());
+                LOG.debug("  -> Generated AGUI event: {}", aguiEvent.getClass().getSimpleName());
                 aguiEvents.add(aguiEvent);
               });
     }
 
-    LOG.info("=== sanitizeSession END - generated {} AGUI events ===", aguiEvents.size());
+    LOG.debug("=== sanitizeSession END - generated {} AGUI events ===", aguiEvents.size());
     session.setAguiEvents(aguiEvents);
     return session;
   }

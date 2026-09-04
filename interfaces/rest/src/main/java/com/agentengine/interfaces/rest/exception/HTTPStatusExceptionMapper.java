@@ -79,11 +79,15 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
           };
       final String message =
           status == 500 ? "Internal Server Error" : grpcEx.getStatus().getDescription();
+      if (status == 500) {
+        LOG.error("Unmapped gRPC status {} reached HTTPStatusExceptionMapper", code, grpcEx);
+      }
       return Response.status(status)
           .entity(new ErrorResponse(String.valueOf(status), message))
           .build();
     }
 
+    LOG.error("Unhandled exception reached HTTPStatusExceptionMapper", exception);
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
         .entity(new ErrorResponse("500", "Internal Server Error"))
         .build();

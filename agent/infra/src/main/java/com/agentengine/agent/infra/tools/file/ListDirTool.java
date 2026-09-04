@@ -128,7 +128,7 @@ public final class ListDirTool extends BaseFileTool {
 
       boolean hasMore = endIndex < totalEntries;
 
-      LOG.info(
+      LOG.debug(
           "Listed directory: {} entries {}-{} of {} from {}",
           endIndex - startIndex,
           startOffset,

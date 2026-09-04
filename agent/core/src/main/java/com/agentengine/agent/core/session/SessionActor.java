@@ -452,7 +452,7 @@ public final class SessionActor
   private Effect<SessionFact, SessionActorState> completeChild(
       final SessionActorState state, final CompleteChildCommand command) {
     final String interruptId = state.getInternalInterruptId(command.childSessionId());
-    LOG.info(
+    LOG.debug(
         "Received Child completed for topology : {}, child sessionId : {}, interruptId : {}",
         JsonUtils.toJson(state.topology()),
         command.childSessionId(),
@@ -484,7 +484,7 @@ public final class SessionActor
             .persist(new ResumedFact(resumeRequest))
             .thenRun(
                 newState -> {
-                  LOG.info(
+                  LOG.debug(
                       "resumed for topology : {}, all interruptsAnswered : {}, pendingSelfInterrupt:{}",
                       JsonUtils.toJson(newState.topology()),
                       newState.allInterruptsAnswered(),
@@ -499,7 +499,7 @@ public final class SessionActor
   private EffectBuilder<SessionFact, SessionActorState> continueRun(
       final SessionActorState state, final ContinueRunCommand command) {
     if (state.sessionState() != SessionState.PAUSED) {
-      LOG.info(
+      LOG.debug(
           "Ignoring ContinueRunCommand for session in state {} for topology : {}",
           state.sessionState(),
           JsonUtils.toJson(state.topology()));
@@ -509,7 +509,7 @@ public final class SessionActor
         state.getAllReceivedResumes().stream()
             .filter(resumeRequest -> !resumedInterruptIds.contains(resumeRequest.getInterruptId()))
             .toList();
-    LOG.info(
+    LOG.debug(
         "Continuing run with resumes : {} for topology : {}",
         JsonUtils.toJson(resumeRequests),
         JsonUtils.toJson(state.topology()));
@@ -520,7 +520,7 @@ public final class SessionActor
               resumeRequests.forEach(
                   resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
               runner.resume(resumeRequests, newState.grants());
-              LOG.info(
+              LOG.debug(
                   "Continued run with resumes : {} for topology : {}",
                   JsonUtils.toJson(resumeRequests),
                   JsonUtils.toJson(state.topology()));
@@ -749,7 +749,7 @@ public final class SessionActor
       final SessionActorState state, final PublishEventCommand command) {
     final Event event = command.event();
 
-    LOG.info(
+    LOG.debug(
         "[USER_MESSAGE_TRACE][{}] SessionActor.publishEvent() received event: author={} turnComplete={} content={}",
         state.topology().sessionId(),
         event.author(),
@@ -785,12 +785,12 @@ public final class SessionActor
       }
     }
 
-    LOG.info("Publishing event : {}", JsonUtils.toJson(event));
+    LOG.debug("Publishing event : {}", JsonUtils.toJson(event));
     if (turnEvents.isEmpty()) {
       turnId = UUID.randomUUID().toString();
     }
     turnEvents.add(event);
-    LOG.info(
+    LOG.debug(
         "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
         state.topology().sessionId(),
         turnEvents.size());
@@ -808,15 +808,15 @@ public final class SessionActor
             eventSequence);
     EffectBuilder<SessionFact, SessionActorState> effectBuilder;
     if (!event.turnComplete().orElse(false)) {
-      LOG.info(
+      LOG.debug(
           "[USER_MESSAGE_TRACE][{}] Turn NOT complete, pauseFacts.isEmpty()={}",
           topology.sessionId(),
           CollectionUtils.isEmpty(pauseFacts));
       if (CollectionUtils.isEmpty(pauseFacts)) {
-        LOG.info("Publishing without any effect");
+        LOG.debug("Publishing without any effect");
         effectBuilder = Effect().none();
       } else {
-        LOG.info("Publishing with pause effect");
+        LOG.debug("Publishing with pause effect");
         effectBuilder =
             Effect()
                 .persist(pauseFacts)
@@ -828,11 +828,11 @@ public final class SessionActor
                     });
       }
     } else {
-      LOG.info(
+      LOG.debug(
           "[USER_MESSAGE_TRACE][{}] Turn COMPLETE! Committing {} events to TurnCommittedFact",
           topology.sessionId(),
           turnEvents.size());
-      LOG.info("committing on turn completion : {}", JsonUtils.toJson(turnEvents));
+      LOG.debug("committing on turn completion : {}", JsonUtils.toJson(turnEvents));
 
       if (state.isDuplicateTurn(turnEvents.getLast())) {
         LOG.warn("Duplicate turn detected for session {}, skipping commit", topology.sessionId());
@@ -852,7 +852,7 @@ public final class SessionActor
               topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
           events.add(
               EventUtils.buildUserEvent(userMessage.getRecord(), invocationId, timestamp, author));
-          LOG.info(
+          LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with invocationId: {}",
               topology.sessionId(),
               userMessage.getRecord(),
@@ -868,7 +868,7 @@ public final class SessionActor
 
           events.add(
               EventUtils.buildResumeEvent(state.getAllReceivedResumes(), invocationId, author));
-          LOG.info(
+          LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Turn after resume - prepended {} resume answer(s) with invocationId: {}",
               topology.sessionId(),
               state.getAllReceivedResumes().size(),
@@ -891,13 +891,13 @@ public final class SessionActor
         turnEvents.clear();
         turnId = null;
         resumedInterruptIds.clear();
-        LOG.info(
+        LOG.debug(
             "[USER_MESSAGE_TRACE][{}] Creating TurnCommittedFact with {} events. Event details:",
             topology.sessionId(),
             events.size());
         for (int i = 0; i < events.size(); i++) {
           final Event evt = events.get(i);
-          LOG.info(
+          LOG.debug(
               "[USER_MESSAGE_TRACE][{}]   Event #{}: author={}, content={}",
               topology.sessionId(),
               i,
@@ -907,7 +907,7 @@ public final class SessionActor
         final List<SessionFact> commitFacts = new ArrayList<>();
         commitFacts.add(turnFact);
         commitFacts.addAll(pauseFacts);
-        LOG.info("Publishing with commit effect");
+        LOG.debug("Publishing with commit effect");
         effectBuilder =
             Effect()
                 .persist(commitFacts)
@@ -923,7 +923,7 @@ public final class SessionActor
     }
     return effectBuilder.thenRun(
         _ -> {
-          LOG.info(
+          LOG.debug(
               "Publishing adk event : {} as session event :{}",
               JsonUtils.toJson(event),
               JsonUtils.toJson(toPublish));
@@ -1076,7 +1076,7 @@ public final class SessionActor
         .persist(new StartedFact(nextMessage))
         .thenRun(
             newState -> {
-              LOG.info(
+              LOG.debug(
                   "[USER_MESSAGE_TRACE][{}] Starting message: '{}'",
                   newState.topology().sessionId(),
                   nextMessage.getRecord());
@@ -1103,7 +1103,7 @@ public final class SessionActor
             ResumedFact.class,
             (state, fact) -> {
               final ResumeRequest resumeRequest = fact.getResumeRequest();
-              LOG.info(
+              LOG.debug(
                   "received resumed fact : {} for topology : {} for resume request : {}",
                   state.isSelfInterrupt(resumeRequest),
                   JsonUtils.toJson(state.topology()),
@@ -1117,7 +1117,7 @@ public final class SessionActor
         .onEvent(
             PausedFact.class,
             (state, fact) -> {
-              LOG.info(
+              LOG.debug(
                   "paused fact for topology : {}, {}",
                   JsonUtils.toJson(state.topology()),
                   JsonUtils.toJson(fact));
@@ -1184,7 +1184,7 @@ public final class SessionActor
     }
 
     if (state.allInterruptsAnswered()) {
-      LOG.info(
+      LOG.debug(
           "Applying committed turn for topology : {} and clearing interrupt state : {}",
           JsonUtils.toJson(newState.topology()),
           JsonUtils.toJson(newState.getAllReceivedResumes()));
@@ -1261,7 +1261,7 @@ public final class SessionActor
         self.tell(new StartNextQueuedMessageCommand());
       }
     } else {
-      LOG.info("Child completed for topology : {}", JsonUtils.toJson(topology));
+      LOG.debug("Child completed for topology : {}", JsonUtils.toJson(topology));
       refSupplier
           .apply(topology.parentSessionId())
           .tell(new CompleteChildCommand(topology.sessionId(), runResult));

@@ -95,7 +95,7 @@ public final class BroadcasterEntity
 
     final long nextSeq = state.latestPublishedSequence() + 1;
     final SequencedEvent<?> event = new SequencedEvent<>(nextSeq, command.payload());
-    LOG.info("publish sequence={} subscribers={}", nextSeq, subscribers.size());
+    LOG.debug("publish sequence={} subscribers={}", nextSeq, subscribers.size());
     return Effect()
         .persist(new BroadcasterFact.PublishedFact(event))
         .thenRun(

@@ -110,7 +110,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private void startTurn(final String agentId, final String sessionId, final UserMessage message) {
-    LOG.info("Starting session {}:{}", agentId, sessionId);
+    LOG.debug("Starting session {}:{}", agentId, sessionId);
     sessionActorFactory
         .entityRef(sessionId)
         .<StartSessionResult>ask(
@@ -121,14 +121,14 @@ public class RuntimeServiceImpl implements RuntimeService {
               if (ex != null) {
                 LOG.error("Failed to start session {}:{}", agentId, sessionId, ex);
               } else {
-                LOG.info("Session {}:{} start result: {}", agentId, sessionId, result);
+                LOG.debug("Session {}:{} start result: {}", agentId, sessionId, result);
               }
             });
   }
 
   @Override
   public void resumeSession(final String sessionId, final ResumeRequest resumeRequest) {
-    LOG.info(
+    LOG.debug(
         "Resuming session {} with interrupt id '{}'", sessionId, resumeRequest.getInterruptId());
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     ref.<ResumeResult>ask(
@@ -138,14 +138,14 @@ public class RuntimeServiceImpl implements RuntimeService {
               if (ex != null) {
                 LOG.error("Failed to resume session {}", sessionId, ex);
               } else {
-                LOG.info("Session {} resume result: {}", sessionId, result);
+                LOG.debug("Session {} resume result: {}", sessionId, result);
               }
             });
   }
 
   @Override
   public void rollbackSession(final String sessionId, final String runId) {
-    LOG.info("Rolling back run {} for session {}", runId, sessionId);
+    LOG.debug("Rolling back run {} for session {}", runId, sessionId);
     final EntityRef<SessionCommand> ref = sessionActorFactory.entityRef(sessionId);
     final RollbackResult result =
         ref.<RollbackResult>ask(

@@ -71,7 +71,7 @@ public final class HumanInTheLoopTool extends Tool {
     final InterruptKind pauseKind = InterruptKind.valueOfOrDefault(kind);
     final ToolConfirmation confirmation = toolContext.toolConfirmation().orElse(null);
     if (confirmation != null) {
-      LOG.info(
+      LOG.debug(
           "Consuming HITL interrupt kind={} confirmed={} payloadPresent={}",
           pauseKind,
           confirmation.confirmed(),
@@ -79,7 +79,7 @@ public final class HumanInTheLoopTool extends Tool {
       return ToolOutput.direct(resolveInterruptResult(confirmation, pauseKind));
     }
 
-    LOG.info("Requesting HITL interrupt kind={}", pauseKind);
+    LOG.debug("Requesting HITL interrupt kind={}", pauseKind);
     requestInterrupt(toolContext, prompt, options, context, pauseKind);
     return ToolOutput.empty();
   }

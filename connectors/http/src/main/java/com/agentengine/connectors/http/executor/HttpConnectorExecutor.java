@@ -60,7 +60,7 @@ public class HttpConnectorExecutor
         new Request.Builder().url(request.getFullUrl()).method(method, requestBody);
     headers.forEach(requestBuilder::addHeader);
 
-    LOG.info(
+    LOG.debug(
         "Sending {} {} headers={} body={}",
         method,
         request.getFullUrl(),
@@ -68,7 +68,7 @@ public class HttpConnectorExecutor
         request.getBody());
 
     try (Response response = client.newCall(requestBuilder.build()).execute()) {
-      LOG.info("Received {} {} -> {}", method, request.getFullUrl(), response.code());
+      LOG.debug("Received {} {} -> {}", method, request.getFullUrl(), response.code());
       if (!response.isSuccessful()) {
         throw new ConnectorException("HTTP request failed with status code: " + response.code());
       }

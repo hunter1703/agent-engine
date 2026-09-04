@@ -125,7 +125,7 @@ public final class Parser {
 
   private Content parseTextContent(final Content content) {
     String processedText = content.text();
-    LOG.info("Parser.parseTextContent - initial text: '{}'", processedText);
+    LOG.debug("Parser.parseTextContent - initial text: '{}'", processedText);
     final List<Part> thoughtParts =
         new ArrayList<>(
             content.parts().orElse(List.of()).stream()
@@ -137,17 +137,17 @@ public final class Parser {
       final Matcher thoughtMatcher = THOUGHT_TAG_PATTERN.matcher(processedText);
       while (thoughtMatcher.find()) {
         final String thoughtText = thoughtMatcher.group(1).trim();
-        LOG.info("Parser.parseTextContent - extracted thought: '{}'", thoughtText);
+        LOG.debug("Parser.parseTextContent - extracted thought: '{}'", thoughtText);
         if (StringUtils.isNotBlank(thoughtText)) {
           thoughtParts.add(Part.builder().text(thoughtText).thought(true).build());
         }
       }
       processedText = thoughtMatcher.replaceAll("").trim();
-      LOG.info("Parser.parseTextContent - text after stripping thoughts: '{}'", processedText);
+      LOG.debug("Parser.parseTextContent - text after stripping thoughts: '{}'", processedText);
     }
 
     final String finalAnswer = StringUtils.isBlank(processedText) ? "" : processedText.trim();
-    LOG.info("Parser.parseTextContent - finalAnswer: '{}'", finalAnswer);
+    LOG.debug("Parser.parseTextContent - finalAnswer: '{}'", finalAnswer);
     final List<Part> allParts = new ArrayList<>(thoughtParts);
     if (StringUtils.isNotBlank(finalAnswer)) {
       allParts.add(Part.builder().text(finalAnswer).thought(false).build());

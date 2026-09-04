@@ -87,7 +87,7 @@ public final class NotebookPlugin extends BasePlugin {
     final String text = response.content().map(Content::text).map(String::trim).orElse("");
     final String noteTitle = pending.noteTitle();
     if (StringUtils.isBlank(text)) {
-      LOG.info("Skipping create_note: no content produced for '{}'", noteTitle);
+      LOG.debug("Skipping create_note: no content produced for '{}'", noteTitle);
       return Maybe.empty();
     }
 

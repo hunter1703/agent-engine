@@ -66,22 +66,14 @@ public final class QdrantHttpClient {
   public DeleteResponse delete(final String collection, final DeleteRequest request) {
     final String url = String.format("%s/collections/%s/points/delete", baseUrl, collection);
 
-    LOG.info(
-        "Qdrant delete request: collection={} points={} filter={}",
-        collection,
-        request.points(),
-        request.filter());
-
     Object requestBody;
     final List<String> points = request.points();
     if (CollectionUtils.isNotEmpty(points)) {
       requestBody = Map.of("points", points);
-      LOG.info("Qdrant delete by points: {}", points);
     } else {
       final Filter filter = request.filter();
       if (filter != null) {
         requestBody = Map.of("filter", filter);
-        LOG.info("Qdrant delete by filter: must={} should={}", filter.must(), filter.should());
       } else {
         LOG.error("DeleteRequest has neither points nor filter");
         throw new IllegalArgumentException("DeleteRequest must have either points or filter");
@@ -105,7 +97,7 @@ public final class QdrantHttpClient {
       final String method, final String url, final Object body, final Class<T> responseType) {
     try {
       final String json = objectMapper.writeValueAsString(body);
-      LOG.info("Qdrant HTTP {} to {} with body: {}", method, url, json);
+      LOG.debug("Qdrant HTTP {} to {} with body: {}", method, url, json);
 
       final HttpRequest.Builder builder =
           HttpRequest.newBuilder()
@@ -123,7 +115,7 @@ public final class QdrantHttpClient {
       final int status = response.statusCode();
       final String responseBody = response.body();
 
-      LOG.info(
+      LOG.debug(
           "Qdrant HTTP {} to {} returned status={} body={}", method, url, status, responseBody);
 
       if (status < 200 || status >= 300) {

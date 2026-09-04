@@ -122,7 +122,7 @@ public final class GrepFilesTool extends BaseFileTool {
           searchState.matches().stream().map(JsonUtils::toMap).toList();
       final boolean truncated = searchState.isTruncated();
 
-      LOG.info(
+      LOG.debug(
           "Grep search: pattern='{}' in {} files, found {} matches (limit: {})",
           pattern,
           searchState.filesSearched(),
