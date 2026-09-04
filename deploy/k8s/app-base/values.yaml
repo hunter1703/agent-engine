@@ -23,7 +23,7 @@ pekko: {}
 # Same for every service today; an app chart can override app-base.java.* if it ever differs.
 java:
   opts: "--enable-preview -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dfile.encoding=UTF-8"
-  args: "-XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=80 -XX:+ExitOnOutOfMemoryError"
+  args: "-XX:InitialRAMPercentage=40.0 -XX:MaxRAMPercentage=55.0 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss256k -XX:+ExitOnOutOfMemoryError"
 
 ingress:
   enabled: false

@@ -1,4 +1,4 @@
-FROM ibm-semeru-runtimes:open-25-jre-noble
+FROM bellsoft/liberica-runtime-container:jre-25-musl
 
 ARG SERVICE_MODULE
 
@@ -6,7 +6,7 @@ ARG SERVICE_MODULE
 ENV TZ=UTC
 
 # create non-root user
-RUN groupadd -r quarkus && useradd -r -g quarkus -M quarkus
+RUN addgroup -S quarkus && adduser -S -G quarkus quarkus
 
 # copy jars and make the non-root user owner
 COPY --chown=quarkus ${SERVICE_MODULE}/build/quarkus-app/lib/ /deployments/lib/
