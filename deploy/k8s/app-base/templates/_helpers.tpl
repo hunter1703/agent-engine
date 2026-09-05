@@ -45,9 +45,8 @@ rollingUpdate:
 {{- end -}}
 
 {{- define "agent-engine.app-base.image" -}}
-{{- $img := .Values.image | default dict -}}
 {{- $global := .Values.global | default dict -}}
-{{- $tag := $global.imageTag | default $img.tag -}}
+{{- $tag := $global.imageTag | default "latest" -}}
 {{- printf "agent-engine/%s:%s" .Values.service.name $tag -}}
 {{- end -}}
 
@@ -55,14 +54,14 @@ rollingUpdate:
 readinessProbe:
   httpGet:
     path: {{ .Values.probes.readiness.path }}
-    port: http
+    port: quarkus-mgmt
   periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
   failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
   timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
 livenessProbe:
   httpGet:
     path: {{ .Values.probes.liveness.path }}
-    port: http
+    port: quarkus-mgmt
   periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
   failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
   timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
@@ -70,7 +69,7 @@ livenessProbe:
 startupProbe:
   httpGet:
     path: {{ .Values.probes.startup.path }}
-    port: http
+    port: quarkus-mgmt
   periodSeconds: {{ .Values.probes.startup.periodSeconds }}
   failureThreshold: {{ .Values.probes.startup.failureThreshold }}
   timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
