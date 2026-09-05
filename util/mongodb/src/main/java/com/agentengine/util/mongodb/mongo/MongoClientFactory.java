@@ -1,5 +1,6 @@
 package com.agentengine.util.mongodb.mongo;
 
+import static org.bson.codecs.configuration.CodecRegistries.fromCodecs;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -16,6 +17,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
+import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.Convention;
@@ -32,15 +34,18 @@ public class MongoClientFactory {
   private final MongoClientSupport mongoClientSupport;
   private final Instance<EncryptionService> encryptionService;
   private final ApplicationConfig applicationConfig;
+  private final Instance<Codec<?>> customCodecs;
 
   @Inject
   public MongoClientFactory(
       MongoClientSupport mongoClientSupport,
       Instance<EncryptionService> encryptionService,
-      ApplicationConfig applicationConfig) {
+      ApplicationConfig applicationConfig,
+      Instance<Codec<?>> customCodecs) {
     this.mongoClientSupport = mongoClientSupport;
     this.encryptionService = encryptionService;
     this.applicationConfig = applicationConfig;
+    this.customCodecs = customCodecs;
   }
 
   public MongoClient getClient() {
@@ -91,6 +96,7 @@ public class MongoClientFactory {
     }
     final CodecRegistry codecRegistry =
         fromRegistries(
+            fromCodecs(customCodecs.stream().toList()),
             MongoClientSettings.getDefaultCodecRegistry(),
             fromProviders(pojoCodecProviderBuilder.build()));
     return MongoClientSettings.builder()

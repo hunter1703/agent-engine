@@ -1169,7 +1169,7 @@ public final class SessionActor
    * filtering every reader by it.
    */
   private TurnCommittedFact commitTurn(final List<SessionEvent> events, final String runId) {
-    sessionEventsRepository.insertMany(events);
+    sessionEventsRepository.insertMany(SessionEventUtils.compactEventStream(events));
     final String lastEventId = events.isEmpty() ? null : events.getLast().getId();
     return new TurnCommittedFact(runId, turnId, lastEventId, events.size());
   }

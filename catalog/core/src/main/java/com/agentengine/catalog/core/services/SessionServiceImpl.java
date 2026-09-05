@@ -2,7 +2,6 @@ package com.agentengine.catalog.core.services;
 
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.catalog.core.repository.SessionRepository;
-import com.agentengine.util.agents.SessionEventUtils;
 import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -105,8 +104,7 @@ public class SessionServiceImpl implements SessionService {
     final List<Event> aguiEvents = new ArrayList<>();
     final boolean isRootSession = session.getParentSessionId() == null;
     final List<SessionEvent> events =
-        SessionEventUtils.compactEventStream(
-            sessionEventsRepository.getCommittedSessionEvents(session.getId(), isRootSession));
+        sessionEventsRepository.getCommittedSessionEvents(session.getId(), isRootSession);
 
     LOG.debug(
         "Retrieved {} SessionEvents from history for session {}", events.size(), session.getId());

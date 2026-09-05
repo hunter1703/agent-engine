@@ -1,5 +1,6 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.context.Context;
@@ -45,11 +46,13 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private final Class<?> serviceClass;
   private final Supplier<ManagedChannel> channelSupplier;
+  private final JsonCodec jsonCodec;
 
   public MicroServiceInvocationHandler(
-      Class<?> serviceClass, Supplier<ManagedChannel> channelSupplier) {
+      Class<?> serviceClass, Supplier<ManagedChannel> channelSupplier, JsonCodec jsonCodec) {
     this.serviceClass = serviceClass;
     this.channelSupplier = channelSupplier;
+    this.jsonCodec = jsonCodec;
   }
 
   @Override
@@ -86,7 +89,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
           serviceClass.getSimpleName(),
           method.getName());
       final long start = System.currentTimeMillis();
-      final String json = JsonUtils.toJson(args);
+      final String json = jsonCodec.serialize(args);
       final long end = System.currentTimeMillis();
       LOG.debug("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
       builder.setPayload(ByteString.copyFromUtf8(json));
@@ -127,7 +130,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             : method.getGenericReturnType();
     final Type deserializationType = resolveType(response.getClassName(), declaredType);
     Object result =
-        JsonUtils.fromJson(response.getPayload().toStringUtf8(), deserializationType, false);
+        jsonCodec.deserialize(response.getPayload().toStringUtf8(), deserializationType);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
@@ -218,7 +221,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
                       .constructCollectionType(
                           List.class, resolveItemClass(className, declaredItemType));
               final List<?> batch =
-                  JsonUtils.fromJson(
+                  jsonCodec.deserialize(
                       response.getPayload().toStringUtf8(),
                       batchType,
                       StringUtils.isBlank(className));

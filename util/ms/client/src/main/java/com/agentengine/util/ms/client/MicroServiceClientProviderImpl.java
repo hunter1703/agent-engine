@@ -1,5 +1,6 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -39,10 +40,13 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
   private final ConcurrentMap<Class<?>, ManagedChannel> channels = new ConcurrentHashMap<>();
   private final InfraConfigService infraConfigService;
+  private final JsonCodec jsonCodec;
 
   @Inject
-  public MicroServiceClientProviderImpl(final InfraConfigService infraConfigService) {
+  public MicroServiceClientProviderImpl(
+      final InfraConfigService infraConfigService, final JsonCodec jsonCodec) {
     this.infraConfigService = infraConfigService;
+    this.jsonCodec = jsonCodec;
   }
 
   @Override
@@ -105,7 +109,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
         Proxy.newProxyInstance(
             serviceClass.getClassLoader(),
             new Class<?>[] {serviceClass},
-            new MicroServiceInvocationHandler(serviceClass, channelSupplier));
+            new MicroServiceInvocationHandler(serviceClass, channelSupplier, jsonCodec));
   }
 
   @PreDestroy

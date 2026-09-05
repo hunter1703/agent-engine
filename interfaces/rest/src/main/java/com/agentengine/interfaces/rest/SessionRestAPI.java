@@ -6,16 +6,13 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
-import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.ResumeRequest;
-import com.agentengine.util.agents.beans.session.AgentSession;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.interrupt.Resume;
-import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
@@ -60,14 +57,7 @@ public class SessionRestAPI {
   public Publisher<Event> stream(
       @NotBlank @PathParam("sessionId") final String sessionId,
       @QueryParam("liveOnly") boolean liveOnly) {
-    final AgentSession session = sessionService.getSession(sessionId);
-    if (session == null) {
-      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
-    }
-    final AGUIEventMapper mapper =
-        new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId());
-    return mapper.map(
-        Flowable.fromPublisher(runtimeService.subscribeToSession(sessionId, liveOnly)));
+    return runtimeService.subscribeToSessionAgui(sessionId, liveOnly);
   }
 
   @POST

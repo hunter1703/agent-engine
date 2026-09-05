@@ -17,6 +17,7 @@ import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.util.agents.SessionEventUtils;
+import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.agents.beans.session.AgentSession;
@@ -27,6 +28,7 @@ import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -72,6 +74,19 @@ public class RuntimeServiceImpl implements RuntimeService {
   @Override
   public Publisher<SessionEvent> startSession(
       final String agentId, final String sessionId, final UserMessage message) {
+    return startSessionInternal(agentId, sessionId, message).liveEvents();
+  }
+
+  @Override
+  public Publisher<Event> startSessionAgui(
+      final String agentId, final String sessionId, final UserMessage message) {
+    final StartedSession started = startSessionInternal(agentId, sessionId, message);
+    final AGUIEventMapper mapper = new AGUIEventMapper(started.resolvedSessionId(), agentId);
+    return mapper.map(Flowable.fromPublisher(started.liveEvents()));
+  }
+
+  private StartedSession startSessionInternal(
+      final String agentId, final String sessionId, final UserMessage message) {
     final String resolvedSessionId = initializeSession(agentId, sessionId);
     final AgentSession session = sessionService.getSession(resolvedSessionId);
     final String rootSessionId =
@@ -85,7 +100,7 @@ public class RuntimeServiceImpl implements RuntimeService {
         SessionEventUtils.compactEventStream(
             subscribeToLiveEvents(rootSessionId), COMPACTION_WINDOW_MILLIS);
     startTurn(agentId, resolvedSessionId, message);
-    return liveEvents;
+    return new StartedSession(resolvedSessionId, liveEvents);
   }
 
   @Override
@@ -224,12 +239,12 @@ public class RuntimeServiceImpl implements RuntimeService {
             .map(RuntimeServiceImpl::stripBlobData);
 
     // A session that's still running never has a fixed end to wait for, so it always gets the
-    // windowed compaction — including the committed-history portion: unlike terminalStream, this
-    // is one continuous stream a still-active session might keep appending to, and treating the
+    // windowed compaction over the whole combined stream, committed history included: this is one
+    // continuous stream a still-active session might keep appending to, and treating the
     // history/live boundary as a hard compaction break would under-merge a message that's still
-    // streaming across it. Windowing this way costs little for the (already fully available,
-    // near-instantly-flowing) history part — nearly everything still lands in the first window
-    // or two — while correctly bounding the live tail's added latency.
+    // streaming across it. Windowing the (already-coalesced-at-commit, near-instantly-flowing)
+    // history part costs little — there's nothing left to merge there — while correctly bounding
+    // the live tail's added latency.
     final Flowable<SessionEvent> combined =
         Flowable.concat(
             committedEvents,
@@ -238,6 +253,17 @@ public class RuntimeServiceImpl implements RuntimeService {
             liveEvents);
     return SessionEventUtils.compactEventStream(combined, COMPACTION_WINDOW_MILLIS)
         .doFinally(liveConnection::dispose);
+  }
+
+  @Override
+  public Publisher<Event> subscribeToSessionAgui(final String sessionId, final boolean liveOnly) {
+    final AgentSession session = sessionService.getSession(sessionId);
+    if (session == null) {
+      throw new AssetNotFoundException(AssetClass.AGENT_SESSION, sessionId);
+    }
+    final AGUIEventMapper mapper =
+        new AGUIEventMapper(session.getRootSessionId(), session.getRootAgentId());
+    return mapper.map(Flowable.fromPublisher(subscribeToSession(sessionId, liveOnly)));
   }
 
   private static SessionEvent stripBlobData(final SessionEvent event) {
@@ -270,7 +296,7 @@ public class RuntimeServiceImpl implements RuntimeService {
   private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
     final List<SessionEvent> events =
         sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true);
-    return Flowable.fromIterable(SessionEventUtils.compactEventStream(events));
+    return Flowable.fromIterable(events);
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
@@ -292,4 +318,6 @@ public class RuntimeServiceImpl implements RuntimeService {
         .join()
         .events();
   }
+
+  private record StartedSession(String resolvedSessionId, Publisher<SessionEvent> liveEvents) {}
 }

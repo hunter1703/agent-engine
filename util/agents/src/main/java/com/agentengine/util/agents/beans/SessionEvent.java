@@ -1,20 +1,14 @@
 package com.agentengine.util.agents.beans;
 
-import com.agentengine.util.agents.serializers.AdkJacksonModule;
-import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
 import com.google.genai.types.Content;
 import com.google.genai.types.FinishReason;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
@@ -28,11 +22,11 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
 public final class SessionEvent extends BaseEntity {
   public static final String FIELD_SESSION_ID = "sessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
+  public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
   public static final String FIELD_TURN_ID = "turnId";
   public static final String FIELD_SEQUENCE = "sequence";
+  public static final String FIELD_TYPE = "type";
   public static final String FIELD_ROLLBACK_ID = "rollbackId";
-  private static final ObjectMapper EVENT_MAPPER =
-      JsonUtils.copyMapper().registerModule(new AdkJacksonModule());
 
   public enum Type {
     UNKNOWN,
@@ -59,9 +53,8 @@ public final class SessionEvent extends BaseEntity {
   private long sequence;
   private Type type = Type.NORMAL;
   private String turnId;
-  private String rawEventJson;
   private String rollbackId;
-  @BsonIgnore @JsonIgnore private Event rawEvent;
+  @BsonIgnore private Event rawEvent;
 
   public SessionEvent() {}
 
@@ -152,6 +145,10 @@ public final class SessionEvent extends BaseEntity {
     return type != null ? type : Type.NORMAL;
   }
 
+  public void setType(final Type type) {
+    this.type = type;
+  }
+
   @BsonIgnore
   @JsonIgnore
   public boolean isTerminal() {
@@ -196,34 +193,12 @@ public final class SessionEvent extends BaseEntity {
     this.rollbackId = rollbackId;
   }
 
-  public String getRawEventJson() {
-    if (rawEventJson == null) {
-      try {
-        rawEventJson = EVENT_MAPPER.writeValueAsString(rawEvent);
-      } catch (final JsonProcessingException exception) {
-        throw ExceptionUtils.wrapInRuntimeException(exception, "Error serializing raw event");
-      }
-    }
-    return rawEventJson;
-  }
-
-  public void setRawEventJson(final String rawEventJson) {
-    this.rawEventJson = rawEventJson;
-    try {
-      this.rawEvent = EVENT_MAPPER.readValue(rawEventJson, Event.class);
-    } catch (final JsonProcessingException exception) {
-      throw ExceptionUtils.wrapInRuntimeException(exception, "Error deserializing raw event");
-    }
-  }
-
-  @JsonIgnore
   public Event getRawEvent() {
     return rawEvent;
   }
 
   public void setRawEvent(final Event rawEvent) {
     this.rawEvent = rawEvent;
-    this.rawEventJson = null; // stale cache; getRawEventJson() will recompute it on next call
   }
 
   @BsonIgnore
@@ -236,34 +211,6 @@ public final class SessionEvent extends BaseEntity {
   @JsonIgnore
   public Boolean getPartial() {
     return isPartial();
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (obj == this) return true;
-    if (obj == null || obj.getClass() != this.getClass()) return false;
-    final SessionEvent that = (SessionEvent) obj;
-    return Objects.equals(this.getId(), that.getId())
-        && Objects.equals(this.rootSessionId, that.rootSessionId)
-        && Objects.equals(this.parentSessionId, that.parentSessionId)
-        && Objects.equals(this.sessionId, that.sessionId)
-        && this.sequence == that.sequence
-        && Objects.equals(this.type, that.type)
-        && Objects.equals(this.turnId, that.turnId)
-        && Objects.equals(this.getRawEventJson(), that.getRawEventJson());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(
-        getId(),
-        rootSessionId,
-        parentSessionId,
-        sessionId,
-        sequence,
-        type,
-        turnId,
-        getRawEventJson());
   }
 
   @Override

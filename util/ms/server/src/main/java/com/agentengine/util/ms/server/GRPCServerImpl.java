@@ -1,6 +1,7 @@
 package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -51,11 +52,15 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(GRPCServerImpl.class);
 
   private Map<String, ServiceEntry> registry = new HashMap<>();
+  private final JsonCodec jsonCodec;
 
   @Inject
-  public GRPCServerImpl() {}
+  public GRPCServerImpl(final JsonCodec jsonCodec) {
+    this.jsonCodec = jsonCodec;
+  }
 
-  public GRPCServerImpl(final List<Object> services) {
+  public GRPCServerImpl(final List<Object> services, final JsonCodec jsonCodec) {
+    this.jsonCodec = jsonCodec;
     services.forEach(
         instance -> {
           final Class<?> iface = microServiceInterface(instance.getClass());
@@ -220,13 +225,13 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
   }
 
-  private static void send(
+  private void send(
       final StreamObserver<Response> responseObserver,
       final Object payload,
       final String className) {
     final Response.Builder response =
         Response.newBuilder()
-            .setPayload(ByteString.copyFromUtf8(JsonUtils.toJson(payload, className == null)));
+            .setPayload(ByteString.copyFromUtf8(jsonCodec.serialize(payload, className == null)));
     if (className != null) {
       response.setClassName(className);
     }
@@ -269,7 +274,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
 
     final Object[] rawArgs =
-        JsonUtils.fromJson(request.getPayload().toStringUtf8(), Object[].class);
+        jsonCodec.deserialize(request.getPayload().toStringUtf8(), Object[].class);
     if (rawArgs == null) {
       return new Object[paramCount];
     }

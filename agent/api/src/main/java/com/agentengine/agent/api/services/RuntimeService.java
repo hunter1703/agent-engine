@@ -4,6 +4,7 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.ms.client.MicroService;
+import com.agui.community.core.event.Event;
 import org.reactivestreams.Publisher;
 
 @MicroService("agent")
@@ -15,6 +16,9 @@ public interface RuntimeService {
    * needed.
    */
   Publisher<SessionEvent> startSession(String agentId, String sessionId, UserMessage userMessage);
+
+  /** Like {@link #startSession}, but maps the raw runtime stream to AG-UI protocol events */
+  Publisher<Event> startSessionAgui(String agentId, String sessionId, UserMessage userMessage);
 
   /** Like {@link #startSession}, for a caller with no interest in the event stream. */
   String invoke(String agentId, String sessionId, UserMessage userMessage);
@@ -31,6 +35,9 @@ public interface RuntimeService {
    * concurrent subscribers for the same session.
    */
   Publisher<SessionEvent> subscribeToSession(String sessionId, boolean liveOnly);
+
+  /** Like {@link #subscribeToSession}, mapped to AG-UI protocol events. */
+  Publisher<Event> subscribeToSessionAgui(String sessionId, boolean liveOnly);
 
   void rollbackSession(String sessionId, String runId);
 }

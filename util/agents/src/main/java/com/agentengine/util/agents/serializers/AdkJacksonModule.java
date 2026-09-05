@@ -2,16 +2,12 @@ package com.agentengine.util.agents.serializers;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.adk.events.ToolConfirmation;
 import com.google.genai.types.FinishReason;
@@ -19,14 +15,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Jackson module giving any {@link ObjectMapper} it registers with default typing for values held
- * in {@code Object}-typed slots (e.g. a {@code Map<String, Object>} entry) — the shape ADK's own
- * {@code FunctionCall.args()}/{@code ToolConfirmation.payload()} use — so a value stored there
- * round-trips back as its original concrete type instead of degrading to a raw {@code Map}.
- * Register it wherever this app's own types or ADK/genai types need to survive that kind of
- * round-trip: Pekko's actor-journal codec and {@code SessionEvent}'s own JSON codec both do.
- */
 public final class AdkJacksonModule extends SimpleModule {
 
   private static final Logger LOG = LoggerFactory.getLogger(AdkJacksonModule.class);
@@ -40,38 +28,7 @@ public final class AdkJacksonModule extends SimpleModule {
   @Override
   public void setupModule(final SetupContext context) {
     super.setupModule(context);
-    final PolymorphicTypeValidator ptv =
-        BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
     final ObjectMapper mapper = context.getOwner();
-
-    // Default typing is needed because some payloads (Pekko commands, ADK tool args/payloads) are
-    // typed as Object. But we only want to EMIT @class for our own payload types (and select ADK
-    // events), not for arbitrary values inside Object-typed maps (e.g., java.util collections,
-    // genai AutoValue impls). Otherwise Jackson will embed @class for java.util.ArrayList /
-    // com.google.genai.* and either fail validation or attempt to instantiate AutoValue classes
-    // directly.
-    final ObjectMapper.DefaultTypeResolverBuilder typer =
-        new ObjectMapper.DefaultTypeResolverBuilder(
-            ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT, ptv) {
-          @Override
-          public boolean useForType(final JavaType t) {
-            final String name = t.getRawClass().getName();
-            // Always emit @class for our own types (even concrete classes like SessionEvent)
-            if (name.startsWith("com.agentengine.")
-                || name.startsWith("com.agui.core.types.")
-                || name.equals(AUTO_VALUE_TOOL_CONFIRMATION)
-                || name.equals("com.google.adk.events.ToolConfirmation")) {
-              return true;
-            }
-            // For all other types, follow standard JAVA_LANG_OBJECT rules
-            // (only Object.class, interfaces, and abstract classes get @class)
-            return super.useForType(t);
-          }
-        };
-    typer.init(JsonTypeInfo.Id.CLASS, null);
-    typer.inclusion(JsonTypeInfo.As.PROPERTY);
-    typer.typeProperty("@class");
-    mapper.setDefaultTyping(typer);
     // FinishReason has @JsonCreator(String) but Jackson infers properties-based mode instead of
     // delegating because the class has bean-like fields. The mixin forces DELEGATING mode so that
     // the scalar string value (e.g. "STOP") is passed directly to the constructor.
@@ -82,10 +39,6 @@ public final class AdkJacksonModule extends SimpleModule {
     // Optional.empty(). This is safe here: null JSON values are equivalent to absent fields for
     // the immutable ADK/genai value types this module targets.
     mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
-    // When ToolConfirmation is stored in an Object-typed field, default typing embeds
-    // "com.google.adk.events.AutoValue_ToolConfirmation" as the @class value. Jackson must
-    // be able to deserialize that concrete class, but its constructor is private. Register
-    // the same deserializer for the AutoValue implementation class so recovery works.
     registerAutoValueToolConfirmationDeserializer(mapper);
   }
 

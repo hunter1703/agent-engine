@@ -12,7 +12,6 @@ import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
-import com.agentengine.util.agents.agui.AGUIEventMapper;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
@@ -24,7 +23,6 @@ import com.agui.community.core.agent.Context;
 import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.message.Message;
-import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -154,21 +152,7 @@ public class AgentRestAPI {
     }
 
     final String threadId = StringUtils.isBlank(request.threadId()) ? null : request.threadId();
-    // The mapper needs the resolved sessionId, only known from the stream's first event, so
-    // multicast the source once (publish) and build the mapper from a peek at that first item
-    // before feeding the same shared stream through it — this lets the whole stream run through
-    // EventMapper.map(Flowable), which catches per-item mapping failures and closes the SSE
-    // response with a graceful RunErrorEvent instead of dropping the connection.
-    return Flowable.fromPublisher(
-            runtimeService.startSession(agentId, threadId, extractUserMessage(request)))
-        .publish(
-            shared ->
-                shared
-                    .firstElement()
-                    .flatMapPublisher(
-                        first ->
-                            new AGUIEventMapper(first.getSessionId(), agentId)
-                                .map(Flowable.concat(Flowable.just(first), shared))));
+    return runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request));
   }
 
   @POST
