@@ -52,6 +52,7 @@ REPO_ROOT = (
 )
 K8S_DIR = DEPLOY_DIR / "k8s"
 CONFIGS_DIR = DEPLOY_DIR / "configs"
+LOCAL_CERTS_DIR = DEPLOY_DIR / "local-certs"
 
 APP_CHART_NAMES = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
 INFRA_CHART_NAMES = ("mongodb", "postgres", "localstack", "qdrant")
@@ -196,6 +197,25 @@ class Chart:
             return None
         own_app_base = load_yaml(self.path / "values.yaml").get("app-base", {})
         return own_app_base.get("pekko", {}).get("cluster")
+
+    def ingress_tls_hosts(self) -> list[str]:
+        """Hostnames this chart's ingress serves over TLS, per its own values.yaml
+        (app-base.ingress.enabled + tlsEnabled). Empty if the chart has no ingress or
+        doesn't terminate TLS there — read live so a future chart enabling TLS needs no
+        change to the deploy pipeline itself."""
+        if not self.is_app_chart:
+            return []
+        own_app_base = load_yaml(self.path / "values.yaml").get("app-base", {})
+        ingress = own_app_base.get("ingress", {})
+        if not (ingress.get("enabled") and ingress.get("tlsEnabled")):
+            return []
+        return [entry["host"] for entry in ingress.get("hosts", [])]
+
+    def tls_secret_name(self, tier: str) -> str:
+        """Matches the Helm ingress template's own derivation
+        ({{ agent-engine.app-base.instance }}-tls) so deployae and Helm never disagree
+        on the Secret name."""
+        return f"{self.resource_name(tier)}-tls"
 
 
 ALL_CHARTS = [Chart(name) for name in ALL_CHART_NAMES]

@@ -36,3 +36,6 @@ deploy/k8s/*/Chart.lock
 
 # Helm temporary charts
 deploy/k8s/**/tmpcharts-*/
+
+# Locally-generated mkcert dev certs (private keys — never commit)
+deploy/local-certs/

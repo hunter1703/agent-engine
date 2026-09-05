@@ -11,7 +11,6 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-import io.quarkus.grpc.GlobalInterceptor;
 import jakarta.inject.Singleton;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,7 +40,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * as congestion.
  */
 @Singleton
-@GlobalInterceptor
+// TEMPORARILY DISABLED for load testing without adaptive concurrency limiting — re-enable
+// (uncomment @GlobalInterceptor) before merging/deploying anywhere else.
+// @GlobalInterceptor
 public class ConcurrencyLimitingServerInterceptor implements ServerInterceptor {
   private static final Status LIMIT_EXCEEDED_STATUS =
       Status.RESOURCE_EXHAUSTED.withDescription("Server concurrency limit reached");

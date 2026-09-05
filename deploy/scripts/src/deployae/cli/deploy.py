@@ -23,6 +23,7 @@ from deployae.stages import (
     DeployChartStage,
     EnsureIndexesStage,
     EnsureIngressControllerStage,
+    EnsureLocalTlsCertStage,
     EnsureLocalstackBucketsStage,
     EnsureNamespaceStage,
     InitPostgresSchemaStage,
@@ -36,7 +37,6 @@ from deployae.stages import (
 APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
 ENV_SECRET_CHARTS = ("connectors", "agent", "knowledge")
-DEFAULT_LOCAL_PORT = 8080
 
 
 def _default_image_tag() -> str:
@@ -99,7 +99,6 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--timeout", default=helm.DEFAULT_TIMEOUT, help="Helm timeout (default: 10m)"
     )
-    parser.add_argument("--local-port", type=int, default=DEFAULT_LOCAL_PORT)
 
 
 def _build_context(args: argparse.Namespace) -> helm.DeployContext:
@@ -122,7 +121,6 @@ def run(args: argparse.Namespace) -> None:
             skip_infra=args.skip_infra,
             dry_run=args.dry_run,
             timeout=args.timeout,
-            local_port=args.local_port,
         )
     )
 
@@ -134,7 +132,6 @@ async def _deploy(
     skip_infra: bool,
     dry_run: bool,
     timeout: str,
-    local_port: int,
 ) -> None:
     start_time = time.time()
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
@@ -173,11 +170,6 @@ async def _deploy(
 
     elapsed = time.time() - start_time
     output.phase(f"Deployment complete in {int(elapsed // 60)}m {int(elapsed % 60)}s — application is ready")
-    if not dry_run:
-        rest = Chart("rest")
-        await _port_forward_rest(
-            rest.namespace(ctx.namespace), rest.resource_name(ctx.tier), local_port, interrupted
-        )
 
 
 def _install_shutdown_handler(interrupted: asyncio.Event) -> None:
@@ -188,30 +180,6 @@ def _install_shutdown_handler(interrupted: asyncio.Event) -> None:
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, handle_signal)
-
-
-async def _port_forward_rest(
-    namespace: str, service_name: str, local_port: int, interrupted: asyncio.Event
-) -> None:
-    output.step(f"Starting port-forward {service_name}:8080 → localhost:{local_port}")
-    output.info(f"REST API available at http://localhost:{local_port}")
-    output.note("Press Ctrl+C to stop.")
-    while not interrupted.is_set():
-        process = await asyncio.create_subprocess_exec(
-            "kubectl", "port-forward", "-n", namespace, f"svc/{service_name}", f"{local_port}:8080"
-        )
-        wait_task = asyncio.ensure_future(process.wait())
-        interrupted_task = asyncio.ensure_future(interrupted.wait())
-        await asyncio.wait({wait_task, interrupted_task}, return_when=asyncio.FIRST_COMPLETED)
-        if interrupted.is_set():
-            wait_task.cancel()
-            process.terminate()
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(process.wait(), timeout=5)
-            break
-        interrupted_task.cancel()
-        output.warn("Port-forward dropped, restarting...")
-        await asyncio.sleep(2)
 
 
 def _namespace_stages_for(
@@ -229,12 +197,18 @@ def _chart_prerequisites(
     ctx: helm.DeployContext,
     namespace_stages: dict[str, EnsureNamespaceStage],
     ingress_stage: EnsureIngressControllerStage,
+    tls_cert_stages: dict[str, EnsureLocalTlsCertStage],
 ) -> tuple[Stage, ...]:
     """The setup stages one chart's DeployChartStage should depend on: its namespace,
-    plus the ingress controller if this is `rest`."""
+    the ingress controller if this is `rest`, plus its own local TLS cert/Secret stage
+    if it declares TLS hosts (so its Ingress never briefly references a Secret that
+    doesn't exist yet)."""
     prerequisites: tuple[Stage, ...] = (namespace_stages[chart.namespace(ctx.namespace)],)
     if chart.name == "rest":
         prerequisites = (*prerequisites, ingress_stage)
+    tls_stage = tls_cert_stages.get(chart.name)
+    if tls_stage:
+        prerequisites = (*prerequisites, tls_stage)
     return prerequisites
 
 
@@ -253,6 +227,23 @@ def build_stages(
     namespace_stages = _namespace_stages_for(all_charts, ctx)
     ingress_stage = EnsureIngressControllerStage(name="ensure-ingress-controller")
     stages: list[Stage] = [*namespace_stages.values(), ingress_stage]
+
+    # mkcert's CA is only ever trusted on the machine that generated it, so this only
+    # makes sense for `local` — a shared/staging/prod tier gets a real cert some other
+    # way (e.g. cert-manager), not one deployae generates itself.
+    tls_cert_stages = {
+        component: EnsureLocalTlsCertStage(
+            name=f"ensure-local-tls-cert-{component}",
+            depends_on=(namespace_stages[Chart(component).namespace(ctx.namespace)],),
+            chart=Chart(component),
+            tier=ctx.tier or "",
+            namespace_override=ctx.namespace,
+            enabled=ctx.tier == "local" and not dry_run,
+        )
+        for component in APP_COMPONENTS
+        if Chart(component).ingress_tls_hosts()
+    }
+    stages.extend(tls_cert_stages.values())
 
     # --- Build: one gradle build feeding one docker-image stage per component ---
     gradle_stage = BuildGradleStage(
@@ -276,7 +267,9 @@ def build_stages(
     infra_deploy_by_name = {
         name: DeployChartStage(
             name=f"deploy-{name}",
-            depends_on=_chart_prerequisites(Chart(name), ctx, namespace_stages, ingress_stage),
+            depends_on=_chart_prerequisites(
+                Chart(name), ctx, namespace_stages, ingress_stage, tls_cert_stages
+            ),
             chart=Chart(name),
             ctx=ctx,
             atomic=atomic,
@@ -334,7 +327,7 @@ def build_stages(
         # off this dependency keeps it off the critical path.
         infra_config_dep = () if name == "global-properties" else (seed_infra_config_stage,)
         depends_on = (
-            *_chart_prerequisites(chart, ctx, namespace_stages, ingress_stage),
+            *_chart_prerequisites(chart, ctx, namespace_stages, ingress_stage, tls_cert_stages),
             *infra_config_dep,
             *extra_deps,
         )

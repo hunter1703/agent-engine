@@ -8,8 +8,8 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from deployae import helm, kube
-from deployae.charts import Chart
+from deployae import helm, kube, localcerts
+from deployae.charts import LOCAL_CERTS_DIR, Chart
 from deployae.stages.base import Stage
 
 
@@ -123,3 +123,29 @@ class EnsureNamespaceStage(Stage):
 class EnsureIngressControllerStage(Stage):
     async def run(self) -> None:
         await asyncio.to_thread(helm.ensure_ingress_controller)
+
+
+@dataclass(eq=False, kw_only=True)
+class EnsureLocalTlsCertStage(Stage):
+    """Generates (or reuses) a mkcert cert for a chart's ingress hosts and creates/
+    updates the matching Secret, so the chart's own DeployChartStage never needs to run
+    with a Secret its Ingress references not existing yet. `enabled` should be set to
+    False for any chart/tier that doesn't declare TLS hosts or isn't `local` — mkcert's
+    CA has no meaning outside the machine that trusts it."""
+
+    chart: Chart
+    tier: str
+    namespace_override: str | None = None
+
+    async def run(self) -> None:
+        hosts = self.chart.ingress_tls_hosts()
+        cert_file, key_file = await asyncio.to_thread(
+            localcerts.ensure_cert_files, hosts, LOCAL_CERTS_DIR
+        )
+        await asyncio.to_thread(
+            kube.ensure_tls_secret,
+            self.chart.tls_secret_name(self.tier),
+            self.chart.namespace(self.namespace_override),
+            cert_file,
+            key_file,
+        )

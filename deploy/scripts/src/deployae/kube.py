@@ -101,6 +101,31 @@ def ensure_env_secret(release_name: str, namespace: str, env_file: Path) -> str 
     return secret_name
 
 
+def ensure_tls_secret(secret_name: str, namespace: str, cert_file: Path, key_file: Path) -> None:
+    """Creates/updates a `kubernetes.io/tls` Secret from an existing cert+key pair.
+    Idempotent, like `ensure_env_secret` — safe to call on every deploy."""
+    dry_run = subprocess.run(
+        [
+            "kubectl",
+            "create",
+            "secret",
+            "tls",
+            secret_name,
+            f"--cert={cert_file}",
+            f"--key={key_file}",
+            "--namespace",
+            namespace,
+            "--dry-run=client",
+            "-o",
+            "yaml",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    _apply_stdin(dry_run.stdout)
+
+
 def _free_local_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))

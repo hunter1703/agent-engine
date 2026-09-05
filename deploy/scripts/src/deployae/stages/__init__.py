@@ -5,6 +5,7 @@ from deployae.stages.build import BuildDockerImageStage, BuildGradleStage
 from deployae.stages.chart import (
     DeployChartStage,
     EnsureIngressControllerStage,
+    EnsureLocalTlsCertStage,
     EnsureNamespaceStage,
     HelmStage,
     UninstallChartStage,
@@ -30,6 +31,7 @@ __all__ = [
     "DeployChartStage",
     "EnsureIndexesStage",
     "EnsureIngressControllerStage",
+    "EnsureLocalTlsCertStage",
     "EnsureLocalstackBucketsStage",
     "EnsureNamespaceStage",
     "HelmStage",
