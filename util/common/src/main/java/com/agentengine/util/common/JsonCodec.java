@@ -1,6 +1,7 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -9,38 +10,47 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
-import java.util.Comparator;
-import java.util.Objects;
 
 @Singleton
 public class JsonCodec {
 
   private final ObjectMapper mapper;
+  private final ObjectMapper typedMapper;
 
   @Inject
-  public JsonCodec(final Instance<JsonCodecFactory> factories) {
-    this.mapper =
-        factories.stream()
-            .sorted(Comparator.comparingInt(JsonCodecFactory::priority))
-            .map(JsonCodecFactory::getCodec)
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("No JsonCodecFactory produced a codec"));
+  public JsonCodec(final Instance<CodecModuleProvider> providers) {
+    this.mapper = buildMapper(providers, false);
+    this.typedMapper = buildMapper(providers, true);
+  }
+
+  private static ObjectMapper buildMapper(
+      final Instance<CodecModuleProvider> providers, final boolean includeTypeInfo) {
+    final ObjectMapper built = JsonUtils.copyMapper();
+    for (final CodecModuleProvider provider : providers) {
+      final Module module = provider.getModule(includeTypeInfo);
+      if (module != null) {
+        built.registerModule(module);
+      }
+    }
+    return built;
   }
 
   public String serialize(final Object value) {
     return serialize(value, false);
   }
 
+  /**
+   * {@code includeTypeInfo}: for a heterogeneous collection with no single shared class, where the
+   * receiver needs each element's concrete type embedded in the JSON itself to resolve it.
+   */
   public String serialize(final Object value, final boolean includeTypeInfo) {
     if (value == null) {
       return null;
     }
-    if (includeTypeInfo) {
-      return JsonUtils.toJson(value, true);
-    }
     try {
-      return mapper.writeValueAsString(value);
+      return includeTypeInfo
+          ? typedMapper.writerFor(Object.class).writeValueAsString(value)
+          : mapper.writeValueAsString(value);
     } catch (final JsonProcessingException exception) {
       throw new RuntimeException(exception);
     }
@@ -69,11 +79,9 @@ public class JsonCodec {
     if (json == null || json.isBlank()) {
       return null;
     }
-    if (includeTypeInfo) {
-      return JsonUtils.fromJson(json, type, true);
-    }
     try {
-      return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
+      final ObjectMapper effective = includeTypeInfo ? typedMapper : mapper;
+      return effective.readValue(json, effective.getTypeFactory().constructType(type));
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }

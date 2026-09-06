@@ -92,7 +92,7 @@ public class RunnerFactory {
   private InMemorySessionService buildInMemorySessionService(
       final String agentId, final String sessionId) {
     final InMemorySessionService inMemorySessionService = new InMemorySessionService();
-    final AgentSession agentSession = sessionService.getSession(sessionId, false);
+    final AgentSession agentSession = sessionService.getSession(sessionId);
     final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
 
     final ConcurrentHashMap<String, Object> initialState =

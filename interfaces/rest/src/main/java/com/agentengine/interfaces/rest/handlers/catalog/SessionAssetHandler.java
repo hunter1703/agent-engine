@@ -3,7 +3,6 @@ package com.agentengine.interfaces.rest.handlers.catalog;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.agents.beans.session.AgentSession;
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.NamedEntity;
@@ -19,8 +18,6 @@ import java.util.Map;
 
 @Singleton
 public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
-
-  public static final String INCLUDE_EVENTS_OPTION = "includeEvents";
 
   private final SessionService sessionService;
 
@@ -60,16 +57,7 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
       return result;
     }
 
-    final boolean includeEvents = shouldIncludeEvents(request);
-    return sessionService.getSessions(request.getKeys(), includeEvents);
-  }
-
-  private static boolean shouldIncludeEvents(final AssetRequest request) {
-    if (request == null) {
-      return false;
-    }
-    return Boolean.TRUE.equals(
-        CollectionUtils.getBooleanValueFromMap(request.getOptions(), INCLUDE_EVENTS_OPTION));
+    return sessionService.getSessions(request.getKeys());
   }
 
   private static Query sanitizedQuery(final AssetRequest request) {

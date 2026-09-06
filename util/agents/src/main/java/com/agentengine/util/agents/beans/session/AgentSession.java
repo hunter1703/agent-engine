@@ -3,9 +3,7 @@ package com.agentengine.util.agents.beans.session;
 import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.NamedEntity;
-import com.agui.community.core.event.Event;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Index(name = "agent_session_updated_idx", def = "{'updatedTime': -1}")
@@ -20,7 +18,6 @@ public class AgentSession extends NamedEntity {
 
   private String agentId;
   private Map<String, Object> state = new HashMap<>();
-  private List<Event> aguiEvents;
   private String rootSessionId;
   private String rootAgentId;
   private String parentSessionId;
@@ -62,14 +59,6 @@ public class AgentSession extends NamedEntity {
 
   public void setState(final Map<String, Object> state) {
     this.state = state == null ? new HashMap<>() : new HashMap<>(state);
-  }
-
-  public List<Event> getAguiEvents() {
-    return aguiEvents;
-  }
-
-  public void setAguiEvents(final List<Event> aguiEvents) {
-    this.aguiEvents = aguiEvents;
   }
 
   public String getRootSessionId() {
