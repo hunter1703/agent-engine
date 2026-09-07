@@ -1,6 +1,5 @@
 package com.agentengine.interfaces.rest.services;
 
-import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.api.services.ToolCatalog;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.catalog.api.services.ModelService;
@@ -34,13 +33,6 @@ public class ClientProducer {
   @DefaultBean
   public ModelService modelService(MicroServiceClientProvider provider) {
     return provider.get(ModelService.class);
-  }
-
-  @Produces
-  @Singleton
-  @DefaultBean
-  public RuntimeService runtimeService(MicroServiceClientProvider provider) {
-    return provider.get(RuntimeService.class);
   }
 
   @Produces

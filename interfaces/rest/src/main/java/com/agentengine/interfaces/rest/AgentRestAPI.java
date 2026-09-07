@@ -19,6 +19,7 @@ import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import com.agui.community.core.agent.Context;
 import com.agui.community.core.agent.RunAgentInput;
 import com.agui.community.core.event.Event;
@@ -56,11 +57,11 @@ public class AgentRestAPI {
   @Inject
   public AgentRestAPI(
       final AgentService agentService,
-      final RuntimeService runtimeService,
-      final SchedulerService schedulerService) {
+      final SchedulerService schedulerService,
+      final MicroServiceClientProvider microServiceClientProvider) {
     this.agentService = agentService;
-    this.runtimeService = runtimeService;
     this.schedulerService = schedulerService;
+    this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
   }
 
   @POST

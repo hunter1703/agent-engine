@@ -47,12 +47,17 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   private final Class<?> serviceClass;
   private final Supplier<ManagedChannel> channelSupplier;
   private final JsonCodec jsonCodec;
+  private final boolean raw;
 
   public MicroServiceInvocationHandler(
-      Class<?> serviceClass, Supplier<ManagedChannel> channelSupplier, JsonCodec jsonCodec) {
+      Class<?> serviceClass,
+      Supplier<ManagedChannel> channelSupplier,
+      JsonCodec jsonCodec,
+      boolean raw) {
     this.serviceClass = serviceClass;
     this.channelSupplier = channelSupplier;
     this.jsonCodec = jsonCodec;
+    this.raw = raw;
   }
 
   @Override
@@ -66,7 +71,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
     Request request = buildRequest(method, args);
     if (Publisher.class.isAssignableFrom(method.getReturnType())) {
-      return streamingCall(request, method);
+      return streamingCall(request, method, raw);
     }
     final Object result = blockingCall(request, method);
     return method.getReturnType().equals(CompletionStage.class)
@@ -174,7 +179,14 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   //
   // Each Response payload is a JSON-encoded batch, not a single item — flatMapIterable unpacks
   // it back into the individual-item Flowable callers expect.
-  private Flowable<?> streamingCall(Request request, Method method) {
+  /**
+   * {@code raw}: for a caller that is itself just a thin passthrough (e.g. a REST endpoint
+   * immediately re-emitting each item as its own SSE message) — splits each batch's JSON array back
+   * into its elements' raw JSON text instead of binding them to a Java type, since the caller is
+   * about to re-serialize them to JSON right back out anyway. Item/batch counts are still tracked
+   * the same way either way.
+   */
+  private Flowable<?> streamingCall(Request request, Method method, boolean raw) {
     final Class<?> declaredItemType = firstTypeArgument(method.getGenericReturnType());
     final Span span = Span.current();
     final AtomicLong itemCount = new AtomicLong();
@@ -212,19 +224,24 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         .flatMapIterable(
             response -> {
               batchCount.incrementAndGet();
-              // Empty className means the batch had no single shared class — the payload itself
-              // carries a type tag per element instead, so declaredItemType is only the base type
-              // Jackson resolves each element's real class against, not the class of every item.
-              final String className = response.getClassName();
-              final Type batchType =
-                  TypeFactory.defaultInstance()
-                      .constructCollectionType(
-                          List.class, resolveItemClass(className, declaredItemType));
-              final List<?> batch =
-                  jsonCodec.deserialize(
-                      response.getPayload().toStringUtf8(),
-                      batchType,
-                      StringUtils.isBlank(className));
+              final List<?> batch;
+              if (raw) {
+                batch = jsonCodec.splitJsonArray(response.getPayload().toStringUtf8());
+              } else {
+                // Empty className means the batch had no single shared class — the payload itself
+                // carries a type tag per element instead, so declaredItemType is only the base type
+                // Jackson resolves each element's real class against, not the class of every item.
+                final String className = response.getClassName();
+                final Type batchType =
+                    TypeFactory.defaultInstance()
+                        .constructCollectionType(
+                            List.class, resolveItemClass(className, declaredItemType));
+                batch =
+                    jsonCodec.deserialize(
+                        response.getPayload().toStringUtf8(),
+                        batchType,
+                        StringUtils.isBlank(className));
+              }
               itemCount.addAndGet(batch.size());
               return batch;
             })

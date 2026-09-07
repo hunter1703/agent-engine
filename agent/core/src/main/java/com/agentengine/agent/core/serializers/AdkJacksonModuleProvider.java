@@ -38,13 +38,25 @@ public final class AdkJacksonModuleProvider implements CodecModuleProvider {
     return new AdkJacksonModule(includeTypeInfo);
   }
 
-  private static final class AdkJacksonModule extends SimpleModule {
+  /**
+   * Public and no-arg-constructible so it can also be loaded outside CDI, by Pekko's own {@code
+   * pekko.actor.serialization.jackson.jackson-modules} config (a plain {@code Class.forName(...)
+   * .getDeclaredConstructor().newInstance()} on the configured class name — see {@code
+   * deploy/configs/local/actor/default.conf}) for the {@code jackson-cbor} serializer that
+   * (de)serializes {@code SessionEvent} — including its {@code rawEvent} ADK {@code Event} field —
+   * when Pekko delivers it between actors.
+   */
+  public static final class AdkJacksonModule extends SimpleModule {
 
     private static final Logger LOG = LoggerFactory.getLogger(AdkJacksonModule.class);
     private static final String AUTO_VALUE_TOOL_CONFIRMATION =
         "com.google.adk.events.AutoValue_ToolConfirmation";
 
     private final boolean includeTypeInfo;
+
+    public AdkJacksonModule() {
+      this(false);
+    }
 
     private AdkJacksonModule(final boolean includeTypeInfo) {
       super(AdkJacksonModule.class.getSimpleName());

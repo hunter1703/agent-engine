@@ -21,7 +21,6 @@ from deployae.stages.base import Stage
 
 DEFAULT_MONGODB_PORT = 27017
 DEFAULT_REST_PORT = 8080
-READY_PATH = "/q/health/ready"
 
 Kind = Literal["models", "agents"]
 _ENDPOINT_BY_KIND: dict[Kind, str] = {
@@ -97,14 +96,16 @@ class SeedRestCatalogStage(Stage):
     environment: str
     namespace_override: str | None
     rest_port: int = DEFAULT_REST_PORT
-    ready_timeout: float = 60.0
 
     async def run(self) -> None:
         await asyncio.to_thread(self._seed)
 
     def _seed(self) -> None:
         """Seeds just one kind (models or agents) into one REST instance. `tier` picks which
-        REST instance (rest-<tier>); `environment` picks which config files."""
+        REST instance (rest-<tier>); `environment` picks which config files. No readiness poll
+        here: this stage's own depends_on already waits on rest's DeployChartStage, which blocks
+        on `kubectl rollout status` — itself gated on the same /q/health/ready check via the
+        Deployment's readinessProbe — so REST is already known-ready by the time this runs."""
         rest = Chart("rest")
         rest_ns = rest.namespace(self.namespace_override)
         rest_name = rest.resource_name(self.tier)
@@ -123,7 +124,6 @@ class SeedRestCatalogStage(Stage):
             kube.port_forward(rest_ns, rest_name, self.rest_port) as local_port,
             httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30) as client,
         ):
-            _wait_ready(client, self.ready_timeout)
             for path in files:
                 _upsert_catalog_entry(client, path, endpoint)
 
@@ -149,19 +149,6 @@ def _topological_agent_order(agent_files: list[Path]) -> list[Path]:
         agent_id: {dep for dep in deps if dep in known_ids} for agent_id, deps in deps_by_id.items()
     }
     return [path_by_id[agent_id] for agent_id in TopologicalSorter(filtered_deps).static_order()]
-
-
-def _wait_ready(client: httpx.Client, timeout: float) -> None:
-    deadline = time.monotonic() + timeout
-    last_error: Exception | None = None
-    while time.monotonic() < deadline:
-        try:
-            if client.get(READY_PATH, timeout=2).is_success:
-                return
-        except httpx.HTTPError as error:
-            last_error = error
-        time.sleep(1)
-    raise RuntimeError(f"REST never became ready at {READY_PATH}") from last_error
 
 
 def _upsert_catalog_entry(client: httpx.Client, path: Path, endpoint: str) -> None:

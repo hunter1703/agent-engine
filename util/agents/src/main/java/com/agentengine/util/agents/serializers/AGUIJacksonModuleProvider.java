@@ -76,6 +76,7 @@ public final class AGUIJacksonModuleProvider implements CodecModuleProvider {
     private AGUIJacksonModule() {
       super(AGUIJacksonModule.class.getSimpleName());
       setMixInAnnotation(Event.class, EventTypeMixin.class);
+      addSerializer(Event.class, new AGUIEventCodec());
       addSerializer(Role.class, new RoleSerializer());
       addDeserializer(Role.class, new RoleDeserializer());
       setMixInAnnotation(Message.class, MessageMixin.class);

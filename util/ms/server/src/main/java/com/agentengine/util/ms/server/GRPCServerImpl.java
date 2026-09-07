@@ -31,6 +31,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -179,6 +181,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       final Object result = method.invoke(entry.bean(), args);
       if (result instanceof Flowable<?> flowable) {
         LOG.debug("Subscribing to Flowable result...");
+        final Class<?> declaredItemType = firstTypeArgument(method.getGenericReturnType());
         final AtomicLong itemCount = new AtomicLong();
         final AtomicLong batchCount = new AtomicLong();
         // The cancel handler itself is already registered on disposable back in execute(); this
@@ -199,7 +202,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                       send(
                           responseObserver,
                           batch,
-                          sameType ? batch.getFirst().getClass().getName() : null);
+                          sameType ? batch.getFirst().getClass().getName() : null,
+                          declaredItemType);
                     },
                     err -> {
                       LOG.error("Flowable error", err);
@@ -229,13 +233,34 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       final StreamObserver<Response> responseObserver,
       final Object payload,
       final String className) {
+    send(responseObserver, payload, className, Object.class);
+  }
+
+  private void send(
+      final StreamObserver<Response> responseObserver,
+      final Object payload,
+      final String className,
+      final Class<?> declaredItemType) {
+    final boolean includeTypeInfo = className == null;
+    final String json =
+        includeTypeInfo && payload instanceof List<?> batch
+            ? jsonCodec.serialize(batch, declaredItemType)
+            : jsonCodec.serialize(payload, includeTypeInfo);
     final Response.Builder response =
-        Response.newBuilder()
-            .setPayload(ByteString.copyFromUtf8(jsonCodec.serialize(payload, className == null)));
+        Response.newBuilder().setPayload(ByteString.copyFromUtf8(json));
     if (className != null) {
       response.setClassName(className);
     }
     responseObserver.onNext(response.build());
+  }
+
+  /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */
+  private static Class<?> firstTypeArgument(final Type type) {
+    if (type instanceof ParameterizedType parameterizedType
+        && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
+      return clazz;
+    }
+    return Object.class;
   }
 
   private static Status rootCauseStatus(final Throwable throwable) {

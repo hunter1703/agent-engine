@@ -114,10 +114,10 @@ public final class AGUITextMapper {
       return Flowable.empty();
     }
     state.markPartialContentStreamed();
-    final ReasoningMessageContentEvent event =
-        new ReasoningMessageContentEvent(
+    final ReasoningMessageChunkEvent event =
+        new ReasoningMessageChunkEvent(
             state.currentReasoningMessageId(), text, state.timestamp(), null);
-    LOG.debug("Generated output event - eventType=ReasoningMessageContentEvent");
+    LOG.debug("Generated output event - eventType=ReasoningMessageChunkEvent");
     return Flowable.just(event);
   }
 

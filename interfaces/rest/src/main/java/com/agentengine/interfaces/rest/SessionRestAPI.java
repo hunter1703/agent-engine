@@ -11,6 +11,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.interrupt.Resume;
 import io.smallrye.common.annotation.RunOnVirtualThread;
@@ -37,9 +38,11 @@ public class SessionRestAPI {
   private final SessionService sessionService;
 
   @Inject
-  public SessionRestAPI(final RuntimeService runtimeService, final SessionService sessionService) {
-    this.runtimeService = runtimeService;
+  public SessionRestAPI(
+      final SessionService sessionService,
+      final MicroServiceClientProvider microServiceClientProvider) {
     this.sessionService = sessionService;
+    this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
   }
 
   @GET

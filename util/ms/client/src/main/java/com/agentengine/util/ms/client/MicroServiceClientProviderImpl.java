@@ -71,45 +71,60 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
       }
     }
 
-    // Fall back to a transparent gRPC proxy for remote services. The channel is
-    // resolved lazily on the first method invocation so that bean initialization
-    // does not trigger MongoDB lookups or gRPC connections at startup.
-    final Supplier<ManagedChannel> channelSupplier =
-        () ->
-            channels.computeIfAbsent(
-                serviceClass,
-                cls -> {
-                  final String serverId = cls.getAnnotation(MicroService.class).value();
-                  final MicroServiceInfraConfig config =
-                      infraConfigService.findById(
-                          MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
-                  final String host = config != null ? config.getHost() : DEFAULT_HOST;
-                  final int port = config != null ? config.getPort() : DEFAULT_PORT;
-                  LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
-                  // dns:/// + round_robin: the Service is headless (see
-                  // app-base/templates/service.yaml),
-                  // so DNS resolves to every backing pod's own IP rather than one virtual
-                  // ClusterIP,
-                  // letting the channel hold a connection per pod and spread calls across all of
-                  // them
-                  // instead of pinning to whichever single pod kube-proxy would have NAT'd a plain
-                  // ClusterIP connection to.
-                  return ManagedChannelBuilder.forTarget("dns:///" + host + ":" + port)
-                      .usePlaintext()
-                      .defaultLoadBalancingPolicy("round_robin")
-                      .maxInboundMessageSize(MicroServiceInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
-                      .keepAliveTime(30, TimeUnit.SECONDS)
-                      .keepAliveTimeout(10, TimeUnit.SECONDS)
-                      .keepAliveWithoutCalls(true)
-                      .build();
-                });
+    // noinspection unchecked
+    return (T)
+        Proxy.newProxyInstance(
+            serviceClass.getClassLoader(),
+            new Class<?>[] {serviceClass},
+            new MicroServiceInvocationHandler(
+                serviceClass, channelSupplier(serviceClass), jsonCodec, false));
+  }
+
+  @Override
+  public <T> T getRaw(Class<T> serviceClass) {
+    if (!serviceClass.isAnnotationPresent(MicroService.class)) {
+      throw new IllegalArgumentException(
+          serviceClass.getName() + " is not annotated with @MicroService");
+    }
 
     // noinspection unchecked
     return (T)
         Proxy.newProxyInstance(
             serviceClass.getClassLoader(),
             new Class<?>[] {serviceClass},
-            new MicroServiceInvocationHandler(serviceClass, channelSupplier, jsonCodec));
+            new MicroServiceInvocationHandler(
+                serviceClass, channelSupplier(serviceClass), jsonCodec, true));
+  }
+
+  // The channel is resolved lazily on the first method invocation so that bean initialization
+  // does not trigger MongoDB lookups or gRPC connections at startup.
+  private Supplier<ManagedChannel> channelSupplier(final Class<?> serviceClass) {
+    return () ->
+        channels.computeIfAbsent(
+            serviceClass,
+            cls -> {
+              final String serverId = cls.getAnnotation(MicroService.class).value();
+              final MicroServiceInfraConfig config =
+                  infraConfigService.findById(
+                      MicroServiceInfraConfig.CATEGORY, MicroServiceInfraConfig.TYPE, serverId);
+              final String host = config != null ? config.getHost() : DEFAULT_HOST;
+              final int port = config != null ? config.getPort() : DEFAULT_PORT;
+              LOG.debug("Resolved endpoint for server '{}': {}:{}", serverId, host, port);
+              // dns:/// + round_robin: the Service is headless (see
+              // app-base/templates/service.yaml),
+              // so DNS resolves to every backing pod's own IP rather than one virtual ClusterIP,
+              // letting the channel hold a connection per pod and spread calls across all of them
+              // instead of pinning to whichever single pod kube-proxy would have NAT'd a plain
+              // ClusterIP connection to.
+              return ManagedChannelBuilder.forTarget("dns:///" + host + ":" + port)
+                  .usePlaintext()
+                  .defaultLoadBalancingPolicy("round_robin")
+                  .maxInboundMessageSize(MicroServiceInfraConfig.MAX_INBOUND_MESSAGE_SIZE)
+                  .keepAliveTime(30, TimeUnit.SECONDS)
+                  .keepAliveTimeout(10, TimeUnit.SECONDS)
+                  .keepAliveWithoutCalls(true)
+                  .build();
+            });
   }
 
   @PreDestroy

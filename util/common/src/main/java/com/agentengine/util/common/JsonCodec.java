@@ -59,6 +59,29 @@ public class JsonCodec {
     }
   }
 
+  /**
+   * Like {@link #serialize(Object, boolean)} with {@code includeTypeInfo=true}, but declares the
+   * batch's element type as {@code itemType} instead of bare {@code Object}. This matters when
+   * {@code itemType} carries its own {@code @JsonTypeInfo} (e.g. a discriminator keyed off an
+   * existing field): Jackson only consults a type's own polymorphism annotation when it matches the
+   * *declared* type being serialized, not just the runtime type — declaring the list as {@code
+   * List<Object>} makes every element's declared type plain {@code Object}, so Jackson falls back
+   * to generic {@code @class} default typing instead, even for elements assignable to {@code
+   * itemType}.
+   */
+  public String serialize(final List<?> batch, final Class<?> itemType) {
+    if (batch == null) {
+      return null;
+    }
+    try {
+      return typedMapper
+          .writerFor(typedMapper.getTypeFactory().constructCollectionType(List.class, itemType))
+          .writeValueAsString(batch);
+    } catch (final JsonProcessingException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
   public void writeTo(final OutputStream out, final Object value) {
     if (value == null) {
       return;
