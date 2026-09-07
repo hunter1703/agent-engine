@@ -35,8 +35,7 @@ public class ActorSystemProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ActorSystemProvider.class);
   private static final int PEKKO_PORT = 2552;
   private static final String PEKKO_BASE_CONF_PATH = "/config/pekko-base.conf";
-  private static final String JACKSON_MODULES_KEY =
-      "pekko.actor.serialization.jackson.jackson-modules";
+  private static final String JACKSON_MODULES_KEY = "pekko.serialization.jackson.jackson-modules";
   private static final String PEKKO_CLUSTER_LABEL_KEY = "agent-engine.io/pekko-cluster";
 
   /** Observers that spawn actors must order themselves after this. */
