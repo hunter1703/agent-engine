@@ -89,13 +89,10 @@ public final class AdkJacksonModuleProvider implements CodecModuleProvider {
           new ObjectMapper.DefaultTypeResolverBuilder(
               ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT, ptv) {
             @Override
-            public boolean useForType(final JavaType t) {
-              final String name = t.getRawClass().getName();
-              if (name.equals(AUTO_VALUE_TOOL_CONFIRMATION)
-                  || name.equals("com.google.adk.events.ToolConfirmation")) {
-                return true;
-              }
-              return super.useForType(t);
+            public boolean useForType(final JavaType javaType) {
+              final String name = javaType.getRawClass().getName();
+              return name.equals(AUTO_VALUE_TOOL_CONFIRMATION)
+                  || name.equals("com.google.adk.events.ToolConfirmation");
             }
           };
       typer.init(JsonTypeInfo.Id.CLASS, null);

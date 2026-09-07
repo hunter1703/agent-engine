@@ -2,8 +2,37 @@ package com.agentengine.util.agents.serializers;
 
 import com.agentengine.util.common.CodecModuleProvider;
 import com.agui.community.core.agent.RunAgentInput;
+import com.agui.community.core.event.ActivityDeltaEvent;
+import com.agui.community.core.event.ActivitySnapshotEvent;
+import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.event.EventType;
+import com.agui.community.core.event.MessagesSnapshotEvent;
+import com.agui.community.core.event.MetaEvent;
+import com.agui.community.core.event.RawEvent;
+import com.agui.community.core.event.ReasoningEncryptedValueEvent;
+import com.agui.community.core.event.ReasoningEndEvent;
+import com.agui.community.core.event.ReasoningMessageChunkEvent;
+import com.agui.community.core.event.ReasoningMessageContentEvent;
+import com.agui.community.core.event.ReasoningMessageEndEvent;
+import com.agui.community.core.event.ReasoningMessageStartEvent;
+import com.agui.community.core.event.ReasoningStartEvent;
+import com.agui.community.core.event.RunErrorEvent;
+import com.agui.community.core.event.RunFinishedEvent;
+import com.agui.community.core.event.RunStartedEvent;
+import com.agui.community.core.event.StateDeltaEvent;
+import com.agui.community.core.event.StateSnapshotEvent;
+import com.agui.community.core.event.StepFinishedEvent;
+import com.agui.community.core.event.StepStartedEvent;
+import com.agui.community.core.event.TextMessageChunkEvent;
+import com.agui.community.core.event.TextMessageContentEvent;
+import com.agui.community.core.event.TextMessageEndEvent;
+import com.agui.community.core.event.TextMessageStartEvent;
+import com.agui.community.core.event.ToolCallArgsEvent;
+import com.agui.community.core.event.ToolCallChunkEvent;
+import com.agui.community.core.event.ToolCallEndEvent;
+import com.agui.community.core.event.ToolCallResultEvent;
+import com.agui.community.core.event.ToolCallStartEvent;
 import com.agui.community.core.message.AssistantMessage;
 import com.agui.community.core.message.DeveloperMessage;
 import com.agui.community.core.message.Message;
@@ -66,9 +95,58 @@ public final class AGUIJacksonModuleProvider implements CodecModuleProvider {
     }
 
     /**
-     * Mixin that annotates {@link Event#type()} so Jackson serializes it as the {@code "type"}
-     * property.
+     * Annotates {@link Event#type()} as the {@code "type"} property, and uses it as the polymorphic
+     * discriminator for deserializing a heterogeneous {@code Event} batch — the same {@code
+     * EXISTING_PROPERTY} pattern as {@link MessageMixin} below, keyed off the discriminator every
+     * {@code Event} already carries on the wire. This means a mixed-type batch never needs
+     * Jackson's generic {@code @class} default typing to round-trip, which otherwise would tag
+     * every non-final class reachable from the batch (including {@code rawEvent}'s raw {@code
+     * HashMap}), not just the {@code Event} elements themselves.
      */
+    @JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.EXISTING_PROPERTY,
+        property = "type",
+        visible = true)
+    @JsonSubTypes({
+      @JsonSubTypes.Type(value = RunStartedEvent.class, name = "RUN_STARTED"),
+      @JsonSubTypes.Type(value = RunFinishedEvent.class, name = "RUN_FINISHED"),
+      @JsonSubTypes.Type(value = RunErrorEvent.class, name = "RUN_ERROR"),
+      @JsonSubTypes.Type(value = StepStartedEvent.class, name = "STEP_STARTED"),
+      @JsonSubTypes.Type(value = StepFinishedEvent.class, name = "STEP_FINISHED"),
+      @JsonSubTypes.Type(value = TextMessageStartEvent.class, name = "TEXT_MESSAGE_START"),
+      @JsonSubTypes.Type(value = TextMessageContentEvent.class, name = "TEXT_MESSAGE_CONTENT"),
+      @JsonSubTypes.Type(value = TextMessageEndEvent.class, name = "TEXT_MESSAGE_END"),
+      @JsonSubTypes.Type(value = TextMessageChunkEvent.class, name = "TEXT_MESSAGE_CHUNK"),
+      @JsonSubTypes.Type(value = ToolCallStartEvent.class, name = "TOOL_CALL_START"),
+      @JsonSubTypes.Type(value = ToolCallArgsEvent.class, name = "TOOL_CALL_ARGS"),
+      @JsonSubTypes.Type(value = ToolCallEndEvent.class, name = "TOOL_CALL_END"),
+      @JsonSubTypes.Type(value = ToolCallChunkEvent.class, name = "TOOL_CALL_CHUNK"),
+      @JsonSubTypes.Type(value = ToolCallResultEvent.class, name = "TOOL_CALL_RESULT"),
+      @JsonSubTypes.Type(value = ReasoningStartEvent.class, name = "REASONING_START"),
+      @JsonSubTypes.Type(value = ReasoningEndEvent.class, name = "REASONING_END"),
+      @JsonSubTypes.Type(
+          value = ReasoningMessageStartEvent.class,
+          name = "REASONING_MESSAGE_START"),
+      @JsonSubTypes.Type(
+          value = ReasoningMessageContentEvent.class,
+          name = "REASONING_MESSAGE_CONTENT"),
+      @JsonSubTypes.Type(value = ReasoningMessageEndEvent.class, name = "REASONING_MESSAGE_END"),
+      @JsonSubTypes.Type(
+          value = ReasoningMessageChunkEvent.class,
+          name = "REASONING_MESSAGE_CHUNK"),
+      @JsonSubTypes.Type(
+          value = ReasoningEncryptedValueEvent.class,
+          name = "REASONING_ENCRYPTED_VALUE"),
+      @JsonSubTypes.Type(value = StateSnapshotEvent.class, name = "STATE_SNAPSHOT"),
+      @JsonSubTypes.Type(value = StateDeltaEvent.class, name = "STATE_DELTA"),
+      @JsonSubTypes.Type(value = MessagesSnapshotEvent.class, name = "MESSAGES_SNAPSHOT"),
+      @JsonSubTypes.Type(value = ActivitySnapshotEvent.class, name = "ACTIVITY_SNAPSHOT"),
+      @JsonSubTypes.Type(value = ActivityDeltaEvent.class, name = "ACTIVITY_DELTA"),
+      @JsonSubTypes.Type(value = RawEvent.class, name = "RAW"),
+      @JsonSubTypes.Type(value = CustomEvent.class, name = "CUSTOM"),
+      @JsonSubTypes.Type(value = MetaEvent.class, name = "META_EVENT")
+    })
     private abstract static class EventTypeMixin {
       @JsonProperty("type")
       public abstract EventType type();

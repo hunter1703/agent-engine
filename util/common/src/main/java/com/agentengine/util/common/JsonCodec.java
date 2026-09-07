@@ -1,6 +1,7 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Instance;
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 
 @Singleton
 public class JsonCodec {
@@ -87,13 +90,32 @@ public class JsonCodec {
     }
   }
 
-  public <T> T deserialize(final InputStream in, final Class<T> type) {
-    return deserialize(in, (Type) type);
+  public <T> T deserialize(final InputStream inputStream, final Class<T> type) {
+    return deserialize(inputStream, (Type) type);
   }
 
-  public <T> T deserialize(final InputStream in, final Type type) {
+  public <T> T deserialize(final InputStream inputStream, final Type type) {
     try {
-      return mapper.readValue(in, mapper.getTypeFactory().constructType(type));
+      return mapper.readValue(inputStream, mapper.getTypeFactory().constructType(type));
+    } catch (final IOException exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  public List<String> splitJsonArray(final String json) {
+    if (StringUtils.isBlank(json)) {
+      return List.of();
+    }
+    try {
+      final JsonNode root = mapper.readTree(json);
+      if (!root.isArray()) {
+        return List.of(json);
+      }
+      final List<String> elements = new ArrayList<>(root.size());
+      for (final JsonNode element : root) {
+        elements.add(mapper.writeValueAsString(element));
+      }
+      return elements;
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
