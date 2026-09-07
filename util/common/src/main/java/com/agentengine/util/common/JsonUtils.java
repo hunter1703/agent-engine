@@ -250,4 +250,10 @@ public final class JsonUtils {
   private static JsonMapper mapper(boolean includeTypeInfo) {
     return includeTypeInfo ? JSON_MAPPER_WITH_TYPE : JSON_MAPPER;
   }
+
+  @JsonTypeInfo(
+      use = JsonTypeInfo.Id.CLASS,
+      include = JsonTypeInfo.As.PROPERTY,
+      property = "@class")
+  public abstract static class PolymorphicMixin {}
 }

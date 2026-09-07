@@ -1,19 +1,16 @@
 package com.agentengine.agent.core.serializers;
 
 import com.agentengine.util.common.CodecModuleProvider;
+import com.agentengine.util.common.JsonUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.adk.events.ToolConfirmation;
 import com.google.genai.types.FinishReason;
@@ -71,32 +68,14 @@ public final class AdkJacksonModuleProvider implements CodecModuleProvider {
       // fields for the immutable ADK/genai value types this module targets.
       mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
 
-      // Default typing for ToolConfirmation specifically, when it ends up as the value of an
-      // Object-typed slot (ADK's FunctionCall.args()/ToolConfirmation.payload(), both
-      // Map<String, Object>) — without @class, reading it back gives a generic Map instead of a
-      // real ToolConfirmation, breaking recovery of a paused session. Deliberately narrow: an
-      // earlier version also matched any com.agentengine.*/AG-UI class by name, which broke
-      // unrelated, unambiguous values that happened to share those namespaces (a plain
-      // cross-service return type, and an AG-UI value with its own custom serializer incompatible
-      // with @class-wrapping) — every actual reader of the Object-typed slots this exists for
-      // already casts straight to Map<String, Object>, so widening past ToolConfirmation isn't
-      // backing any real path.
-      final PolymorphicTypeValidator ptv =
-          BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
-      final ObjectMapper.DefaultTypeResolverBuilder typer =
-          new ObjectMapper.DefaultTypeResolverBuilder(
-              ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT, ptv) {
-            @Override
-            public boolean useForType(final JavaType javaType) {
-              final String name = javaType.getRawClass().getName();
-              return name.equals(AUTO_VALUE_TOOL_CONFIRMATION)
-                  || name.equals("com.google.adk.events.ToolConfirmation");
-            }
-          };
-      typer.init(JsonTypeInfo.Id.CLASS, null);
-      typer.inclusion(JsonTypeInfo.As.PROPERTY);
-      typer.typeProperty("@class");
-      mapper.setDefaultTyping(typer);
+      mapper.addMixIn(
+          com.google.adk.events.ToolConfirmation.class, JsonUtils.PolymorphicMixin.class);
+      try {
+        mapper.addMixIn(
+            Class.forName(AUTO_VALUE_TOOL_CONFIRMATION), JsonUtils.PolymorphicMixin.class);
+      } catch (ClassNotFoundException e) {
+        LOG.warn("AutoValue_ToolConfirmation not found on classpath for mixin registration", e);
+      }
       registerAutoValueToolConfirmationDeserializer(mapper);
     }
 
