@@ -241,11 +241,10 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       final Object payload,
       final String className,
       final Class<?> declaredItemType) {
-    final boolean includeTypeInfo = className == null;
     final String json =
-        includeTypeInfo && payload instanceof List<?> batch
+        payload instanceof List<?> batch
             ? jsonCodec.serialize(batch, declaredItemType)
-            : jsonCodec.serialize(payload, includeTypeInfo);
+            : jsonCodec.serialize(payload);
     final Response.Builder response =
         Response.newBuilder().setPayload(ByteString.copyFromUtf8(json));
     if (className != null) {

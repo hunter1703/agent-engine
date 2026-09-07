@@ -14,7 +14,7 @@ import jakarta.inject.Singleton;
 public final class ConnectorJacksonModuleProvider implements CodecModuleProvider {
 
   @Override
-  public Module getModule(final boolean includeTypeInfo) {
+  public Module getModule() {
     return new ConnectorJacksonModule();
   }
 

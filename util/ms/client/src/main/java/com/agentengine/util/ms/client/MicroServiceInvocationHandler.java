@@ -228,19 +228,16 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
               if (raw) {
                 batch = jsonCodec.splitJsonArray(response.getPayload().toStringUtf8());
               } else {
-                // Empty className means the batch had no single shared class — the payload itself
-                // carries a type tag per element instead, so declaredItemType is only the base type
-                // Jackson resolves each element's real class against, not the class of every item.
+                // Empty className means the batch had no single shared class -- every element's
+                // own @JsonTypeInfo discriminator (e.g. Event's "type" field) resolves its real
+                // class instead, so declaredItemType is only the base type Jackson dispatches
+                // against, not the class of every item.
                 final String className = response.getClassName();
                 final Type batchType =
                     TypeFactory.defaultInstance()
                         .constructCollectionType(
                             List.class, resolveItemClass(className, declaredItemType));
-                batch =
-                    jsonCodec.deserialize(
-                        response.getPayload().toStringUtf8(),
-                        batchType,
-                        StringUtils.isBlank(className));
+                batch = jsonCodec.deserialize(response.getPayload().toStringUtf8(), batchType);
               }
               itemCount.addAndGet(batch.size());
               return batch;

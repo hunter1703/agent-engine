@@ -27,15 +27,15 @@ import org.slf4j.LoggerFactory;
  * util:agents}), because only {@code agent/core} still deserializes raw ADK {@code Event}s at all:
  * {@code catalog/core} stopped once {@code SessionServiceImpl.hydrateSession}/{@code includeEvents}
  * was removed, and {@code interfaces/rest} never mapped raw ADK types (AG-UI mapping happens
- * entirely in {@code agent}). Keeping this off those other services' classpaths means their {@code
- * includeTypeInfo=false} mapper stays genuinely free of default typing.
+ * entirely in {@code agent}). Keeping this off those other services' classpaths means their mapper
+ * stays genuinely free of default typing.
  */
 @Singleton
 public final class AdkJacksonModuleProvider implements CodecModuleProvider {
 
   @Override
-  public Module getModule(final boolean includeTypeInfo) {
-    return new AdkJacksonModule(includeTypeInfo);
+  public Module getModule() {
+    return new AdkJacksonModule();
   }
 
   /**
@@ -52,15 +52,8 @@ public final class AdkJacksonModuleProvider implements CodecModuleProvider {
     private static final String AUTO_VALUE_TOOL_CONFIRMATION =
         "com.google.adk.events.AutoValue_ToolConfirmation";
 
-    private final boolean includeTypeInfo;
-
     public AdkJacksonModule() {
-      this(false);
-    }
-
-    private AdkJacksonModule(final boolean includeTypeInfo) {
       super(AdkJacksonModule.class.getSimpleName());
-      this.includeTypeInfo = includeTypeInfo;
     }
 
     @Override
@@ -77,13 +70,6 @@ public final class AdkJacksonModuleProvider implements CodecModuleProvider {
       // default of Optional.empty(). This is safe here: null JSON values are equivalent to absent
       // fields for the immutable ADK/genai value types this module targets.
       mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
-
-      if (includeTypeInfo) {
-        // Default typing is already broad here (see DefaultTypingJacksonModuleProvider's
-        // NON_FINAL module) — adding the narrow ToolConfirmation typing below too would be
-        // redundant, and Jackson only allows one default-typing configuration per mapper.
-        return;
-      }
 
       // Default typing for ToolConfirmation specifically, when it ends up as the value of an
       // Object-typed slot (ADK's FunctionCall.args()/ToolConfirmation.payload(), both

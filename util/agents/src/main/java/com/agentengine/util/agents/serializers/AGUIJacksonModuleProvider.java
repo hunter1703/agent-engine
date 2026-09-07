@@ -67,7 +67,7 @@ import java.util.UUID;
 public final class AGUIJacksonModuleProvider implements CodecModuleProvider {
 
   @Override
-  public Module getModule(final boolean includeTypeInfo) {
+  public Module getModule() {
     return new AGUIJacksonModule();
   }
 

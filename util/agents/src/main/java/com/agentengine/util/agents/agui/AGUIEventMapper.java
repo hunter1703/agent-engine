@@ -247,12 +247,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
               textMessageStartEvent.role(),
               textMessageStartEvent.timestamp(),
               rawEvent);
-      case TextMessageContentEvent textMessageContentEvent ->
-          new TextMessageContentEvent(
-              textMessageContentEvent.messageId(),
-              textMessageContentEvent.delta(),
-              textMessageContentEvent.timestamp(),
-              rawEvent);
       case TextMessageEndEvent textMessageEndEvent ->
           new TextMessageEndEvent(
               textMessageEndEvent.messageId(), textMessageEndEvent.timestamp(), rawEvent);
@@ -279,14 +273,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
       case ToolCallEndEvent toolCallEndEvent ->
           new ToolCallEndEvent(
               toolCallEndEvent.toolCallId(), toolCallEndEvent.timestamp(), rawEvent);
-      case ToolCallChunkEvent toolCallChunkEvent ->
-          new ToolCallChunkEvent(
-              toolCallChunkEvent.toolCallId(),
-              toolCallChunkEvent.toolCallName(),
-              toolCallChunkEvent.parentMessageId(),
-              toolCallChunkEvent.delta(),
-              toolCallChunkEvent.timestamp(),
-              rawEvent);
       case ToolCallResultEvent toolCallResultEvent ->
           new ToolCallResultEvent(
               toolCallResultEvent.messageId(),
@@ -306,12 +292,6 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
               reasoningMessageStartEvent.messageId(),
               reasoningMessageStartEvent.timestamp(),
               rawEvent);
-      case ReasoningMessageContentEvent reasoningMessageContentEvent ->
-          new ReasoningMessageContentEvent(
-              reasoningMessageContentEvent.messageId(),
-              reasoningMessageContentEvent.delta(),
-              reasoningMessageContentEvent.timestamp(),
-              rawEvent);
       case ReasoningMessageEndEvent reasoningMessageEndEvent ->
           new ReasoningMessageEndEvent(
               reasoningMessageEndEvent.messageId(), reasoningMessageEndEvent.timestamp(), rawEvent);
@@ -321,47 +301,17 @@ public final class AGUIEventMapper implements EventMapper<SessionEvent, Event> {
               reasoningMessageChunkEvent.delta(),
               reasoningMessageChunkEvent.timestamp(),
               rawEvent);
-      case ReasoningEncryptedValueEvent reasoningEncryptedValueEvent ->
-          new ReasoningEncryptedValueEvent(
-              reasoningEncryptedValueEvent.subtype(),
-              reasoningEncryptedValueEvent.entityId(),
-              reasoningEncryptedValueEvent.encryptedValue(),
-              reasoningEncryptedValueEvent.timestamp(),
-              rawEvent);
-      case StateSnapshotEvent stateSnapshotEvent ->
-          new StateSnapshotEvent(
-              stateSnapshotEvent.snapshot(), stateSnapshotEvent.timestamp(), rawEvent);
-      case StateDeltaEvent stateDeltaEvent ->
-          new StateDeltaEvent(stateDeltaEvent.delta(), stateDeltaEvent.timestamp(), rawEvent);
-      case MessagesSnapshotEvent messagesSnapshotEvent ->
-          new MessagesSnapshotEvent(
-              messagesSnapshotEvent.messages(), messagesSnapshotEvent.timestamp(), rawEvent);
-      case ActivitySnapshotEvent activitySnapshotEvent ->
-          new ActivitySnapshotEvent(
-              activitySnapshotEvent.messageId(),
-              activitySnapshotEvent.activityType(),
-              activitySnapshotEvent.content(),
-              activitySnapshotEvent.replace(),
-              activitySnapshotEvent.timestamp(),
-              rawEvent);
-      case ActivityDeltaEvent activityDeltaEvent ->
-          new ActivityDeltaEvent(
-              activityDeltaEvent.messageId(),
-              activityDeltaEvent.activityType(),
-              activityDeltaEvent.patch(),
-              activityDeltaEvent.timestamp(),
-              rawEvent);
-      case RawEvent rawSourceEvent ->
-          new RawEvent(
-              rawSourceEvent.event(),
-              rawSourceEvent.source(),
-              rawSourceEvent.timestamp(),
-              rawEvent);
       case CustomEvent customEvent ->
           new CustomEvent(
               customEvent.name(), customEvent.value(), customEvent.timestamp(), rawEvent);
-      case MetaEvent metaEvent ->
-          new MetaEvent(metaEvent.metaType(), metaEvent.payload(), metaEvent.timestamp(), rawEvent);
+      // Every other Event subtype is never actually constructed by this mapper (or
+      // AGUITextMapper/AGUIToolCallMapper/AGUIUtils) -- see AGUIEventCodec's javadoc for the exact
+      // set and why. Keeping the two switches over Event's cases in sync is deliberate: this one
+      // would otherwise need to be maintained forever for types that structurally can never reach
+      // it.
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported Event subtype: " + event.getClass().getName());
     };
   }
 }

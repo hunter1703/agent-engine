@@ -18,19 +18,16 @@ import java.util.List;
 public class JsonCodec {
 
   private final ObjectMapper mapper;
-  private final ObjectMapper typedMapper;
 
   @Inject
   public JsonCodec(final Instance<CodecModuleProvider> providers) {
-    this.mapper = buildMapper(providers, false);
-    this.typedMapper = buildMapper(providers, true);
+    this.mapper = buildMapper(providers);
   }
 
-  private static ObjectMapper buildMapper(
-      final Instance<CodecModuleProvider> providers, final boolean includeTypeInfo) {
+  private static ObjectMapper buildMapper(final Instance<CodecModuleProvider> providers) {
     final ObjectMapper built = JsonUtils.copyMapper();
     for (final CodecModuleProvider provider : providers) {
-      final Module module = provider.getModule(includeTypeInfo);
+      final Module module = provider.getModule();
       if (module != null) {
         built.registerModule(module);
       }
@@ -39,43 +36,30 @@ public class JsonCodec {
   }
 
   public String serialize(final Object value) {
-    return serialize(value, false);
-  }
-
-  /**
-   * {@code includeTypeInfo}: for a heterogeneous collection with no single shared class, where the
-   * receiver needs each element's concrete type embedded in the JSON itself to resolve it.
-   */
-  public String serialize(final Object value, final boolean includeTypeInfo) {
     if (value == null) {
       return null;
     }
     try {
-      return includeTypeInfo
-          ? typedMapper.writerFor(Object.class).writeValueAsString(value)
-          : mapper.writeValueAsString(value);
+      return mapper.writeValueAsString(value);
     } catch (final JsonProcessingException exception) {
       throw new RuntimeException(exception);
     }
   }
 
   /**
-   * Like {@link #serialize(Object, boolean)} with {@code includeTypeInfo=true}, but declares the
-   * batch's element type as {@code itemType} instead of bare {@code Object}. This matters when
-   * {@code itemType} carries its own {@code @JsonTypeInfo} (e.g. a discriminator keyed off an
-   * existing field): Jackson only consults a type's own polymorphism annotation when it matches the
-   * *declared* type being serialized, not just the runtime type — declaring the list as {@code
-   * List<Object>} makes every element's declared type plain {@code Object}, so Jackson falls back
-   * to generic {@code @class} default typing instead, even for elements assignable to {@code
-   * itemType}.
+   * Declares the batch's element type as {@code itemType} instead of bare {@code Object} — every
+   * polymorphic type in this codebase carries its own {@code @JsonTypeInfo} discriminator (e.g.
+   * {@code Event}'s {@code "type"} field), and Jackson only consults that when it matches the
+   * *declared* type being serialized, not just the runtime type. Declaring the list as {@code
+   * List<Object>} would make every element's declared type plain {@code Object}, losing that.
    */
   public String serialize(final List<?> batch, final Class<?> itemType) {
     if (batch == null) {
       return null;
     }
     try {
-      return typedMapper
-          .writerFor(typedMapper.getTypeFactory().constructCollectionType(List.class, itemType))
+      return mapper
+          .writerFor(mapper.getTypeFactory().constructCollectionType(List.class, itemType))
           .writeValueAsString(batch);
     } catch (final JsonProcessingException exception) {
       throw new RuntimeException(exception);
@@ -98,16 +82,11 @@ public class JsonCodec {
   }
 
   public <T> T deserialize(final String json, final Type type) {
-    return deserialize(json, type, false);
-  }
-
-  public <T> T deserialize(final String json, final Type type, final boolean includeTypeInfo) {
     if (json == null || json.isBlank()) {
       return null;
     }
     try {
-      final ObjectMapper effective = includeTypeInfo ? typedMapper : mapper;
-      return effective.readValue(json, effective.getTypeFactory().constructType(type));
+      return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
     } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }

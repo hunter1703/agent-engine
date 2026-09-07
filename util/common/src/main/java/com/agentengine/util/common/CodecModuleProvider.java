@@ -4,5 +4,5 @@ import com.fasterxml.jackson.databind.Module;
 
 public interface CodecModuleProvider {
 
-  Module getModule(boolean includeTypeInfo);
+  Module getModule();
 }

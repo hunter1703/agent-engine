@@ -51,40 +51,27 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
   @Override
   public <T> T get(Class<T> serviceClass) {
-    if (!serviceClass.isAnnotationPresent(MicroService.class)) {
-      throw new IllegalArgumentException(
-          serviceClass.getName() + " is not annotated with @MicroService");
-    }
-
-    // Prefer a local implementation when co-located in the same process
-    ArcContainer container = Arc.container();
-    final Set<Bean<?>> beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
-    for (Bean<?> bean : beans) {
-      if (bean instanceof InjectableBean<?> injectable) {
-        if (injectable.getKind() == InjectableBean.Kind.CLASS) {
-          try (InstanceHandle<T> localInstance = container.instance(serviceClass)) {
-            if (localInstance.isAvailable()) {
-              return localInstance.get();
-            }
-          }
-        }
-      }
-    }
-
-    // noinspection unchecked
-    return (T)
-        Proxy.newProxyInstance(
-            serviceClass.getClassLoader(),
-            new Class<?>[] {serviceClass},
-            new MicroServiceInvocationHandler(
-                serviceClass, channelSupplier(serviceClass), jsonCodec, false));
+    return resolve(serviceClass, false);
   }
 
   @Override
   public <T> T getRaw(Class<T> serviceClass) {
+    return resolve(serviceClass, true);
+  }
+
+  private <T> T resolve(final Class<T> serviceClass, final boolean raw) {
     if (!serviceClass.isAnnotationPresent(MicroService.class)) {
       throw new IllegalArgumentException(
           serviceClass.getName() + " is not annotated with @MicroService");
+    }
+
+    // Prefer a local implementation when co-located in the same process -- "raw" is purely a
+    // wire-format optimization for the gRPC proxy path below (skip binding each JSON element to a
+    // real Java type), so it's meaningless once a local bean removes gRPC/JSON entirely from the
+    // call.
+    final T localInstance = findLocalInstance(serviceClass);
+    if (localInstance != null) {
+      return localInstance;
     }
 
     // noinspection unchecked
@@ -93,7 +80,23 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
             serviceClass.getClassLoader(),
             new Class<?>[] {serviceClass},
             new MicroServiceInvocationHandler(
-                serviceClass, channelSupplier(serviceClass), jsonCodec, true));
+                serviceClass, channelSupplier(serviceClass), jsonCodec, raw));
+  }
+
+  private static <T> T findLocalInstance(final Class<T> serviceClass) {
+    final ArcContainer container = Arc.container();
+    final Set<Bean<?>> beans = container.beanManager().getBeans(serviceClass, Any.Literal.INSTANCE);
+    for (final Bean<?> bean : beans) {
+      if (bean instanceof InjectableBean<?> injectable
+          && injectable.getKind() == InjectableBean.Kind.CLASS) {
+        try (InstanceHandle<T> localInstance = container.instance(serviceClass)) {
+          if (localInstance.isAvailable()) {
+            return localInstance.get();
+          }
+        }
+      }
+    }
+    return null;
   }
 
   // The channel is resolved lazily on the first method invocation so that bean initialization
