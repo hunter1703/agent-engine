@@ -2,7 +2,6 @@ package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonCodec;
-import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
@@ -134,7 +133,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         otelContext.wrap(
             () -> {
               final Context context =
-                  JsonUtils.fromJson(request.getContext().toStringUtf8(), Context.class);
+                  jsonCodec.deserialize(request.getContext().toStringUtf8(), Context.class);
               if (context != null) {
                 context.run(() -> executeInternal(request, responseObserver, disposableProxy));
               } else {
@@ -296,22 +295,18 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     if (paramCount == 0 || request.getPayload().isEmpty()) {
       return new Object[paramCount];
     }
-
     final Object[] rawArgs =
         jsonCodec.deserialize(request.getPayload().toStringUtf8(), Object[].class);
     if (rawArgs == null) {
       return new Object[paramCount];
     }
-
-    final Class<?>[] paramTypes = method.getParameterTypes();
+    final Type[] paramTypes = method.getGenericParameterTypes();
     final Object[] typedArgs = new Object[paramCount];
     for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
-      if (rawArgs[index] instanceof Map<?, ?> argumentMap) {
-        //noinspection unchecked
-        typedArgs[index] = JsonUtils.fromMap((Map<String, Object>) argumentMap, paramTypes[index]);
-      } else {
-        typedArgs[index] = rawArgs[index];
-      }
+      typedArgs[index] =
+          rawArgs[index] instanceof Map<?, ?>
+              ? jsonCodec.convertValue(rawArgs[index], paramTypes[index])
+              : rawArgs[index];
     }
     return typedArgs;
   }

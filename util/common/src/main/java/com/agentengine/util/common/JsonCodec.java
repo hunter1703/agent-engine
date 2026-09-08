@@ -2,11 +2,8 @@ package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,25 +11,18 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-@Singleton
-public class JsonCodec {
+public abstract class JsonCodec {
 
   private final ObjectMapper mapper;
 
-  @Inject
   public JsonCodec(final Instance<CodecModuleProvider> providers) {
     this.mapper = buildMapper(providers);
   }
 
-  private static ObjectMapper buildMapper(final Instance<CodecModuleProvider> providers) {
-    final ObjectMapper built = JsonUtils.copyMapper();
-    for (final CodecModuleProvider provider : providers) {
-      final Module module = provider.getModule();
-      if (module != null) {
-        built.registerModule(module);
-      }
-    }
-    return built;
+  protected abstract ObjectMapper buildMapper(Instance<CodecModuleProvider> providers);
+
+  public <T> T convertValue(final Object value, final Type type) {
+    return mapper.convertValue(value, mapper.getTypeFactory().constructType(type));
   }
 
   public String serialize(final Object value) {
