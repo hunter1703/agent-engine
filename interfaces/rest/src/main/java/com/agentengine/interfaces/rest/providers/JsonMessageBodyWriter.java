@@ -30,7 +30,7 @@ public class JsonMessageBodyWriter extends ServerMessageBodyWriter.AllWriteableM
   private final JsonCodec jsonCodec;
 
   @Inject
-  public JsonMessageBodyWriter(final JsonCodec jsonCodec) {
+  public JsonMessageBodyWriter(final RestJsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 

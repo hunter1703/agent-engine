@@ -28,6 +28,7 @@ public class DefaultJsonCodec extends JsonCodec {
       }
     }
     built.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
+    built.registerModule(new ObjectTypingModule());
     return built;
   }
 }

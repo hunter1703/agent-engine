@@ -27,7 +27,7 @@ public class JsonMessageBodyReader implements ServerMessageBodyReader<Object> {
   private final JsonCodec jsonCodec;
 
   @Inject
-  public JsonMessageBodyReader(final JsonCodec jsonCodec) {
+  public JsonMessageBodyReader(final RestJsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 
