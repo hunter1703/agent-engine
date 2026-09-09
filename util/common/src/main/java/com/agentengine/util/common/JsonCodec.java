@@ -49,8 +49,8 @@ public abstract class JsonCodec {
     }
     try {
       return mapper
-          .writerFor(mapper.getTypeFactory().constructCollectionType(List.class, itemType))
-          .writeValueAsString(batch);
+          .writerFor(mapper.getTypeFactory().constructArrayType(itemType))
+          .writeValueAsString(batch.toArray());
     } catch (final JsonProcessingException exception) {
       throw new RuntimeException(exception);
     }

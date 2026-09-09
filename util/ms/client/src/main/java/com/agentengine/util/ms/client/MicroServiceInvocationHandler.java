@@ -235,9 +235,10 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
                 final String className = response.getClassName();
                 final Type batchType =
                     TypeFactory.defaultInstance()
-                        .constructCollectionType(
-                            List.class, resolveItemClass(className, declaredItemType));
-                batch = jsonCodec.deserialize(response.getPayload().toStringUtf8(), batchType);
+                        .constructArrayType(resolveItemClass(className, declaredItemType));
+                final Object[] arr =
+                    jsonCodec.deserialize(response.getPayload().toStringUtf8(), batchType);
+                batch = arr == null ? List.of() : Arrays.asList(arr);
               }
               itemCount.addAndGet(batch.size());
               return batch;
