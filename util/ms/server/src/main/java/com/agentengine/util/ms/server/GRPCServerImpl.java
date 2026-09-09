@@ -30,6 +30,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -196,7 +197,12 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                     batch -> {
                       itemCount.addAndGet(batch.size());
                       batchCount.incrementAndGet();
-                      send(responseObserver, jsonCodec.serializeBatch(batch));
+                      final Type returnType = method.getGenericReturnType();
+                      final Type elementType =
+                          returnType instanceof ParameterizedType
+                              ? ((ParameterizedType) returnType).getActualTypeArguments()[0]
+                              : Object.class;
+                      send(responseObserver, jsonCodec.serializeBatch(batch, elementType));
                     },
                     err -> {
                       LOG.error("Flowable error", err);
@@ -263,18 +269,11 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
     LOG.debug(
         "Deserializing args for {} with payload: {}", method, request.getPayload().toStringUtf8());
-    final Object[] rawArgs =
-        jsonCodec.deserialize(request.getPayload().toStringUtf8(), Object[].class);
-    if (rawArgs == null) {
+    final Object[] typedArgs =
+        jsonCodec.deserializeBatch(
+            request.getPayload().toStringUtf8(), method.getGenericParameterTypes());
+    if (typedArgs == null) {
       return new Object[paramCount];
-    }
-    final Type[] paramTypes = method.getGenericParameterTypes();
-    final Object[] typedArgs = new Object[paramCount];
-    for (int index = 0; index < paramCount && index < rawArgs.length; index++) {
-      typedArgs[index] =
-          rawArgs[index] instanceof Map<?, ?>
-              ? jsonCodec.convertValue(rawArgs[index], paramTypes[index])
-              : rawArgs[index];
     }
     return typedArgs;
   }

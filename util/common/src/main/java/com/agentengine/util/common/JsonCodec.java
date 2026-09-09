@@ -1,13 +1,15 @@
 package com.agentengine.util.common;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SequenceWriter;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringWriter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,20 +39,79 @@ public abstract class JsonCodec {
     }
   }
 
-  public String serializeBatch(final List<?> batch) {
+  public String serializeBatch(final List<?> batch, final Type elementType) {
     if (batch == null) {
       return null;
     }
+    final StringBuilderWriter writer = new StringBuilderWriter();
+
     try {
-      final StringWriter writer = new StringWriter();
-      try (final SequenceWriter seq = mapper.writer().writeValuesAsArray(writer)) {
+      final ObjectWriter typeWriter =
+          mapper.writerFor(mapper.getTypeFactory().constructType(elementType));
+      try (final JsonGenerator gen = mapper.getFactory().createGenerator(writer)) {
+        gen.writeStartArray();
         for (final Object element : batch) {
-          seq.write(element);
+          typeWriter.writeValue(gen, element);
         }
+        gen.writeEndArray();
       }
       return writer.toString();
     } catch (final IOException exception) {
-      throw new RuntimeException(exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
+  }
+
+  public String serializeBatch(final Object[] args, final Type[] types) {
+    if (args == null) {
+      return null;
+    }
+    final StringBuilderWriter writer = new StringBuilderWriter();
+
+    try {
+      try (final JsonGenerator gen = mapper.getFactory().createGenerator(writer)) {
+        gen.writeStartArray();
+        for (int i = 0; i < args.length; i++) {
+          if (types != null && i < types.length && types[i] != null) {
+            mapper
+                .writerFor(mapper.getTypeFactory().constructType(types[i]))
+                .writeValue(gen, args[i]);
+          } else {
+            mapper.writeValue(gen, args[i]);
+          }
+        }
+        gen.writeEndArray();
+      }
+      return writer.toString();
+    } catch (final IOException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
+  }
+
+  public Object[] deserializeBatch(final String json, final Type[] types) {
+    if (StringUtils.isBlank(json)) {
+      return null;
+    }
+    if (types == null) {
+      throw new IllegalArgumentException("Types list cannot be null");
+    }
+
+    try (final JsonParser parser = mapper.getFactory().createParser(json)) {
+      if (parser.nextToken() != JsonToken.START_ARRAY) {
+        throw new IllegalArgumentException("Expected JSON array");
+      }
+
+      final Object[] result = new Object[types.length];
+      for (int i = 0; i < types.length; i++) {
+        final Type type = types[i];
+        if (parser.nextToken() == JsonToken.END_ARRAY) {
+          break;
+        }
+        result[i] = mapper.readValue(parser, mapper.getTypeFactory().constructType(type));
+      }
+
+      return result;
+    } catch (final IOException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
     }
   }
 

@@ -84,8 +84,13 @@ public final class SessionEventCodec implements Codec<SessionEvent> {
         case SessionEvent.FIELD_TYPE ->
             event.setType(SessionEvent.Type.valueOfOrDefault(readNullableString(reader)));
         case SessionEvent.FIELD_TURN_ID -> event.setTurnId(readNullableString(reader));
-        case FIELD_RAW_EVENT_JSON ->
-            event.setRawEvent(jsonCodec.deserialize(readNullableString(reader), Event.class));
+        case FIELD_RAW_EVENT_JSON -> {
+          final String rawEventJson = readNullableString(reader);
+          if (rawEventJson != null) {
+            final Event rawEvent = jsonCodec.deserialize(rawEventJson, Event.class);
+            event.setRawEvent(rawEvent);
+          }
+        }
         case SessionEvent.FIELD_ROLLBACK_ID -> event.setRollbackId(readNullableString(reader));
         default -> reader.skipValue();
       }
@@ -100,9 +105,7 @@ public final class SessionEventCodec implements Codec<SessionEvent> {
   }
 
   private static void writeString(final BsonWriter writer, final String name, final String value) {
-    if (value == null) {
-      writer.writeNull(name);
-    } else {
+    if (value != null) {
       writer.writeString(name, value);
     }
   }

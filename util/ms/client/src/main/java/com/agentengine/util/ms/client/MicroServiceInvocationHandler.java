@@ -92,7 +92,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
           serviceClass.getSimpleName(),
           method.getName());
       final long start = System.currentTimeMillis();
-      final String json = jsonCodec.serialize(args);
+      final String json = jsonCodec.serializeBatch(args, method.getGenericParameterTypes());
       final long end = System.currentTimeMillis();
       LOG.debug("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
       builder.setPayload(ByteString.copyFromUtf8(json));

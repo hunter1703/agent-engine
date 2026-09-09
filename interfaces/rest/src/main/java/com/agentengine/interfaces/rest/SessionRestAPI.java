@@ -8,18 +8,22 @@ import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FlowableUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
+import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.interrupt.Resume;
+import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -60,7 +64,10 @@ public class SessionRestAPI {
   public Publisher<Event> stream(
       @NotBlank @PathParam("sessionId") final String sessionId,
       @QueryParam("liveOnly") boolean liveOnly) {
-    return runtimeService.subscribeToSessionAgui(sessionId, liveOnly);
+    return FlowableUtils.withScheduled(
+        Flowable.fromPublisher(runtimeService.subscribeToSessionAgui(sessionId, liveOnly)),
+        TimeUnit.SECONDS.toMillis(15),
+        () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
   }
 
   @POST
