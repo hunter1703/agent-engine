@@ -11,8 +11,9 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 /**
  * Activates {@link ObjectMapper.DefaultTyping#NON_FINAL} typing on any mapper that registers this
  * module. This mode adds a {@code @class} type discriminator for all non-final types, allowing
- * concrete subtypes to survive round-trips through generic slots such as {@code Object[]} — the
- * shape used by the gRPC transport to carry method arguments.
+ * concrete subtypes to survive round-trips through generic slots — for request args ({@code
+ * Object[]}) and polymorphic response payloads alike. Final types such as {@code String} and {@code
+ * Integer} are never tagged since they have no subtypes.
  */
 public final class NonFinalTypingModule extends SimpleModule {
 

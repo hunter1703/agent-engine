@@ -23,6 +23,12 @@ public final class ExceptionUtils {
     return message;
   }
 
+  public static RuntimeException wrapInRuntimeException(final Throwable throwable) {
+    return throwable instanceof RuntimeException runtimeException
+        ? runtimeException
+        : new RuntimeException(throwable);
+  }
+
   public static RuntimeException wrapInRuntimeException(
       final Throwable throwable, final String message) {
     return throwable instanceof RuntimeException runtimeException

@@ -2,12 +2,10 @@ package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
 import com.agentengine.util.ms.grpc.ServiceGrpc;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.ClientCallStreamObserver;
@@ -133,9 +131,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         CompletionStage.class.isAssignableFrom(method.getReturnType())
             ? firstTypeArgument(method.getGenericReturnType())
             : method.getGenericReturnType();
-    final Type deserializationType = resolveType(response.getClassName(), declaredType);
-    Object result =
-        jsonCodec.deserialize(response.getPayload().toStringUtf8(), deserializationType);
+    final Object result = jsonCodec.deserialize(response.getPayload().toStringUtf8(), declaredType);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
@@ -228,17 +224,10 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
               if (raw) {
                 batch = jsonCodec.splitJsonArray(response.getPayload().toStringUtf8());
               } else {
-                // Empty className means the batch had no single shared class -- every element's
-                // own @JsonTypeInfo discriminator (e.g. Event's "type" field) resolves its real
-                // class instead, so declaredItemType is only the base type Jackson dispatches
-                // against, not the class of every item.
-                final String className = response.getClassName();
-                final Type batchType =
-                    TypeFactory.defaultInstance()
-                        .constructArrayType(resolveItemClass(className, declaredItemType));
-                final Object[] arr =
-                    jsonCodec.deserialize(response.getPayload().toStringUtf8(), batchType);
-                batch = arr == null ? List.of() : Arrays.asList(arr);
+                batch =
+                    jsonCodec.splitJsonArray(response.getPayload().toStringUtf8()).stream()
+                        .map(elementJson -> jsonCodec.deserialize(elementJson, declaredItemType))
+                        .collect(Collectors.toList());
               }
               itemCount.addAndGet(batch.size());
               return batch;
@@ -255,17 +244,6 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
 
   private ServiceGrpc.ServiceStub nonBlockingStub() {
     return ServiceGrpc.newStub(channelSupplier.get());
-  }
-
-  private static Class<?> resolveItemClass(final String className, final Class<?> declaredType) {
-    if (StringUtils.isBlank(className)) {
-      return declaredType;
-    }
-    try {
-      return Class.forName(className);
-    } catch (final ClassNotFoundException exception) {
-      return declaredType;
-    }
   }
 
   private static String currentRequestId() {

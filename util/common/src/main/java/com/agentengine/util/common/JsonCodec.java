@@ -3,10 +3,11 @@ package com.agentengine.util.common;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.enterprise.inject.Instance;
+import com.fasterxml.jackson.databind.SequenceWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,11 +16,11 @@ public abstract class JsonCodec {
 
   private final ObjectMapper mapper;
 
-  public JsonCodec(final Instance<CodecModuleProvider> providers) {
+  public JsonCodec(final List<CodecModuleProvider> providers) {
     this.mapper = buildMapper(providers);
   }
 
-  protected abstract ObjectMapper buildMapper(Instance<CodecModuleProvider> providers);
+  protected abstract ObjectMapper buildMapper(List<CodecModuleProvider> providers);
 
   public <T> T convertValue(final Object value, final Type type) {
     return mapper.convertValue(value, mapper.getTypeFactory().constructType(type));
@@ -32,26 +33,23 @@ public abstract class JsonCodec {
     try {
       return mapper.writeValueAsString(value);
     } catch (final JsonProcessingException exception) {
-      throw new RuntimeException(exception);
+      throw ExceptionUtils.wrapInRuntimeException(exception);
     }
   }
 
-  /**
-   * Declares the batch's element type as {@code itemType} instead of bare {@code Object} — every
-   * polymorphic type in this codebase carries its own {@code @JsonTypeInfo} discriminator (e.g.
-   * {@code Event}'s {@code "type"} field), and Jackson only consults that when it matches the
-   * *declared* type being serialized, not just the runtime type. Declaring the list as {@code
-   * List<Object>} would make every element's declared type plain {@code Object}, losing that.
-   */
-  public String serialize(final List<?> batch, final Class<?> itemType) {
+  public String serializeBatch(final List<?> batch) {
     if (batch == null) {
       return null;
     }
     try {
-      return mapper
-          .writerFor(mapper.getTypeFactory().constructArrayType(itemType))
-          .writeValueAsString(batch.toArray());
-    } catch (final JsonProcessingException exception) {
+      final StringWriter writer = new StringWriter();
+      try (final SequenceWriter seq = mapper.writer().writeValuesAsArray(writer)) {
+        for (final Object element : batch) {
+          seq.write(element);
+        }
+      }
+      return writer.toString();
+    } catch (final IOException exception) {
       throw new RuntimeException(exception);
     }
   }

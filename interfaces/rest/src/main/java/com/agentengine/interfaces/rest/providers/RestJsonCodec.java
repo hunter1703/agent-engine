@@ -9,7 +9,9 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Typed;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.util.List;
 
 /**
  * {@link JsonCodec} for the REST layer. Uses a plain mapper with no default typing so that incoming
@@ -22,12 +24,13 @@ import jakarta.inject.Singleton;
 @Typed(RestJsonCodec.class)
 public class RestJsonCodec extends JsonCodec {
 
+  @Inject
   public RestJsonCodec(final Instance<CodecModuleProvider> providers) {
-    super(providers);
+    super(providers.stream().toList());
   }
 
   @Override
-  protected ObjectMapper buildMapper(final Instance<CodecModuleProvider> providers) {
+  protected ObjectMapper buildMapper(final List<CodecModuleProvider> providers) {
     final ObjectMapper built = JsonUtils.copyMapper();
     for (final CodecModuleProvider provider : providers) {
       final Module module = provider.getModule();

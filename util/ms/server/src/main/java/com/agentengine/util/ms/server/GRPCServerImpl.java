@@ -1,6 +1,5 @@
 package com.agentengine.util.ms.server;
 
-import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -31,7 +30,6 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -117,8 +115,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   @Override
   public void execute(final Request request, final StreamObserver<Response> responseObserver) {
     final SerialDisposable disposableProxy = new SerialDisposable();
-    ((ServerCallStreamObserver<Response>) responseObserver)
-        .setOnCancelHandler(disposableProxy::dispose);
+    if (responseObserver instanceof ServerCallStreamObserver<Response> serverCallObserver) {
+      serverCallObserver.setOnCancelHandler(disposableProxy::dispose);
+    }
     dispatch(request, responseObserver, disposableProxy);
   }
 
@@ -181,7 +180,6 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       final Object result = method.invoke(entry.bean(), args);
       if (result instanceof Flowable<?> flowable) {
         LOG.debug("Subscribing to Flowable result...");
-        final Class<?> declaredItemType = firstTypeArgument(method.getGenericReturnType());
         final AtomicLong itemCount = new AtomicLong();
         final AtomicLong batchCount = new AtomicLong();
         // The cancel handler itself is already registered on disposable back in execute(); this
@@ -198,12 +196,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                     batch -> {
                       itemCount.addAndGet(batch.size());
                       batchCount.incrementAndGet();
-                      final boolean sameType = CollectionUtils.areSameType(batch);
-                      send(
-                          responseObserver,
-                          batch,
-                          sameType ? batch.getFirst().getClass().getName() : null,
-                          declaredItemType);
+                      send(responseObserver, jsonCodec.serializeBatch(batch));
                     },
                     err -> {
                       LOG.error("Flowable error", err);
@@ -220,7 +213,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         return;
       }
       if (result != null) {
-        send(responseObserver, result, result.getClass().getName());
+        send(responseObserver, jsonCodec.serialize(result));
       }
       responseObserver.onCompleted();
     } catch (final Exception exception) {
@@ -229,37 +222,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
   }
 
-  private void send(
-      final StreamObserver<Response> responseObserver,
-      final Object payload,
-      final String className) {
-    send(responseObserver, payload, className, Object.class);
-  }
-
-  private void send(
-      final StreamObserver<Response> responseObserver,
-      final Object payload,
-      final String className,
-      final Class<?> declaredItemType) {
-    final String json =
-        payload instanceof List<?> batch
-            ? jsonCodec.serialize(batch, declaredItemType)
-            : jsonCodec.serialize(payload);
-    final Response.Builder response =
-        Response.newBuilder().setPayload(ByteString.copyFromUtf8(json));
-    if (className != null) {
-      response.setClassName(className);
-    }
-    responseObserver.onNext(response.build());
-  }
-
-  /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */
-  private static Class<?> firstTypeArgument(final Type type) {
-    if (type instanceof ParameterizedType parameterizedType
-        && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
-      return clazz;
-    }
-    return Object.class;
+  private void send(final StreamObserver<Response> responseObserver, final String json) {
+    responseObserver.onNext(
+        Response.newBuilder().setPayload(ByteString.copyFromUtf8(json)).build());
   }
 
   private static Status rootCauseStatus(final Throwable throwable) {
@@ -296,7 +261,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     if (paramCount == 0 || request.getPayload().isEmpty()) {
       return new Object[paramCount];
     }
-    LOG.error(
+    LOG.debug(
         "Deserializing args for {} with payload: {}", method, request.getPayload().toStringUtf8());
     final Object[] rawArgs =
         jsonCodec.deserialize(request.getPayload().toStringUtf8(), Object[].class);
