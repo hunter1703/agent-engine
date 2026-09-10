@@ -139,25 +139,6 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
     return result;
   }
 
-  /**
-   * The response carries the value's own concrete runtime class, so deserialization can target it
-   * directly with plain Jackson instead of needing type info embedded in the JSON itself. Falls
-   * back to the method's own declared type if a response is ever missing one, or if the declared
-   * type is itself parameterized (e.g. {@code Map<String, AgentSession>}) — a bare {@link Class}
-   * can never carry that generic value-type info, so preferring it there would silently deserialize
-   * values as raw {@code LinkedHashMap}s instead of the declared type.
-   */
-  private static Type resolveType(final String className, final Type declaredType) {
-    if (className == null || className.isBlank() || declaredType instanceof ParameterizedType) {
-      return declaredType;
-    }
-    try {
-      return Class.forName(className);
-    } catch (final ClassNotFoundException exception) {
-      return declaredType;
-    }
-  }
-
   // Uses the async stub instead of the blocking stub's Iterator. Both deliver messages the same
   // way up to a point: Netty's I/O thread parses the frame, then hands the decoded message to the
   // channel's callback executor (a shared, unbounded platform-thread pool — grpc-java's
@@ -183,7 +164,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
    * the same way either way.
    */
   private Flowable<?> streamingCall(Request request, Method method, boolean raw) {
-    final Class<?> declaredItemType = firstTypeArgument(method.getGenericReturnType());
+    final Type declaredItemType = firstTypeArgument(method.getGenericReturnType());
     final Span span = Span.current();
     final AtomicLong itemCount = new AtomicLong();
     final AtomicLong batchCount = new AtomicLong();
@@ -258,11 +239,17 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
             .collect(Collectors.joining(","));
   }
 
-  /** Returns the first type argument of a generic type, or {@code Object.class} if unavailable. */
-  private static Class<?> firstTypeArgument(Type type) {
-    if (type instanceof ParameterizedType parameterizedType
-        && parameterizedType.getActualTypeArguments()[0] instanceof Class<?> clazz) {
-      return clazz;
+  /**
+   * Returns the first type argument of a generic type, or {@code Object.class} if unavailable.
+   * Preserves the full {@link Type} (not reduced to a raw {@link Class}) so this matches {@link
+   * GRPCServerImpl}'s own element-type resolution for a streaming return -- collapsing a
+   * parameterized argument (e.g. {@code Parent<InnerParent<String>>}) down to {@code Object.class}
+   * here while the server serializes against the fully-resolved type is exactly the client/server
+   * declared-type mismatch that default typing no longer papers over.
+   */
+  private static Type firstTypeArgument(Type type) {
+    if (type instanceof ParameterizedType parameterizedType) {
+      return parameterizedType.getActualTypeArguments()[0];
     }
     return Object.class;
   }

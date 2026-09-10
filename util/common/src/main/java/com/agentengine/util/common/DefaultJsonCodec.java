@@ -1,7 +1,5 @@
 package com.agentengine.util.common;
 
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Default;
@@ -19,6 +17,11 @@ public class DefaultJsonCodec extends JsonCodec {
     super(providers.stream().toList());
   }
 
+  /** For use in tests — bypasses CDI by accepting a pre-built provider list directly. */
+  public DefaultJsonCodec(final List<CodecModuleProvider> providers) {
+    super(providers);
+  }
+
   @Override
   protected ObjectMapper buildMapper(final List<CodecModuleProvider> providers) {
     final ObjectMapper built = JsonUtils.copyMapper();
@@ -28,7 +31,6 @@ public class DefaultJsonCodec extends JsonCodec {
         built.registerModule(module);
       }
     }
-    built.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
     built.registerModule(new ObjectTypingModule());
     return built;
   }

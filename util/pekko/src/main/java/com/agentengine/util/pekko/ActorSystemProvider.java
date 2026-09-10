@@ -2,7 +2,6 @@ package com.agentengine.util.pekko;
 
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.config.ApplicationConfig;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import com.agentengine.util.mongodb.infra.SQLInfraConfig;
 import com.agentengine.util.pekko.actor.ShardedEntityDefinition;
@@ -17,7 +16,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.io.File;
 import java.util.List;
-import java.util.stream.Stream;
+import org.apache.pekko.actor.BootstrapSetup;
+import org.apache.pekko.actor.setup.ActorSystemSetup;
 import org.apache.pekko.actor.typed.ActorSystem;
 import org.apache.pekko.actor.typed.SpawnProtocol;
 import org.apache.pekko.cluster.sharding.typed.javadsl.ClusterSharding;
@@ -26,6 +26,7 @@ import org.apache.pekko.cluster.sharding.typed.javadsl.EntityTypeKey;
 import org.apache.pekko.cluster.typed.ClusterSingleton;
 import org.apache.pekko.management.cluster.bootstrap.ClusterBootstrap;
 import org.apache.pekko.management.javadsl.PekkoManagement;
+import org.apache.pekko.serialization.jackson.JacksonObjectMapperProviderSetup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +36,14 @@ public class ActorSystemProvider {
   private static final Logger LOG = LoggerFactory.getLogger(ActorSystemProvider.class);
   private static final int PEKKO_PORT = 2552;
   private static final String PEKKO_BASE_CONF_PATH = "/config/pekko-base.conf";
-  private static final String JACKSON_MODULES_KEY = "pekko.serialization.jackson.jackson-modules";
   private static final String PEKKO_CLUSTER_LABEL_KEY = "agent-engine.io/pekko-cluster";
 
   /** Observers that spawn actors must order themselves after this. */
   public static final int ACTOR_SYSTEM_STARTUP_PRIORITY = 100;
 
-  private final ApplicationConfig applicationConfig;
   private final InfraConfigService infraConfigService;
   private final Instance<ShardedEntityDefinition> entityDefinitions;
+  private final PekkoJsonCodecFactory jsonCodecFactory;
   private volatile PekkoConfig pekkoConfig;
   private volatile ActorSystem<SpawnProtocol.Command> system;
   private volatile ClusterSharding sharding;
@@ -53,10 +53,10 @@ public class ActorSystemProvider {
   public ActorSystemProvider(
       final InfraConfigService infraConfigService,
       final Instance<ShardedEntityDefinition> entityDefinitions,
-      final ApplicationConfig applicationConfig) {
-    this.applicationConfig = applicationConfig;
+      final PekkoJsonCodecFactory jsonCodecFactory) {
     this.infraConfigService = infraConfigService;
     this.entityDefinitions = entityDefinitions;
+    this.jsonCodecFactory = jsonCodecFactory;
   }
 
   /**
@@ -84,7 +84,11 @@ public class ActorSystemProvider {
             SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
     LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
     final Config config = buildConfig(sqlConfig, pekkoCluster);
-    this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), config);
+    final ActorSystemSetup setup =
+        ActorSystemSetup.create(
+            BootstrapSetup.create(config),
+            JacksonObjectMapperProviderSetup.create(jsonCodecFactory));
+    this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), setup);
     PekkoManagement.get(system).start();
     ClusterBootstrap.get(system).start();
     // Publish system before initialising sharding: remember-entities triggers entity recovery
@@ -134,11 +138,6 @@ public class ActorSystemProvider {
         ConfigFactory.parseFile(new File(PEKKO_BASE_CONF_PATH))
             .withFallback(ConfigFactory.defaultReference())
             .resolve();
-    final List<String> extraModules =
-        applicationConfig.getListOfString("pekko.serialization.modules");
-    final List<String> baseModules = baseConfig.getStringList(JACKSON_MODULES_KEY);
-    final List<String> allJacksonModules =
-        Stream.concat(baseModules.stream(), extraModules.stream()).toList();
     // Static structure is in the base config; dynamic/sensitive values are overlaid via withValue
     // so they are never present in a logged HOCON string.
     return baseConfig
@@ -156,7 +155,6 @@ public class ActorSystemProvider {
             // A node's role is its Pekko cluster identity (pekko.cluster in the chart), so this
             // scopes bootstrap discovery to peers of that same cluster.
             ConfigValueFactory.fromAnyRef(PEKKO_CLUSTER_LABEL_KEY + "=" + pekkoCluster))
-        .withValue(JACKSON_MODULES_KEY, ConfigValueFactory.fromIterable(allJacksonModules))
         .withValue(
             "pekko-persistence-jdbc.shared-databases.slick.db.url",
             ConfigValueFactory.fromAnyRef(jdbcUrl))

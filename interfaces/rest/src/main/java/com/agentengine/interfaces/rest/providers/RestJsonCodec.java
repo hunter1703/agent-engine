@@ -3,8 +3,6 @@ package com.agentengine.interfaces.rest.providers;
 import com.agentengine.util.common.CodecModuleProvider;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.inject.Instance;
@@ -14,11 +12,12 @@ import jakarta.inject.Singleton;
 import java.util.List;
 
 /**
- * {@link JsonCodec} for the REST layer. Uses a plain mapper with no default typing so that incoming
- * HTTP request bodies from external clients (which carry no {@code @class} tags) deserialize
- * correctly. {@link com.agentengine.util.common.ObjectTypingModule} is deliberately excluded here —
- * it is only needed for the Mongo persistence path ({@link
- * com.agentengine.util.common.DefaultJsonCodec}).
+ * {@link JsonCodec} for the REST layer. No default typing: every polymorphic REST DTO already uses
+ * closed {@code @JsonTypeInfo(Id.NAME)} + {@code @JsonSubTypes}, and responses are terminal (never
+ * deserialized back into Java). Don't add {@link com.agentengine.util.common.ObjectTypingModule}
+ * here — its validator allows every class, which is only safe for internal wire formats (gRPC,
+ * Pekko, Mongo). A REST DTO that needs {@code @class} polymorphism should get its own module with a
+ * restricted allow-list validator.
  */
 @Singleton
 @Typed(RestJsonCodec.class)
@@ -27,6 +26,11 @@ public class RestJsonCodec extends JsonCodec {
   @Inject
   public RestJsonCodec(final Instance<CodecModuleProvider> providers) {
     super(providers.stream().toList());
+  }
+
+  /** For use in tests — bypasses CDI by accepting a pre-built provider list directly. */
+  public RestJsonCodec(final List<CodecModuleProvider> providers) {
+    super(providers);
   }
 
   @Override
@@ -38,8 +42,6 @@ public class RestJsonCodec extends JsonCodec {
         built.registerModule(module);
       }
     }
-
-    built.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
     return built;
   }
 }

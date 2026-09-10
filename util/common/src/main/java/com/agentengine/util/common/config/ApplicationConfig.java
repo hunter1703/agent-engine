@@ -5,8 +5,6 @@ import jakarta.inject.Singleton;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,14 +44,6 @@ public final class ApplicationConfig {
   public long getLong(final String key, final long defaultValue) {
     final String value = getString(key);
     return StringUtils.isBlank(value) ? defaultValue : Long.parseLong(value.trim());
-  }
-
-  public List<String> getListOfString(final String key) {
-    final String rawValue = properties.getProperty(key, "");
-    return Arrays.stream(rawValue.split(","))
-        .map(String::trim)
-        .filter(value -> !value.isEmpty())
-        .toList();
   }
 
   private static Properties loadProperties() {

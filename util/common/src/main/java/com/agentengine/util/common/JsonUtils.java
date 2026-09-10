@@ -1,12 +1,13 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -25,34 +26,34 @@ import org.slf4j.LoggerFactory;
 public final class JsonUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
 
-  private static final JsonMapper JSON_MAPPER = createJsonMapper(false);
-  private static final JsonMapper JSON_MAPPER_WITH_TYPE = createJsonMapper(true);
+  private static final JsonMapper JSON_MAPPER = createJsonMapper(JsonMapper.builder());
 
   private JsonUtils() {}
 
-  private static JsonMapper createJsonMapper(boolean includeTypeInfo) {
-    JsonMapper.Builder builder =
-        JsonMapper.builder()
+  private static JsonMapper createJsonMapper(final JsonMapper.Builder builder) {
+    final JsonMapper mapper =
+        builder
             .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .addModule(new Jdk8Module())
             .addModule(new JavaTimeModule())
             .addModule(new GuavaModule())
-            .serializationInclusion(JsonInclude.Include.NON_ABSENT);
-
-    if (includeTypeInfo) {
-      BasicPolymorphicTypeValidator validator =
-          BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build();
-      builder.activateDefaultTyping(
-          validator, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
-    }
-
-    return builder.build();
+            .serializationInclusion(JsonInclude.Include.NON_ABSENT)
+            .build();
+    // Builder setters for Optional fields do Optional.of(requireNonNull(value)), which NPEs on a
+    // null JSON value; skipping the setter call instead leaves the builder default
+    // (Optional.empty).
+    mapper.setDefaultSetterInfo(JsonSetter.Value.forValueNulls(Nulls.SKIP));
+    return mapper;
   }
 
   /** An independent copy of the default mapper */
   public static ObjectMapper copyMapper() {
     return JSON_MAPPER.copy();
+  }
+
+  public static ObjectMapper copyMapper(final JsonFactory jsonFactory) {
+    return createJsonMapper(JsonMapper.builder(jsonFactory));
   }
 
   public static <T> T fromMap(final Map<String, Object> map, final Class<T> clazz) {
@@ -70,103 +71,71 @@ public final class JsonUtils {
   }
 
   public static <T> T fromJson(final String json, final Class<T> clazz) {
-    return fromJson(json, clazz, false);
-  }
-
-  public static <T> T fromJson(final String json, final Class<T> clazz, boolean includesTypeInfo) {
     if (json == null || json.isBlank()) {
       return null;
     }
     try {
-      return mapper(includesTypeInfo).readValue(json, clazz);
+      return JSON_MAPPER.readValue(json, clazz);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
   }
 
   public static <T> T fromJson(final String json, final Type type) {
-    return fromJson(json, type, false);
-  }
-
-  public static <T> T fromJson(final String json, final Type type, boolean includesTypeInfo) {
     if (json == null || json.isBlank()) {
       return null;
     }
     try {
-      ObjectMapper mapper = mapper(includesTypeInfo);
-      return mapper.readValue(json, mapper.getTypeFactory().constructType(type));
+      return JSON_MAPPER.readValue(json, JSON_MAPPER.getTypeFactory().constructType(type));
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
   }
 
   public static <T> T fromJson(final String json, final TypeReference<T> typeReference) {
-    return fromJson(json, typeReference, false);
-  }
-
-  public static <T> T fromJson(
-      final String json, final TypeReference<T> typeReference, boolean includesTypeInfo) {
     if (json == null || json.isBlank()) {
       return null;
     }
     try {
-      return mapper(includesTypeInfo).readValue(json, typeReference);
+      return JSON_MAPPER.readValue(json, typeReference);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
   }
 
   public static <T> T fromStream(final InputStream inputStream, final Class<T> clazz) {
-    return fromStream(inputStream, clazz, false);
-  }
-
-  public static <T> T fromStream(
-      final InputStream inputStream, final Class<T> clazz, boolean includesTypeInfo) {
     if (inputStream == null) {
       return null;
     }
     try {
-      return mapper(includesTypeInfo).readValue(inputStream, clazz);
+      return JSON_MAPPER.readValue(inputStream, clazz);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
   }
 
   public static <T> T fromFile(final Path path, final Class<T> clazz) {
-    return fromFile(path, clazz, false);
-  }
-
-  public static <T> T fromFile(final Path path, final Class<T> clazz, boolean includesTypeInfo) {
     try (InputStream stream = Files.newInputStream(path)) {
-      return mapper(includesTypeInfo).readValue(stream, clazz);
+      return JSON_MAPPER.readValue(stream, clazz);
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }
 
   public static <T> T fromFile(final Path path, final TypeReference<T> typeReference) {
-    return fromFile(path, typeReference, false);
-  }
-
-  public static <T> T fromFile(
-      final Path path, final TypeReference<T> typeReference, boolean includesTypeInfo) {
     try (InputStream stream = Files.newInputStream(path)) {
-      return mapper(includesTypeInfo).readValue(stream, typeReference);
+      return JSON_MAPPER.readValue(stream, typeReference);
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
   }
 
   public static String toJson(final Object value) {
-    return toJson(value, false);
-  }
-
-  public static String toJson(final Object value, boolean includeTypeInfo) {
     if (value == null) {
       return null;
     }
     try {
-      return getObjectWriter(includeTypeInfo).writeValueAsString(value);
+      return JSON_MAPPER.writer().writeValueAsString(value);
     } catch (IOException exception) {
       throw new RuntimeException(exception);
     }
@@ -227,7 +196,7 @@ public final class JsonUtils {
       return null;
     }
 
-    return mapper(false).valueToTree(object);
+    return JSON_MAPPER.valueToTree(object);
   }
 
   public static JsonNode toJsonNode(final String json) {
@@ -236,24 +205,9 @@ public final class JsonUtils {
     }
 
     try {
-      return mapper(false).readTree(json);
+      return JSON_MAPPER.readTree(json);
     } catch (JsonProcessingException ex) {
       return null;
     }
   }
-
-  private static ObjectWriter getObjectWriter(final boolean includeTypeInfo) {
-    JsonMapper mapper = mapper(includeTypeInfo);
-    return includeTypeInfo ? mapper.writerFor(Object.class) : mapper.writer();
-  }
-
-  private static JsonMapper mapper(boolean includeTypeInfo) {
-    return includeTypeInfo ? JSON_MAPPER_WITH_TYPE : JSON_MAPPER;
-  }
-
-  @JsonTypeInfo(
-      use = JsonTypeInfo.Id.CLASS,
-      include = JsonTypeInfo.As.PROPERTY,
-      property = "@class")
-  public abstract static class PolymorphicMixin {}
 }

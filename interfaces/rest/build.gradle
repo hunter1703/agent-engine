@@ -33,4 +33,5 @@ dependencies {
     testImplementation libs.mockito.junit.jupiter
     testImplementation libs.rest.assured
     testImplementation libs.hamcrest
+    testImplementation testFixtures(project(':util:common'))
 }

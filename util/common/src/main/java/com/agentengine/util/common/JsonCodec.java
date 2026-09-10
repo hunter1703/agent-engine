@@ -14,6 +14,34 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A class needs its own {@code @JsonTypeInfo} (class-level if we own it, a mixin registered via
+ * {@link CodecModuleProvider} if it's a library type) only when both hold:
+ *
+ * <ul>
+ *   <li>it's non-final -- has, or could plausibly get, a subclass;
+ *   <li>it's used as a <i>declared</i> type somewhere in a codec's real surface -- a field type,
+ *       method return/parameter type, or resolved generic argument. A non-final class that's always
+ *       referenced by its own concrete type, never through a shared supertype, has no ambiguity for
+ *       Jackson to resolve, so annotating it does nothing.
+ * </ul>
+ *
+ * <p>Compare {@code Map<String, Object>} vs. {@code Map<String, Parent>}, both holding a {@code
+ * Child extends Parent} value:
+ *
+ * <ul>
+ *   <li>{@code Map<String, Object>} -- the declared value type is {@code Object} itself, not a real
+ *       class, so there's nothing to annotate. This is what each subclass's own narrow
+ *       default-typing module ({@link ObjectTypingModule}'s {@code JAVA_LANG_OBJECT}) exists to
+ *       handle: it tags based on the slot being exactly {@code Object}, automatically.
+ *   <li>{@code Map<String, Parent>} -- the declared value type is {@code Parent}, a real class that
+ *       differs from the runtime value's class ({@code Child}). {@code JAVA_LANG_OBJECT} does
+ *       <b>not</b> tag this slot (it isn't declared {@code Object}), so {@code Parent} itself needs
+ *       the {@code @JsonTypeInfo}. Annotating {@code Child} instead would do nothing -- Jackson
+ *       reads the type-info config from the <i>declared</i> type's annotations (or its mixin), not
+ *       the runtime value's.
+ * </ul>
+ */
 public abstract class JsonCodec {
 
   private final ObjectMapper mapper;
@@ -21,8 +49,6 @@ public abstract class JsonCodec {
   public JsonCodec(final List<CodecModuleProvider> providers) {
     this.mapper = buildMapper(providers);
   }
-
-  protected abstract ObjectMapper buildMapper(List<CodecModuleProvider> providers);
 
   public <T> T convertValue(final Object value, final Type type) {
     return mapper.convertValue(value, mapper.getTypeFactory().constructType(type));
@@ -34,6 +60,26 @@ public abstract class JsonCodec {
     }
     try {
       return mapper.writeValueAsString(value);
+    } catch (final JsonProcessingException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
+  }
+
+  /**
+   * Serializes against the given declared type rather than {@code value}'s own runtime class — so
+   * default typing's decision to tag with {@code @class} is based on the declared type (e.g. the
+   * method's return type), not whichever concrete, possibly-final class the value happens to be
+   * (e.g. {@code List.of(...)}'s package-private final impl), which a reader expecting the declared
+   * type to be tagged has no way to know about.
+   */
+  public String serialize(final Object value, final Type type) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return mapper
+          .writerFor(mapper.getTypeFactory().constructType(type))
+          .writeValueAsString(value);
     } catch (final JsonProcessingException exception) {
       throw ExceptionUtils.wrapInRuntimeException(exception);
     }
@@ -171,4 +217,6 @@ public abstract class JsonCodec {
       throw new RuntimeException(exception);
     }
   }
+
+  protected abstract ObjectMapper buildMapper(List<CodecModuleProvider> providers);
 }

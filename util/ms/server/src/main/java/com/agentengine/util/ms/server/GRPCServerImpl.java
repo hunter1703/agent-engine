@@ -5,7 +5,6 @@ import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.common.exception.ConfigurationException;
 import com.agentengine.util.common.exception.DuplicateAssetException;
-import com.agentengine.util.ms.client.GrpcJsonCodec;
 import com.agentengine.util.ms.client.MicroService;
 import com.agentengine.util.ms.client.MicroServiceMethod;
 import com.agentengine.util.ms.grpc.Request;
@@ -56,11 +55,11 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
   private final JsonCodec jsonCodec;
 
   @Inject
-  public GRPCServerImpl(final GrpcJsonCodec jsonCodec) {
+  public GRPCServerImpl(final JsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 
-  public GRPCServerImpl(final List<Object> services, final GrpcJsonCodec jsonCodec) {
+  public GRPCServerImpl(final List<Object> services, final JsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
     services.forEach(
         instance -> {
@@ -219,7 +218,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         return;
       }
       if (result != null) {
-        send(responseObserver, jsonCodec.serialize(result));
+        send(responseObserver, jsonCodec.serialize(result, method.getGenericReturnType()));
       }
       responseObserver.onCompleted();
     } catch (final Exception exception) {

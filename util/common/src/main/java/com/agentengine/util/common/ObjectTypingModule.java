@@ -1,11 +1,7 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.cfg.MapperConfig;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator.Validity;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
@@ -23,19 +19,10 @@ public final class ObjectTypingModule extends SimpleModule {
   @Override
   public void setupModule(final SetupContext context) {
     super.setupModule(context);
-    context
-        .<ObjectMapper>getOwner()
-        .activateDefaultTyping(
-            new PolymorphicTypeValidator.Base() {
-              @Override
-              public Validity validateSubClassName(
-                  final MapperConfig<?> config,
-                  final JavaType baseType,
-                  final String subClassName) {
-                return Validity.ALLOWED;
-              }
-            },
-            ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT,
-            JsonTypeInfo.As.PROPERTY);
+    final ObjectMapper mapper = context.getOwner();
+    mapper.activateDefaultTyping(
+        AllowAllPolymorphicTypeValidator.INSTANCE,
+        ObjectMapper.DefaultTyping.JAVA_LANG_OBJECT,
+        JsonTypeInfo.As.PROPERTY);
   }
 }

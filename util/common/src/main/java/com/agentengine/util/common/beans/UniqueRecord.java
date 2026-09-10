@@ -2,7 +2,8 @@ package com.agentengine.util.common.beans;
 
 import java.util.UUID;
 
-public class UniqueRecord<T> extends BaseEntity {
+public final class UniqueRecord<T> extends BaseEntity {
+
   private T record;
 
   public UniqueRecord() {}

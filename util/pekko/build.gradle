@@ -28,4 +28,5 @@ dependencies {
     testImplementation libs.pekko.testkit
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core
+    testImplementation testFixtures(project(':util:common'))
 }

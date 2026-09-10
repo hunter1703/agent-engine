@@ -44,7 +44,7 @@ public class MicroServiceClientProviderImpl implements MicroServiceClientProvide
 
   @Inject
   public MicroServiceClientProviderImpl(
-      final InfraConfigService infraConfigService, final GrpcJsonCodec jsonCodec) {
+      final InfraConfigService infraConfigService, final JsonCodec jsonCodec) {
     this.infraConfigService = infraConfigService;
     this.jsonCodec = jsonCodec;
   }

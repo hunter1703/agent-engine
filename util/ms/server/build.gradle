@@ -19,4 +19,5 @@ dependencies {
     testImplementation libs.assertj.core
     testImplementation 'io.grpc:grpc-testing:1.79.0'
     testImplementation 'io.grpc:grpc-inprocess:1.79.0'
+    testImplementation testFixtures(project(':util:common'))
 }

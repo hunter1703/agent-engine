@@ -29,6 +29,11 @@ deploy/connections.json
 # Python virtual environment
 .venv/
 uv.lock
+__pycache__/
+*.pyc
+
+# Editor/scratch backup files
+*.bak
 
 # Helm downloaded dependency tarballs and lock files (reproducible via helm dependency update)
 deploy/k8s/*/charts/
