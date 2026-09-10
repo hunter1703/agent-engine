@@ -202,7 +202,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                           returnType instanceof ParameterizedType
                               ? ((ParameterizedType) returnType).getActualTypeArguments()[0]
                               : Object.class;
-                      send(responseObserver, jsonCodec.serializeBatch(batch, elementType));
+                      final ByteString.Output out = ByteString.newOutput();
+                      jsonCodec.serializeBatch(batch, elementType, out);
+                      send(responseObserver, out.toByteString());
                     },
                     err -> {
                       LOG.error("Flowable error", err);
@@ -219,7 +221,9 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         return;
       }
       if (result != null) {
-        send(responseObserver, jsonCodec.serialize(result, method.getGenericReturnType()));
+        final ByteString.Output out = ByteString.newOutput();
+        jsonCodec.serialize(result, method.getGenericReturnType(), out);
+        send(responseObserver, out.toByteString());
       }
       responseObserver.onCompleted();
     } catch (final Exception exception) {
@@ -228,9 +232,8 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
     }
   }
 
-  private void send(final StreamObserver<Response> responseObserver, final String json) {
-    responseObserver.onNext(
-        Response.newBuilder().setPayload(ByteString.copyFromUtf8(json)).build());
+  private void send(final StreamObserver<Response> responseObserver, final ByteString payload) {
+    responseObserver.onNext(Response.newBuilder().setPayload(payload).build());
   }
 
   private static Status rootCauseStatus(final Throwable throwable) {
@@ -268,10 +271,10 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
       return new Object[paramCount];
     }
     LOG.debug(
-        "Deserializing args for {} with payload: {}", method, request.getPayload().toStringUtf8());
+        "Deserializing args for {} with payload size: {}", method, request.getPayload().size());
     final Object[] typedArgs =
         jsonCodec.deserializeBatch(
-            request.getPayload().toStringUtf8(), method.getGenericParameterTypes());
+            request.getPayload().newInput(), method.getGenericParameterTypes());
     if (typedArgs == null) {
       return new Object[paramCount];
     }

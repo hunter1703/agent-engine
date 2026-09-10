@@ -3,15 +3,20 @@ package com.agentengine.util.common;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * {@link JsonCodec#splitJsonArray} is a hand-rolled JSON-aware scan (no tree parse, no
- * re-serialize) with no prior test coverage -- these cover the string/escape/nesting edge cases a
- * naive comma-split would get wrong, verified by round-tripping each split element back through the
- * codec rather than comparing exact strings (robust to whitespace normalization).
+ * {@link JsonCodec#splitJsonArray} uses Jackson's own {@link com.fasterxml.jackson.core.JsonParser}
+ * for token boundaries (no tree parse, no re-serialize) with no prior test coverage -- these cover
+ * the string/escape/nesting edge cases a naive comma-split would get wrong, verified by
+ * round-tripping each split element back through the codec rather than comparing exact strings
+ * (robust to whitespace normalization).
  */
 class JsonCodecTest {
 
@@ -23,7 +28,7 @@ class JsonCodecTest {
   void blankInputReturnsEmptyList() {
     assertThat(codec().splitJsonArray("")).isEmpty();
     assertThat(codec().splitJsonArray("   ")).isEmpty();
-    assertThat(codec().splitJsonArray(null)).isEmpty();
+    assertThat(codec().splitJsonArray((String) null)).isEmpty();
   }
 
   @Test
@@ -154,5 +159,58 @@ class JsonCodecTest {
     for (int i = 0; i < original.size(); i++) {
       assertThat(codec.deserialize(parts.get(i), Integer.class)).isEqualTo(original.get(i));
     }
+  }
+
+  /**
+   * {@link JsonCodec#splitJsonArray(byte[])} slices by {@link
+   * com.fasterxml.jackson.core.JsonLocation#getByteOffset()} instead of {@code getCharOffset()} --
+   * covers the same edge cases as the {@code String} overload above (escapes, nesting, multi-byte
+   * UTF-8 content) via direct equivalence against it, since both must agree on element boundaries
+   * for the same logical input.
+   */
+  @ParameterizedTest
+  @MethodSource("splitJsonArrayInputs")
+  void byteArrayOverloadMatchesStringOverload(final String json) {
+    final DefaultJsonCodec codec = codec();
+
+    final List<String> fromString = codec.splitJsonArray(json);
+    final List<byte[]> fromBytes = codec.splitJsonArray(json.getBytes(StandardCharsets.UTF_8));
+
+    assertThat(fromBytes.stream().map(b -> new String(b, StandardCharsets.UTF_8)).toList())
+        .containsExactlyElementsOf(fromString);
+  }
+
+  private static Stream<String> splitJsonArrayInputs() {
+    return Stream.of(
+        "[]",
+        "[1]",
+        "[1,2.5,true,false,null,\"x\"]",
+        "[ 1 , 2 , 3 ]",
+        "[\"a,b\",\"c,d\"]",
+        "[\"a\\\"b\"]",
+        "[\"a\\\\\"]",
+        "[\"{not real}\",\"[not real]\"]",
+        "[\"\\u007B\",\"tail\"]",
+        "[[1,2],[3,4,5]]",
+        // multi-byte UTF-8 content (emoji, accented characters) -- byte offsets must still land
+        // on the correct element boundaries even though byte length differs from char length.
+        "[\"caf\\u00e9\",\"\\ud83d\\ude00 party\",\"tail\"]");
+  }
+
+  @Test
+  void byteArrayOverloadHandlesBlankAndEmptyInput() {
+    assertThat(codec().splitJsonArray((byte[]) null)).isEmpty();
+    assertThat(codec().splitJsonArray(new byte[0])).isEmpty();
+  }
+
+  @Test
+  void byteArrayOverloadNonArrayInputReturnsItselfAsTheOnlyElement() {
+    final DefaultJsonCodec codec = codec();
+    final byte[] json = codec.serialize(Map.of("a", 1)).getBytes(StandardCharsets.UTF_8);
+
+    final List<byte[]> parts = codec.splitJsonArray(json);
+
+    assertThat(parts).hasSize(1);
+    assertThat(parts.get(0)).isEqualTo(json);
   }
 }

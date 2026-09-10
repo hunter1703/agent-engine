@@ -8,8 +8,6 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerResponse;
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -81,20 +79,17 @@ public final class RestUtils {
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     for (final Object item : items) {
       out.writeBytes(DATA_PREFIX);
-      if (item instanceof CharBuffer rawJson) {
-        writeEncoded(out, rawJson);
+      // "raw" MicroService calls (getRaw()) hand back already-serialized JSON as bytes (see
+      // JsonCodec.splitJsonArray(byte[])) -- written straight through, no decode/re-encode.
+      if (item instanceof byte[] rawJsonBytes) {
+        out.writeBytes(rawJsonBytes);
+      } else if (item instanceof String rawJson) {
+        out.writeBytes(rawJson.getBytes(StandardCharsets.UTF_8));
       } else {
         out.writeBytes(jsonCodec.serialize(item).getBytes(StandardCharsets.UTF_8));
       }
       out.writeBytes(EVENT_SUFFIX);
     }
     return out.toByteArray();
-  }
-
-  private static void writeEncoded(final ByteArrayOutputStream out, final CharBuffer chars) {
-    final ByteBuffer encoded = StandardCharsets.UTF_8.encode(chars);
-    final byte[] bytes = new byte[encoded.remaining()];
-    encoded.get(bytes);
-    out.writeBytes(bytes);
   }
 }

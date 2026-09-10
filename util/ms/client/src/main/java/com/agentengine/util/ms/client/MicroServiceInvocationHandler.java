@@ -93,10 +93,12 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
           serviceClass.getSimpleName(),
           method.getName());
       final long start = System.currentTimeMillis();
-      final String json = jsonCodec.serializeBatch(args, method.getGenericParameterTypes());
+      final ByteString.Output out = ByteString.newOutput();
+      jsonCodec.serializeBatch(args, method.getGenericParameterTypes(), out);
       final long end = System.currentTimeMillis();
-      LOG.debug("[{}] Serialization took {}ms, payload : {}", requestId, (end - start), json);
-      builder.setPayload(ByteString.copyFromUtf8(json));
+      LOG.debug(
+          "[{}] Serialization took {}ms, payload size: {}", requestId, (end - start), out.size());
+      builder.setPayload(out.toByteString());
     }
     return builder.build();
   }
@@ -132,7 +134,7 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         CompletionStage.class.isAssignableFrom(method.getReturnType())
             ? firstTypeArgument(method.getGenericReturnType())
             : method.getGenericReturnType();
-    final Object result = jsonCodec.deserialize(response.getPayload().toStringUtf8(), declaredType);
+    final Object result = jsonCodec.deserialize(response.getPayload().newInput(), declaredType);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
@@ -198,10 +200,9 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
               batchCount.incrementAndGet();
               final List<?> batch =
                   raw
-                      ? jsonCodec.splitJsonArray(response.getPayload().toStringUtf8())
+                      ? jsonCodec.splitJsonArray(response.getPayload().toByteArray())
                       : (List<?>)
-                          jsonCodec.deserialize(
-                              response.getPayload().toStringUtf8(), declaredListType);
+                          jsonCodec.deserialize(response.getPayload().newInput(), declaredListType);
               itemCount.addAndGet(batch.size());
               return batch;
             })
