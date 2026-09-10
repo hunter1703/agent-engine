@@ -14,6 +14,7 @@ import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FlowableUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
@@ -22,8 +23,10 @@ import com.agentengine.util.common.exception.AssetNotFoundException;
 import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import com.agui.community.core.agent.Context;
 import com.agui.community.core.agent.RunAgentInput;
+import com.agui.community.core.event.CustomEvent;
 import com.agui.community.core.event.Event;
 import com.agui.community.core.message.Message;
+import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -34,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -153,7 +157,11 @@ public class AgentRestAPI {
     }
 
     final String threadId = StringUtils.isBlank(request.threadId()) ? null : request.threadId();
-    return runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request));
+    return FlowableUtils.withScheduled(
+        Flowable.fromPublisher(
+            runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request))),
+        TimeUnit.SECONDS.toMillis(15),
+        () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
   }
 
   @POST
