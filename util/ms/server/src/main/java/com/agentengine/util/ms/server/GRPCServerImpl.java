@@ -1,5 +1,6 @@
 package com.agentengine.util.ms.server;
 
+import com.agentengine.util.common.Defaults;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -291,9 +292,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
         ? new ServiceMethod(
             method, override.streamingBatchSize(), override.streamingBatchFlushIntervalMs())
         : new ServiceMethod(
-            method,
-            MicroServiceMethod.DEFAULT_STREAMING_BATCH_SIZE,
-            MicroServiceMethod.DEFAULT_STREAMING_BATCH_FLUSH_INTERVAL_MS);
+            method, Defaults.STREAMING_BATCH_SIZE, Defaults.STREAMING_BATCH_FLUSH_INTERVAL_MS);
   }
 
   private record ServiceEntry(Object bean, Map<String, ServiceMethod> methods) {

@@ -6,9 +6,11 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
+import com.agentengine.interfaces.rest.providers.RestJsonCodec;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FlowableUtils;
+import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -18,9 +20,12 @@ import com.agui.community.core.event.Event;
 import com.agui.community.core.interrupt.Resume;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
+import io.smallrye.mutiny.Uni;
+import io.vertx.core.http.HttpServerResponse;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +35,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestStreamElementType;
-import org.reactivestreams.Publisher;
 
 @Path("/v1/session")
 @Tag(name = "Session Stream", description = "Session event stream and resume APIs")
@@ -40,13 +44,16 @@ public class SessionRestAPI {
 
   private final RuntimeService runtimeService;
   private final SessionService sessionService;
+  private final JsonCodec jsonCodec;
 
   @Inject
   public SessionRestAPI(
       final SessionService sessionService,
-      final MicroServiceClientProvider microServiceClientProvider) {
+      final MicroServiceClientProvider microServiceClientProvider,
+      final RestJsonCodec jsonCodec) {
     this.sessionService = sessionService;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
+    this.jsonCodec = jsonCodec;
   }
 
   @GET
@@ -61,13 +68,16 @@ public class SessionRestAPI {
       content =
           @Content(mediaType = SERVER_SENT_EVENTS, schema = @Schema(implementation = Event.class)))
   @APIResponse(responseCode = "404", description = "Session not found")
-  public Publisher<Event> stream(
+  public Uni<Void> stream(
       @NotBlank @PathParam("sessionId") final String sessionId,
-      @QueryParam("liveOnly") boolean liveOnly) {
-    return FlowableUtils.withScheduled(
-        Flowable.fromPublisher(runtimeService.subscribeToSessionAgui(sessionId, liveOnly)),
-        TimeUnit.SECONDS.toMillis(15),
-        () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
+      @QueryParam("liveOnly") boolean liveOnly,
+      @Context final HttpServerResponse response) {
+    final Flowable<?> events =
+        FlowableUtils.withScheduled(
+            Flowable.fromPublisher(runtimeService.subscribeToSessionAgui(sessionId, liveOnly)),
+            TimeUnit.SECONDS.toMillis(15),
+            () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
+    return RestUtils.writeBatchedSSE(response, events, jsonCodec);
   }
 
   @POST

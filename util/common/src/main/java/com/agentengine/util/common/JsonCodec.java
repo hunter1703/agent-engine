@@ -1,16 +1,17 @@
 package com.agentengine.util.common;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -199,18 +200,43 @@ public abstract class JsonCodec {
     }
   }
 
-  public List<String> splitJsonArray(final String json) {
+  /**
+   * Splits a top-level JSON array into each element's own raw JSON text, without parsing into a
+   * tree, re-serializing, or even copying -- each element's span in {@code json} is already valid
+   * JSON, so rebuilding it via Jackson would only add cost, and a genuine copy ({@link
+   * String#substring}) is unnecessary work for a caller that (today, the only one) immediately
+   * encodes it to bytes and discards it -- {@link CharBuffer#wrap(CharSequence, int, int)} is a
+   * zero-copy view over the same backing array. A {@code List<String>} overload can be added
+   * alongside this one later if a caller that genuinely needs a standalone {@code String} (e.g. to
+   * retain past this call) shows up -- {@code JsonCodec} can have both.
+   *
+   * <p>Uses the mapper's own {@link JsonParser} purely for token boundaries (letting Jackson's own
+   * tokenizer -- not reimplemented logic -- handle strings/escapes/nesting correctly), then wraps
+   * the matching span directly out of the original text via {@link JsonLocation#getCharOffset()}.
+   * {@link JsonParser#getText()} is required before reading a scalar/string token's end location --
+   * Jackson defers actually scanning a token's text until it's asked for, so the location right
+   * after {@code nextToken()} on e.g. a string can point just past its opening quote, not its end
+   * (verified empirically, not assumed).
+   */
+  public List<CharBuffer> splitJsonArray(final String json) {
     if (StringUtils.isBlank(json)) {
       return List.of();
     }
-    try {
-      final JsonNode root = mapper.readTree(json);
-      if (!root.isArray()) {
-        return List.of(json);
+    try (JsonParser parser = mapper.getFactory().createParser(json)) {
+      if (parser.nextToken() != JsonToken.START_ARRAY) {
+        return List.of(CharBuffer.wrap(json));
       }
-      final List<String> elements = new ArrayList<>(root.size());
-      for (final JsonNode element : root) {
-        elements.add(mapper.writeValueAsString(element));
+      final List<CharBuffer> elements = new ArrayList<>();
+      JsonToken token;
+      while ((token = parser.nextToken()) != JsonToken.END_ARRAY) {
+        final JsonLocation start = parser.currentTokenLocation();
+        if (token == JsonToken.START_OBJECT || token == JsonToken.START_ARRAY) {
+          parser.skipChildren();
+        } else {
+          parser.getText();
+        }
+        final long end = parser.currentLocation().getCharOffset();
+        elements.add(CharBuffer.wrap(json, (int) start.getCharOffset(), (int) end));
       }
       return elements;
     } catch (final IOException exception) {

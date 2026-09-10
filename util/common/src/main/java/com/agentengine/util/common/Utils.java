@@ -17,6 +17,26 @@ public final class Utils {
 
   private Utils() {}
 
+  /** Builds a {@code List<elementType>} {@link Type}, e.g. for a single list-typed deserialize. */
+  public static Type listOf(final Type elementType) {
+    return new ParameterizedType() {
+      @Override
+      public Type[] getActualTypeArguments() {
+        return new Type[] {elementType};
+      }
+
+      @Override
+      public Type getRawType() {
+        return java.util.List.class;
+      }
+
+      @Override
+      public Type getOwnerType() {
+        return null;
+      }
+    };
+  }
+
   public static Class<?> getClass(final Type type) {
     if (type instanceof Class<?> clazz) {
       return clazz;

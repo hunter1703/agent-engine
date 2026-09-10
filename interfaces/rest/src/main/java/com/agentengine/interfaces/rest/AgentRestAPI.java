@@ -10,13 +10,11 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
+import com.agentengine.interfaces.rest.providers.RestJsonCodec;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
-import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.FlowableUtils;
-import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.*;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -28,6 +26,8 @@ import com.agui.community.core.event.Event;
 import com.agui.community.core.message.Message;
 import io.reactivex.rxjava3.core.Flowable;
 import io.smallrye.common.annotation.RunOnVirtualThread;
+import io.smallrye.mutiny.Uni;
+import io.vertx.core.http.HttpServerResponse;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -44,7 +44,6 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestStreamElementType;
-import org.reactivestreams.Publisher;
 
 @Path("/v1/agent")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -57,15 +56,18 @@ public class AgentRestAPI {
   private final AgentService agentService;
   private final RuntimeService runtimeService;
   private final SchedulerService schedulerService;
+  private final JsonCodec jsonCodec;
 
   @Inject
   public AgentRestAPI(
       final AgentService agentService,
       final SchedulerService schedulerService,
-      final MicroServiceClientProvider microServiceClientProvider) {
+      final MicroServiceClientProvider microServiceClientProvider,
+      final RestJsonCodec jsonCodec) {
     this.agentService = agentService;
     this.schedulerService = schedulerService;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
+    this.jsonCodec = jsonCodec;
   }
 
   @POST
@@ -150,18 +152,22 @@ public class AgentRestAPI {
   @APIResponse(responseCode = "404", description = "Agent not found")
   @Produces(SERVER_SENT_EVENTS)
   @RestStreamElementType(APPLICATION_JSON)
-  public Publisher<Event> invoke(
-      @NotBlank @PathParam("agentId") final String agentId, @Valid final RunAgentInput request) {
+  public Uni<Void> invoke(
+      @NotBlank @PathParam("agentId") final String agentId,
+      @Valid final RunAgentInput request,
+      @jakarta.ws.rs.core.Context final HttpServerResponse response) {
     if (agentService.getAgent(agentId) == null) {
       throw new AssetNotFoundException(AssetClass.AGENT, agentId);
     }
 
     final String threadId = StringUtils.isBlank(request.threadId()) ? null : request.threadId();
-    return FlowableUtils.withScheduled(
-        Flowable.fromPublisher(
-            runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request))),
-        TimeUnit.SECONDS.toMillis(15),
-        () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
+    final Flowable<?> events =
+        FlowableUtils.withScheduled(
+            Flowable.fromPublisher(
+                runtimeService.startSessionAgui(agentId, threadId, extractUserMessage(request))),
+            TimeUnit.SECONDS.toMillis(15),
+            () -> new CustomEvent("keep_alive", Map.of("timestamp", System.currentTimeMillis())));
+    return RestUtils.writeBatchedSSE(response, events, jsonCodec);
   }
 
   @POST

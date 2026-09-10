@@ -2,6 +2,7 @@ package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
@@ -156,15 +157,9 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   //
   // Each Response payload is a JSON-encoded batch, not a single item — flatMapIterable unpacks
   // it back into the individual-item Flowable callers expect.
-  /**
-   * {@code raw}: for a caller that is itself just a thin passthrough (e.g. a REST endpoint
-   * immediately re-emitting each item as its own SSE message) — splits each batch's JSON array back
-   * into its elements' raw JSON text instead of binding them to a Java type, since the caller is
-   * about to re-serialize them to JSON right back out anyway. Item/batch counts are still tracked
-   * the same way either way.
-   */
   private Flowable<?> streamingCall(Request request, Method method, boolean raw) {
     final Type declaredItemType = firstTypeArgument(method.getGenericReturnType());
+    final Type declaredListType = Utils.listOf(declaredItemType);
     final Span span = Span.current();
     final AtomicLong itemCount = new AtomicLong();
     final AtomicLong batchCount = new AtomicLong();
@@ -201,15 +196,12 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         .flatMapIterable(
             response -> {
               batchCount.incrementAndGet();
-              final List<?> batch;
-              if (raw) {
-                batch = jsonCodec.splitJsonArray(response.getPayload().toStringUtf8());
-              } else {
-                batch =
-                    jsonCodec.splitJsonArray(response.getPayload().toStringUtf8()).stream()
-                        .map(elementJson -> jsonCodec.deserialize(elementJson, declaredItemType))
-                        .collect(Collectors.toList());
-              }
+              final List<?> batch =
+                  raw
+                      ? jsonCodec.splitJsonArray(response.getPayload().toStringUtf8())
+                      : (List<?>)
+                          jsonCodec.deserialize(
+                              response.getPayload().toStringUtf8(), declaredListType);
               itemCount.addAndGet(batch.size());
               return batch;
             })
