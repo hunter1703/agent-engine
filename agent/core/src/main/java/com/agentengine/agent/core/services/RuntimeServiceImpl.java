@@ -300,11 +300,16 @@ public class RuntimeServiceImpl implements RuntimeService {
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
+    // EventChannel only guarantees at-least-once delivery (see its javadoc) -- dedup by stable
+    // ADK event ID, same as subscribeToSession's liveEvents, so a redelivered event doesn't get
+    // double-counted by SessionEventUtils.compactEventStream's naive text concatenation.
+    final Set<String> seen = ConcurrentHashMap.newKeySet();
     final ConnectableFlowable<SessionEvent> liveSource =
         Flowable.fromPublisher(
                 eventChannel.subscribe(rootSessionId).toCompletableFuture().join().publisher())
             .map(SequencedEvent::payload)
             .cast(SessionEvent.class)
+            .filter(event -> seen.add(event.getId()))
             .takeWhile(event -> !event.isTerminal())
             .replay();
     final Disposable connection = liveSource.connect();
