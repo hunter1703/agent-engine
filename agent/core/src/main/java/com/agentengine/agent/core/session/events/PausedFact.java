@@ -2,50 +2,65 @@ package com.agentengine.agent.core.session.events;
 
 public final class PausedFact extends SessionFact {
 
-  /** Non-null for child pauses; null for self pauses. */
-  private String sessionId;
-
-  /**
-   * For self-pauses: the {@code adk_request_confirmation} wrapper call ID, which is also the {@code
-   * interruptId} the client echoes back. For child pauses: the interrupt ID propagated from the
-   * child.
-   */
-  private String correlationId;
+  /** The child session this pause concerns */
+  private String childSessionId;
 
   private String interruptId;
   private boolean internal;
+  private String runId;
+  private int turnId;
 
   public PausedFact() {}
 
   private PausedFact(
-      final String sessionId,
-      final String correlationId,
+      final String childSessionId,
       final String interruptId,
-      final boolean internal) {
-    this.sessionId = sessionId;
-    this.correlationId = correlationId;
+      final boolean internal,
+      final String runId,
+      final int turnId) {
+    this.childSessionId = childSessionId;
     this.interruptId = interruptId;
     this.internal = internal;
+    this.runId = runId;
+    this.turnId = turnId;
   }
 
-  public static PausedFact childPaused(final String sessionId, final String interruptId) {
-    return new PausedFact(sessionId, null, interruptId, false);
+  public static PausedFact childPaused(final String childSessionId, final String interruptId) {
+    return new PausedFact(childSessionId, interruptId, false, null, 0);
   }
 
-  public static PausedFact externalSelfPaused(final String interruptId) {
-    return new PausedFact(null, null, interruptId, false);
+  public static PausedFact externalSelfPaused(
+      final String interruptId, final String runId, final int turnId) {
+    return new PausedFact(null, interruptId, false, runId, turnId);
   }
 
-  public static PausedFact internalSelfPause(final String correlationId, final String interruptId) {
-    return new PausedFact(null, correlationId, interruptId, true);
+  public static PausedFact internalSelfPause(
+      final String childSessionId, final String interruptId, final String runId, final int turnId) {
+    return new PausedFact(childSessionId, interruptId, true, runId, turnId);
   }
 
-  public String getSessionId() {
-    return sessionId;
+  public String getRunId() {
+    return runId;
   }
 
-  public void setSessionId(final String sessionId) {
-    this.sessionId = sessionId;
+  public void setRunId(final String runId) {
+    this.runId = runId;
+  }
+
+  public int getTurnId() {
+    return turnId;
+  }
+
+  public void setTurnId(final int turnId) {
+    this.turnId = turnId;
+  }
+
+  public String getChildSessionId() {
+    return childSessionId;
+  }
+
+  public void setChildSessionId(final String childSessionId) {
+    this.childSessionId = childSessionId;
   }
 
   public String getInterruptId() {
@@ -62,13 +77,5 @@ public final class PausedFact extends SessionFact {
 
   public void setInternal(final boolean internal) {
     this.internal = internal;
-  }
-
-  public String getCorrelationId() {
-    return correlationId;
-  }
-
-  public void setCorrelationId(final String correlationId) {
-    this.correlationId = correlationId;
   }
 }

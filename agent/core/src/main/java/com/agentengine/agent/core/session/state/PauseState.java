@@ -7,103 +7,120 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.*;
 
 public record PauseState(
-    Set<String> pendingExternalSelfInterruptIds,
+    Map<String, TurnRef> pendingExternalSelfInterrupts,
     Map<String, ResumeRequest> receivedSelfResumes,
     Map<String, String> pendingInterruptIdVsChildSessionId,
-    Map<String, String> correlationIdVsPendingInternalInterruptId) {
+    Map<String, InternalInterrupt> childSessionIdVsPendingInternalInterrupt) {
+
   public PauseState() {
-    this(new HashSet<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+    this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
   }
 
   @JsonCreator
   public PauseState(
-      @JsonProperty("pendingExternalSelfInterruptIds")
-          final Set<String> pendingExternalSelfInterruptIds,
+      @JsonProperty("pendingExternalSelfInterrupts")
+          final Map<String, TurnRef> pendingExternalSelfInterrupts,
       @JsonProperty("receivedSelfResumes") final Map<String, ResumeRequest> receivedSelfResumes,
       @JsonProperty("pendingInterruptIdVsChildSessionId")
           final Map<String, String> pendingInterruptIdVsChildSessionId,
-      @JsonProperty("correlationIdVsPendingInternalInterruptId")
-          final Map<String, String> correlationIdVsPendingInternalInterruptId) {
-    this.pendingExternalSelfInterruptIds =
-        pendingExternalSelfInterruptIds == null
-            ? new HashSet<>()
-            : new HashSet<>(pendingExternalSelfInterruptIds);
+      @JsonProperty("childSessionIdVsPendingInternalInterrupt")
+          final Map<String, InternalInterrupt> childSessionIdVsPendingInternalInterrupt) {
+    this.pendingExternalSelfInterrupts =
+        CollectionUtils.nullSafeMutableMap(pendingExternalSelfInterrupts);
     this.receivedSelfResumes = CollectionUtils.nullSafeMutableMap(receivedSelfResumes);
     this.pendingInterruptIdVsChildSessionId =
         CollectionUtils.nullSafeMutableMap(pendingInterruptIdVsChildSessionId);
-    this.correlationIdVsPendingInternalInterruptId =
-        CollectionUtils.nullSafeMutableMap(correlationIdVsPendingInternalInterruptId);
+    this.childSessionIdVsPendingInternalInterrupt =
+        CollectionUtils.nullSafeMutableMap(childSessionIdVsPendingInternalInterrupt);
   }
 
   public PauseState withChildPaused(final String childSessionId, final String interruptId) {
     final Map<String, String> updated = new HashMap<>(pendingInterruptIdVsChildSessionId);
     updated.put(interruptId, childSessionId);
     return new PauseState(
-        pendingExternalSelfInterruptIds,
+        pendingExternalSelfInterrupts,
         receivedSelfResumes,
         updated,
-        correlationIdVsPendingInternalInterruptId);
+        childSessionIdVsPendingInternalInterrupt);
   }
 
-  public PauseState withSelfPaused(final String interruptId) {
-    final Set<String> updated = new HashSet<>(pendingExternalSelfInterruptIds);
-    updated.add(interruptId);
+  public PauseState withSelfPaused(final String interruptId, final String runId, final int turnId) {
+    final Map<String, TurnRef> updated = new HashMap<>(pendingExternalSelfInterrupts);
+    updated.put(interruptId, new TurnRef(runId, turnId));
     return new PauseState(
         updated,
         receivedSelfResumes,
         pendingInterruptIdVsChildSessionId,
-        correlationIdVsPendingInternalInterruptId);
+        childSessionIdVsPendingInternalInterrupt);
   }
 
   public PauseState withSelfResumed(final ResumeRequest resumeRequest) {
     final String id = resumeRequest.getInterruptId();
     final Map<String, ResumeRequest> updatedReceived = new HashMap<>(receivedSelfResumes);
     updatedReceived.put(id, resumeRequest);
-    if (pendingExternalSelfInterruptIds.contains(id) || receivedSelfResumes.containsKey(id)) {
-      final Set<String> updatedPending = new HashSet<>(pendingExternalSelfInterruptIds);
+    if (pendingExternalSelfInterrupts.containsKey(id) || receivedSelfResumes.containsKey(id)) {
+      final Map<String, TurnRef> updatedPending = new HashMap<>(pendingExternalSelfInterrupts);
       updatedPending.remove(id);
       return new PauseState(
           updatedPending,
           updatedReceived,
           pendingInterruptIdVsChildSessionId,
-          correlationIdVsPendingInternalInterruptId);
-    } else {
-      final Map<String, String> updatedPending =
-          new HashMap<>(correlationIdVsPendingInternalInterruptId);
-      correlationIdVsPendingInternalInterruptId.entrySet().stream()
-          .filter(entry -> Objects.equals(entry.getValue(), id))
-          .map(Map.Entry::getKey)
-          .findFirst()
-          .ifPresent(updatedPending::remove);
-      return new PauseState(
-          pendingExternalSelfInterruptIds,
-          updatedReceived,
-          pendingInterruptIdVsChildSessionId,
-          updatedPending);
+          childSessionIdVsPendingInternalInterrupt);
     }
+    final Map<String, InternalInterrupt> updatedPending =
+        new HashMap<>(childSessionIdVsPendingInternalInterrupt);
+    childSessionIdVsPendingInternalInterrupt.entrySet().stream()
+        .filter(entry -> Objects.equals(entry.getValue().interruptId(), id))
+        .map(Map.Entry::getKey)
+        .findFirst()
+        .ifPresent(updatedPending::remove);
+    return new PauseState(
+        pendingExternalSelfInterrupts,
+        updatedReceived,
+        pendingInterruptIdVsChildSessionId,
+        updatedPending);
   }
 
   public PauseState withChildResumed(final String interruptId) {
     final Map<String, String> updated = new HashMap<>(pendingInterruptIdVsChildSessionId);
     updated.remove(interruptId);
     return new PauseState(
-        pendingExternalSelfInterruptIds,
+        pendingExternalSelfInterrupts,
         receivedSelfResumes,
         updated,
-        correlationIdVsPendingInternalInterruptId);
+        childSessionIdVsPendingInternalInterrupt);
   }
 
-  public PauseState withInternalSelfPause(String correlationId, final String interruptId) {
-    final Map<String, String> updated = new HashMap<>(correlationIdVsPendingInternalInterruptId);
-    updated.put(correlationId, interruptId);
+  public PauseState withInternalSelfPause(
+      final String childSessionId, final String interruptId, final String runId, final int turnId) {
+    final Map<String, InternalInterrupt> updated =
+        new HashMap<>(childSessionIdVsPendingInternalInterrupt);
+    updated.put(childSessionId, new InternalInterrupt(interruptId, new TurnRef(runId, turnId)));
     return new PauseState(
-        pendingExternalSelfInterruptIds,
+        pendingExternalSelfInterrupts,
         receivedSelfResumes,
         pendingInterruptIdVsChildSessionId,
         updated);
   }
 
+  // will not discard if already received resume
+  public PauseState withInterruptDiscarded(final String interruptId) {
+    final Map<String, TurnRef> updatedExternal = new HashMap<>(pendingExternalSelfInterrupts);
+    updatedExternal.remove(interruptId);
+    final Map<String, InternalInterrupt> updatedInternal =
+        new HashMap<>(childSessionIdVsPendingInternalInterrupt);
+    updatedInternal
+        .entrySet()
+        .removeIf(e -> Objects.equals(e.getValue().interruptId(), interruptId));
+    return new PauseState(
+        updatedExternal, receivedSelfResumes, pendingInterruptIdVsChildSessionId, updatedInternal);
+  }
+
   public String getPausedChild(final String interruptId) {
     return pendingInterruptIdVsChildSessionId.get(interruptId);
   }
+
+  public record TurnRef(String runId, int turnId) {}
+
+  public record InternalInterrupt(String interruptId, TurnRef turnRef) {}
 }

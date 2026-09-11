@@ -1,3 +1,3 @@
 package com.agentengine.agent.core.session.state;
 
-public record CommittedTurn(String turnId, long startSequence, int count, String lastEventId) {}
+public record CommittedTurn(int turnId, int startSequence, int count, String lastEventId) {}

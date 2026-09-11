@@ -14,34 +14,14 @@ import com.agentengine.util.common.ExceptionUtils;
 import com.google.adk.agents.RunConfig;
 import com.google.adk.runner.Runner;
 import com.google.genai.types.Content;
-import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.Collection;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Session-scoped adapter around ADK {@link Runner}. */
 public final class SessionRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SessionRunner.class);
-  private static final ExecutorService RUN_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
-  private static final Scheduler SCHEDULER = Schedulers.from(RUN_EXECUTOR);
-
-  static {
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  try {
-                    RUN_EXECUTOR.shutdownNow();
-                  } catch (final Exception exception) {
-                    // best-effort shutdown
-                  }
-                }));
-  }
 
   private final String sessionId;
   private final ActorRef<SessionCommand> sessionActor;
@@ -62,7 +42,6 @@ public final class SessionRunner {
 
   public synchronized void start(final UserMessage userMessage, final ResourceGrants grants) {
     LOG.debug("[USER_MESSAGE_TRACE][{}] SessionRunner.start() called", sessionId);
-    cancel();
 
     final Content userContent =
         ContentUtils.buildUserContent(ContentUtils.textParts(userMessage.parts()));
@@ -70,7 +49,6 @@ public final class SessionRunner {
     disposable =
         runner
             .runAsync(AgentSession.DEFAULT_USER_ID, sessionId, userContent, runConfig(grants, true))
-            .subscribeOn(SCHEDULER)
             .doOnNext(
                 event -> {
                   LOG.debug(
@@ -103,7 +81,6 @@ public final class SessionRunner {
 
   public synchronized void resume(
       final Collection<ResumeRequest> resumeRequests, final ResourceGrants grants) {
-    cancel();
     disposable =
         runner
             .runAsync(
@@ -111,7 +88,6 @@ public final class SessionRunner {
                 sessionId,
                 ContentUtils.buildResumeContent(resumeRequests),
                 runConfig(grants, false))
-            .subscribeOn(SCHEDULER)
             .doOnNext(
                 event ->
                     LOG.debug(
@@ -147,8 +123,8 @@ public final class SessionRunner {
   private static RunConfig runConfig(final ResourceGrants grants, final boolean newRun) {
     final RunConfig base =
         RunConfig.builder()
-            .setToolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
-            .setStreamingMode(RunConfig.StreamingMode.SSE)
+            .toolExecutionMode(RunConfig.ToolExecutionMode.PARALLEL)
+            .streamingMode(RunConfig.StreamingMode.SSE)
             .build();
     return grants.isEmpty() ? base : new ExtendedRunConfig(base, grants, newRun);
   }

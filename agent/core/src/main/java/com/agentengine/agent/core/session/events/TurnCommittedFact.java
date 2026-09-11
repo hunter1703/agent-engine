@@ -3,14 +3,14 @@ package com.agentengine.agent.core.session.events;
 public final class TurnCommittedFact extends SessionFact {
 
   private String runId;
-  private String turnId;
+  private int turnId;
   private String lastEventId;
   private int eventCount;
 
   public TurnCommittedFact() {}
 
   public TurnCommittedFact(
-      final String runId, final String turnId, final String lastEventId, final int eventCount) {
+      final String runId, final int turnId, final String lastEventId, final int eventCount) {
     this.runId = runId;
     this.turnId = turnId;
     this.lastEventId = lastEventId;
@@ -25,11 +25,11 @@ public final class TurnCommittedFact extends SessionFact {
     this.runId = runId;
   }
 
-  public String getTurnId() {
+  public int getTurnId() {
     return turnId;
   }
 
-  public void setTurnId(final String turnId) {
+  public void setTurnId(final int turnId) {
     this.turnId = turnId;
   }
 

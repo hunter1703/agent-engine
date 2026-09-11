@@ -69,10 +69,10 @@ public record SessionActorState(
    * always exactly that turn's start sequence plus its event count, so keeping a separate field
    * would just be a second place for the same value to drift.
    */
-  public long nextSequence() {
+  public int nextSequence() {
     final RunState current = currentRun();
     if (current == null) {
-      return 0L;
+      return 0;
     }
     final CommittedTurn lastTurn = current.lastCommittedTurn();
     return lastTurn != null ? lastTurn.startSequence() + lastTurn.count() : current.startSequence();
@@ -105,13 +105,14 @@ public record SessionActorState(
   }
 
   public SessionActorState withNewRun(
-      final UniqueRecord<UserMessage> message, final long messageTimestamp) {
+      final UniqueRecord<UserMessage> message, final long messagePickedTimestamp) {
     final String runId = message != null ? message.getId() : null;
     final ResourceGrants incomingGrants = message != null ? message.getRecord().grants() : null;
     if (!runs.isEmpty()) {
       runs.set(runs.size() - 1, runs.getLast().finished());
     }
-    runs.add(new RunState(runId, message, messageTimestamp, nextSequence(), null, null));
+    runs.add(
+        new RunState(runId, message, messagePickedTimestamp, nextSequence(), null, Set.of(), null));
     return new SessionActorState(
         sessionState,
         queue,
@@ -154,7 +155,7 @@ public record SessionActorState(
    * the turn's events were assigned sequence numbers.
    */
   public SessionActorState withCommittedTurn(
-      final String turnId, final int count, final String lastEventId) {
+      final int turnId, final int count, final String lastEventId) {
     final CommittedTurn newTurn = new CommittedTurn(turnId, nextSequence(), count, lastEventId);
     runs.set(runs.size() - 1, runs.getLast().withCommittedTurn(newTurn));
     return new SessionActorState(
@@ -175,7 +176,7 @@ public record SessionActorState(
    * SessionEvent} rows from and to fold into a {@link
    * com.agentengine.agent.core.session.events.RollbackFact}.
    */
-  public Long findRunStartSequence(final String runId) {
+  public Integer findRunStartSequence(final String runId) {
     for (final RunState run : runs) {
       if (Objects.equals(run.runId(), runId)) {
         return run.startSequence();
@@ -190,7 +191,7 @@ public record SessionActorState(
    * {@code runId} that never started is a no-op.
    */
   public SessionActorState withRollback(final String runId) {
-    final Long rollbackSequence = findRunStartSequence(runId);
+    final Integer rollbackSequence = findRunStartSequence(runId);
     if (rollbackSequence == null) {
       return this;
     }
@@ -240,14 +241,15 @@ public record SessionActorState(
         grants);
   }
 
-  public SessionActorState selfPaused(final String interruptId) {
+  public SessionActorState selfPaused(
+      final String interruptId, final String runId, final int turnId) {
     return new SessionActorState(
         SessionState.PAUSED,
         queue,
         childRegistry,
         startingChildren,
         topology,
-        pauseState.withSelfPaused(interruptId),
+        pauseState.withSelfPaused(interruptId, runId, turnId),
         runs,
         lastRollback,
         grants);
@@ -259,20 +261,64 @@ public record SessionActorState(
 
   public boolean isSelfInterrupt(final ResumeRequest resumeRequest) {
     return isExternalSelfInterrupt(resumeRequest)
-        || pauseState
-            .correlationIdVsPendingInternalInterruptId()
-            .containsValue(resumeRequest.getInterruptId());
+        || pauseState.childSessionIdVsPendingInternalInterrupt().values().stream()
+            .anyMatch(
+                interrupt ->
+                    Objects.equals(interrupt.interruptId(), resumeRequest.getInterruptId()));
   }
 
   public boolean isExternalSelfInterrupt(final ResumeRequest resumeRequest) {
     final String id = resumeRequest.getInterruptId();
-    return pauseState.pendingExternalSelfInterruptIds().contains(id)
+    return pauseState.pendingExternalSelfInterrupts().containsKey(id)
         || pauseState.receivedSelfResumes().containsKey(id);
   }
 
   public boolean allInterruptsAnswered() {
-    return CollectionUtils.isEmpty(pauseState.pendingExternalSelfInterruptIds())
-        && CollectionUtils.isEmpty(pauseState.correlationIdVsPendingInternalInterruptId());
+    return CollectionUtils.isEmpty(pauseState.pendingExternalSelfInterrupts())
+        && CollectionUtils.isEmpty(pauseState.childSessionIdVsPendingInternalInterrupt());
+  }
+
+  private Map<String, PauseState.TurnRef> pendingSelfInterrupts() {
+    final Map<String, PauseState.TurnRef> pending =
+        new HashMap<>(pauseState.pendingExternalSelfInterrupts());
+    pauseState
+        .childSessionIdVsPendingInternalInterrupt()
+        .values()
+        .forEach(interrupt -> pending.put(interrupt.interruptId(), interrupt.turnRef()));
+    return pending;
+  }
+
+  /** Pending interrupt IDs whose own request event never committed to MongoDB. */
+  public Set<String> orphanedSelfInterruptIds() {
+    final RunState current = currentRun();
+    final Set<String> orphaned = new HashSet<>();
+    pendingSelfInterrupts()
+        .forEach(
+            (interruptId, ref) -> {
+              if (current == null
+                  || !Objects.equals(ref.runId(), current.runId())
+                  || !current.committedTurnIds().contains(ref.turnId())) {
+                orphaned.add(interruptId);
+              }
+            });
+    return orphaned;
+  }
+
+  public SessionActorState withInterruptsDiscarded(final Collection<String> interruptIds) {
+    PauseState updated = pauseState;
+    for (final String interruptId : interruptIds) {
+      updated = updated.withInterruptDiscarded(interruptId);
+    }
+    return new SessionActorState(
+        sessionState,
+        queue,
+        childRegistry,
+        startingChildren,
+        topology,
+        updated,
+        runs,
+        lastRollback,
+        grants);
   }
 
   public Collection<ResumeRequest> getAllReceivedResumes() {
@@ -280,14 +326,14 @@ public record SessionActorState(
   }
 
   public SessionActorState withInternalSelfPause(
-      final String correlationId, final String interruptId) {
+      final String childSessionId, final String interruptId, final String runId, final int turnId) {
     return new SessionActorState(
         SessionState.PAUSED,
         queue,
         childRegistry,
         startingChildren,
         topology,
-        pauseState.withInternalSelfPause(correlationId, interruptId),
+        pauseState.withInternalSelfPause(childSessionId, interruptId, runId, turnId),
         runs,
         lastRollback,
         grants);
@@ -295,12 +341,14 @@ public record SessionActorState(
 
   public boolean isPausedOnExternalInterrupts() {
     return sessionState == SessionState.PAUSED
-        && CollectionUtils.isNotEmpty(pauseState.pendingExternalSelfInterruptIds())
+        && CollectionUtils.isNotEmpty(pauseState.pendingExternalSelfInterrupts())
         && CollectionUtils.isNotEmpty(pauseState.pendingInterruptIdVsChildSessionId());
   }
 
-  public String getInternalInterruptId(final String correlationId) {
-    return pauseState().correlationIdVsPendingInternalInterruptId().get(correlationId);
+  public String getInternalInterruptId(final String childSessionId) {
+    final PauseState.InternalInterrupt interrupt =
+        pauseState().childSessionIdVsPendingInternalInterrupt().get(childSessionId);
+    return interrupt == null ? null : interrupt.interruptId();
   }
 
   public SessionActorState selfResume(final ResumeRequest resumeRequest) {
@@ -356,7 +404,7 @@ public record SessionActorState(
         startingChildren,
         topology,
         new PauseState(
-            new HashSet<>(),
+            new HashMap<>(),
             new HashMap<>(),
             pauseState.pendingInterruptIdVsChildSessionId(),
             new HashMap<>()),

@@ -9,6 +9,7 @@ import com.agentengine.agent.core.session.state.SessionTopology;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.google.adk.events.Event;
+import java.util.Set;
 import org.apache.pekko.actor.typed.ActorRef;
 
 /**
@@ -61,6 +62,8 @@ public interface SelfCommand extends SessionCommand {
   record SelfPauseCommand(SessionTopology topology, String interruptId) implements SelfCommand {}
 
   record StartNextQueuedMessageCommand() implements SelfCommand {}
+
+  record DiscardInterruptsCommand(Set<String> interruptIds) implements SelfCommand {}
 
   record ReapChildResultCommand(
       ActorRef<RunResult> replyTo,

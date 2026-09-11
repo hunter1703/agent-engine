@@ -76,12 +76,15 @@ public final class SessionActor
   private static final ExecutorService ASYNC_TASK_EXECUTOR =
       ThreadUtils.newVirtualThreadExecutor("session-async-task-");
 
+  private static final ExecutorService RUN_EXECUTOR =
+      ThreadUtils.newVirtualThreadExecutor("session-run-");
+
   private final ActorContext<SessionCommand> context;
   private final ActorRef<SessionCommand> self;
   private final int snapshotThreshold;
   private final SessionEventChannel eventChannel;
   private final List<Event> turnEvents = new LinkedList<>();
-  private String turnId;
+  private Integer turnId;
 
   /**
    * Interrupt IDs already fed to {@link #runner}'s current instance via {@code runner.resume}, so a
@@ -205,57 +208,98 @@ public final class SessionActor
                 Filters.and(
                     Filters.eq(SessionEvent.FIELD_SESSION_ID, sessionId),
                     Filters.gte(SessionEvent.FIELD_SEQUENCE, state.nextSequence()))));
-    final String rootSessionId = topology.rootSessionId();
     switch (sessionState) {
       case TRIGGERED_RUN -> {
-        // The crash landed before the first turn committed, so restart from the original message.
-        runner.start(
-            Objects.requireNonNull(state.currentRun()).message().getRecord(), state.grants());
+        // The crash-landed before the first turn committed, so restart from the original message.
+        final UserMessage message =
+            Objects.requireNonNull(state.currentRun()).message().getRecord();
+        RUN_EXECUTOR.execute(() -> runner.start(message, state.grants()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
       case CONTINUING -> {
         final Collection<ResumeRequest> resumeRequests = state.getAllReceivedResumes();
         resumeRequests.forEach(
             resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-        runner.resume(resumeRequests, state.grants());
+        RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, state.grants()));
         updateSessionStatus(state, SessionStatus.RUNNING);
       }
-      case RUNNING -> {
-        final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
-        final List<Event> lastCommitedEvents =
-            lastCommittedTurn == null
-                ? List.of()
-                : sessionEventsRepository.findTurnEvents(sessionId, lastCommittedTurn.turnId());
-        final int num = lastCommitedEvents.size();
-
-        for (int i = 0; i < num; i++) {
-          final SessionEvent sessionEvent =
-              SessionEventUtils.toSessionEvent(
-                  rootSessionId,
-                  topology.parentSessionId(),
-                  sessionId,
-                  lastCommittedTurn.turnId(),
-                  lastCommitedEvents.get(i),
-                  state.nextSequence() - num + i);
-          eventChannel.publish(rootSessionId, sessionEvent);
-        }
-
-        for (final StartingChild child : state.startingChildren()) {
-          self.tell(new StartChildCommand(child.agentId(), child.message(), null));
-        }
-        runner.start(UserMessage.ofText("continue"), state.grants());
-        updateSessionStatus(state, SessionStatus.RUNNING);
-      }
+      case RUNNING -> reRunFromLastCommittedTurn(state);
       case PAUSED -> {
-        if (!topology.isRoot()) {
-          for (final String interruptId : state.pauseState().pendingExternalSelfInterruptIds()) {
-            propagateSelfPauseToParent(topology, interruptId);
-          }
+        final Set<String> orphanedInterruptIds = state.orphanedSelfInterruptIds();
+        if (CollectionUtils.isNotEmpty(orphanedInterruptIds)) {
+          LOG.warn(
+              "Session {} recovered with {} orphaned pause(s) -- interrupt-request event(s) never"
+                  + " committed before a prior crash/restart; discarding: {}",
+              sessionId,
+              orphanedInterruptIds.size(),
+              orphanedInterruptIds);
+          self.tell(new DiscardInterruptsCommand(orphanedInterruptIds));
+        } else if (!state.allInterruptsAnswered()) {
+          stayPaused(state);
+        } else {
+          // Nothing pending: a prior crash-landed after InterruptsDiscardedFact persisted but
+          // before its thenRun ran.
+          reRunFromLastCommittedTurn(state);
         }
-        updateSessionStatus(state, SessionStatus.PAUSED);
       }
       case IDLE -> afterComplete(state, true);
     }
+  }
+
+  private void reRunFromLastCommittedTurn(final SessionActorState state) {
+    final SessionTopology topology = state.topology();
+    final String sessionId = topology.sessionId();
+    final String rootSessionId = topology.rootSessionId();
+    final CommittedTurn lastCommittedTurn = state.lastCommittedTurn();
+    final String lastCommittedTurnId =
+        lastCommittedTurn == null ? null : String.valueOf(lastCommittedTurn.turnId());
+    final List<Event> lastCommitedEvents =
+        lastCommittedTurn == null
+            ? List.of()
+            : sessionEventsRepository.findTurnEvents(sessionId, lastCommittedTurnId);
+    final int num = lastCommitedEvents.size();
+
+    for (int i = 0; i < num; i++) {
+      final SessionEvent sessionEvent =
+          SessionEventUtils.toSessionEvent(
+              rootSessionId,
+              topology.parentSessionId(),
+              sessionId,
+              lastCommittedTurnId,
+              lastCommitedEvents.get(i),
+              state.nextSequence() - num + i);
+      eventChannel.publish(rootSessionId, sessionEvent);
+    }
+
+    for (final StartingChild child : state.startingChildren()) {
+      self.tell(new StartChildCommand(child.agentId(), child.message(), null));
+    }
+    RUN_EXECUTOR.execute(() -> runner.start(UserMessage.ofText("continue"), state.grants()));
+    updateSessionStatus(state, SessionStatus.RUNNING);
+  }
+
+  private void stayPaused(final SessionActorState state) {
+    final SessionTopology topology = state.topology();
+    if (!topology.isRoot()) {
+      for (final String interruptId : state.pauseState().pendingExternalSelfInterrupts().keySet()) {
+        propagateSelfPauseToParent(topology, interruptId);
+      }
+    }
+    updateSessionStatus(state, SessionStatus.PAUSED);
+  }
+
+  private Effect<SessionFact, SessionActorState> discardInterrupts(
+      final SessionActorState state, final DiscardInterruptsCommand command) {
+    return Effect()
+        .persist(new InterruptsDiscardedFact(command.interruptIds()))
+        .thenRun(
+            newState -> {
+              if (!newState.allInterruptsAnswered()) {
+                stayPaused(newState);
+              } else {
+                reRunFromLastCommittedTurn(newState);
+              }
+            });
   }
 
   @Override
@@ -283,7 +327,8 @@ public final class SessionActor
         .onCommand(RollbackCommand.class, this::rollback)
         .onCommand(SelfPauseCommand.class, this::retryPropagateSelfPause)
         .onCommand(ReapChildCommand.class, this::reapChild)
-        .onCommand(ReapChildResultCommand.class, this::reapResult);
+        .onCommand(ReapChildResultCommand.class, this::reapResult)
+        .onCommand(DiscardInterruptsCommand.class, this::discardInterrupts);
 
     return builder.build();
   }
@@ -419,8 +464,8 @@ public final class SessionActor
         resumeRequest,
         state
             .pauseState()
-            .pendingExternalSelfInterruptIds()
-            .contains(resumeRequest.getInterruptId()));
+            .pendingExternalSelfInterrupts()
+            .containsKey(resumeRequest.getInterruptId()));
   }
 
   private Effect<SessionFact, SessionActorState> resumeChild(
@@ -445,8 +490,8 @@ public final class SessionActor
         command.resumeRequest(),
         state
             .pauseState()
-            .pendingExternalSelfInterruptIds()
-            .contains(command.resumeRequest().getInterruptId()));
+            .pendingExternalSelfInterrupts()
+            .containsKey(command.resumeRequest().getInterruptId()));
   }
 
   private Effect<SessionFact, SessionActorState> completeChild(
@@ -519,7 +564,7 @@ public final class SessionActor
             newState -> {
               resumeRequests.forEach(
                   resumeRequest -> resumedInterruptIds.add(resumeRequest.getInterruptId()));
-              runner.resume(resumeRequests, newState.grants());
+              RUN_EXECUTOR.execute(() -> runner.resume(resumeRequests, newState.grants()));
               LOG.debug(
                   "Continued run with resumes : {} for topology : {}",
                   JsonUtils.toJson(resumeRequests),
@@ -756,6 +801,11 @@ public final class SessionActor
         event.turnComplete().orElse(false),
         event.toJson());
 
+    if (turnEvents.isEmpty()) {
+      turnId = state.nextSequence();
+    }
+    final String currentRunId = Objects.requireNonNull(state.currentRun()).runId();
+
     // Detect self-pause: the adk_request_confirmation call ID is the interruptId the client
     // echoes back, so it is used directly as the pause key.
     final List<SessionFact> pauseFacts = new ArrayList<>();
@@ -777,24 +827,22 @@ public final class SessionActor
               getValueFromMap(
                   (Map<String, Object>) toolConfirmation.payload(),
                   AbstractAgentTool.CHILD_SESSION_ID);
-          pauseFacts.add(PausedFact.internalSelfPause(childSessionId, interruptId));
+          pauseFacts.add(
+              PausedFact.internalSelfPause(childSessionId, interruptId, currentRunId, turnId));
         }
       } else {
-        pauseFacts.add(PausedFact.externalSelfPaused(interruptId));
+        pauseFacts.add(PausedFact.externalSelfPaused(interruptId, currentRunId, turnId));
         externalInterruptIds.add(interruptId);
       }
     }
 
     LOG.debug("Publishing event : {}", JsonUtils.toJson(event));
-    if (turnEvents.isEmpty()) {
-      turnId = UUID.randomUUID().toString();
-    }
     turnEvents.add(event);
     LOG.debug(
         "[USER_MESSAGE_TRACE][{}] Added event to turnEvents queue. Queue size now: {}",
         state.topology().sessionId(),
         turnEvents.size());
-    final long eventSequence = state.nextSequence() + turnEvents.size() - 1;
+    final int eventSequence = state.nextSequence() + turnEvents.size() - 1;
 
     final SessionTopology topology = state.topology();
     final String rootSessionId = topology.rootSessionId();
@@ -803,7 +851,7 @@ public final class SessionActor
             rootSessionId,
             topology.parentSessionId(),
             topology.sessionId(),
-            turnId,
+            String.valueOf(turnId),
             event,
             eventSequence);
     EffectBuilder<SessionFact, SessionActorState> effectBuilder;
@@ -844,14 +892,17 @@ public final class SessionActor
         final boolean isFirstTurn = state.isFirstTurnOfCurrentRun();
         final RunState currentRun = Objects.requireNonNull(state.currentRun());
         final String invocationId = currentRun.runId();
-        final long timestamp = currentRun.messageTimestamp();
 
         if (isFirstTurn && currentRun.message() != null) {
           final UniqueRecord<UserMessage> userMessage = currentRun.message();
           final String author =
               topology.isRoot() ? Constants.AUTHOR_USER : topology.parentAgentId();
           events.add(
-              EventUtils.buildUserEvent(userMessage.getRecord(), invocationId, timestamp, author));
+              EventUtils.buildUserEvent(
+                  userMessage.getRecord(),
+                  invocationId,
+                  currentRun.messagePickedTimestamp(),
+                  author));
           LOG.debug(
               "[USER_MESSAGE_TRACE][{}] Run's opening turn - prepended user message event: '{}' with invocationId: {}",
               topology.sessionId(),
@@ -883,7 +934,7 @@ public final class SessionActor
                     rootSessionId,
                     topology.parentSessionId(),
                     topology.sessionId(),
-                    turnId,
+                    String.valueOf(turnId),
                     events,
                     eventSequence),
                 invocationId);
@@ -949,7 +1000,7 @@ public final class SessionActor
    * armed. Recovery re-arms it on restart, but nothing else proactively wakes a paused child, so if
    * the process dies mid-retry and this actor is never touched again, propagation is lost for good.
    * Closing that fully requires an external reconciliation sweep over PAUSED sessions with
-   * unresolved {@code pendingExternalSelfInterruptIds} — out of scope here; risk accepted as low
+   * unresolved {@code pendingExternalSelfInterrupts} — out of scope here; risk accepted as low
    * (needs message loss and no further restart/relocation of this actor for the pause's lifetime).
    */
   private void propagateSelfPauseToParent(
@@ -1009,7 +1060,7 @@ public final class SessionActor
    */
   private Effect<SessionFact, SessionActorState> retryPropagateSelfPause(
       final SessionActorState state, final SelfPauseCommand command) {
-    if (state.pauseState().pendingExternalSelfInterruptIds().contains(command.interruptId())) {
+    if (state.pauseState().pendingExternalSelfInterrupts().containsKey(command.interruptId())) {
       propagateSelfPauseToParent(command.topology(), command.interruptId());
     }
     return Effect().none();
@@ -1028,7 +1079,7 @@ public final class SessionActor
                       topology.rootSessionId(),
                       topology.parentSessionId(),
                       topology.sessionId(),
-                      turnId,
+                      Objects.toString(turnId, null),
                       new ArrayList<>(turnEvents),
                       newState.nextSequence());
               return new CurrentTurnEvents(events);
@@ -1042,7 +1093,7 @@ public final class SessionActor
           .none()
           .thenReply(command.replyTo(), _ -> new RollbackResult.Rejected("A run is in progress"));
     }
-    final Long rollbackSequence = state.findRunStartSequence(command.runId());
+    final Integer rollbackSequence = state.findRunStartSequence(command.runId());
     if (rollbackSequence == null) {
       // No run with this id ever started, so there is nothing to invalidate or reset back to.
       return Effect().none().thenReply(command.replyTo(), _ -> new RollbackResult.Applied());
@@ -1081,7 +1132,7 @@ public final class SessionActor
                   newState.topology().sessionId(),
                   nextMessage.getRecord());
               updateSessionStatus(newState, SessionStatus.RUNNING);
-              runner.start(nextMessage.getRecord(), newState.grants());
+              RUN_EXECUTOR.execute(() -> runner.start(nextMessage.getRecord(), newState.grants()));
             });
   }
 
@@ -1121,18 +1172,20 @@ public final class SessionActor
                   "paused fact for topology : {}, {}",
                   JsonUtils.toJson(state.topology()),
                   JsonUtils.toJson(fact));
-              final String childSessionId = fact.getSessionId();
+              final String childSessionId = fact.getChildSessionId();
               final String interruptId = fact.getInterruptId();
+              if (fact.isInternal()) {
+                return state.withInternalSelfPause(
+                    childSessionId, interruptId, fact.getRunId(), fact.getTurnId());
+              }
               if (childSessionId != null) {
                 return state.childPaused(childSessionId, interruptId);
               }
-              if (fact.isInternal()) {
-                String correlationId = fact.getCorrelationId();
-                correlationId = correlationId == null ? interruptId : correlationId;
-                return state.withInternalSelfPause(correlationId, interruptId);
-              }
-              return state.selfPaused(interruptId);
+              return state.selfPaused(interruptId, fact.getRunId(), fact.getTurnId());
             })
+        .onEvent(
+            InterruptsDiscardedFact.class,
+            (state, fact) -> state.withInterruptsDiscarded(fact.getInterruptIds()))
         .onEvent(TurnCommittedFact.class, SessionActor::applyCommittedTurn)
         .onEvent(RollbackFact.class, (state, fact) -> state.withRollback(fact.getRunId()))
         .onEvent(
@@ -1207,6 +1260,10 @@ public final class SessionActor
     if (isFailed) {
       LOG.warn("Run failed for session {}: {}", state.topology().sessionId(), error);
       final SessionTopology topology = state.topology();
+      if (turnId == null) {
+        turnId = state.nextSequence();
+      }
+      final String turnIdStr = String.valueOf(turnId);
       final List<SessionEvent> sessionEvents = new ArrayList<>();
       if (CollectionUtils.isNotEmpty(turnEvents)) {
         sessionEvents.addAll(
@@ -1214,18 +1271,17 @@ public final class SessionActor
                 topology.rootSessionId(),
                 topology.parentSessionId(),
                 topology.sessionId(),
-                turnId,
+                turnIdStr,
                 turnEvents,
                 state.nextSequence()));
       }
-
       final SessionEvent errorEvent =
           SessionEvent.error(
               topology.rootSessionId(),
               topology.sessionId(),
               error,
               state.nextSequence() + sessionEvents.size(),
-              turnId);
+              turnIdStr);
       sessionEvents.add(errorEvent);
       facts.add(commitTurn(sessionEvents, Objects.requireNonNull(state.currentRun()).runId()));
       turnEvents.clear();
@@ -1251,7 +1307,7 @@ public final class SessionActor
               sessionId,
               runResult.failureMessage(),
               Long.MAX_VALUE - 1,
-              state.lastCommittedTurn().turnId()));
+              String.valueOf(state.lastCommittedTurn().turnId())));
     }
     if (topology.isRoot()) {
       generateSessionTitle(rootSessionId, isRecovery);
@@ -1329,7 +1385,7 @@ public final class SessionActor
     }
     final List<Event> events =
         sessionEventsRepository.findTurnEvents(
-            state.topology().sessionId(), lastCommittedTurn.turnId());
+            state.topology().sessionId(), String.valueOf(lastCommittedTurn.turnId()));
     for (int i = events.size() - 1; i >= 0; i--) {
       final Optional<Content> content = events.get(i).content();
       if (content.isPresent()) {

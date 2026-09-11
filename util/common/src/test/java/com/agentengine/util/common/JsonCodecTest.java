@@ -24,6 +24,32 @@ class JsonCodecTest {
     return new DefaultJsonCodec(List.of());
   }
 
+  /**
+   * Strips the {@code @class} discriminator {@link ObjectTypingModule} deliberately stamps on every
+   * ambiguous {@code Object}-declared slot (see its javadoc -- needed for real payloads like {@code
+   * FunctionCall.args()}) -- recursively, since a value nested inside a {@code Map.of(...)}/{@code
+   * List.of(...)} built here is itself an {@code Object}-erased slot and gets its own stamp. These
+   * tests exist to verify {@code splitJsonArray}'s element-boundary detection, not full round-trip
+   * fidelity through default typing, so the discriminator is irrelevant to what they assert.
+   */
+  @SuppressWarnings("unchecked")
+  private static Object stripClassDiscriminator(final Object value) {
+    if (value instanceof Map<?, ?> map) {
+      final Map<String, Object> cleaned = new java.util.LinkedHashMap<>();
+      map.forEach(
+          (key, v) -> {
+            if (!"@class".equals(key)) {
+              cleaned.put((String) key, stripClassDiscriminator(v));
+            }
+          });
+      return cleaned;
+    }
+    if (value instanceof List<?> list) {
+      return list.stream().map(JsonCodecTest::stripClassDiscriminator).toList();
+    }
+    return value;
+  }
+
   @Test
   void blankInputReturnsEmptyList() {
     assertThat(codec().splitJsonArray("")).isEmpty();
@@ -116,8 +142,10 @@ class JsonCodecTest {
     final List<String> parts = codec.splitJsonArray(json);
 
     assertThat(parts).hasSize(2);
-    assertThat(codec.deserialize(parts.get(0), Map.class)).isEqualTo(Map.of("a", 1, "b", 2));
-    assertThat(codec.deserialize(parts.get(1), Map.class)).isEqualTo(Map.of("c", 3));
+    assertThat(stripClassDiscriminator(codec.deserialize(parts.get(0), Map.class)))
+        .isEqualTo(Map.of("a", 1, "b", 2));
+    assertThat(stripClassDiscriminator(codec.deserialize(parts.get(1), Map.class)))
+        .isEqualTo(Map.of("c", 3));
   }
 
   @Test
@@ -138,8 +166,10 @@ class JsonCodecTest {
     final List<String> parts = codec.splitJsonArray(json);
 
     assertThat(parts).hasSize(2);
-    assertThat(codec.deserialize(parts.get(0), Map.class)).isEqualTo(first);
-    assertThat(codec.deserialize(parts.get(1), Map.class)).isEqualTo(second);
+    assertThat(stripClassDiscriminator(codec.deserialize(parts.get(0), Map.class)))
+        .isEqualTo(first);
+    assertThat(stripClassDiscriminator(codec.deserialize(parts.get(1), Map.class)))
+        .isEqualTo(second);
   }
 
   @Test
