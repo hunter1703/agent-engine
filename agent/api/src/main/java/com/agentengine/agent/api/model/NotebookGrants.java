@@ -43,6 +43,34 @@ public record NotebookGrants(Map<String, Permission> grants) {
   }
 
   /**
+   * If {@code attemptedNotebookId} doesn't match any grant but is exactly the trailing segment of
+   * one granted notebook's full id (e.g. a caller passed the human-friendly short name it was
+   * given, like {@code "valiantkingsaga"}, instead of the full {@code
+   * "story_agent:abc:valiantkingsaga"} it was actually granted), returns that full id so an
+   * access-denied error can hand the model the exact corrected string to use next — cheaper for a
+   * weaker model to copy verbatim than to derive by parsing a grants list. Returns {@code null} if
+   * there's no such unambiguous match (including when {@code attemptedNotebookId} already matches a
+   * grant, since then the mismatch is something other than a shortened name).
+   */
+  public String suggestNotebookId(final String attemptedNotebookId) {
+    if (StringUtils.isBlank(attemptedNotebookId) || grants.containsKey(attemptedNotebookId)) {
+      return null;
+    }
+    final String suffix = ":" + attemptedNotebookId;
+    String match = null;
+    for (final String key : grants.keySet()) {
+      final String notebookId = NotebookUtils.isNoteId(key) ? NotebookUtils.notebookIdOf(key) : key;
+      if (notebookId != null && notebookId.endsWith(suffix)) {
+        if (match != null && !match.equals(notebookId)) {
+          return null; // ambiguous — more than one granted notebook ends with this short name
+        }
+        match = notebookId;
+      }
+    }
+    return match;
+  }
+
+  /**
    * Renders every grant as a human/LLM-readable, per-notebook bullet list — the exact notebook and
    * note ids to use, grouped by notebook. Shared by {@code ReminderPlugin}'s proactive brief and by
    * notebook tools' access-denied errors, so a caller that used a wrong id (e.g. dropping a

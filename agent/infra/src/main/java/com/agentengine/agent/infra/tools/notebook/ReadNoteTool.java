@@ -31,7 +31,12 @@ public final class ReadNoteTool extends AbstractNotebookTool {
   public ToolOutput<Map<String, Object>> execute(
       @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to read from.")
+      @ToolSchema(
+              name = Constants.ToolArgs.NOTEBOOK_ID,
+              description =
+                  "The notebook to read from. Must be the exact notebook_id string you were "
+                      + "granted (see your Notebook Access instructions) — never a shortened or "
+                      + "human-friendly name.")
           final String notebookId,
       @ToolSchema(
               name = Constants.ToolArgs.NOTE_TITLE,
@@ -41,11 +46,10 @@ public final class ReadNoteTool extends AbstractNotebookTool {
     final NotebookGrants grants = grantsOf(toolContext);
     if (!owner && !NotebookUtils.canRead(grants, notebookId, noteTitle)) {
       return ToolOutput.direct(
-          Map.of(
-              "error",
+          accessDeniedError(
+              toolContext,
               "Not granted read_note access to note '" + noteTitle + "' in this notebook.",
-              "notebook_access",
-              grantsSummary(toolContext)));
+              notebookId));
     }
     final Note note = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
     if (note == null) {

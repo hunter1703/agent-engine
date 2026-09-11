@@ -33,7 +33,10 @@ public final class CreateNoteTool extends AbstractNotebookTool {
           final ToolContext toolContext,
       @ToolSchema(
               name = Constants.ToolArgs.NOTEBOOK_ID,
-              description = "The notebook to add this note to.")
+              description =
+                  "The notebook to add this note to. Must be the exact notebook_id string you "
+                      + "were granted or that create_notebook returned — never a shortened or "
+                      + "human-friendly name.")
           final String notebookId,
       @ToolSchema(
               name = Constants.ToolArgs.NOTE_TITLE,
@@ -46,19 +49,15 @@ public final class CreateNoteTool extends AbstractNotebookTool {
     if (!owner) {
       if (noteExists && !NotebookUtils.canWrite(grants, notebookId, noteTitle)) {
         return ToolOutput.direct(
-            Map.of(
-                "error",
+            accessDeniedError(
+                toolContext,
                 "Note '" + noteTitle + "' already exists — not granted edit_note access to it.",
-                "notebook_access",
-                grantsSummary(toolContext)));
+                notebookId));
       }
       if (!noteExists && !NotebookUtils.canCreate(grants, notebookId)) {
         return ToolOutput.direct(
-            Map.of(
-                "error",
-                "Not granted create_note access to this notebook.",
-                "notebook_access",
-                grantsSummary(toolContext)));
+            accessDeniedError(
+                toolContext, "Not granted create_note access to this notebook.", notebookId));
       }
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
