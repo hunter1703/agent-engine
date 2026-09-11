@@ -14,7 +14,7 @@ public final class Defaults {
    */
   public static final int STREAMING_BATCH_SIZE = 100;
 
-  public static final long STREAMING_BATCH_FLUSH_INTERVAL_MS = 50;
+  public static final long STREAMING_BATCH_FLUSH_INTERVAL_MS = 200;
 
   private Defaults() {}
 }

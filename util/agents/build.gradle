@@ -22,4 +22,7 @@ dependencies {
     implementation libs.google.adk
     implementation libs.google.adk.langchain4j
     implementation libs.slf4j.api
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
 }

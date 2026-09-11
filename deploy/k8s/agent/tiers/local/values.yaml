@@ -10,11 +10,12 @@ app-base:
   replicas: 2
   resources:
     requests:
-      cpu: "500m"
-      memory: "768Mi"
+      # keep 2:3 ratio for cpu:memory i.e. 2cpu then 3GB memory with at least 512MB in any case because otherwise pods are OOMKilled
+      cpu: "200m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "768Mi"
+      cpu: "200m"
+      memory: "512Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-agent

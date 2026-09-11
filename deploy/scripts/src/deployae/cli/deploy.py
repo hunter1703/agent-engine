@@ -31,6 +31,7 @@ from deployae.stages import (
     SeedInfraConfigStage,
     SeedRestCatalogStage,
     Stage,
+    UninstallChartStage,
     run_graph,
 )
 
@@ -99,6 +100,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--timeout", default=helm.DEFAULT_TIMEOUT, help="Helm timeout (default: 10m)"
     )
+    parser.add_argument(
+        "--cleanup-internal",
+        action="store_true",
+        help="Uninstall the 'internal' release once index creation has finished — it's only "
+        "needed transiently, to create indexes at deploy time, not as a standing service",
+    )
 
 
 def _build_context(args: argparse.Namespace) -> helm.DeployContext:
@@ -121,6 +128,7 @@ def run(args: argparse.Namespace) -> None:
             skip_infra=args.skip_infra,
             dry_run=args.dry_run,
             timeout=args.timeout,
+            cleanup_internal=args.cleanup_internal,
         )
     )
 
@@ -132,6 +140,7 @@ async def _deploy(
     skip_infra: bool,
     dry_run: bool,
     timeout: str,
+    cleanup_internal: bool = False,
 ) -> None:
     start_time = time.time()
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
@@ -139,7 +148,12 @@ async def _deploy(
     _install_shutdown_handler(interrupted)
 
     stages = build_stages(
-        ctx, atomic=atomic, skip_infra=skip_infra, dry_run=dry_run, timeout=timeout
+        ctx,
+        atomic=atomic,
+        skip_infra=skip_infra,
+        dry_run=dry_run,
+        timeout=timeout,
+        cleanup_internal=cleanup_internal,
     )
     deploy_task = asyncio.ensure_future(run_graph(stages))
     await asyncio.wait(
@@ -213,7 +227,13 @@ def _chart_prerequisites(
 
 
 def build_stages(
-    ctx: helm.DeployContext, *, atomic: bool, skip_infra: bool, dry_run: bool, timeout: str
+    ctx: helm.DeployContext,
+    *,
+    atomic: bool,
+    skip_infra: bool,
+    dry_run: bool,
+    timeout: str,
+    cleanup_internal: bool = False,
 ) -> list[Stage]:
     """Builds the full stage graph.
 
@@ -238,7 +258,9 @@ def build_stages(
             chart=Chart(component),
             tier=ctx.tier or "",
             namespace_override=ctx.namespace,
-            enabled=ctx.tier == "local" and not dry_run,
+            enabled=ctx.tier == "local"
+            and not dry_run
+            and Chart(component).is_enabled_for_tier(ctx.tier),
         )
         for component in APP_COMPONENTS
         if Chart(component).ingress_tls_hosts()
@@ -341,6 +363,10 @@ def build_stages(
             dry_run=dry_run,
             needs_env_secret=name in ENV_SECRET_CHARTS,
             env_file=Path("/Users/rahul/Pictures/.env"),
+            # A tier assembles its own subset of services by which charts it has a
+            # tiers/<tier>/values.yaml for — see Chart.is_enabled_for_tier. A chart with
+            # no overlay for this tier is skipped entirely, not deployed with defaults.
+            enabled=chart.is_enabled_for_tier(ctx.tier),
         )
         stages.append(stage)
         return stage
@@ -367,14 +393,27 @@ def build_stages(
     )
 
     # --- Index creation: internal links every repository, so one call covers all collections ---
+    ensure_indexes_stage = EnsureIndexesStage(
+        name="ensure-indexes",
+        depends_on=(infra_deploy_by_name["mongodb"], internal_stage),
+        chart_name="internal",
+        tier=ctx.tier,
+        namespace_override=ctx.namespace,
+        enabled=not dry_run,
+    )
+    stages.append(ensure_indexes_stage)
+
+    # --- Optional: internal is only needed transiently, to create indexes above — not as
+    # a standing service. --cleanup-internal tears it down once that's done. ---
     stages.append(
-        EnsureIndexesStage(
-            name="ensure-indexes",
-            depends_on=(infra_deploy_by_name["mongodb"], internal_stage),
-            chart_name="internal",
+        UninstallChartStage(
+            name="cleanup-internal",
+            depends_on=(ensure_indexes_stage,),
+            chart=Chart("internal"),
             tier=ctx.tier,
-            namespace_override=ctx.namespace,
-            enabled=not dry_run,
+            environment=ctx.environment,
+            namespace=Chart("internal").namespace(ctx.namespace),
+            enabled=cleanup_internal and not dry_run,
         )
     )
 

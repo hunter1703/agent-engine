@@ -99,6 +99,26 @@ def test_values_overlay_file_nonexistent_tier_returns_none() -> None:
     assert Chart("catalog").values_overlay_file("nonexistent-tier-xyz") is None
 
 
+def test_is_enabled_for_tier_true_when_overlay_exists() -> None:
+    assert Chart("catalog").is_enabled_for_tier("local") is True
+
+
+def test_is_enabled_for_tier_false_when_overlay_missing() -> None:
+    assert Chart("catalog").is_enabled_for_tier("nonexistent-tier-xyz") is False
+
+
+def test_is_enabled_for_tier_true_without_a_tier() -> None:
+    assert Chart("catalog").is_enabled_for_tier(None) is True
+
+
+def test_is_enabled_for_tier_always_true_for_global_properties() -> None:
+    assert Chart("global-properties").is_enabled_for_tier("nonexistent-tier-xyz") is True
+
+
+def test_is_enabled_for_tier_always_true_for_infra_charts() -> None:
+    assert Chart("mongodb").is_enabled_for_tier("nonexistent-tier-xyz") is True
+
+
 def test_resource_name_app_chart() -> None:
     assert Chart("catalog").resource_name("local") == "catalog-local"
 

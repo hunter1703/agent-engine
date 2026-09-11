@@ -165,6 +165,20 @@ class Chart:
         candidate = self.path / subdir / tier_or_env / "values.yaml"
         return candidate if candidate.is_file() else None
 
+    def is_enabled_for_tier(self, tier: str | None) -> bool:
+        """Whether this app chart should be deployed at all for the given tier: true
+        when no tier was selected (nothing to gate on), or when the chart declares a
+        tiers/<tier>/values.yaml of its own. This is how a tier assembles a subset of
+        services — e.g. a "socialmedia" tier that only ships agent/scheduler/catalog/rest
+        needs nothing beyond creating tiers/socialmedia/values.yaml under just those four
+        charts; every other chart is skipped automatically because it has none. Not
+        meaningful for global-properties or infra charts (env is a separate axis from
+        tier, and infra is shared across tiers of one environment), so this is always
+        true for them."""
+        if not self.is_app_chart or not tier:
+            return True
+        return self.values_overlay_file(tier) is not None
+
     def resource_name(self, tier: str | None) -> str:
         """The literal Deployment/StatefulSet name — distinct from release_name, which
         carries Helm's own `agent-engine-` release-tracking prefix. Mirrors
