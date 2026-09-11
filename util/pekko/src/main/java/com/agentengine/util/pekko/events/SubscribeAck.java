@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.PekkoSerializable;
 import java.util.List;
@@ -10,5 +11,5 @@ public record SubscribeAck(
     boolean replayAccepted,
     long oldestAvailableSequence,
     long latestAvailableSequence,
-    List<SequencedEvent<?>> backlog)
+    List<SequencedEvent<Copyable<?>>> backlog)
     implements PekkoSerializable {}

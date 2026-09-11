@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.PekkoSerializable;
 import java.util.ArrayList;
@@ -7,7 +8,7 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
-public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents)
+public record BroadcasterState(Deque<SequencedEvent<Copyable<?>>> retainedEvents)
     implements PekkoSerializable {
 
   public static BroadcasterState empty() {
@@ -15,8 +16,8 @@ public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents)
   }
 
   public BroadcasterState withPublished(
-      final SequencedEvent<?> event, final int maxRetainedEvents) {
-    final LinkedList<SequencedEvent<?>> next = new LinkedList<>(retainedEvents);
+      final SequencedEvent<Copyable<?>> event, final int maxRetainedEvents) {
+    final LinkedList<SequencedEvent<Copyable<?>>> next = new LinkedList<>(retainedEvents);
     next.add(event);
     if (next.size() > maxRetainedEvents) {
       next.pollFirst();
@@ -42,13 +43,13 @@ public record BroadcasterState(Deque<SequencedEvent<?>> retainedEvents)
     return retainedEvents.isEmpty() ? 0 : retainedEvents.peekLast().sequence();
   }
 
-  public List<SequencedEvent<?>> eventsAfter(final Long lastSeenSequence) {
+  public List<SequencedEvent<Copyable<?>>> eventsAfter(final Long lastSeenSequence) {
     if (lastSeenSequence == null || retainedEvents.isEmpty()) {
       return List.of();
     }
 
-    final ArrayList<SequencedEvent<?>> result = new ArrayList<>();
-    for (final SequencedEvent<?> event : retainedEvents) {
+    final ArrayList<SequencedEvent<Copyable<?>>> result = new ArrayList<>();
+    for (final SequencedEvent<Copyable<?>> event : retainedEvents) {
       if (event.sequence() > lastSeenSequence) {
         result.add(event);
       }

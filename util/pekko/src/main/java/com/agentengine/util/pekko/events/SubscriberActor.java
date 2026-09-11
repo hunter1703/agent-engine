@@ -1,5 +1,6 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.events.SubscriberCommand.BroadcasterTerminatedCommand;
 import com.agentengine.util.pekko.events.SubscriberCommand.ResubscribeCommand;
@@ -70,7 +71,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
 
   private final String subscriptionId;
   private final EntityRef<BroadcasterCommand> broadcasterEntity;
-  private final FlowableEmitter<SequencedEvent<?>> emitter;
+  private final FlowableEmitter<SequencedEvent<Copyable<?>>> emitter;
 
   private ActorRef<BroadcasterCommand> broadcaster;
   private Throwable terminalError;
@@ -79,13 +80,13 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
   // DeliverCommands from a concurrent publication can arrive before SubscribeResultCommand because
   // the ack travels via pipeToSelf (an extra dispatch hop) while DeliverCommand is a direct tell.
   // Events are buffered here and flushed after the backlog is applied; applyEvent deduplicates.
-  private final List<SequencedEvent<?>> preActivationBuffer = new ArrayList<>();
+  private final List<SequencedEvent<Copyable<?>>> preActivationBuffer = new ArrayList<>();
 
   private SubscriberActor(
       final ActorContext<SubscriberCommand> context,
       final String subscriptionId,
       final EntityRef<BroadcasterCommand> broadcasterEntity,
-      final FlowableEmitter<SequencedEvent<?>> emitter) {
+      final FlowableEmitter<SequencedEvent<Copyable<?>>> emitter) {
     super(context);
     this.subscriptionId = subscriptionId;
     this.broadcasterEntity = broadcasterEntity;
@@ -95,7 +96,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
   public static Behavior<SubscriberCommand> create(
       final String subscriptionId,
       final EntityRef<BroadcasterCommand> broadcasterEntity,
-      final FlowableEmitter<SequencedEvent<?>> emitter) {
+      final FlowableEmitter<SequencedEvent<Copyable<?>>> emitter) {
     return Behaviors.setup(
         ctx -> {
           final SubscriberActor actor =
@@ -206,7 +207,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
       return this;
     }
 
-    final SequencedEvent<?> event = command.event();
+    final SequencedEvent<Copyable<?>> event = command.event();
     final long sequence = event.sequence();
 
     if (sequence <= lastSeenSequence) {
@@ -276,7 +277,7 @@ final class SubscriberActor extends AbstractBehavior<SubscriberCommand> {
     return this;
   }
 
-  private void applyEvent(final SequencedEvent<?> event) {
+  private void applyEvent(final SequencedEvent<Copyable<?>> event) {
     final long sequence = event.sequence();
     if (sequence <= lastSeenSequence) {
       return;

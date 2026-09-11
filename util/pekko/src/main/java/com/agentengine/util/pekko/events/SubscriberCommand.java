@@ -1,10 +1,11 @@
 package com.agentengine.util.pekko.events;
 
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.pekko.PekkoSerializable;
 import org.apache.pekko.actor.DeadLetterSuppression;
 
-public interface SubscriberCommand extends PekkoSerializable {
+public sealed interface SubscriberCommand extends PekkoSerializable {
   /**
    * Sent by external callers (e.g. RxJava cancellable) that want the actor to stop. The actor
    * handles all cleanup — broadcaster unsubscription and emitter completion — in onPostStop().
@@ -14,7 +15,7 @@ public interface SubscriberCommand extends PekkoSerializable {
    */
   record StopCommand() implements SubscriberCommand, DeadLetterSuppression {}
 
-  record DeliverCommand(SequencedEvent<?> event) implements SubscriberCommand {}
+  record DeliverCommand(SequencedEvent<Copyable<?>> event) implements SubscriberCommand {}
 
   record BroadcasterTerminatedCommand() implements SubscriberCommand {}
 

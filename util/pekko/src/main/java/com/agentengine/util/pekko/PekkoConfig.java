@@ -10,7 +10,6 @@ public class PekkoConfig extends InfraConfig {
   public static final String CONFIG_ID = "default";
 
   private String clusterName;
-  private int snapshotThreshold = 100;
 
   public String getClusterName() {
     return clusterName;
@@ -18,13 +17,5 @@ public class PekkoConfig extends InfraConfig {
 
   public void setClusterName(final String clusterName) {
     this.clusterName = clusterName;
-  }
-
-  public int getSnapshotThreshold() {
-    return snapshotThreshold;
-  }
-
-  public void setSnapshotThreshold(final int snapshotThreshold) {
-    this.snapshotThreshold = snapshotThreshold;
   }
 }

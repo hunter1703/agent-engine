@@ -2,6 +2,7 @@ package com.agentengine.util.pekko;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.testfixtures.Child1;
 import com.agentengine.util.common.testfixtures.Child2;
@@ -11,6 +12,7 @@ import com.agentengine.util.common.testfixtures.ConcreteGreatGrandchild;
 import com.agentengine.util.common.testfixtures.InnerChild1;
 import com.agentengine.util.common.testfixtures.Parent;
 import com.agentengine.util.pekko.PekkoJsonCodecFactory.PekkoJsonCodec;
+import com.agentengine.util.pekko.events.BroadcasterCommand;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
@@ -80,6 +82,36 @@ class PekkoJsonCodecFactoryTest {
 
     assertThat(roundTripped.sequence()).isEqualTo(1L);
     assertThat(roundTripped.payload()).isEqualTo(new Child4(new InnerChild1<>("x")));
+  }
+
+  /**
+   * Unlike {@code SequencedEvent}, {@code BroadcasterCommand.PublishCommand} declares its {@code
+   * payload} field directly as {@code Copyable<?>} -- a real, reflectable interface type, not an
+   * erased type variable -- so it does NOT fall under {@code ObjectTypingModule}'s
+   * declared-exactly-as-Object rule. Regression coverage for the cross-node deserialization failure
+   * this caused before {@code Copyable} got its own {@code @JsonTypeInfo}: "Cannot construct
+   * instance of Copyable (no Creators...): abstract types...need...additional type information",
+   * reference chain {@code PublishCommand["payload"]}.
+   */
+  @Test
+  void publishCommandPayloadSurvivesViaCopyablesOwnTypeInfo() throws Exception {
+    final ObjectMapper mapper = factory().newObjectMapper("test", new JsonFactory());
+
+    final BroadcasterCommand.PublishCommand original =
+        new BroadcasterCommand.PublishCommand(new CopyableThing("x"), null);
+    final String json = mapper.writeValueAsString(original);
+
+    final BroadcasterCommand.PublishCommand roundTripped =
+        mapper.readValue(json, BroadcasterCommand.PublishCommand.class);
+
+    assertThat(roundTripped.payload()).isEqualTo(new CopyableThing("x"));
+  }
+
+  private record CopyableThing(String value) implements Copyable<CopyableThing> {
+    @Override
+    public CopyableThing copy() {
+      return this;
+    }
   }
 
   /**

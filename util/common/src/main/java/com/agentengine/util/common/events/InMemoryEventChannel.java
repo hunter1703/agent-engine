@@ -19,7 +19,8 @@ import org.reactivestreams.Publisher;
  *
  * <p>Per-scope linearized subscribe/publish/cancel with per-scope monotonic sequences.
  */
-public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, Event> {
+public class InMemoryEventChannel<Scope, Event extends Copyable<Event>>
+    implements EventChannel<Scope, Event> {
   private static final int SUBSCRIBER_BUFFER_SIZE = 256;
 
   private final ConcurrentMap<Scope, ScopeState<Event>> scopes = new ConcurrentHashMap<>();
@@ -38,7 +39,7 @@ public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, E
     return scopes.computeIfAbsent(scope, ignored -> new ScopeState<>());
   }
 
-  private static final class ScopeState<E> {
+  private static final class ScopeState<E extends Copyable<E>> {
     private long nextSequence = 1L;
     private final Map<String, SubscriptionState<E>> subscriptions = new LinkedHashMap<>();
     private final FlowableProcessor<Runnable> commands =
@@ -76,7 +77,6 @@ public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, E
 
     private long doPublish(final E event) {
       final long sequence = nextSequence++;
-      final SequencedEvent<E> sequencedEvent = new SequencedEvent<>(sequence, event);
       final Iterator<Map.Entry<String, SubscriptionState<E>>> iterator =
           subscriptions.entrySet().iterator();
       while (iterator.hasNext()) {
@@ -87,7 +87,10 @@ public class InMemoryEventChannel<Scope, Event> implements EventChannel<Scope, E
           continue;
         }
         try {
-          subscriber.emit(sequencedEvent);
+          // Each subscriber gets its own copy, not the shared `event` reference — a subscriber
+          // transforming its own copy (e.g. merging consecutive events into one) must never
+          // become visible to any other subscriber of the same publish.
+          subscriber.emit(new SequencedEvent<>(sequence, event.copy()));
         } catch (final Throwable throwable) {
           iterator.remove();
           subscriber.fail(throwable);

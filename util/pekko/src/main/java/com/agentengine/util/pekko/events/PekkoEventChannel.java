@@ -1,6 +1,7 @@
 package com.agentengine.util.pekko.events;
 
 import com.agentengine.util.common.CompletionUtils;
+import com.agentengine.util.common.events.Copyable;
 import com.agentengine.util.common.events.EventChannel;
 import com.agentengine.util.common.events.EventSubscription;
 import com.agentengine.util.common.events.SequencedEvent;
@@ -29,7 +30,7 @@ import org.apache.pekko.japi.function.Function;
 import org.reactivestreams.Publisher;
 
 /** Distributed, scope-keyed event channel backed by a persistent sharded broadcaster. */
-public class PekkoEventChannel<Scope, Event>
+public class PekkoEventChannel<Scope, Event extends Copyable<Event>>
     implements EventChannel<Scope, Event>, ShardedEntityDefinition {
 
   private static final Duration COMMAND_TIMEOUT = Duration.ofSeconds(10);
@@ -63,7 +64,7 @@ public class PekkoEventChannel<Scope, Event>
     final String subscriptionId = UUID.randomUUID().toString();
 
     final Publisher<SequencedEvent<Event>> publisher =
-        Flowable.<SequencedEvent<?>>create(
+        Flowable.<SequencedEvent<Copyable<?>>>create(
                 emitter -> {
                   final ActorRef<SubscriberCommand> actor =
                       AskPattern.ask(
@@ -104,7 +105,7 @@ public class PekkoEventChannel<Scope, Event>
         broadcaster(scope)
             .ask(
                 (Function<ActorRef<PublishAck>, BroadcasterCommand>)
-                    replyTo -> new BroadcasterCommand.PublishCommand<>(event, replyTo),
+                    replyTo -> new BroadcasterCommand.PublishCommand(event, replyTo),
                 COMMAND_TIMEOUT)
             .thenApply(PublishAck::sequence));
   }

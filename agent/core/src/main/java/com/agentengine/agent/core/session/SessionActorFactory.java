@@ -80,7 +80,6 @@ public class SessionActorFactory extends RememberedPassivableShardedEntityFactor
                 new SessionActor(
                     actorContext,
                     entityContext.getEntityId(),
-                    actorSystemProvider.pekkoConfig().getSnapshotThreshold(),
                     sessionEventChannel,
                     sessionId -> actorSystemProvider.entityRefFor(SessionActor.TYPE_KEY, sessionId),
                     runnerFactory,

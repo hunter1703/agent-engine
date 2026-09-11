@@ -22,7 +22,7 @@ import java.util.function.Predicate;
  *       automatically.
  * </ul>
  */
-public interface EventChannel<Scope, Event> {
+public interface EventChannel<Scope, Event extends Copyable<Event>> {
 
   CompletionStage<EventSubscription<SequencedEvent<Event>>> subscribe(Scope scope);
 

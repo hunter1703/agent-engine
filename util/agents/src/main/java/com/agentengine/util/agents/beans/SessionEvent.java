@@ -2,6 +2,7 @@ package com.agentengine.util.agents.beans;
 
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.BaseEntity;
+import com.agentengine.util.common.events.Copyable;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.adk.events.Event;
 import com.google.adk.sessions.State;
@@ -19,7 +20,7 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
  */
 @Index(name = "session_events_turn_idx", def = "{'sessionId': 1, 'turnId': 1, 'sequence': 1}")
 @Index(name = "session_events_root_session_idx", def = "{'rootSessionId': 1}")
-public final class SessionEvent extends BaseEntity {
+public final class SessionEvent extends BaseEntity implements Copyable<SessionEvent> {
   public static final String FIELD_SESSION_ID = "sessionId";
   public static final String FIELD_ROOT_SESSION_ID = "rootSessionId";
   public static final String FIELD_PARENT_SESSION_ID = "parentSessionId";
@@ -75,6 +76,32 @@ public final class SessionEvent extends BaseEntity {
     this.type = type;
     this.turnId = turnId;
     this.rawEvent = rawEvent;
+  }
+
+  /**
+   * Shallow copy — {@code rawEvent} itself is shared with {@code other}, not deep-copied. Callers
+   * that go on to mutate the copy's {@code rawEvent} (e.g. text compaction) must replace it via
+   * {@link #setRawEvent} rather than mutating the shared {@code Event} in place, or the mutation
+   * remains visible through {@code other}.
+   */
+  public SessionEvent(final SessionEvent other) {
+    setId(other.getId());
+    setCreatedTime(other.getCreatedTime());
+    setUpdatedTime(other.getUpdatedTime());
+    setVersion(other.getVersion());
+    this.rootSessionId = other.rootSessionId;
+    this.parentSessionId = other.parentSessionId;
+    this.sessionId = other.sessionId;
+    this.sequence = other.sequence;
+    this.type = other.type;
+    this.turnId = other.turnId;
+    this.rollbackId = other.rollbackId;
+    this.rawEvent = other.rawEvent;
+  }
+
+  @Override
+  public SessionEvent copy() {
+    return new SessionEvent(this);
   }
 
   public String getRootSessionId() {

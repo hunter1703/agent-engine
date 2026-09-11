@@ -72,6 +72,7 @@ public final class SessionActor
       EntityTypeKey.create(SessionCommand.class, AssetClass.AGENT_SESSION);
 
   private static final int MAX_CHILD_POLL_ATTEMPTS = 10;
+  private static final int SNAPSHOT_THRESHOLD = 100;
   private static final Duration SELF_PAUSE_RETRY_INTERVAL = Duration.ofMinutes(1);
   private static final ExecutorService ASYNC_TASK_EXECUTOR =
       ThreadUtils.newVirtualThreadExecutor("session-async-task-");
@@ -81,7 +82,6 @@ public final class SessionActor
 
   private final ActorContext<SessionCommand> context;
   private final ActorRef<SessionCommand> self;
-  private final int snapshotThreshold;
   private final SessionEventChannel eventChannel;
   private final List<Event> turnEvents = new LinkedList<>();
   private Integer turnId;
@@ -106,7 +106,6 @@ public final class SessionActor
   public SessionActor(
       final ActorContext<SessionCommand> context,
       final String entityId,
-      final int snapshotThreshold,
       final SessionEventChannel eventChannel,
       final java.util.function.Function<String, EntityRef<SessionCommand>> refSupplier,
       final RunnerFactory runnerFactory,
@@ -117,7 +116,6 @@ public final class SessionActor
     super(TYPE_KEY.name(), entityId);
     this.context = context;
     this.self = context.getSelf();
-    this.snapshotThreshold = snapshotThreshold;
     this.eventChannel = eventChannel;
     this.refSupplier = refSupplier;
     this.runnerFactory = runnerFactory;
@@ -148,7 +146,7 @@ public final class SessionActor
 
   @Override
   public RetentionCriteria retentionCriteria() {
-    return RetentionCriteria.snapshotEvery(snapshotThreshold, 2);
+    return RetentionCriteria.snapshotEvery(SNAPSHOT_THRESHOLD, 1).withDeleteEventsOnSnapshot();
   }
 
   /**
