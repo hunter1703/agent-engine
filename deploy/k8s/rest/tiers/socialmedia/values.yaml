@@ -1,0 +1,29 @@
+app-base:
+  tier: socialmedia
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
+  deploymentStrategy:
+    type: Recreate
+  replicas: 1
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "350Mi"
+    limits:
+      cpu: "200m"
+      memory: "350Mi"
+  config:
+    applicationProperties:
+      quarkus.otel.service.name: agent-engine-rest
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.grpc.server.use-separate-server: "false"
+      quarkus.shutdown.timeout: 5S
+
+      quarkus.http.cors.enabled: "true"
+      quarkus.http.cors.origins: "http://localhost:3000"
+      quarkus.http.cors.methods: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+      quarkus.http.cors.headers: "accept,authorization,content-type,x-requested-with"
+      quarkus.http.cors.exposed-headers: "Content-Disposition"
+      quarkus.http.cors.access-control-max-age: "24H"
+      quarkus.http.cors.access-control-allow-credentials: "true"

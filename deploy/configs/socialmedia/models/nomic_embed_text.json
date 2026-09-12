@@ -1,0 +1,8 @@
+{
+  "id": "nomic-embed-text",
+  "model": "nomic-embed-text:latest",
+  "name": "Nomic Embed Text (Ollama)",
+  "baseUrl": "http://host.docker.internal:11434",
+  "provider": "OLLAMA",
+  "type": "EMBEDDING"
+}

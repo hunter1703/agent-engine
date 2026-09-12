@@ -1,0 +1,26 @@
+app-base:
+  tier: socialmedia
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
+  deploymentStrategy:
+    type: Recreate
+  replicas: 2
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "512Mi"
+    limits:
+      cpu: "300m"
+      memory: "512Mi"
+  config:
+    applicationProperties:
+      quarkus.otel.service.name: agent-engine-agent
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.grpc.server.use-separate-server: "false"
+      agent-engine.session-actor.passivation.idle-timeout-seconds: "3600"
+      quarkus.grpc.server.max-inbound-message-size: "104857600"
+      quarkus.shutdown.timeout: 5S
+      pekko.coordinated-shutdown.phases.cluster-sharding-shutdown-region.timeout: 5s
+      pekko.coordinated-shutdown.phases.cluster-leave.timeout: 5s
+      pekko.coordinated-shutdown.phases.actor-system-terminate.timeout: 5s

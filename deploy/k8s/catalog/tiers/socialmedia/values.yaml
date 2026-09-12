@@ -1,0 +1,22 @@
+app-base:
+  tier: socialmedia
+  minReadySeconds: 0
+  preStopSleepSeconds: 0
+  terminationGracePeriodSeconds: 10
+  deploymentStrategy:
+    type: Recreate
+  replicas: 1
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+  config:
+    applicationProperties:
+      quarkus.otel.service.name: agent-engine-catalog
+      quarkus.otel.sdk.disabled: "true"
+      quarkus.grpc.server.use-separate-server: "false"
+      quarkus.grpc.server.max-inbound-message-size: "104857600"
+      quarkus.shutdown.timeout: 5S

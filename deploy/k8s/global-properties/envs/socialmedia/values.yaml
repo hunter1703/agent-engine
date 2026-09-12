@@ -1,0 +1,6 @@
+globalProperties:
+  # Single-member replica set (mongod always runs with --replSet, even at replicaCount 1 - see
+  # mongodb chart) - host + replicaSet param must match the chart's actual replicaCount/replicaSetName.
+  infra.mongodb.uri: mongodb://mongodb-socialmedia-0.mongodb-socialmedia-headless.infra.svc.cluster.local:27017/?replicaSet=rs0&authSource=admin
+  infra.mongodb.database: INFRA
+  app.mongodb.database: AGENT_ENGINE
