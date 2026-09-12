@@ -3,8 +3,8 @@ persistence:
   size: 10Gi
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 150m
+    memory: 350Mi
   limits:
-    cpu: 100m
-    memory: 256Mi
+    cpu: 150m
+    memory: 350Mi

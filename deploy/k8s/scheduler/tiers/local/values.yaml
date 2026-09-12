@@ -11,10 +11,10 @@ app-base:
   resources:
     requests:
       cpu: "150m"
-      memory: "512Mi"
+      memory: "350Mi"
     limits:
       cpu: "150m"
-      memory: "512Mi"
+      memory: "350Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-scheduler
