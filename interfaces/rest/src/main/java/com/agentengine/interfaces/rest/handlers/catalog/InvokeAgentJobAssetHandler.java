@@ -9,6 +9,7 @@ import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Map;
@@ -25,8 +26,8 @@ public class InvokeAgentJobAssetHandler implements AssetHandler<JobDefinition> {
   private final SchedulerService schedulerService;
 
   @Inject
-  public InvokeAgentJobAssetHandler(final SchedulerService schedulerService) {
-    this.schedulerService = schedulerService;
+  public InvokeAgentJobAssetHandler(final MicroServiceClientProvider provider) {
+    this.schedulerService = provider.getRaw(SchedulerService.class);
   }
 
   @Override

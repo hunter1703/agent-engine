@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.providers;
 
 import com.agentengine.util.common.JsonCodec;
+import com.agentengine.util.common.RawBytes;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
@@ -61,6 +62,8 @@ public class JsonMessageBodyWriter extends ServerMessageBodyWriter.AllWriteableM
         // characters.
         // Writing the bytes directly is what makes it valid JSON again.
         entityStream.write(rawJson.getBytes(StandardCharsets.UTF_8));
+      } else if (value instanceof RawBytes rawBytes) {
+        entityStream.write(rawBytes.bytes());
       } else {
         jsonCodec.writeTo(entityStream, value);
       }

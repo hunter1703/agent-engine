@@ -5,6 +5,7 @@ import com.agentengine.interfaces.rest.dto.AssetRequest;
 import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.query.PaginatedResult;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Map;
@@ -15,8 +16,8 @@ public class ModelAssetHandler extends NamedAssetHandler<ModelConfig> {
   private final ModelService modelService;
 
   @Inject
-  public ModelAssetHandler(ModelService modelService) {
-    this.modelService = modelService;
+  public ModelAssetHandler(final MicroServiceClientProvider provider) {
+    this.modelService = provider.getRaw(ModelService.class);
   }
 
   @Override

@@ -59,11 +59,10 @@ public class AgentRestAPI {
 
   @Inject
   public AgentRestAPI(
-      final AgentService agentService,
       final SchedulerService schedulerService,
       final MicroServiceClientProvider microServiceClientProvider,
       final RestJsonCodec jsonCodec) {
-    this.agentService = agentService;
+    this.agentService = microServiceClientProvider.getRaw(AgentService.class);
     this.schedulerService = schedulerService;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
     this.jsonCodec = jsonCodec;

@@ -42,6 +42,7 @@ grpc = "1.79.0"
 
 # Utilities
 guava = "33.5.0-jre"
+byte-buddy = "1.18.2"
 concurrency-limits = "0.5.3"
 groovy = "4.0.28"
 rxjava = "3.1.12"
@@ -78,6 +79,7 @@ cron-utils = "9.2.1"
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 concurrency-limits-core = { group = "com.netflix.concurrency-limits", name = "concurrency-limits-core", version.ref = "concurrency-limits" }
 cron-utils = { group = "com.cronutils", name = "cron-utils", version.ref = "cron-utils" }
+byte-buddy = { group = "net.bytebuddy", name = "byte-buddy", version.ref = "byte-buddy" }
 
 # BOMs
 langchain4j-bom = { group = "dev.langchain4j", name = "langchain4j-bom", version.ref = "langchain4j" }

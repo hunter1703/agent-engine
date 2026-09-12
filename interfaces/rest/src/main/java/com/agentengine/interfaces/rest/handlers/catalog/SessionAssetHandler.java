@@ -10,6 +10,7 @@ import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashMap;
@@ -22,8 +23,8 @@ public class SessionAssetHandler extends NamedAssetHandler<AgentSession> {
   private final SessionService sessionService;
 
   @Inject
-  public SessionAssetHandler(final SessionService sessionService) {
-    this.sessionService = sessionService;
+  public SessionAssetHandler(final MicroServiceClientProvider provider) {
+    this.sessionService = provider.getRaw(SessionService.class);
   }
 
   @Override

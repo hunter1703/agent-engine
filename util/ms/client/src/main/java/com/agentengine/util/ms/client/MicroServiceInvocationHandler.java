@@ -1,7 +1,9 @@
 package com.agentengine.util.ms.client;
 
+import com.agentengine.util.common.FunctionUtils;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
@@ -133,12 +135,31 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
         CompletionStage.class.isAssignableFrom(method.getReturnType())
             ? firstTypeArgument(method.getGenericReturnType())
             : method.getGenericReturnType();
-    final Object result = jsonCodec.deserialize(response.getPayload().newInput(), declaredType);
+    final Object result = deserializeResult(response, declaredType);
 
     if (result == null && Optional.class.isAssignableFrom(method.getReturnType())) {
       return Optional.empty();
     }
     return result;
+  }
+
+  private Object deserializeResult(final Response response, final Type declaredType) {
+    if (raw) {
+      final Class<?> rawClass = Utils.getClass(declaredType);
+      if (FunctionUtils.canBuildRawStub(rawClass)) {
+        try {
+          return FunctionUtils.buildRawStub(
+              declaredType, rawClass, jsonCodec, response.getPayload().toByteArray());
+        } catch (final RuntimeException exception) {
+          LOG.warn(
+              "Raw-passthrough stub generation failed for {}; falling back to a normal"
+                  + " deserialize",
+              rawClass.getName(),
+              exception);
+        }
+      }
+    }
+    return jsonCodec.deserialize(response.getPayload().newInput(), declaredType);
   }
 
   // Uses the async stub instead of the blocking stub's Iterator. Both deliver messages the same

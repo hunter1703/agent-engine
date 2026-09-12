@@ -6,6 +6,7 @@ import com.agentengine.util.agents.beans.config.ModelConfig;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -36,8 +37,8 @@ public class ModelRestAPI {
   private final ModelService modelService;
 
   @Inject
-  public ModelRestAPI(final ModelService modelService) {
-    this.modelService = modelService;
+  public ModelRestAPI(final MicroServiceClientProvider provider) {
+    this.modelService = provider.getRaw(ModelService.class);
   }
 
   @GET

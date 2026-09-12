@@ -8,6 +8,7 @@ import com.agentengine.util.common.beans.BaseEntity;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.ms.client.MicroServiceClientProvider;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
@@ -19,8 +20,8 @@ public class AgentAssetHandler extends NamedAssetHandler<BaseAgentConfig> {
   private final AgentService agentService;
 
   @Inject
-  public AgentAssetHandler(AgentService agentService) {
-    this.agentService = agentService;
+  public AgentAssetHandler(final MicroServiceClientProvider provider) {
+    this.agentService = provider.getRaw(AgentService.class);
   }
 
   @Override
