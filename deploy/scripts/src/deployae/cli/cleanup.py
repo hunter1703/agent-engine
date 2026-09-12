@@ -8,7 +8,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from deployae.charts import ALL_CHART_NAMES, APP_CHART_NAMES, CHARTS_BY_NAME, Chart
+from deployae.charts import (
+    ALL_CHART_NAMES,
+    APP_CHART_NAMES,
+    INFRA_CHART_NAMES,
+    CHARTS_BY_NAME,
+    Chart,
+)
 from deployae.stages import (
     DeleteNamespaceStage,
     DeletePvcsStage,

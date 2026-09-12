@@ -1,9 +1,0 @@
-[
-  {
-    "id": "PEKKO:PEKKO:default",
-    "_t": "com.agentengine.util.pekko.PekkoConfig",
-    "type": "PEKKO",
-    "category": "PEKKO",
-    "clusterName": "agent"
-  }
-]

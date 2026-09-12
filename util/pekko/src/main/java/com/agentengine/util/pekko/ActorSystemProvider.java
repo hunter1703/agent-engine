@@ -44,7 +44,6 @@ public class ActorSystemProvider {
   private final InfraConfigService infraConfigService;
   private final Instance<ShardedEntityDefinition> entityDefinitions;
   private final PekkoJsonCodecFactory jsonCodecFactory;
-  private volatile PekkoConfig pekkoConfig;
   private volatile ActorSystem<SpawnProtocol.Command> system;
   private volatile ClusterSharding sharding;
   private volatile boolean enabled;
@@ -77,18 +76,16 @@ public class ActorSystemProvider {
       LOG.info("Pekko is disabled (PEKKO_CLUSTER is not set); no ActorSystem will be created");
       return;
     }
-    this.pekkoConfig =
-        infraConfigService.findById(PekkoConfig.CATEGORY, PekkoConfig.TYPE, PekkoConfig.CONFIG_ID);
     final SQLInfraConfig sqlConfig =
         infraConfigService.findById(
             SQLInfraConfig.CATEGORY, SQLInfraConfig.TYPE, SQLInfraConfig.DEFAULT_CONFIG_ID);
-    LOG.info("Creating ActorSystem '{}'", pekkoConfig.getClusterName());
+    LOG.info("Creating ActorSystem '{}'", pekkoCluster);
     final Config config = buildConfig(sqlConfig, pekkoCluster);
     final ActorSystemSetup setup =
         ActorSystemSetup.create(
             BootstrapSetup.create(config),
             JacksonObjectMapperProviderSetup.create(jsonCodecFactory));
-    this.system = ActorSystem.create(SpawnProtocol.create(), pekkoConfig.getClusterName(), setup);
+    this.system = ActorSystem.create(SpawnProtocol.create(), pekkoCluster, setup);
     PekkoManagement.get(system).start();
     ClusterBootstrap.get(system).start();
     // Publish system before initialising sharding: remember-entities triggers entity recovery
@@ -105,10 +102,6 @@ public class ActorSystemProvider {
   /** Whether this service hosts actors. Callers that start actors must check this first. */
   public boolean isEnabled() {
     return enabled;
-  }
-
-  public PekkoConfig pekkoConfig() {
-    return pekkoConfig;
   }
 
   public ActorSystem<SpawnProtocol.Command> system() {
