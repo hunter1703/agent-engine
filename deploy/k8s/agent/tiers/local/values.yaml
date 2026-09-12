@@ -11,10 +11,10 @@ app-base:
   resources:
     requests:
       # keep 2:3 ratio for cpu:memory i.e. 2cpu then 3GB memory with at least 512MB in any case because otherwise pods are OOMKilled
-      cpu: "200m"
+      cpu: "300m"
       memory: "512Mi"
     limits:
-      cpu: "200m"
+      cpu: "300m"
       memory: "512Mi"
   config:
     applicationProperties:

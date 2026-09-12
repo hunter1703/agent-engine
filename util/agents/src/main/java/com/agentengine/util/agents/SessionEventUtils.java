@@ -2,6 +2,7 @@ package com.agentengine.util.agents;
 
 import com.agentengine.util.agents.beans.SessionEvent;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.FlowableUtils;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.Part;
@@ -132,7 +133,7 @@ public final class SessionEventUtils {
   public static Flowable<SessionEvent> compactEventStream(
       final Flowable<SessionEvent> events, final long windowMillis) {
     return events
-        .buffer(windowMillis, TimeUnit.MILLISECONDS)
+        .buffer(windowMillis, TimeUnit.MILLISECONDS, FlowableUtils.streamingScheduler())
         .filter(batch -> !batch.isEmpty())
         .concatMapIterable(SessionEventUtils::compactEventStream);
   }

@@ -49,7 +49,6 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "Agent", description = "Agent Management APIs")
-@RunOnVirtualThread
 @ContextAware
 public class AgentRestAPI {
 
@@ -78,6 +77,7 @@ public class AgentRestAPI {
       description = "Agent created",
       content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "409", description = "Agent already exists")
+  @RunOnVirtualThread
   public BaseAgentConfig createAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new IllegalArgumentException("Agent config is required");
@@ -92,6 +92,7 @@ public class AgentRestAPI {
       responseCode = "200",
       description = "Agent created or updated",
       content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
+  @RunOnVirtualThread
   public BaseAgentConfig upsertAgent(final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
       throw new WebApplicationException("Agent config is required", 400);
@@ -111,6 +112,7 @@ public class AgentRestAPI {
       content = @Content(schema = @Schema(implementation = BaseAgentConfig.class)))
   @APIResponse(responseCode = "400", description = "Path agentId must match payload id")
   @APIResponse(responseCode = "404", description = "Agent not found")
+  @RunOnVirtualThread
   public BaseAgentConfig updateAgent(
       @PathParam("agentId") final String agentId, final BaseAgentConfig agentConfig) {
     if (agentConfig == null) {
@@ -130,6 +132,7 @@ public class AgentRestAPI {
   @Operation(summary = "Delete an agent")
   @APIResponse(responseCode = "204", description = "Agent deleted")
   @APIResponse(responseCode = "404", description = "Agent not found")
+  @RunOnVirtualThread
   public void deleteAgent(@PathParam("agentId") final String agentId) {
     if (StringUtils.isBlank(agentId)) {
       throw new IllegalArgumentException("Agent ID is required");
@@ -179,6 +182,7 @@ public class AgentRestAPI {
       content = @Content(schema = @Schema(implementation = JobDefinition.class)))
   @APIResponse(responseCode = "400", description = "Invalid request parameters")
   @APIResponse(responseCode = "404", description = "Agent not found")
+  @RunOnVirtualThread
   public Response schedule(
       @NotBlank @PathParam("agentId") final String agentId,
       @Valid final ScheduleAgentRequest request) {
@@ -204,6 +208,7 @@ public class AgentRestAPI {
   @Operation(summary = "Cancel a scheduled job")
   @APIResponse(responseCode = "204", description = "Job cancelled")
   @APIResponse(responseCode = "404", description = "Job not found")
+  @RunOnVirtualThread
   public void cancelSchedule(@NotBlank @PathParam("jobId") final String jobId) {
     final JobDefinition jobDefinition = schedulerService.getJob(jobId);
     if (jobDefinition == null

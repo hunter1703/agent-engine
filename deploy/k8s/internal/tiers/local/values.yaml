@@ -13,10 +13,10 @@ app-base:
   resources:
     requests:
       cpu: "100m"
-      memory: "768Mi"
+      memory: "256Mi"
     limits:
       cpu: "100m"
-      memory: "768Mi"
+      memory: "256Mi"
   config:
     applicationProperties:
       quarkus.otel.service.name: agent-engine-internal

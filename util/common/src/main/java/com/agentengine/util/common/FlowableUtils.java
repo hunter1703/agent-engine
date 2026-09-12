@@ -1,12 +1,21 @@
 package com.agentengine.util.common;
 
 import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public final class FlowableUtils {
 
+  private static final Scheduler STREAMING_SCHEDULER =
+      Schedulers.from(ThreadUtils.newFixedThreadExecutor("streaming-batch-", 4));
+
   private FlowableUtils() {}
+
+  public static Scheduler streamingScheduler() {
+    return STREAMING_SCHEDULER;
+  }
 
   public static <T> Flowable<T> withScheduled(
       final Flowable<T> source, final long intervalMillis, final Supplier<T> scheduledProducer) {
@@ -24,7 +33,7 @@ public final class FlowableUtils {
         shared ->
             Flowable.merge(
                 shared,
-                Flowable.interval(intervalMillis, TimeUnit.MILLISECONDS)
+                Flowable.interval(intervalMillis, TimeUnit.MILLISECONDS, STREAMING_SCHEDULER)
                     .map(_ -> scheduledProducer.get())
                     .takeUntil(shared.ignoreElements().toFlowable())));
   }

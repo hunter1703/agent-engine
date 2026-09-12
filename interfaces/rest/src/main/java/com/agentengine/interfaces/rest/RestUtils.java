@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest;
 
 import com.agentengine.util.common.Defaults;
+import com.agentengine.util.common.FlowableUtils;
 import com.agentengine.util.common.JsonCodec;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
@@ -36,7 +37,7 @@ public final class RestUtils {
 
   private RestUtils() {}
 
-  static Uni<Void> writeBatchedSSE(
+  public static Uni<Void> writeBatchedSSE(
       final HttpServerResponse response, final Flowable<?> events, final JsonCodec jsonCodec) {
     response.setChunked(true);
     response.putHeader("Content-Type", "text/event-stream");
@@ -47,6 +48,7 @@ public final class RestUtils {
         .buffer(
             Defaults.STREAMING_BATCH_FLUSH_INTERVAL_MS,
             TimeUnit.MILLISECONDS,
+            FlowableUtils.streamingScheduler(),
             Defaults.STREAMING_BATCH_SIZE)
         .filter(batch -> !batch.isEmpty())
         .map(batch -> encodeBatch(batch, jsonCodec))

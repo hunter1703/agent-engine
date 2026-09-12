@@ -1,6 +1,7 @@
 package com.agentengine.util.ms.server;
 
 import com.agentengine.util.common.Defaults;
+import com.agentengine.util.common.FlowableUtils;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -191,6 +192,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                 .buffer(
                     serviceMethod.streamingBatchFlushIntervalMs(),
                     TimeUnit.MILLISECONDS,
+                    FlowableUtils.streamingScheduler(),
                     serviceMethod.streamingBatchSize())
                 .filter(batch -> !batch.isEmpty())
                 .subscribe(
@@ -203,7 +205,7 @@ public class GRPCServerImpl extends ServiceGrpc.ServiceImplBase {
                               ? ((ParameterizedType) returnType).getActualTypeArguments()[0]
                               : Object.class;
                       final ByteString.Output out = ByteString.newOutput();
-                      jsonCodec.serializeBatch(batch, elementType, out);
+                      jsonCodec.serializeBatchNdjson(batch, elementType, out);
                       send(responseObserver, out.toByteString());
                     },
                     err -> {

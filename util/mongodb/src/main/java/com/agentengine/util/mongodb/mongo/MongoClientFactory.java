@@ -6,6 +6,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.config.ApplicationConfig;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -35,6 +36,7 @@ public class MongoClientFactory {
   private final Instance<EncryptionService> encryptionService;
   private final ApplicationConfig applicationConfig;
   private final Instance<Codec<?>> customCodecs;
+  private final LazyLoader<MongoClient> client;
 
   @Inject
   public MongoClientFactory(
@@ -46,14 +48,18 @@ public class MongoClientFactory {
     this.encryptionService = encryptionService;
     this.applicationConfig = applicationConfig;
     this.customCodecs = customCodecs;
+    this.client =
+        new LazyLoader<>(
+            () ->
+                MongoClients.create(
+                    buildClientSettings(
+                        this.applicationConfig.getString(INFRA_MONGO_URI_KEY),
+                        getBsonDiscriminators(this.mongoClientSupport),
+                        this.encryptionService)));
   }
 
   public MongoClient getClient() {
-    return MongoClients.create(
-        buildClientSettings(
-            applicationConfig.getString(INFRA_MONGO_URI_KEY),
-            getBsonDiscriminators(mongoClientSupport),
-            encryptionService));
+    return client.get();
   }
 
   private static List<String> getBsonDiscriminators(final MongoClientSupport mongoClientSupport) {

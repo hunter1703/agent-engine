@@ -286,6 +286,10 @@ def build_stages(
 
     # --- Infra charts ---
     infra_enabled = not (skip_infra or dry_run)
+    infra_chart_enabled = {
+        name: infra_enabled and Chart(name).is_enabled_for_tier(ctx.tier)
+        for name in INFRA_COMPONENTS
+    }
     infra_deploy_by_name = {
         name: DeployChartStage(
             name=f"deploy-{name}",
@@ -296,19 +300,22 @@ def build_stages(
             ctx=ctx,
             atomic=atomic,
             timeout=timeout,
-            enabled=infra_enabled,
+            enabled=infra_chart_enabled[name],
         )
         for name in INFRA_COMPONENTS
     }
     stages.extend(infra_deploy_by_name.values())
 
+    # mongodb is the one infra chart every tier is expected to need (seed-infra-config
+    # depends on it unconditionally) — a tier that omits its own tiers/<tier>/values.yaml
+    # for mongodb would disable this stage too, same as any other infra chart.
     seed_infra_config_stage = SeedInfraConfigStage(
         name="seed-infra-config",
         depends_on=(infra_deploy_by_name["mongodb"],),
         tier=ctx.tier,
         environment=ctx.environment,
         namespace_override=ctx.namespace,
-        enabled=infra_enabled,
+        enabled=infra_chart_enabled["mongodb"],
     )
     stages.append(seed_infra_config_stage)
     stages.append(
@@ -317,7 +324,7 @@ def build_stages(
             depends_on=(infra_deploy_by_name["postgres"],),
             namespace_override=ctx.namespace,
             tier=ctx.tier,
-            enabled=infra_enabled,
+            enabled=infra_chart_enabled["postgres"],
         )
     )
     qdrant_collections_stage = InitQdrantCollectionStage(
@@ -325,7 +332,7 @@ def build_stages(
         depends_on=(infra_deploy_by_name["qdrant"],),
         namespace_override=ctx.namespace,
         tier=ctx.tier,
-        enabled=infra_enabled,
+        enabled=infra_chart_enabled["qdrant"],
     )
     stages.append(qdrant_collections_stage)
     localstack_buckets_stage = EnsureLocalstackBucketsStage(
@@ -333,7 +340,7 @@ def build_stages(
         depends_on=(infra_deploy_by_name["localstack"],),
         namespace_override=ctx.namespace,
         tier=ctx.tier,
-        enabled=infra_enabled,
+        enabled=infra_chart_enabled["localstack"],
     )
     stages.append(localstack_buckets_stage)
 

@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class FileService {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileService.class);
+  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
   private final CloudStorageService cloudStorageService;
 
@@ -47,8 +48,9 @@ public class FileService {
   }
 
   private static InputStream fetchUrl(final String url) {
-    try (final HttpClient http = HttpClient.newHttpClient()) {
-      return http.send(
+    try {
+      return HTTP_CLIENT
+          .send(
               HttpRequest.newBuilder(URI.create(url)).GET().build(),
               HttpResponse.BodyHandlers.ofInputStream())
           .body();

@@ -150,6 +150,29 @@ public abstract class JsonCodec {
     }
   }
 
+  public void serializeBatchNdjson(
+      final List<?> batch, final Type elementType, final OutputStream out) {
+    if (batch == null || batch.isEmpty()) {
+      return;
+    }
+    try {
+      final ObjectWriter typeWriter =
+          mapper.writerFor(mapper.getTypeFactory().constructType(elementType));
+      try (final JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+        boolean first = true;
+        for (final Object element : batch) {
+          if (!first) {
+            gen.writeRaw('\n');
+          }
+          first = false;
+          typeWriter.writeValue(gen, element);
+        }
+      }
+    } catch (final IOException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
+  }
+
   public String serializeBatch(final Object[] args, final Type[] types) {
     if (args == null) {
       return null;
@@ -230,6 +253,48 @@ public abstract class JsonCodec {
     } catch (final IOException exception) {
       throw ExceptionUtils.wrapInRuntimeException(exception);
     }
+  }
+
+  /**
+   * Reads a {@link #serializeBatchNdjson(List, Type, OutputStream)} stream back: repeatedly
+   * advances the same parser and reads one value at a time, since each value's own grammar already
+   * marks its end -- no array wrapper or count is needed to know where one stops and the next
+   * starts.
+   */
+  public List<Object> deserializeBatchNdjson(
+      final InputStream inputStream, final Type elementType) {
+    final List<Object> result = new ArrayList<>();
+    try (final JsonParser parser = mapper.getFactory().createParser(inputStream)) {
+      final var javaType = mapper.getTypeFactory().constructType(elementType);
+      while (parser.nextToken() != null) {
+        result.add(mapper.readValue(parser, javaType));
+      }
+      return result;
+    } catch (final IOException exception) {
+      throw ExceptionUtils.wrapInRuntimeException(exception);
+    }
+  }
+
+  /**
+   * Splits a {@link #serializeBatchNdjson(List, Type, OutputStream)} payload back into each
+   * element's raw bytes, by scanning for the raw {@code '\n'} separator directly -- no Jackson
+   * involved, unlike {@link #splitJsonArray(byte[])}, since a newline-delimited payload carries no
+   * brackets or commas to tokenize around.
+   */
+  public List<byte[]> splitNdjson(final byte[] bytes) {
+    if (bytes == null || bytes.length == 0) {
+      return List.of();
+    }
+    final List<byte[]> elements = new ArrayList<>();
+    int start = 0;
+    for (int i = 0; i < bytes.length; i++) {
+      if (bytes[i] == '\n') {
+        elements.add(Arrays.copyOfRange(bytes, start, i));
+        start = i + 1;
+      }
+    }
+    elements.add(Arrays.copyOfRange(bytes, start, bytes.length));
+    return elements;
   }
 
   /**

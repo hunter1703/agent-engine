@@ -38,7 +38,6 @@ import org.jboss.resteasy.reactive.RestStreamElementType;
 
 @Path("/v1/session")
 @Tag(name = "Session Stream", description = "Session event stream and resume APIs")
-@RunOnVirtualThread
 @ContextAware
 public class SessionRestAPI {
 
@@ -86,6 +85,7 @@ public class SessionRestAPI {
   @Produces(APPLICATION_JSON)
   @Operation(summary = "Resume a paused session")
   @APIResponse(responseCode = "400", description = "Invalid resume payload")
+  @RunOnVirtualThread
   public Response resume(
       @NotBlank @PathParam("sessionId") final String sessionId, final Resume resume) {
     if (resume == null) {
@@ -111,6 +111,7 @@ public class SessionRestAPI {
   @Operation(summary = "Delete a session")
   @APIResponse(responseCode = "204", description = "Session deleted")
   @APIResponse(responseCode = "404", description = "Session not found")
+  @RunOnVirtualThread
   public void deleteSession(@PathParam("sessionId") final String sessionId) {
     if (StringUtils.isBlank(sessionId)) {
       throw new IllegalArgumentException("Session ID is required");
@@ -125,6 +126,7 @@ public class SessionRestAPI {
   @APIResponse(responseCode = "400", description = "runId is required")
   @APIResponse(responseCode = "404", description = "Session not found")
   @APIResponse(responseCode = "409", description = "Session is currently running")
+  @RunOnVirtualThread
   public void rollbackSession(
       @NotBlank @PathParam("sessionId") final String sessionId,
       @NotBlank @QueryParam("runId") final String runId) {

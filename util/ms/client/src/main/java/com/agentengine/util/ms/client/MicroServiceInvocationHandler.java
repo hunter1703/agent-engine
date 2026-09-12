@@ -2,7 +2,6 @@ package com.agentengine.util.ms.client;
 
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.Utils;
 import com.agentengine.util.common.context.Context;
 import com.agentengine.util.ms.grpc.Request;
 import com.agentengine.util.ms.grpc.Response;
@@ -161,7 +160,6 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
   // it back into the individual-item Flowable callers expect.
   private Flowable<?> streamingCall(Request request, Method method, boolean raw) {
     final Type declaredItemType = firstTypeArgument(method.getGenericReturnType());
-    final Type declaredListType = Utils.listOf(declaredItemType);
     final Span span = Span.current();
     final AtomicLong itemCount = new AtomicLong();
     final AtomicLong batchCount = new AtomicLong();
@@ -200,9 +198,9 @@ public class MicroServiceInvocationHandler implements InvocationHandler {
               batchCount.incrementAndGet();
               final List<?> batch =
                   raw
-                      ? jsonCodec.splitJsonArray(response.getPayload().toByteArray())
-                      : (List<?>)
-                          jsonCodec.deserialize(response.getPayload().newInput(), declaredListType);
+                      ? jsonCodec.splitNdjson(response.getPayload().toByteArray())
+                      : jsonCodec.deserializeBatchNdjson(
+                          response.getPayload().newInput(), declaredItemType);
               itemCount.addAndGet(batch.size());
               return batch;
             })
