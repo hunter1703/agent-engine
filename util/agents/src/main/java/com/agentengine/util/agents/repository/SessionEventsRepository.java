@@ -1,6 +1,8 @@
 package com.agentengine.util.agents.repository;
 
 import com.agentengine.util.agents.beans.SessionEvent;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.repository.Repository;
 import com.google.adk.events.Event;
 import java.util.List;
@@ -15,4 +17,7 @@ public interface SessionEventsRepository extends Repository<SessionEvent> {
    * true, for the whole session tree rooted at it (root and every child session).
    */
   List<SessionEvent> getCommittedSessionEvents(String sessionId, boolean includeChildSessions);
+
+  PaginatedResult<SessionEvent> getCommittedSessionEvents(
+      String sessionId, boolean includeChildSessions, Page page);
 }

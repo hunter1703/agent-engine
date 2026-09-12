@@ -1,5 +1,7 @@
 package com.agentengine.agent.core.services;
 
+import static com.agentengine.util.common.Defaults.STREAMING_BATCH_SIZE;
+
 import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.agent.core.session.ResumeResult;
@@ -28,6 +30,8 @@ import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.common.events.SequencedEvent;
 import com.agentengine.util.common.exception.AssetNotFoundException;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
 import com.agui.community.core.event.Event;
 import com.google.genai.types.Blob;
 import com.google.genai.types.Content;
@@ -184,7 +188,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     // Completed or failed sessions: liveOnly subscribers get nothing (they missed all events);
     // replay subscribers get the full history.
     if (isTerminalStatus(session.getStatus())) {
-      return liveOnly ? Flowable.empty() : terminalStream(rootSessionId);
+      return liveOnly ? Flowable.empty() : pagedCommittedEvents(rootSessionId);
     }
 
     // Connect eagerly so the SubscriberActor is registered with the broadcaster BEFORE we
@@ -211,7 +215,7 @@ public class RuntimeServiceImpl implements RuntimeService {
     final AgentSession reChecked = sessionService.getSession(sessionId);
     if (reChecked != null && isTerminalStatus(reChecked.getStatus())) {
       liveConnection.dispose();
-      return liveOnly ? Flowable.empty() : terminalStream(reChecked.getRootSessionId());
+      return liveOnly ? Flowable.empty() : pagedCommittedEvents(reChecked.getRootSessionId());
     }
 
     // Dedup by stable ADK event ID — same event has the same ID across all three layers.
@@ -226,9 +230,7 @@ public class RuntimeServiceImpl implements RuntimeService {
 
     // Fetch committed history and current turn events lazily.
     final Flowable<SessionEvent> committedEvents =
-        Flowable.fromSupplier(
-                () -> sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true))
-            .flatMapIterable(list -> list)
+        pagedCommittedEvents(rootSessionId)
             .filter(event -> seen.add(event.getId()))
             .map(RuntimeServiceImpl::stripBlobData);
 
@@ -293,10 +295,27 @@ public class RuntimeServiceImpl implements RuntimeService {
     return status == SessionStatus.COMPLETED || status == SessionStatus.FAILED;
   }
 
-  private Flowable<SessionEvent> terminalStream(final String rootSessionId) {
-    final List<SessionEvent> events =
-        sessionEventsRepository.getCommittedSessionEvents(rootSessionId, true);
-    return Flowable.fromIterable(events);
+  private Flowable<SessionEvent> pagedCommittedEvents(final String rootSessionId) {
+    return fetchCommittedEventsPage(rootSessionId, 0);
+  }
+
+  private Flowable<SessionEvent> fetchCommittedEventsPage(
+      final String rootSessionId, final int offset) {
+    return Flowable.fromSupplier(
+            () ->
+                sessionEventsRepository.getCommittedSessionEvents(
+                    rootSessionId, true, new Page(offset, STREAMING_BATCH_SIZE)))
+        .flatMap(
+            (PaginatedResult<SessionEvent> page) -> {
+              final Flowable<SessionEvent> items = Flowable.fromIterable(page.getItems());
+              return page.getItems().size() < STREAMING_BATCH_SIZE
+                  ? items
+                  : items.concatWith(
+                      Flowable.defer(
+                          () ->
+                              fetchCommittedEventsPage(
+                                  rootSessionId, offset + STREAMING_BATCH_SIZE)));
+            });
   }
 
   private Flowable<SessionEvent> subscribeToLiveEvents(final String rootSessionId) {
