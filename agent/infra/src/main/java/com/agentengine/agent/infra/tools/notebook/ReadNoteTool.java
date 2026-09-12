@@ -16,7 +16,7 @@ public final class ReadNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.READ_NOTE,
           """
-          Reads the current content of a note you were granted read_note or edit_note access to, or one in a notebook you created.
+          Reads the current content of a note you were granted read or edit access to, or one in a notebook you created.
 
           Returns: { status: "success", content } or { error }.""",
           Map.of());
@@ -48,7 +48,7 @@ public final class ReadNoteTool extends AbstractNotebookTool {
       return ToolOutput.direct(
           accessDeniedError(
               toolContext,
-              "Not granted read_note access to note '" + noteTitle + "' in this notebook.",
+              "Not granted read access to note '" + noteTitle + "' in this notebook.",
               notebookId));
     }
     final Note note = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));

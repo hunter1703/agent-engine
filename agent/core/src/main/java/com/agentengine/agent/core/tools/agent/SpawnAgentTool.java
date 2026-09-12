@@ -47,6 +47,22 @@ public final class SpawnAgentTool extends AbstractAgentTool {
           Returns: { child_session_id } on success, or { error } on failure.""",
           Map.of());
 
+  private static final Schema NOTEBOOK_GRANTS_SCHEMA =
+      ToolUtils.buildSchemaFromType(
+              new TypeReference<List<NotebookGrants.NotebookGrant>>() {}.getType())
+          .toBuilder()
+          .description(
+              "Notebook-wide access to grant the spawned agent — lets it add new notes anywhere in the given notebooks. Optional.")
+          .build();
+
+  private static final Schema NOTE_GRANTS_SCHEMA =
+      ToolUtils.buildSchemaFromType(
+              new TypeReference<List<NotebookGrants.NoteGrant>>() {}.getType())
+          .toBuilder()
+          .description(
+              "Read or edit permission to grant the spawned agent for specific, already-existing notes. Optional.")
+          .build();
+
   private final List<String> subAgentIds;
   private final NotebookRepository notebookRepository;
   private final NotesRepository notesRepository;
@@ -121,12 +137,8 @@ public final class SpawnAgentTool extends AbstractAgentTool {
                         Constants.ToolNames.READ_KNOWLEDGE_SOURCE,
                         Constants.ToolArgs.KNOWLEDGE_IDS))
             .build());
-    properties.put(
-        Constants.ToolArgs.NOTEBOOK_GRANTS,
-        ToolUtils.buildSchemaFromType(new TypeReference<List<NotebookGrants.Entry>>() {}.getType())
-            .toBuilder()
-            .description("Notebook/note access to grant the spawned agent. Optional.")
-            .build());
+    properties.put(Constants.ToolArgs.NOTEBOOK_GRANTS, NOTEBOOK_GRANTS_SCHEMA);
+    properties.put(Constants.ToolArgs.NOTE_GRANTS, NOTE_GRANTS_SCHEMA);
     final Schema params =
         Schema.builder()
             .type(Known.OBJECT)
@@ -153,7 +165,9 @@ public final class SpawnAgentTool extends AbstractAgentTool {
       @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
           final List<String> knowledgeSources,
       @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
-          final List<NotebookGrants.Entry> notebookGrants) {
+          final List<NotebookGrants.NotebookGrant> notebookGrants,
+      @ToolSchema(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
+          final List<NotebookGrants.NoteGrant> noteGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {
@@ -173,9 +187,9 @@ public final class SpawnAgentTool extends AbstractAgentTool {
 
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
     final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
+        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookGrants, notebookRepository, notesRepository);
+        validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
     if (violationOutput != null) {
       return violationOutput;
     }

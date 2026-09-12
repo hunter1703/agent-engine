@@ -45,6 +45,7 @@ public interface Constants {
     String KNOWLEDGE_IDS = "knowledge_ids";
     String KNOWLEDGE_SOURCES = "knowledge_sources";
     String NOTEBOOK_GRANTS = "notebook_grants";
+    String NOTE_GRANTS = "note_grants";
     String SOURCE = "source";
   }
 

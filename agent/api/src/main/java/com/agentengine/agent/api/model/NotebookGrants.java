@@ -21,8 +21,9 @@ public record NotebookGrants(Map<String, Permission> grants) {
     this.grants = CollectionUtils.nullSafeMap(grants);
   }
 
-  public NotebookGrants(final List<Entry> entries) {
-    this(resolve(entries));
+  public NotebookGrants(
+      final List<NotebookGrant> notebookGrants, final List<NoteGrant> noteGrants) {
+    this(resolve(notebookGrants, noteGrants));
   }
 
   public static String noteGrantKey(final String notebookId, final String noteTitle) {
@@ -106,16 +107,14 @@ public record NotebookGrants(Map<String, Permission> grants) {
       sb.append("- Notebook '").append(notebookId).append("': ");
       sb.append(
           summary.canCreate
-              ? "you have create_note access (may add a note under any title that doesn't "
+              ? "you have notebook-wide access (may add a note under any title that doesn't "
                   + "exist there yet)."
-              : "you do not have create_note access.");
+              : "you do not have notebook-wide access.");
       if (!summary.editPermissionedNotes.isEmpty()) {
-        sb.append("\n  - edit_note access: ")
-            .append(String.join(", ", summary.editPermissionedNotes));
+        sb.append("\n  - edit access: ").append(String.join(", ", summary.editPermissionedNotes));
       }
       if (!summary.readPermissionedNotes.isEmpty()) {
-        sb.append("\n  - read_note access: ")
-            .append(String.join(", ", summary.readPermissionedNotes));
+        sb.append("\n  - read access: ").append(String.join(", ", summary.readPermissionedNotes));
       }
       sb.append("\n");
     }
@@ -128,28 +127,61 @@ public record NotebookGrants(Map<String, Permission> grants) {
     private final Set<String> editPermissionedNotes = new LinkedHashSet<>();
   }
 
-  private static Map<String, Permission> resolve(final List<Entry> entries) {
+  private static Map<String, Permission> resolve(
+      final List<NotebookGrant> notebookGrants, final List<NoteGrant> noteGrants) {
     final Map<String, Permission> resolved = new HashMap<>();
-    for (final Entry entry : CollectionUtils.nullSafeList(entries)) {
-      final Permission permission = Entry.parsePermission(entry.getPermission());
-      final String key =
-          StringUtils.isNotBlank(entry.getNoteTitle())
-              ? noteGrantKey(entry.getNotebookId(), entry.getNoteTitle())
-              : entry.getNotebookId();
-      resolved.put(key, permission);
+    for (final NotebookGrant grant : CollectionUtils.nullSafeList(notebookGrants)) {
+      resolved.put(grant.getNotebookId(), Permission.CREATE);
+    }
+    for (final NoteGrant grant : CollectionUtils.nullSafeList(noteGrants)) {
+      resolved.put(
+          noteGrantKey(grant.getNotebookId(), grant.getNoteTitle()),
+          NoteGrant.parsePermission(grant.getPermission()));
     }
     return resolved;
   }
 
-  /** One grant a caller asked to hand a spawned/messaged agent, as given via a tool call. */
+  /**
+   * Grants notebook-wide access to an entire notebook — the ability to add new notes anywhere in it
+   * — so there is deliberately no note title field here to be set inconsistently.
+   */
   @JsonIgnoreProperties(ignoreUnknown = true)
-  public static class Entry {
+  public static class NotebookGrant {
 
     @JsonProperty("notebook_id")
     @ToolSchema(
         description =
             """
-            The notebook to grant access to.
+            The notebook to grant notebook-wide access to — lets the grantee add a new note anywhere in it.
+
+            Must already exist — granting access to a notebook that doesn't exist yet will fail.
+            """)
+    private String notebookId;
+
+    public NotebookGrant() {}
+
+    public String getNotebookId() {
+      return notebookId;
+    }
+
+    public void setNotebookId(final String notebookId) {
+      this.notebookId = notebookId;
+    }
+  }
+
+  /**
+   * Grants read or edit access to one specific, already-existing note. Both fields are required,
+   * and notebook-wide access is deliberately excluded from the permission enum — grant that via
+   * {@link NotebookGrant} instead.
+   */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class NoteGrant {
+
+    @JsonProperty("notebook_id")
+    @ToolSchema(
+        description =
+            """
+            The notebook containing the note.
 
             Must already exist — granting access to a notebook that doesn't exist yet will fail.
             """)
@@ -161,35 +193,25 @@ public record NotebookGrants(Map<String, Permission> grants) {
             """
             The note within the notebook to grant access to.
 
-            Must already exist — granting access to a note that doesn't exist yet will fail.
-
-            Required when permission is read_note or edit_note; omit when permission is create_note.
-            """,
-        optional = true)
+            Must already exist — granting access to a note that doesn't exist yet will fail. To let the grantee create a brand-new note instead, grant it notebook-wide access instead of using this.
+            """)
     private String noteTitle;
 
     @ToolSchema(
         description =
             """
-            What access to grant. A permission always targets something that already exists — create_note targets the notebook itself, read_note and edit_note each target one specific note within it.
-
-            - create_note: lets the grantee add a new note anywhere in the notebook. Targets the notebook only — provide notebook_id, and omit note_title.
-
-            - read_note: lets the grantee read one existing note's content. Targets that note — provide both notebook_id and note_title.
-
-            - edit_note: lets the grantee overwrite or delete one existing note. Targets that note — provide both notebook_id and note_title. Also grants read access to that same note, so there's no need to separately grant read_note for it.
+            What access to grant to this specific note: read-only, or read and edit (the ability to overwrite or delete the note — this also includes read access, so there's no need to grant both separately for the same note).
             """,
-        enums = {"create_note", "read_note", "edit_note"})
+        enums = {"read_note", "edit_note"})
     private String permission;
 
-    public Entry() {}
+    public NoteGrant() {}
 
     public static Permission parsePermission(final String value) {
       if (value == null) {
         return Permission.UNKNOWN;
       }
       return switch (value.trim().toLowerCase(Locale.ROOT)) {
-        case "create_note" -> Permission.CREATE;
         case "read_note" -> Permission.READ;
         case "edit_note" -> Permission.WRITE;
         default -> Permission.UNKNOWN;

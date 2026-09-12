@@ -104,9 +104,16 @@ public final class SendMessageTool extends AbstractAgentTool {
               name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
                   """
-                  Notebook/note access to grant the child, on top of whatever it already has from earlier calls. Omit anything already granted that isn't changing; repeat an entry only to change its permission (e.g. upgrade a note from read_note to edit_note).""",
+                  Grant the child permission to create and add notes in the given notebook. Previously given permissions are carried forward so they are not lost. Omit anything already granted.""",
               optional = true)
-          final List<NotebookGrants.Entry> notebookGrants) {
+          final List<NotebookGrants.NotebookGrant> notebookGrants,
+      @ToolSchema(
+              name = Constants.ToolArgs.NOTE_GRANTS,
+              description =
+                  """
+                  Grant the child to read or edit permission for a specific existing note. Previously given permissions are carried forward so they are not lost. Omit anything already granted.""",
+              optional = true)
+          final List<NotebookGrants.NoteGrant> noteGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);
     if (completedResult != null) {
@@ -116,9 +123,9 @@ public final class SendMessageTool extends AbstractAgentTool {
     message = buildFullMessage(goal, message);
     final List<MessagePart> parts = List.of(new MessagePart.TextPart(message));
     final ResourceGrants resourceGrants =
-        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants);
+        AgentUtils.buildResourceGrants(knowledgeIds, knowledgeSources, notebookGrants, noteGrants);
     final ToolOutput<Map<String, Object>> violationOutput =
-        validateGrants(notebookGrants, notebookRepository, notesRepository);
+        validateGrants(notebookGrants, noteGrants, notebookRepository, notesRepository);
     if (violationOutput != null) {
       return violationOutput;
     }

@@ -53,11 +53,12 @@ public class AbstractAgentTool extends Tool {
   }
 
   protected static ToolOutput<Map<String, Object>> validateGrants(
-      final List<NotebookGrants.Entry> notebookGrantEntries,
+      final List<NotebookGrants.NotebookGrant> notebookGrants,
+      final List<NotebookGrants.NoteGrant> noteGrants,
       final NotebookRepository notebookRepository,
       final NotesRepository notesRepository) {
     final List<Violation> violations =
-        AgentUtils.validate(notebookGrantEntries, notebookRepository, notesRepository);
+        AgentUtils.validate(notebookGrants, noteGrants, notebookRepository, notesRepository);
     if (violations.isEmpty()) {
       return null;
     }

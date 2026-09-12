@@ -15,7 +15,7 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTE,
           """
-          Permanently deletes a note you were granted edit_note access to, or one in a notebook you created.
+          Permanently deletes a note you were granted edit access to, or one in a notebook you created.
 
           Returns: { status: "success" } or { error }.""",
           Map.of());
@@ -44,7 +44,7 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
       return ToolOutput.direct(
           Map.of(
               "error",
-              "Not granted edit_note access to note '" + noteTitle + "' in this notebook.",
+              "Not granted edit access to note '" + noteTitle + "' in this notebook.",
               "notebook_access",
               grantsSummary(toolContext)));
     }
