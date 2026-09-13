@@ -1,13 +1,10 @@
 app-base:
   imagePullSecrets:
     - name: ghcr-pull
-  # letsencrypt-staging while we confirm the ACME HTTP-01 challenge flow works end-to-end;
-  # switch to letsencrypt-prod once a cert issues successfully (staging certs aren't trusted
-  # by real clients/browsers — they exist purely to test without real rate limits).
   ingress:
     enabled: true
     className: nginx
-    clusterIssuer: letsencrypt-staging
+    clusterIssuer: letsencrypt-prod
     tlsEnabled: true
     hosts:
       - host: agentengine.duckdns.org
