@@ -16,6 +16,7 @@ bin/
 **/target/
 *.log
 *.jar
+*.zip
 !gradle/wrapper/gradle-wrapper.jar
 *.gguf
 llamacpp_models/
