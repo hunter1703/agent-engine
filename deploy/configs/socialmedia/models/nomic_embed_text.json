@@ -1,8 +1,0 @@
-{
-  "id": "nomic-embed-text",
-  "model": "nomic-embed-text:latest",
-  "name": "Nomic Embed Text (Ollama)",
-  "baseUrl": "https://afterlife-eating-energy.ngrok-free.dev",
-  "provider": "OLLAMA",
-  "type": "EMBEDDING"
-}
