@@ -1,6 +1,5 @@
 package com.agentengine.util.agents.beans.session;
 
-import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.annotations.Index;
 import com.agentengine.util.common.beans.NamedEntity;
 import java.util.HashMap;
@@ -47,7 +46,6 @@ public class AgentSession extends NamedEntity {
     this.agentId = agentId;
   }
 
-  @Secure
   @Override
   public String getName() {
     return super.getName();

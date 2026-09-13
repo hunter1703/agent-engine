@@ -1,6 +1,5 @@
 package com.agentengine.util.agents.beans.config;
 
-import com.agentengine.util.common.Secure;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.NamedEntity;
 import com.agentengine.util.common.builder.annotations.*;
@@ -58,7 +57,6 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "Description", step = "identity", order = 40)
   @UiText
-  @Secure
   private String description;
 
   @UiField(label = "Avatar", step = "identity", order = 50)
@@ -76,7 +74,6 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
 
   @UiField(label = "System Prompt", step = "model", section = "model", order = 20)
   @UiText(multiline = true, rows = 6)
-  @Secure
   @NotBlank
   private String systemPrompt;
 
@@ -151,13 +148,11 @@ public abstract class BaseAgentConfig extends NamedEntity implements Config {
   @Override
   @UiField(label = "Name", step = "identity", order = 10)
   @UiText
-  @Secure
   public String getName() {
     return super.getName();
   }
 
   @Override
-  @Secure
   public void setName(final String name) {
     super.setName(name);
   }

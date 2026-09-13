@@ -25,7 +25,6 @@ import com.google.adk.agents.BaseAgent;
 import com.google.adk.apps.App;
 import com.google.adk.events.Event;
 import com.google.adk.plugins.BasePlugin;
-import com.google.adk.plugins.LoggingPlugin;
 import com.google.adk.runner.Runner;
 import com.google.adk.sessions.InMemorySessionService;
 import com.google.adk.sessions.Session;
@@ -159,8 +158,7 @@ public class RunnerFactory {
             new NotebookPlugin(notesRepository, agentsWithNotebook),
             new ReminderPlugin(),
             new PlanningPlugin(),
-            new ResponseValidationPlugin(),
-            new LoggingPlugin());
+            new ResponseValidationPlugin());
     return List.of(new PluginGroup("engine", plugins), AddEventMetadataPlugin.INSTANCE);
   }
 }
