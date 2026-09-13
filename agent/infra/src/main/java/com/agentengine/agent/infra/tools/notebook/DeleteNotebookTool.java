@@ -45,6 +45,6 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
     notebookRepository.deleteById(notebookId);
     notesRepository.deleteByQuery(
         new Query().withFilter(Filters.eq(Note.FIELD_NOTEBOOK_ID, notebookId)));
-    return ToolOutput.direct(Map.of("status", "success"));
+    return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
 }

@@ -187,8 +187,8 @@ public final class SaveAnswerPlugin extends BasePlugin {
     RunUtils.getRunState(toolContext.invocationContext())
         .enterAnswerMode(saveMessage, minSaveTokens);
     return Map.of(
-        "status",
-        "pending",
+        Constants.ToolStatus.STATUS,
+        Constants.ToolStatus.PENDING,
         "message",
         "Saving started — write your final answer as your very next message, with nothing "
             + "else first.");

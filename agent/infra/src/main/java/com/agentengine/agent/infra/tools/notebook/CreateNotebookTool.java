@@ -1,7 +1,9 @@
 package com.agentengine.agent.infra.tools.notebook;
 
+import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.infra.notebook.Notebook;
 import com.agentengine.agent.infra.notebook.NotebookRepository;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -57,11 +59,13 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
     } catch (final DuplicateAssetException exception) {
       return ToolOutput.direct(Map.of("error", "Notebook '" + name + "' already exists."));
     }
+    SessionUtils.getSessionState(toolContext.invocationContext())
+        .addNotebookReminders(NotebookGrants.ofNotebook(notebook.getId()));
     return ToolOutput.direct(
         Map.of(
-            "status",
-            "success",
-            "notebook_id",
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.SUCCESS,
+            Constants.ToolArgs.NOTEBOOK_ID,
             notebook.getId(),
             "message",
             "Notebook '%s' successfully created".formatted(notebook.getId())));

@@ -4,10 +4,12 @@ import com.agentengine.agent.api.model.NotebookGrants;
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.agent.infra.utils.RunUtils;
+import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.beans.Permission;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -61,10 +63,12 @@ public final class CreateNoteTool extends AbstractNotebookTool {
       }
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
+    SessionUtils.getSessionState(toolContext.invocationContext())
+        .addNotebookReminders(NotebookGrants.ofNote(notebookId, noteTitle, Permission.WRITE));
     return ToolOutput.direct(
         Map.of(
-            "status",
-            "pending",
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.PENDING,
             "message",
             """
             Saving started — write this note's content as your very next message, with nothing else first."""));

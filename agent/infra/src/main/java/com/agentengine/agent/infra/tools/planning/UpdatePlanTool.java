@@ -49,7 +49,7 @@ public final class UpdatePlanTool extends Tool {
 
     final Plan updatedPlan = applyPlanUpdate(currentPlan, title, goal);
     sessionState.updatePlan(updatedPlan);
-    return ToolOutput.direct(Map.of("status", "success"));
+    return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
 
   public static Plan applyPlanUpdate(final Plan plan, final String title, final String goal) {

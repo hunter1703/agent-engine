@@ -55,6 +55,11 @@ public final class ReadNoteTool extends AbstractNotebookTool {
     if (note == null) {
       return ToolOutput.direct(Map.of("error", "No such note: '" + noteTitle + "'."));
     }
-    return ToolOutput.direct(Map.of("status", "success", "content", note.getContent()));
+    return ToolOutput.direct(
+        Map.of(
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.SUCCESS,
+            "content",
+            note.getContent()));
   }
 }

@@ -85,7 +85,12 @@ public final class AddTaskTool extends Tool {
     final Plan updatedPlan = applyAddTask(currentPlan, parentId, name, goal, description);
     sessionState.updatePlan(updatedPlan);
     final Task addedTask = updatedPlan.getTasks().getLast();
-    return ToolOutput.direct(Map.of("status", "success", "task_id", addedTask.getTaskId()));
+    return ToolOutput.direct(
+        Map.of(
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.SUCCESS,
+            "task_id",
+            addedTask.getTaskId()));
   }
 
   public static Plan applyAddTask(

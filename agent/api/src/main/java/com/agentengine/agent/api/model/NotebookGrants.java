@@ -26,6 +26,15 @@ public record NotebookGrants(Map<String, Permission> grants) {
     this(resolve(notebookGrants, noteGrants));
   }
 
+  public static NotebookGrants ofNotebook(final String notebookId) {
+    return new NotebookGrants(Map.of(notebookId, Permission.CREATE));
+  }
+
+  public static NotebookGrants ofNote(
+      final String notebookId, final String noteTitle, final Permission permission) {
+    return new NotebookGrants(Map.of(NotebookUtils.noteId(notebookId, noteTitle), permission));
+  }
+
   public static String noteGrantKey(final String notebookId, final String noteTitle) {
     return NotebookUtils.noteId(notebookId, noteTitle);
   }
@@ -101,20 +110,23 @@ public record NotebookGrants(Map<String, Permission> grants) {
     }
 
     final StringBuilder sb = new StringBuilder();
+    int index = 1;
     for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
       final String notebookId = entry.getKey();
       final NotebookSummary summary = entry.getValue();
-      sb.append("- Notebook '").append(notebookId).append("': ");
+      sb.append("   ").append(index++).append(". Notebook `").append(notebookId).append("`: ");
       sb.append(
           summary.canCreate
               ? "you have notebook-wide access (may add a note under any title that doesn't "
                   + "exist there yet)."
               : "you do not have notebook-wide access.");
       if (!summary.editPermissionedNotes.isEmpty()) {
-        sb.append("\n  - edit access: ").append(String.join(", ", summary.editPermissionedNotes));
+        sb.append("\n      - edit access: ")
+            .append(String.join(", ", summary.editPermissionedNotes));
       }
       if (!summary.readPermissionedNotes.isEmpty()) {
-        sb.append("\n  - read access: ").append(String.join(", ", summary.readPermissionedNotes));
+        sb.append("\n      - read access: ")
+            .append(String.join(", ", summary.readPermissionedNotes));
       }
       sb.append("\n");
     }

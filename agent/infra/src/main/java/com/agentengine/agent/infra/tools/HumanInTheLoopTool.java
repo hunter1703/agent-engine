@@ -119,13 +119,17 @@ public final class HumanInTheLoopTool extends Tool {
       case DECISION -> Map.of("decision", confirmation.confirmed() ? "ALLOW" : "DISALLOW");
       case TEXT -> {
         if (!confirmation.confirmed()) {
-          yield Map.of("status", "cancelled");
+          yield Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.CANCELLED);
         }
         // noinspection unchecked
         final String answer =
             CollectionUtils.getStringValueFromMap(
                 (Map<String, Object>) confirmation.payload(), "answer");
-        yield Map.of("status", "answered", "answer", Objects.requireNonNull(answer));
+        yield Map.of(
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.ANSWERED,
+            "answer",
+            Objects.requireNonNull(answer));
       }
       case UNKNOWN -> // noinspection unchecked
           CollectionUtils.nullSafeMap((Map<String, Object>) confirmation.payload());

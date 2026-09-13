@@ -49,6 +49,6 @@ public final class DeleteNoteTool extends AbstractNotebookTool {
               grantsSummary(toolContext)));
     }
     notesRepository.deleteById(NotebookUtils.noteId(notebookId, noteTitle));
-    return ToolOutput.direct(Map.of("status", "success"));
+    return ToolOutput.direct(Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS));
   }
 }

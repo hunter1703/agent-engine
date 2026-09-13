@@ -104,6 +104,14 @@ the reader and the runtime equally.
 - **Earn every abstraction**: introduce an abstraction only when it has a clear name, a single responsibility,
   and clarifies ownership — and only when it removes genuine duplication or hides genuine complexity. An
   abstraction that requires explanation is not yet the right abstraction.
+- **Don't let the bug that motivated a fix narrow its shape**: when a specific failure prompts a new method
+  or abstraction, check whether the general version costs nothing extra over the narrow one — if it doesn't,
+  build the general version now rather than the narrow one now and a rename later. E.g. a missing reminder
+  was only ever noticed for a *created/owned* notebook; the right fix is not a method named for that one case
+  (`addOwnedNotebookReminder`) but a generic one (`addNotebookReminder(id, message)`) that the owned case is
+  just one caller of, since nothing about the generic shape is harder to write. This is not license to build
+  speculative infrastructure (see "No accidental complexity" below) — only to not artificially narrow an
+  abstraction's design, nomenclature and, scope to match the reproducing case when the general form is equally simple.
 - **Minimal surface, maximum cohesion**: each class and method should do one thing well. If you cannot describe
   a class's responsibility in one sentence, split it.
 - **Less code is usually better code**: prefer a shorter, clearer implementation. If a helper method is used

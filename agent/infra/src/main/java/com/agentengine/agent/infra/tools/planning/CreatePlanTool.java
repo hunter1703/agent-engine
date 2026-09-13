@@ -89,8 +89,8 @@ public final class CreatePlanTool extends Tool {
     LOG.debug("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return ToolOutput.direct(
         Map.of(
-            "status",
-            "success",
+            Constants.ToolStatus.STATUS,
+            Constants.ToolStatus.SUCCESS,
             "message",
             "Plan '" + title + "' created with " + tasks.size() + " tasks.",
             "createdPlan",

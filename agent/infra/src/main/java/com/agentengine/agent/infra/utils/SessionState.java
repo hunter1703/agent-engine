@@ -11,6 +11,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
+import com.agentengine.util.common.beans.Permission;
 import com.google.adk.events.Event;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -65,11 +66,22 @@ public final class SessionState {
     if (notebookGrants == null || CollectionUtils.isEmpty(notebookGrants.grants())) {
       return;
     }
+    final Reminder existing =
+        findReminder(Reminder.GROUP_NOTEBOOK_GRANTS, Reminder.GROUP_NOTEBOOK_GRANTS);
+    final Map<String, Permission> merged = new HashMap<>();
+    if (existing != null) {
+      for (final Map.Entry<String, Object> entry : existing.details().entrySet()) {
+        merged.put(entry.getKey(), (Permission) entry.getValue());
+      }
+    }
+    merged.putAll(notebookGrants.grants());
+    final NotebookGrants mergedGrants = new NotebookGrants(merged);
     addReminder(
         new Reminder(
             Reminder.GROUP_NOTEBOOK_GRANTS,
             Reminder.GROUP_NOTEBOOK_GRANTS,
-            "Notebook Permissions:\n" + notebookGrants.describe()));
+            "Notebook Permissions:\n" + mergedGrants.describe(),
+            new HashMap<>(merged)));
   }
 
   public void addSpawnedAgentReminder(
@@ -164,6 +176,15 @@ public final class SessionState {
     reminders.removeIf(reminder -> Objects.equals(id, reminder.id()));
   }
 
+  private Reminder findReminder(final String group, final String id) {
+    return reminders.stream()
+        .filter(
+            reminder ->
+                Objects.equals(group, reminder.group()) && Objects.equals(id, reminder.id()))
+        .findFirst()
+        .orElse(null);
+  }
+
   private void addRemindersFrom(final List<Event> events) {
     // A FunctionCall and its FunctionResponse always land in separate Events, so the id lookup
     // must accumulate across the whole history, not reset per event.
@@ -173,11 +194,19 @@ public final class SessionState {
       if (content == null) {
         continue;
       }
-      addSpawnedAgentsReminders(content, idVsFunctionCall);
+      addToolCallReminders(content, idVsFunctionCall);
     }
   }
 
-  private void addSpawnedAgentsReminders(
+  /**
+   * Reconstructs reminders whose source of truth is the session's own event history, for every tool
+   * call/response pair this session made that a fresh {@link SessionState} — rebuilt on actor
+   * rehydration, with no memory of what was added to it live — needs to remember: spawned/messaged
+   * child sessions, and notebooks/notes this session created and therefore owns (ownership is
+   * checked separately from the {@link NotebookGrants} map, so it's otherwise invisible here; see
+   * {@link #addNotebookReminder}).
+   */
+  private void addToolCallReminders(
       final Content content, final Map<String, FunctionCall> idVsFunctionCall) {
     final Map<String, Boolean> sessionIdVsAwaited = new HashMap<>();
     final Map<String, String> sessionIdVsGoal = new HashMap<>();
@@ -186,7 +215,9 @@ public final class SessionState {
       final FunctionCall functionCall = part.functionCall().orElse(null);
       if (functionCall != null) {
         final String functionName = functionCall.name().orElse("");
-        if (Constants.ToolNames.isAgentRoutingTool(functionName)) {
+        if (Constants.ToolNames.isAgentRoutingTool(functionName)
+            || Constants.ToolNames.CREATE_NOTEBOOK.equals(functionName)
+            || Constants.ToolNames.CREATE_NOTE.equals(functionName)) {
           functionCall.id().ifPresent(id -> idVsFunctionCall.put(id, functionCall));
         }
       }
@@ -207,12 +238,29 @@ public final class SessionState {
         final String sessionId =
             CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.CHILD_SESSION_ID);
         sessionIdVsAwaited.put(sessionId, await == null || await);
-        sessionIdVsGoal.put(sessionId, CollectionUtils.getStringValueFromMap(callArgs, "goal"));
+        sessionIdVsGoal.put(
+            sessionId, CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.GOAL));
       }
       if (response.name().orElse("").equals(Constants.ToolNames.AWAIT_AGENT)) {
         final String awaitedSession =
             CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.CHILD_SESSION_ID);
         sessionIdVsAwaited.put(awaitedSession, true);
+      }
+      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_NOTEBOOK)
+          && Constants.ToolStatus.SUCCESS.equals(
+              CollectionUtils.getStringValueFromMap(result, Constants.ToolStatus.STATUS))) {
+        addNotebookReminders(
+            NotebookGrants.ofNotebook(
+                CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.NOTEBOOK_ID)));
+      }
+      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_NOTE)
+          && Constants.ToolStatus.PENDING.equals(
+              CollectionUtils.getStringValueFromMap(result, Constants.ToolStatus.STATUS))) {
+        final String notebookId =
+            CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.NOTEBOOK_ID);
+        final String noteTitle =
+            CollectionUtils.getStringValueFromMap(callArgs, Constants.ToolArgs.NOTE_TITLE);
+        addNotebookReminders(NotebookGrants.ofNote(notebookId, noteTitle, Permission.WRITE));
       }
     }
 

@@ -61,7 +61,8 @@ public final class FinishPlanTool extends Tool {
 
     final Plan updatedPlan = applyFinish(currentPlan, newStatus, result);
     sessionState.updatePlan(updatedPlan);
-    return ToolOutput.direct(Map.of("status", "success", "final_state", status));
+    return ToolOutput.direct(
+        Map.of(Constants.ToolStatus.STATUS, Constants.ToolStatus.SUCCESS, "final_state", status));
   }
 
   public static Plan applyFinish(final Plan plan, final PlanStatus status, final String result) {

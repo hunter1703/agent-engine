@@ -49,6 +49,15 @@ public interface Constants {
     String SOURCE = "source";
   }
 
+  /** The {@code status} field/value a tool's response map commonly carries. */
+  interface ToolStatus {
+    String STATUS = "status";
+    String SUCCESS = "success";
+    String PENDING = "pending";
+    String CANCELLED = "cancelled";
+    String ANSWERED = "answered";
+  }
+
   interface Toolsets {
     String NOTEBOOK = "notebook";
   }

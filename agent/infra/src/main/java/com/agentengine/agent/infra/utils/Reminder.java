@@ -1,5 +1,6 @@
 package com.agentengine.agent.infra.utils;
 
+import com.agentengine.util.common.CollectionUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -10,6 +11,12 @@ import java.util.Objects;
  * <p>Reminders are grouped by {@code group} for display (each group becomes a titled section) and
  * individually addressable by {@code id} for targeted removal when the condition they describe is
  * resolved (e.g. a child session is awaited, a knowledge item is no longer relevant).
+ *
+ * <p>{@code details} is a free-form bag a reminder's own accumulation logic can use to carry
+ * whatever state it needs to derive {@code message} from — e.g. a reminder that represents the
+ * union of many individually-added facts (see {@code SessionState#addNotebookReminders}) can stash
+ * the merged data here so a later add can read it back and merge into it, rather than each add
+ * overwriting the last. Not rendered directly; {@code message} is what the brief shows.
  *
  * <p>Well-known groups:
  *
@@ -25,8 +32,17 @@ import java.util.Objects;
  * @param group snake_case category; controls which section this appears under in the brief
  * @param id unique identifier within the group; used for targeted removal
  * @param message the item text rendered as a bullet under the group's section
+ * @param details free-form state this reminder's own accumulation logic can read back; never null
  */
-public record Reminder(String group, String id, String message) {
+public record Reminder(String group, String id, String message, Map<String, Object> details) {
+
+  public Reminder(final String group, final String id, final String message) {
+    this(group, id, message, Map.of());
+  }
+
+  public Reminder {
+    details = CollectionUtils.nullSafeMap(details);
+  }
 
   public static final String GROUP_SPAWNED_AGENTS = "spawned_agents";
   public static final String GROUP_ACTIVE_PLAN = "active_plan";

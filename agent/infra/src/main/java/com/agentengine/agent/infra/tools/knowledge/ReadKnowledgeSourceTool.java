@@ -64,8 +64,8 @@ public final class ReadKnowledgeSourceTool extends Tool {
               : Base64.getEncoder().encodeToString(bytes);
       return ToolOutput.direct(
           Map.of(
-              "status",
-              "success",
+              Constants.ToolStatus.STATUS,
+              Constants.ToolStatus.SUCCESS,
               "content",
               value,
               "encoding",

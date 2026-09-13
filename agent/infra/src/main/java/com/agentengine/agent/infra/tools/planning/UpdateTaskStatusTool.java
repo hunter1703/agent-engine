@@ -6,6 +6,7 @@ import com.agentengine.agent.infra.tools.beans.Task;
 import com.agentengine.agent.infra.tools.beans.TaskStatus;
 import com.agentengine.agent.infra.utils.SessionState;
 import com.agentengine.agent.infra.utils.SessionUtils;
+import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.StringUtils;
 import com.google.adk.tools.ToolContext;
@@ -45,7 +46,13 @@ public abstract class UpdateTaskStatusTool extends Tool {
     final Plan updatedPlan =
         applyTaskUpdate(currentPlan, taskId, name, goal, description, newStatus, result);
     sessionState.updatePlan(updatedPlan);
-    return Map.of("status", "success", "task_id", taskId, "new_status", resolvedStatus.getValue());
+    return Map.of(
+        Constants.ToolStatus.STATUS,
+        Constants.ToolStatus.SUCCESS,
+        "task_id",
+        taskId,
+        "new_status",
+        resolvedStatus.getValue());
   }
 
   public static Plan applyTaskUpdate(
