@@ -6,11 +6,11 @@ import static jakarta.ws.rs.core.MediaType.SERVER_SENT_EVENTS;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.SessionService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
-import com.agentengine.interfaces.rest.providers.RestJsonCodec;
 import com.agentengine.util.agents.beans.ResumeRequest;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.FlowableUtils;
 import com.agentengine.util.common.JsonCodec;
+import com.agentengine.util.common.SimpleJsonCodec;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -49,7 +49,7 @@ public class SessionRestAPI {
   public SessionRestAPI(
       final SessionService sessionService,
       final MicroServiceClientProvider microServiceClientProvider,
-      final RestJsonCodec jsonCodec) {
+      final SimpleJsonCodec jsonCodec) {
     this.sessionService = sessionService;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);
     this.jsonCodec = jsonCodec;

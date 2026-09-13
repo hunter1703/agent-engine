@@ -1,6 +1,7 @@
 package com.agentengine.interfaces.rest.providers;
 
 import com.agentengine.util.common.JsonCodec;
+import com.agentengine.util.common.SimpleJsonCodec;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.WebApplicationException;
@@ -27,7 +28,7 @@ public class JsonMessageBodyReader implements ServerMessageBodyReader<Object> {
   private final JsonCodec jsonCodec;
 
   @Inject
-  public JsonMessageBodyReader(final RestJsonCodec jsonCodec) {
+  public JsonMessageBodyReader(final SimpleJsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 

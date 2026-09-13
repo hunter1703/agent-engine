@@ -10,11 +10,11 @@ import com.agentengine.agent.api.model.UserMessage;
 import com.agentengine.agent.api.services.RuntimeService;
 import com.agentengine.catalog.api.services.AgentService;
 import com.agentengine.interfaces.rest.filter.ContextAware;
-import com.agentengine.interfaces.rest.providers.RestJsonCodec;
 import com.agentengine.scheduler.api.models.JobDefinition;
 import com.agentengine.scheduler.api.runner.SchedulerService;
 import com.agentengine.util.agents.beans.config.BaseAgentConfig;
 import com.agentengine.util.common.*;
+import com.agentengine.util.common.SimpleJsonCodec;
 import com.agentengine.util.common.beans.AssetClass;
 import com.agentengine.util.common.beans.FileDetails;
 import com.agentengine.util.common.exception.AssetNotFoundException;
@@ -61,7 +61,7 @@ public class AgentRestAPI {
   public AgentRestAPI(
       final SchedulerService schedulerService,
       final MicroServiceClientProvider microServiceClientProvider,
-      final RestJsonCodec jsonCodec) {
+      final SimpleJsonCodec jsonCodec) {
     this.agentService = microServiceClientProvider.getRaw(AgentService.class);
     this.schedulerService = schedulerService;
     this.runtimeService = microServiceClientProvider.getRaw(RuntimeService.class);

@@ -4,10 +4,10 @@
     "_t": "com.agentengine.util.mongodb.infra.DefaultModelsConfig",
     "type": "DEFAULT_MODELS",
     "category": "DEFAULT_MODELS",
-    "titleModelId": "mistral",
-    "compactionModelId": "mistral",
-    "evaluatorModelId": "mistral",
+    "titleModelId": "gemma4",
+    "compactionModelId": "gemma4",
+    "evaluatorModelId": "gemma4",
     "embeddingModelId": "nomic-embed-text",
-    "chatModelId": "mistral"
+    "chatModelId": "gemma4"
   }
 ]

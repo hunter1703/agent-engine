@@ -1,4 +1,4 @@
-package com.agentengine.interfaces.rest.providers;
+package com.agentengine.util.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,20 +13,20 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * REST layer coverage: {@link RestJsonCodec} deliberately has no default typing (see its javadoc).
- * The negative test below is the important one — it proves that boundary is real, not just
- * documented.
+ * REST layer coverage: {@link SimpleJsonCodec} deliberately has no default typing (see its
+ * javadoc). The negative test below is the important one — it proves that boundary is real, not
+ * just documented.
  */
-class RestJsonCodecTest {
+class SimpleJsonCodecTest {
 
-  private static RestJsonCodec codec() {
-    return new RestJsonCodec(List.of());
+  private static SimpleJsonCodec codec() {
+    return new SimpleJsonCodec(List.of());
   }
 
   /** {@link ModelConfig}'s own closed {@code @JsonTypeInfo(Id.NAME)} needs no default typing. */
   @Test
   void closedSubtypeRoundTripsThroughItsOwnAnnotation() {
-    final RestJsonCodec codec = codec();
+    final SimpleJsonCodec codec = codec();
     final EmbeddingModelConfig original = new EmbeddingModelConfig();
     original.setName("embedder");
     original.setDimensions(768);
@@ -42,11 +42,11 @@ class RestJsonCodecTest {
   /**
    * The actual security boundary: an unannotated polymorphic hierarchy (no {@code @JsonTypeInfo} of
    * its own) can't be recovered through this codec, because there's no default typing to fall back
-   * on. If this ever starts passing, {@link RestJsonCodec}'s "no default typing" guarantee broke.
+   * on. If this ever starts passing, {@link SimpleJsonCodec}'s "no default typing" guarantee broke.
    */
   @Test
   void unannotatedHierarchyCannotBeRecoveredWithoutDefaultTyping() {
-    final RestJsonCodec codec = codec();
+    final SimpleJsonCodec codec = codec();
     final String json = codec.serialize(new Child1("value"));
 
     assertThat(json).doesNotContain("@class");
@@ -56,7 +56,7 @@ class RestJsonCodecTest {
 
   @Test
   void nonAbsentInclusionOmitsNullFields() {
-    final RestJsonCodec codec = codec();
+    final SimpleJsonCodec codec = codec();
 
     final String json = codec.serialize(new EmbeddingModelConfig());
 
@@ -75,7 +75,7 @@ class RestJsonCodecTest {
    */
   @Test
   void heterogeneousListOfClosedSubtypesRoundTrips() throws Exception {
-    final RestJsonCodec codec = codec();
+    final SimpleJsonCodec codec = codec();
     final ChatModelConfig chat = new ChatModelConfig();
     chat.setName("chat-model");
     final EmbeddingModelConfig embedding = new EmbeddingModelConfig();
@@ -83,7 +83,7 @@ class RestJsonCodecTest {
     embedding.setDimensions(1536);
 
     final Type listType =
-        RestJsonCodecTest.class
+        SimpleJsonCodecTest.class
             .getDeclaredMethod("listOfModelConfigSignature")
             .getGenericReturnType();
     final String json = codec.serialize(List.of(chat, embedding), listType);

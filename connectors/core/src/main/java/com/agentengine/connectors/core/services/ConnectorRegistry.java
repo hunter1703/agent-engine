@@ -5,6 +5,7 @@ import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.ResourceUtils;
+import com.agentengine.util.common.SimpleJsonCodec;
 import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -20,7 +21,7 @@ public final class ConnectorRegistry {
   private final JsonCodec jsonCodec;
 
   @Inject
-  public ConnectorRegistry(final JsonCodec jsonCodec) {
+  public ConnectorRegistry(final SimpleJsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 
@@ -54,6 +55,10 @@ public final class ConnectorRegistry {
     if (StringUtils.isBlank(appContent)) {
       return null;
     }
-    return jsonCodec.deserialize(appContent, Application.class).spec();
+    try {
+      return jsonCodec.deserialize(appContent, Application.class).spec();
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

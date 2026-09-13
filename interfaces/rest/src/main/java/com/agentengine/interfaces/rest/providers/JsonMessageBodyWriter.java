@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest.providers;
 
 import com.agentengine.util.common.JsonCodec;
 import com.agentengine.util.common.RawBytes;
+import com.agentengine.util.common.SimpleJsonCodec;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
@@ -31,7 +32,7 @@ public class JsonMessageBodyWriter extends ServerMessageBodyWriter.AllWriteableM
   private final JsonCodec jsonCodec;
 
   @Inject
-  public JsonMessageBodyWriter(final RestJsonCodec jsonCodec) {
+  public JsonMessageBodyWriter(final SimpleJsonCodec jsonCodec) {
     this.jsonCodec = jsonCodec;
   }
 
