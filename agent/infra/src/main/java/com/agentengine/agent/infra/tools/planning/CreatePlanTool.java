@@ -86,7 +86,7 @@ public final class CreatePlanTool extends Tool {
 
     sessionState.updatePlan(currentPlan);
 
-    LOG.info("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
+    LOG.debug("Created plan '{}' with {} tasks", currentPlan.getPlanId(), tasks.size());
     return ToolOutput.direct(
         Map.of(
             "status",

@@ -59,7 +59,7 @@ public class EmbeddingModelFactory {
                 })
             .onEvict(
                 (key, model) ->
-                    LOGGER.info(
+                    LOGGER.debug(
                         "Evicting embedding model : {} for key : {}", model.modelName(), key))
             .build();
   }

@@ -142,7 +142,7 @@ public final class LangChain4jModel extends BaseLlm {
 
                     @Override
                     public void onCompleteResponse(final ChatResponse chatResponse) {
-                      LOGGER.info("Raw ChatResponse (onComplete): {}", chatResponse);
+                      LOGGER.debug("Raw ChatResponse (onComplete): {}", chatResponse);
                       final List<Part> parts = toParts(chatResponse.aiMessage(), chatRequest);
                       if (CollectionUtils.isNotEmpty(parts)) {
                         emitter.onNext(finalResponse(parts));
@@ -152,7 +152,7 @@ public final class LangChain4jModel extends BaseLlm {
 
                     @Override
                     public void onError(final Throwable throwable) {
-                      LOGGER.error("LangChain4jModel onError", throwable);
+                      LOGGER.debug("LangChain4jModel onError", throwable);
                       emitter.onError(throwable);
                     }
                   }),

@@ -77,7 +77,7 @@ public abstract class ImageEditingTool extends Tool {
         inputTempFile.delete();
       }
     } catch (Exception e) {
-      LOG.error("{} failed for artifact={}", descriptor().name(), artifactName, e);
+      LOG.debug("{} failed for artifact={}", descriptor().name(), artifactName, e);
       return ToolOutput.direct(Map.of("error", ExceptionUtils.getErrorMessage(e)));
     }
   }

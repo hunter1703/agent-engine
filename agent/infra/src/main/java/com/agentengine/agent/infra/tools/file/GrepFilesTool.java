@@ -154,11 +154,11 @@ public final class GrepFilesTool extends BaseFileTool {
       return ToolOutput.direct(response);
 
     } catch (PatternSyntaxException exception) {
-      LOG.error("Invalid regex pattern: {}", pattern, exception);
+      LOG.debug("Invalid regex pattern: {}", pattern, exception);
       return ToolOutput.direct(
           Map.of("error", "Invalid regex pattern: " + exception.getDescription()));
     } catch (IOException exception) {
-      LOG.error("Failed to search files: {}", basePath, exception);
+      LOG.debug("Failed to search files: {}", basePath, exception);
       return ToolOutput.direct(
           Map.of("error", "Failed to search files: " + ExceptionUtils.getErrorMessage(exception)));
     }

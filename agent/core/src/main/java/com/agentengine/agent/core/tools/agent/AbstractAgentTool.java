@@ -84,10 +84,10 @@ public class AbstractAgentTool extends Tool {
     if (!result.completedRun()) {
       toolContext.requestConfirmation(
           "Waiting for child agent run to complete.", Map.of(CHILD_SESSION_ID, childSessionId));
-      LOGGER.info("Awaiting child session {} to complete.", childSessionId);
+      LOGGER.debug("Awaiting child session {} to complete.", childSessionId);
       return ToolOutput.empty();
     } else {
-      LOGGER.info("Child session {} completed with result: {}", childSessionId, result);
+      LOGGER.debug("Child session {} completed with result: {}", childSessionId, result);
     }
     SessionUtils.getSessionState(toolContext.invocationContext())
         .markSpawnedAgentAwaited(childSessionId);

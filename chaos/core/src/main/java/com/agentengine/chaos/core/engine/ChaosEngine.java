@@ -139,7 +139,7 @@ public final class ChaosEngine {
     final SteadyStateMetrics baseline = baselineOpt.get();
 
     if (experiment.dryRun()) {
-      LOG.info(
+      LOG.debug(
           "Dry-run experiment {}: {} matching pods, baseline collected, no fault injected",
           experiment.name(),
           decision.matchingPods());

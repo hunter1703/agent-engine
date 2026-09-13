@@ -174,7 +174,8 @@ public final class ApplyPatchTool extends BaseFileTool {
                     .sum();
         final int deletions =
             parsedPatch.getDeltas().stream().mapToInt(delta -> delta.getSource().size()).sum();
-        LOG.info("Applied patch to {}: {} additions, {} deletions", filePath, additions, deletions);
+        LOG.debug(
+            "Applied patch to {}: {} additions, {} deletions", filePath, additions, deletions);
 
         final Map<String, Object> response = new HashMap<>();
         response.put("success", true);

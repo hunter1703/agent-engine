@@ -152,7 +152,7 @@ public final class ListDirTool extends BaseFileTool {
       return ToolOutput.direct(response);
 
     } catch (IOException exception) {
-      LOG.error("Failed to list directory: {}", dirPath, exception);
+      LOG.debug("Failed to list directory: {}", dirPath, exception);
       return ToolOutput.direct(
           Map.of(
               "error", "Failed to list directory: " + ExceptionUtils.getErrorMessage(exception)));
