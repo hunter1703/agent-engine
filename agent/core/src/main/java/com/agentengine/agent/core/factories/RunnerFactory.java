@@ -76,9 +76,13 @@ public class RunnerFactory {
     final BaseAgentConfig config = agentService.getAgent(agentId);
     final Agent agent = agentProvider.create(config);
     final App app =
-        App.builder().plugins(buildPlugins(agent)).rootAgent(agent).name(agentId).build();
+        App.builder()
+            .plugins(buildPlugins(agent))
+            .rootAgent(agent)
+            .name("_%s".formatted(agentId))
+            .build();
     final InMemorySessionService inMemorySessionService =
-        buildInMemorySessionService(agentId, sessionId);
+        buildInMemorySessionService(app.name(), sessionId);
     final Runner runner =
         Runner.builder()
             .app(app)
@@ -89,7 +93,7 @@ public class RunnerFactory {
   }
 
   private InMemorySessionService buildInMemorySessionService(
-      final String agentId, final String sessionId) {
+      final String appId, final String sessionId) {
     final InMemorySessionService inMemorySessionService = new InMemorySessionService();
     final AgentSession agentSession = sessionService.getSession(sessionId);
     final Session persistedSession = SessionUtils.toSession(agentSession, getEvents(sessionId));
@@ -101,7 +105,7 @@ public class RunnerFactory {
                 persistedSession.state() == null ? Map.of() : persistedSession.state());
     final Session session =
         inMemorySessionService
-            .createSession(agentId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
+            .createSession(appId, AgentSession.DEFAULT_USER_ID, initialState, sessionId)
             .blockingGet();
 
     if (persistedSession != null) {
