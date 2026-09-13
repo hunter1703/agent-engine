@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import os
 import signal
 import subprocess
 import time
@@ -87,6 +88,12 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         help="Override the app image tag for app charts",
     )
     parser.add_argument(
+        "--image-registry",
+        help="Registry prefix to build/push/deploy images through (e.g. ghcr.io/<owner>) "
+        "instead of assuming the deploying machine's own Docker daemon is what the cluster "
+        "pulls from — required for a cluster that isn't on the same host as the build",
+    )
+    parser.add_argument(
         "--no-atomic", action="store_true", help="Disable atomic rollback on Helm failure"
     )
     parser.add_argument(
@@ -116,6 +123,12 @@ def _build_context(args: argparse.Namespace) -> helm.DeployContext:
         extra_values_files=args.values_files,
         set_arguments=args.set_arguments,
         image_tag=args.image_tag,
+        image_registry=args.image_registry,
+        # Secrets, not CLI flags, so they never show up in argv/ps output or shell history —
+        # set by the caller's environment (a CI job's `env:` block, e.g.) when the target tier
+        # has no self-hosted mongodb/postgres chart to seed/init via port-forward instead.
+        mongodb_uri=os.environ.get("DEPLOYAE_MONGODB_URI"),
+        postgres_conninfo=os.environ.get("DEPLOYAE_POSTGRES_CONNINFO"),
     )
 
 
@@ -268,8 +281,17 @@ def build_stages(
     stages.extend(tls_cert_stages.values())
 
     # --- Build: one gradle build feeding one docker-image stage per component ---
+    # A tier assembles its own subset of app charts by which tiers/<tier>/values.yaml files
+    # exist (see Chart.is_enabled_for_tier) — building/pushing a component no chart for this
+    # tier will ever deploy is pure waste (CI minutes, registry storage), so the gradle task
+    # list itself is trimmed to what's actually enabled. image_stage_by_component still holds
+    # an entry per component regardless (each deploy_app_chart() call below references its own
+    # component unconditionally), just disabled for anything not enabled for this tier.
+    enabled_components = tuple(
+        component for component in APP_COMPONENTS if Chart(component).is_enabled_for_tier(ctx.tier)
+    )
     gradle_stage = BuildGradleStage(
-        name="build-gradle", components=APP_COMPONENTS, enabled=not dry_run
+        name="build-gradle", components=enabled_components, enabled=not dry_run
     )
     stages.append(gradle_stage)
     image_stage_by_component = {
@@ -278,7 +300,9 @@ def build_stages(
             depends_on=(gradle_stage,),
             component=component,
             tag=ctx.image_tag or "dev",
-            enabled=not dry_run,
+            registry_prefix=ctx.image_registry,
+            push=bool(ctx.image_registry),
+            enabled=not dry_run and component in enabled_components,
         )
         for component in APP_COMPONENTS
     }
@@ -308,14 +332,17 @@ def build_stages(
 
     # mongodb is the one infra chart every tier is expected to need (seed-infra-config
     # depends on it unconditionally) — a tier that omits its own tiers/<tier>/values.yaml
-    # for mongodb would disable this stage too, same as any other infra chart.
+    # for mongodb would disable this stage too, same as any other infra chart, UNLESS an
+    # external mongodb_uri was given (a tier backed by an externally-hosted Mongo, e.g. Atlas,
+    # with no self-hosted chart at all — see SeedInfraConfigStage.external_mongodb_uri).
     seed_infra_config_stage = SeedInfraConfigStage(
         name="seed-infra-config",
         depends_on=(infra_deploy_by_name["mongodb"],),
         tier=ctx.tier,
         environment=ctx.environment,
         namespace_override=ctx.namespace,
-        enabled=infra_chart_enabled["mongodb"],
+        external_mongodb_uri=ctx.mongodb_uri,
+        enabled=(infra_chart_enabled["mongodb"] or bool(ctx.mongodb_uri)) and not dry_run,
     )
     stages.append(seed_infra_config_stage)
     stages.append(
@@ -324,7 +351,9 @@ def build_stages(
             depends_on=(infra_deploy_by_name["postgres"],),
             namespace_override=ctx.namespace,
             tier=ctx.tier,
-            enabled=infra_chart_enabled["postgres"],
+            external_conninfo=ctx.postgres_conninfo,
+            enabled=(infra_chart_enabled["postgres"] or bool(ctx.postgres_conninfo))
+            and not dry_run,
         )
     )
     qdrant_collections_stage = InitQdrantCollectionStage(

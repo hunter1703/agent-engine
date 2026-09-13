@@ -4,8 +4,8 @@
     "_t": "com.agentengine.util.mongodb.infra.SQLInfraConfig",
     "type": "SQL_SERVER",
     "category": "SQL",
-    "jdbcUrl": "jdbc:postgresql://postgres-socialmedia.infra.svc.cluster.local:5432/agent_engine_events",
-    "jdbcUser": "postgres",
-    "jdbcPassword": ""
+    "jdbcUrl": "jdbc:postgresql://ep-damp-hall-b3465we4.c-4.ap-southeast-1.aws.neon.tech/agent_engine_events?sslmode=require",
+    "jdbcUser": "agent_engine_events_owner",
+    "jdbcPassword": "${NEON_JDBC_PASSWORD}"
   }
 ]

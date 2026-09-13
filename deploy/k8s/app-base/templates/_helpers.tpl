@@ -47,7 +47,9 @@ rollingUpdate:
 {{- define "agent-engine.app-base.image" -}}
 {{- $global := .Values.global | default dict -}}
 {{- $tag := $global.imageTag | default "latest" -}}
-{{- printf "agent-engine/%s:%s" .Values.service.name $tag -}}
+{{- $registry := $global.imageRegistry | default "" -}}
+{{- $prefix := ternary (printf "%s/" $registry) "" (ne $registry "") -}}
+{{- printf "%sagent-engine/%s:%s" $prefix .Values.service.name $tag -}}
 {{- end -}}
 
 {{- define "agent-engine.app-base.probes" -}}

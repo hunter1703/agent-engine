@@ -9,6 +9,10 @@ pdb:
 tmpVolume:
   sizeLimit: 256Mi
 
+# A tier can override this with the name of a docker-registry Secret (created out of band,
+# e.g. `kubectl create secret docker-registry ...`) when its images live in a private registry.
+imagePullSecrets: []
+
 service:
   httpPort: 8080
   grpcPort: 9000

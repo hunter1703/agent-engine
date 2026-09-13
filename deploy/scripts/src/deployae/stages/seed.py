@@ -35,6 +35,9 @@ class SeedInfraConfigStage(Stage):
     environment: str
     namespace_override: str | None
     mongodb_port: int = DEFAULT_MONGODB_PORT
+    # Set for tiers with no self-hosted mongodb chart (e.g. socialmedia, backed by MongoDB
+    # Atlas) — connects directly instead of port-forwarding to a Service that doesn't exist.
+    external_mongodb_uri: str | None = None
 
     async def run(self) -> None:
         await asyncio.to_thread(self._seed)
@@ -44,19 +47,28 @@ class SeedInfraConfigStage(Stage):
         `mongodb` if it wasn't deployed with a tier); `environment` picks which config files
         get seeded. These are unrelated axes — MongoDB is a shared per-environment resource,
         the config files describe that same environment's canonical topology."""
+        docs = self._environment_configs()
+
+        if self.external_mongodb_uri:
+            client: MongoClient[dict[str, Any]] = MongoClient(self.external_mongodb_uri)
+            try:
+                collection = client["INFRA"]["InfraConfig"]
+                for doc in docs:
+                    _upsert_infra_config(collection, doc)
+            finally:
+                client.close()
+            return
+
         mongodb = Chart("mongodb")
         mongodb_ns = mongodb.namespace(self.namespace_override)
         mongodb_name = mongodb.resource_name(self.tier)
-        docs = self._environment_configs()
 
         with kube.port_forward(mongodb_ns, mongodb_name, self.mongodb_port) as local_port:
             # directConnection: mongod always runs with --replSet (even at a single member), so
             # without this the driver discovers replica set topology from the server's advertised
             # member hostnames (cluster-internal DNS) and reconnects there instead of continuing
             # to use this port-forward tunnel - which then fails to resolve outside the cluster.
-            client: MongoClient[dict[str, Any]] = MongoClient(
-                f"mongodb://127.0.0.1:{local_port}/?directConnection=true"
-            )
+            client = MongoClient(f"mongodb://127.0.0.1:{local_port}/?directConnection=true")
             try:
                 collection = client["INFRA"]["InfraConfig"]
                 for doc in docs:

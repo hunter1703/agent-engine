@@ -27,6 +27,10 @@ spec:
     spec:
       serviceAccountName: {{ include "agent-engine.app-base.instance" . }}
       automountServiceAccountToken: {{ include "agent-engine.app-base.automountToken" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

@@ -28,7 +28,13 @@ class DeployContext:
     extra_values_files: list[Path] = field(default_factory=list)
     set_arguments: list[str] = field(default_factory=list)
     image_tag: str | None = None
+    image_registry: str | None = None
     rollout_revision: str | None = None
+    # Set only for tiers with no self-hosted mongodb/postgres chart (e.g. socialmedia, backed
+    # by MongoDB Atlas / Neon) — lets SeedInfraConfigStage/InitPostgresSchemaStage connect
+    # directly instead of port-forwarding to a self-hosted chart's Service that doesn't exist.
+    mongodb_uri: str | None = None
+    postgres_conninfo: str | None = None
 
 
 def _run(args: list[str]) -> None:
@@ -73,6 +79,8 @@ def value_flags(chart: Chart, ctx: DeployContext) -> list[str]:
     if chart.is_app_chart:
         if ctx.image_tag:
             flags += ["--set", f"global.imageTag={ctx.image_tag}"]
+        if ctx.image_registry:
+            flags += ["--set", f"global.imageRegistry={ctx.image_registry}"]
         if ctx.rollout_revision:
             flags += ["--set-string", f"global.rolloutRevision={ctx.rollout_revision}"]
 

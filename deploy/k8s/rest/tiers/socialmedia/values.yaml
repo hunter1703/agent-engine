@@ -1,4 +1,6 @@
 app-base:
+  imagePullSecrets:
+    - name: ghcr-pull
   tier: socialmedia
   minReadySeconds: 0
   preStopSleepSeconds: 0

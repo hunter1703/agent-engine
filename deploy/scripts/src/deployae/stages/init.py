@@ -74,11 +74,21 @@ class InitPostgresSchemaStage(_BootstrapStage):
     port: int = DEFAULT_POSTGRES_PORT
     user: str = "postgres"
     database: str = "agent_engine_events"
+    # Set for tiers with no self-hosted postgres chart (e.g. socialmedia, backed by Neon) —
+    # a full psycopg conninfo string/URI, connected to directly instead of port-forwarding to
+    # a Service that doesn't exist.
+    external_conninfo: str | None = None
 
     async def run(self) -> None:
         await asyncio.to_thread(self._init)
 
     def _init(self) -> None:
+        if self.external_conninfo:
+            with psycopg.connect(self.external_conninfo, autocommit=True) as conn:
+                conn.execute(_POSTGRES_SCHEMA)
+            print("PostgreSQL Pekko schema initialized")
+            return
+
         namespace, service_name = self._resolve_target(
             "postgres", self.namespace_override, self.tier
         )
