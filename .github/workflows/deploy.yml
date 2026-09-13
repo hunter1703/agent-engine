@@ -197,6 +197,14 @@ jobs:
       # builds+pushes their images to GHCR, and helm-upgrades every enabled chart — the same
       # logic deployae already uses locally, just pointed at an external registry/cluster
       # instead of a shared local Docker daemon. Seeding happened above, not here.
+      #
+      # Always tag/push as "latest" rather than the git SHA — this tier's GHCR packages are
+      # private, and private packages are capped at 500MB total storage on a Free account;
+      # a SHA per deploy would accumulate forever instead of overwriting one image per
+      # component. app-base's Deployment template sets imagePullPolicy: Always whenever
+      # global.imageRegistry is set (see deploy/k8s/app-base/templates/deployment.yaml) so
+      # nodes actually re-pull "latest" instead of trusting a stale locally-cached copy — the
+      # usual "latest never updates" gotcha, made harmless by that pairing.
       - name: Deploy
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
@@ -204,5 +212,5 @@ jobs:
           python3 -m deployae deploy \
             -t "${{ inputs.tier }}" \
             -e "${{ inputs.environment }}" \
-            --image-tag "${{ github.sha }}" \
+            --image-tag latest \
             --image-registry "$REGISTRY"

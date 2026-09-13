@@ -37,7 +37,14 @@ spec:
       containers:
         - name: {{ .Values.service.name }}
           image: {{ include "agent-engine.app-base.image" . | quote }}
-          imagePullPolicy: IfNotPresent
+          {{- /*
+          A registry-backed tier (global.imageRegistry set) reuses a fixed tag ("latest") across
+          deploys, so a node must re-check the registry every time rather than trusting a
+          previously-pulled image with the same tag — the standard "latest never updates" gotcha
+          otherwise. local's shared-daemon path never pulls from anywhere at all, so IfNotPresent
+          (skip the no-op pull entirely) stays correct and unchanged for it.
+          */}}
+          imagePullPolicy: {{ if (.Values.global | default dict).imageRegistry }}Always{{ else }}IfNotPresent{{ end }}
           lifecycle:
             preStop:
               exec:
