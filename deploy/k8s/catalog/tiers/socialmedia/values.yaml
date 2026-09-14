@@ -17,6 +17,7 @@ app-base:
       memory: "256Mi"
   config:
     applicationProperties:
+      quarkus.log.category."org.mongodb.driver.protocol.command".level: "DEBUG"
       quarkus.otel.service.name: agent-engine-catalog
       quarkus.otel.sdk.disabled: "true"
       quarkus.grpc.server.use-separate-server: "false"
