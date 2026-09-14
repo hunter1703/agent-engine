@@ -28,6 +28,7 @@ include 'util:agents'
 include 'util:pekko'
 include 'util:scripts'
 include 'util:common'
+include 'util:distributed'
 
 include 'knowledge:api'
 include 'knowledge:core'

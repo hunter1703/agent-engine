@@ -74,6 +74,8 @@ okhttp = "4.12.0"
 spotless = "8.4.0"
 jandex = "2.3.0"
 cron-utils = "9.2.1"
+jgroups = "5.3.13.Final"
+jgroups-kubernetes = "2.0.1.Final"
 
 [libraries]
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
@@ -198,6 +200,8 @@ okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver",
 commons-text = { group = "org.apache.commons", name = "commons-text", version.ref = "commons-text" }
 flexmark-all = { group = "com.vladsch.flexmark", name = "flexmark-all", version.ref = "flexmark" }
 commonmark = { group = "org.commonmark", name = "commonmark", version.ref = "commonmark" }
+jgroups = { group = "org.jgroups", name = "jgroups", version.ref = "jgroups" }
+jgroups-kubernetes = { group = "org.jgroups.kubernetes", name = "jgroups-kubernetes", version.ref = "jgroups-kubernetes" }
 
 # gRPC & Protobuf
 protobuf-java = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
