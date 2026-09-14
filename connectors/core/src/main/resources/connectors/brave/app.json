@@ -1,0 +1,17 @@
+{
+  "connection": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "description": "The API token for the Brave Web Search API.",
+          "sensitive": true
+        }
+      },
+      "required": [
+        "token"
+      ]
+    }
+  }
+}

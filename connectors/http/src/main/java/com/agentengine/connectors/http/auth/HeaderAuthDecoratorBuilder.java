@@ -1,5 +1,6 @@
 package com.agentengine.connectors.http.auth;
 
+import com.agentengine.connectors.api.services.ConnectionRefresher;
 import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.infra.auth.AuthDecorator;
 import com.agentengine.connectors.infra.auth.AuthDecoratorBuilder;
@@ -13,11 +14,17 @@ import java.util.Map;
 public class HeaderAuthDecoratorBuilder
     implements AuthDecoratorBuilder<HeaderAuthDecoratorSpec, HttpRequest> {
 
+  private final ConnectionRefresher connectionRefresher;
+
+  public HeaderAuthDecoratorBuilder(ConnectionRefresher connectionRefresher) {
+    this.connectionRefresher = connectionRefresher;
+  }
+
   @Override
   public AuthDecorator<HttpRequest> build(HeaderAuthDecoratorSpec spec) {
     final Template<Map<String, String>> headerTemplate =
         TemplateUtils.buildTemplate(spec.getHeaders());
-    return new HeaderAuthDecorator(headerTemplate);
+    return new HeaderAuthDecorator(headerTemplate, connectionRefresher);
   }
 
   @Override

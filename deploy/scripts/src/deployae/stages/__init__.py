@@ -21,7 +21,7 @@ from deployae.stages.init import (
     InitPostgresSchemaStage,
     InitQdrantCollectionStage,
 )
-from deployae.stages.seed import SeedInfraConfigStage, SeedRestCatalogStage
+from deployae.stages.seed import SeedInfraConfigStage, SeedRestCatalogStage, SaveConnectionStage
 
 __all__ = [
     "BuildDockerImageStage",
@@ -40,6 +40,7 @@ __all__ = [
     "RemoveLocalstackResourcesStage",
     "SeedInfraConfigStage",
     "SeedRestCatalogStage",
+    "SaveConnectionStage",
     "Stage",
     "UninstallChartStage",
     "run_graph",

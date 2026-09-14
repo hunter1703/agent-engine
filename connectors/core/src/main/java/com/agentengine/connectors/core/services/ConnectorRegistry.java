@@ -1,5 +1,6 @@
 package com.agentengine.connectors.core.services;
 
+import com.agentengine.connectors.api.beans.ConnectionSpec;
 import com.agentengine.connectors.infra.beans.Application;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
@@ -51,12 +52,27 @@ public final class ConnectorRegistry {
     }
   }
 
+  public ConnectionSpec getConnectionSpec(final String appName) {
+    final String appContent =
+        ResourceUtils.loadResourceAsString(
+            "/%s/%s/%s".formatted(CONNECTORS_DIRECTORY, appName, APP_CONFIG_FILE_NAME));
+    if (StringUtils.isBlank(appContent)) {
+      return null;
+    }
+    try {
+      Application app = jsonCodec.deserialize(appContent, Application.class);
+      return app != null ? app.connection() : null;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
   private ConnectorSpec readAppSpec(final String appContent) {
     if (StringUtils.isBlank(appContent)) {
       return null;
     }
     try {
-      return jsonCodec.deserialize(appContent, Application.class).spec();
+      return jsonCodec.deserialize(appContent, Application.class).connector();
     } catch (Exception e) {
       return null;
     }

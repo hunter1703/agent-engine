@@ -1,9 +1,11 @@
 package com.agentengine.connectors.core.services;
 
+import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.builders.ConnectorExecutorFactory;
@@ -18,12 +20,16 @@ import java.util.Map;
 public class ConnectorServiceImpl implements ConnectorService {
   private final ConnectorRegistry registry;
   private final ConnectorExecutorFactory executorFactory;
+  private final ConnectionService connectionService;
 
   @Inject
   public ConnectorServiceImpl(
-      ConnectorRegistry registry, ConnectorExecutorFactory executorFactory) {
+      ConnectorRegistry registry,
+      ConnectorExecutorFactory executorFactory,
+      ConnectionService connectionService) {
     this.registry = registry;
     this.executorFactory = executorFactory;
+    this.connectionService = connectionService;
   }
 
   @Override
@@ -31,7 +37,8 @@ public class ConnectorServiceImpl implements ConnectorService {
     final Connector connector = getConnector(request.appName(), request.connectorName());
     final ConnectorExecutor<Map<String, Object>, T> executor =
         executorFactory.build(connector.spec());
-    return executor.execute(request.input());
+    final Connection connection = connectionService.getConnection(request.connectionId());
+    return executor.execute(connection, request.input());
   }
 
   @Override

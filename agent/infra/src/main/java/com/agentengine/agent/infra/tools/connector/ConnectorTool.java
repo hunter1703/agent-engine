@@ -1,9 +1,11 @@
 package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.tools.Tool;
+import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -11,36 +13,36 @@ import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.agentengine.util.common.query.Page;
+import com.agentengine.util.common.query.PaginatedResult;
+import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-/**
- * Exposes a single configured connector as a tool - one instance per connector. Subclassable by
- * tools that want to hardwire a specific connector (e.g. {@link WebSearchTool}) while still
- * inheriting the connector-driven schema and call/error handling.
- */
 public class ConnectorTool extends Tool {
 
   private final ConnectorService connectorService;
+  private final ConnectionService connectionService;
   private final ConnectorMetadata connectorMetadata;
 
-  public ConnectorTool(final ConnectorService connectorService, final ConnectorMetadata metadata) {
-    this(connectorService, descriptorFor(metadata), metadata);
+  public ConnectorTool(
+      final ConnectorService connectorService,
+      final ConnectionService connectionService,
+      final ConnectorMetadata metadata) {
+    this(connectorService, connectionService, descriptorFor(metadata), metadata);
   }
 
-  /**
-   * For a subclass that wants a fixed, static tool identity (name/description known at compile
-   * time, no remote call) decoupled from the connector backing it - e.g. {@link WebSearchTool},
-   * whose descriptor must be cheap to read at service startup, before any connector is known to be
-   * reachable. The args schema still comes from {@code metadata}.
-   */
   protected ConnectorTool(
       final ConnectorService connectorService,
+      final ConnectionService connectionService,
       final ToolDescriptor descriptor,
       final ConnectorMetadata metadata) {
     super(descriptor, argsSchemaFor(metadata));
     this.connectorService = connectorService;
+    this.connectionService = connectionService;
     this.connectorMetadata = metadata;
   }
 
@@ -53,13 +55,64 @@ public class ConnectorTool extends Tool {
     return Schema.fromJson(JsonUtils.toJson(metadata.inputSchema()));
   }
 
-  public ToolOutput<Map<String, Object>> execute(final Map<String, Object> input) {
+  protected Optional<FunctionDeclaration> baseDeclaration() {
+    return super.declaration();
+  }
+
+  @Override
+  public Optional<FunctionDeclaration> declaration() {
+    Optional<FunctionDeclaration> declaration = baseDeclaration();
+    if (declaration.isEmpty()) {
+      return declaration;
+    }
+    final FunctionDeclaration defaultDeclaration = declaration.get();
+
+    PaginatedResult<Connection> page =
+        connectionService.getConnections(connectorMetadata.appName(), new Page(0, 100));
+    final List<String> connectionIds =
+        page != null
+            ? CollectionUtils.transformToList(page.getItems(), Connection::getId)
+            : List.of();
+
+    final Map<String, Schema> properties = new HashMap<>();
+    properties.put("input", defaultDeclaration.parameters().orElse(null));
+
+    final List<String> requiredFields = new java.util.ArrayList<>();
+    requiredFields.add("input");
+
+    if (CollectionUtils.isNotEmpty(connectionIds)) {
+      final Schema.Builder connectionIdSchemaBuilder =
+          Schema.builder().type("STRING").description("The connection ID to use.");
+      connectionIdSchemaBuilder.enum_(connectionIds);
+      properties.put("connectionId", connectionIdSchemaBuilder.build());
+    }
+
+    final Schema schema =
+        Schema.builder().type("OBJECT").properties(properties).required(requiredFields).build();
+
+    FunctionDeclaration newDeclaration =
+        FunctionDeclaration.builder()
+            .name(defaultDeclaration.name().orElse(null))
+            .description(defaultDeclaration.description().orElse(null))
+            .parameters(schema)
+            .build();
+
+    return Optional.of(newDeclaration);
+  }
+
+  public ToolOutput<Map<String, Object>> execute(final Map<String, Object> args) {
     try {
+      final Map<String, Object> input = CollectionUtils.getMapFromMap(args, "input");
+      final String connectionId = CollectionUtils.getStringValueFromMap(args, "connectionId");
+
       final List<Map<String, Object>> results =
           connectorService
               .<Map<String, Object>>execute(
                   new ConnectorRequest(
-                      connectorMetadata.appName(), connectorMetadata.connectorName(), input))
+                      connectorMetadata.appName(),
+                      connectorMetadata.connectorName(),
+                      connectionId,
+                      input))
               .result();
       return ToolOutput.direct(
           Map.of(

@@ -9,7 +9,9 @@ dependencies {
     implementation project(':connectors:infra')
     implementation project(':connectors:http')
     implementation project(':util:common')
+    implementation project(':util:scripts')
     implementation project(':util:ms:server')
+    implementation project(':util:mongodb')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc

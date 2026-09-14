@@ -208,6 +208,9 @@ jobs:
       - name: Deploy
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
+          BRAVE_TOKEN: ${{ secrets.BRAVE_TOKEN }}
         run: |
           python3 -m deployae deploy \
             -t "${{ inputs.tier }}" \

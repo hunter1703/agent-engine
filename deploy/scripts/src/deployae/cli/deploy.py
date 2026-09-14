@@ -31,6 +31,7 @@ from deployae.stages import (
     InitQdrantCollectionStage,
     SeedInfraConfigStage,
     SeedRestCatalogStage,
+    SaveConnectionStage,
     Stage,
     UninstallChartStage,
     run_graph,
@@ -454,6 +455,18 @@ def build_stages(
     )
 
     # --- Catalog seeding: models, then agents ---
+    save_conn_stage = SaveConnectionStage(
+        name="seed-connections",
+        depends_on=(infra_deploy_by_name["mongodb"], app_deploy_by_name.get("connectors"), rest_stage),
+        tier=ctx.tier,
+        environment=ctx.environment,
+        namespace_override=ctx.namespace,
+        enabled=not dry_run,
+    )
+    # Remove None from depends_on if connectors chart is not deployed
+    save_conn_stage.depends_on = tuple(d for d in save_conn_stage.depends_on if d is not None)
+    stages.append(save_conn_stage)
+
     seed_models_stage = SeedRestCatalogStage(
         name="seed-models",
         depends_on=(infra_deploy_by_name["mongodb"], catalog_stage, rest_stage),

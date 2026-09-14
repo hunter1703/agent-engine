@@ -28,7 +28,7 @@
     },
     "required": ["subreddit", "kind", "title"]
   },
-  "spec": {
+  "connector": {
     "executor": {
       "type": "HTTP",
       "baseUrl": "https://oauth.reddit.com/api",

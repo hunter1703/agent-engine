@@ -23,7 +23,7 @@
     },
     "required": ["query"]
   },
-  "spec": {
+  "connector": {
     "executor": {
       "type": "HTTP",
       "baseUrl": "https://api.search.brave.com",
@@ -32,7 +32,7 @@
       "headers": {
         "accept": "application/json",
         "Content-Type": "application/json",
-        "x-subscription-token": "{{ env.BRAVE_API_KEY }}"
+        "x-subscription-token": "{{ auth.input.token }}"
       },
       "body": {
         "q": "{{ input.query }}",

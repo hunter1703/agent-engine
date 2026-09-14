@@ -1,10 +1,42 @@
 {
-  "spec": {
+  "connector": {
     "auth": {
       "type": "HEADER",
       "headers": {
-        "Authorization": "Bearer {{ env.REDDIT_API_TOKEN }}"
+        "Authorization": "Bearer {{ auth.credentials.access_token }}"
       }
+    }
+  },
+  "connection": {
+    "authConnector": "reddit_auth",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "The Reddit app client ID"
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "The Reddit app client secret",
+          "sensitive": true
+        },
+        "userName": {
+          "type": "string",
+          "description": "The Reddit username"
+        },
+        "password": {
+          "type": "string",
+          "description": "The Reddit password",
+          "sensitive": true
+        }
+      },
+      "required": [
+        "clientId",
+        "clientSecret",
+        "userName",
+        "password"
+      ]
     }
   }
 }

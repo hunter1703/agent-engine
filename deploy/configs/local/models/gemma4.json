@@ -1,6 +1,6 @@
 {
   "id": "gemma4",
-  "model": "gemma4:latest",
+  "model": "gemma4:e4b-mlx",
   "name": "Gemma 4(Ollama)",
   "baseUrl": "http://host.docker.internal:11434/v1",
   "temperature": 0.35,

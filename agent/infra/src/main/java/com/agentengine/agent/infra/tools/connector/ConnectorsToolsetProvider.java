@@ -2,6 +2,7 @@ package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.tools.ToolsetProvider;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
@@ -29,10 +30,13 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
           Map.of());
 
   private final ConnectorService connectorService;
+  private final ConnectionService connectionService;
 
   @Inject
-  public ConnectorsToolsetProvider(final ConnectorService connectorService) {
+  public ConnectorsToolsetProvider(
+      final ConnectorService connectorService, final ConnectionService connectionService) {
     this.connectorService = connectorService;
+    this.connectionService = connectionService;
   }
 
   @Override
@@ -44,11 +48,13 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
   public BaseToolset create(final Map<String, Object> toolConfig) {
     final Map<String, List<String>> connectorConfigs =
         CollectionUtils.getMapFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
-    return new ConnectorsToolset(connectorService, connectorConfigs);
+    return new ConnectorsToolset(connectorService, connectionService, connectorConfigs);
   }
 
   private record ConnectorsToolset(
-      ConnectorService connectorService, Map<String, List<String>> connectorConfigs)
+      ConnectorService connectorService,
+      ConnectionService connectionService,
+      Map<String, List<String>> connectorConfigs)
       implements BaseToolset {
 
     @Override
@@ -64,7 +70,8 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
                       () -> {
                         final ConnectorMetadata metadata =
                             connectorService.describe(appName, connectorName);
-                        final ConnectorTool tool = new ConnectorTool(connectorService, metadata);
+                        final ConnectorTool tool =
+                            new ConnectorTool(connectorService, connectionService, metadata);
                         return Flowable.just(tool);
                       }));
         }

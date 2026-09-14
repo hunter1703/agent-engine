@@ -251,6 +251,18 @@ public final class CollectionUtils {
     return transformedMap;
   }
 
+  public static <I, O> List<O> transformToList(
+      final Collection<I> collection, final Function<I, O> function) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return List.of();
+    }
+    final List<O> transformed = new ArrayList<>();
+    for (final I item : collection) {
+      transformed.add(function.apply(item));
+    }
+    return transformed;
+  }
+
   public static <T, K, V> Map<K, List<V>> transformToMultiValuedMap(
       final Collection<T> collection,
       final Function<T, K> keyFunction,

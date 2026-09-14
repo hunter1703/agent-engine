@@ -13,6 +13,7 @@ dependencies {
     implementation project(':util:mongodb')
     implementation project(':util:cloudstorage')
     implementation project(':util:ms:client')
+    implementation project(':connectors:api')
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.logging.json

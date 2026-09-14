@@ -1,5 +1,6 @@
 package com.agentengine.connectors.http.executor;
 
+import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
 import com.agentengine.connectors.http.TemplatedHttpExecutorSpec;
@@ -39,7 +40,8 @@ public class HttpConnectorExecutor
 
   @Override
   @SuppressWarnings("unchecked")
-  public ConnectorResult<Map<String, Object>> execute(Map<String, Object> input) {
+  public ConnectorResult<Map<String, Object>> execute(
+      Connection connection, Map<String, Object> input) {
     final HttpExecutorSpec evaluated = templatedSpec.evaluate(input);
     final OkHttpClient client = clientProvider.getClient(new HttpClientOptions());
     final String method = evaluated.getMethod();
@@ -51,7 +53,7 @@ public class HttpConnectorExecutor
             method,
             (Map<String, Object>) evaluated.getBody(),
             (Map<String, String>) evaluated.getHeaders());
-    authDecorator.decorate(request);
+    authDecorator.decorate(connection, request);
 
     final Map<String, String> headers = request.getHeaders();
     final RequestBody requestBody =

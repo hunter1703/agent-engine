@@ -1,6 +1,6 @@
 {
   "id": "gemma4",
-  "model": "gemma4:latest",
+  "model": "gemma4:e4b-mlx",
   "name": "Gemma 4(Ollama)",
   "baseUrl": "https://afterlife-eating-energy.ngrok-free.dev/v1",
   "temperature": 0.35,

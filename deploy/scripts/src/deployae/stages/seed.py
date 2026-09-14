@@ -172,3 +172,54 @@ def _upsert_catalog_entry(client: httpx.Client, path: Path, endpoint: str) -> No
             f"Failed to seed {path.name} (HTTP {response.status_code}): {response.text}"
         )
     print(f"Seeded {path.name}")
+
+
+@dataclass(eq=False, kw_only=True)
+class SaveConnectionStage(Stage):
+    tier: str
+    environment: str
+    namespace_override: str | None
+    rest_port: int = DEFAULT_REST_PORT
+
+    async def run(self) -> None:
+        await asyncio.to_thread(self._seed)
+
+    def _seed(self) -> None:
+        rest = Chart("rest")
+        rest_ns = rest.namespace(self.namespace_override)
+        rest_name = rest.resource_name(self.tier)
+
+        if not kube.service_exists(rest_ns, rest_name):
+            print(
+                f"Skipping connections sync because service '{rest_name}' is not present "
+                f"in namespace '{rest_ns}'."
+            )
+            return
+
+        import os
+        files = sorted(env_config_dir(self.environment, "connectors").glob("*.json"))
+
+        with (
+            kube.port_forward(rest_ns, rest_name, self.rest_port) as local_port,
+            httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30) as client,
+        ):
+            for path in files:
+                content = path.read_text()
+                import re
+                matches = set(re.findall(r'\$\{([A-Za-z0-9_]+)\}', content) + re.findall(r'\$([A-Za-z0-9_]+)', content))
+                missing = [var for var in matches if var not in os.environ]
+                if missing:
+                    raise RuntimeError(f"Missing required environment variables for {path.name}: {missing}")
+                content = os.path.expandvars(content)
+                docs = json.loads(content)
+                if not isinstance(docs, list):
+                    docs = [docs]
+                for doc in docs:
+                    response = client.post(
+                        "/v1/connection/upsert", json=doc, headers={"Content-Type": "application/json"}
+                    )
+                    if not response.is_success:
+                        raise RuntimeError(
+                            f"Failed to seed connection (HTTP {response.status_code}): {response.text}"
+                        )
+                    print(f"Seeded connection {doc.get('id') or doc.get('appName')}")

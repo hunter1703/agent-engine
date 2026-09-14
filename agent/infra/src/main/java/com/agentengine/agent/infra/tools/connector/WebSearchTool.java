@@ -1,12 +1,15 @@
 package com.agentengine.agent.infra.tools.connector;
 
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
-import java.util.LinkedHashMap;
+import com.google.genai.types.FunctionDeclaration;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /** {@link ConnectorTool} hardwired to the brave_web_search connector. */
 public final class WebSearchTool extends ConnectorTool {
@@ -29,17 +32,26 @@ public final class WebSearchTool extends ConnectorTool {
   private static final String DEFAULT_LANGUAGE = "en";
   private static final int DEFAULT_MAX_TOKENS = 8192;
 
-  public WebSearchTool(final ConnectorService connectorService) {
-    super(connectorService, DESCRIPTOR, connectorService.describe("brave", "brave_web_search"));
+  public WebSearchTool(
+      final ConnectorService connectorService, final ConnectionService connectionService) {
+    super(
+        connectorService,
+        connectionService,
+        DESCRIPTOR,
+        connectorService.describe("brave", "brave_web_search"));
   }
 
   @Override
-  public ToolOutput<Map<String, Object>> execute(final Map<String, Object> input) {
-    final Map<String, Object> withDefaults =
-        new LinkedHashMap<>(CollectionUtils.nullSafeMap(input));
-    withDefaults.putIfAbsent("country", DEFAULT_COUNTRY);
-    withDefaults.putIfAbsent("search_lang", DEFAULT_LANGUAGE);
-    withDefaults.putIfAbsent("maximum_number_of_tokens", DEFAULT_MAX_TOKENS);
-    return super.execute(withDefaults);
+  public Optional<FunctionDeclaration> declaration() {
+    return baseDeclaration();
+  }
+
+  @Override
+  public ToolOutput<Map<String, Object>> execute(Map<String, Object> input) {
+    input = new HashMap<>(CollectionUtils.nullSafeMap(input));
+    input.putIfAbsent("country", DEFAULT_COUNTRY);
+    input.putIfAbsent("search_lang", DEFAULT_LANGUAGE);
+    input.putIfAbsent("maximum_number_of_tokens", DEFAULT_MAX_TOKENS);
+    return super.execute(Map.of("input", input, "connectionId", "default_brave_connection"));
   }
 }

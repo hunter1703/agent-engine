@@ -1,0 +1,39 @@
+{
+  "name": "reddit_auth",
+  "description": "Fetch Reddit API token",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "clientId": {
+        "type": "string"
+      },
+      "clientSecret": {
+        "type": "string"
+      },
+      "userName": {
+        "type": "string"
+      },
+      "password": {
+        "type": "string"
+      }
+    }
+  },
+  "connector": {
+    "executor": {
+      "type": "HTTP",
+      "baseUrl": "https://www.reddit.com",
+      "path": "/api/v1/access_token",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "agent-engine-connector/1.0",
+        "Authorization": "Basic {{ java.util.Base64.getEncoder().encodeToString((input.connectionInput.clientId + ':' + input.connectionInput.clientSecret).getBytes()) }}"
+      },
+      "body": {
+        "grant_type": "password",
+        "username": "{{ input.connectionInput.userName }}",
+        "password": "{{ input.connectionInput.password }}"
+      }
+    }
+  }
+}

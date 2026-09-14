@@ -2,6 +2,7 @@ package com.agentengine.util.common.beans;
 
 public interface AssetClass {
   String AGENT = "Agent";
+  String CONNECTION = "Connection";
   String MODEL = "Model";
   String AGENT_SESSION = "AgentSession";
   String KNOWLEDGE = "Knowledge";
