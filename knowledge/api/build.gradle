@@ -9,5 +9,5 @@ dependencies {
     implementation project(':util:vectordb')
     implementation project(':util:agents')
     implementation project(':util:ms:client')
-    implementation libs.jakarta.inject.api
+    compileOnly libs.jakarta.inject.api
 }

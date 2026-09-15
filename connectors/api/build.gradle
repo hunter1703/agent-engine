@@ -10,4 +10,5 @@ dependencies {
     implementation project(':util:distributed')
     compileOnly libs.jakarta.inject.api
     compileOnly libs.jakarta.enterprise.cdi.api
+    compileOnly libs.mongodb.bson
 }

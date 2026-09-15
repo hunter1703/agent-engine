@@ -13,7 +13,7 @@ dependencies {
     implementation project(':util:mongodb')
 
     // Internal serialization only, not in public API
-    implementation libs.mongodb.bson
+    compileOnly libs.mongodb.bson
 
     implementation platform(libs.quarkus.bom)
     implementation libs.quarkus.arc
