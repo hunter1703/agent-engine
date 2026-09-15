@@ -49,7 +49,11 @@ public class JgroupsService implements Receiver {
       // Create a virtual ForkChannel for locking.
       // It shares the physical thread pools and sockets of mainChannel (0% resource inflation)
       final ForkChannel lockChannel =
-          new ForkChannel(mainChannel, "lock-stack", "lock-rpc-channel");
+          new ForkChannel(
+              mainChannel,
+              "lock-stack",
+              "lock-rpc-channel",
+              new org.jgroups.protocols.CENTRAL_LOCK2());
       this.lockService = new LockService(lockChannel);
 
       // Connect the main channel (this automatically activates the fork channels)
