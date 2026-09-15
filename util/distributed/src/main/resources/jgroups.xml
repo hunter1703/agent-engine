@@ -6,10 +6,9 @@
     <TCP bind_port="7800"
          recv_buf_size="130k"
          send_buf_size="130k"
-    <!-- Capped tightly to protect 100m CPU limits under 100 rps spikes -->
-    thread_pool.min_threads="1"
-    thread_pool.max_threads="4"
-    thread_pool.keep_alive_time="30000"/>
+         thread_pool.min_threads="1"
+         thread_pool.max_threads="4"
+         thread_pool.keep_alive_time="30000"/>
 
     <!-- 2. Kubernetes Pod Discovery via Kube-API -->
     <kubernetes.KUBE_PING
@@ -25,14 +24,15 @@
     <UNICAST3 xmit_interval="200"/>
     <pbcast.STABLE desired_avg_gossip="50000" max_bytes="4M"/>
 
-    <!-- 5. Group Membership -->
+    <!-- 6. Group Membership -->
     <pbcast.GMS join_timeout="3000"/>
 
-    <!-- 6. ADDED: Fork Protocol Definition -->
-    <!-- Required structurally in the XML to handle ForkChannels cleanly without dynamic Java hacks -->
-    <FORK/>
-
-    <!-- 7. Distributed Locking Layer -->
-    <!-- Kept as CENTRAL_LOCK (JGroups 5 standard name). Added bypass_bundling to make lock calls ultra-responsive -->
-    <CENTRAL_LOCK2 bypass_bundling="true"/>
+    <!-- 7. Fork Protocol Definition with Distributed Locking Layer -->
+    <FORK>
+        <fork-stacks>
+            <fork-stack id="lock-stack">
+                <CENTRAL_LOCK2/>
+            </fork-stack>
+        </fork-stacks>
+    </FORK>
 </config>
