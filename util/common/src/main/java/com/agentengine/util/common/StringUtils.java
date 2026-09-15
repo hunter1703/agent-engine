@@ -4,6 +4,7 @@ import java.util.List;
 import org.apache.commons.text.StringEscapeUtils;
 
 public final class StringUtils {
+  public static final String MASK_STRING = "xxxxxxxxxx";
 
   private StringUtils() {}
 

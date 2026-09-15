@@ -12,6 +12,7 @@ import com.agentengine.connectors.infra.auth.AuthDecorator;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -127,8 +128,10 @@ public class HttpConnectorExecutor
     final MediaType mediaType = MediaType.parse(mimeType);
     final String subType = mediaType == null ? null : mediaType.subtype();
     return switch (subType) {
-      case "json" -> //noinspection unchecked
-          List.of(JsonUtils.fromJson(new String(responseBody), Map.class));
+      case "json" ->
+          List.of(
+              JsonUtils.fromJson(
+                  new String(responseBody), new TypeReference<Map<String, Object>>() {}));
       default -> List.of(Map.of("raw", responseBody));
     };
   }

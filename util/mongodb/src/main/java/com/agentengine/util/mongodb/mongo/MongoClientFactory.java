@@ -33,21 +33,17 @@ public class MongoClientFactory {
   private static final String INFRA_MONGO_URI_KEY = "infra.mongodb.uri";
 
   private final MongoClientSupport mongoClientSupport;
-  private final Instance<EncryptionService> encryptionService;
   private final ApplicationConfig applicationConfig;
-  private final Instance<Codec<?>> customCodecs;
   private final LazyLoader<MongoClient> client;
 
   @Inject
   public MongoClientFactory(
       MongoClientSupport mongoClientSupport,
-      Instance<EncryptionService> encryptionService,
+      EncryptionService encryptionService,
       ApplicationConfig applicationConfig,
       Instance<Codec<?>> customCodecs) {
     this.mongoClientSupport = mongoClientSupport;
-    this.encryptionService = encryptionService;
     this.applicationConfig = applicationConfig;
-    this.customCodecs = customCodecs;
     this.client =
         new LazyLoader<>(
             () ->
@@ -55,7 +51,8 @@ public class MongoClientFactory {
                     buildClientSettings(
                         this.applicationConfig.getString(INFRA_MONGO_URI_KEY),
                         getBsonDiscriminators(this.mongoClientSupport),
-                        this.encryptionService)));
+                        encryptionService,
+                        customCodecs)));
   }
 
   public MongoClient getClient() {
@@ -66,10 +63,11 @@ public class MongoClientFactory {
     return CollectionUtils.nullSafeList(mongoClientSupport.getBsonDiscriminators());
   }
 
-  private MongoClientSettings buildClientSettings(
+  private static MongoClientSettings buildClientSettings(
       final String connectionStringStr,
       final List<String> bsonDiscriminators,
-      final Instance<EncryptionService> encryptionService) {
+      final EncryptionService encryptionService,
+      final Instance<Codec<?>> customCodecs) {
     final ConnectionString connectionString = new ConnectionString(connectionStringStr);
 
     final List<Convention> conventions = new ArrayList<>(Conventions.DEFAULT_CONVENTIONS);

@@ -15,5 +15,7 @@ public interface ConnectionService extends ConnectionRefresher {
 
   Connection getConnection(String id);
 
+  Connection getDecryptedConnection(String id);
+
   ConnectionSpec getConnectionSpec(String appName);
 }

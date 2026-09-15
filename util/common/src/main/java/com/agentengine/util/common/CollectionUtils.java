@@ -1,13 +1,7 @@
 package com.agentengine.util.common;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public final class CollectionUtils {
@@ -277,5 +271,36 @@ public final class CollectionUtils {
       transformedMap.computeIfAbsent(key, ignored -> new ArrayList<>()).add(value);
     }
     return transformedMap;
+  }
+
+  public static Object walk(
+      final Object data, final java.util.function.BiFunction<Object, Object, Object> visitor) {
+    return walk(null, data, visitor);
+  }
+
+  private static Object walk(
+      final Object key, final Object data, final BiFunction<Object, Object, Object> visitor) {
+    switch (data) {
+      case null -> {
+        return null;
+      }
+      case Map<?, ?> rawMap -> {
+        final Map<Object, Object> out = new LinkedHashMap<>();
+        for (final Map.Entry<?, ?> entry : rawMap.entrySet()) {
+          final Object entryKey = entry.getKey();
+          out.put(entryKey, walk(entryKey, entry.getValue(), visitor));
+        }
+        return out;
+      }
+      case List<?> rawList -> {
+        final List<Object> out = new ArrayList<>(rawList.size());
+        for (int i = 0; i < rawList.size(); i++) {
+          out.add(walk(i, rawList.get(i), visitor));
+        }
+        return out;
+      }
+      default -> {}
+    }
+    return visitor.apply(key, data);
   }
 }

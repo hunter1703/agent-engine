@@ -37,7 +37,7 @@ public class ConnectorServiceImpl implements ConnectorService {
     final Connector connector = getConnector(request.appName(), request.connectorName());
     final ConnectorExecutor<Map<String, Object>, T> executor =
         executorFactory.build(connector.spec());
-    final Connection connection = connectionService.getConnection(request.connectionId());
+    final Connection connection = connectionService.getDecryptedConnection(request.connectionId());
     return executor.execute(connection, request.input());
   }
 

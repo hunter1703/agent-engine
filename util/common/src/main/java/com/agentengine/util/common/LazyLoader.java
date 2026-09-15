@@ -3,7 +3,7 @@ package com.agentengine.util.common;
 import java.util.function.Supplier;
 
 public class LazyLoader<T> {
-  private volatile T loadedValue;
+  private volatile ValueHolder<T> loadedValue;
   private final Supplier<T> valueSupplier;
 
   public LazyLoader(Supplier<T> valueSupplier) {
@@ -12,14 +12,17 @@ public class LazyLoader<T> {
 
   public T get() {
     if (loadedValue != null) {
-      return loadedValue;
+      return loadedValue.value();
     }
     synchronized (this) {
       if (loadedValue != null) {
-        return loadedValue;
+        return loadedValue.value();
       }
-      loadedValue = valueSupplier.get();
+      loadedValue = new ValueHolder<>(valueSupplier.get());
     }
-    return loadedValue;
+    return loadedValue.value();
   }
+
+  private record ValueHolder<T>(T value) {}
+  ;
 }

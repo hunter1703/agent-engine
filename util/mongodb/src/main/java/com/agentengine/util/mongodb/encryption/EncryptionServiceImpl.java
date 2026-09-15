@@ -1,9 +1,12 @@
 package com.agentengine.util.mongodb.encryption;
 
 import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.common.LazyLoader;
+import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.mongodb.infra.EncryptionInfraConfig;
 import com.agentengine.util.mongodb.infra.InfraConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -31,36 +34,49 @@ public class EncryptionServiceImpl implements EncryptionService {
               throw new RuntimeException("Failed to initialize cipher", exception);
             }
           });
-  private final SecretKey secretKey;
   private final SecureRandom secureRandom = new SecureRandom();
+  private final LazyLoader<SecretKey> secretKeyLoader;
 
-  public EncryptionServiceImpl(final InfraConfigService infraConfigService) {
-    final EncryptionInfraConfig config =
-        infraConfigService.findById(
-            EncryptionInfraConfig.CATEGORY,
-            EncryptionInfraConfig.TYPE,
-            EncryptionInfraConfig.CONFIG_ID);
-    if (config == null || config.getKey() == null || config.getKey().isBlank()) {
-      LOG.warn("Encryption config missing or empty; persisting secure fields in plaintext.");
-      this.secretKey = null;
-    } else {
-      final byte[] decodedKey;
-      try {
-        decodedKey = Base64.getDecoder().decode(config.getKey());
-      } catch (IllegalArgumentException exception) {
-        throw new IllegalArgumentException(
-            "Encryption key stored in database is not valid Base64", exception);
-      }
-      if (decodedKey.length != 32) {
-        throw new IllegalArgumentException("Encryption key must be exactly 32 bytes (256 bits)");
-      }
-      this.secretKey = new SecretKeySpec(decodedKey, "AES");
-    }
+  public EncryptionServiceImpl(final Instance<InfraConfigService> infraConfigService) {
+    this.secretKeyLoader =
+        new LazyLoader<>(
+            () -> {
+              final EncryptionInfraConfig config =
+                  infraConfigService
+                      .get()
+                      .findById(
+                          EncryptionInfraConfig.CATEGORY,
+                          EncryptionInfraConfig.TYPE,
+                          EncryptionInfraConfig.CONFIG_ID);
+              if (config == null || config.getKey() == null || config.getKey().isBlank()) {
+                LOG.warn(
+                    "Encryption config missing or empty; persisting secure fields in plaintext.");
+                return null;
+              } else {
+                final byte[] decodedKey;
+                try {
+                  decodedKey = Base64.getDecoder().decode(config.getKey());
+                } catch (IllegalArgumentException exception) {
+                  throw new IllegalArgumentException(
+                      "Encryption key stored in database is not valid Base64", exception);
+                }
+                if (decodedKey.length != 32) {
+                  throw new IllegalArgumentException(
+                      "Encryption key must be exactly 32 bytes (256 bits)");
+                }
+                return new SecretKeySpec(decodedKey, "AES");
+              }
+            });
+  }
+
+  @Override
+  public boolean isEncrypted(final String text) {
+    return StringUtils.isNotBlank(text) && text.startsWith(ENCRYPTED_PREFIX_STR);
   }
 
   @Override
   public boolean isEncryptionEnabled() {
-    return secretKey != null;
+    return secretKeyLoader.get() != null;
   }
 
   @Override
@@ -77,7 +93,7 @@ public class EncryptionServiceImpl implements EncryptionService {
       secureRandom.nextBytes(iv);
       final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
 
-      cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+      cipher.init(Cipher.ENCRYPT_MODE, secretKeyLoader.get(), parameterSpec);
       final byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
       final byte[] ivAndCiphertext = new byte[GCM_IV_LENGTH + ciphertext.length];
@@ -113,7 +129,7 @@ public class EncryptionServiceImpl implements EncryptionService {
 
       final Cipher cipher = CIPHER_CACHE.get();
       final GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-      cipher.init(Cipher.DECRYPT_MODE, secretKey, parameterSpec);
+      cipher.init(Cipher.DECRYPT_MODE, secretKeyLoader.get(), parameterSpec);
 
       final byte[] plaintextBytes = cipher.doFinal(encrypted);
       return new String(plaintextBytes, StandardCharsets.UTF_8);

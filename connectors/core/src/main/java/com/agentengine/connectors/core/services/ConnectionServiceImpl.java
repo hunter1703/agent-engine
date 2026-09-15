@@ -10,6 +10,8 @@ import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
 import com.agentengine.util.common.CollectionUtils;
+import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.common.SchemaUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
@@ -41,6 +43,7 @@ public class ConnectionServiceImpl implements ConnectionService {
   private final Instance<ConnectorService> connectorService;
   private final DistributedLockManager distributedLockManager;
   private final DistributedCacheManager distributedCacheManager;
+  private final EncryptionService encryptionService;
 
   @Inject
   public ConnectionServiceImpl(
@@ -48,12 +51,14 @@ public class ConnectionServiceImpl implements ConnectionService {
       ConnectorRegistry connectorRegistry,
       Instance<ConnectorService> connectorService,
       DistributedLockManager distributedLockManager,
-      DistributedCacheManager distributedCacheManager) {
+      DistributedCacheManager distributedCacheManager,
+      EncryptionService encryptionService) {
     this.connectionRepository = connectionRepository;
     this.connectorRegistry = connectorRegistry;
     this.connectorService = connectorService;
     this.distributedLockManager = distributedLockManager;
     this.distributedCacheManager = distributedCacheManager;
+    this.encryptionService = encryptionService;
   }
 
   @Override
@@ -81,6 +86,7 @@ public class ConnectionServiceImpl implements ConnectionService {
         LOG.error("Failed to fetch credentials for connection", e);
       }
     }
+    encryptSensitiveInputs(connection);
     final Connection saved = connectionRepository.insert(connection);
     distributedCacheManager.broadcastInvalidation(
         ConnectorCacheService.CONNECTION_IDS_CACHE_NAME, saved.getAppName());
@@ -100,6 +106,16 @@ public class ConnectionServiceImpl implements ConnectionService {
       return null;
     }
     return connectionRepository.findById(id);
+  }
+
+  @Override
+  public Connection getDecryptedConnection(String id) {
+    if (id == null) {
+      return null;
+    }
+    final Connection connection = connectionRepository.findById(id);
+    decryptSensitiveInputs(connection);
+    return connection;
   }
 
   @Override
@@ -132,7 +148,7 @@ public class ConnectionServiceImpl implements ConnectionService {
         if (acquired) {
           break;
         } else {
-          Connection connectionFromDB = getConnection(connection.getId());
+          Connection connectionFromDB = getDecryptedConnection(connection.getId());
           if (connectionFromDB != null
               && connectionFromDB.getExpiresAt() != null
               && connectionFromDB.getExpiresAt() > System.currentTimeMillis()) {
@@ -150,7 +166,7 @@ public class ConnectionServiceImpl implements ConnectionService {
     }
 
     try {
-      Connection connectionFromDB = getConnection(connection.getId());
+      Connection connectionFromDB = getDecryptedConnection(connection.getId());
       if (connectionFromDB != null
           && connectionFromDB.getExpiresAt() != null
           && connectionFromDB.getExpiresAt() > System.currentTimeMillis()) {
@@ -186,6 +202,7 @@ public class ConnectionServiceImpl implements ConnectionService {
         connectionFromDB.setCredentials(credentials);
         connectionFromDB.setExpiresAt(getCredentialsExpiry(credentials, spec, inputs));
 
+        encryptSensitiveInputs(connectionFromDB);
         Connection saved = connectionRepository.save(connectionFromDB);
         distributedCacheManager.broadcastInvalidation("CONNECTIONS_CACHE", saved.getAppName());
         return saved;
@@ -196,6 +213,50 @@ public class ConnectionServiceImpl implements ConnectionService {
     } finally {
       lock.unlock();
     }
+  }
+
+  private void encryptSensitiveInputs(Connection connection) {
+    if (CollectionUtils.isEmpty(connection.getInputs())
+        || !encryptionService.isEncryptionEnabled()) {
+      return;
+    }
+    final ConnectionSpec spec = getConnectionSpec(connection.getAppName());
+    if (spec == null || CollectionUtils.isEmpty(spec.schema())) {
+      return;
+    }
+
+    @SuppressWarnings("unchecked")
+    final Map<String, Object> newInputs =
+        (Map<String, Object>)
+            SchemaUtils.walk(
+                spec.schema(),
+                connection.getInputs(),
+                (_, schemaNode, dataNode) -> {
+                  if (Boolean.TRUE.equals(
+                          CollectionUtils.getBooleanValueFromMap(schemaNode, "sensitive"))
+                      && dataNode instanceof String strData) {
+                    return encryptionService.encrypt(strData);
+                  }
+                  return dataNode;
+                });
+    connection.setInputs(newInputs);
+  }
+
+  private void decryptSensitiveInputs(Connection connection) {
+    if (connection.getInputs() == null || !encryptionService.isEncryptionEnabled()) return;
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> newInputs =
+        (Map<String, Object>)
+            CollectionUtils.walk(
+                connection.getInputs(),
+                (_, dataNode) -> {
+                  if (dataNode instanceof String str && encryptionService.isEncrypted(str)) {
+                    return encryptionService.decrypt(str);
+                  }
+                  return dataNode;
+                });
+    connection.setInputs(newInputs);
   }
 
   private static Long getCredentialsExpiry(
