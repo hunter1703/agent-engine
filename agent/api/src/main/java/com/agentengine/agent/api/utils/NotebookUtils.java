@@ -29,6 +29,11 @@ public final class NotebookUtils {
     return lastSeparator < 0 ? null : noteId.substring(0, lastSeparator);
   }
 
+  public static String notebookNameOf(final String notebookId) {
+    final int lastColon = notebookId.lastIndexOf(':');
+    return lastColon >= 0 ? notebookId.substring(lastColon + 1) : notebookId;
+  }
+
   public static String noteTitleOf(final String noteId) {
     final int lastSeparator = noteId.lastIndexOf(Constants.ID_SEPARATOR);
     return lastSeparator < 0 ? null : noteId.substring(lastSeparator + 1);

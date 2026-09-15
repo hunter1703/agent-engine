@@ -3,6 +3,7 @@ package com.agentengine.agent.infra.plugins;
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.agent.infra.notebook.Note;
 import com.agentengine.agent.infra.notebook.NotesRepository;
+import com.agentengine.agent.infra.tools.notebook.CreateOrUpdateNoteTool;
 import com.agentengine.agent.infra.utils.*;
 import com.agentengine.util.agents.beans.Signal;
 import com.agentengine.util.common.StringUtils;
@@ -19,9 +20,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Forces the model's very next request tool-free and thinking-disabled once {@code create_note} (a
- * normal, always-declared tool — see {@link
- * com.agentengine.agent.infra.tools.notebook.CreateNoteTool}) has staged a note, so its only option
- * is to write the note's content as plain text; {@link #afterModelCallback} then persists it.
+ * normal, always-declared tool — see {@link CreateOrUpdateNoteTool}) has staged a note, so its only
+ * option is to write the note's content as plain text; {@link #afterModelCallback} then persists
+ * it.
  *
  * <p>Once the note is persisted, {@link #afterModelCallback} always queues a signal that requires
  * continuation, so the run loop issues another request with tools re-enabled, letting the model
@@ -99,9 +100,7 @@ public final class NotebookPlugin extends BasePlugin {
     LOG.info("Created or updated note notebook={} title={}", notebookId, noteTitle);
     final String message =
         """
-            Note '%s' saved. Your caller doesn't see its content automatically — they can read \
-            it themselves if they need to, so don't paste it into your reply. \
-            Continue your task, or give your final answer now.
+            Note '%s' saved to the notebook. Its content now lives in the shared record, where anyone with access can read it. Don't restate it in your reply. Continue your task, or give your final answer if you're done.
             """
             .formatted(noteTitle);
     runState.addSignal(

@@ -17,7 +17,7 @@ public interface Constants {
     String COMPLETE_TASK = "complete_task";
     String FINISH_PLAN = "finish_plan";
     String CREATE_NOTEBOOK = "create_notebook";
-    String CREATE_NOTE = "create_note";
+    String CREATE_OR_UPDATE_NOTE = "create_or_update_note";
     String READ_NOTE = "read_note";
     String DELETE_NOTE = "delete_note";
     String DELETE_NOTEBOOK = "delete_notebook";

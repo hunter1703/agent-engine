@@ -13,19 +13,22 @@ import com.agentengine.util.common.beans.Permission;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
-public final class CreateNoteTool extends AbstractNotebookTool {
+public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
   public static final ToolDescriptor DESCRIPTOR =
       new ToolDescriptor(
-          Constants.ToolNames.CREATE_NOTE,
+          Constants.ToolNames.CREATE_OR_UPDATE_NOTE,
           """
-          Stages a note to be saved into a notebook, so other agents granted access to it can read it instead of you having to relay its full text yourself — a title that doesn't exist yet in the notebook is created fresh, one that already exists is overwritten with the new content. Call this immediately before writing the note's content — not before a clarification or a partial draft — then write that content as your very next message with nothing else in between; it is saved automatically once you do, and you can then continue your task or give a final answer.
+          Creates or overwrites a note in a notebook. Use it for content meant to be read from the notebook — longer text, deliverables, anything another agent might need to consult — instead of relaying that text through your replies.
 
-          Returns: { status: "pending", message } — write the note's content next, or { error } if you're missing the access this call needs: notebook-wide access for a title that doesn't exist yet, or edit access to the note if that title already exists.""",
+          The note body arrives in two steps: this call begins the note, and your very next reply supplies the content in full — no preamble, no sign-off, nothing else. Once the reply lands, the note is saved and you'll resume your task automatically.
+
+          Returns: { status: "awaiting_body", message } — the note is not yet saved; your next reply supplies its body. Or { error } if you lack access (notebook-wide for a new title, edit access to an existing one).
+          """,
           Map.of());
 
   private final NotesRepository notesRepository;
 
-  public CreateNoteTool(final NotesRepository notesRepository) {
+  public CreateOrUpdateNoteTool(final NotesRepository notesRepository) {
     super(DESCRIPTOR);
     this.notesRepository = notesRepository;
   }
@@ -53,13 +56,16 @@ public final class CreateNoteTool extends AbstractNotebookTool {
         return ToolOutput.direct(
             accessDeniedError(
                 toolContext,
-                "Note '" + noteTitle + "' already exists — not granted edit access to it.",
+                "Note '%s' already exists and you don't have edit access to overwrite it."
+                    .formatted(noteTitle),
                 notebookId));
       }
       if (!noteExists && !NotebookUtils.canCreate(grants, notebookId)) {
         return ToolOutput.direct(
             accessDeniedError(
-                toolContext, "Not granted notebook-wide access to this notebook.", notebookId));
+                toolContext,
+                "You don't have notebook-wide access to add a note to this notebook.",
+                notebookId));
       }
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
@@ -70,7 +76,6 @@ public final class CreateNoteTool extends AbstractNotebookTool {
             Constants.ToolStatus.STATUS,
             Constants.ToolStatus.PENDING,
             "message",
-            """
-            Saving started — write this note's content as your very next message, with nothing else first."""));
+            "Write the note body now. Your next reply becomes the full note content — no preamble, no sign-off, nothing else. You'll resume your task once it's saved."));
   }
 }

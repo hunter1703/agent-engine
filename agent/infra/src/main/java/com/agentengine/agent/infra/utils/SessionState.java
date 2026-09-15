@@ -217,7 +217,7 @@ public final class SessionState {
         final String functionName = functionCall.name().orElse("");
         if (Constants.ToolNames.isAgentRoutingTool(functionName)
             || Constants.ToolNames.CREATE_NOTEBOOK.equals(functionName)
-            || Constants.ToolNames.CREATE_NOTE.equals(functionName)) {
+            || Constants.ToolNames.CREATE_OR_UPDATE_NOTE.equals(functionName)) {
           functionCall.id().ifPresent(id -> idVsFunctionCall.put(id, functionCall));
         }
       }
@@ -253,7 +253,7 @@ public final class SessionState {
             NotebookGrants.ofNotebook(
                 CollectionUtils.getStringValueFromMap(result, Constants.ToolArgs.NOTEBOOK_ID)));
       }
-      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_NOTE)
+      if (response.name().orElse("").equals(Constants.ToolNames.CREATE_OR_UPDATE_NOTE)
           && Constants.ToolStatus.PENDING.equals(
               CollectionUtils.getStringValueFromMap(result, Constants.ToolStatus.STATUS))) {
         final String notebookId =

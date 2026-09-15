@@ -18,9 +18,8 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.DELETE_NOTEBOOK,
           """
-          Permanently deletes an entire notebook and every note in it. Only the session that created the notebook may delete it — no grant covers this, since it destroys the whole shared space, not just what you were given access to.
-
-          Returns: { status: "success" } or { error }.""",
+                  Permanently deletes an entire notebook and every note in it. Only the session that created the notebook can delete it — no grant, including notebook-wide access, authorizes this.
+                  Returns: { status: "success" } or { error }.""",
           Map.of());
 
   private final NotebookRepository notebookRepository;

@@ -69,7 +69,7 @@ public record Reminder(String group, String id, String message, Map<String, Obje
       Map.of(
           GROUP_ACTIVE_PLAN, "Active Plan",
           GROUP_SPAWNED_AGENTS, "Pending Child Sessions",
-          GROUP_NOTEBOOK_GRANTS, "Notebook Access",
+          GROUP_NOTEBOOK_GRANTS, "Notebook and note permissions",
           GROUP_KNOWLEDGE_IDS, "Searchable Knowledge",
           GROUP_KNOWLEDGE_SOURCES, "Full-Text Knowledge Sources");
 

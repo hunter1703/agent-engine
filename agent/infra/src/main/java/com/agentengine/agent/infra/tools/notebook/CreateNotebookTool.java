@@ -18,10 +18,8 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
       new ToolDescriptor(
           Constants.ToolNames.CREATE_NOTEBOOK,
           """
-          Creates a new, empty notebook — a shared space for titled notes that other agent sessions can be granted access to. You always have full read/write/delete access to a notebook you create; grant notebook-wide or note-specific access to it for other sessions via %s or %s.
-
-          Returns: { status: "success", notebook_id }, or { error } if that name is already in use.\
-          """
+                      Creates a new, empty notebook — a shared space where titled notes can be read across sessions. You have full access to everything in a notebook you create; other sessions see only what you grant them (via %s or %s). Use the returned notebook_id with create_note to add notes.
+                      Returns: { status: "success", notebook_id }, or { error } if the name is already in use."""
               .formatted(Constants.ToolNames.SPAWN_AGENT, Constants.ToolNames.SEND_MESSAGE),
           Map.of());
 

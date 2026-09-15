@@ -88,8 +88,9 @@ public record NotebookGrants(Map<String, Permission> grants) {
    */
   public String describe() {
     if (grants.isEmpty()) {
-      return "You have no notebook access.";
+      return "You have no notebook or note permissions.";
     }
+
     final Map<String, NotebookSummary> summaries = new LinkedHashMap<>();
     for (final Map.Entry<String, Permission> entry : grants.entrySet()) {
       final String key = entry.getKey();
@@ -98,7 +99,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
         final String notebookId = NotebookUtils.notebookIdOf(key);
         final String noteTitle = NotebookUtils.noteTitleOf(key);
         final NotebookSummary summary =
-            summaries.computeIfAbsent(notebookId, k -> new NotebookSummary());
+            summaries.computeIfAbsent(notebookId, _ -> new NotebookSummary());
         if (permission == Permission.WRITE) {
           summary.editPermissionedNotes.add(noteTitle);
         } else if (permission == Permission.READ) {
@@ -110,25 +111,49 @@ public record NotebookGrants(Map<String, Permission> grants) {
     }
 
     final StringBuilder sb = new StringBuilder();
+    sb.append("Editing a note implies reading it.\n");
+
     int index = 1;
     for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
       final String notebookId = entry.getKey();
       final NotebookSummary summary = entry.getValue();
-      sb.append("   ").append(index++).append(". Notebook `").append(notebookId).append("`: ");
-      sb.append(
-          summary.canCreate
-              ? "you have notebook-wide access (may add a note under any title that doesn't "
-                  + "exist there yet)."
-              : "you do not have notebook-wide access.");
-      if (!summary.editPermissionedNotes.isEmpty()) {
-        sb.append("\n      - edit access: ")
-            .append(String.join(", ", summary.editPermissionedNotes));
+
+      sb.append("   ")
+          .append(index++)
+          .append(". Notebook `")
+          .append(NotebookUtils.notebookNameOf(notebookId))
+          .append("` (id: `")
+          .append(notebookId)
+          .append("`):\n");
+
+      sb.append("      - create notes: ")
+          .append(summary.canCreate ? "yes (any title not already present)" : "no")
+          .append("\n");
+
+      // Editing a note implies reading it, so materialize that implication
+      // into the rendered read list rather than asking the reader to derive it.
+      final Set<String> readableNotes = new LinkedHashSet<>(summary.readPermissionedNotes);
+      readableNotes.addAll(summary.editPermissionedNotes);
+
+      sb.append("      - read notes:");
+      if (readableNotes.isEmpty()) {
+        sb.append(" (none)\n");
+      } else {
+        sb.append("\n");
+        for (final String noteTitle : readableNotes) {
+          sb.append("          - `").append(noteTitle).append("`\n");
+        }
       }
-      if (!summary.readPermissionedNotes.isEmpty()) {
-        sb.append("\n      - read access: ")
-            .append(String.join(", ", summary.readPermissionedNotes));
+
+      sb.append("      - edit notes:");
+      if (summary.editPermissionedNotes.isEmpty()) {
+        sb.append(" (none)\n");
+      } else {
+        sb.append("\n");
+        for (final String noteTitle : summary.editPermissionedNotes) {
+          sb.append("          - `").append(noteTitle).append("`\n");
+        }
       }
-      sb.append("\n");
     }
     return sb.toString().trim();
   }
