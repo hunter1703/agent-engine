@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.connector;
 
-import com.agentengine.connectors.api.services.ConnectionService;
+import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -33,12 +33,11 @@ public final class WebSearchTool extends ConnectorTool {
   private static final int DEFAULT_MAX_TOKENS = 8192;
 
   public WebSearchTool(
-      final ConnectorService connectorService, final ConnectionService connectionService) {
+      final ConnectorService connectorService, final ConnectorCacheService connectorCacheService) {
     super(
+        connectorCacheService.getConnectorMetadata("brave", "brave_web_search"),
         connectorService,
-        connectionService,
-        DESCRIPTOR,
-        connectorService.describe("brave", "brave_web_search"));
+        connectorCacheService);
   }
 
   @Override

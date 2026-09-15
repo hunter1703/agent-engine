@@ -1,11 +1,10 @@
 package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.tools.Tool;
-import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
-import com.agentengine.connectors.api.services.ConnectionService;
+import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
@@ -13,8 +12,6 @@ import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.query.Page;
-import com.agentengine.util.common.query.PaginatedResult;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
 import java.util.HashMap;
@@ -24,35 +21,41 @@ import java.util.Optional;
 
 public class ConnectorTool extends Tool {
 
-  private final ConnectorService connectorService;
-  private final ConnectionService connectionService;
   private final ConnectorMetadata connectorMetadata;
+  private final ConnectorService connectorService;
+  private final ConnectorCacheService connectorCacheService;
 
   public ConnectorTool(
+      final String appName,
+      final String connectorName,
       final ConnectorService connectorService,
-      final ConnectionService connectionService,
-      final ConnectorMetadata metadata) {
-    this(connectorService, connectionService, descriptorFor(metadata), metadata);
+      final ConnectorCacheService connectorCacheService) {
+    this(
+        connectorCacheService.getConnectorMetadata(appName, connectorName),
+        connectorService,
+        connectorCacheService);
+  }
+
+  public ConnectorTool(
+      final ConnectorMetadata connectorMetadata,
+      final ConnectorService connectorService,
+      final ConnectorCacheService connectorCacheService) {
+    this(
+        descriptorFor(connectorMetadata),
+        connectorMetadata,
+        connectorService,
+        connectorCacheService);
   }
 
   protected ConnectorTool(
+      final ToolDescriptor toolDescriptor,
+      final ConnectorMetadata connectorMetadata,
       final ConnectorService connectorService,
-      final ConnectionService connectionService,
-      final ToolDescriptor descriptor,
-      final ConnectorMetadata metadata) {
-    super(descriptor, argsSchemaFor(metadata));
+      final ConnectorCacheService connectorCacheService) {
+    super(toolDescriptor, Schema.fromJson(JsonUtils.toJson(connectorMetadata.inputSchema())));
+    this.connectorMetadata = connectorMetadata;
     this.connectorService = connectorService;
-    this.connectionService = connectionService;
-    this.connectorMetadata = metadata;
-  }
-
-  public static ToolDescriptor descriptorFor(final ConnectorMetadata metadata) {
-    return new ToolDescriptor(
-        metadata.connectorName(), metadata.description(), Map.of(), ToolRiskLevel.MEDIUM);
-  }
-
-  public static Schema argsSchemaFor(final ConnectorMetadata metadata) {
-    return Schema.fromJson(JsonUtils.toJson(metadata.inputSchema()));
+    this.connectorCacheService = connectorCacheService;
   }
 
   protected Optional<FunctionDeclaration> baseDeclaration() {
@@ -67,12 +70,8 @@ public class ConnectorTool extends Tool {
     }
     final FunctionDeclaration defaultDeclaration = declaration.get();
 
-    PaginatedResult<Connection> page =
-        connectionService.getConnections(connectorMetadata.appName(), new Page(0, 100));
     final List<String> connectionIds =
-        page != null
-            ? CollectionUtils.transformToList(page.getItems(), Connection::getId)
-            : List.of();
+        connectorCacheService.getConnectionsForApp(connectorMetadata.appName());
 
     final Map<String, Schema> properties = new HashMap<>();
     properties.put("input", defaultDeclaration.parameters().orElse(null));
@@ -121,5 +120,13 @@ public class ConnectorTool extends Tool {
     } catch (ConnectorException e) {
       return ToolOutput.direct(Map.of("error", ExceptionUtils.getErrorMessage(e)));
     }
+  }
+
+  private static ToolDescriptor descriptorFor(final ConnectorMetadata connectorMetadata) {
+    return new ToolDescriptor(
+        connectorMetadata.connectorName(),
+        connectorMetadata.description(),
+        Map.of(),
+        ToolRiskLevel.MEDIUM);
   }
 }

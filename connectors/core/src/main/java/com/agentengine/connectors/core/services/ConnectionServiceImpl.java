@@ -6,6 +6,7 @@ import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
 import com.agentengine.connectors.api.services.ConnectionService;
+import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
 import com.agentengine.util.common.CollectionUtils;
@@ -14,6 +15,8 @@ import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.distributed.DistributedCacheManager;
+import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import io.quarkus.arc.Unremovable;
@@ -24,6 +27,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,15 +39,21 @@ public class ConnectionServiceImpl implements ConnectionService {
   private final ConnectionRepository connectionRepository;
   private final ConnectorRegistry connectorRegistry;
   private final Instance<ConnectorService> connectorService;
+  private final DistributedLockManager distributedLockManager;
+  private final DistributedCacheManager distributedCacheManager;
 
   @Inject
   public ConnectionServiceImpl(
       ConnectionRepository connectionRepository,
       ConnectorRegistry connectorRegistry,
-      Instance<ConnectorService> connectorService) {
+      Instance<ConnectorService> connectorService,
+      DistributedLockManager distributedLockManager,
+      DistributedCacheManager distributedCacheManager) {
     this.connectionRepository = connectionRepository;
     this.connectorRegistry = connectorRegistry;
     this.connectorService = connectorService;
+    this.distributedLockManager = distributedLockManager;
+    this.distributedCacheManager = distributedCacheManager;
   }
 
   @Override
@@ -71,7 +81,10 @@ public class ConnectionServiceImpl implements ConnectionService {
         LOG.error("Failed to fetch credentials for connection", e);
       }
     }
-    return connectionRepository.insert(connection);
+    final Connection saved = connectionRepository.insert(connection);
+    distributedCacheManager.broadcastInvalidation(
+        ConnectorCacheService.CONNECTION_IDS_CACHE_NAME, saved.getAppName());
+    return saved;
   }
 
   @Override
@@ -107,32 +120,82 @@ public class ConnectionServiceImpl implements ConnectionService {
     if (StringUtils.isBlank(refreshConnector)) {
       return connection;
     }
-    LOG.info(
-        "Refreshing credentials for connection {} using connector {}",
-        connection.getId(),
-        spec.refreshConnector());
-    try {
-      final Map<String, Object> inputs = new HashMap<>();
-      inputs.put(
-          ConnectorConstants.CONNECTION_INPUT, CollectionUtils.nullSafeMap(connection.getInputs()));
-      inputs.put(
-          ConnectorConstants.CREDENTIALS, CollectionUtils.nullSafeMap(connection.getCredentials()));
-      final ConnectorRequest request =
-          new ConnectorRequest(connection.getAppName(), spec.refreshConnector(), null, inputs);
-      final ConnectorResult<?> connectorResult = connectorService.get().execute(request);
-      //noinspection unchecked
-      final Map<String, Object> result =
-          (Map<String, Object>) CollectionUtils.getFirst(connectorResult.result());
-      final Map<String, Object> credentials =
-          CollectionUtils.nullSafeMutableMap(connection.getCredentials());
-      credentials.putAll(CollectionUtils.nullSafeMap(result));
-      connection.setCredentials(credentials);
-      connection.setExpiresAt(getCredentialsExpiry(credentials, spec, inputs));
-      return saveConnection(connection);
-    } catch (Exception e) {
-      LOG.error("Failed to refresh connection {}", connection.getId(), e);
+
+    final Lock lock = distributedLockManager.getLock("connection_refresh_" + connection.getId());
+    boolean acquired = false;
+    long startTime = System.currentTimeMillis();
+    long maxWaitTimeMillis = TimeUnit.SECONDS.toMillis(120);
+
+    while ((System.currentTimeMillis() - startTime) <= maxWaitTimeMillis) {
+      try {
+        acquired = lock.tryLock(10, TimeUnit.SECONDS);
+        if (acquired) {
+          break;
+        } else {
+          Connection connectionFromDB = getConnection(connection.getId());
+          if (connectionFromDB != null
+              && connectionFromDB.getExpiresAt() != null
+              && connectionFromDB.getExpiresAt() > System.currentTimeMillis()) {
+            return connectionFromDB;
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException("Interrupted while waiting for lock", e);
+      }
     }
-    return connection;
+
+    if (!acquired) {
+      throw new RuntimeException("Failed to refresh credentials, waited for 2 minutes");
+    }
+
+    try {
+      Connection connectionFromDB = getConnection(connection.getId());
+      if (connectionFromDB != null
+          && connectionFromDB.getExpiresAt() != null
+          && connectionFromDB.getExpiresAt() > System.currentTimeMillis()) {
+        return connectionFromDB;
+      }
+
+      LOG.info(
+          "Refreshing credentials for connection {} using connector {}",
+          connection.getId(),
+          spec.refreshConnector());
+
+      if (connectionFromDB == null) {
+        return null;
+      }
+      try {
+        final Map<String, Object> inputs = new HashMap<>();
+        inputs.put(
+            ConnectorConstants.CONNECTION_INPUT,
+            CollectionUtils.nullSafeMap(connectionFromDB.getInputs()));
+        inputs.put(
+            ConnectorConstants.CREDENTIALS,
+            CollectionUtils.nullSafeMap(connectionFromDB.getCredentials()));
+        final ConnectorRequest request =
+            new ConnectorRequest(
+                connectionFromDB.getAppName(), spec.refreshConnector(), null, inputs);
+        final ConnectorResult<?> connectorResult = connectorService.get().execute(request);
+        //noinspection unchecked
+        final Map<String, Object> result =
+            (Map<String, Object>) CollectionUtils.getFirst(connectorResult.result());
+        final Map<String, Object> credentials =
+            CollectionUtils.nullSafeMutableMap(connectionFromDB.getCredentials());
+        credentials.putAll(CollectionUtils.nullSafeMap(result));
+        connectionFromDB.setCredentials(credentials);
+        connectionFromDB.setExpiresAt(getCredentialsExpiry(credentials, spec, inputs));
+
+        Connection saved = connectionRepository.save(connectionFromDB);
+        distributedCacheManager.broadcastInvalidation("CONNECTIONS_CACHE", saved.getAppName());
+        return saved;
+      } catch (Exception e) {
+        LOG.error("Failed to refresh connection {}", connection.getId(), e);
+      }
+      return connectionFromDB;
+    } finally {
+      lock.unlock();
+    }
   }
 
   private static Long getCredentialsExpiry(
