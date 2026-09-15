@@ -18,7 +18,14 @@ import org.jgroups.Receiver;
 import org.jgroups.blocks.locking.LockService;
 import org.jgroups.fork.ForkChannel;
 import org.jgroups.protocols.CENTRAL_LOCK2;
+import org.jgroups.protocols.FD_ALL3;
 import org.jgroups.protocols.FORK;
+import org.jgroups.protocols.TCP;
+import org.jgroups.protocols.UNICAST3;
+import org.jgroups.protocols.kubernetes.KUBE_PING;
+import org.jgroups.protocols.pbcast.GMS;
+import org.jgroups.protocols.pbcast.NAKACK2;
+import org.jgroups.protocols.pbcast.STABLE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,29 +45,27 @@ public class JgroupsService implements Receiver {
       LOG.info("Initializing JgroupsService programmatically");
       this.mainChannel =
           new JChannel(
-              new org.jgroups.protocols.TCP()
+              new TCP()
                   .setValue("bind_port", 7800)
                   .setValue("recv_buf_size", 130 * 1024)
                   .setValue("send_buf_size", 130 * 1024)
                   .setValue("thread_pool.min_threads", 1)
                   .setValue("thread_pool.max_threads", 4)
                   .setValue("thread_pool.keep_alive_time", 30000L),
-              new org.jgroups.protocols.kubernetes.KUBE_PING()
+              new KUBE_PING()
                   .setValue(
                       "namespace", System.getenv().getOrDefault("KUBERNETES_NAMESPACE", "default"))
                   .setValue(
                       "labels",
                       System.getenv().getOrDefault("JGROUPS_CLUSTER_LABEL", "app=agent-engine")),
-              new org.jgroups.protocols.FD_ALL3()
-                  .setValue("timeout", 8000L)
-                  .setValue("interval", 2000L),
+              new FD_ALL3().setValue("timeout", 8000L).setValue("interval", 2000L),
               new org.jgroups.protocols.VERIFY_SUSPECT2().setValue("timeout", 1500L),
-              new org.jgroups.protocols.pbcast.NAKACK2().setValue("xmit_interval", 200L),
-              new org.jgroups.protocols.UNICAST3().setValue("xmit_interval", 200L),
-              new org.jgroups.protocols.pbcast.STABLE()
+              new NAKACK2().setValue("xmit_interval", 200L),
+              new UNICAST3().setValue("xmit_interval", 200L),
+              new STABLE()
                   .setValue("desired_avg_gossip", 50000L)
                   .setValue("max_bytes", 4 * 1024 * 1024),
-              new org.jgroups.protocols.pbcast.GMS().setValue("join_timeout", 3000L),
+              new GMS().setValue("join_timeout", 3000L),
               new FORK());
       this.mainChannel.setReceiver(this);
 
