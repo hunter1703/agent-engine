@@ -1,26 +1,26 @@
 package com.agentengine.util.distributed;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
+import java.time.Duration;
 import java.util.concurrent.locks.Lock;
 
-@Singleton
-public class DistributedLockManager {
-
-  private final JgroupsService jgroupsService;
-
-  @Inject
-  public DistributedLockManager(JgroupsService jgroupsService) {
-    this.jgroupsService = jgroupsService;
-  }
-
+/** Interface for acquiring distributed locks across the cluster. */
+public interface DistributedLockManager {
   /**
    * Gets a distributed lock across the cluster for the given name.
    *
    * @param name The lock name
    * @return A java.util.concurrent.locks.Lock instance representing the distributed lock
    */
-  public Lock getLock(String name) {
-    return jgroupsService.getDistributedLock(name);
-  }
+  Lock getLock(String name);
+
+  /**
+   * Gets a distributed lock across the cluster for the given name with a Time-To-Live. Note:
+   * Depending on the underlying implementation, TTL might be simulated or ignored if the protocol
+   * natively ties lock leases to node lifecycles.
+   *
+   * @param name The lock name
+   * @param ttl The maximum time to live for the lock
+   * @return A java.util.concurrent.locks.Lock instance representing the distributed lock
+   */
+  Lock getLock(String name, Duration ttl);
 }

@@ -1,0 +1,38 @@
+<config xmlns="urn:org:jgroups"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:org:jgroups http://jgroups.org/schema/jgroups-5.3.xsd">
+
+    <!-- 1. Optimized Network Bindings for Lean Pods -->
+    <TCP bind_port="7800"
+         recv_buf_size="130k"
+         send_buf_size="130k"
+    <!-- Capped tightly to protect 100m CPU limits under 100 rps spikes -->
+    thread_pool.min_threads="1"
+    thread_pool.max_threads="4"
+    thread_pool.keep_alive_time="30000"/>
+
+    <!-- 2. Kubernetes Pod Discovery via Kube-API -->
+    <kubernetes.KUBE_PING
+            namespace="${KUBERNETES_NAMESPACE:default}"
+            labels="${JGROUPS_CLUSTER_LABEL:app=agent-engine}"/>
+
+    <!-- 3. Failure Detection (Heartbeats) -->
+    <FD_ALL3 timeout="8000" interval="2000"/>
+    <VERIFY_SUSPECT3 timeout="1500"/>
+
+    <!-- 4. Reliable Transmission Layers -->
+    <pbcast.NAKACK2 xmit_interval="200"/>
+    <UNICAST3 xmit_interval="200"/>
+    <pbcast.STABLE desired_avg_gossip="50000" max_bytes="4M"/>
+
+    <!-- 5. Group Membership -->
+    <pbcast.GMS join_timeout="3000"/>
+
+    <!-- 6. ADDED: Fork Protocol Definition -->
+    <!-- Required structurally in the XML to handle ForkChannels cleanly without dynamic Java hacks -->
+    <FORK/>
+
+    <!-- 7. Distributed Locking Layer -->
+    <!-- Kept as CENTRAL_LOCK (JGroups 5 standard name). Added bypass_bundling to make lock calls ultra-responsive -->
+    <CENTRAL_LOCK num_backups="1" bypass_bundling="true"/>
+</config>
