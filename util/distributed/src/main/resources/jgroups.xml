@@ -34,5 +34,5 @@
 
     <!-- 7. Distributed Locking Layer -->
     <!-- Kept as CENTRAL_LOCK (JGroups 5 standard name). Added bypass_bundling to make lock calls ultra-responsive -->
-    <CENTRAL_LOCK num_backups="1" bypass_bundling="true"/>
+    <CENTRAL_LOCK2 num_backups="1" bypass_bundling="true"/>
 </config>
