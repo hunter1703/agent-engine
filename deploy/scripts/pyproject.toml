@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Deployment CLI for the agent-engine Helm charts"
 requires-python = ">=3.12"
 dependencies = [
+    "python-dotenv",
     "pyyaml>=6.0",
     "pymongo>=4.9",
     "psycopg[binary]>=3.2",

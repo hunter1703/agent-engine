@@ -1,0 +1,21 @@
+[
+  {
+    "id": "reddit_connection",
+    "name": "Reddit Connection",
+    "appName": "reddit",
+    "inputs": {
+      "clientId": "ZTIvyg-8GN2I42hE6UziNg",
+      "clientSecret": "${REDDIT_CLIENT_SECRET}",
+      "userName": "driew_guy",
+      "password": "${REDDIT_PASSWORD}"
+    }
+  },
+  {
+    "id": "default_brave_connection",
+    "name": "Default Brave Connection",
+    "appName": "brave",
+    "inputs": {
+      "token": "${BRAVE_TOKEN}"
+    }
+  }
+]

@@ -1,225 +1,230 @@
-"""Seeding stages: MongoDB infra config, and REST's model/agent catalog. Config content
-under deploy/configs/<environment>/ is the source of truth — these stages read files
-and insert as-is, with zero override/computation."""
-
 from __future__ import annotations
 
 import asyncio
+import os
+import uuid
+import glob
 import json
-import time
+import logging
 from dataclasses import dataclass
-from graphlib import TopologicalSorter
-from pathlib import Path
-from typing import Any, Literal
-
-import httpx
-from pymongo import MongoClient
-
-from deployae import kube
-from deployae.charts import Chart, env_config_dir
 from deployae.stages.base import Stage
+from deployae import output
 
-DEFAULT_MONGODB_PORT = 27017
-DEFAULT_REST_PORT = 8080
+# Helper to run shell commands asynchronously
+async def run_cmd(cmd: str, env: dict = None) -> str:
+    # Use the current environment but overwrite with passed env
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    process = await asyncio.create_subprocess_shell(
+        cmd,
+        env=merged_env,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    if process.returncode != 0:
+        raise RuntimeError(f"Command failed: {cmd}\n{stderr.decode()}")
+    return stdout.decode()
 
-Kind = Literal["models", "agents"]
-_ENDPOINT_BY_KIND: dict[Kind, str] = {
-    "models": "/v1/model/upsert",
-    "agents": "/v1/agent/upsert",
-}
+def expand_json_vars(file_path: str) -> str:
+    with open(file_path, "r") as f:
+        content = f.read()
+    return os.path.expandvars(content)
 
+async def create_secret_from_dir(namespace: str, secret_name: str, dir_path: str):
+    import tempfile
+    
+    # We resolve the variables and write to a temporary directory
+    if not os.path.exists(dir_path):
+        return
+        
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        for file in glob.glob(os.path.join(dir_path, "*.json")):
+            resolved = expand_json_vars(file)
+            filename = os.path.basename(file)
+            with open(os.path.join(tmp_dir, filename), "w") as f:
+                f.write(resolved)
+                
+        # Dry-run create and apply
+        cmd = f"kubectl create secret generic {secret_name} -n {namespace} --from-file={tmp_dir}/ --dry-run=client -o yaml | kubectl apply -f -"
+        await run_cmd(cmd)
 
 @dataclass(eq=False, kw_only=True)
 class SeedInfraConfigStage(Stage):
-    tier: str | None
     environment: str
-    namespace_override: str | None
-    mongodb_port: int = DEFAULT_MONGODB_PORT
-    # Set for tiers with no self-hosted mongodb chart (e.g. socialmedia, backed by MongoDB
-    # Atlas) — connects directly instead of port-forwarding to a Service that doesn't exist.
+    tier: str
+    namespace_override: str | None = None
     external_mongodb_uri: str | None = None
-
+    
     async def run(self) -> None:
-        await asyncio.to_thread(self._seed)
-
-    def _seed(self) -> None:
-        """`tier` locates the live MongoDB Service to write into (mongodb-<tier>, or plain
-        `mongodb` if it wasn't deployed with a tier); `environment` picks which config files
-        get seeded. These are unrelated axes — MongoDB is a shared per-environment resource,
-        the config files describe that same environment's canonical topology."""
-        docs = self._environment_configs()
-
-        if self.external_mongodb_uri:
-            client: MongoClient[dict[str, Any]] = MongoClient(self.external_mongodb_uri)
+        run_id = f"seed-infra-{self.tier}-{uuid.uuid4().hex[:6]}"
+        namespace = "agent-engine"
+        
+        output.info(f"Seeding infra config using Job {run_id}")
+        
+        # 1. ConfigMap for seed_infra.py
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_infra.py=deploy/scripts/ci/seed_infra.py --dry-run=client -o yaml | kubectl apply -f -"
+        await run_cmd(cmd)
+        
+        # 2. Extract values from SQL.json and GP
+        sql_path = f"deploy/configs/{self.environment}/infra/SQL.json"
+        gp_path = f"deploy/k8s/global-properties/envs/{self.environment}/values.yaml"
+        
+        sql_content = expand_json_vars(sql_path)
+        sql_json = json.loads(sql_content)[0]
+        jdbc_url = sql_json.get("jdbcUrl")
+        jdbc_user = sql_json.get("jdbcUser")
+        jdbc_password = sql_json.get("jdbcPassword")
+        
+        postgres_conninfo = f"postgresql://{jdbc_user}:{jdbc_password}@{jdbc_url.replace('jdbc:postgresql://', '')}"
+        
+        # For MongoDB, we just parse it from the yaml using basic string matching since yaml parsing might require extra deps (though pyyaml is available)
+        mongo_uri = None
+        with open(gp_path) as f:
+            for line in f:
+                if "infra.mongodb.uri:" in line:
+                    mongo_uri = line.split("infra.mongodb.uri:")[1].strip()
+                    break
+        if mongo_uri:
+            mongo_uri = os.path.expandvars(mongo_uri)
+            
+        # 3. Secret for configs
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with open(os.path.join(tmp_dir, "SQL.json"), "w") as f:
+                f.write(sql_content)
+            
+            enc_path = f"deploy/configs/{self.environment}/infra/ENCRYPTION.json"
+            if os.path.exists(enc_path):
+                with open(os.path.join(tmp_dir, "ENCRYPTION.json"), "w") as f:
+                    f.write(expand_json_vars(enc_path))
+                    
+            cmd = f"kubectl create secret generic {run_id}-config -n {namespace} --from-file={tmp_dir}/ "
+            if mongo_uri:
+                cmd += f"--from-literal=MONGO_ATLAS_URI='{mongo_uri}' "
+            cmd += f"--from-literal=POSTGRES_CONNINFO='{postgres_conninfo}' "
+            cmd += "--dry-run=client -o yaml | kubectl apply -f -"
+            await run_cmd(cmd)
+            
+        # 4. Apply Job
+        job_yaml = f"""apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {run_id}
+  namespace: {namespace}
+spec:
+  ttlSecondsAfterFinished: 30
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: python:3.12-slim
+          command: ["sh", "-c", "pip install --quiet pymongo 'psycopg[binary]' && python3 /scripts/seed_infra.py"]
+          env:
+            - name: MONGO_ATLAS_URI
+              valueFrom:
+                secretKeyRef: {{name: {run_id}-config, key: MONGO_ATLAS_URI}}
+            - name: POSTGRES_CONNINFO
+              valueFrom:
+                secretKeyRef: {{name: {run_id}-config, key: POSTGRES_CONNINFO}}
+          volumeMounts:
+            - {{name: script, mountPath: /scripts}}
+            - {{name: config, mountPath: /config}}
+      volumes:
+        - {{name: script, configMap: {{name: {run_id}-script}}}}
+        - {{name: config, secret: {{secretName: {run_id}-config}}}}
+"""
+        
+        with tempfile.NamedTemporaryFile("w", delete=False) as f:
+            f.write(job_yaml)
+            job_file = f.name
+            
+        try:
+            await run_cmd(f"kubectl apply -f {job_file}")
+            
+            # Wait for job completion
             try:
-                collection = client["INFRA"]["InfraConfig"]
-                for doc in docs:
-                    _upsert_infra_config(collection, doc)
-            finally:
-                client.close()
-            return
-
-        mongodb = Chart("mongodb")
-        mongodb_ns = mongodb.namespace(self.namespace_override)
-        mongodb_name = mongodb.resource_name(self.tier)
-
-        with kube.port_forward(mongodb_ns, mongodb_name, self.mongodb_port) as local_port:
-            # directConnection: mongod always runs with --replSet (even at a single member), so
-            # without this the driver discovers replica set topology from the server's advertised
-            # member hostnames (cluster-internal DNS) and reconnects there instead of continuing
-            # to use this port-forward tunnel - which then fails to resolve outside the cluster.
-            client = MongoClient(f"mongodb://127.0.0.1:{local_port}/?directConnection=true")
-            try:
-                collection = client["INFRA"]["InfraConfig"]
-                for doc in docs:
-                    _upsert_infra_config(collection, doc)
-            finally:
-                client.close()
-
-    def _environment_configs(self) -> list[dict[str, Any]]:
-        docs: list[dict[str, Any]] = []
-        for path in sorted(env_config_dir(self.environment, "infra").glob("*.json")):
-            docs.extend(json.loads(path.read_text()))
-        return docs
-
-
-def _upsert_infra_config(collection: Any, doc: dict[str, Any]) -> None:
-    doc_id = doc.get("id") or doc.get("_id")
-    if not doc_id:
-        raise ValueError(f"Config is missing id: {doc}")
-    existing = collection.find_one({"_id": doc_id})
-    now_ms = int(time.time() * 1000)
-    payload = {**doc, "_id": doc_id}
-    payload["createdTime"] = (
-        existing["createdTime"]
-        if existing and isinstance(existing.get("createdTime"), int)
-        else now_ms
-    )
-    payload["updatedTime"] = now_ms
-    payload.pop("id", None)
-    collection.replace_one({"_id": doc_id}, payload, upsert=True)
-    print(f"Upserted infra config {doc_id} ({payload.get('type')})")
-
+                await run_cmd(f"kubectl wait --for=condition=complete --timeout=180s job/{run_id} -n {namespace}")
+            except Exception as e:
+                logs = await run_cmd(f"kubectl logs job/{run_id} -n {namespace} --tail=200")
+                output.error(f"Infra seed failed:\n{logs}")
+                raise e
+        finally:
+            os.remove(job_file)
+            
 
 @dataclass(eq=False, kw_only=True)
-class SeedRestCatalogStage(Stage):
-    kind: Kind
-    tier: str
+class SeedAppConfigStage(Stage):
     environment: str
-    namespace_override: str | None
-    rest_port: int = DEFAULT_REST_PORT
-
-    async def run(self) -> None:
-        await asyncio.to_thread(self._seed)
-
-    def _seed(self) -> None:
-        """Seeds just one kind (models or agents) into one REST instance. `tier` picks which
-        REST instance (rest-<tier>); `environment` picks which config files. No readiness poll
-        here: this stage's own depends_on already waits on rest's DeployChartStage, which blocks
-        on `kubectl rollout status` — itself gated on the same /q/health/ready check via the
-        Deployment's readinessProbe — so REST is already known-ready by the time this runs."""
-        rest = Chart("rest")
-        rest_ns = rest.namespace(self.namespace_override)
-        rest_name = rest.resource_name(self.tier)
-
-        if not kube.service_exists(rest_ns, rest_name):
-            print(
-                f"Skipping {self.kind} sync because service '{rest_name}' is not present "
-                f"in namespace '{rest_ns}'."
-            )
-            return
-
-        files = self._files_for_kind()
-        endpoint = _ENDPOINT_BY_KIND[self.kind]
-
-        with (
-            kube.port_forward(rest_ns, rest_name, self.rest_port) as local_port,
-            httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30) as client,
-        ):
-            for path in files:
-                _upsert_catalog_entry(client, path, endpoint)
-
-    def _files_for_kind(self) -> list[Path]:
-        files = sorted(env_config_dir(self.environment, self.kind).glob("*.json"))
-        return _topological_agent_order(files) if self.kind == "agents" else files
-
-
-def _topological_agent_order(agent_files: list[Path]) -> list[Path]:
-    """Orders agent config files so every agent's subAgentIds are seeded before the
-    agent itself. A dependency not present among agent_files (e.g. already seeded in a
-    prior run) is simply not a constraint graphlib needs to know about."""
-    path_by_id: dict[str, Path] = {}
-    deps_by_id: dict[str, set[str]] = {}
-    for path in agent_files:
-        doc = json.loads(path.read_text())
-        agent_id = doc["id"]
-        path_by_id[agent_id] = path
-        deps_by_id[agent_id] = set(doc.get("subAgentIds") or [])
-
-    known_ids = set(path_by_id)
-    filtered_deps = {
-        agent_id: {dep for dep in deps if dep in known_ids} for agent_id, deps in deps_by_id.items()
-    }
-    return [path_by_id[agent_id] for agent_id in TopologicalSorter(filtered_deps).static_order()]
-
-
-def _upsert_catalog_entry(client: httpx.Client, path: Path, endpoint: str) -> None:
-    response = client.post(
-        endpoint, content=path.read_bytes(), headers={"Content-Type": "application/json"}
-    )
-    if not response.is_success:
-        raise RuntimeError(
-            f"Failed to seed {path.name} (HTTP {response.status_code}): {response.text}"
-        )
-    print(f"Seeded {path.name}")
-
-
-@dataclass(eq=False, kw_only=True)
-class SaveConnectionStage(Stage):
     tier: str
-    environment: str
-    namespace_override: str | None
-    rest_port: int = DEFAULT_REST_PORT
-
+    namespace_override: str | None = None
+    external_mongodb_uri: str | None = None
+    
     async def run(self) -> None:
-        await asyncio.to_thread(self._seed)
+        run_id = f"seed-app-{self.tier}-{uuid.uuid4().hex[:6]}"
+        namespace = "agent-engine"
+        rest_service_name = f"rest-{self.tier}"
+        
+        output.info(f"Seeding app config using Job {run_id}")
+        
+        # 1. ConfigMap for seed_app.py
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py=deploy/scripts/ci/seed_app.py --dry-run=client -o yaml | kubectl apply -f -"
+        await run_cmd(cmd)
+        
+        # 2. Create secrets for models, agents, connectors
+        await create_secret_from_dir(namespace, f"{run_id}-connectors", f"deploy/configs/{self.environment}/connectors")
+        await create_secret_from_dir(namespace, f"{run_id}-models", f"deploy/configs/{self.environment}/models")
+        await create_secret_from_dir(namespace, f"{run_id}-agents", f"deploy/configs/{self.environment}/agents")
+        
+        # 3. Apply Job
+        job_yaml = f"""apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {run_id}
+  namespace: {namespace}
+spec:
+  ttlSecondsAfterFinished: 30
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: python:3.12-slim
+          command: ["python3", "/scripts/seed_app.py"]
+          env:
+            - name: REST_URL
+              value: "http://{rest_service_name}:8080"
+          volumeMounts:
+            - {{name: script, mountPath: /scripts}}
+            - {{name: connectors, mountPath: /config/connectors}}
+            - {{name: models, mountPath: /config/models}}
+            - {{name: agents, mountPath: /config/agents}}
+      volumes:
+        - {{name: script, configMap: {{name: {run_id}-script}}}}
+        - {{name: connectors, secret: {{secretName: {run_id}-connectors, optional: true}}}}
+        - {{name: models, secret: {{secretName: {run_id}-models, optional: true}}}}
+        - {{name: agents, secret: {{secretName: {run_id}-agents, optional: true}}}}
+"""
 
-    def _seed(self) -> None:
-        rest = Chart("rest")
-        rest_ns = rest.namespace(self.namespace_override)
-        rest_name = rest.resource_name(self.tier)
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", delete=False) as f:
+            f.write(job_yaml)
+            job_file = f.name
+            
+        try:
+            await run_cmd(f"kubectl apply -f {job_file}")
+            
+            # Wait for job completion
+            try:
+                await run_cmd(f"kubectl wait --for=condition=complete --timeout=180s job/{run_id} -n {namespace}")
+            except Exception as e:
+                logs = await run_cmd(f"kubectl logs job/{run_id} -n {namespace} --tail=200")
+                output.error(f"App seed failed:\n{logs}")
+                raise e
+        finally:
+            os.remove(job_file)
 
-        if not kube.service_exists(rest_ns, rest_name):
-            print(
-                f"Skipping connections sync because service '{rest_name}' is not present "
-                f"in namespace '{rest_ns}'."
-            )
-            return
-
-        import os
-        files = sorted(env_config_dir(self.environment, "connectors").glob("*.json"))
-
-        with (
-            kube.port_forward(rest_ns, rest_name, self.rest_port) as local_port,
-            httpx.Client(base_url=f"http://127.0.0.1:{local_port}", timeout=30) as client,
-        ):
-            for path in files:
-                content = path.read_text()
-                import re
-                matches = set(re.findall(r'\$\{([A-Za-z0-9_]+)\}', content) + re.findall(r'\$([A-Za-z0-9_]+)', content))
-                missing = [var for var in matches if var not in os.environ]
-                if missing:
-                    raise RuntimeError(f"Missing required environment variables for {path.name}: {missing}")
-                content = os.path.expandvars(content)
-                docs = json.loads(content)
-                if not isinstance(docs, list):
-                    docs = [docs]
-                for doc in docs:
-                    response = client.post(
-                        "/v1/connection/upsert", json=doc, headers={"Content-Type": "application/json"}
-                    )
-                    if not response.is_success:
-                        raise RuntimeError(
-                            f"Failed to seed connection (HTTP {response.status_code}): {response.text}"
-                        )
-                    print(f"Seeded connection {doc.get('id') or doc.get('appName')}")

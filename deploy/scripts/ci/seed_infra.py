@@ -75,24 +75,6 @@ def seed_mongo() -> None:
                 payload.pop("id", None)
                 collection.replace_one({"_id": doc_id}, payload, upsert=True)
                 print(f"Upserted {doc_id} ({payload.get('type')})")
-        
-        encryption_key = os.environ.get("ENCRYPTION_KEY")
-        if encryption_key:
-            doc_id = "ENCRYPTION#ENCRYPTION#default"
-            existing = collection.find_one({"_id": doc_id})
-            now_ms = int(time.time() * 1000)
-            payload = {
-                "_id": doc_id,
-                "_t": "com.agentengine.util.mongodb.infra.EncryptionInfraConfig",
-                "category": "ENCRYPTION",
-                "type": "ENCRYPTION",
-                "configId": "default",
-                "key": encryption_key,
-                "createdTime": (existing["createdTime"] if existing and isinstance(existing.get("createdTime"), int) else now_ms),
-                "updatedTime": now_ms
-            }
-            collection.replace_one({"_id": doc_id}, payload, upsert=True)
-            print(f"Upserted {doc_id} (ENCRYPTION)")
     finally:
         client.close()
 

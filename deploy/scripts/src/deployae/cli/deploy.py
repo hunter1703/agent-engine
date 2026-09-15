@@ -27,11 +27,10 @@ from deployae.stages import (
     EnsureLocalTlsCertStage,
     EnsureLocalstackBucketsStage,
     EnsureNamespaceStage,
+    SeedInfraConfigStage,
+    SeedAppConfigStage,
     InitPostgresSchemaStage,
     InitQdrantCollectionStage,
-    SeedInfraConfigStage,
-    SeedRestCatalogStage,
-    SaveConnectionStage,
     Stage,
     UninstallChartStage,
     run_graph,
@@ -67,6 +66,10 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
         "which global-properties ConfigMap to mount",
     )
     parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
+    parser.add_argument(
+        "--env",
+        help="Path to .env file to load secrets from",
+    )
     parser.add_argument(
         "-f",
         "--values",
@@ -134,6 +137,15 @@ def _build_context(args: argparse.Namespace) -> helm.DeployContext:
 
 
 def run(args: argparse.Namespace) -> None:
+    if getattr(args, "env", None):
+        import os
+        from dotenv import load_dotenv
+        env_path = os.path.expanduser(args.env)
+        if os.path.exists(env_path):
+            load_dotenv(env_path)
+        else:
+            print(f"Warning: env file {env_path} not found.")
+
     ctx = _build_context(args)
     asyncio.run(
         _deploy(
@@ -143,6 +155,7 @@ def run(args: argparse.Namespace) -> None:
             dry_run=args.dry_run,
             timeout=args.timeout,
             cleanup_internal=args.cleanup_internal,
+            env_file=getattr(args, "env", None),
         )
     )
 
@@ -155,6 +168,7 @@ async def _deploy(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
+    env_file: str | None = None,
 ) -> None:
     start_time = time.time()
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
@@ -168,6 +182,7 @@ async def _deploy(
         dry_run=dry_run,
         timeout=timeout,
         cleanup_internal=cleanup_internal,
+        env_file=env_file,
     )
     deploy_task = asyncio.ensure_future(run_graph(stages))
     await asyncio.wait(
@@ -248,6 +263,7 @@ def build_stages(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
+    env_file: str | None = None,
 ) -> list[Stage]:
     """Builds the full stage graph.
 
@@ -399,7 +415,7 @@ def build_stages(
             timeout=timeout,
             dry_run=dry_run,
             needs_env_secret=name in ENV_SECRET_CHARTS,
-            env_file=Path("/Users/rahul/Pictures/.env"),
+            env_file=Path(os.path.expanduser(env_file)) if env_file else None,
             # A tier assembles its own subset of services by which charts it has a
             # tiers/<tier>/values.yaml for — see Chart.is_enabled_for_tier. A chart with
             # no overlay for this tier is skipped entirely, not deployed with defaults.
@@ -454,39 +470,14 @@ def build_stages(
         )
     )
 
-    # --- Catalog seeding: models, then agents ---
-    save_conn_stage = SaveConnectionStage(
-        name="seed-connections",
-        depends_on=(infra_deploy_by_name["mongodb"], app_deploy_by_name.get("connectors"), rest_stage),
-        tier=ctx.tier,
+    # --- App Config Seeding (replaces old rest seeding) ---
+    seed_app = SeedAppConfigStage(
+        name="seed-app-config",
+        depends_on=tuple(stages.copy()),  # run after everything else
         environment=ctx.environment,
-        namespace_override=ctx.namespace,
-        enabled=not dry_run,
-    )
-    # Remove None from depends_on if connectors chart is not deployed
-    save_conn_stage.depends_on = tuple(d for d in save_conn_stage.depends_on if d is not None)
-    stages.append(save_conn_stage)
-
-    seed_models_stage = SeedRestCatalogStage(
-        name="seed-models",
-        depends_on=(infra_deploy_by_name["mongodb"], catalog_stage, rest_stage),
-        kind="models",
         tier=ctx.tier,
-        environment=ctx.environment,
-        namespace_override=ctx.namespace,
-        enabled=not dry_run,
+        enabled=not dry_run
     )
-    stages.append(seed_models_stage)
-    stages.append(
-        SeedRestCatalogStage(
-            name="seed-agents",
-            depends_on=(seed_models_stage,),
-            kind="agents",
-            tier=ctx.tier,
-            environment=ctx.environment,
-            namespace_override=ctx.namespace,
-            enabled=not dry_run,
-        )
-    )
+    stages.append(seed_app)
 
     return stages

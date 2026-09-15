@@ -1,0 +1,9 @@
+[
+  {
+    "id": "ENCRYPTION:ENCRYPTION:default",
+    "_t": "com.agentengine.util.mongodb.infra.EncryptionInfraConfig",
+    "type": "ENCRYPTION",
+    "category": "ENCRYPTION",
+    "key": "${ENCRYPTION_KEY}"
+  }
+]

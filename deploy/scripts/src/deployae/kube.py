@@ -79,25 +79,32 @@ def ensure_env_secret(release_name: str, namespace: str, env_file: Path) -> str 
     if not env_file.is_file():
         return None
     secret_name = f"{release_name}-env"
-    dry_run = subprocess.run(
-        [
-            "kubectl",
-            "create",
-            "secret",
-            "generic",
-            secret_name,
-            f"--from-env-file={env_file}",
-            "--namespace",
-            namespace,
-            "--dry-run=client",
-            "-o",
-            "yaml",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    _apply_stdin(dry_run.stdout)
+    
+    from dotenv import dotenv_values
+    import base64
+    import yaml
+    import re
+    
+    env_dict = dotenv_values(env_file)
+    valid_key_pattern = re.compile(r'^[-._a-zA-Z][-._a-zA-Z0-9]*$')
+    
+    data = {}
+    for k, v in env_dict.items():
+        if k is not None and valid_key_pattern.match(k) and v is not None:
+            data[k] = base64.b64encode(str(v).encode()).decode()
+            
+    secret_manifest = {
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {
+            "name": secret_name,
+            "namespace": namespace,
+        },
+        "type": "Opaque",
+        "data": data,
+    }
+    
+    _apply_stdin(yaml.dump(secret_manifest))
     return secret_name
 
 

@@ -91,123 +91,23 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      # deploy/k8s/global-properties/envs/socialmedia/values.yaml and
-      # deploy/configs/socialmedia/infra/SQL.json are real, committed files — safe to commit
-      # because the only credential-bearing parts are ${VAR}-style placeholders, not real
-      # values. envsubst resolves just those named variables in place (restricting to a named
-      # list, rather than substituting every $-looking token in the file, so nothing else in
-      # either file is touched). Adding a new non-secret property to either file needs no
-      # workflow change; adding a new secret-bearing one needs a new repo secret plus adding its
-      # name to the relevant envsubst call below.
-      - name: Resolve secret placeholders
-        env:
-          MONGO_ATLAS_PASSWORD: ${{ secrets.MONGO_ATLAS_PASSWORD }}
-          NEON_JDBC_PASSWORD: ${{ secrets.NEON_JDBC_PASSWORD }}
-        run: |
-          set -e
-          which envsubst >/dev/null || sudo apt-get update -qq && sudo apt-get install -y -qq gettext-base
-
-          GP_FILE="deploy/k8s/global-properties/envs/${{ inputs.environment }}/values.yaml"
-          envsubst '${MONGO_ATLAS_PASSWORD}' < "$GP_FILE" > "$GP_FILE.resolved"
-          mv "$GP_FILE.resolved" "$GP_FILE"
-
-          SQL_FILE="deploy/configs/${{ inputs.environment }}/infra/SQL.json"
-          envsubst '${NEON_JDBC_PASSWORD}' < "$SQL_FILE" > "$SQL_FILE.resolved"
-          mv "$SQL_FILE.resolved" "$SQL_FILE"
-
-      # Runs the InfraConfig seed + Postgres schema init as a one-off Kubernetes Job instead of
-      # from this runner directly — deliberately, so the outbound connection to Atlas/Neon comes
-      # from a node whose IP is already in Atlas's Network Access list, rather than a GitHub-
-      # hosted runner's ephemeral IP (which would otherwise force opening Atlas to 0.0.0.0/0).
-      # deployae's own SeedInfraConfigStage/InitPostgresSchemaStage are left disabled for this
-      # path (no DEPLOYAE_MONGODB_URI/DEPLOYAE_POSTGRES_CONNINFO passed to the Deploy step below)
-      # so it isn't attempted twice.
-      - name: Seed Atlas + Neon from inside the cluster
-        run: |
-          set -e
-          RUN_ID="seed-${{ inputs.tier }}-${{ github.run_id }}"
-
-          kubectl create configmap seed-script -n agent-engine \
-            --from-file=seed_infra.py=deploy/scripts/ci/seed_infra.py \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-          # SQL.json's real jdbcUrl/user/password live in this Secret (volume-mounted, not
-          # envFrom — a mounted Secret has no restriction on key names, but envFrom would reject
-          # a key like "SQL.json" since it can't become a valid environment variable name).
-          # jdbcUrl/jdbcUser are read straight out of the file the previous step already
-          # resolved, rather than needing their own secrets — they're plain committed text in
-          # SQL.json itself (only jdbcPassword is a real secret), so duplicating them as GitHub
-          # Secrets too would just be two sources of truth for the same non-secret values.
-          SQL_FILE="deploy/configs/${{ inputs.environment }}/infra/SQL.json"
-          JDBC_URL="$(jq -r '.[0].jdbcUrl' "$SQL_FILE")"
-          JDBC_USER="$(jq -r '.[0].jdbcUser' "$SQL_FILE")"
-          JDBC_PASSWORD="$(jq -r '.[0].jdbcPassword' "$SQL_FILE")"
-
-          # Same reasoning as SQL.json above — read the already-resolved Mongo URI straight out
-          # of the file the "Resolve secret placeholders" step already wrote, rather than
-          # reconstructing a second copy of it (and the plain username in particular) here.
-          GP_FILE="deploy/k8s/global-properties/envs/${{ inputs.environment }}/values.yaml"
-          MONGO_ATLAS_URI="$(grep 'infra.mongodb.uri:' "$GP_FILE" | sed 's/^[[:space:]]*infra\.mongodb\.uri:[[:space:]]*//')"
-          POSTGRES_CONNINFO="postgresql://${JDBC_USER}:${JDBC_PASSWORD}@${JDBC_URL#jdbc:postgresql://}"
-          kubectl create secret generic "$RUN_ID-config" -n agent-engine \
-            --from-file="deploy/configs/${{ inputs.environment }}/infra/" \
-            --from-literal=MONGO_ATLAS_URI="$MONGO_ATLAS_URI" \
-            --from-literal=POSTGRES_CONNINFO="$POSTGRES_CONNINFO" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-          cat <<JOBEOF | kubectl apply -f -
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: $RUN_ID
-            namespace: agent-engine
-          spec:
-            ttlSecondsAfterFinished: 300
-            backoffLimit: 1
-            template:
-              spec:
-                restartPolicy: Never
-                containers:
-                  - name: seed
-                    image: python:3.12-slim
-                    command: ["sh", "-c", "pip install --quiet pymongo 'psycopg[binary]' && python3 /scripts/seed_infra.py"]
-                    env:
-                      - name: MONGO_ATLAS_URI
-                        valueFrom:
-                          secretKeyRef: {name: $RUN_ID-config, key: MONGO_ATLAS_URI}
-                      - name: POSTGRES_CONNINFO
-                        valueFrom:
-                          secretKeyRef: {name: $RUN_ID-config, key: POSTGRES_CONNINFO}
-                    volumeMounts:
-                      - {name: script, mountPath: /scripts}
-                      - {name: config, mountPath: /config}
-                volumes:
-                  - {name: script, configMap: {name: seed-script}}
-                  - {name: config, secret: {secretName: $RUN_ID-config}}
-          JOBEOF
-
-          kubectl wait --for=condition=complete --timeout=180s "job/$RUN_ID" -n agent-engine || {
-            echo "::error::Seed job did not complete — logs:"
-            kubectl logs "job/$RUN_ID" -n agent-engine --tail=200
-            exit 1
-          }
-          kubectl logs "job/$RUN_ID" -n agent-engine --tail=100
 
       # Builds only the app charts enabled for this tier (per Chart.is_enabled_for_tier),
-      # builds+pushes their images to GHCR, and helm-upgrades every enabled chart — the same
-      # logic deployae already uses locally, just pointed at an external registry/cluster
-      # instead of a shared local Docker daemon. Seeding happened above, not here.
+      # builds+pushes their images to GHCR, and helm-upgrades every enabled chart.
+      # Also runs Kubernetes Jobs to seed Infra and App configs via deployae.
       #
       # Always tag/push as "latest" rather than the git SHA — this tier's GHCR packages are
       # private, and private packages are capped at 500MB total storage on a Free account;
       # a SHA per deploy would accumulate forever instead of overwriting one image per
       # component. app-base's Deployment template sets imagePullPolicy: Always whenever
       # global.imageRegistry is set (see deploy/k8s/app-base/templates/deployment.yaml) so
-      # nodes actually re-pull "latest" instead of trusting a stale locally-cached copy — the
-      # usual "latest never updates" gotcha, made harmless by that pairing.
+      # nodes actually re-pull "latest" instead of trusting a stale locally-cached copy.
       - name: Deploy
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
+          MONGO_ATLAS_PASSWORD: ${{ secrets.MONGO_ATLAS_PASSWORD }}
+          NEON_JDBC_PASSWORD: ${{ secrets.NEON_JDBC_PASSWORD }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
           REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
           BRAVE_TOKEN: ${{ secrets.BRAVE_TOKEN }}
