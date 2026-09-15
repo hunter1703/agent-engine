@@ -40,4 +40,12 @@ public class ClientProducer {
   public ConnectorService connectorService(MicroServiceClientProvider provider) {
     return provider.get(ConnectorService.class);
   }
+
+  @Produces
+  @Singleton
+  @DefaultBean
+  public com.agentengine.connectors.api.services.ConnectionService connectionService(
+      MicroServiceClientProvider provider) {
+    return provider.get(com.agentengine.connectors.api.services.ConnectionService.class);
+  }
 }
