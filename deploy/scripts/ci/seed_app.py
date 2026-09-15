@@ -76,7 +76,7 @@ def seed():
         if not isinstance(docs, list):
             docs = [docs]
         for doc in docs:
-            post_json(f"{rest_url}/v1/connection/upsert", doc)
+            post_json(f"{rest_url}/v1/connection/", doc)
             print(f"Seeded connection {doc.get('id') or doc.get('appName')}")
 
 if __name__ == "__main__":

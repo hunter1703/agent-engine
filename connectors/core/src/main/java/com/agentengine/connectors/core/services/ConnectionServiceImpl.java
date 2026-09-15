@@ -87,7 +87,7 @@ public class ConnectionServiceImpl implements ConnectionService {
       }
     }
     encryptSensitiveInputs(connection);
-    final Connection saved = connectionRepository.insert(connection);
+    final Connection saved = connectionRepository.save(connection);
     distributedCacheManager.broadcastInvalidation(
         ConnectorCacheService.CONNECTION_IDS_CACHE_NAME, saved.getAppName());
     return saved;

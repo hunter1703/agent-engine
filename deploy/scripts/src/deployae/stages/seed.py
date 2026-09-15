@@ -47,7 +47,7 @@ async def create_secret_from_dir(namespace: str, secret_name: str, dir_path: str
                 f.write(resolved)
                 
         # Dry-run create and apply
-        cmd = f"kubectl create secret generic {secret_name} -n {namespace} --from-file={tmp_dir}/ --dry-run=client -o yaml | kubectl apply -f -"
+        cmd = f"kubectl create secret generic {secret_name} -n {namespace} --from-file={tmp_dir}/ --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
 
 @dataclass(eq=False, kw_only=True)
@@ -64,7 +64,7 @@ class SeedInfraConfigStage(Stage):
         output.info(f"Seeding infra config using Job {run_id}")
         
         # 1. ConfigMap for seed_infra.py
-        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_infra.py=deploy/scripts/ci/seed_infra.py --dry-run=client -o yaml | kubectl apply -f -"
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_infra.py=deploy/scripts/ci/seed_infra.py --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
         
         # 2. Extract values from SQL.json and GP
@@ -93,7 +93,7 @@ class SeedInfraConfigStage(Stage):
             if mongo_uri:
                 cmd += f"--from-literal=MONGO_ATLAS_URI='{mongo_uri}' "
             cmd += f"--from-literal=POSTGRES_CONNINFO='{postgres_conninfo}' "
-            cmd += "--dry-run=client -o yaml | kubectl apply -f -"
+            cmd += "--dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
             await run_cmd(cmd)
             
         # 4. Apply Job
@@ -160,7 +160,7 @@ class SeedAppConfigStage(Stage):
         output.info(f"Seeding app config using Job {run_id}")
         
         # 1. ConfigMap for seed_app.py
-        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py=deploy/scripts/ci/seed_app.py --dry-run=client -o yaml | kubectl apply -f -"
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py=deploy/scripts/ci/seed_app.py --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
         
         # 2. Create secrets for models, agents, connectors
@@ -187,6 +187,10 @@ spec:
           env:
             - name: REST_URL
               value: "http://{rest_service_name}:8080"
+          envFrom:
+            - secretRef:
+                name: agent-engine-secrets
+                optional: true
           volumeMounts:
             - {{name: script, mountPath: /scripts}}
             - {{name: connectors, mountPath: /config/connectors}}

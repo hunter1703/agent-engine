@@ -34,7 +34,7 @@ def _run(args: list[str], *, capture: bool = False) -> subprocess.CompletedProce
 
 def _apply_stdin(manifest_yaml: str) -> None:
     subprocess.run(
-        ["kubectl", "apply", "-f", "-"],
+        ["kubectl", "apply", "--server-side", "--force-conflicts", "-f", "-"],
         input=manifest_yaml,
         text=True,
         check=True,

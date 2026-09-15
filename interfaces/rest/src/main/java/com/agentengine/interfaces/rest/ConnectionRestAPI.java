@@ -27,11 +27,11 @@ public class ConnectionRestAPI {
   }
 
   @POST
-  @Path("/upsert")
+  @Path("/")
   @Consumes(APPLICATION_JSON)
   @Produces(APPLICATION_JSON)
-  @Operation(summary = "Upsert a connection")
-  public Connection upsert(final Connection connection) {
+  @Operation(summary = "Save a connection")
+  public Connection save(final Connection connection) {
     return connectionService.saveConnection(connection);
   }
 
