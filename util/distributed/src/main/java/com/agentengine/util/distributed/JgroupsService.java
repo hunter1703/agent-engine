@@ -48,10 +48,7 @@ public class JgroupsService implements Receiver {
               new TCP()
                   .setValue("bind_port", 7800)
                   .setValue("recv_buf_size", 130 * 1024)
-                  .setValue("send_buf_size", 130 * 1024)
-                  .setValue("thread_pool.min_threads", 1)
-                  .setValue("thread_pool.max_threads", 4)
-                  .setValue("thread_pool.keep_alive_time", 30000L),
+                  .setValue("send_buf_size", 130 * 1024),
               new KUBE_PING()
                   .setValue(
                       "namespace", System.getenv().getOrDefault("KUBERNETES_NAMESPACE", "default"))
