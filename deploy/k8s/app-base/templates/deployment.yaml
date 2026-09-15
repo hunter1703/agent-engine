@@ -90,6 +90,7 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ $secrets.envSecretName }}
+                optional: true
           {{- end }}
           ports:
             - name: http

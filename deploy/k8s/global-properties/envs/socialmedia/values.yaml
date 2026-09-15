@@ -1,4 +1,3 @@
 globalProperties:
-  infra.mongodb.uri: mongodb+srv://agentengine:${MONGO_ATLAS_PASSWORD}@agent-engine.unvpiob.mongodb.net/?appName=agent-engine
   infra.mongodb.database: INFRA
   app.mongodb.database: AGENT_ENGINE

@@ -79,26 +79,15 @@ class SeedInfraConfigStage(Stage):
         
         postgres_conninfo = f"postgresql://{jdbc_user}:{jdbc_password}@{jdbc_url.replace('jdbc:postgresql://', '')}"
         
-        # For MongoDB, we just parse it from the yaml using basic string matching since yaml parsing might require extra deps (though pyyaml is available)
-        mongo_uri = None
-        with open(gp_path) as f:
-            for line in f:
-                if "infra.mongodb.uri:" in line:
-                    mongo_uri = line.split("infra.mongodb.uri:")[1].strip()
-                    break
-        if mongo_uri:
-            mongo_uri = os.path.expandvars(mongo_uri)
+        mongo_uri = self.external_mongodb_uri or os.environ.get("INFRA_MONGODB_URI")
             
         # 3. Secret for configs
         import tempfile
+        import glob
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with open(os.path.join(tmp_dir, "SQL.json"), "w") as f:
-                f.write(sql_content)
-            
-            enc_path = f"deploy/configs/{self.environment}/infra/ENCRYPTION.json"
-            if os.path.exists(enc_path):
-                with open(os.path.join(tmp_dir, "ENCRYPTION.json"), "w") as f:
-                    f.write(expand_json_vars(enc_path))
+            for file in glob.glob(f"deploy/configs/{self.environment}/infra/*.json"):
+                with open(os.path.join(tmp_dir, os.path.basename(file)), "w") as f:
+                    f.write(expand_json_vars(file))
                     
             cmd = f"kubectl create secret generic {run_id}-config -n {namespace} --from-file={tmp_dir}/ "
             if mongo_uri:

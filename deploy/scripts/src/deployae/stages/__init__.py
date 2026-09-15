@@ -4,6 +4,7 @@ from deployae.stages.base import Stage, run_graph
 from deployae.stages.build import BuildDockerImageStage, BuildGradleStage
 from deployae.stages.chart import (
     DeployChartStage,
+    EnsureEnvSecretStage,
     EnsureIngressControllerStage,
     EnsureLocalTlsCertStage,
     EnsureNamespaceStage,
@@ -32,6 +33,7 @@ __all__ = [
     "EnsureIndexesStage",
     "SeedInfraConfigStage",
     "SeedAppConfigStage",
+    "EnsureEnvSecretStage",
     "EnsureIngressControllerStage",
     "EnsureLocalTlsCertStage",
     "EnsureLocalstackBucketsStage",

@@ -43,17 +43,11 @@ class DeployChartStage(HelmStage):
     timeout: str = helm.DEFAULT_TIMEOUT
     dry_run: bool = False
     lint_first: bool = False
-    needs_env_secret: bool = False
-    env_file: Path | None = None
     rendered: str | None = field(default=None, init=False)
 
     async def execute(self) -> None:
         if self.lint_first:
             await asyncio.to_thread(helm.lint, self.chart, self.ctx)
-
-        extra_set = None
-        if self.needs_env_secret and not self.dry_run:
-            extra_set = await asyncio.to_thread(self._env_secret_set)
 
         rendered = await asyncio.to_thread(
             helm.upgrade_install,
@@ -62,7 +56,6 @@ class DeployChartStage(HelmStage):
             dry_run=self.dry_run,
             atomic=self.atomic,
             timeout=self.timeout,
-            extra_set=extra_set,
         )
         if self.dry_run:
             self.rendered = rendered
@@ -79,21 +72,6 @@ class DeployChartStage(HelmStage):
                 self.chart.resource_name(self.ctx.tier),
                 self.timeout,
             )
-
-    def _env_secret_set(self) -> list[str] | None:
-        """Creates/updates the .env Secret for charts needing runtime API keys injected
-        as environment variables. Deferred to execute() (not computed at construction
-        time) because it needs the chart's namespace to already exist — guaranteed by
-        this stage's own `depends_on` an EnsureNamespaceStage, resolved by the time
-        `run()` reaches here, not before the graph even starts."""
-        assert self.env_file is not None
-        release_name = self.chart.release_name(
-            self.chart.effective_tier(self.ctx.tier, self.ctx.environment)
-        )
-        secret_name = kube.ensure_env_secret(
-            release_name, self.chart.namespace(self.ctx.namespace), self.env_file
-        )
-        return [f"app-base.secrets.envSecretName={secret_name}"] if secret_name else None
 
 
 @dataclass(eq=False, kw_only=True)
@@ -117,6 +95,22 @@ class EnsureNamespaceStage(Stage):
 
     async def run(self) -> None:
         await asyncio.to_thread(kube.create_namespace, self.namespace)
+
+
+@dataclass(eq=False, kw_only=True)
+class EnsureEnvSecretStage(Stage):
+    """Writes the one namespace Secret that app-base mounts into every app pod. Must
+    run after the namespace exists and before those charts' DeployChartStage, so the
+    Secret is present by the time pods start."""
+
+    namespace: str
+    env_file: Path | None = None
+
+    async def run(self) -> None:
+        secret_name = await asyncio.to_thread(
+            kube.ensure_env_secret, self.namespace, self.env_file
+        )
+        print(f"Applied Secret {secret_name} in namespace {self.namespace}")
 
 
 @dataclass(eq=False, kw_only=True)

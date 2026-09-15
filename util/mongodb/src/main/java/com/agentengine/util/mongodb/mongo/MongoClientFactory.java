@@ -6,8 +6,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EncryptionService;
+import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.common.LazyLoader;
-import com.agentengine.util.common.config.ApplicationConfig;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -30,26 +30,21 @@ import org.slf4j.LoggerFactory;
 @Singleton
 public class MongoClientFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MongoClientFactory.class);
-  private static final String INFRA_MONGO_URI_KEY = "infra.mongodb.uri";
-
   private final MongoClientSupport mongoClientSupport;
-  private final ApplicationConfig applicationConfig;
   private final LazyLoader<MongoClient> client;
 
   @Inject
   public MongoClientFactory(
       MongoClientSupport mongoClientSupport,
       EncryptionService encryptionService,
-      ApplicationConfig applicationConfig,
       Instance<Codec<?>> customCodecs) {
     this.mongoClientSupport = mongoClientSupport;
-    this.applicationConfig = applicationConfig;
     this.client =
         new LazyLoader<>(
             () ->
                 MongoClients.create(
                     buildClientSettings(
-                        this.applicationConfig.getString(INFRA_MONGO_URI_KEY),
+                        EnvUtils.getInfraMongoUri(),
                         getBsonDiscriminators(this.mongoClientSupport),
                         encryptionService,
                         customCodecs)));

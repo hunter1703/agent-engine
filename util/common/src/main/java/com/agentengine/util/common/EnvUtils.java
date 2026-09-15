@@ -10,6 +10,7 @@ public final class EnvUtils {
   private static final String PEKKO_CLUSTER_ENV = "PEKKO_CLUSTER";
   private static final String ENVIRONMENT_ENV = "ENVIRONMENT";
   private static final String TIER_ENV = "TIER";
+  private static final String INFRA_MONGODB_URI_ENV = "INFRA_MONGODB_URI";
 
   private EnvUtils() {}
 
@@ -49,6 +50,10 @@ public final class EnvUtils {
    */
   public static String getTier() {
     return System.getenv(TIER_ENV);
+  }
+
+  public static String getInfraMongoUri() {
+    return System.getenv(INFRA_MONGODB_URI_ENV);
   }
 
   public static Map<String, String> getAll() {

@@ -22,6 +22,7 @@ from deployae.stages import (
     BuildDockerImageStage,
     BuildGradleStage,
     DeployChartStage,
+    EnsureEnvSecretStage,
     EnsureIndexesStage,
     EnsureIngressControllerStage,
     EnsureLocalTlsCertStage,
@@ -38,7 +39,6 @@ from deployae.stages import (
 
 APP_COMPONENTS = ("agent", "catalog", "rest", "knowledge", "connectors", "scheduler", "internal")
 INFRA_COMPONENTS = ("mongodb", "postgres", "localstack", "qdrant")
-ENV_SECRET_CHARTS = ("connectors", "agent", "knowledge")
 
 
 def _default_image_tag() -> str:
@@ -68,7 +68,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-n", "--namespace", help="Override every selected chart's namespace")
     parser.add_argument(
         "--env",
-        help="Path to .env file to load secrets from",
+        help="Path to a .env file: loaded into the process for seed-time ${VAR} expansion, "
+        "and copied wholesale into the namespace Secret that every app pod mounts",
     )
     parser.add_argument(
         "-f",
@@ -137,14 +138,15 @@ def _build_context(args: argparse.Namespace) -> helm.DeployContext:
 
 
 def run(args: argparse.Namespace) -> None:
-    if getattr(args, "env", None):
-        import os
+    env_file = getattr(args, "env", None)
+    env_path: Path | None = None
+    if env_file:
+        env_path = Path(os.path.expanduser(env_file))
+        if not env_path.is_file():
+            raise ValueError(f"env file {env_path} not found")
         from dotenv import load_dotenv
-        env_path = os.path.expanduser(args.env)
-        if os.path.exists(env_path):
-            load_dotenv(env_path)
-        else:
-            print(f"Warning: env file {env_path} not found.")
+
+        load_dotenv(env_path, override=True)
 
     ctx = _build_context(args)
     asyncio.run(
@@ -155,7 +157,7 @@ def run(args: argparse.Namespace) -> None:
             dry_run=args.dry_run,
             timeout=args.timeout,
             cleanup_internal=args.cleanup_internal,
-            env_file=getattr(args, "env", None),
+            env_file=env_path,
         )
     )
 
@@ -168,7 +170,7 @@ async def _deploy(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
-    env_file: str | None = None,
+    env_file: Path | None = None,
 ) -> None:
     start_time = time.time()
     ctx = replace(ctx, rollout_revision=None if dry_run else str(int(time.time())))
@@ -239,14 +241,18 @@ def _chart_prerequisites(
     chart: Chart,
     ctx: helm.DeployContext,
     namespace_stages: dict[str, EnsureNamespaceStage],
+    env_secret_stages: dict[str, EnsureEnvSecretStage],
     ingress_stage: EnsureIngressControllerStage,
     tls_cert_stages: dict[str, EnsureLocalTlsCertStage],
 ) -> tuple[Stage, ...]:
     """The setup stages one chart's DeployChartStage should depend on: its namespace,
-    the ingress controller if this is `rest`, plus its own local TLS cert/Secret stage
+    the env secret, the ingress controller if this is `rest`, plus its own local TLS cert/Secret stage
     if it declares TLS hosts (so its Ingress never briefly references a Secret that
     doesn't exist yet)."""
-    prerequisites: tuple[Stage, ...] = (namespace_stages[chart.namespace(ctx.namespace)],)
+    prerequisites: tuple[Stage, ...] = (
+        namespace_stages[chart.namespace(ctx.namespace)],
+        env_secret_stages[chart.namespace(ctx.namespace)],
+    )
     if chart.name == "rest":
         prerequisites = (*prerequisites, ingress_stage)
     tls_stage = tls_cert_stages.get(chart.name)
@@ -263,7 +269,7 @@ def build_stages(
     dry_run: bool,
     timeout: str,
     cleanup_internal: bool = False,
-    env_file: str | None = None,
+    env_file: Path | None = None,
 ) -> list[Stage]:
     """Builds the full stage graph.
 
@@ -275,8 +281,18 @@ def build_stages(
     """
     all_charts = [Chart(name) for name in (*INFRA_COMPONENTS, "global-properties", *APP_COMPONENTS)]
     namespace_stages = _namespace_stages_for(all_charts, ctx)
+    env_secret_stages = {
+        ns: EnsureEnvSecretStage(
+            name=f"ensure-env-secret-{ns}", 
+            namespace=ns, 
+            env_file=env_file if not dry_run else None, 
+            depends_on=(ns_stage,),
+            enabled=not dry_run
+        )
+        for ns, ns_stage in namespace_stages.items()
+    }
     ingress_stage = EnsureIngressControllerStage(name="ensure-ingress-controller")
-    stages: list[Stage] = [*namespace_stages.values(), ingress_stage]
+    stages: list[Stage] = [*namespace_stages.values(), *env_secret_stages.values(), ingress_stage]
 
     # mkcert's CA is only ever trusted on the machine that generated it, so this only
     # makes sense for `local` — a shared/staging/prod tier gets a real cert some other
@@ -335,7 +351,7 @@ def build_stages(
         name: DeployChartStage(
             name=f"deploy-{name}",
             depends_on=_chart_prerequisites(
-                Chart(name), ctx, namespace_stages, ingress_stage, tls_cert_stages
+                Chart(name), ctx, namespace_stages, env_secret_stages, ingress_stage, tls_cert_stages
             ),
             chart=Chart(name),
             ctx=ctx,
@@ -402,7 +418,7 @@ def build_stages(
         # off this dependency keeps it off the critical path.
         infra_config_dep = () if name == "global-properties" else (seed_infra_config_stage,)
         depends_on = (
-            *_chart_prerequisites(chart, ctx, namespace_stages, ingress_stage, tls_cert_stages),
+            *_chart_prerequisites(chart, ctx, namespace_stages, env_secret_stages, ingress_stage, tls_cert_stages),
             *infra_config_dep,
             *extra_deps,
         )
@@ -414,8 +430,6 @@ def build_stages(
             atomic=atomic,
             timeout=timeout,
             dry_run=dry_run,
-            needs_env_secret=name in ENV_SECRET_CHARTS,
-            env_file=Path(os.path.expanduser(env_file)) if env_file else None,
             # A tier assembles its own subset of services by which charts it has a
             # tiers/<tier>/values.yaml for — see Chart.is_enabled_for_tier. A chart with
             # no overlay for this tier is skipped entirely, not deployed with defaults.
