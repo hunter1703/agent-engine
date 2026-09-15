@@ -18,7 +18,7 @@
 
     <!-- 3. Failure Detection (Heartbeats) -->
     <FD_ALL3 timeout="8000" interval="2000"/>
-    <VERIFY_SUSPECT3 timeout="1500"/>
+    <VERIFY_SUSPECT2 timeout="1500"/>
 
     <!-- 4. Reliable Transmission Layers -->
     <pbcast.NAKACK2 xmit_interval="200"/>
