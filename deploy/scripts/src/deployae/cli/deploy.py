@@ -249,10 +249,12 @@ def _chart_prerequisites(
     the env secret, the ingress controller if this is `rest`, plus its own local TLS cert/Secret stage
     if it declares TLS hosts (so its Ingress never briefly references a Secret that
     doesn't exist yet)."""
+    ns = chart.namespace(ctx.namespace)
     prerequisites: tuple[Stage, ...] = (
-        namespace_stages[chart.namespace(ctx.namespace)],
-        env_secret_stages[chart.namespace(ctx.namespace)],
+        namespace_stages[ns],
     )
+    if ns in env_secret_stages:
+        prerequisites = (*prerequisites, env_secret_stages[ns])
     if chart.name == "rest":
         prerequisites = (*prerequisites, ingress_stage)
     tls_stage = tls_cert_stages.get(chart.name)
@@ -281,15 +283,17 @@ def build_stages(
     """
     all_charts = [Chart(name) for name in (*INFRA_COMPONENTS, "global-properties", *APP_COMPONENTS)]
     namespace_stages = _namespace_stages_for(all_charts, ctx)
+    app_charts = [Chart(name) for name in (*APP_COMPONENTS, "global-properties")]
+    app_namespaces = {chart.namespace(ctx.namespace) for chart in app_charts}
     env_secret_stages = {
         ns: EnsureEnvSecretStage(
-            name=f"ensure-env-secret-{ns}", 
-            namespace=ns, 
-            env_file=env_file if not dry_run else None, 
-            depends_on=(ns_stage,),
-            enabled=not dry_run
+            name=f"ensure-env-secret-{ns}",
+            namespace=ns,
+            env_file=env_file if not dry_run else None,
+            depends_on=(namespace_stages[ns],),
+            enabled=not dry_run,
         )
-        for ns, ns_stage in namespace_stages.items()
+        for ns in app_namespaces
     }
     ingress_stage = EnsureIngressControllerStage(name="ensure-ingress-controller")
     stages: list[Stage] = [*namespace_stages.values(), *env_secret_stages.values(), ingress_stage]
