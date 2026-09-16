@@ -17,10 +17,9 @@ from deployae.stages.cleanup import (
     RemoveLocalstackResourcesStage,
 )
 from deployae.stages.indexes import EnsureIndexesStage
-from deployae.stages.seed import SeedInfraConfigStage, SeedAppConfigStage
+from deployae.stages.seed import SetupInfraStage, SeedAppConfigStage
 from deployae.stages.init import (
     EnsureLocalstackBucketsStage,
-    InitPostgresSchemaStage,
     InitQdrantCollectionStage,
 )
 
@@ -31,7 +30,7 @@ __all__ = [
     "DeletePvcsStage",
     "DeployChartStage",
     "EnsureIndexesStage",
-    "SeedInfraConfigStage",
+    "SetupInfraStage",
     "SeedAppConfigStage",
     "EnsureEnvSecretStage",
     "EnsureIngressControllerStage",
@@ -39,7 +38,6 @@ __all__ = [
     "EnsureLocalstackBucketsStage",
     "EnsureNamespaceStage",
     "HelmStage",
-    "InitPostgresSchemaStage",
     "InitQdrantCollectionStage",
     "RemoveLocalstackResourcesStage",
     "Stage",

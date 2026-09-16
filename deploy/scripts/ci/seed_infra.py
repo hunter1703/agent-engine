@@ -5,8 +5,8 @@ IP is already in Atlas's Network Access list, instead of a GitHub-hosted runner'
 
 Reads InfraConfig documents from /config/*.json (mounted from a Secret containing the tier's
 deploy/configs/<env>/infra/*.json files) and upserts them into MongoDB Atlas — mirrors
-deployae's own SeedInfraConfigStage upsert semantics exactly. Then applies the same event-
-sourcing schema deployae's InitPostgresSchemaStage uses, against Neon.
+deployae's own SetupInfraStage upsert semantics exactly. Then applies the same event-
+sourcing schema against Postgres/Neon.
 """
 
 from __future__ import annotations

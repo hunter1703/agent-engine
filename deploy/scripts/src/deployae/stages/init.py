@@ -1,4 +1,4 @@
-"""One-time infra bootstrap stages: Postgres schema, Qdrant collection, LocalStack buckets."""
+"""One-time infra bootstrap stages: Qdrant collection, LocalStack buckets."""
 
 from __future__ import annotations
 
@@ -8,49 +8,14 @@ import time
 from dataclasses import dataclass
 
 import httpx
-import psycopg
 
 from deployae import kube
 from deployae.charts import Chart
 from deployae.stages.base import Stage
 
-DEFAULT_POSTGRES_PORT = 5432
 DEFAULT_QDRANT_PORT = 6333
 DEFAULT_VECTOR_SIZE = 768
 DEFAULT_LOCALSTACK_BUCKETS = ("agent-assets",)
-
-_POSTGRES_SCHEMA = """
-CREATE TABLE IF NOT EXISTS event_journal (
-    ordering        BIGSERIAL,
-    persistence_id  VARCHAR(255) NOT NULL,
-    sequence_number BIGINT       NOT NULL,
-    deleted         BOOLEAN      DEFAULT FALSE NOT NULL,
-    writer          VARCHAR(255) NOT NULL,
-    write_timestamp BIGINT       NOT NULL,
-    adapter_manifest VARCHAR(255),
-    event_ser_id    INTEGER      NOT NULL,
-    event_ser_manifest VARCHAR(255) NOT NULL,
-    event_payload   BYTEA        NOT NULL,
-    meta_ser_id     INTEGER,
-    meta_ser_manifest VARCHAR(255),
-    meta_payload    BYTEA,
-    PRIMARY KEY (persistence_id, sequence_number)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS event_journal_ordering_idx ON event_journal (ordering);
-
-CREATE TABLE IF NOT EXISTS snapshot (
-    persistence_id  VARCHAR(255) NOT NULL,
-    sequence_number BIGINT       NOT NULL,
-    created         BIGINT       NOT NULL,
-    snapshot_ser_id INTEGER      NOT NULL,
-    snapshot_ser_manifest VARCHAR(255) NOT NULL,
-    snapshot_payload BYTEA       NOT NULL,
-    meta_ser_id     INTEGER,
-    meta_ser_manifest VARCHAR(255),
-    meta_payload    BYTEA,
-    PRIMARY KEY (persistence_id, sequence_number)
-);
-"""
 
 
 @dataclass(eq=False, kw_only=True)
@@ -67,52 +32,6 @@ class _BootstrapStage(Stage):
     ) -> tuple[str, str]:
         chart = Chart(chart_name)
         return chart.namespace(namespace_override), chart.resource_name(tier)
-
-
-@dataclass(eq=False, kw_only=True)
-class InitPostgresSchemaStage(_BootstrapStage):
-    port: int = DEFAULT_POSTGRES_PORT
-    user: str = "postgres"
-    database: str = "agent_engine_events"
-    # Set for tiers with no self-hosted postgres chart (e.g. socialmedia, backed by Neon) —
-    # a full psycopg conninfo string/URI, connected to directly instead of port-forwarding to
-    # a Service that doesn't exist.
-    external_conninfo: str | None = None
-
-    async def run(self) -> None:
-        await asyncio.to_thread(self._init)
-
-    def _init(self) -> None:
-        if self.external_conninfo:
-            with psycopg.connect(self.external_conninfo, autocommit=True) as conn:
-                conn.execute(_POSTGRES_SCHEMA)
-            print("PostgreSQL Pekko schema initialized")
-            return
-
-        namespace, service_name = self._resolve_target(
-            "postgres", self.namespace_override, self.tier
-        )
-        with kube.port_forward(namespace, service_name, self.port) as local_port:
-            with self._connect(local_port) as conn:
-                conn.execute(_POSTGRES_SCHEMA)
-        print("PostgreSQL Pekko schema initialized")
-
-    def _connect(self, local_port: int) -> psycopg.Connection:
-        for attempt in (1, 2):
-            try:
-                return psycopg.connect(
-                    host="127.0.0.1",
-                    port=local_port,
-                    user=self.user,
-                    dbname=self.database,
-                    autocommit=True,
-                )
-            except psycopg.OperationalError:
-                if attempt == 2:
-                    raise
-                # kubectl port-forward can drop the very next connection right after the
-                # readiness probe's own throwaway connection closes; one retry clears it.
-                time.sleep(2)
 
 
 @dataclass(eq=False, kw_only=True)

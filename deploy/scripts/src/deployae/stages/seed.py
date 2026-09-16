@@ -6,7 +6,9 @@ import uuid
 import glob
 import json
 import logging
+from pathlib import Path
 from dataclasses import dataclass
+from deployae.charts import REPO_ROOT, CONFIGS_DIR
 from deployae.stages.base import Stage
 from deployae import output
 
@@ -27,23 +29,23 @@ async def run_cmd(cmd: str, env: dict = None) -> str:
         raise RuntimeError(f"Command failed: {cmd}\n{stderr.decode()}")
     return stdout.decode()
 
-def expand_json_vars(file_path: str) -> str:
+def expand_json_vars(file_path: str | Path) -> str:
     with open(file_path, "r") as f:
         content = f.read()
     return os.path.expandvars(content)
 
-async def create_secret_from_dir(namespace: str, secret_name: str, dir_path: str):
+async def create_secret_from_dir(namespace: str, secret_name: str, dir_path: str | Path):
     import tempfile
     
+    dir_path = Path(dir_path)
     # We resolve the variables and write to a temporary directory
-    if not os.path.exists(dir_path):
+    if not dir_path.exists():
         return
         
     with tempfile.TemporaryDirectory() as tmp_dir:
-        for file in glob.glob(os.path.join(dir_path, "*.json")):
+        for file in dir_path.glob("*.json"):
             resolved = expand_json_vars(file)
-            filename = os.path.basename(file)
-            with open(os.path.join(tmp_dir, filename), "w") as f:
+            with open(os.path.join(tmp_dir, file.name), "w") as f:
                 f.write(resolved)
                 
         # Dry-run create and apply
@@ -51,25 +53,26 @@ async def create_secret_from_dir(namespace: str, secret_name: str, dir_path: str
         await run_cmd(cmd)
 
 @dataclass(eq=False, kw_only=True)
-class SeedInfraConfigStage(Stage):
+class SetupInfraStage(Stage):
     environment: str
     tier: str
     namespace_override: str | None = None
     external_mongodb_uri: str | None = None
+    image_registry: str | None = None
     
     async def run(self) -> None:
-        run_id = f"seed-infra-{self.tier}-{uuid.uuid4().hex[:6]}"
+        run_id = f"setup-infra-{self.tier}-{uuid.uuid4().hex[:6]}"
         namespace = "agent-engine"
         
-        output.info(f"Seeding infra config using Job {run_id}")
+        output.info(f"Setting up infra using Job {run_id}")
         
         # 1. ConfigMap for seed_infra.py
-        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_infra.py=deploy/scripts/ci/seed_infra.py --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
+        seed_infra_py = REPO_ROOT / "deploy" / "scripts" / "ci" / "seed_infra.py"
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_infra.py={seed_infra_py} --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
         
-        # 2. Extract values from SQL.json and GP
-        sql_path = f"deploy/configs/{self.environment}/infra/SQL.json"
-        gp_path = f"deploy/k8s/global-properties/envs/{self.environment}/values.yaml"
+        # 2. Extract values from SQL.json
+        sql_path = CONFIGS_DIR / self.environment / "infra" / "SQL.json"
         
         sql_content = expand_json_vars(sql_path)
         sql_json = json.loads(sql_content)[0]
@@ -83,10 +86,10 @@ class SeedInfraConfigStage(Stage):
             
         # 3. Secret for configs
         import tempfile
-        import glob
+        infra_configs_dir = CONFIGS_DIR / self.environment / "infra"
         with tempfile.TemporaryDirectory() as tmp_dir:
-            for file in glob.glob(f"deploy/configs/{self.environment}/infra/*.json"):
-                with open(os.path.join(tmp_dir, os.path.basename(file)), "w") as f:
+            for file in infra_configs_dir.glob("*.json"):
+                with open(os.path.join(tmp_dir, file.name), "w") as f:
                     f.write(expand_json_vars(file))
                     
             cmd = f"kubectl create secret generic {run_id}-config -n {namespace} --from-file={tmp_dir}/ "
@@ -97,6 +100,14 @@ class SeedInfraConfigStage(Stage):
             await run_cmd(cmd)
             
         # 4. Apply Job
+        prefix = f"{self.image_registry}/" if self.image_registry else ""
+        infra_setup_image = f"{prefix}agent-engine/infra-setup:latest"
+        pull_policy = "Always" if self.image_registry else "IfNotPresent"
+        pull_secrets_yaml = (
+            "\n      imagePullSecrets:\n        - name: ghcr-pull"
+            if self.image_registry
+            else ""
+        )
         job_yaml = f"""apiVersion: batch/v1
 kind: Job
 metadata:
@@ -107,11 +118,12 @@ spec:
   backoffLimit: 1
   template:
     spec:
-      restartPolicy: Never
+      restartPolicy: Never{pull_secrets_yaml}
       containers:
-        - name: seed
-          image: python:3.12-slim
-          command: ["sh", "-c", "pip install --quiet pymongo 'psycopg[binary]' && python3 /scripts/seed_infra.py"]
+        - name: setup
+          image: {infra_setup_image}
+          imagePullPolicy: {pull_policy}
+          command: ["python3", "/scripts/seed_infra.py"]
           env:
             - name: MONGO_ATLAS_URI
               valueFrom:
@@ -139,7 +151,7 @@ spec:
                 await run_cmd(f"kubectl wait --for=condition=complete --timeout=180s job/{run_id} -n {namespace}")
             except Exception as e:
                 logs = await run_cmd(f"kubectl logs job/{run_id} -n {namespace} --tail=200")
-                output.error(f"Infra seed failed:\n{logs}")
+                output.error(f"Infra setup failed:\n{logs}")
                 raise e
         finally:
             os.remove(job_file)
@@ -160,13 +172,14 @@ class SeedAppConfigStage(Stage):
         output.info(f"Seeding app config using Job {run_id}")
         
         # 1. ConfigMap for seed_app.py
-        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py=deploy/scripts/ci/seed_app.py --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
+        seed_app_py = REPO_ROOT / "deploy" / "scripts" / "ci" / "seed_app.py"
+        cmd = f"kubectl create configmap {run_id}-script -n {namespace} --from-file=seed_app.py={seed_app_py} --dry-run=client -o yaml | kubectl apply --server-side --force-conflicts -f -"
         await run_cmd(cmd)
         
         # 2. Create secrets for models, agents, connectors
-        await create_secret_from_dir(namespace, f"{run_id}-connectors", f"deploy/configs/{self.environment}/connectors")
-        await create_secret_from_dir(namespace, f"{run_id}-models", f"deploy/configs/{self.environment}/models")
-        await create_secret_from_dir(namespace, f"{run_id}-agents", f"deploy/configs/{self.environment}/agents")
+        await create_secret_from_dir(namespace, f"{run_id}-connectors", CONFIGS_DIR / self.environment / "connectors")
+        await create_secret_from_dir(namespace, f"{run_id}-models", CONFIGS_DIR / self.environment / "models")
+        await create_secret_from_dir(namespace, f"{run_id}-agents", CONFIGS_DIR / self.environment / "agents")
         
         # 3. Apply Job
         job_yaml = f"""apiVersion: batch/v1

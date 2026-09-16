@@ -28,9 +28,8 @@ from deployae.stages import (
     EnsureLocalTlsCertStage,
     EnsureLocalstackBucketsStage,
     EnsureNamespaceStage,
-    SeedInfraConfigStage,
+    SetupInfraStage,
     SeedAppConfigStage,
-    InitPostgresSchemaStage,
     InitQdrantCollectionStage,
     Stage,
     UninstallChartStage,
@@ -367,32 +366,23 @@ def build_stages(
     }
     stages.extend(infra_deploy_by_name.values())
 
-    # mongodb is the one infra chart every tier is expected to need (seed-infra-config
-    # depends on it unconditionally) — a tier that omits its own tiers/<tier>/values.yaml
-    # for mongodb would disable this stage too, same as any other infra chart, UNLESS an
-    # external mongodb_uri was given (a tier backed by an externally-hosted Mongo, e.g. Atlas,
-    # with no self-hosted chart at all — see SeedInfraConfigStage.external_mongodb_uri).
-    seed_infra_config_stage = SeedInfraConfigStage(
-        name="seed-infra-config",
-        depends_on=(infra_deploy_by_name["mongodb"],),
+    # mongodb and postgres are the infra charts setup-infra waits on if enabled.
+    setup_infra_deps = tuple(
+        infra_deploy_by_name[name]
+        for name in ("mongodb", "postgres")
+        if infra_chart_enabled[name]
+    )
+    setup_infra_stage = SetupInfraStage(
+        name="setup-infra",
+        depends_on=setup_infra_deps,
         tier=ctx.tier,
         environment=ctx.environment,
         namespace_override=ctx.namespace,
         external_mongodb_uri=ctx.mongodb_uri,
+        image_registry=ctx.image_registry,
         enabled=(infra_chart_enabled["mongodb"] or bool(ctx.mongodb_uri)) and not dry_run,
     )
-    stages.append(seed_infra_config_stage)
-    stages.append(
-        InitPostgresSchemaStage(
-            name="init-postgres-schema",
-            depends_on=(infra_deploy_by_name["postgres"],),
-            namespace_override=ctx.namespace,
-            tier=ctx.tier,
-            external_conninfo=ctx.postgres_conninfo,
-            enabled=(infra_chart_enabled["postgres"] or bool(ctx.postgres_conninfo))
-            and not dry_run,
-        )
-    )
+    stages.append(setup_infra_stage)
     qdrant_collections_stage = InitQdrantCollectionStage(
         name="init-qdrant-collections",
         depends_on=(infra_deploy_by_name["qdrant"],),
@@ -416,11 +406,11 @@ def build_stages(
         # Every app service reads Mongo-backed infra config at startup somewhere (encryption,
         # microservice client wiring, Pekko cluster config, vector DB, cloud storage, ...) via
         # InfraConfigService.findById(), which returns null — not an error — for a document
-        # that hasn't been seeded yet. Without this dependency, app charts and seed-infra-config
+        # that hasn't been seeded yet. Without this dependency, app charts and setup-infra
         # race, and whichever finishes startup first decides whether that config exists.
         # global-properties is the one exception: it doesn't read infra config, so keeping it
         # off this dependency keeps it off the critical path.
-        infra_config_dep = () if name == "global-properties" else (seed_infra_config_stage,)
+        infra_config_dep = () if name == "global-properties" else (setup_infra_stage,)
         depends_on = (
             *_chart_prerequisites(chart, ctx, namespace_stages, env_secret_stages, ingress_stage, tls_cert_stages),
             *infra_config_dep,
