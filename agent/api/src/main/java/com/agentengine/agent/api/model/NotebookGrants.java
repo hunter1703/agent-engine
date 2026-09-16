@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 
 public record NotebookGrants(Map<String, Permission> grants) {
-
   public NotebookGrants(Map<String, Permission> grants) {
     this.grants = CollectionUtils.nullSafeMap(grants);
   }
@@ -111,20 +110,13 @@ public record NotebookGrants(Map<String, Permission> grants) {
     }
 
     final StringBuilder sb = new StringBuilder();
-    sb.append("Editing a note implies reading it.\n");
 
     int index = 1;
     for (final Map.Entry<String, NotebookSummary> entry : summaries.entrySet()) {
       final String notebookId = entry.getKey();
       final NotebookSummary summary = entry.getValue();
 
-      sb.append("   ")
-          .append(index++)
-          .append(". Notebook `")
-          .append(NotebookUtils.notebookNameOf(notebookId))
-          .append("` (id: `")
-          .append(notebookId)
-          .append("`):\n");
+      sb.append("   ").append(index++).append(". Notebook id: `").append(notebookId);
 
       sb.append("      - create notes: ")
           .append(summary.canCreate ? "yes (any title not already present)" : "no")

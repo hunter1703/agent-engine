@@ -80,7 +80,8 @@ public final class SessionState {
         new Reminder(
             Reminder.GROUP_NOTEBOOK_GRANTS,
             Reminder.GROUP_NOTEBOOK_GRANTS,
-            "Notebook Permissions:\n" + mergedGrants.describe(),
+            "Editing a note implies reading it.\n**When a tool asks for a notebook id or a note id, use the id shown here VERBATIM — any changes to it will NOT resolve and tool call will FAIL.**\n"
+                + mergedGrants.describe(),
             new HashMap<>(merged)));
   }
 

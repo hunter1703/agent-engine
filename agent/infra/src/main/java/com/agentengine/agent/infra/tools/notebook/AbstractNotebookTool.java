@@ -31,10 +31,10 @@ public abstract class AbstractNotebookTool extends Tool {
   }
 
   protected static Map<String, Object> accessDeniedError(
-      final ToolContext toolContext, final String message, final String attemptedNotebookId) {
+      final ToolContext toolContext, final String message) {
     final Map<String, Object> error = new LinkedHashMap<>();
     error.put("error", message);
-    error.put("notebook_permissions", grantsSummary(toolContext));
+    error.put("hint", "Summary of permissions you have : \n" + grantsSummary(toolContext));
     return error;
   }
 }

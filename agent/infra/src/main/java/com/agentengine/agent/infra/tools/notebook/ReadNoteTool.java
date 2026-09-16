@@ -48,8 +48,7 @@ public final class ReadNoteTool extends AbstractNotebookTool {
       return ToolOutput.direct(
           accessDeniedError(
               toolContext,
-              "You don't have read access to note '%s' in this notebook".formatted(noteTitle),
-              notebookId));
+              "You don't have read access to note '%s' in this notebook".formatted(noteTitle)));
     }
     final Note note = notesRepository.findById(NotebookUtils.noteId(notebookId, noteTitle));
     if (note == null) {

@@ -57,15 +57,13 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
             accessDeniedError(
                 toolContext,
                 "Note '%s' already exists and you don't have edit access to overwrite it."
-                    .formatted(noteTitle),
-                notebookId));
+                    .formatted(noteTitle)));
       }
       if (!noteExists && !NotebookUtils.canCreate(grants, notebookId)) {
         return ToolOutput.direct(
             accessDeniedError(
                 toolContext,
-                "You don't have notebook-wide access to add a note to this notebook.",
-                notebookId));
+                "You don't have notebook-wide access to add a note to this notebook."));
       }
     }
     RunUtils.getRunState(toolContext.invocationContext()).startNote(notebookId, noteTitle);
