@@ -100,14 +100,14 @@ class SetupInfraStage(Stage):
             await run_cmd(cmd)
             
         # 4. Apply Job
-        prefix = f"{self.image_registry}/" if self.image_registry else ""
-        infra_setup_image = f"{prefix}agent-engine/infra-setup:latest"
-        pull_policy = "Always" if self.image_registry else "IfNotPresent"
-        pull_secrets_yaml = (
-            "\n      imagePullSecrets:\n        - name: ghcr-pull"
-            if self.image_registry
-            else ""
-        )
+        if self.image_registry:
+            infra_setup_image = f"{self.image_registry}/agent-engine/infra-setup:latest"
+            pull_policy = "Always"
+            pull_secrets_yaml = "\n      imagePullSecrets:\n        - name: ghcr-pull"
+        else:
+            infra_setup_image = "agent-engine/infra-setup:latest"
+            pull_policy = "IfNotPresent"
+            pull_secrets_yaml = ""
         job_yaml = f"""apiVersion: batch/v1
 kind: Job
 metadata:

@@ -22,6 +22,7 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -46,9 +47,9 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
  */
 @SuppressWarnings("ALL")
 @Singleton
-public class LocalStackCloudStorageService implements CloudStorageService {
+public class S3CompatibleCloudStorageService implements CloudStorageService {
 
-  private static final Logger log = LoggerFactory.getLogger(LocalStackCloudStorageService.class);
+  private static final Logger log = LoggerFactory.getLogger(S3CompatibleCloudStorageService.class);
 
   private static final String DEFAULT_MEDIA_TYPE = "application/octet-stream";
 
@@ -59,7 +60,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
   private LazyLoader<String> defaultBucket;
 
   @Inject
-  public LocalStackCloudStorageService(final InfraConfigService infraConfigService) {
+  public S3CompatibleCloudStorageService(final InfraConfigService infraConfigService) {
     this.infraConfigService = infraConfigService;
     this.config =
         new LazyLoader<>(
@@ -87,6 +88,7 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                   .forcePathStyle(true)
                   .build();
             });
+
     this.presigner =
         new LazyLoader<>(
             () -> {
@@ -102,6 +104,8 @@ public class LocalStackCloudStorageService implements CloudStorageService {
                   .endpointOverride(endpoint)
                   .region(region)
                   .credentialsProvider(credentials)
+                  .serviceConfiguration(
+                      S3Configuration.builder().pathStyleAccessEnabled(true).build())
                   .build();
             });
     this.defaultBucket =

@@ -7,13 +7,14 @@ import argparse
 import sys
 
 from deployae.charts import TierRequiredError
-from deployae.cli import cleanup, deploy
+from deployae.cli import build_infra_setup, cleanup, deploy
 from deployae.helm import HelmError
 from deployae.kube import KubectlError
 
 _COMMANDS = {
     "cleanup": cleanup,
     "deploy": deploy,
+    "buildInfraSetupImage": build_infra_setup,
 }
 
 
@@ -23,7 +24,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name, module in _COMMANDS.items():
-        subparser = subparsers.add_parser(name, help=(module.__doc__ or "").splitlines()[0])
+        aliases = getattr(module, "ALIASES", [])
+        subparser = subparsers.add_parser(
+            name,
+            aliases=aliases,
+            help=(module.__doc__ or "").splitlines()[0],
+        )
         module.add_arguments(subparser)
         subparser.set_defaults(handler=module.run)
     return parser

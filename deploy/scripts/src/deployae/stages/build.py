@@ -65,6 +65,8 @@ class BuildDockerImageStage(Stage):
             [
                 "docker",
                 "build",
+                "--platform",
+                "linux/arm64",
                 "--build-arg",
                 f"SERVICE_MODULE={DOCKER_MODULES[self.component]}",
                 "-t",
