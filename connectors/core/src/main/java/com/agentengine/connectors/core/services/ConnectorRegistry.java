@@ -12,9 +12,12 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public final class ConnectorRegistry {
+  private static final Logger LOG = LoggerFactory.getLogger(ConnectorRegistry.class);
   private static final String CONNECTORS_DIRECTORY = "connectors";
   private static final String APP_CONFIG_FILE_NAME = "app.json";
 
@@ -32,24 +35,31 @@ public final class ConnectorRegistry {
   }
 
   private Connector load(final String appName, final String connectorName) {
-    final String connectorContent =
-        ResourceUtils.loadResourceAsString(
-            "/%s/%s/%s.json".formatted(CONNECTORS_DIRECTORY, appName, connectorName));
+    final String connectorPath =
+        "/%s/%s/%s.json".formatted(CONNECTORS_DIRECTORY, appName, connectorName);
+    final String connectorContent = ResourceUtils.loadResourceAsString(connectorPath);
     if (StringUtils.isBlank(connectorContent)) {
       return null;
     }
-    final String appContent =
-        ResourceUtils.loadResourceAsString(
-            "/%s/%s/%s".formatted(CONNECTORS_DIRECTORY, appName, APP_CONFIG_FILE_NAME));
 
-    try {
-      final Connector connector = jsonCodec.deserialize(connectorContent, Connector.class);
-      final ConnectorSpec mergedSpec = connector.spec().mergeWith(readAppSpec(appContent));
-      return new Connector(
-          connector.name(), connector.description(), connector.inputSchema(), mergedSpec);
-    } catch (Exception e) {
+    Connector connector = jsonCodec.deserialize(connectorContent, Connector.class);
+
+    if (connector == null) {
       return null;
     }
+
+    final String appPath =
+        "/%s/%s/%s".formatted(CONNECTORS_DIRECTORY, appName, APP_CONFIG_FILE_NAME);
+    final String appContent = ResourceUtils.loadResourceAsString(appPath);
+    final ConnectorSpec appSpec = readAppSpec(appContent);
+    final ConnectorSpec connectorSpec =
+        connector.spec().mergeWith(appSpec, connector.authResource());
+    return new Connector(
+        connector.name(),
+        connector.description(),
+        connector.inputSchema(),
+        connectorSpec,
+        connector.authResource());
   }
 
   public ConnectionSpec getConnectionSpec(final String appName) {

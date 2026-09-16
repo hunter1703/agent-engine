@@ -22,9 +22,7 @@ public class ConnectorCacheService {
 
   @Inject
   public ConnectorCacheService(
-      ConnectionService connectionService,
-      ConnectorService connectorService,
-      DistributedCacheManager cacheManager) {
+      ConnectionService connectionService, DistributedCacheManager cacheManager) {
     this.connectionsCache =
         new DistributedCache<>(
             CONNECTION_IDS_CACHE_NAME,
@@ -43,7 +41,7 @@ public class ConnectorCacheService {
             key -> {
               String[] parts = key.split(":");
               if (parts.length == 2) {
-                return connectorService.describe(parts[0], parts[1]);
+                return connectionService.getConnectorMetadata(parts[0], parts[1]);
               }
               return null;
             },

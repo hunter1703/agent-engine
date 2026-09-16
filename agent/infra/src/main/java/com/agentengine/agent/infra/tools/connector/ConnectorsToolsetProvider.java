@@ -1,8 +1,8 @@
 package com.agentengine.agent.infra.tools.connector;
 
 import com.agentengine.agent.infra.tools.ToolsetProvider;
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
-import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.google.adk.agents.ReadonlyContext;
@@ -28,13 +28,14 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
           "Exposes configured connectors as individual tools, one per connector.",
           Map.of());
 
-  private final ConnectorService connectorService;
+  private final ConnectionService connectionService;
   private final ConnectorCacheService connectorCacheService;
 
   @Inject
   public ConnectorsToolsetProvider(
-      final ConnectorService connectorService, final ConnectorCacheService connectorCacheService) {
-    this.connectorService = connectorService;
+      final ConnectionService connectionService,
+      final ConnectorCacheService connectorCacheService) {
+    this.connectionService = connectionService;
     this.connectorCacheService = connectorCacheService;
   }
 
@@ -47,19 +48,19 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
   public BaseToolset create(final Map<String, Object> toolConfig) {
     final Map<String, List<String>> connectorConfigs =
         CollectionUtils.getMapFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
-    return new ConnectorsToolset(connectorService, connectorCacheService, connectorConfigs);
+    return new ConnectorsToolset(connectionService, connectorCacheService, connectorConfigs);
   }
 
   private static final class ConnectorsToolset implements BaseToolset {
-    private final ConnectorService connectorService;
+    private final ConnectionService connectionService;
     private final ConnectorCacheService connectorCacheService;
     private final Map<String, List<String>> connectorConfigs;
 
     private ConnectorsToolset(
-        ConnectorService connectorService,
+        ConnectionService connectionService,
         ConnectorCacheService connectorCacheService,
         Map<String, List<String>> connectorConfigs) {
-      this.connectorService = connectorService;
+      this.connectionService = connectionService;
       this.connectorCacheService = connectorCacheService;
       this.connectorConfigs = connectorConfigs;
     }
@@ -77,7 +78,7 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
                       () -> {
                         final ConnectorTool tool =
                             new ConnectorTool(
-                                appName, connectorName, connectorService, connectorCacheService);
+                                appName, connectorName, connectionService, connectorCacheService);
                         return Flowable.just(tool);
                       }));
         }

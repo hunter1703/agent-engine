@@ -27,11 +27,11 @@ public final class ConnectorSpec {
    * happens only at this level - {@code auth} and {@code executor} are each taken wholesale from
    * one side or the other, with no merging of fields within an {@link ExecutorSpec} itself.
    */
-  public ConnectorSpec mergeWith(final ConnectorSpec appSpec) {
+  public ConnectorSpec mergeWith(final ConnectorSpec appSpec, final boolean skipAuth) {
     if (appSpec == null) {
       return this;
     }
-    if (auth == null) {
+    if (!skipAuth && auth == null) {
       auth = appSpec.getAuth();
     }
     if (executor == null) {

@@ -1,35 +1,27 @@
 package com.agentengine.connectors.core.services;
 
-import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.beans.ConnectorResult;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
-import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.connectors.infra.builders.ConnectorExecutorFactory;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
-import io.quarkus.arc.Unremovable;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.Map;
 
 @Singleton
-@Unremovable
 public class ConnectorServiceImpl implements ConnectorService {
   private final ConnectorRegistry registry;
   private final ConnectorExecutorFactory executorFactory;
-  private final ConnectionService connectionService;
 
   @Inject
   public ConnectorServiceImpl(
-      ConnectorRegistry registry,
-      ConnectorExecutorFactory executorFactory,
-      ConnectionService connectionService) {
+      ConnectorRegistry registry, ConnectorExecutorFactory executorFactory) {
     this.registry = registry;
     this.executorFactory = executorFactory;
-    this.connectionService = connectionService;
   }
 
   @Override
@@ -37,8 +29,7 @@ public class ConnectorServiceImpl implements ConnectorService {
     final Connector connector = getConnector(request.appName(), request.connectorName());
     final ConnectorExecutor<Map<String, Object>, T> executor =
         executorFactory.build(connector.spec());
-    final Connection connection = connectionService.getDecryptedConnection(request.connectionId());
-    return executor.execute(connection, request.input());
+    return executor.execute(request.connection(), request.input());
   }
 
   @Override

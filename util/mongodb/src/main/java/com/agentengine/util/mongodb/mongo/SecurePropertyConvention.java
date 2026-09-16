@@ -61,7 +61,6 @@ public final class SecurePropertyConvention implements Convention {
   }
 
   private static final class SecureStringCodec implements Codec<String> {
-    private static final Logger LOG = LoggerFactory.getLogger(SecureStringCodec.class);
 
     private final EncryptionService encryptionService;
 
@@ -80,8 +79,7 @@ public final class SecurePropertyConvention implements Convention {
         try {
           writer.writeString(encryptionService.encrypt(value));
         } catch (Exception exception) {
-          LOG.error(
-              "Failed to encrypt value; aborting write to prevent storing plaintext.", exception);
+          LOG.error("Failed to encrypt value", exception);
           throw new RuntimeException("Failed to encrypt value", exception);
         }
         return;
@@ -107,8 +105,7 @@ public final class SecurePropertyConvention implements Convention {
       try {
         return encryptionService.decrypt(raw);
       } catch (Exception exception) {
-        LOG.error(
-            "Failed to decrypt secure value; aborting read to prevent data corruption.", exception);
+        LOG.error("Failed to decrypt secure value", exception);
         throw new RuntimeException("Failed to decrypt secure value", exception);
       }
     }

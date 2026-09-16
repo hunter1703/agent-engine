@@ -14,7 +14,8 @@ public final class ResourceUtils {
   private ResourceUtils() {}
 
   public static String loadResourceAsString(final String path) {
-    try (InputStream stream = ResourceUtils.class.getResourceAsStream(path)) {
+    final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+    try (InputStream stream = classLoader.getResourceAsStream(path)) {
       if (stream == null) {
         return "";
       }

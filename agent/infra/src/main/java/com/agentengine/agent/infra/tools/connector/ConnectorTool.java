@@ -4,8 +4,8 @@ import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.connectors.api.beans.ConnectorRequest;
 import com.agentengine.connectors.api.exceptions.ConnectorException;
+import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
-import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
@@ -22,39 +22,39 @@ import java.util.Optional;
 public class ConnectorTool extends Tool {
 
   private final ConnectorMetadata connectorMetadata;
-  private final ConnectorService connectorService;
+  private final ConnectionService connectionService;
   private final ConnectorCacheService connectorCacheService;
 
   public ConnectorTool(
       final String appName,
       final String connectorName,
-      final ConnectorService connectorService,
+      final ConnectionService connectionService,
       final ConnectorCacheService connectorCacheService) {
     this(
         connectorCacheService.getConnectorMetadata(appName, connectorName),
-        connectorService,
+        connectionService,
         connectorCacheService);
   }
 
   public ConnectorTool(
       final ConnectorMetadata connectorMetadata,
-      final ConnectorService connectorService,
+      final ConnectionService connectionService,
       final ConnectorCacheService connectorCacheService) {
     this(
         descriptorFor(connectorMetadata),
         connectorMetadata,
-        connectorService,
+        connectionService,
         connectorCacheService);
   }
 
   protected ConnectorTool(
       final ToolDescriptor toolDescriptor,
       final ConnectorMetadata connectorMetadata,
-      final ConnectorService connectorService,
+      final ConnectionService connectionService,
       final ConnectorCacheService connectorCacheService) {
     super(toolDescriptor, Schema.fromJson(JsonUtils.toJson(connectorMetadata.inputSchema())));
     this.connectorMetadata = connectorMetadata;
-    this.connectorService = connectorService;
+    this.connectionService = connectionService;
     this.connectorCacheService = connectorCacheService;
   }
 
@@ -105,12 +105,13 @@ public class ConnectorTool extends Tool {
       final String connectionId = CollectionUtils.getStringValueFromMap(args, "connectionId");
 
       final List<Map<String, Object>> results =
-          connectorService
-              .<Map<String, Object>>execute(
+          connectionService
+              .<Map<String, Object>>executeConnectorRequest(
                   new ConnectorRequest(
                       connectorMetadata.appName(),
                       connectorMetadata.connectorName(),
                       connectionId,
+                      null,
                       input))
               .result();
       return ToolOutput.direct(

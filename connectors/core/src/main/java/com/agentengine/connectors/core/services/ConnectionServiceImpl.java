@@ -1,14 +1,12 @@
 package com.agentengine.connectors.core.services;
 
-import com.agentengine.connectors.api.beans.Connection;
-import com.agentengine.connectors.api.beans.ConnectionSpec;
-import com.agentengine.connectors.api.beans.ConnectorRequest;
-import com.agentengine.connectors.api.beans.ConnectorResult;
+import com.agentengine.connectors.api.beans.*;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
 import com.agentengine.connectors.api.services.ConnectionService;
 import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
+import com.agentengine.connectors.infra.beans.Connector;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EncryptionService;
 import com.agentengine.util.common.SchemaUtils;
@@ -21,8 +19,6 @@ import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
-import io.quarkus.arc.Unremovable;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.HashMap;
@@ -34,13 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Singleton
-@Unremovable
 public class ConnectionServiceImpl implements ConnectionService {
   private static final Logger LOG = LoggerFactory.getLogger(ConnectionServiceImpl.class);
 
   private final ConnectionRepository connectionRepository;
   private final ConnectorRegistry connectorRegistry;
-  private final Instance<ConnectorService> connectorService;
+  private final ConnectorService connectorService;
   private final DistributedLockManager distributedLockManager;
   private final DistributedCacheManager distributedCacheManager;
   private final EncryptionService encryptionService;
@@ -49,7 +44,7 @@ public class ConnectionServiceImpl implements ConnectionService {
   public ConnectionServiceImpl(
       ConnectionRepository connectionRepository,
       ConnectorRegistry connectorRegistry,
-      Instance<ConnectorService> connectorService,
+      ConnectorService connectorService,
       DistributedLockManager distributedLockManager,
       DistributedCacheManager distributedCacheManager,
       EncryptionService encryptionService) {
@@ -62,21 +57,34 @@ public class ConnectionServiceImpl implements ConnectionService {
   }
 
   @Override
+  public <T> ConnectorResult<T> executeConnectorRequest(ConnectorRequest request) {
+    final Connection connection = getDecryptedConnection(request.connectionId());
+    return connectorService.execute(
+        new ConnectorRequest(
+            request.appName(),
+            request.connectorName(),
+            request.connectionId(),
+            connection,
+            request.input()));
+  }
+
+  @Override
   public Connection saveConnection(Connection connection) {
     final ConnectionSpec spec = getConnectionSpec(connection.getAppName());
     final String authConnector = spec == null ? null : spec.authConnector();
     if (StringUtils.isNotEmpty(authConnector)) {
       LOG.info("Fetching credentials for connection using connector {}", spec.authConnector());
       try {
-        ConnectorRequest request =
+        final ConnectorRequest request =
             new ConnectorRequest(
                 connection.getAppName(),
                 spec.authConnector(),
                 null,
+                null,
                 Map.of(
                     ConnectorConstants.CONNECTION_INPUT,
                     CollectionUtils.nullSafeMap(connection.getInputs())));
-        final ConnectorResult<?> connectorResult = connectorService.get().execute(request);
+        final ConnectorResult<?> connectorResult = connectorService.execute(request);
         //noinspection unchecked
         final Map<String, Object> result =
             (Map<String, Object>) CollectionUtils.getFirst(connectorResult.result());
@@ -191,8 +199,12 @@ public class ConnectionServiceImpl implements ConnectionService {
             CollectionUtils.nullSafeMap(connectionFromDB.getCredentials()));
         final ConnectorRequest request =
             new ConnectorRequest(
-                connectionFromDB.getAppName(), spec.refreshConnector(), null, inputs);
-        final ConnectorResult<?> connectorResult = connectorService.get().execute(request);
+                connectionFromDB.getAppName(),
+                spec.refreshConnector(),
+                null,
+                connectionFromDB,
+                inputs);
+        final ConnectorResult<?> connectorResult = connectorService.execute(request);
         //noinspection unchecked
         final Map<String, Object> result =
             (Map<String, Object>) CollectionUtils.getFirst(connectorResult.result());
@@ -315,5 +327,15 @@ public class ConnectionServiceImpl implements ConnectionService {
     } else {
       return unit.toMillis(expiry);
     }
+  }
+
+  @Override
+  public ConnectorMetadata getConnectorMetadata(String appName, String connectorName) {
+    final Connector connector = connectorRegistry.get(appName, connectorName);
+    if (connector == null) {
+      return null;
+    }
+    return new ConnectorMetadata(
+        appName, connectorName, connector.description(), connector.inputSchema());
   }
 }
