@@ -23,6 +23,13 @@ postDeploymentScripts:
       RS_NAME="{{ .Values.replicaSetName | default "rs0" }}"
       PRIMARY="$NAME-0.$NAME-headless.$NS.svc.cluster.local:27017"
 
+      echo "Checking replica set state..."
+      RS_STATUS=$(mongosh --quiet --host "$PRIMARY" --eval "try { rs.status().ok } catch(e) { print('0') }")
+      if [ "$RS_STATUS" = "1" ]; then
+        echo "Replica set already healthy. Skipping initialization."
+        exit 0
+      fi
+
       echo "Waiting for all MongoDB members to be reachable..."
       i=0
       while [ $i -lt $REPLICAS ]; do
@@ -34,13 +41,6 @@ postDeploymentScripts:
         echo "$HOST reachable."
         i=$((i+1))
       done
-
-      echo "Checking replica set state..."
-      RS_STATUS=$(mongosh --quiet --host "$PRIMARY" --eval "try { rs.status().ok } catch(e) { print('0') }")
-      if [ "$RS_STATUS" = "1" ]; then
-        echo "Replica set already healthy."
-        exit 0
-      fi
 
       RS_CONF_ID=$(mongosh --quiet --host "$PRIMARY" --eval "try { rs.conf()._id } catch(e) { print('none') }")
       if [ "$RS_CONF_ID" != "none" ]; then
