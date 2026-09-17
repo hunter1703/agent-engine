@@ -13,7 +13,7 @@ public class DistributedCacheManager {
     jgroupsService.registerListener(
         EventCategory.CACHE_EVICTION,
         payload -> {
-          final String[] split = payload.split(":", 1);
+          final String[] split = payload.split(":", 2);
           final String cacheName = split[0];
           final String key = split[1];
 
