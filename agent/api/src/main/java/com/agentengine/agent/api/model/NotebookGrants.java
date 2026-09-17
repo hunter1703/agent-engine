@@ -116,7 +116,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
       final String notebookId = entry.getKey();
       final NotebookSummary summary = entry.getValue();
 
-      sb.append("   ").append(index++).append(". Notebook id: `").append(notebookId);
+      sb.append("   ").append(index++).append(". Notebook id: `").append(notebookId).append("`\n");
 
       sb.append("      - create notes: ")
           .append(summary.canCreate ? "yes (any title not already present)" : "no")
