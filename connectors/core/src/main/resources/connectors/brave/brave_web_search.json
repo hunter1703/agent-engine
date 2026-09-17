@@ -23,7 +23,7 @@
     },
     "required": ["query"]
   },
-  "connector": {
+  "spec": {
     "executor": {
       "type": "HTTP",
       "baseUrl": "https://api.search.brave.com",
