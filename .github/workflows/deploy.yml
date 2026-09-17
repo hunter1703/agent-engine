@@ -105,13 +105,9 @@ jobs:
       - name: Deploy
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
-          MONGO_ATLAS_PASSWORD: ${{ secrets.MONGO_ATLAS_PASSWORD }}
-          NEON_JDBC_PASSWORD: ${{ secrets.NEON_JDBC_PASSWORD }}
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
-          REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-          BRAVE_TOKEN: ${{ secrets.BRAVE_TOKEN }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
         run: |
+          eval "$(echo "$SECRETS_CONTEXT" | jq -r 'to_entries | .[] | "export \(.key)=\(.value|@sh)"')"
           python3 -m deployae deploy \
             -t "${{ inputs.tier }}" \
             -e "${{ inputs.environment }}" \

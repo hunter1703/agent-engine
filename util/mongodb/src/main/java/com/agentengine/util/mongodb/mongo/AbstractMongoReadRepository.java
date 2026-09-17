@@ -8,7 +8,6 @@ import com.agentengine.util.common.query.Query;
 import com.agentengine.util.common.repository.ReadRepository;
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexModel;
@@ -30,7 +29,7 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
   private static final Logger LOG = LoggerFactory.getLogger(AbstractMongoReadRepository.class);
   private static final int INDEX_NOT_FOUND = 27;
 
-  private final MongoClient mongoClient;
+  private final MongoClientFactory mongoClientFactory;
   protected final String collectionName;
   protected final Class<T> entityClass;
   protected final String databaseName;
@@ -47,7 +46,7 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
       final String databaseName,
       final String collectionName,
       final Class<T> entityClass) {
-    this.mongoClient = mongoClientFactory.getClient();
+    this.mongoClientFactory = mongoClientFactory;
     this.databaseName = databaseName;
     this.collectionName = collectionName;
     this.entityClass = entityClass;
@@ -179,7 +178,10 @@ public abstract class AbstractMongoReadRepository<T extends BaseEntity>
   }
 
   protected final MongoCollection<T> getCollection() {
-    return mongoClient.getDatabase(databaseName).getCollection(collectionName, entityClass);
+    return mongoClientFactory
+        .getClient()
+        .getDatabase(databaseName)
+        .getCollection(collectionName, entityClass);
   }
 
   private void dropIndex(final Index declaration) {
