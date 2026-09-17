@@ -52,7 +52,6 @@ public final class SecurePropertyConvention implements Convention {
       if (!isSecure) {
         continue;
       }
-
       @SuppressWarnings("unchecked")
       final PropertyModelBuilder<String> stringBuilder =
           (PropertyModelBuilder<String>) propertyModelBuilder;
