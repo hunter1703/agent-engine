@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.*;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonBooleanSchema;
+import dev.langchain4j.model.chat.request.json.JsonEnumSchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -46,6 +47,7 @@ import io.reactivex.rxjava3.core.BackpressureStrategy;
 import io.reactivex.rxjava3.core.Flowable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -473,8 +475,15 @@ public final class LangChain4jModel extends BaseLlm {
       throw new IllegalArgumentException("Schema type cannot be null or absent");
     }
     final String description = schema.description().orElse(null);
+    final Optional<List<String>> enumValues = schema.enum_();
     return switch (schema.type().get().knownEnum()) {
-      case STRING -> JsonStringSchema.builder().description(description).build();
+      case STRING ->
+          enumValues.isPresent()
+              ? JsonEnumSchema.builder()
+                  .description(withEnumChoices(description, enumValues.get()))
+                  .enumValues(enumValues.get())
+                  .build()
+              : JsonStringSchema.builder().description(description).build();
       case NUMBER -> JsonNumberSchema.builder().description(description).build();
       case INTEGER -> JsonIntegerSchema.builder().description(description).build();
       case BOOLEAN -> JsonBooleanSchema.builder().description(description).build();
@@ -487,5 +496,14 @@ public final class LangChain4jModel extends BaseLlm {
       default ->
           throw new UnsupportedFeatureException("Unsupported schema type: " + schema.type().get());
     };
+  }
+
+  // Some models don't reliably honor a JSON schema's own enum constraint during tool-call
+  // generation, so the allowed values are spelled out in the description text as a fallback the
+  // model is more likely to follow.
+  private static String withEnumChoices(final String description, final List<String> enumValues) {
+    final String choices = enumValues.stream().collect(Collectors.joining("', '", "['", "']"));
+    final String suffix = "Choose from either of " + choices;
+    return StringUtils.isBlank(description) ? suffix : description + " " + suffix;
   }
 }
