@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -30,14 +30,14 @@ public final class AdjustTemperatureTool extends ImageEditingTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+      @ToolArg(name = "artifactName", description = "Artifact name of the input image.")
           String artifactName,
-      @ToolSchema(
+      @ToolArg(
               name = "adjustment",
               description =
                   "White balance parameters. temperature in Kelvin (2000–50000, neutral=6500): increase to warm, decrease to cool. tint integer (-150 to +150): positive=add magenta, negative=add green.")
           TemperatureAdjustment adjustment,
-      @ToolSchema(
+      @ToolArg(
               name = "rationale",
               description =
                   "Describe the lighting condition being corrected or the mood being created (e.g. 'correcting fluorescent green cast', 'adding golden hour warmth', 'making the scene feel cold and clinical').")

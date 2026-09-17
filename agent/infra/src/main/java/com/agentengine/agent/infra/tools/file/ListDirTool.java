@@ -5,7 +5,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,25 +50,25 @@ public final class ListDirTool extends BaseFileTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "dir_path",
               description =
                   "Absolute or relative path to the directory to list. Relative paths are resolved "
                       + "against the process working directory.")
           String dirPath,
-      @ToolSchema(
+      @ToolArg(
               name = "offset",
               description =
                   "1-indexed position of the first entry to return across the full flattened listing. Defaults to 1.",
               optional = true)
           Integer offset,
-      @ToolSchema(
+      @ToolArg(
               name = "limit",
               description =
                   "Maximum number of entries to return. Capped at 1,000. Defaults to 100.",
               optional = true)
           Integer limit,
-      @ToolSchema(
+      @ToolArg(
               name = "depth",
               description =
                   "Maximum recursion depth into subdirectories. 0 lists only the immediate contents of "

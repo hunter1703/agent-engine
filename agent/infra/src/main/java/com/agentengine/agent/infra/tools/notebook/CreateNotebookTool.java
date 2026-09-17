@@ -8,7 +8,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.exception.DuplicateAssetException;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
@@ -31,15 +31,15 @@ public final class CreateNotebookTool extends AbstractNotebookTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "name",
               description =
                   """
                   A short, memorable name for this notebook. This becomes its notebook_id — the exact value you and every agent you grant access to will use to reference it.""")
           final String name,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_DESCRIPTION,
               description =
                   """

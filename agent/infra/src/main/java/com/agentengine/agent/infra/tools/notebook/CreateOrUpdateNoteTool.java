@@ -8,7 +8,7 @@ import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.Permission;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
@@ -34,16 +34,16 @@ public final class CreateOrUpdateNoteTool extends AbstractNotebookTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
               description =
                   "The notebook to add this note to. Must be the exact notebook_id string you "
                       + "were granted or that create_notebook returned — never a shortened or "
                       + "human-friendly name.")
           final String notebookId,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTE_TITLE,
               description = "Short title identifying this note within the notebook.")
           final String noteTitle) {

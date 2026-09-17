@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -58,20 +58,20 @@ public final class GrepFilesTool extends BaseFileTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "pattern",
               description =
                   "regular expression matched against individual lines. The full line "
                       + "content is searched; ^ and $ anchors are supported. Special regex characters must be escaped.")
           String pattern,
-      @ToolSchema(
+      @ToolArg(
               name = "path",
               description =
                   "Root directory from which to start the recursive search. Defaults to the process "
                       + "working directory. Must be an existing directory.",
               optional = true)
           String searchPath,
-      @ToolSchema(
+      @ToolArg(
               name = "include",
               description =
                   "Glob pattern to restrict which files are searched (e.g., '*.java', '*.md', 'src/**/*.ts'). "
@@ -79,14 +79,14 @@ public final class GrepFilesTool extends BaseFileTool {
                       + "Defaults to all files.",
               optional = true)
           String includePattern,
-      @ToolSchema(
+      @ToolArg(
               name = "limit",
               description =
                   "Maximum number of matching lines to return. Capped at 2,000. Defaults to 100. "
                       + "When the result is truncated, the response includes truncated: true.",
               optional = true)
           Integer limit,
-      @ToolSchema(
+      @ToolArg(
               name = "case_sensitive",
               description =
                   "Whether the regex match is case-sensitive. Defaults to false (case-insensitive).",

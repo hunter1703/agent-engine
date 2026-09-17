@@ -21,11 +21,14 @@ import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Singleton;
 import java.util.Map;
 import okhttp3.OkHttpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class HttpConnectorExecutorBuilder
     implements ConnectorExecutorBuilder<
         HttpExecutorSpec, Map<String, Object>, Map<String, Object>> {
+  private static final Logger LOG = LoggerFactory.getLogger(HttpConnectorExecutorBuilder.class);
   private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
   private final AuthDecoratorFactory authDecoratorFactory;
 
@@ -43,6 +46,11 @@ public class HttpConnectorExecutorBuilder
     final ConnectorSpec connectorSpec = buildContext.connectorSpec();
     final AuthDecoratorSpec authDecoratorSpec =
         CollectionUtils.getValueFromMap(connectorSpec.getAuth(), authType);
+    LOG.debug(
+        "Resolving auth decorator: authType={} availableAuthKeys={} resolvedSpecType={}",
+        authType,
+        connectorSpec.getAuth() == null ? null : connectorSpec.getAuth().keySet(),
+        authDecoratorSpec == null ? null : authDecoratorSpec.getType());
     final AuthDecorator<Object, HttpRequest> decorator =
         StringUtils.isNotBlank(authType)
             ? authDecoratorFactory.build(authDecoratorSpec)

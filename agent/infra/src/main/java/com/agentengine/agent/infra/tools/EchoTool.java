@@ -2,10 +2,11 @@ package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
+import com.agentengine.agent.infra.annotations.ToolParam;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import java.util.Map;
 
 @DiscoverableTool
@@ -27,7 +28,7 @@ public final class EchoTool extends Tool {
 
   @ToolConstructor
   public EchoTool(
-      @ToolSchema(
+      @ToolParam(
               name = "prefix",
               description = "Prefix to add to the echoed message",
               optional = true)
@@ -37,11 +38,11 @@ public final class EchoTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "text",
               description = "The string to return verbatim. Null is treated as empty string.")
           final String text,
-      @ToolSchema(
+      @ToolArg(
               name = "prefix",
               description =
                   "String to prepend before the text. Overrides the tool's default prefix for this call. "

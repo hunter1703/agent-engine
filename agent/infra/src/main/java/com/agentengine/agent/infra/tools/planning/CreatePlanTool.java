@@ -10,7 +10,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -40,19 +40,17 @@ public final class CreatePlanTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
-              name = "title",
-              description = "Short human-readable label that identifies the plan.")
+      @ToolArg(name = "title", description = "Short human-readable label that identifies the plan.")
           String title,
-      @ToolSchema(
+      @ToolArg(
               name = "goal",
               description =
                   "Clear description of the objective this plan is intended to achieve. Guides task "
                       + "prioritisation and completion criteria.")
           String goal,
-      @ToolSchema(
+      @ToolArg(
               name = "tasks",
               description =
                   "Initial list of task objects. Each task requires 'name' (short label) and 'goal' "

@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -18,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record SplitToneAdjustment(
-    @ToolSchema(
+    @ToolArg(
             name = "shadow_hue",
             description =
                 "Hue of the colour tint applied to dark/shadow areas, in degrees [0, 360). "
@@ -30,7 +30,7 @@ public record SplitToneAdjustment(
             optional = true)
         @JsonProperty("shadow_hue")
         double shadowHue,
-    @ToolSchema(
+    @ToolArg(
             name = "shadow_saturation",
             description =
                 "Strength of the shadow colour tint, integer [0, 100]. "
@@ -40,7 +40,7 @@ public record SplitToneAdjustment(
             optional = true)
         @JsonProperty("shadow_saturation")
         int shadowSaturation,
-    @ToolSchema(
+    @ToolArg(
             name = "highlight_hue",
             description =
                 "Hue of the colour tint applied to bright/highlight areas, in degrees [0, 360). "
@@ -52,7 +52,7 @@ public record SplitToneAdjustment(
             optional = true)
         @JsonProperty("highlight_hue")
         double highlightHue,
-    @ToolSchema(
+    @ToolArg(
             name = "highlight_saturation",
             description =
                 "Strength of the highlight colour tint, integer [0, 100]. "
@@ -62,7 +62,7 @@ public record SplitToneAdjustment(
             optional = true)
         @JsonProperty("highlight_saturation")
         int highlightSaturation,
-    @ToolSchema(
+    @ToolArg(
             name = "balance",
             description =
                 "Shifts the luminance crossover point between shadows and highlights, integer [-100, 100]. "

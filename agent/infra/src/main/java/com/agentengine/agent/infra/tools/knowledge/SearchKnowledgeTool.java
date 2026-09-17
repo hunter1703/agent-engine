@@ -12,7 +12,7 @@ import com.agentengine.util.agents.beans.config.KnowledgeSettings;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.query.Filter;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
@@ -71,16 +71,16 @@ public final class SearchKnowledgeTool extends Tool {
    * @param toolContext provides agent identity for scope filtering
    */
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "query", description = "Natural-language search query") String query,
-      @ToolSchema(
+      @ToolArg(name = "query", description = "Natural-language search query") String query,
+      @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_ID,
               description =
                   "Limit search to this knowledge id. Omit to search all agent knowledge.",
               optional = true)
           String knowledgeId,
-      @ToolSchema(name = "offset", description = "Pagination offset (default: 0).", optional = true)
+      @ToolArg(name = "offset", description = "Pagination offset (default: 0).", optional = true)
           Integer offset,
-      @ToolSchema(
+      @ToolArg(
               name = "limit",
               description = "Max results to return (default: 10).",
               optional = true)

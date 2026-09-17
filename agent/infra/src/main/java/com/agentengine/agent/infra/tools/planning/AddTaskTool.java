@@ -10,7 +10,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
 import java.util.Map;
@@ -33,9 +33,9 @@ public final class AddTaskTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "parent_id",
               description =
                   "ID of an existing task in the current plan that this task is a child of. Affects "
@@ -44,17 +44,17 @@ public final class AddTaskTool extends Tool {
                       + "state. Omit for top-level tasks.",
               optional = true)
           String parentId,
-      @ToolSchema(
+      @ToolArg(
               name = "name",
               description =
                   "Short label identifying this task. Should be unique within the plan for clarity.")
           String name,
-      @ToolSchema(
+      @ToolArg(
               name = "goal",
               description =
                   "Concise statement of what this task is expected to produce or achieve when completed.")
           String goal,
-      @ToolSchema(
+      @ToolArg(
               name = "description",
               description =
                   "Extended context, notes, or instructions for performing the task. Optional.",

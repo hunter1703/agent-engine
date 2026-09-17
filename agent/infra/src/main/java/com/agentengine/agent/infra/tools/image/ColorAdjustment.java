@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -21,7 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ColorAdjustment(
-    @ToolSchema(
+    @ToolArg(
             name = "hue_center",
             description =
                 "Center hue of the targeted range in degrees. "
@@ -30,7 +30,7 @@ public record ColorAdjustment(
                     + "Valid range: [0.0, 360.0).")
         @JsonProperty("hue_center")
         double hueCenter,
-    @ToolSchema(
+    @ToolArg(
             name = "hue_width",
             description =
                 "Half-width of the targeted hue range in degrees. "
@@ -41,7 +41,7 @@ public record ColorAdjustment(
                     + "Valid range: (0.0, 180.0].")
         @JsonProperty("hue_width")
         double hueWidth,
-    @ToolSchema(
+    @ToolArg(
             name = "hue_shift",
             description =
                 "Degrees to rotate the hue of affected pixels along the colour wheel. "
@@ -52,7 +52,7 @@ public record ColorAdjustment(
             optional = true)
         @JsonProperty("hue_shift")
         double hueShift,
-    @ToolSchema(
+    @ToolArg(
             name = "sat_delta",
             description =
                 "Saturation change for targeted pixels, integer [-100, 100]. "
@@ -63,7 +63,7 @@ public record ColorAdjustment(
             optional = true)
         @JsonProperty("sat_delta")
         int satDelta,
-    @ToolSchema(
+    @ToolArg(
             name = "lum_delta",
             description =
                 "Luminance (brightness) change for targeted pixels, integer [-100, 100]. "

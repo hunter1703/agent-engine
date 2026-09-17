@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -16,7 +16,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TemperatureAdjustment(
-    @ToolSchema(
+    @ToolArg(
             name = "temperature",
             description =
                 "Colour temperature in Kelvin (integer). "
@@ -30,7 +30,7 @@ public record TemperatureAdjustment(
             optional = true)
         @JsonProperty("temperature")
         int temperature,
-    @ToolSchema(
+    @ToolArg(
             name = "tint",
             description =
                 "Green/magenta white balance correction, integer [-150, 150]. "

@@ -4,7 +4,7 @@ import com.agentengine.agent.core.session.events.RunResult;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
 import java.time.Duration;
@@ -35,9 +35,9 @@ public final class AwaitAgentTool extends AbstractAgentTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = CHILD_SESSION_ID,
               description =
                   """

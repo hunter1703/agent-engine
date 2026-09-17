@@ -5,7 +5,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
 import com.agentengine.util.common.ExceptionUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
@@ -67,18 +67,18 @@ public final class ApplyPatchTool extends BaseFileTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "file_path",
               description =
                   "Absolute or relative path to the file to patch. The file must already exist.")
           String filePath,
-      @ToolSchema(
+      @ToolArg(
               name = "patch",
               description =
                   "Unified diff content to apply, including @@ hunk headers. Must be valid unified diff "
                       + "format. Maximum 100,000 characters.")
           String patch,
-      @ToolSchema(
+      @ToolArg(
               name = "expected_hash",
               description =
                   "Optional content hash representing the expected file state before patching. When provided, "

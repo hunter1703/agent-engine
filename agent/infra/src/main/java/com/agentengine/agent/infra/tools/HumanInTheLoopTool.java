@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.events.ToolConfirmation;
 import com.google.adk.tools.ToolContext;
 import java.util.LinkedHashMap;
@@ -40,25 +40,25 @@ public final class HumanInTheLoopTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = PROMPT,
               description =
                   "ONLY a targeted and concise question requesting ONLY the information that is genuinely absent and blocks execution. Do NOT restate the user's request, ask for confirmation of stated intent, or use this field for answers, explanations, or error messages or greetings (like \"Hello\", \"Thank you\", etc.).")
           final String prompt,
-      @ToolSchema(
+      @ToolArg(
               name = KIND,
               description =
                   "Type of input required. TEXT: critical information is missing with no reasonable default. DECISION: user must approve a destructive action or choose between mutually exclusive options with no clear preference. Do NOT use for routine confirmations.")
           final String kind,
-      @ToolSchema(
+      @ToolArg(
               name = RESPONSE_OPTIONS,
               description =
                   "Required when kind is DECISION. A small list of explicit user-selectable choices, such as ['Yes', 'No'] or ['Use Option A', 'Use Option B']. Do not include this for TEXT unless the choices are genuinely constrained.",
               optional = true)
           List<String> options,
-      @ToolSchema(
+      @ToolArg(
               name = CONTEXT,
               description =
                   "Optional structured metadata describing why user input is required, what is blocked, and what decision is pending. For machine-readable state only. Do NOT place user-facing explanations or final answers here.",

@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -47,19 +47,19 @@ public final class ReadFileTool extends BaseFileTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "file_path",
               description =
                   "Absolute or relative path to the file. Relative paths are resolved against the process working directory.")
           String filePath,
-      @ToolSchema(
+      @ToolArg(
               name = "offset",
               description =
                   "1-indexed line number to begin reading from. Line 1 is the first line of the file. "
                       + "Defaults to 1. Use the next_offset value from a prior response to paginate forward.",
               optional = true)
           Integer offset,
-      @ToolSchema(
+      @ToolArg(
               name = "limit",
               description =
                   "Maximum number of lines to return. When specified, capped at 1,000. Defaults to 2,000.",

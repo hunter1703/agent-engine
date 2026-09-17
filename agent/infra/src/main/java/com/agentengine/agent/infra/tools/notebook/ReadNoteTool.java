@@ -7,7 +7,7 @@ import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -29,18 +29,16 @@ public final class ReadNoteTool extends AbstractNotebookTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_ID,
               description =
                   "The notebook to read from. Must be the exact notebook_id string you were "
                       + "granted (see your Notebook Access instructions) — never a shortened or "
                       + "human-friendly name.")
           final String notebookId,
-      @ToolSchema(
-              name = Constants.ToolArgs.NOTE_TITLE,
-              description = "The title of the note to read.")
+      @ToolArg(name = Constants.ToolArgs.NOTE_TITLE, description = "The title of the note to read.")
           final String noteTitle) {
     final boolean owner = NotebookUtils.isOwner(notebookId, toolContext.sessionId());
     final NotebookGrants grants = grantsOf(toolContext);

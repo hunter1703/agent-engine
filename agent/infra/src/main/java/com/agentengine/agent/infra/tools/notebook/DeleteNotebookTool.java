@@ -7,7 +7,7 @@ import com.agentengine.agent.infra.notebook.NotesRepository;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Query;
 import com.google.adk.tools.ToolContext;
@@ -33,9 +33,9 @@ public final class DeleteNotebookTool extends AbstractNotebookTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to delete.")
+      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_ID, description = "The notebook to delete.")
           final String notebookId) {
     if (!NotebookUtils.isOwner(notebookId, toolContext.sessionId())) {
       return ToolOutput.direct(

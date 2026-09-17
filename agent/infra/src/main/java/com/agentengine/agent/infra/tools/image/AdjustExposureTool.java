@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -40,14 +40,14 @@ public final class AdjustExposureTool extends ImageEditingTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+      @ToolArg(name = "artifactName", description = "Artifact name of the input image.")
           String artifactName,
-      @ToolSchema(
+      @ToolArg(
               name = "adjustment",
               description =
                   "Tone parameters. exposure: EV stops (-5.0 to +5.0, 0=no change). blacks/shadows/highlights/whites: zone offsets (-100 to +100 integers, 0=no change). saturation: global colour intensity (-100 to +100 integer, 0=no change).")
           ExposureAdjustment adjustment,
-      @ToolSchema(
+      @ToolArg(
               name = "rationale",
               description =
                   "Describe the tonal goal (e.g. 'image is 1.5 stops underexposed', 'lifting blacks for a cinematic matte look', 'recovering blown sky highlights', 'creating a moody low-key portrait').")

@@ -8,7 +8,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -27,15 +27,15 @@ public final class UpdatePlanTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "title",
               description =
                   "Replacement title for the plan. Omit or leave blank to retain the current title.",
               optional = true)
           String title,
-      @ToolSchema(
+      @ToolArg(
               name = "goal",
               description =
                   "Replacement goal statement for the plan. Omit or leave blank to retain the current goal.",

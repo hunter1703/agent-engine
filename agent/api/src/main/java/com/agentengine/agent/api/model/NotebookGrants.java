@@ -3,7 +3,7 @@ package com.agentengine.agent.api.model;
 import com.agentengine.agent.api.utils.NotebookUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.Permission;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -178,7 +178,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
   public static class NotebookGrant {
 
     @JsonProperty("notebook_id")
-    @ToolSchema(
+    @ToolArg(
         description =
             """
             The notebook to grant notebook-wide access to — lets the grantee add a new note anywhere in it.
@@ -207,7 +207,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
   public static class NoteGrant {
 
     @JsonProperty("notebook_id")
-    @ToolSchema(
+    @ToolArg(
         description =
             """
             The notebook containing the note.
@@ -217,7 +217,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
     private String notebookId;
 
     @JsonProperty("note_title")
-    @ToolSchema(
+    @ToolArg(
         description =
             """
             The note within the notebook to grant access to.
@@ -226,7 +226,7 @@ public record NotebookGrants(Map<String, Permission> grants) {
             """)
     private String noteTitle;
 
-    @ToolSchema(
+    @ToolArg(
         description =
             """
             What access to grant to this specific note: read-only, or read and edit (the ability to overwrite or delete the note — this also includes read access, so there's no need to grant both separately for the same note).

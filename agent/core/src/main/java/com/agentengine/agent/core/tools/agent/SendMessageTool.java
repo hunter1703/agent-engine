@@ -14,7 +14,7 @@ import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.google.adk.tools.ToolContext;
@@ -56,27 +56,27 @@ public final class SendMessageTool extends AbstractAgentTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.CHILD_SESSION_ID,
               description =
                   "The opaque identifier of an existing child agent session to deliver the message to.")
           final String childSessionId,
-      @ToolSchema(
+      @ToolArg(
               name = "message",
               description =
                   "The message content to deliver as the next conversation turn to the child session.")
           String message,
-      @ToolSchema(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
+      @ToolArg(name = Constants.ToolArgs.GOAL, description = GOAL_SCHEMA_DESCRIPTION)
           final String goal,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.AWAIT_COMPLETION,
               description =
                   "If true (the default), the tool will wait for the child agent to finish its run and return the final result. If false, the tool will return immediately after the child has been sent the message.",
               optional = true)
           Boolean awaitCompletion,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_IDS,
               description =
                   """
@@ -88,7 +88,7 @@ public final class SendMessageTool extends AbstractAgentTool {
                       + " instead.",
               optional = true)
           final List<String> knowledgeIds,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.KNOWLEDGE_SOURCES,
               description =
                   """
@@ -100,14 +100,14 @@ public final class SendMessageTool extends AbstractAgentTool {
                       + " instead.",
               optional = true)
           final List<String> knowledgeSources,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTEBOOK_GRANTS,
               description =
                   """
                   Grant the child permission to create and add notes in the given notebook. Previously given permissions are carried forward so they are not lost. Omit anything already granted.""",
               optional = true)
           final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.NOTE_GRANTS,
               description =
                   """

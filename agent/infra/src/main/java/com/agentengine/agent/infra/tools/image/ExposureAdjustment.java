@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ExposureAdjustment(
-    @ToolSchema(
+    @ToolArg(
             name = "exposure",
             description =
                 "Global exposure shift in EV (stops), real number. "
@@ -35,7 +35,7 @@ public record ExposureAdjustment(
             optional = true)
         @JsonProperty("exposure")
         double exposure,
-    @ToolSchema(
+    @ToolArg(
             name = "blacks",
             description =
                 "Tone curve offset for the deepest shadows (0–25% luminance), integer. "
@@ -47,7 +47,7 @@ public record ExposureAdjustment(
             optional = true)
         @JsonProperty("blacks")
         int blacks,
-    @ToolSchema(
+    @ToolArg(
             name = "shadows",
             description =
                 "Tone curve offset for dark midtones (25–50% luminance), integer. "
@@ -59,7 +59,7 @@ public record ExposureAdjustment(
             optional = true)
         @JsonProperty("shadows")
         int shadows,
-    @ToolSchema(
+    @ToolArg(
             name = "highlights",
             description =
                 "Tone curve offset for light midtones (50–75% luminance), integer. "
@@ -71,7 +71,7 @@ public record ExposureAdjustment(
             optional = true)
         @JsonProperty("highlights")
         int highlights,
-    @ToolSchema(
+    @ToolArg(
             name = "whites",
             description =
                 "Tone curve offset for the brightest tones (75–100% luminance), integer. "
@@ -83,7 +83,7 @@ public record ExposureAdjustment(
             optional = true)
         @JsonProperty("whites")
         int whites,
-    @ToolSchema(
+    @ToolArg(
             name = "saturation",
             description =
                 "Global colour intensity shift, integer. "

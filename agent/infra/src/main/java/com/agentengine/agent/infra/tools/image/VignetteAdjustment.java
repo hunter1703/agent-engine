@@ -1,6 +1,6 @@
 package com.agentengine.agent.infra.tools.image;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record VignetteAdjustment(
-    @ToolSchema(
+    @ToolArg(
             name = "amount",
             description =
                 "Darkening or lightening of image edges, integer [-100, 100]. "
@@ -30,7 +30,7 @@ public record VignetteAdjustment(
             optional = true)
         @JsonProperty("amount")
         int amount,
-    @ToolSchema(
+    @ToolArg(
             name = "midpoint",
             description =
                 "Controls how far from the image centre the vignette begins, integer [0, 100]. "
@@ -44,7 +44,7 @@ public record VignetteAdjustment(
             optional = true)
         @JsonProperty("midpoint")
         int midpoint,
-    @ToolSchema(
+    @ToolArg(
             name = "feather",
             description =
                 "Softness of the transition from clear centre to vignetted edge, integer [0, 100]. "
@@ -56,7 +56,7 @@ public record VignetteAdjustment(
             optional = true)
         @JsonProperty("feather")
         int feather,
-    @ToolSchema(
+    @ToolArg(
             name = "saturation",
             description =
                 "Saturation change applied at the vignette edges, integer [-100, 100]. "

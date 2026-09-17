@@ -16,7 +16,7 @@ import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.UniqueRecord;
 import com.agentengine.util.pekko.ActorSystemProvider;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -154,19 +154,19 @@ public final class SpawnAgentTool extends AbstractAgentTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(name = "agent_id") final String childAgentId,
-      @ToolSchema(name = "message") String message,
-      @ToolSchema(name = "goal") final String goal,
-      @ToolSchema(name = "await_completion", optional = true) Boolean awaitCompletion,
-      @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
+      @ToolArg(name = "agent_id") final String childAgentId,
+      @ToolArg(name = "message") String message,
+      @ToolArg(name = "goal") final String goal,
+      @ToolArg(name = "await_completion", optional = true) Boolean awaitCompletion,
+      @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_IDS, optional = true)
           final List<String> knowledgeIds,
-      @ToolSchema(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
+      @ToolArg(name = Constants.ToolArgs.KNOWLEDGE_SOURCES, optional = true)
           final List<String> knowledgeSources,
-      @ToolSchema(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
+      @ToolArg(name = Constants.ToolArgs.NOTEBOOK_GRANTS, optional = true)
           final List<NotebookGrants.NotebookGrant> notebookGrants,
-      @ToolSchema(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
+      @ToolArg(name = Constants.ToolArgs.NOTE_GRANTS, optional = true)
           final List<NotebookGrants.NoteGrant> noteGrants) {
 
     final ToolOutput<Map<String, Object>> completedResult = getResultIfCompleted(toolContext);

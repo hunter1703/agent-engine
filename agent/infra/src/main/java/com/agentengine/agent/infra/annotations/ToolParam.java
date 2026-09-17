@@ -1,4 +1,4 @@
-package com.agentengine.util.common.annotations;
+package com.agentengine.agent.infra.annotations;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -6,16 +6,13 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Describes tool schemas for methods, parameters, and object fields. */
+/**
+ * Describes the schema of a {@link ToolConstructor} parameter used to configure a tool instance.
+ */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({
-  ElementType.METHOD,
-  ElementType.PARAMETER,
-  ElementType.FIELD,
-  ElementType.RECORD_COMPONENT
-})
-public @interface ToolSchema {
+@Target(ElementType.PARAMETER)
+public @interface ToolParam {
   String name() default "";
 
   String description() default "";

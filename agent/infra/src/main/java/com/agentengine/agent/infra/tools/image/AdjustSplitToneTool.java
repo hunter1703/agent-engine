@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -33,14 +33,14 @@ public final class AdjustSplitToneTool extends ImageEditingTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+      @ToolArg(name = "artifactName", description = "Artifact name of the input image.")
           String artifactName,
-      @ToolSchema(
+      @ToolArg(
               name = "adjustment",
               description =
                   "Color grade parameters. shadow_hue/highlight_hue: degrees (0=red, 30=orange, 60=yellow, 120=green, 180=cyan, 210=sky-blue, 240=blue, 270=violet, 300=magenta). shadow_saturation/highlight_saturation: tint strength 0–100 (0=none, 20=subtle, 50=strong). balance: crossover shift -100 to +100 (0=balanced).")
           SplitToneAdjustment adjustment,
-      @ToolSchema(
+      @ToolArg(
               name = "rationale",
               description =
                   "Describe the mood or cinematic look being created (e.g. 'teal-and-orange blockbuster grade', 'cold blue shadows for a thriller feel', 'warm golden highlights for a summer look', 'vintage sepia tone').")

@@ -9,7 +9,7 @@ import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
@@ -315,7 +315,7 @@ public abstract class Tool extends BaseTool {
           "toolContext".equals(name) || ToolContext.class.isAssignableFrom(parameter.getType());
       final boolean isInputStream =
           "inputStream".equals(name) || InputStream.class.isAssignableFrom(parameter.getType());
-      final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
+      final ToolArg schema = parameter.getAnnotation(ToolArg.class);
       final boolean optional = schema != null && schema.optional();
       final Class<?> rawType = parameter.getType();
       final JavaType javaType = Utils.constructType(parameter.getParameterizedType());
@@ -351,7 +351,7 @@ public abstract class Tool extends BaseTool {
     final BeanDescription beanDescription = Utils.getBeanDescription(targetType);
     final Map<String, PropertyBinding> bindings = new HashMap<>();
     for (BeanPropertyDefinition property : beanDescription.findProperties()) {
-      ToolSchema toolSchema = Utils.findAnnotation(property, ToolSchema.class);
+      ToolArg toolSchema = Utils.findAnnotation(property, ToolArg.class);
       String javaName = property.getName();
       String schemaName =
           toolSchema != null && StringUtils.isNotBlank(toolSchema.name())

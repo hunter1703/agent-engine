@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -29,14 +29,14 @@ public final class AddVignetteTool extends ImageEditingTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+      @ToolArg(name = "artifactName", description = "Artifact name of the input image.")
           String artifactName,
-      @ToolSchema(
+      @ToolArg(
               name = "adjustment",
               description =
                   "Vignette parameters: amount (integer -100 to +100), midpoint (integer 0–100), feather (integer 0–100), saturation (integer -100 to +100, optional, negative=desaturate edges).")
           VignetteAdjustment adjustment,
-      @ToolSchema(
+      @ToolArg(
               name = "rationale",
               description =
                   "Brief explanation of why this adjustment is being applied and what visual effect it is intended to achieve.")

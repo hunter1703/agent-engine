@@ -9,7 +9,7 @@ import com.agentengine.knowledge.api.services.KnowledgeService;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.beans.FileDetails;
 import com.google.adk.tools.ToolContext;
 import java.util.List;
@@ -43,7 +43,7 @@ public final class GetWebpageTool extends Tool {
    * @return a knowledgeId reference to the indexed page
    */
   public ToolOutput<?> execute(
-      @ToolSchema(
+      @ToolArg(
               name = "url",
               description = "The URL of the web page to fetch. Must be a valid HTTP or HTTPS URL.")
           String url,

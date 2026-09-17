@@ -5,7 +5,7 @@ import com.agentengine.agent.infra.tools.beans.Plan;
 import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -27,7 +27,7 @@ public final class ViewPlanTool extends Tool {
   }
 
   public ToolOutput<Plan> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext) {
     return ToolOutput.direct(SessionUtils.getSessionState(toolContext.invocationContext()).plan());
   }

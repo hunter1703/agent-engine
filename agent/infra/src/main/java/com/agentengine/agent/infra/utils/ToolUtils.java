@@ -6,7 +6,7 @@ import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.Utils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMember;
@@ -29,8 +29,8 @@ public final class ToolUtils {
   private ToolUtils() {}
 
   public static String resolveParameterName(final Parameter parameter) {
-    if (parameter.isAnnotationPresent(ToolSchema.class)) {
-      String name = parameter.getAnnotation(ToolSchema.class).name();
+    if (parameter.isAnnotationPresent(ToolArg.class)) {
+      String name = parameter.getAnnotation(ToolArg.class).name();
       if (StringUtils.isNotBlank(name)) {
         return name;
       }
@@ -72,7 +72,7 @@ public final class ToolUtils {
       if (shouldIgnoreParameter(paramName)) {
         continue;
       }
-      final ToolSchema schema = param.getAnnotation(ToolSchema.class);
+      final ToolArg schema = param.getAnnotation(ToolArg.class);
       if (schema == null && !includeUnannotated) {
         continue;
       }
@@ -208,7 +208,7 @@ public final class ToolUtils {
       if (member == null) {
         continue;
       }
-      ToolSchema toolField = findAnnotation(property, ToolSchema.class);
+      ToolArg toolField = findAnnotation(property, ToolArg.class);
       String propertyName = property.getName();
       if (toolField != null && StringUtils.isNotBlank(toolField.name())) {
         propertyName = toolField.name();
@@ -231,7 +231,7 @@ public final class ToolUtils {
   }
 
   private static boolean isRequired(
-      final BeanPropertyDefinition property, final ToolSchema toolField) {
+      final BeanPropertyDefinition property, final ToolArg toolField) {
     if (toolField != null) {
       return !toolField.optional();
     }
@@ -240,7 +240,7 @@ public final class ToolUtils {
 
   private static Schema applyFieldMetadata(
       final Schema schema,
-      final ToolSchema toolSchema,
+      final ToolArg toolSchema,
       final boolean required,
       final List<String> enumValues) {
     String baseDescription = toolSchema == null ? null : toolSchema.description();

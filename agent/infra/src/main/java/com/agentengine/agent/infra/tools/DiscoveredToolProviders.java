@@ -1,6 +1,7 @@
 package com.agentengine.agent.infra.tools;
 
 import com.agentengine.agent.infra.annotations.ToolConstructor;
+import com.agentengine.agent.infra.annotations.ToolParam;
 import com.agentengine.agent.infra.utils.SchemaUtils;
 import com.agentengine.agent.infra.utils.ToolUtils;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
@@ -8,7 +9,6 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.agentengine.util.common.LazyLoader;
 import com.agentengine.util.common.StringUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
 import com.google.adk.tools.BaseTool;
 import com.google.genai.types.Schema;
 import io.quarkus.arc.Arc;
@@ -100,7 +100,7 @@ public final class DiscoveredToolProviders {
     for (final Parameter parameter : parameters) {
       final boolean injected = isCdiBean(parameter.getType());
       final String key = injected ? parameter.getType().getSimpleName() : resolveKey(parameter);
-      final ToolSchema schema = parameter.getAnnotation(ToolSchema.class);
+      final ToolParam schema = parameter.getAnnotation(ToolParam.class);
       final String description = schema == null ? null : schema.description();
       final boolean optional = schema != null && schema.optional();
       final List<String> enumValues =
@@ -119,7 +119,7 @@ public final class DiscoveredToolProviders {
   }
 
   private static String resolveKey(final Parameter parameter) {
-    final ToolSchema annotation = parameter.getAnnotation(ToolSchema.class);
+    final ToolParam annotation = parameter.getAnnotation(ToolParam.class);
     final String key = annotation == null ? "" : annotation.name();
     if (StringUtils.isNotBlank(key)) {
       return key;

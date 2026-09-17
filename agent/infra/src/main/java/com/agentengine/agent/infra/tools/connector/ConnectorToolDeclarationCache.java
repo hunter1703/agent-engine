@@ -86,6 +86,7 @@ public class ConnectorToolDeclarationCache {
               .description("The connection ID to use.")
               .enum_(connectionIds)
               .build());
+      requiredFields.add("connectionId");
     }
 
     final Schema schema =

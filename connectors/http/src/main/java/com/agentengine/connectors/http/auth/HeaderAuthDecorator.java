@@ -8,8 +8,11 @@ import com.agentengine.connectors.infra.utils.ConnectorUtils;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.scripts.templated.Template;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeaderAuthDecorator implements AuthDecorator<Object, HttpRequest> {
+  private static final Logger LOG = LoggerFactory.getLogger(HeaderAuthDecorator.class);
   private final Template<Map<String, String>> headerTemplate;
   private final ConnectionRefresher connectionRefresher;
 
@@ -26,6 +29,10 @@ public class HeaderAuthDecorator implements AuthDecorator<Object, HttpRequest> {
         ConnectorUtils.buildTemplateContextForAuthDecoration(connection, input);
     final Map<String, String> authHeaders =
         CollectionUtils.nullSafeMap(headerTemplate.getValue(context));
+    LOG.debug(
+        "Computed auth headers: keys={} credentialsPresent={}",
+        authHeaders.keySet(),
+        connection != null && connection.getCredentials() != null);
     request.addHeaders(authHeaders);
   }
 }

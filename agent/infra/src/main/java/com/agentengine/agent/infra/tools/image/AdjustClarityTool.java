@@ -4,7 +4,7 @@ import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -45,14 +45,14 @@ public final class AdjustClarityTool extends ImageEditingTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "artifactName", description = "Artifact name of the input image.")
+      @ToolArg(name = "artifactName", description = "Artifact name of the input image.")
           String artifactName,
-      @ToolSchema(
+      @ToolArg(
               name = "clarity",
               description =
                   "Clarity amount. Negative = soft/dreamy/glow (range [-100, 0]): -15 subtle softness, -30 noticeable glow, -50 heavy atmosphere, -80 extreme mist. Positive = crisp/sharp/punchy (range [0, 100]): 20 mild crispness, 40 punchy, 60 very sharp. 0 = no change.")
           double clarity,
-      @ToolSchema(
+      @ToolArg(
               name = "rationale",
               description =
                   "Brief explanation of why this adjustment is being applied and what visual effect it is intended to achieve.")

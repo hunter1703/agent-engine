@@ -2,11 +2,12 @@ package com.agentengine.agent.infra.tools.shell;
 
 import com.agentengine.agent.infra.annotations.DiscoverableTool;
 import com.agentengine.agent.infra.annotations.ToolConstructor;
+import com.agentengine.agent.infra.annotations.ToolParam;
 import com.agentengine.agent.infra.tools.Tool;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.agents.beans.tools.ToolRiskLevel;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -45,7 +46,7 @@ public final class ShellCommandTool extends Tool {
 
   @ToolConstructor
   public ShellCommandTool(
-      @ToolSchema(
+      @ToolParam(
               name = "timeout_seconds",
               description = "timeout in seconds for the shell command execution.",
               optional = true)
@@ -55,9 +56,9 @@ public final class ShellCommandTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "command",
               description =
                   "The shell command string to execute on a single line. Supports pipes (|), redirects (>), "

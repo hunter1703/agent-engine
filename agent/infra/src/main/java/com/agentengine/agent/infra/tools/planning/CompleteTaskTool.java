@@ -8,7 +8,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.CollectionUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -31,22 +31,22 @@ public final class CompleteTaskTool extends UpdateTaskStatusTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "task_id",
               description =
                   "ID of the task to close. Must refer to a task in the current plan that has not "
                       + "already been completed or abandoned.")
           String taskId,
-      @ToolSchema(
+      @ToolArg(
               name = "status",
               description =
                   "Final disposition of the task. 'done' indicates successful completion; "
                       + "'abandoned' indicates the task was intentionally skipped or is no longer applicable.",
               enums = {"done", "abandoned"})
           String status,
-      @ToolSchema(
+      @ToolArg(
               name = "result",
               description =
                   "Concise description of what was produced or decided. For 'done', summarise the "

@@ -8,7 +8,7 @@ import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
 import com.agentengine.util.common.FileUtils;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.agentengine.util.common.service.CloudStorageService;
 import com.google.adk.tools.ToolContext;
 import java.io.IOException;
@@ -42,9 +42,9 @@ public final class ReadKnowledgeSourceTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           final ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = Constants.ToolArgs.SOURCE,
               description = "The exact knowledge source string you have access to.")
           final String source) {

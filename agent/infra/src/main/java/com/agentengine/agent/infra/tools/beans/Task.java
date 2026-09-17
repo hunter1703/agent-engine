@@ -1,19 +1,19 @@
 package com.agentengine.agent.infra.tools.beans;
 
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Task {
-  @ToolSchema(
+  @ToolArg(
       name = "task_id",
       description =
           "Auto-generated unique identifier for this task. Set by the system; do not provide when creating tasks.",
       optional = true)
   private String taskId = UUID.randomUUID().toString();
 
-  @ToolSchema(
+  @ToolArg(
       name = "parent_id",
       description =
           "ID (task_id) of an existing task that this task is a child of. Establishes both hierarchy and "
@@ -24,24 +24,24 @@ public class Task {
       optional = true)
   private String parentId;
 
-  @ToolSchema(description = "Short label identifying this task. Should be unique within the plan.")
+  @ToolArg(description = "Short label identifying this task. Should be unique within the plan.")
   private String name;
 
-  @ToolSchema(
+  @ToolArg(
       description = "Concise statement of what this task should produce or achieve when completed.")
   private String goal;
 
-  @ToolSchema(
+  @ToolArg(
       description = "Current lifecycle status of the task: TODO, IN_PROGRESS, DONE, or ABANDONED.",
       optional = true)
   private TaskStatus status = TaskStatus.TODO;
 
-  @ToolSchema(
+  @ToolArg(
       description = "The outcome or conclusion recorded when the task was completed or abandoned.",
       optional = true)
   private String result;
 
-  @ToolSchema(
+  @ToolArg(
       description = "Extended context, notes, or instructions for performing this task.",
       optional = true)
   private String description;

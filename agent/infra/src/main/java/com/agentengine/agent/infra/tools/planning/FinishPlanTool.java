@@ -8,7 +8,7 @@ import com.agentengine.agent.infra.utils.SessionUtils;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -30,16 +30,16 @@ public final class FinishPlanTool extends Tool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(
+      @ToolArg(
               name = "status",
               description =
                   "Final disposition of the plan. 'done' if the plan's goal was achieved; "
                       + "'abandoned' if the plan is being closed without completing its goal.",
               enums = {"done", "abandoned"})
           String status,
-      @ToolSchema(
+      @ToolArg(
               name = "result",
               description =
                   "Summary of what was accomplished, or an explanation of why the plan was abandoned. Required.")

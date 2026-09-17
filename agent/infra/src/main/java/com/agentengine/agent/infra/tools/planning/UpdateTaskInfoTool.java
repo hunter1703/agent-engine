@@ -3,7 +3,7 @@ package com.agentengine.agent.infra.tools.planning;
 import com.agentengine.util.agents.Constants;
 import com.agentengine.util.agents.beans.tools.ToolDescriptor;
 import com.agentengine.util.agents.beans.tools.ToolOutput;
-import com.agentengine.util.common.annotations.ToolSchema;
+import com.agentengine.util.common.annotations.ToolArg;
 import com.google.adk.tools.ToolContext;
 import java.util.Map;
 
@@ -26,21 +26,21 @@ public final class UpdateTaskInfoTool extends UpdateTaskStatusTool {
   }
 
   public ToolOutput<Map<String, Object>> execute(
-      @ToolSchema(name = "toolContext", description = "Injected runtime context", optional = true)
+      @ToolArg(name = "toolContext", description = "Injected runtime context", optional = true)
           ToolContext toolContext,
-      @ToolSchema(name = "task_id", description = "ID of the task whose metadata is to be updated.")
+      @ToolArg(name = "task_id", description = "ID of the task whose metadata is to be updated.")
           String taskId,
-      @ToolSchema(
+      @ToolArg(
               name = "name",
               description = "Replacement short label for the task. Omit to leave unchanged.",
               optional = true)
           String name,
-      @ToolSchema(
+      @ToolArg(
               name = "goal",
               description = "Replacement goal statement for the task. Omit to leave unchanged.",
               optional = true)
           String goal,
-      @ToolSchema(
+      @ToolArg(
               name = "description",
               description =
                   "Replacement extended description for the task. Omit to leave unchanged.",
