@@ -1,5 +1,6 @@
 package com.agentengine.util.cloudstorage;
 
+import com.agentengine.util.common.Secure;
 import com.agentengine.util.mongodb.infra.InfraConfig;
 import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 
@@ -12,7 +13,7 @@ public class CloudStorageInfraConfig extends InfraConfig {
   private String endpointUrl = "http://localhost:4566";
   private String region = "us-east-1";
   private String accessKeyId = "test";
-  private String secretAccessKey = "test";
+  @Secure private String secretAccessKey = "test";
   private String defaultBucket = "agent-assets";
 
   public String getEndpointUrl() {
