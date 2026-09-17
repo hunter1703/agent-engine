@@ -205,18 +205,41 @@ class Chart:
         own_app_base = load_yaml(self.path / "values.yaml").get("app-base", {})
         return own_app_base.get("pekko", {}).get("cluster")
 
-    def ingress_tls_hosts(self) -> list[str]:
-        """Hostnames this chart's ingress serves over TLS, per its own values.yaml
-        (app-base.ingress.enabled + tlsEnabled). Empty if the chart has no ingress or
-        doesn't terminate TLS there — read live so a future chart enabling TLS needs no
-        change to the deploy pipeline itself."""
+    def _effective_ingress(self, tier: str | None) -> dict:
+        """This chart's app-base.ingress block, base values.yaml overlaid by the tier's own
+        values.yaml when one sets ingress fields — a tier can enable/configure TLS entirely
+        in its own overlay without touching the base file."""
+        base_ingress = load_yaml(self.path / "values.yaml").get("app-base", {}).get("ingress", {})
+        overlay_file = self.values_overlay_file(tier)
+        overlay_ingress = (
+            load_yaml(overlay_file).get("app-base", {}).get("ingress", {}) if overlay_file else {}
+        )
+        return {**base_ingress, **overlay_ingress}
+
+    def ingress_tls_hosts(self, tier: str | None = None) -> list[str]:
+        """Hostnames this chart's ingress serves over TLS for the given tier (per
+        app-base.ingress.enabled + tlsEnabled, base values.yaml overlaid by the tier's own).
+        Empty if the chart has no ingress or doesn't terminate TLS there — read live so a
+        future chart enabling TLS needs no change to the deploy pipeline itself."""
         if not self.is_app_chart:
             return []
-        own_app_base = load_yaml(self.path / "values.yaml").get("app-base", {})
-        ingress = own_app_base.get("ingress", {})
+        ingress = self._effective_ingress(tier)
         if not (ingress.get("enabled") and ingress.get("tlsEnabled")):
             return []
         return [entry["host"] for entry in ingress.get("hosts", [])]
+
+    def needs_local_tls_cert(self, tier: str | None) -> bool:
+        """Whether this chart's ingress, for the given tier, needs a locally-generated
+        (mkcert) certificate — TLS is enabled but no clusterIssuer is configured to provision
+        a real one via cert-manager. Driven entirely by the tier's own resolved values, never
+        by the tier's name, so any tier's config can be deployed anywhere and get the right
+        certificate behavior for what it actually asks for."""
+        if not self.is_app_chart:
+            return False
+        ingress = self._effective_ingress(tier)
+        return bool(ingress.get("enabled") and ingress.get("tlsEnabled") and not ingress.get(
+            "clusterIssuer"
+        ))
 
     def tls_secret_name(self, tier: str) -> str:
         """Matches the Helm ingress template's own derivation

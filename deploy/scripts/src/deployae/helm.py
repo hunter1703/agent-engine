@@ -30,11 +30,10 @@ class DeployContext:
     image_tag: str | None = None
     image_registry: str | None = None
     rollout_revision: str | None = None
-    # Set only for tiers with no self-hosted mongodb/postgres chart (e.g. socialmedia, backed
-    # by MongoDB Atlas / Neon) — lets SetupInfraStage connect
-    # directly instead of port-forwarding to a self-hosted chart's Service that doesn't exist.
+    # Set only for tiers with no self-hosted mongodb chart (e.g. socialmedia, backed by
+    # MongoDB Atlas) — lets SetupInfraStage connect directly instead of port-forwarding to
+    # a self-hosted chart's Service that doesn't exist.
     mongodb_uri: str | None = None
-    postgres_conninfo: str | None = None
 
 
 def _run(args: list[str]) -> None:

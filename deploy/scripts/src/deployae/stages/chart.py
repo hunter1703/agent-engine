@@ -124,15 +124,16 @@ class EnsureLocalTlsCertStage(Stage):
     """Generates (or reuses) a mkcert cert for a chart's ingress hosts and creates/
     updates the matching Secret, so the chart's own DeployChartStage never needs to run
     with a Secret its Ingress references not existing yet. `enabled` should be set to
-    False for any chart/tier that doesn't declare TLS hosts or isn't `local` — mkcert's
-    CA has no meaning outside the machine that trusts it."""
+    False for any chart/tier whose resolved ingress config doesn't need one (see
+    Chart.needs_local_tls_cert) — mkcert's CA has no meaning outside the machine that
+    trusts it, and a tier with its own clusterIssuer already gets a real cert elsewhere."""
 
     chart: Chart
     tier: str
     namespace_override: str | None = None
 
     async def run(self) -> None:
-        hosts = self.chart.ingress_tls_hosts()
+        hosts = self.chart.ingress_tls_hosts(self.tier)
         cert_file, key_file = await asyncio.to_thread(
             localcerts.ensure_cert_files, hosts, LOCAL_CERTS_DIR
         )

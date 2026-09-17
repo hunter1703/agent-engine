@@ -128,11 +128,10 @@ def _build_context(args: argparse.Namespace) -> helm.DeployContext:
         set_arguments=args.set_arguments,
         image_tag=args.image_tag,
         image_registry=args.image_registry,
-        # Secrets, not CLI flags, so they never show up in argv/ps output or shell history —
+        # A secret, not a CLI flag, so it never shows up in argv/ps output or shell history —
         # set by the caller's environment (a CI job's `env:` block, e.g.) when the target tier
-        # has no self-hosted mongodb/postgres chart to seed/init via port-forward instead.
-        mongodb_uri=os.environ.get("DEPLOYAE_MONGODB_URI"),
-        postgres_conninfo=os.environ.get("DEPLOYAE_POSTGRES_CONNINFO"),
+        # has no self-hosted mongodb chart to seed via port-forward instead.
+        mongodb_uri=os.environ.get("INFRA_MONGODB_URI"),
     )
 
 
@@ -297,9 +296,10 @@ def build_stages(
     ingress_stage = EnsureIngressControllerStage(name="ensure-ingress-controller")
     stages: list[Stage] = [*namespace_stages.values(), *env_secret_stages.values(), ingress_stage]
 
-    # mkcert's CA is only ever trusted on the machine that generated it, so this only
-    # makes sense for `local` — a shared/staging/prod tier gets a real cert some other
-    # way (e.g. cert-manager), not one deployae generates itself.
+    # mkcert's CA is only ever trusted on the machine that generated it, so this only makes
+    # sense when the tier's own resolved ingress config has TLS enabled with no clusterIssuer
+    # to provision a real one via cert-manager (see Chart.needs_local_tls_cert) — driven by
+    # what that tier's values actually declare, not by the tier's name.
     tls_cert_stages = {
         component: EnsureLocalTlsCertStage(
             name=f"ensure-local-tls-cert-{component}",
@@ -307,12 +307,12 @@ def build_stages(
             chart=Chart(component),
             tier=ctx.tier or "",
             namespace_override=ctx.namespace,
-            enabled=ctx.tier == "local"
+            enabled=Chart(component).needs_local_tls_cert(ctx.tier)
             and not dry_run
             and Chart(component).is_enabled_for_tier(ctx.tier),
         )
         for component in APP_COMPONENTS
-        if Chart(component).ingress_tls_hosts()
+        if Chart(component).ingress_tls_hosts(ctx.tier)
     }
     stages.extend(tls_cert_stages.values())
 
