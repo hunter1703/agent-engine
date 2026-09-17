@@ -3,6 +3,7 @@
     "id": "reddit_connection",
     "name": "Reddit Connection",
     "appName": "reddit",
+    "authType": "OAUTH_PASSWORD_GRANT",
     "inputs": {
       "clientId": "ZTIvyg-8GN2I42hE6UziNg",
       "clientSecret": "${REDDIT_CLIENT_SECRET}",
@@ -14,6 +15,7 @@
     "id": "default_brave_connection",
     "name": "Default Brave Connection",
     "appName": "brave",
+    "authType": "TOKEN",
     "inputs": {
       "token": "${BRAVE_TOKEN}"
     }
