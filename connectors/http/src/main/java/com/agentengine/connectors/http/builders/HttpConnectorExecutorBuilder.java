@@ -1,27 +1,28 @@
 package com.agentengine.connectors.http.builders;
 
+import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.http.HttpClientProvider;
 import com.agentengine.connectors.http.TemplatedHttpExecutorSpec;
 import com.agentengine.connectors.http.beans.HttpClientOptions;
 import com.agentengine.connectors.http.beans.HttpExecutorSpec;
+import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.http.executor.HttpConnectorExecutor;
 import com.agentengine.connectors.infra.ClientProvider;
-import com.agentengine.connectors.infra.auth.AuthDecoratorFactory;
-import com.agentengine.connectors.infra.beans.ConnectorSpec;
+import com.agentengine.connectors.infra.auth.AuthDecorator;
 import com.agentengine.connectors.infra.beans.ExecutorSpec;
+import com.agentengine.connectors.infra.builders.AuthDecoratorFactory;
+import com.agentengine.connectors.infra.builders.BuildContext;
 import com.agentengine.connectors.infra.builders.ConnectorExecutorBuilder;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
+import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Singleton;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import okhttp3.OkHttpClient;
 
 @Singleton
 public class HttpConnectorExecutorBuilder
     implements ConnectorExecutorBuilder<
         HttpExecutorSpec, Map<String, Object>, Map<String, Object>> {
-  private final ConcurrentHashMap<HttpExecutorSpec, HttpConnectorExecutor> executorCache =
-      new ConcurrentHashMap<>();
   private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
   private final AuthDecoratorFactory authDecoratorFactory;
 
@@ -33,14 +34,13 @@ public class HttpConnectorExecutorBuilder
 
   @Override
   public ConnectorExecutor<Map<String, Object>, Map<String, Object>> build(
-      HttpExecutorSpec spec, ConnectorSpec connectorSpec) {
-    return executorCache.computeIfAbsent(
-        spec,
-        _ ->
-            new HttpConnectorExecutor(
-                new TemplatedHttpExecutorSpec(spec),
-                clientProvider,
-                authDecoratorFactory.build(connectorSpec.getAuth())));
+      BuildContext<HttpExecutorSpec> buildContext) {
+    final Connection connection = buildContext.connection();
+    final String authType = connection == null ? null : connection.getAuthType();
+    AuthDecorator<HttpRequest> decorator =
+        StringUtils.isNotBlank(authType) ? authDecoratorFactory.build(authType) : null;
+    return new HttpConnectorExecutor(
+        new TemplatedHttpExecutorSpec(buildContext.spec()), clientProvider, decorator);
   }
 
   @Override

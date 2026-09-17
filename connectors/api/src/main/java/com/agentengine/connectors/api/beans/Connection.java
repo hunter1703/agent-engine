@@ -13,6 +13,8 @@ public class Connection extends BaseEntity {
 
   private String name;
   private String appName;
+  private String authType;
+
   private Map<String, Object> inputs;
   private Map<String, Object> credentials;
   private Long expiresAt;
@@ -31,6 +33,14 @@ public class Connection extends BaseEntity {
 
   public void setAppName(String appName) {
     this.appName = appName;
+  }
+
+  public String getAuthType() {
+    return authType;
+  }
+
+  public void setAuthType(String authType) {
+    this.authType = authType;
   }
 
   public Map<String, Object> getInputs() {

@@ -4,12 +4,14 @@ import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.beans.ConnectorMetadata;
 import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.query.Page;
+import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCache;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.google.common.cache.CacheBuilder;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Singleton
@@ -26,6 +28,7 @@ public class ConnectorCacheService {
     this.connectionsCache =
         new DistributedCache<>(
             CONNECTION_IDS_CACHE_NAME,
+            Set.of(CacheTag.CONNECTIONS),
             CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.HOURS),
             appName -> {
               final List<Connection> result =

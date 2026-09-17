@@ -34,11 +34,12 @@ public final class WebSearchTool extends ConnectorTool {
 
   public WebSearchTool(
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorCacheService connectorCacheService,
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     super(
         connectorCacheService.getConnectorMetadata("brave", "brave_web_search"),
         connectionService,
-        connectorCacheService);
+        connectorToolDeclarationCache);
   }
 
   @Override

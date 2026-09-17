@@ -1,16 +1,17 @@
 package com.agentengine.connectors.infra.beans;
 
-import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
+import java.util.Map;
 
 public final class ConnectorSpec {
-  private AuthDecoratorSpec auth;
+  private Map<String, AuthDecoratorSpec> auth;
+
   private ExecutorSpec executor;
 
-  public AuthDecoratorSpec getAuth() {
+  public Map<String, AuthDecoratorSpec> getAuth() {
     return auth;
   }
 
-  public void setAuth(AuthDecoratorSpec auth) {
+  public void setAuth(Map<String, AuthDecoratorSpec> auth) {
     this.auth = auth;
   }
 

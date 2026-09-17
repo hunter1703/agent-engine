@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.agentengine.connectors.http.auth.HeaderAuthDecoratorSpec;
 import com.agentengine.connectors.http.beans.HttpExecutorSpec;
-import com.agentengine.connectors.infra.auth.AuthDecoratorSpec;
+import com.agentengine.connectors.infra.beans.AuthDecoratorSpec;
 import com.agentengine.connectors.infra.beans.ExecutorSpec;
 import com.agentengine.util.common.JsonUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;

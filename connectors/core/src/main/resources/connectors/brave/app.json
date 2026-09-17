@@ -1,5 +1,18 @@
 {
+  "connector": {
+    "auth": {
+      "TOKEN": {
+        "type": "HEADER",
+        "headers": {
+          "x-subscription-token": "{{ auth.input.token }}"
+        }
+      }
+    }
+  },
   "connection": {
+    "authConfigs": {
+      "TOKEN": {}
+    },
     "schema": {
       "type": "object",
       "properties": {

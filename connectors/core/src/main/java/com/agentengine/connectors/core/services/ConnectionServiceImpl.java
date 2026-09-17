@@ -1,9 +1,14 @@
 package com.agentengine.connectors.core.services;
 
-import com.agentengine.connectors.api.beans.*;
+import com.agentengine.connectors.api.beans.AuthSpec;
+import com.agentengine.connectors.api.beans.Connection;
+import com.agentengine.connectors.api.beans.ConnectionSpec;
+import com.agentengine.connectors.api.beans.ConnectorMetadata;
+import com.agentengine.connectors.api.beans.ConnectorRequest;
+import com.agentengine.connectors.api.beans.ConnectorResult;
+import com.agentengine.connectors.api.beans.CredentialsConfig;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
 import com.agentengine.connectors.api.services.ConnectionService;
-import com.agentengine.connectors.api.services.ConnectorCacheService;
 import com.agentengine.connectors.api.services.ConnectorService;
 import com.agentengine.connectors.core.ConnectionRepository;
 import com.agentengine.connectors.infra.beans.Connector;
@@ -15,6 +20,7 @@ import com.agentengine.util.common.query.Filters;
 import com.agentengine.util.common.query.Page;
 import com.agentengine.util.common.query.PaginatedResult;
 import com.agentengine.util.common.query.Query;
+import com.agentengine.util.distributed.CacheTag;
 import com.agentengine.util.distributed.DistributedCacheManager;
 import com.agentengine.util.distributed.DistributedLockManager;
 import com.agentengine.util.scripts.TemplateUtils;
@@ -71,14 +77,19 @@ public class ConnectionServiceImpl implements ConnectionService {
   @Override
   public Connection saveConnection(Connection connection) {
     final ConnectionSpec spec = getConnectionSpec(connection.getAppName());
-    final String authConnector = spec == null ? null : spec.authConnector();
+    final AuthSpec authConfig =
+        CollectionUtils.getValueFromMap(spec.authConfigs(), connection.getAuthType());
+    final String authConnector =
+        authConfig == null || authConfig.fetch() == null
+            ? null
+            : authConfig.fetch().connectorName();
     if (StringUtils.isNotEmpty(authConnector)) {
-      LOG.info("Fetching credentials for connection using connector {}", spec.authConnector());
+      LOG.info("Fetching credentials for connection using connector {}", authConnector);
       try {
         final ConnectorRequest request =
             new ConnectorRequest(
                 connection.getAppName(),
-                spec.authConnector(),
+                authConnector,
                 null,
                 null,
                 Map.of(
@@ -89,15 +100,15 @@ public class ConnectionServiceImpl implements ConnectionService {
         final Map<String, Object> result =
             (Map<String, Object>) CollectionUtils.getFirst(connectorResult.result());
         connection.setCredentials(CollectionUtils.nullSafeMap(result));
-        connection.setExpiresAt(getCredentialsExpiry(result, spec, connection.getInputs()));
+        connection.setExpiresAt(
+            getCredentialsExpiry(result, authConfig.fetch(), connection.getInputs()));
       } catch (Exception e) {
         LOG.error("Failed to fetch credentials for connection", e);
       }
     }
     encryptSensitiveInputs(connection);
     final Connection saved = connectionRepository.save(connection);
-    distributedCacheManager.broadcastInvalidation(
-        ConnectorCacheService.CONNECTION_IDS_CACHE_NAME, saved.getAppName());
+    distributedCacheManager.broadcastInvalidation(CacheTag.CONNECTIONS.name(), saved.getAppName());
     return saved;
   }
 
@@ -140,7 +151,12 @@ public class ConnectionServiceImpl implements ConnectionService {
     }
 
     final ConnectionSpec spec = getConnectionSpec(connection.getAppName());
-    final String refreshConnector = spec == null ? null : spec.refreshConnector();
+    final AuthSpec authConfig =
+        CollectionUtils.getValueFromMap(spec.authConfigs(), connection.getAuthType());
+    final String refreshConnector =
+        authConfig == null || authConfig.refresh() == null
+            ? null
+            : authConfig.refresh().connectorName();
     if (StringUtils.isBlank(refreshConnector)) {
       return connection;
     }
@@ -184,7 +200,7 @@ public class ConnectionServiceImpl implements ConnectionService {
       LOG.info(
           "Refreshing credentials for connection {} using connector {}",
           connection.getId(),
-          spec.refreshConnector());
+          refreshConnector);
 
       if (connectionFromDB == null) {
         return null;
@@ -199,11 +215,7 @@ public class ConnectionServiceImpl implements ConnectionService {
             CollectionUtils.nullSafeMap(connectionFromDB.getCredentials()));
         final ConnectorRequest request =
             new ConnectorRequest(
-                connectionFromDB.getAppName(),
-                spec.refreshConnector(),
-                null,
-                connectionFromDB,
-                inputs);
+                connectionFromDB.getAppName(), refreshConnector, null, connectionFromDB, inputs);
         final ConnectorResult<?> connectorResult = connectorService.execute(request);
         //noinspection unchecked
         final Map<String, Object> result =
@@ -212,11 +224,13 @@ public class ConnectionServiceImpl implements ConnectionService {
             CollectionUtils.nullSafeMutableMap(connectionFromDB.getCredentials());
         credentials.putAll(CollectionUtils.nullSafeMap(result));
         connectionFromDB.setCredentials(credentials);
-        connectionFromDB.setExpiresAt(getCredentialsExpiry(credentials, spec, inputs));
+        connectionFromDB.setExpiresAt(
+            getCredentialsExpiry(credentials, authConfig.refresh(), inputs));
 
         encryptSensitiveInputs(connectionFromDB);
         Connection saved = connectionRepository.save(connectionFromDB);
-        distributedCacheManager.broadcastInvalidation("CONNECTIONS_CACHE", saved.getAppName());
+        distributedCacheManager.broadcastInvalidation(
+            CacheTag.CONNECTIONS.name(), saved.getAppName());
         return saved;
       } catch (Exception e) {
         LOG.error("Failed to refresh connection {}", connection.getId(), e);
@@ -225,6 +239,16 @@ public class ConnectionServiceImpl implements ConnectionService {
     } finally {
       lock.unlock();
     }
+  }
+
+  @Override
+  public ConnectorMetadata getConnectorMetadata(String appName, String connectorName) {
+    final Connector connector = connectorRegistry.get(appName, connectorName);
+    if (connector == null) {
+      return null;
+    }
+    return new ConnectorMetadata(
+        appName, connectorName, connector.description(), connector.inputSchema());
   }
 
   private void encryptSensitiveInputs(Connection connection) {
@@ -273,7 +297,7 @@ public class ConnectionServiceImpl implements ConnectionService {
 
   private static Long getCredentialsExpiry(
       final Map<String, Object> fetchedCredentials,
-      final ConnectionSpec spec,
+      final CredentialsConfig credentialsConfig,
       final Map<String, Object> connectionInputs) {
     final Map<String, Object> contextParams =
         Map.of(
@@ -282,19 +306,19 @@ public class ConnectionServiceImpl implements ConnectionService {
             ConnectorConstants.CREDENTIALS,
             fetchedCredentials);
     final Template<Object> expiryTemplate =
-        TemplateUtils.buildStringTemplate(spec.credsExpiryFieldPathTemplate());
+        TemplateUtils.buildStringTemplate(credentialsConfig.credsExpiryFieldPathTemplate());
     Long expiry = parseExpiry(expiryTemplate.getValue(contextParams));
-    final Template<String> expiryUnitTemplate =
-        TemplateUtils.buildStringTemplate(spec.expiryUnit());
-    final String expiryUnit = expiryUnitTemplate.getValue(contextParams);
+    final String expiryUnit = credentialsConfig.expiryUnit();
 
     if (expiry == null) {
       final Template<Object> defaultExpiryTemplate =
-          TemplateUtils.buildStringTemplate(spec.defaultExpiryTemplate());
+          TemplateUtils.buildStringTemplate(credentialsConfig.defaultExpiryTemplate());
       expiry = parseExpiry(defaultExpiryTemplate.getValue(contextParams));
     }
     return getAbsoluteExpiry(
-        expiry, TimeUnit.valueOf(expiryUnit.toUpperCase(Locale.ROOT)), spec.expiryType());
+        expiry,
+        TimeUnit.valueOf(expiryUnit.toUpperCase(Locale.ROOT)),
+        credentialsConfig.expiryType());
   }
 
   private static Long parseExpiry(Object value) {
@@ -327,15 +351,5 @@ public class ConnectionServiceImpl implements ConnectionService {
     } else {
       return unit.toMillis(expiry);
     }
-  }
-
-  @Override
-  public ConnectorMetadata getConnectorMetadata(String appName, String connectorName) {
-    final Connector connector = connectorRegistry.get(appName, connectorName);
-    if (connector == null) {
-      return null;
-    }
-    return new ConnectorMetadata(
-        appName, connectorName, connector.description(), connector.inputSchema());
   }
 }

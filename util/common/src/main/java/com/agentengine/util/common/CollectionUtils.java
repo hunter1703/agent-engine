@@ -70,6 +70,13 @@ public final class CollectionUtils {
     return List.copyOf(collection);
   }
 
+  public static <T> Set<T> nullSafeSet(final Collection<T> collection) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return Set.of();
+    }
+    return Set.copyOf(collection);
+  }
+
   public static <T> Set<T> nullSafeMutableSet(final Collection<T> collection) {
     if (CollectionUtils.isEmpty(collection)) {
       return new HashSet<>();

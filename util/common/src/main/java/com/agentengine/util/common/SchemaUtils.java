@@ -61,6 +61,12 @@ public final class SchemaUtils {
           out.put(key, walk(key, childSchema, childSchema.get("default"), visitor));
         }
       }
+      for (final Entry<?, ?> entry : rawMap.entrySet()) {
+        final String key = (String) entry.getKey();
+        if (!props.containsKey(key)) {
+          out.put(key, entry.getValue());
+        }
+      }
       return out;
     }
     if (data instanceof List<?> rawList) {

@@ -1,4 +1,4 @@
-package com.agentengine.connectors.infra.auth;
+package com.agentengine.connectors.infra.beans;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 public abstract class AuthDecoratorSpec {
   public enum Type {
     HEADER,
+    BASIC,
     UNKNOWN;
 
     public static Type valueOfOrUnknown(final String type) {

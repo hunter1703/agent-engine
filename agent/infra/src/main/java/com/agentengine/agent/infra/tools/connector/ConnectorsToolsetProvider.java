@@ -30,13 +30,16 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
 
   private final ConnectionService connectionService;
   private final ConnectorCacheService connectorCacheService;
+  private final ConnectorToolDeclarationCache connectorToolDeclarationCache;
 
   @Inject
   public ConnectorsToolsetProvider(
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorCacheService connectorCacheService,
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     this.connectionService = connectionService;
     this.connectorCacheService = connectorCacheService;
+    this.connectorToolDeclarationCache = connectorToolDeclarationCache;
   }
 
   @Override
@@ -48,20 +51,24 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
   public BaseToolset create(final Map<String, Object> toolConfig) {
     final Map<String, List<String>> connectorConfigs =
         CollectionUtils.getMapFromMap(toolConfig, CONNECTORS_CONFIG_KEY);
-    return new ConnectorsToolset(connectionService, connectorCacheService, connectorConfigs);
+    return new ConnectorsToolset(
+        connectionService, connectorCacheService, connectorToolDeclarationCache, connectorConfigs);
   }
 
   private static final class ConnectorsToolset implements BaseToolset {
     private final ConnectionService connectionService;
     private final ConnectorCacheService connectorCacheService;
+    private final ConnectorToolDeclarationCache connectorToolDeclarationCache;
     private final Map<String, List<String>> connectorConfigs;
 
     private ConnectorsToolset(
         ConnectionService connectionService,
         ConnectorCacheService connectorCacheService,
+        ConnectorToolDeclarationCache connectorToolDeclarationCache,
         Map<String, List<String>> connectorConfigs) {
       this.connectionService = connectionService;
       this.connectorCacheService = connectorCacheService;
+      this.connectorToolDeclarationCache = connectorToolDeclarationCache;
       this.connectorConfigs = connectorConfigs;
     }
 
@@ -78,7 +85,11 @@ public final class ConnectorsToolsetProvider implements ToolsetProvider {
                       () -> {
                         final ConnectorTool tool =
                             new ConnectorTool(
-                                appName, connectorName, connectionService, connectorCacheService);
+                                appName,
+                                connectorName,
+                                connectionService,
+                                connectorCacheService,
+                                connectorToolDeclarationCache);
                         return Flowable.just(tool);
                       }));
         }

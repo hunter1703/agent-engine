@@ -12,34 +12,33 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import java.util.Map;
 
 @Singleton
-public class HeaderAuthDecoratorBuilder
-    implements AuthDecoratorBuilder<HeaderAuthDecoratorSpec, HttpRequest> {
+public class BasicAuthDecoratorBuilder
+    implements AuthDecoratorBuilder<BasicAuthDecoratorSpec, HttpRequest> {
 
   private final Instance<ConnectionService> connectionService;
-  private final Cache<HeaderAuthDecoratorSpec, AuthDecorator<HttpRequest>> decoratorCache =
+  private final Cache<BasicAuthDecoratorSpec, AuthDecorator<HttpRequest>> decoratorCache =
       new Cache<>(CacheBuilder.newBuilder(), this::buildDecorator);
 
   @Inject
-  public HeaderAuthDecoratorBuilder(Instance<ConnectionService> connectionService) {
+  public BasicAuthDecoratorBuilder(Instance<ConnectionService> connectionService) {
     this.connectionService = connectionService;
   }
 
   @Override
-  public AuthDecorator<HttpRequest> build(HeaderAuthDecoratorSpec spec) {
+  public AuthDecorator<HttpRequest> build(BasicAuthDecoratorSpec spec) {
     return decoratorCache.get(spec);
   }
 
   @Override
   public AuthDecoratorSpec.Type getType() {
-    return AuthDecoratorSpec.Type.HEADER;
+    return AuthDecoratorSpec.Type.BASIC;
   }
 
-  private AuthDecorator<HttpRequest> buildDecorator(HeaderAuthDecoratorSpec spec) {
-    final Template<Map<String, String>> headerTemplate =
-        TemplateUtils.buildTemplate(spec.getHeaders());
-    return new HeaderAuthDecorator(headerTemplate, connectionService.get());
+  private AuthDecorator<HttpRequest> buildDecorator(BasicAuthDecoratorSpec spec) {
+    final Template<String> usernameTemplate = TemplateUtils.buildTemplate(spec.getUsername());
+    final Template<String> passwordTemplate = TemplateUtils.buildTemplate(spec.getPassword());
+    return new BasicAuthDecorator(usernameTemplate, passwordTemplate, connectionService.get());
   }
 }

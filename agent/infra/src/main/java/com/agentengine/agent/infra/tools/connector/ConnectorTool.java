@@ -14,7 +14,6 @@ import com.agentengine.util.common.ExceptionUtils;
 import com.agentengine.util.common.JsonUtils;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Schema;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,39 +22,40 @@ public class ConnectorTool extends Tool {
 
   private final ConnectorMetadata connectorMetadata;
   private final ConnectionService connectionService;
-  private final ConnectorCacheService connectorCacheService;
+  private final ConnectorToolDeclarationCache connectorToolDeclarationCache;
 
   public ConnectorTool(
       final String appName,
       final String connectorName,
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorCacheService connectorCacheService,
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     this(
         connectorCacheService.getConnectorMetadata(appName, connectorName),
         connectionService,
-        connectorCacheService);
+        connectorToolDeclarationCache);
   }
 
   public ConnectorTool(
       final ConnectorMetadata connectorMetadata,
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     this(
         descriptorFor(connectorMetadata),
         connectorMetadata,
         connectionService,
-        connectorCacheService);
+        connectorToolDeclarationCache);
   }
 
   protected ConnectorTool(
       final ToolDescriptor toolDescriptor,
       final ConnectorMetadata connectorMetadata,
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     super(toolDescriptor, Schema.fromJson(JsonUtils.toJson(connectorMetadata.inputSchema())));
     this.connectorMetadata = connectorMetadata;
     this.connectionService = connectionService;
-    this.connectorCacheService = connectorCacheService;
+    this.connectorToolDeclarationCache = connectorToolDeclarationCache;
   }
 
   protected Optional<FunctionDeclaration> baseDeclaration() {
@@ -64,39 +64,8 @@ public class ConnectorTool extends Tool {
 
   @Override
   public Optional<FunctionDeclaration> declaration() {
-    Optional<FunctionDeclaration> declaration = baseDeclaration();
-    if (declaration.isEmpty()) {
-      return declaration;
-    }
-    final FunctionDeclaration defaultDeclaration = declaration.get();
-
-    final List<String> connectionIds =
-        connectorCacheService.getConnectionsForApp(connectorMetadata.appName());
-
-    final Map<String, Schema> properties = new HashMap<>();
-    properties.put("input", defaultDeclaration.parameters().orElse(null));
-
-    final List<String> requiredFields = new java.util.ArrayList<>();
-    requiredFields.add("input");
-
-    if (CollectionUtils.isNotEmpty(connectionIds)) {
-      final Schema.Builder connectionIdSchemaBuilder =
-          Schema.builder().type("STRING").description("The connection ID to use.");
-      connectionIdSchemaBuilder.enum_(connectionIds);
-      properties.put("connectionId", connectionIdSchemaBuilder.build());
-    }
-
-    final Schema schema =
-        Schema.builder().type("OBJECT").properties(properties).required(requiredFields).build();
-
-    FunctionDeclaration newDeclaration =
-        FunctionDeclaration.builder()
-            .name(defaultDeclaration.name().orElse(null))
-            .description(defaultDeclaration.description().orElse(null))
-            .parameters(schema)
-            .build();
-
-    return Optional.of(newDeclaration);
+    return connectorToolDeclarationCache.get(
+        connectorMetadata.appName(), connectorMetadata.connectorName());
   }
 
   public ToolOutput<Map<String, Object>> execute(final Map<String, Object> args) {

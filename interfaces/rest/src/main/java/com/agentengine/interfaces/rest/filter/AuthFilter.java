@@ -2,6 +2,7 @@ package com.agentengine.interfaces.rest.filter;
 
 import com.agentengine.util.common.StringUtils;
 import com.agentengine.util.common.context.Context;
+import com.agentengine.util.common.context.UserContext;
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
@@ -19,6 +20,8 @@ import java.util.UUID;
 public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   private static final String REQUEST_ID_HEADER = "X-Request-Id";
+  private static final String DEFAULT_CUSTOMER_ID = "default-customer";
+  private static final String DEFAULT_USER_ID = "default-user";
 
   private final RequestContextProvider requestContextProvider;
 
@@ -32,7 +35,8 @@ public class AuthFilter implements ContainerRequestFilter, ContainerResponseFilt
     final String headerRequestId = requestContext.getHeaderString(REQUEST_ID_HEADER);
     final String requestId =
         StringUtils.isNotBlank(headerRequestId) ? headerRequestId : UUID.randomUUID().toString();
-    requestContextProvider.set(new Context(requestId));
+    requestContextProvider.set(
+        new Context(requestId, new UserContext(DEFAULT_CUSTOMER_ID, DEFAULT_USER_ID)));
   }
 
   @Override

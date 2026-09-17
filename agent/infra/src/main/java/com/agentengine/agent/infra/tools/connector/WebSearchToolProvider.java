@@ -14,13 +14,16 @@ public class WebSearchToolProvider implements ToolProvider {
 
   private final ConnectionService connectionService;
   private final ConnectorCacheService connectorCacheService;
+  private final ConnectorToolDeclarationCache connectorToolDeclarationCache;
 
   @Inject
   public WebSearchToolProvider(
       final ConnectionService connectionService,
-      final ConnectorCacheService connectorCacheService) {
+      final ConnectorCacheService connectorCacheService,
+      final ConnectorToolDeclarationCache connectorToolDeclarationCache) {
     this.connectionService = connectionService;
     this.connectorCacheService = connectorCacheService;
+    this.connectorToolDeclarationCache = connectorToolDeclarationCache;
   }
 
   @Override
@@ -30,6 +33,7 @@ public class WebSearchToolProvider implements ToolProvider {
 
   @Override
   public BaseTool create(final Map<String, Object> toolConfig) {
-    return new WebSearchTool(connectionService, connectorCacheService);
+    return new WebSearchTool(
+        connectionService, connectorCacheService, connectorToolDeclarationCache);
   }
 }

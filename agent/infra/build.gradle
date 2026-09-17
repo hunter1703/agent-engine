@@ -10,6 +10,7 @@ dependencies {
     implementation project(':knowledge:api')
     implementation project(':connectors:api')
     implementation project(':util:common')
+    implementation project(':util:distributed')
     implementation project(':util:scripts')
     implementation project(':util:agents')
     implementation project(':util:ms:server')

@@ -1,14 +1,25 @@
 {
   "connector": {
     "auth": {
-      "type": "HEADER",
-      "headers": {
-        "Authorization": "Bearer {{ auth.credentials.access_token }}"
+      "OAUTH_PASSWORD_GRANT": {
+        "type": "HEADER",
+        "headers": {
+          "Authorization": "Bearer {{ auth.credentials.access_token }}"
+        }
       }
     }
   },
   "connection": {
-    "authConnector": "reddit_auth",
+    "authConfigs": {
+      "OAUTH_PASSWORD_GRANT": {
+        "fetch": {
+          "connectorName": "reddit_auth"
+        },
+        "refresh": {
+          "connectorName": "reddit_auth"
+        }
+      }
+    },
     "schema": {
       "type": "object",
       "properties": {
