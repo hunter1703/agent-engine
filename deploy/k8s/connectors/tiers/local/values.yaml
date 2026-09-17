@@ -17,6 +17,7 @@ app-base:
       memory: "350Mi"
   config:
     applicationProperties:
+      # quarkus.log.category."org.jgroups".level: DEBUG
       quarkus.otel.service.name: agent-engine-connectors
       # Disabled: no OTel collector deployed. Remove and set quarkus.otel.exporter.otlp.endpoint when one is available.
       quarkus.otel.sdk.disabled: "true"

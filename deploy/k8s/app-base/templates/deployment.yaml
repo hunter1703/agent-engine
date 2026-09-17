@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "agent-engine.app-base.selectorLabels" . | nindent 8 }}
+        {{- include "agent-engine.app-base.podLabels" . | nindent 8 }}
         {{- include "agent-engine.app-base.pekkoClusterLabel" . | nindent 8 }}
       annotations:
         checksum/application-properties: {{ (.Values.config | default dict).applicationProperties | toYaml | sha256sum }}
@@ -68,6 +68,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: ENVIRONMENT
               value: {{ (.Values.global | default dict).env | quote }}
             - name: TIER

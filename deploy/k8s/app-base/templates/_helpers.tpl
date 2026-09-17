@@ -7,6 +7,7 @@
 {{- end -}}
 
 {{- define "agent-engine.app-base.labels" -}}
+app: agent-engine
 app.kubernetes.io/name: {{ .Values.service.name }}
 app.kubernetes.io/instance: {{ include "agent-engine.app-base.instance" . }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
@@ -18,6 +19,16 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
 {{- define "agent-engine.app-base.selectorLabels" -}}
 app.kubernetes.io/name: {{ .Values.service.name }}
 app.kubernetes.io/instance: {{ include "agent-engine.app-base.instance" . }}
+{{- end -}}
+
+{{/*
+Pod template labels only, never spec.selector (which Kubernetes treats as immutable once a
+Deployment exists - adding to it breaks every future upgrade). A pod's own labels are free to
+carry more than the selector matches on, so app: agent-engine lives here instead.
+*/}}
+{{- define "agent-engine.app-base.podLabels" -}}
+{{ include "agent-engine.app-base.selectorLabels" . }}
+app: agent-engine
 {{- end -}}
 
 {{/*
@@ -80,32 +91,29 @@ startupProbe:
 
 {{/*
 Pekko clustering is a single switch: setting pekko.cluster turns on the runtime property, the
-pod-discovery RBAC that cluster bootstrap needs, the service account token it reads the API with,
-the remoting and management ports, and the pod label peers use to find each other. Keeping these
-together stops a service from being half configured — enabled but unable to discover peers, or
-granted pod read access it never uses. Every other template gates on this, not on pekko.cluster
-directly, so the enablement check reads the same way everywhere.
+remoting and management ports, and the pod label peers use to find each other. Every other
+Pekko-specific template gates on this, not on pekko.cluster directly, so the enablement check
+reads the same way everywhere.
 */}}
 {{- define "agent-engine.app-base.pekkoEnabled" -}}
 {{- if .Values.pekko.cluster }}true{{ end -}}
 {{- end -}}
 
+{{/*
+Every deployment gets pod get/watch/list RBAC and its service account token.
+*/}}
 {{- define "agent-engine.app-base.rbacRules" -}}
 {{- $rules := .Values.rbac.rules | default list -}}
-{{- if include "agent-engine.app-base.pekkoEnabled" . -}}
 {{- $discovery := dict "apiGroups" (list "") "resources" (list "pods") "verbs" (list "get" "watch" "list") -}}
 {{- $rules = concat $rules (list $discovery) -}}
-{{- end -}}
 {{- toYaml $rules -}}
 {{- end -}}
 
 {{- define "agent-engine.app-base.needsRbac" -}}
-{{- if or .Values.rbac.rules (include "agent-engine.app-base.pekkoEnabled" .) }}true{{ end -}}
-{{- end -}}
+true{{- end -}}
 
 {{- define "agent-engine.app-base.automountToken" -}}
-{{- if or .Values.serviceAccount.automountToken (include "agent-engine.app-base.pekkoEnabled" .) }}true{{ else }}false{{ end -}}
-{{- end -}}
+true{{- end -}}
 
 {{/*
 Which Pekko cluster this deployment joins. Distinct from service.name — that identifies the

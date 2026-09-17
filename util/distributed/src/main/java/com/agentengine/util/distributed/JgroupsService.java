@@ -52,9 +52,12 @@ public class JgroupsService implements Receiver {
               new KUBE_PING()
                   .setValue(
                       "namespace", System.getenv().getOrDefault("KUBERNETES_NAMESPACE", "default"))
+                  .setValue("labels", "app=agent-engine")
+                  .setValue("masterHost", System.getenv("KUBERNETES_SERVICE_HOST"))
                   .setValue(
-                      "labels",
-                      System.getenv().getOrDefault("JGROUPS_CLUSTER_LABEL", "app=agent-engine")),
+                      "masterPort",
+                      Integer.parseInt(
+                          System.getenv().getOrDefault("KUBERNETES_SERVICE_PORT", "443"))),
               new FD_ALL3().setValue("timeout", 8000L).setValue("interval", 2000L),
               new org.jgroups.protocols.VERIFY_SUSPECT2().setValue("timeout", 1500L),
               new NAKACK2().setValue("xmit_interval", 200L),
