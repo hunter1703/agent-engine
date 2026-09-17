@@ -1,5 +1,6 @@
 package com.agentengine.connectors.infra.builders;
 
+import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.agentengine.connectors.infra.beans.ExecutorSpec;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
@@ -23,7 +24,8 @@ public class ConnectorExecutorFactory {
   }
 
   @SuppressWarnings("unchecked")
-  public <I, O> ConnectorExecutor<I, O> build(final ConnectorSpec spec) {
+  public <I, O> ConnectorExecutor<I, O> build(
+      final Connection connection, final ConnectorSpec spec) {
     final ExecutorSpec executorSpec = spec.getExecutor();
     final ConnectorExecutorBuilder<ExecutorSpec, I, O> builder =
         (ConnectorExecutorBuilder<ExecutorSpec, I, O>)
@@ -31,6 +33,6 @@ public class ConnectorExecutorFactory {
     if (builder == null) {
       throw new IllegalStateException("No ConnectorExecutorBuilder: " + executorSpec.getType());
     }
-    return builder.build(executorSpec, spec);
+    return builder.build(new BuildContext<>(executorSpec, spec, connection));
   }
 }

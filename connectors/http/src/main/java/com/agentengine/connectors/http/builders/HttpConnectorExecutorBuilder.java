@@ -9,11 +9,14 @@ import com.agentengine.connectors.http.beans.HttpRequest;
 import com.agentengine.connectors.http.executor.HttpConnectorExecutor;
 import com.agentengine.connectors.infra.ClientProvider;
 import com.agentengine.connectors.infra.auth.AuthDecorator;
+import com.agentengine.connectors.infra.beans.AuthDecoratorSpec;
+import com.agentengine.connectors.infra.beans.ConnectorSpec;
 import com.agentengine.connectors.infra.beans.ExecutorSpec;
 import com.agentengine.connectors.infra.builders.AuthDecoratorFactory;
 import com.agentengine.connectors.infra.builders.BuildContext;
 import com.agentengine.connectors.infra.builders.ConnectorExecutorBuilder;
 import com.agentengine.connectors.infra.executor.ConnectorExecutor;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.StringUtils;
 import jakarta.inject.Singleton;
 import java.util.Map;
@@ -37,8 +40,11 @@ public class HttpConnectorExecutorBuilder
       BuildContext<HttpExecutorSpec> buildContext) {
     final Connection connection = buildContext.connection();
     final String authType = connection == null ? null : connection.getAuthType();
-    AuthDecorator<HttpRequest> decorator =
-        StringUtils.isNotBlank(authType) ? authDecoratorFactory.build(authType) : null;
+    final ConnectorSpec connectorSpec = buildContext.connectorSpec();
+    final AuthDecoratorSpec authDecoratorSpec =
+        CollectionUtils.getValueFromMap(connectorSpec.getAuth(), authType);
+    final AuthDecorator<HttpRequest> decorator =
+        StringUtils.isNotBlank(authType) ? authDecoratorFactory.build(authDecoratorSpec) : null;
     return new HttpConnectorExecutor(
         new TemplatedHttpExecutorSpec(buildContext.spec()), clientProvider, decorator);
   }

@@ -42,7 +42,7 @@ public final class ConnectorJacksonModuleProvider implements CodecModuleProvider
           providerList.stream()
               .map(ConnectorCodecJacksonTypeProvider::getTypes)
               .flatMap(List::stream)
-              .toArray(_ -> new NamedType[0]);
+              .toArray(NamedType[]::new);
       context.registerSubtypes(namedTypes);
     }
   }

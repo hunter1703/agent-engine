@@ -28,7 +28,7 @@ public class ConnectorServiceImpl implements ConnectorService {
   public <T> ConnectorResult<T> execute(ConnectorRequest request) throws ConnectorException {
     final Connector connector = getConnector(request.appName(), request.connectorName());
     final ConnectorExecutor<Map<String, Object>, T> executor =
-        executorFactory.build(connector.spec());
+        executorFactory.build(request.connection(), connector.spec());
     return executor.execute(request.connection(), request.input());
   }
 
