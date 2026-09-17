@@ -28,12 +28,12 @@ public class HttpConnectorExecutor
 
   private final TemplatedHttpExecutorSpec templatedSpec;
   private final ClientProvider<HttpClientOptions, OkHttpClient> clientProvider;
-  private final AuthDecorator<HttpRequest> authDecorator;
+  private final AuthDecorator<Object, HttpRequest> authDecorator;
 
   public HttpConnectorExecutor(
       TemplatedHttpExecutorSpec templatedSpec,
       ClientProvider<HttpClientOptions, OkHttpClient> clientProvider,
-      AuthDecorator<HttpRequest> authDecorator) {
+      AuthDecorator<Object, HttpRequest> authDecorator) {
     this.templatedSpec = templatedSpec;
     this.clientProvider = clientProvider;
     this.authDecorator = authDecorator;
@@ -54,7 +54,7 @@ public class HttpConnectorExecutor
             method,
             (Map<String, Object>) evaluated.getBody(),
             (Map<String, String>) evaluated.getHeaders());
-    authDecorator.decorate(connection, request);
+    authDecorator.decorate(connection, input, request);
 
     final Map<String, String> headers = request.getHeaders();
     final RequestBody requestBody =

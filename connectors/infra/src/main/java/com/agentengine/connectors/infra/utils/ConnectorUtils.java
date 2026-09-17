@@ -2,7 +2,6 @@ package com.agentengine.connectors.infra.utils;
 
 import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.api.constants.ConnectorConstants;
-import com.agentengine.connectors.infra.beans.Request;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,9 +13,9 @@ public final class ConnectorUtils {
   private ConnectorUtils() {}
 
   public static Map<String, Object> buildTemplateContextForAuthDecoration(
-      final Connection connection, final Request request) {
+      final Connection connection, final Object inputs) {
     final Map<String, Object> context = new HashMap<>();
-    context.put(ConnectorConstants.INPUT, request.getParameters());
+    context.put(ConnectorConstants.INPUT, inputs);
 
     final Map<String, Object> authMap = new HashMap<>();
     if (connection != null) {

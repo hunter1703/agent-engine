@@ -9,7 +9,7 @@ import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.scripts.templated.Template;
 import java.util.Map;
 
-public class HeaderAuthDecorator implements AuthDecorator<HttpRequest> {
+public class HeaderAuthDecorator implements AuthDecorator<Object, HttpRequest> {
   private final Template<Map<String, String>> headerTemplate;
   private final ConnectionRefresher connectionRefresher;
 
@@ -20,10 +20,10 @@ public class HeaderAuthDecorator implements AuthDecorator<HttpRequest> {
   }
 
   @Override
-  public void decorate(Connection connection, HttpRequest request) {
+  public void decorate(Connection connection, Object input, HttpRequest request) {
     connection = connectionRefresher.refreshIfNeeded(connection);
     final Map<String, Object> context =
-        ConnectorUtils.buildTemplateContextForAuthDecoration(connection, request);
+        ConnectorUtils.buildTemplateContextForAuthDecoration(connection, input);
     final Map<String, String> authHeaders =
         CollectionUtils.nullSafeMap(headerTemplate.getValue(context));
     request.addHeaders(authHeaders);

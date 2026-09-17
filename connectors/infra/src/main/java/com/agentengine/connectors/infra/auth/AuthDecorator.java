@@ -3,11 +3,11 @@ package com.agentengine.connectors.infra.auth;
 import com.agentengine.connectors.api.beans.Connection;
 import com.agentengine.connectors.infra.beans.Request;
 
-public interface AuthDecorator<R extends Request> {
+public interface AuthDecorator<I, R extends Request> {
 
-  void decorate(Connection connection, R request);
+  void decorate(Connection connection, I input, R request);
 
-  static <R extends Request> AuthDecorator<R> noop() {
-    return (_, _) -> {};
+  static <R extends Request, I> AuthDecorator<I, R> noop() {
+    return (_, _, _) -> {};
   }
 }

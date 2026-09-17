@@ -11,11 +11,11 @@ import java.util.concurrent.ConcurrentMap;
 
 @Singleton
 public class AuthDecoratorFactory {
-  private final ConcurrentMap<AuthDecoratorSpec.Type, AuthDecoratorBuilder<?, ?>> typeVsBuilder =
+  private final ConcurrentMap<AuthDecoratorSpec.Type, AuthDecoratorBuilder<?, ?, ?>> typeVsBuilder =
       new ConcurrentHashMap<>();
 
-  public AuthDecoratorFactory(@Any Instance<AuthDecoratorBuilder<?, ?>> builders) {
-    for (AuthDecoratorBuilder<?, ?> builder : builders) {
+  public AuthDecoratorFactory(@Any Instance<AuthDecoratorBuilder<?, ?, ?>> builders) {
+    for (AuthDecoratorBuilder<?, ?, ?> builder : builders) {
       if (typeVsBuilder.putIfAbsent(builder.getType(), builder) != null) {
         throw new IllegalStateException("Duplicate AuthDecoratorBuilder: " + builder.getType());
       }
@@ -23,12 +23,12 @@ public class AuthDecoratorFactory {
   }
 
   @SuppressWarnings("unchecked")
-  public <R extends Request> AuthDecorator<R> build(AuthDecoratorSpec spec) {
+  public <I, R extends Request> AuthDecorator<I, R> build(AuthDecoratorSpec spec) {
     if (spec == null) {
       return AuthDecorator.noop();
     }
-    final AuthDecoratorBuilder<AuthDecoratorSpec, R> builder =
-        (AuthDecoratorBuilder<AuthDecoratorSpec, R>)
+    final AuthDecoratorBuilder<AuthDecoratorSpec, I, R> builder =
+        (AuthDecoratorBuilder<AuthDecoratorSpec, I, R>)
             typeVsBuilder.get(AuthDecoratorSpec.Type.valueOfOrUnknown(spec.getType()));
     if (builder == null) {
       throw new IllegalStateException("No AuthDecoratorBuilder: " + spec.getType());

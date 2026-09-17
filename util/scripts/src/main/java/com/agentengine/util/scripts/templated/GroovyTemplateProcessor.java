@@ -9,6 +9,7 @@ import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -73,7 +74,9 @@ public class GroovyTemplateProcessor implements AutoCloseable {
             BigInteger.class,
             Boolean.class,
             Map.class,
-            List.class));
+            List.class,
+            Base64.class,
+            Base64.Encoder.class));
     return customizer;
   }
 

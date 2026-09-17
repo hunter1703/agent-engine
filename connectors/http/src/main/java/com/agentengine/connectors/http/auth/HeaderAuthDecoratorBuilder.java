@@ -16,10 +16,10 @@ import java.util.Map;
 
 @Singleton
 public class HeaderAuthDecoratorBuilder
-    implements AuthDecoratorBuilder<HeaderAuthDecoratorSpec, HttpRequest> {
+    implements AuthDecoratorBuilder<HeaderAuthDecoratorSpec, Object, HttpRequest> {
 
   private final Instance<ConnectionService> connectionService;
-  private final Cache<HeaderAuthDecoratorSpec, AuthDecorator<HttpRequest>> decoratorCache =
+  private final Cache<HeaderAuthDecoratorSpec, AuthDecorator<Object, HttpRequest>> decoratorCache =
       new Cache<>(CacheBuilder.newBuilder(), this::buildDecorator);
 
   @Inject
@@ -28,7 +28,7 @@ public class HeaderAuthDecoratorBuilder
   }
 
   @Override
-  public AuthDecorator<HttpRequest> build(HeaderAuthDecoratorSpec spec) {
+  public AuthDecorator<Object, HttpRequest> build(HeaderAuthDecoratorSpec spec) {
     return decoratorCache.get(spec);
   }
 
@@ -37,7 +37,7 @@ public class HeaderAuthDecoratorBuilder
     return AuthDecoratorSpec.Type.HEADER;
   }
 
-  private AuthDecorator<HttpRequest> buildDecorator(HeaderAuthDecoratorSpec spec) {
+  private AuthDecorator<Object, HttpRequest> buildDecorator(HeaderAuthDecoratorSpec spec) {
     final Template<Map<String, String>> headerTemplate =
         TemplateUtils.buildTemplate(spec.getHeaders());
     return new HeaderAuthDecorator(headerTemplate, connectionService.get());

@@ -15,10 +15,10 @@ import jakarta.inject.Singleton;
 
 @Singleton
 public class BasicAuthDecoratorBuilder
-    implements AuthDecoratorBuilder<BasicAuthDecoratorSpec, HttpRequest> {
+    implements AuthDecoratorBuilder<BasicAuthDecoratorSpec, Object, HttpRequest> {
 
   private final Instance<ConnectionService> connectionService;
-  private final Cache<BasicAuthDecoratorSpec, AuthDecorator<HttpRequest>> decoratorCache =
+  private final Cache<BasicAuthDecoratorSpec, AuthDecorator<Object, HttpRequest>> decoratorCache =
       new Cache<>(CacheBuilder.newBuilder(), this::buildDecorator);
 
   @Inject
@@ -27,7 +27,7 @@ public class BasicAuthDecoratorBuilder
   }
 
   @Override
-  public AuthDecorator<HttpRequest> build(BasicAuthDecoratorSpec spec) {
+  public AuthDecorator<Object, HttpRequest> build(BasicAuthDecoratorSpec spec) {
     return decoratorCache.get(spec);
   }
 
@@ -36,7 +36,7 @@ public class BasicAuthDecoratorBuilder
     return AuthDecoratorSpec.Type.BASIC;
   }
 
-  private AuthDecorator<HttpRequest> buildDecorator(BasicAuthDecoratorSpec spec) {
+  private AuthDecorator<Object, HttpRequest> buildDecorator(BasicAuthDecoratorSpec spec) {
     final Template<String> usernameTemplate = TemplateUtils.buildTemplate(spec.getUsername());
     final Template<String> passwordTemplate = TemplateUtils.buildTemplate(spec.getPassword());
     return new BasicAuthDecorator(usernameTemplate, passwordTemplate, connectionService.get());

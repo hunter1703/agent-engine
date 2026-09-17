@@ -9,7 +9,7 @@ import com.agentengine.util.scripts.templated.Template;
 import java.util.Base64;
 import java.util.Map;
 
-public class BasicAuthDecorator implements AuthDecorator<HttpRequest> {
+public class BasicAuthDecorator implements AuthDecorator<Object, HttpRequest> {
 
   private final Template<String> usernameTemplate;
   private final Template<String> passwordTemplate;
@@ -25,10 +25,10 @@ public class BasicAuthDecorator implements AuthDecorator<HttpRequest> {
   }
 
   @Override
-  public void decorate(Connection connection, HttpRequest request) {
+  public void decorate(Connection connection, Object input, HttpRequest request) {
     connection = connectionRefresher.refreshIfNeeded(connection);
     final Map<String, Object> context =
-        ConnectorUtils.buildTemplateContextForAuthDecoration(connection, request);
+        ConnectorUtils.buildTemplateContextForAuthDecoration(connection, input);
 
     final String username = usernameTemplate == null ? "" : usernameTemplate.getValue(context);
     final String password = passwordTemplate == null ? "" : passwordTemplate.getValue(context);
