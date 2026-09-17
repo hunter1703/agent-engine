@@ -8,6 +8,7 @@
     "region": "ap-mumbai-1",
     "accessKeyId": "${OCI_OBJECTSTORAGE_ACCESS_KEY}",
     "secretAccessKey": "${OCI_OBJECTSTORAGE_SECRET_KEY}",
-    "defaultBucket": "agentengine"
+    "defaultBucket": "agentengine",
+    "chunkedEncodingEnabled": false
   }
 ]

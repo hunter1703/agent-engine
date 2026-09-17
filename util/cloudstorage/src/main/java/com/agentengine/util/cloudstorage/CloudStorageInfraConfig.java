@@ -15,6 +15,11 @@ public class CloudStorageInfraConfig extends InfraConfig {
   private String accessKeyId = "test";
   @Secure private String secretAccessKey = "test";
   private String defaultBucket = "agent-assets";
+  private boolean pathStyleAccess = true;
+  // AWS SDK's own default. Some S3-compatible providers (e.g. OCI Object Storage) return
+  // "501 AWS chunked encoding not supported" for the SDK's default streaming-signed uploads
+  // and need this set to false.
+  private boolean chunkedEncodingEnabled = true;
 
   public String getEndpointUrl() {
     return endpointUrl;
@@ -54,5 +59,21 @@ public class CloudStorageInfraConfig extends InfraConfig {
 
   public void setDefaultBucket(final String defaultBucket) {
     this.defaultBucket = defaultBucket;
+  }
+
+  public boolean isPathStyleAccess() {
+    return pathStyleAccess;
+  }
+
+  public void setPathStyleAccess(final boolean pathStyleAccess) {
+    this.pathStyleAccess = pathStyleAccess;
+  }
+
+  public boolean isChunkedEncodingEnabled() {
+    return chunkedEncodingEnabled;
+  }
+
+  public void setChunkedEncodingEnabled(final boolean chunkedEncodingEnabled) {
+    this.chunkedEncodingEnabled = chunkedEncodingEnabled;
   }
 }

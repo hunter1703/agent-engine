@@ -85,7 +85,12 @@ public class S3CompatibleCloudStorageService implements CloudStorageService {
                   .endpointOverride(endpoint)
                   .region(region)
                   .credentialsProvider(credentials)
-                  .forcePathStyle(true)
+                  .serviceConfiguration(
+                      S3Configuration.builder()
+                          .pathStyleAccessEnabled(cloudStorageInfraConfig.isPathStyleAccess())
+                          .chunkedEncodingEnabled(
+                              cloudStorageInfraConfig.isChunkedEncodingEnabled())
+                          .build())
                   .build();
             });
 
@@ -105,7 +110,9 @@ public class S3CompatibleCloudStorageService implements CloudStorageService {
                   .region(region)
                   .credentialsProvider(credentials)
                   .serviceConfiguration(
-                      S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                      S3Configuration.builder()
+                          .pathStyleAccessEnabled(cloudStorageInfraConfig.isPathStyleAccess())
+                          .build())
                   .build();
             });
     this.defaultBucket =
