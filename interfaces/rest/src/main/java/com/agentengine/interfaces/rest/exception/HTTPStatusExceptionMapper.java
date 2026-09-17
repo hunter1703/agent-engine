@@ -12,6 +12,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 
 @Provider
 public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
@@ -61,6 +62,14 @@ public class HTTPStatusExceptionMapper implements ExceptionMapper<Throwable> {
     if (exception instanceof IllegalStateException illegalStateException) {
       return Response.status(Response.Status.CONFLICT)
           .entity(new ErrorResponse("409", illegalStateException.getMessage()))
+          .build();
+    }
+
+    if (exception instanceof AwsServiceException awsEx) {
+      final int status = awsEx.statusCode();
+      LOG.error("AWS service call failed with status {}", status, awsEx);
+      return Response.status(status)
+          .entity(new ErrorResponse(String.valueOf(status), awsEx.awsErrorDetails().errorMessage()))
           .build();
     }
 

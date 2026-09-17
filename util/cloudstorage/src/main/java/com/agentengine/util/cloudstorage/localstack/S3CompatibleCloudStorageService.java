@@ -135,15 +135,24 @@ public class S3CompatibleCloudStorageService implements CloudStorageService {
         contentLength >= 0
             ? RequestBody.fromInputStream(inputStream, contentLength)
             : RequestBody.fromContentProvider(() -> inputStream, mediaType);
-    s3.get()
-        .putObject(
-            PutObjectRequest.builder()
-                .bucket(defaultBucket.get())
-                .key(key)
-                .contentType(mediaType)
-                .metadata(CollectionUtils.nullSafeMap(metadata))
-                .build(),
-            body);
+    try {
+      s3.get()
+          .putObject(
+              PutObjectRequest.builder()
+                  .bucket(defaultBucket.get())
+                  .key(key)
+                  .contentType(mediaType)
+                  .metadata(CollectionUtils.nullSafeMap(metadata))
+                  .build(),
+              body);
+    } catch (final Exception ex) {
+      log.error(
+          "putObject failed: exceptionClass={} message={}",
+          ex.getClass().getName(),
+          ex.getMessage(),
+          ex);
+      throw ex;
+    }
     return new FileDetails(
         name,
         defaultBucket.get() + "/" + key,
