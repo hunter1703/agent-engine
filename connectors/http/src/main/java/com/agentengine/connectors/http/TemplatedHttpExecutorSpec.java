@@ -1,7 +1,9 @@
 package com.agentengine.connectors.http;
 
+import com.agentengine.connectors.api.constants.ConnectorConstants;
 import com.agentengine.connectors.http.beans.HttpExecutorSpec;
 import com.agentengine.connectors.infra.TemplatedExecutorSpec;
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.scripts.TemplateUtils;
 import com.agentengine.util.scripts.templated.Template;
 import java.util.Map;
@@ -27,13 +29,15 @@ public class TemplatedHttpExecutorSpec
 
   @Override
   public HttpExecutorSpec evaluate(Map<String, Object> params) {
+    final Map<String, Object> context =
+        Map.of(ConnectorConstants.INPUT, CollectionUtils.nullSafeMap(params));
     HttpExecutorSpec executorSpec = new HttpExecutorSpec();
-    executorSpec.setBaseUrl(baseUrl.getValue(params));
-    executorSpec.setPath(path.getValue(params));
-    executorSpec.setMethod(method.getValue(params));
-    executorSpec.setBody(body == null ? Map.of() : body.getValue(params));
-    executorSpec.setQueryParams(queryParams == null ? Map.of() : queryParams.getValue(params));
-    executorSpec.setHeaders(headers == null ? Map.of() : headers.getValue(params));
+    executorSpec.setBaseUrl(baseUrl.getValue(context));
+    executorSpec.setPath(path.getValue(context));
+    executorSpec.setMethod(method.getValue(context));
+    executorSpec.setBody(body == null ? Map.of() : body.getValue(context));
+    executorSpec.setQueryParams(queryParams == null ? Map.of() : queryParams.getValue(context));
+    executorSpec.setHeaders(headers == null ? Map.of() : headers.getValue(context));
     return executorSpec;
   }
 }

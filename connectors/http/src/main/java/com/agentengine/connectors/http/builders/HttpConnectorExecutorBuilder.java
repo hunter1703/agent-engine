@@ -44,7 +44,9 @@ public class HttpConnectorExecutorBuilder
     final AuthDecoratorSpec authDecoratorSpec =
         CollectionUtils.getValueFromMap(connectorSpec.getAuth(), authType);
     final AuthDecorator<Object, HttpRequest> decorator =
-        StringUtils.isNotBlank(authType) ? authDecoratorFactory.build(authDecoratorSpec) : null;
+        StringUtils.isNotBlank(authType)
+            ? authDecoratorFactory.build(authDecoratorSpec)
+            : AuthDecorator.noop();
     return new HttpConnectorExecutor(
         new TemplatedHttpExecutorSpec(buildContext.spec()), clientProvider, decorator);
   }

@@ -1,12 +1,12 @@
 package com.agentengine.util.scripts.templated;
 
+import com.agentengine.util.common.CollectionUtils;
 import com.agentengine.util.common.EnvUtils;
 import com.agentengine.util.scripts.exception.TemplateException;
 import groovy.lang.Binding;
 import groovy.lang.Script;
 import java.lang.reflect.Constructor;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -52,8 +52,7 @@ public class GroovyTemplate<T> implements Template<T> {
 
   @SuppressWarnings("unchecked")
   private T evaluate(Map<String, Object> parameters) throws Exception {
-    final Map<String, Object> bindingVariables = new HashMap<>();
-    bindingVariables.put("input", parameters);
+    final Map<String, Object> bindingVariables = CollectionUtils.nullSafeMutableMap(parameters);
     bindingVariables.put("env", EnvUtils.getAll());
 
     final Script script = constructor.newInstance();
