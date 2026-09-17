@@ -1,6 +1,7 @@
 {
   "name": "reddit_auth",
   "description": "Fetch Reddit API token",
+  "authResource": true,
   "inputSchema": {
     "type": "object",
     "properties": {
